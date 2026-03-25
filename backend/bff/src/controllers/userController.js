@@ -19,6 +19,39 @@ async function updateUser(req, res, next) {
   await proxyPut(req, res, next, `/user/${id}`);
 }
 
+async function listUserAddresses(req, res, next) {
+  const id = encodeURIComponent(req.params.id);
+  await proxyGet(req, res, next, `/user/${id}/addresses`);
+}
+
+async function getDefaultUserAddress(req, res, next) {
+  const id = encodeURIComponent(req.params.id);
+  await proxyGet(req, res, next, `/user/${id}/addresses/default`);
+}
+
+async function createUserAddress(req, res, next) {
+  const id = encodeURIComponent(req.params.id);
+  await proxyPost(req, res, next, `/user/${id}/addresses`);
+}
+
+async function updateUserAddress(req, res, next) {
+  const id = encodeURIComponent(req.params.id);
+  const addressId = encodeURIComponent(req.params.addressId);
+  await proxyPut(req, res, next, `/user/${id}/addresses/${addressId}`);
+}
+
+async function deleteUserAddress(req, res, next) {
+  const id = encodeURIComponent(req.params.id);
+  const addressId = encodeURIComponent(req.params.addressId);
+  await proxyDelete(req, res, next, `/user/${id}/addresses/${addressId}`);
+}
+
+async function setDefaultUserAddress(req, res, next) {
+  const id = encodeURIComponent(req.params.id);
+  const addressId = encodeURIComponent(req.params.addressId);
+  await proxyPost(req, res, next, `/user/${id}/addresses/${addressId}/default`);
+}
+
 async function getUserFavorites(req, res, next) {
   const id = encodeURIComponent(req.params.id);
   const page = Number(req.query?.page || 1);
@@ -58,6 +91,12 @@ module.exports = {
   getUser,
   updateUser,
   changeUserPhone,
+  listUserAddresses,
+  getDefaultUserAddress,
+  createUserAddress,
+  updateUserAddress,
+  deleteUserAddress,
+  setDefaultUserAddress,
   getUserFavorites,
   addUserFavorite,
   deleteUserFavorite,

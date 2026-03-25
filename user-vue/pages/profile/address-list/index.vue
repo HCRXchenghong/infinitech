@@ -8,10 +8,10 @@
       </view>
     </view>
 
-    <view v-if="isSelectMode" class="select-tip">请选择用于下单的收货地址</view>
+    <view v-if="isSelectMode" class="select-tip">请选择本次下单使用的收货地址</view>
 
     <view class="search-wrap">
-      <text class="search-icon">⌕</text>
+      <text class="search-icon">搜</text>
       <input
         v-model.trim="keyword"
         class="search-input"
@@ -22,7 +22,12 @@
     </view>
 
     <scroll-view scroll-y class="address-scroll">
-      <view v-if="filteredAddresses.length === 0" class="empty-state">
+      <view v-if="loading" class="empty-state">
+        <text class="empty-title">正在加载地址</text>
+        <text class="empty-desc">请稍候</text>
+      </view>
+
+      <view v-else-if="filteredAddresses.length === 0" class="empty-state">
         <text class="empty-title">{{ keyword ? '没有匹配地址' : '暂无收货地址' }}</text>
         <text class="empty-desc">{{ keyword ? '请尝试其他关键词' : '点击右上角新增地址' }}</text>
       </view>
@@ -36,14 +41,13 @@
           @tap="onCardTap(addr)"
         >
           <view class="card-head">
-            <text class="addr-place">{{ detailParts(addr).place }}</text>
+            <text class="addr-place">{{ addr.fullAddress }}</text>
             <view class="chip-row">
-              <text v-if="selectedAddressId === addr.id" class="chip primary">默认</text>
+              <text v-if="addr.isDefault" class="chip primary">默认</text>
+              <text v-if="isSelectMode && selectedAddressId === addr.id" class="chip active">已选中</text>
               <text v-if="addr.tag" class="chip">{{ addr.tag }}</text>
             </view>
           </view>
-
-          <text class="addr-area">{{ detailParts(addr).area }}</text>
 
           <view class="contact-row">
             <text class="contact-name">{{ addr.name }}</text>
@@ -51,6 +55,7 @@
           </view>
 
           <view v-if="manageMode && !isSelectMode" class="card-actions">
+            <view class="action-btn secondary" @tap.stop="setDefault(addr)">{{ addr.isDefault ? '默认地址' : '设为默认' }}</view>
             <view class="action-btn edit" @tap.stop="edit(addr.id)">编辑</view>
             <view class="action-btn delete" @tap.stop="deleteAddress(addr.id)">删除</view>
           </view>
@@ -63,14 +68,34 @@
 </template>
 
 <script>
+import { fetchUserAddresses, deleteUserAddress, setDefaultUserAddress } from '@/shared-ui/api.js'
+
+function buildCacheAddress(addr) {
+  const fullAddress = String(addr.fullAddress || addr.detail || addr.address || '').trim()
+  return {
+    id: String(addr.id || '').trim(),
+    name: String(addr.name || '').trim(),
+    phone: String(addr.phone || '').trim(),
+    tag: String(addr.tag || '').trim(),
+    address: String(addr.address || '').trim(),
+    roomDetail: String(addr.roomDetail || '').trim(),
+    detail: fullAddress,
+    fullAddress,
+    latitude: Number(addr.latitude || 0) || 0,
+    longitude: Number(addr.longitude || 0) || 0,
+    isDefault: Boolean(addr.isDefault)
+  }
+}
+
 export default {
   data() {
     return {
       isSelectMode: false,
       manageMode: false,
       keyword: '',
+      loading: false,
       addresses: [],
-      selectedAddressId: null
+      selectedAddressId: ''
     }
   },
   computed: {
@@ -78,66 +103,98 @@ export default {
       const key = String(this.keyword || '').trim().toLowerCase()
       if (!key) return this.addresses
       return this.addresses.filter((addr) => {
-        const fields = [addr.name, addr.phone, addr.detail, addr.tag]
+        const fields = [addr.name, addr.phone, addr.fullAddress, addr.tag]
         return fields.some((field) => String(field || '').toLowerCase().includes(key))
       })
     }
   },
   onLoad(options) {
     this.isSelectMode = options && options.select === '1'
-    this.loadAddresses()
-    this.syncSelectedAddress()
   },
   onShow() {
     this.loadAddresses()
-    this.syncSelectedAddress()
   },
   methods: {
-    loadAddresses() {
-      this.addresses = this.normalizeAddresses(uni.getStorageSync('addresses'))
-    },
-    normalizeAddresses(raw) {
-      if (!Array.isArray(raw)) return []
-      return raw
-        .map((addr) => this.normalizeAddress(addr))
-        .filter(Boolean)
+    currentUserId() {
+      const profile = uni.getStorageSync('userProfile') || {}
+      return String(profile.id || profile.userId || profile.phone || '').trim()
     },
     normalizeAddress(addr) {
       if (!addr || typeof addr !== 'object') return null
       const id = String(addr.id || '').trim()
-      const detail = String(addr.detail || '').trim()
+      const address = String(addr.address || '').trim()
+      const roomDetail = String(addr.roomDetail || addr.detail || '').trim()
+      const fullAddress = String(addr.fullAddress || [address, roomDetail].filter(Boolean).join(' ')).trim()
       const name = String(addr.name || '').trim()
       const phone = String(addr.phone || '').trim()
-      const tag = String(addr.tag || '').trim()
-      if (!id || !detail || !name) return null
-      return { id, detail, name, phone, tag }
-    },
-    syncSelectedAddress() {
-      const selectedAddress = String(uni.getStorageSync('selectedAddress') || '').trim()
-      if (!selectedAddress) {
-        this.selectedAddressId = null
-        return
+      if (!id || !fullAddress || !name) return null
+      return {
+        id,
+        name,
+        phone,
+        tag: String(addr.tag || '').trim(),
+        address,
+        roomDetail,
+        detail: fullAddress,
+        fullAddress,
+        latitude: Number(addr.latitude || 0) || 0,
+        longitude: Number(addr.longitude || 0) || 0,
+        isDefault: Boolean(addr.isDefault)
       }
-      const matched = this.addresses.find((addr) => addr.detail === selectedAddress)
+    },
+    normalizeAddresses(list) {
+      if (!Array.isArray(list)) return []
+      return list.map((item) => this.normalizeAddress(item)).filter(Boolean)
+    },
+    cacheAddresses(addresses) {
+      const cached = addresses.map((item) => buildCacheAddress(item))
+      uni.setStorageSync('addresses', cached)
+      this.syncSelectedAddress(cached)
+    },
+    syncSelectedAddress(addresses = this.addresses) {
+      const cached = this.normalizeAddresses(addresses)
+      const selectedId = String(uni.getStorageSync('selectedAddressId') || '').trim()
+      let matched = selectedId ? cached.find((item) => item.id === selectedId) : null
       if (!matched) {
-        this.selectedAddressId = null
+        matched = cached.find((item) => item.isDefault) || null
+      }
+      if (!matched && cached.length === 1) {
+        matched = cached[0]
+      }
+
+      if (!matched) {
+        this.selectedAddressId = ''
+        uni.removeStorageSync('selectedAddressId')
         uni.removeStorageSync('selectedAddress')
+        uni.removeStorageSync('selectedAddressPayload')
         return
       }
+
       this.selectedAddressId = matched.id
+      uni.setStorageSync('selectedAddressId', matched.id)
+      uni.setStorageSync('selectedAddress', matched.fullAddress)
+      uni.setStorageSync('selectedAddressPayload', buildCacheAddress(matched))
     },
-    detailParts(addr) {
-      const text = String((addr && addr.detail) || '').trim()
-      if (!text) {
-        return { area: '地址信息待补充', place: '请完善门牌号' }
+    async loadAddresses() {
+      const userId = this.currentUserId()
+      if (!userId) {
+        this.addresses = this.normalizeAddresses(uni.getStorageSync('addresses'))
+        this.syncSelectedAddress(this.addresses)
+        return
       }
-      const firstGap = text.indexOf(' ')
-      if (firstGap === -1) {
-        return { area: '收货地址', place: text }
+
+      this.loading = true
+      try {
+        const list = await fetchUserAddresses(userId)
+        this.addresses = this.normalizeAddresses(list)
+        this.cacheAddresses(this.addresses)
+      } catch (error) {
+        this.addresses = this.normalizeAddresses(uni.getStorageSync('addresses'))
+        this.syncSelectedAddress(this.addresses)
+        uni.showToast({ title: error?.error || error?.message || '加载地址失败', icon: 'none' })
+      } finally {
+        this.loading = false
       }
-      const area = text.slice(0, firstGap).trim()
-      const place = text.slice(firstGap + 1).trim() || area
-      return { area, place }
     },
     toggleManage() {
       this.manageMode = !this.manageMode
@@ -150,34 +207,52 @@ export default {
       uni.navigateTo({ url: '/pages/profile/address-edit/index' })
     },
     edit(id) {
-      uni.navigateTo({ url: '/pages/profile/address-edit/index?id=' + id })
+      uni.navigateTo({ url: `/pages/profile/address-edit/index?id=${encodeURIComponent(id)}` })
     },
     selectAddress(addr) {
-      if (this.isSelectMode) {
-        uni.setStorageSync('selectedAddress', addr.detail)
-        this.selectedAddressId = addr.id
-        uni.$emit('addressSelected')
-        uni.showToast({ title: '地址已切换', icon: 'success' })
-        setTimeout(() => {
-          uni.navigateBack()
-        }, 350)
+      this.selectedAddressId = addr.id
+      uni.setStorageSync('selectedAddressId', addr.id)
+      uni.setStorageSync('selectedAddress', addr.fullAddress)
+      uni.setStorageSync('selectedAddressPayload', buildCacheAddress(addr))
+      uni.$emit('addressSelected', buildCacheAddress(addr))
+
+      if (!this.isSelectMode) {
+        this.edit(addr.id)
         return
       }
-      this.edit(addr.id)
+
+      uni.showToast({ title: '地址已切换', icon: 'success' })
+      setTimeout(() => {
+        uni.navigateBack()
+      }, 300)
     },
-    deleteAddress(id) {
+    async setDefault(addr) {
+      if (addr.isDefault) return
+      const userId = this.currentUserId()
+      if (!userId) return
+      try {
+        await setDefaultUserAddress(userId, addr.id)
+        await this.loadAddresses()
+        uni.showToast({ title: '已设为默认地址', icon: 'success' })
+      } catch (error) {
+        uni.showToast({ title: error?.error || error?.message || '设置默认失败', icon: 'none' })
+      }
+    },
+    async deleteAddress(id) {
+      const userId = this.currentUserId()
+      if (!userId) return
+
       uni.showModal({
         title: '确认删除',
-        content: '确定要删除这个地址吗？',
-        success: (res) => {
-          if (res.confirm) {
-            this.addresses = this.addresses.filter((addr) => addr.id !== id)
-            uni.setStorageSync('addresses', this.addresses)
-            if (this.selectedAddressId === id) {
-              this.selectedAddressId = null
-              uni.removeStorageSync('selectedAddress')
-            }
+        content: '确定删除这个收货地址吗？',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            await deleteUserAddress(userId, id)
+            await this.loadAddresses()
             uni.showToast({ title: '删除成功', icon: 'success' })
+          } catch (error) {
+            uni.showToast({ title: error?.error || error?.message || '删除失败', icon: 'none' })
           }
         }
       })
@@ -259,7 +334,7 @@ export default {
 }
 
 .search-icon {
-  font-size: 30rpx;
+  font-size: 28rpx;
   color: #86a5cf;
 }
 
@@ -339,8 +414,8 @@ export default {
 .addr-place {
   flex: 1;
   min-width: 0;
-  font-size: 36rpx;
-  line-height: 1.35;
+  font-size: 32rpx;
+  line-height: 1.45;
   font-weight: 700;
   color: #1b2e49;
 }
@@ -349,6 +424,8 @@ export default {
   display: flex;
   gap: 8rpx;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .chip {
@@ -366,12 +443,9 @@ export default {
   color: #0369a1;
 }
 
-.addr-area {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 25rpx;
-  line-height: 1.45;
-  color: #6d86aa;
+.chip.active {
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
 .contact-row {
@@ -399,6 +473,7 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 12rpx;
+  flex-wrap: wrap;
 }
 
 .action-btn {
@@ -409,6 +484,11 @@ export default {
   align-items: center;
   justify-content: center;
   font-size: 26rpx;
+}
+
+.action-btn.secondary {
+  color: #0369a1;
+  background: #ecfeff;
 }
 
 .action-btn.edit {

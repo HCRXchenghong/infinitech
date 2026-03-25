@@ -532,6 +532,21 @@
 - `backend/docker/docker-compose.yml` now treats `postgres + redis` as the default stack while keeping `mysql` as a legacy profile and `rabbitmq` as an optional profile
 - `.github/workflows/ci.yml` now runs Go tests/build, BFF tests/lint, and `admin-vue` production build at the root monorepo level
 
+## Batch 45 Completed
+- Convert user delivery addresses from local-only storage into a server-backed authority and wire the order-submit path to reference persisted addresses
+- Keep the rollout compatibility-safe by syncing service-backed addresses back into the legacy local cache keys used by active uni-app flows
+- Replace the two active address pages with clean UTF-8 implementations so this batch removes both the fake-data gap and the mojibake debt in the same path
+
+### Batch 45 Fixed
+- `backend/go/internal/repository/user_address_models.go`, `backend/go/internal/service/user_address_service.go`, and `backend/go/internal/handler/user_address_handler.go` now provide persisted `user_addresses` records with list/create/update/delete/default flows, ownership checks, and first-address default promotion
+- `backend/go/cmd/main.go` and `backend/go/internal/middleware/route_guard.go` now expose and protect `/api/user/:id/addresses`, `/api/user/:id/addresses/default`, and `/api/user/:id/addresses/:addressId/default`
+- `backend/go/internal/service/order_address_support.go` and `backend/go/internal/service/order_service.go` now resolve server-side addresses during order creation, prefer persisted address contacts over profile fallbacks, and reject empty-address order submissions
+- `backend/go/internal/service/user_address_service_test.go` and `backend/go/internal/service/order_service_address_test.go` now lock the new address default-state machine and server-side order-address binding with automated tests
+- `backend/bff/src/controllers/userController.js` and `backend/bff/src/routes/user.js` now proxy the full address API surface through the BFF
+- `user-vue/shared-ui/api.js` and `app-mobile/shared-ui/api.js` now expose address list/default/create/update/delete/set-default helpers
+- `user-vue/pages/profile/address-list/index.vue`, `user-vue/pages/profile/address-edit/index.vue`, `app-mobile/pages/profile/address-list/index.vue`, and `app-mobile/pages/profile/address-edit/index.vue` were rewritten in clean UTF-8 and now read/write real server addresses while continuing to mirror the legacy `addresses` / `selectedAddress` cache keys
+- `user-vue/pages/order/confirm/index.vue` and `app-mobile/pages/order/confirm/index.vue` now honor `selectedAddressId`, fall back to the server default address when local cache is empty, and submit `addressId` with the order payload
+
 ## Verification
 - Passed `node --check` on modified `socket-server` and `backend/bff` modules
 - Passed `backend/bff` test suite: `npm test -- --runInBand`
@@ -570,6 +585,12 @@
 - Passed `gofmt -w backend/go/internal/service/charity_settings.go`
 - Passed `gofmt -w backend/go/internal/service/home_feed_service.go`
 - Passed `gofmt -w backend/go/cmd/main.go`
+- Passed `gofmt -w backend/go/internal/repository/user_address_models.go`
+- Passed `gofmt -w backend/go/internal/service/user_address_service.go`
+- Passed `gofmt -w backend/go/internal/service/order_address_support.go`
+- Passed `gofmt -w backend/go/internal/handler/user_address_handler.go`
+- Passed `gofmt -w backend/go/internal/service/user_address_service_test.go`
+- Passed `gofmt -w backend/go/internal/service/order_service_address_test.go`
 - Passed `admin-vue` production build: `npm run build`
 
 ## Remaining High-Priority Items

@@ -100,7 +100,7 @@
 </template>
 
 <script>
-import { fetchShopDetail, fetchProductDetail, createOrder, earnPoints, request } from '@/shared-ui/api.js'
+import { fetchShopDetail, fetchProductDetail, createOrder, earnPoints, fetchUserAddresses, request } from '@/shared-ui/api.js'
 import { useUserOrderStore } from '@/shared-ui/userOrderStore.js'
 
 export default {
@@ -283,27 +283,53 @@ export default {
     normalizeAddress(addr) {
       if (!addr || typeof addr !== 'object') return null
       const id = String(addr.id || '').trim()
-      const detail = String(addr.detail || '').trim()
+      const detail = String(addr.fullAddress || addr.detail || '').trim()
       const name = String(addr.name || '').trim()
       const phone = String(addr.phone || '').trim()
       const tag = String(addr.tag || '').trim()
       if (!id || !detail || !name) return null
-      return { id, detail, name, phone, tag }
+      return { id, detail, fullAddress: detail, name, phone, tag, isDefault: Boolean(addr.isDefault) }
     },
-    syncDeliveryAddress() {
-      const addresses = this.normalizeAddresses(uni.getStorageSync('addresses'))
+    async syncDeliveryAddress() {
+      let addresses = this.normalizeAddresses(uni.getStorageSync('addresses'))
+      if (addresses.length === 0) {
+        const profile = uni.getStorageSync('userProfile') || {}
+        const userId = String(profile.id || profile.userId || profile.phone || '').trim()
+        if (userId) {
+          try {
+            addresses = this.normalizeAddresses(await fetchUserAddresses(userId))
+            if (addresses.length > 0) {
+              uni.setStorageSync('addresses', addresses)
+            }
+          } catch (error) {
+            // fallback to local cache only
+          }
+        }
+      }
+      const selectedAddressId = String(uni.getStorageSync('selectedAddressId') || '').trim()
       const selectedAddress = String(uni.getStorageSync('selectedAddress') || '').trim()
       this.savedAddressCount = addresses.length
 
       let matched = null
-      if (selectedAddress) {
+      if (selectedAddressId) {
+        matched = addresses.find((addr) => addr.id === selectedAddressId) || null
+      }
+      if (!matched && selectedAddress) {
         matched = addresses.find((addr) => addr.detail === selectedAddress) || null
+      }
+      if (!matched) {
+        matched = addresses.find((addr) => addr.isDefault) || null
       }
       if (!matched && addresses.length === 1) {
         matched = addresses[0]
+        uni.setStorageSync('selectedAddressId', matched.id)
         uni.setStorageSync('selectedAddress', matched.detail)
       } else if (!matched && selectedAddress) {
+        uni.removeStorageSync('selectedAddressId')
         uni.removeStorageSync('selectedAddress')
+      } else if (matched) {
+        uni.setStorageSync('selectedAddressId', matched.id)
+        uni.setStorageSync('selectedAddress', matched.detail)
       }
 
       this.deliveryAddress = matched
@@ -420,6 +446,7 @@ export default {
         userCouponId: this.selectedUserCouponId || null,
         remark: this.remarkText,
         tableware: this.tablewareText,
+        addressId: this.deliveryAddress.id,
         address: this.deliveryAddressPayload,
         name: this.deliveryAddress.name,
         userId: String(userId), // 确保是字符串类型

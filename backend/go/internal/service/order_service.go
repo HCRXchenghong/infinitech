@@ -353,6 +353,10 @@ func (s *OrderService) CreateOrder(ctx context.Context, data interface{}) (inter
 	remark := toString(req["remark"])
 	tableware := toString(req["tableware"])
 	address := toString(req["address"])
+	addressID := toString(req["addressId"])
+	if addressID == "" {
+		addressID = toString(req["address_id"])
+	}
 	serviceType := normalizeOrderServiceType(toString(req["serviceType"]))
 	if serviceType == "" {
 		serviceType = normalizeOrderServiceType(toString(req["service_type"]))
@@ -405,6 +409,32 @@ func (s *OrderService) CreateOrder(ctx context.Context, data interface{}) (inter
 	}
 	customerPhone := toString(req["phone"])
 	customerName := toString(req["name"])
+	providedCustomerPhone := customerPhone
+	providedCustomerName := customerName
+	user, selectedAddress, err := s.resolveUserAddressForOrder(ctx, userID, addressID)
+	if err != nil {
+		return nil, err
+	}
+	if user != nil {
+		if customerPhone == "" {
+			customerPhone = strings.TrimSpace(user.Phone)
+		}
+		if customerName == "" {
+			customerName = strings.TrimSpace(user.Name)
+		}
+	}
+	if selectedAddress != nil {
+		address = selectedAddress.FullAddress()
+		if strings.TrimSpace(providedCustomerPhone) == "" {
+			customerPhone = strings.TrimSpace(selectedAddress.Phone)
+		}
+		if strings.TrimSpace(providedCustomerName) == "" {
+			customerName = strings.TrimSpace(selectedAddress.Name)
+		}
+	}
+	if strings.TrimSpace(address) == "" {
+		return nil, fmt.Errorf("address is required")
+	}
 	paymentStatus := strings.ToLower(strings.TrimSpace(toString(req["paymentStatus"])))
 	if paymentStatus == "" {
 		paymentStatus = strings.ToLower(strings.TrimSpace(toString(req["payment_status"])))
@@ -506,6 +536,8 @@ func (s *OrderService) CreateOrder(ctx context.Context, data interface{}) (inter
 		ErrandRequest:      errandRequest,
 		ErrandLocation:     errandLocation,
 		ErrandRequirements: errandRequirements,
+		DeliveryName:       customerName,
+		DeliveryPhone:      customerPhone,
 		TotalPrice:         price,
 		ProductPrice:       productPrice,
 		DeliveryFee:        deliveryFee,

@@ -344,6 +344,44 @@ export const updateUserProfile = (userId, payload) => request({
   data: payload
 })
 
+export const fetchUserAddresses = async (userId) => {
+  const res = await request({
+    url: `/api/user/${encodeURIComponent(userId)}/addresses`,
+    method: 'GET'
+  })
+  return Array.isArray(res?.data) ? res.data : []
+}
+
+export const fetchDefaultUserAddress = async (userId) => {
+  const res = await request({
+    url: `/api/user/${encodeURIComponent(userId)}/addresses/default`,
+    method: 'GET'
+  })
+  return res?.data || null
+}
+
+export const createUserAddress = (userId, payload) => request({
+  url: `/api/user/${encodeURIComponent(userId)}/addresses`,
+  method: 'POST',
+  data: payload
+})
+
+export const updateUserAddress = (userId, addressId, payload) => request({
+  url: `/api/user/${encodeURIComponent(userId)}/addresses/${encodeURIComponent(addressId)}`,
+  method: 'PUT',
+  data: payload
+})
+
+export const deleteUserAddress = (userId, addressId) => request({
+  url: `/api/user/${encodeURIComponent(userId)}/addresses/${encodeURIComponent(addressId)}`,
+  method: 'DELETE'
+})
+
+export const setDefaultUserAddress = (userId, addressId) => request({
+  url: `/api/user/${encodeURIComponent(userId)}/addresses/${encodeURIComponent(addressId)}/default`,
+  method: 'POST'
+})
+
 // 积分/邀请/合作相关
 export const fetchPointsBalance = (userId) => request({
   url: '/api/points/balance',

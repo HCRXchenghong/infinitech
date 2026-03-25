@@ -103,6 +103,7 @@ func main() {
 		&repository.Shop{},
 		&repository.Review{},
 		&repository.UserFavorite{},
+		&repository.UserAddress{},
 		&repository.RiderReview{},
 		&repository.Category{},
 		&repository.Product{},
@@ -1212,6 +1213,12 @@ func main() {
 		api.GET("/user/:id", handlers.User.GetUser)
 		api.PUT("/user/:id", handlers.User.UpdateProfile)
 		api.POST("/user/:id/change-phone", handlers.User.ChangePhone)
+		api.GET("/user/:id/addresses", handlers.User.ListAddresses)
+		api.GET("/user/:id/addresses/default", handlers.User.GetDefaultAddress)
+		api.POST("/user/:id/addresses", handlers.User.CreateAddress)
+		api.PUT("/user/:id/addresses/:addressId", handlers.User.UpdateAddress)
+		api.DELETE("/user/:id/addresses/:addressId", handlers.User.DeleteAddress)
+		api.POST("/user/:id/addresses/:addressId/default", handlers.User.SetDefaultAddress)
 
 		// 消息相关（注意：更具体的路由必须放在更通用的路由之前）
 		messages := api.Group("/messages")

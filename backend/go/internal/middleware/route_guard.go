@@ -201,6 +201,10 @@ var routeGuardRules = []routeGuardRule{
 	// 用户按自身 ID 访问
 	{path: "/api/user/:id", methods: methods("GET", "PUT"), guard: guardUserSelfOrAdmin, idParam: "id"},
 	{path: "/api/user/:id/change-phone", methods: methods("POST"), guard: guardUserSelfOrAdmin, idParam: "id"},
+	{path: "/api/user/:id/addresses", methods: methods("GET", "POST"), guard: guardUserSelfOrAdmin, idParam: "id"},
+	{path: "/api/user/:id/addresses/default", methods: methods("GET"), guard: guardUserSelfOrAdmin, idParam: "id"},
+	{path: "/api/user/:id/addresses/:addressId", methods: methods("PUT", "DELETE"), guard: guardUserSelfOrAdmin, idParam: "id"},
+	{path: "/api/user/:id/addresses/:addressId/default", methods: methods("POST"), guard: guardUserSelfOrAdmin, idParam: "id"},
 	{path: "/api/user/:id/favorites", methods: methods("GET", "POST"), guard: guardUserSelfOrAdmin, idParam: "id"},
 	{path: "/api/user/:id/favorites/:shopId", methods: methods("DELETE"), guard: guardUserSelfOrAdmin, idParam: "id"},
 	{path: "/api/user/:id/favorites/:shopId/status", methods: methods("GET"), guard: guardUserSelfOrAdmin, idParam: "id"},
