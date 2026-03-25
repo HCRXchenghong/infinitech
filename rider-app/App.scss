@@ -1,0 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+/* 全局盒模型 */
+* {
+  box-sizing: border-box;
+}
+
+.app-root {
+  min-height: 100vh;
+  background-color: #f3f4f6;
+  color: #333;
+  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC',
+    'Segoe UI', 'Helvetica Neue', Arial, 'Hiragino Sans GB', 'Microsoft YaHei',
+    sans-serif;
+}
+
+/* 全局样式 */
+page {
+  background-color: #f3f4f6;
+  color: #1f2937;
+  box-sizing: border-box;
+}
+
+/* 通用类 */
+.container {
+  min-height: 100vh;
+  background-color: #f3f4f6;
+  box-sizing: border-box;
+}
+
+.page-padding {
+  padding: 0 24rpx;
+  box-sizing: border-box;
+}
+
+/* 主题色 */
+.text-primary {
+  color: #009bf5;
+}
+
+.bg-primary {
+  background-color: #009bf5;
+}
+
+.text-danger {
+  color: #ea580c;
+}
+
+.bg-danger {
+  background-color: #ea580c;
+}
+
+/* 卡片样式 */
+.card {
+  background: white;
+  border-radius: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+/* 按钮样式 */
+.btn-primary {
+  background: linear-gradient(135deg, #009bf5 0%, #0284c7 100%);
+  color: white;
+  border: none;
+  border-radius: 16rpx;
+  font-weight: bold;
+}
+
+.btn-primary:active {
+  opacity: 0.9;
+}
+
+/* 徽章 */
+.badge {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  min-width: 32rpx;
+  height: 32rpx;
+  background: #ef4444;
+  color: white;
+  border-radius: 16rpx;
+  font-size: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8rpx;
+  font-weight: bold;
+  border: 4rpx solid white;
+}
+
+/* 动画 */
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(40rpx);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.shake {
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-4rpx);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(4rpx);
+  }
+}
+

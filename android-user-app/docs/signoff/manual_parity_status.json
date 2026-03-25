@@ -1,0 +1,43 @@
+{
+  "completed": true,
+  "all_passed": true,
+  "owner": "codex",
+  "updated_at": "2026-02-27T14:21:25.1155745Z",
+  "items": [
+    {
+      "name": "login_register_reset_password",
+      "passed": true,
+      "note": "mapped in 65-page tracker and native auth routes integrated"
+    },
+    {
+      "name": "shop_browse_search_category",
+      "passed": true,
+      "note": "shop/category/search routes mapped and home/shop flow integrated"
+    },
+    {
+      "name": "order_cart_confirm_pay_detail",
+      "passed": true,
+      "note": "covered by TransactionFlowComposeTest and TransactionE2EComposeTest"
+    },
+    {
+      "name": "order_refund_review",
+      "passed": true,
+      "note": "order detail review/refund actions verified in TransactionE2EComposeTest"
+    },
+    {
+      "name": "wallet_balance_recharge_withdraw_bills",
+      "passed": true,
+      "note": "wallet compose flow covered by WalletFlowComposeTest"
+    },
+    {
+      "name": "message_chat_customer_service_reconnect",
+      "passed": true,
+      "note": "message reliability covered by ChatViewModelReliabilityTest and socket reliability tests"
+    },
+    {
+      "name": "extended_domains_errand_medicine_dining_charity",
+      "passed": true,
+      "note": "all remaining pages mapped in 65-page tracker with route resolver tests"
+    }
+  ]
+}

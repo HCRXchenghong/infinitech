@@ -1,0 +1,59 @@
+﻿{
+    "evaluated_at_utc":  "2026-02-27T14:21:50.0500354Z",
+    "source":  "file:docs/gray/sample_metrics_pass.json",
+    "threshold_path":  "docs/gray/rollout_thresholds.json",
+    "decision":  "CONTINUE_ROLLOUT",
+    "violations":  [
+
+                   ],
+    "checks":  [
+                   {
+                       "Metric":  "crash_rate",
+                       "Rule":  "actual \u003c= 0.01",
+                       "Actual":  0.004,
+                       "Result":  "PASS"
+                   },
+                   {
+                       "Metric":  "anr_rate",
+                       "Rule":  "actual \u003c= 0.005",
+                       "Actual":  0.001,
+                       "Result":  "PASS"
+                   },
+                   {
+                       "Metric":  "api_failure_rate",
+                       "Rule":  "actual \u003c= 0.05",
+                       "Actual":  0.018,
+                       "Result":  "PASS"
+                   },
+                   {
+                       "Metric":  "order_conversion_drop_ratio",
+                       "Rule":  "actual \u003c= 0.05",
+                       "Actual":  0.011,
+                       "Result":  "PASS"
+                   },
+                   {
+                       "Metric":  "customer_service_first_response_seconds",
+                       "Rule":  "actual \u003c= 90",
+                       "Actual":  42,
+                       "Result":  "PASS"
+                   },
+                   {
+                       "Metric":  "socket_connect_success_rate",
+                       "Rule":  "actual \u003e= 0.98",
+                       "Actual":  0.993,
+                       "Result":  "PASS"
+                   },
+                   {
+                       "Metric":  "pay_success_rate",
+                       "Rule":  "actual \u003e= 0.985",
+                       "Actual":  0.991,
+                       "Result":  "PASS"
+                   },
+                   {
+                       "Metric":  "refund_success_rate",
+                       "Rule":  "actual \u003e= 0.97",
+                       "Actual":  0.983,
+                       "Result":  "PASS"
+                   }
+               ]
+}

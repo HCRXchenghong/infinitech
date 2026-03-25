@@ -1,0 +1,5 @@
+<resources>
+    <string name="home_greeting">你好，%1$s</string>
+    <string name="home_baseline_desc">原生基础能力已就绪，功能模块可继续迁移 65 个页面。</string>
+    <string name="home_logout">退出登录</string>
+</resources>

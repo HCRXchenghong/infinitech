@@ -1,0 +1,488 @@
+<template>
+  <view class="page auth">
+    <view class="header">
+      <text class="title">{{ portalRuntime.title }}</text>
+      <text class="subtitle">{{ headerSubtitle }}</text>
+    </view>
+
+    <view v-if="bindRequired" class="bind-banner">
+      <image v-if="wechatAvatarUrl" class="bind-avatar" :src="wechatAvatarUrl" mode="aspectFill" />
+      <view class="bind-copy">
+        <text class="bind-title">检测到待绑定微信账号</text>
+        <text class="bind-desc">{{ bindBannerDesc }}</text>
+      </view>
+    </view>
+
+    <view class="form">
+      <input v-model="nickname" class="input" placeholder="昵称" maxlength="16" />
+      <input v-model="phone" class="input" placeholder="手机号" type="number" maxlength="11" />
+      <input v-model="inviteCode" class="input" placeholder="邀请码（选填）" maxlength="20" />
+
+      <view class="code-row">
+        <input v-model="code" class="input" placeholder="验证码" type="number" maxlength="6" />
+        <text class="code-btn" :class="{ off: codeCooldown > 0 || loading }" @tap.stop="sendCode" @click.stop="sendCode">
+          {{ loading ? '发送中...' : codeCooldown > 0 ? `${codeCooldown}s` : '获取验证码' }}
+        </text>
+      </view>
+
+      <view v-if="needCaptcha" class="captcha-row">
+        <view class="captcha-input-row">
+          <input v-model="captchaCode" class="input captcha-input" placeholder="图形验证码" maxlength="4" />
+          <view class="captcha-image-wrap" @tap="refreshCaptcha">
+            <image v-if="captchaImageUrl" class="captcha-image" :src="captchaImageUrl" mode="aspectFit" />
+            <text v-else class="captcha-placeholder">点击加载</text>
+          </view>
+        </view>
+      </view>
+
+      <input v-model="password" class="input" placeholder="密码，至少 6 位" :password="true" maxlength="20" />
+      <input
+        v-model="confirmPassword"
+        class="input"
+        placeholder="确认密码"
+        :password="true"
+        maxlength="20"
+      />
+
+      <button class="btn" @tap="submit" :disabled="loading">
+        {{ loading ? (bindRequired ? '注册并绑定中...' : '注册中...') : (bindRequired ? '注册并绑定微信' : '注册') }}
+      </button>
+    </view>
+
+    <view class="footer">
+      <view class="footer-row">
+        <text class="txt">已有账号？</text>
+        <text class="link" @tap="goLogin">登录</text>
+      </view>
+      <text class="portal-footer">{{ portalRuntime.loginFooter }}</text>
+    </view>
+
+    <view v-if="wechatLoginAvailable" class="wechat-login">
+      <view class="divider">
+        <view class="line"></view>
+        <text>或</text>
+        <view class="line"></view>
+      </view>
+      <view class="wechat-btn" @tap="startWechatLogin('register')">
+        <image class="wechat-icon" src="/static/icons/wechat.png" mode="aspectFit" />
+        <text>微信注册 / 登录</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
+import { getBaseUrl, login as loginApi, register as registerApi, request, requestSMSCode } from '@/shared-ui/api.js'
+import { saveTokenInfo } from '@/shared-ui/request-interceptor'
+import {
+  getCachedConsumerAuthRuntimeSettings,
+  loadConsumerAuthRuntimeSettings
+} from '@/shared-ui/auth-runtime.js'
+
+const DEFAULT_NICKNAME = '悦享e食用户'
+
+function trimValue(value) {
+  return String(value || '').trim()
+}
+
+function encodeQuery(params = {}) {
+  return Object.keys(params)
+    .filter((key) => trimValue(params[key]) !== '')
+    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(trimValue(params[key]))}`)
+    .join('&')
+}
+
+function buildPageUrl(path, params = {}) {
+  const query = encodeQuery(params)
+  return query ? `${path}?${query}` : path
+}
+
+function deriveWebRootFromEntryUrl(entryUrl) {
+  const value = trimValue(entryUrl)
+  if (!value) {
+    return ''
+  }
+
+  const apiIndex = value.indexOf('/api/')
+  if (apiIndex > 0) {
+    return value.slice(0, apiIndex)
+  }
+
+  const authIndex = value.indexOf('/auth/wechat/start')
+  if (authIndex > 0) {
+    return value.slice(0, authIndex)
+  }
+
+  const match = value.match(/^(https?:\/\/[^/]+)/i)
+  return match ? match[1] : ''
+}
+
+export default {
+  data() {
+    return {
+      nickname: '',
+      phone: '',
+      inviteCode: '',
+      code: '',
+      password: '',
+      confirmPassword: '',
+      codeCooldown: 0,
+      loading: false,
+      timer: null,
+      isDestroyed: false,
+      needCaptcha: false,
+      captchaSessionId: '',
+      captchaCode: '',
+      captchaImageUrl: '',
+      portalRuntime: getCachedConsumerAuthRuntimeSettings(),
+      wechatBindToken: '',
+      wechatNickname: '',
+      wechatAvatarUrl: ''
+    }
+  },
+  computed: {
+    bindRequired() {
+      return trimValue(this.wechatBindToken) !== ''
+    },
+    headerSubtitle() {
+      return this.bindRequired ? '注册后会自动绑定当前微信账号' : this.portalRuntime.subtitle
+    },
+    bindBannerDesc() {
+      return this.wechatNickname
+        ? `微信昵称：${this.wechatNickname}`
+        : '完成注册后会自动绑定当前微信账号。'
+    },
+    wechatLoginAvailable() {
+      return Boolean(this.portalRuntime.wechatLoginEnabled && trimValue(this.portalRuntime.wechatLoginEntryUrl))
+    }
+  },
+  onLoad(query = {}) {
+    this.captchaSessionId = Date.now().toString()
+    this.applyQueryState(query)
+    void this.loadRuntimeSettings()
+  },
+  onUnload() {
+    this.isDestroyed = true
+    this.clearTimer()
+    this.loading = false
+  },
+  onHide() {
+    this.clearTimer()
+  },
+  methods: {
+    applyQueryState(query = {}) {
+      this.inviteCode = trimValue(query.inviteCode).toUpperCase()
+      this.wechatBindToken = trimValue(query.wechatBindToken)
+      this.wechatNickname = trimValue(query.wechatNickname)
+      this.wechatAvatarUrl = trimValue(query.wechatAvatarUrl)
+      if (!trimValue(this.nickname) && this.wechatNickname) {
+        this.nickname = this.wechatNickname
+      }
+    },
+    async loadRuntimeSettings() {
+      this.portalRuntime = await loadConsumerAuthRuntimeSettings()
+    },
+    clearTimer() {
+      if (this.timer) {
+        clearInterval(this.timer)
+        this.timer = null
+      }
+    },
+    buildQueryParams(extra = {}) {
+      return {
+        inviteCode: this.inviteCode,
+        wechatBindToken: this.wechatBindToken,
+        wechatNickname: this.wechatNickname,
+        wechatAvatarUrl: this.wechatAvatarUrl,
+        ...extra
+      }
+    },
+    buildWechatReturnUrl(mode) {
+      const root = deriveWebRootFromEntryUrl(this.portalRuntime.wechatLoginEntryUrl)
+      if (!root) {
+        return ''
+      }
+      return buildPageUrl(`${root}/#/pages/auth/wechat-callback/index`, {
+        mode,
+        inviteCode: this.inviteCode
+      })
+    },
+    buildWechatStartUrl(mode) {
+      const entryUrl = trimValue(this.portalRuntime.wechatLoginEntryUrl)
+      const returnUrl = this.buildWechatReturnUrl(mode)
+      if (!entryUrl || !returnUrl) {
+        return ''
+      }
+      const connector = entryUrl.includes('?') ? '&' : '?'
+      return `${entryUrl}${connector}mode=${encodeURIComponent(mode)}&returnUrl=${encodeURIComponent(returnUrl)}`
+    },
+    openExternalLink(url) {
+      const target = trimValue(url)
+      if (!target) {
+        uni.showToast({ title: '微信登录入口未配置', icon: 'none' })
+        return
+      }
+      // #ifdef H5
+      window.location.href = target
+      return
+      // #endif
+      if (typeof plus !== 'undefined' && plus.runtime && typeof plus.runtime.openURL === 'function') {
+        plus.runtime.openURL(target)
+        return
+      }
+      uni.setClipboardData({
+        data: target,
+        success: () => {
+          uni.showToast({ title: '登录链接已复制', icon: 'success' })
+        }
+      })
+    },
+    startWechatLogin(mode = 'register') {
+      const target = this.buildWechatStartUrl(mode)
+      if (!target) {
+        uni.showToast({ title: '微信登录入口未配置', icon: 'none' })
+        return
+      }
+      this.openExternalLink(target)
+    },
+    goLogin() {
+      uni.redirectTo({
+        url: buildPageUrl('/pages/auth/login/index', this.buildQueryParams())
+      })
+    },
+    async loadCaptcha() {
+      if (!this.captchaSessionId) {
+        this.captchaSessionId = Date.now().toString()
+      }
+      this.captchaImageUrl = `${getBaseUrl()}/api/captcha?sessionId=${this.captchaSessionId}&t=${Date.now()}`
+    },
+    refreshCaptcha() {
+      this.captchaSessionId = Date.now().toString()
+      this.captchaCode = ''
+      void this.loadCaptcha()
+    },
+    startCodeCooldown() {
+      this.codeCooldown = 60
+      this.clearTimer()
+      this.timer = setInterval(() => {
+        if (this.isDestroyed) {
+          this.clearTimer()
+          return
+        }
+        if (this.codeCooldown > 0) {
+          this.codeCooldown -= 1
+          return
+        }
+        this.clearTimer()
+      }, 1000)
+    },
+    maybeRedirectToLogin(message) {
+      const content = trimValue(message)
+      if (!content || (!content.includes('已注册') && !content.includes('已存在'))) {
+        return false
+      }
+      uni.showModal({
+        title: '提示',
+        content,
+        showCancel: false,
+        confirmText: '去登录',
+        success: (modalRes) => {
+          if (modalRes.confirm) {
+            this.goLogin()
+          }
+        }
+      })
+      return true
+    },
+    async sendCode() {
+      if (this.isDestroyed || this.codeCooldown > 0 || this.loading) {
+        return
+      }
+
+      const phone = trimValue(this.phone)
+      if (!/^1\d{10}$/.test(phone)) {
+        uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
+        return
+      }
+
+      if (this.needCaptcha && trimValue(this.captchaCode).length !== 4) {
+        uni.showToast({ title: '请输入图形验证码', icon: 'none' })
+        return
+      }
+
+      this.loading = true
+      try {
+        const res = await requestSMSCode(phone, 'register', {
+          captcha: this.needCaptcha ? trimValue(this.captchaCode) : undefined,
+          sessionId: this.captchaSessionId
+        })
+
+        if (this.isDestroyed) {
+          return
+        }
+
+        if (res.needCaptcha) {
+          this.needCaptcha = true
+          this.captchaSessionId = res.sessionId || Date.now().toString()
+          this.captchaCode = ''
+          await this.loadCaptcha()
+          uni.showToast({ title: '请输入图形验证码', icon: 'none' })
+          return
+        }
+
+        if (!res.success) {
+          if (this.maybeRedirectToLogin(res.message || res.error)) {
+            return
+          }
+          uni.showToast({
+            title: res.message || res.error || '验证码发送失败',
+            icon: 'none',
+            duration: 2000
+          })
+          return
+        }
+
+        this.needCaptcha = false
+        this.captchaCode = ''
+        this.captchaImageUrl = ''
+
+        if (res.code) {
+          uni.showModal({
+            title: '开发调试验证码',
+            content: `手机号：${phone}\n验证码：${res.code}`,
+            showCancel: false,
+            confirmText: '知道了'
+          })
+        }
+
+        uni.showToast({ title: res.message || '验证码已发送', icon: 'success' })
+        this.startCodeCooldown()
+      } catch (err) {
+        if (this.isDestroyed) {
+          return
+        }
+
+        const message =
+          (err.data && (err.data.message || err.data.error)) ||
+          err.error ||
+          err.message ||
+          '验证码发送失败'
+        if (this.maybeRedirectToLogin(message)) {
+          return
+        }
+
+        if (err.data && err.data.needCaptcha) {
+          this.needCaptcha = true
+          this.captchaSessionId = err.data.sessionId || Date.now().toString()
+          this.captchaCode = ''
+          await this.loadCaptcha()
+          uni.showToast({ title: message || '请输入图形验证码', icon: 'none' })
+          return
+        }
+
+        uni.showToast({ title: message, icon: 'none', duration: 2000 })
+      } finally {
+        this.loading = false
+      }
+    },
+    persistLoginSuccess(res, fallbackPhone) {
+      saveTokenInfo(res.token, res.refreshToken, res.expiresIn || 7200)
+      uni.setStorageSync('userProfile', res.user || { phone: fallbackPhone, nickname: DEFAULT_NICKNAME })
+      uni.setStorageSync('authMode', 'user')
+      uni.setStorageSync('hasSeenWelcome', true)
+      uni.showToast({ title: this.bindRequired ? '注册并绑定成功' : '注册成功', icon: 'success' })
+      setTimeout(() => uni.switchTab({ url: '/pages/index/index' }), 500)
+    },
+    async submit() {
+      const nickname = trimValue(this.nickname)
+      const phone = trimValue(this.phone)
+      const password = trimValue(this.password)
+      const confirmPassword = trimValue(this.confirmPassword)
+      const code = trimValue(this.code)
+
+      if (!nickname) {
+        uni.showToast({ title: '请输入昵称', icon: 'none' })
+        return
+      }
+      if (!/^1\d{10}$/.test(phone)) {
+        uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
+        return
+      }
+      if (!password) {
+        uni.showToast({ title: '请输入密码', icon: 'none' })
+        return
+      }
+      if (password.length < 6) {
+        uni.showToast({ title: '密码至少 6 位', icon: 'none' })
+        return
+      }
+      if (password !== confirmPassword) {
+        uni.showToast({ title: '两次输入的密码不一致', icon: 'none' })
+        return
+      }
+      if (!code) {
+        uni.showToast({ title: '请输入验证码', icon: 'none' })
+        return
+      }
+
+      this.loading = true
+      try {
+        const verifyRes = await request({
+          url: '/api/verify-sms-code',
+          method: 'POST',
+          data: { phone, scene: 'register', code }
+        })
+
+        if (!verifyRes.success) {
+          throw new Error(verifyRes.error || '验证码校验失败')
+        }
+
+        const res = await registerApi({
+          phone,
+          name: nickname,
+          password,
+          inviteCode: trimValue(this.inviteCode).toUpperCase(),
+          wechatBindToken: this.wechatBindToken || undefined
+        })
+
+        if (!res.success) {
+          if (this.maybeRedirectToLogin(res.error || res.message)) {
+            return
+          }
+          uni.showToast({ title: res.error || res.message || '注册失败', icon: 'none' })
+          return
+        }
+
+        try {
+          const loginRes = await loginApi({ phone, password })
+          if (loginRes && loginRes.success) {
+            this.persistLoginSuccess(loginRes, phone)
+            return
+          }
+        } catch (error) {
+          // 自动登录失败时回退到普通登录入口。
+        }
+
+        uni.showToast({ title: this.bindRequired ? '注册成功，请重新登录' : '注册成功', icon: 'success' })
+        setTimeout(() => {
+          uni.redirectTo({ url: '/pages/auth/login/index' })
+        }, 800)
+      } catch (err) {
+        const message =
+          (err.data && (err.data.error || err.data.message)) ||
+          err.error ||
+          err.message ||
+          '注册失败'
+        if (this.maybeRedirectToLogin(message)) {
+          return
+        }
+        uni.showToast({ title: message, icon: 'none' })
+      } finally {
+        this.loading = false
+      }
+    }
+  }
+}
+</script>
+
+<style scoped lang="scss" src="./index.scss"></style>

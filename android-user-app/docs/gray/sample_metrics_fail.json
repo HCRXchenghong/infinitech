@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-02-27T20:30:00+08:00",
+  "crash_rate": 0.023,
+  "anr_rate": 0.007,
+  "api_failure_rate": 0.081,
+  "socket_connect_success_rate": 0.942,
+  "order_conversion_drop_ratio": 0.089,
+  "pay_success_rate": 0.964,
+  "refund_success_rate": 0.935,
+  "customer_service_first_response_seconds": 168
+}

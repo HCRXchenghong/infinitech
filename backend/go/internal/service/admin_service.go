@@ -1,0 +1,1975 @@
+package service
+
+import (
+	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/yuexiang/go-api/internal/repository"
+	"gorm.io/gorm"
+)
+
+const defaultAdminPassword = "123456"
+const riderOnlineTTL = 90 * time.Second
+
+// AdminService handles admin-side operations.
+type AdminService struct {
+	db          *gorm.DB
+	redis       *redis.Client
+	tokenSecret string
+}
+
+func riderOnlineCutoff(now time.Time) time.Time {
+	return now.Add(-riderOnlineTTL)
+}
+
+func riderOnlineActive(rider repository.Rider, now time.Time) bool {
+	return rider.IsOnline && rider.UpdatedAt.After(riderOnlineCutoff(now))
+}
+
+func NewAdminService(db *gorm.DB, redis *redis.Client, tokenSecret string) *AdminService {
+	return &AdminService{
+		db:          db,
+		redis:       redis,
+		tokenSecret: strings.TrimSpace(tokenSecret),
+	}
+}
+
+type AdminLoginRequest struct {
+	Phone     string `json:"phone"`
+	Password  string `json:"password"`
+	Code      string `json:"code"`
+	LoginType string `json:"loginType"`
+}
+
+type AdminLoginResponse struct {
+	Success bool                   `json:"success"`
+	Token   string                 `json:"token,omitempty"`
+	User    map[string]interface{} `json:"user,omitempty"`
+	Error   string                 `json:"error,omitempty"`
+}
+
+func (s *AdminService) Login(ctx context.Context, req AdminLoginRequest) (*AdminLoginResponse, int, error) {
+	if !isValidPhone(req.Phone) {
+		return &AdminLoginResponse{Success: false, Error: "手机号格式不正确"}, 400, fmt.Errorf("invalid phone")
+	}
+
+	useCode := req.LoginType == "code" || req.Code != ""
+	usePassword := req.LoginType == "password" || req.Password != ""
+
+	var admin repository.Admin
+
+	if useCode {
+		if err := s.verifySMSCode(ctx, req.Phone, req.Code); err != nil {
+			return &AdminLoginResponse{Success: false, Error: "验证码错误或已过期"}, 400, err
+		}
+		if err := s.db.WithContext(ctx).Where("phone = ?", req.Phone).First(&admin).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return &AdminLoginResponse{Success: false, Error: "管理员不存在"}, 404, err
+			}
+			return &AdminLoginResponse{Success: false, Error: "查询管理员失败"}, 500, err
+		}
+	} else if usePassword {
+		if err := s.db.WithContext(ctx).Where("phone = ?", req.Phone).First(&admin).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return &AdminLoginResponse{Success: false, Error: "管理员不存在"}, 404, err
+			}
+			return &AdminLoginResponse{Success: false, Error: "查询管理员失败"}, 500, err
+		}
+
+		if !checkPassword(admin.PasswordHash, req.Password) {
+			return &AdminLoginResponse{Success: false, Error: "密码错误，请使用验证码登录"}, 403, fmt.Errorf("invalid password")
+		}
+	} else {
+		return &AdminLoginResponse{Success: false, Error: "请输入验证码或密码"}, 400, fmt.Errorf("missing credentials")
+	}
+
+	token, err := s.generateToken(admin)
+	if err != nil {
+		return &AdminLoginResponse{Success: false, Error: "生成 Token 失败"}, 500, err
+	}
+
+	return &AdminLoginResponse{
+		Success: true,
+		Token:   token,
+		User: map[string]interface{}{
+			"id":    admin.UID,
+			"phone": admin.Phone,
+			"name":  admin.Name,
+			"type":  admin.Type,
+		},
+	}, 200, nil
+}
+
+func (s *AdminService) verifySMSCode(ctx context.Context, phone, code string) error {
+	if code == "" {
+		return fmt.Errorf("missing code")
+	}
+	ok, err := VerifySMSCodeWithFallback(ctx, s.db, s.redis, "login", phone, code, true)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("invalid code")
+	}
+	return nil
+}
+
+func (s *AdminService) generateToken(admin repository.Admin) (string, error) {
+	if s.tokenSecret == "" {
+		return "", fmt.Errorf("admin token secret is not configured")
+	}
+	payload := map[string]interface{}{
+		"phone":   admin.Phone,
+		"userId":  admin.ID,
+		"id":      admin.UID,
+		"sub":     admin.UID,
+		"adminId": admin.UID,
+		"name":    admin.Name,
+		"type":    admin.Type,
+		"exp":     time.Now().Add(7 * 24 * time.Hour).Unix(),
+		"iat":     time.Now().Unix(),
+	}
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	payloadBase64 := base64.URLEncoding.EncodeToString(payloadJSON)
+	mac := hmac.New(sha256.New, []byte(s.tokenSecret))
+	mac.Write([]byte(payloadBase64))
+	signature := base64.URLEncoding.EncodeToString(mac.Sum(nil))
+	return payloadBase64 + "." + signature, nil
+}
+
+// VerifyToken validates admin token and returns admin info.
+func (s *AdminService) VerifyToken(ctx context.Context, authHeader string) (*repository.Admin, error) {
+	token := strings.TrimSpace(authHeader)
+	if strings.HasPrefix(strings.ToLower(token), "bearer ") {
+		token = strings.TrimSpace(token[7:])
+	}
+	if token == "" {
+		return nil, fmt.Errorf("missing token")
+	}
+
+	parts := strings.Split(token, ".")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid token format")
+	}
+	payloadBase64 := parts[0]
+	signature := parts[1]
+
+	if s.tokenSecret == "" {
+		return nil, fmt.Errorf("admin token secret is not configured")
+	}
+
+	mac := hmac.New(sha256.New, []byte(s.tokenSecret))
+	mac.Write([]byte(payloadBase64))
+	expectedSignature := base64.URLEncoding.EncodeToString(mac.Sum(nil))
+	if !hmac.Equal([]byte(signature), []byte(expectedSignature)) {
+		return nil, fmt.Errorf("invalid token signature")
+	}
+
+	payloadJSON, err := base64.URLEncoding.DecodeString(payloadBase64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid token payload")
+	}
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal(payloadJSON, &payload); err != nil {
+		return nil, fmt.Errorf("invalid token payload")
+	}
+
+	exp, ok := payload["exp"].(float64)
+	if !ok {
+		return nil, fmt.Errorf("invalid token exp")
+	}
+	if time.Now().Unix() > int64(exp) {
+		return nil, fmt.Errorf("token expired")
+	}
+
+	if adminType, ok := payload["type"].(string); ok && strings.TrimSpace(adminType) != "" {
+		normalizedType := strings.ToLower(strings.TrimSpace(adminType))
+		if normalizedType != "admin" && normalizedType != "super_admin" {
+			return nil, fmt.Errorf("invalid admin type")
+		}
+	}
+
+	phone, _ := payload["phone"].(string)
+
+	var userID int64
+	switch value := payload["userId"].(type) {
+	case float64:
+		userID = int64(value)
+	case string:
+		parsed, _ := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+		userID = parsed
+	}
+
+	var admin repository.Admin
+	if userID > 0 {
+		findByID := s.db.WithContext(ctx).Where("id = ?", userID).Limit(1).Find(&admin)
+		if findByID.Error != nil {
+			return nil, findByID.Error
+		}
+		if findByID.RowsAffected > 0 {
+			if phone == "" || admin.Phone == phone {
+				return &admin, nil
+			}
+			return nil, fmt.Errorf("token user mismatch")
+		}
+	}
+
+	if phone == "" {
+		return nil, fmt.Errorf("invalid token subject")
+	}
+	admin = repository.Admin{}
+	findByPhone := s.db.WithContext(ctx).Where("phone = ?", phone).Limit(1).Find(&admin)
+	if findByPhone.Error != nil {
+		return nil, findByPhone.Error
+	}
+	if findByPhone.RowsAffected == 0 {
+		return nil, fmt.Errorf("admin not found")
+	}
+
+	return &admin, nil
+}
+
+// Admin management
+func (s *AdminService) ListAdmins(ctx context.Context) ([]repository.Admin, error) {
+	var admins []repository.Admin
+	if err := s.db.WithContext(ctx).Order("created_at DESC").Find(&admins).Error; err != nil {
+		return nil, err
+	}
+	return admins, nil
+}
+
+func (s *AdminService) CreateAdmin(ctx context.Context, phone, name, password, adminType string) error {
+	if !isValidPhone(phone) {
+		return fmt.Errorf("手机号格式不正确")
+	}
+	if password == "" {
+		return fmt.Errorf("密码不能为空")
+	}
+
+	var count int64
+	s.db.WithContext(ctx).Model(&repository.Admin{}).Where("phone = ?", phone).Count(&count)
+	if count > 0 {
+		return fmt.Errorf("手机号已存在")
+	}
+
+	hash, err := hashPassword(password)
+	if err != nil {
+		return err
+	}
+
+	admin := repository.Admin{
+		Phone:        phone,
+		Name:         name,
+		PasswordHash: hash,
+		Type:         "super_admin",
+	}
+	return s.db.WithContext(ctx).Create(&admin).Error
+}
+
+func (s *AdminService) UpdateAdmin(ctx context.Context, id string, updates map[string]interface{}) error {
+	resolvedID, err := resolveEntityID(ctx, s.db, "admins", id)
+	if err != nil {
+		return err
+	}
+	return s.db.WithContext(ctx).Model(&repository.Admin{}).Where("id = ?", resolvedID).Updates(updates).Error
+}
+
+func (s *AdminService) DeleteAdmin(ctx context.Context, id string) error {
+	resolvedID, err := resolveEntityID(ctx, s.db, "admins", id)
+	if err != nil {
+		return err
+	}
+	return s.db.WithContext(ctx).Delete(&repository.Admin{}, resolvedID).Error
+}
+
+func (s *AdminService) ResetAdminPassword(ctx context.Context, id string) (string, error) {
+	resolvedID, err := resolveEntityID(ctx, s.db, "admins", id)
+	if err != nil {
+		return "", err
+	}
+	hash, err := hashPassword(defaultAdminPassword)
+	if err != nil {
+		return "", err
+	}
+	if err := s.db.WithContext(ctx).Model(&repository.Admin{}).Where("id = ?", resolvedID).Update("password_hash", hash).Error; err != nil {
+		return "", err
+	}
+	return defaultAdminPassword, nil
+}
+
+func (s *AdminService) ChangeOwnPassword(ctx context.Context, adminID uint, currentPassword, newPassword string) error {
+	if adminID == 0 {
+		return fmt.Errorf("%w: admin identity is missing", ErrUnauthorized)
+	}
+	if strings.TrimSpace(currentPassword) == "" {
+		return fmt.Errorf("当前密码不能为空")
+	}
+	if len(strings.TrimSpace(newPassword)) < 6 {
+		return fmt.Errorf("新密码至少 6 位")
+	}
+
+	var admin repository.Admin
+	if err := s.db.WithContext(ctx).Where("id = ?", adminID).First(&admin).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("%w: admin not found", ErrUnauthorized)
+		}
+		return err
+	}
+
+	if !checkPassword(admin.PasswordHash, currentPassword) {
+		return fmt.Errorf("当前密码不正确")
+	}
+	if checkPassword(admin.PasswordHash, newPassword) {
+		return fmt.Errorf("新密码不能与当前密码相同")
+	}
+
+	hash, err := hashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+	return s.db.WithContext(ctx).
+		Model(&repository.Admin{}).
+		Where("id = ?", adminID).
+		Update("password_hash", hash).
+		Error
+}
+
+// Users
+func (s *AdminService) ListUsers(ctx context.Context, search, userType string, limit, offset int) ([]map[string]interface{}, int64, error) {
+	var users []repository.User
+	var total int64
+
+	query := s.db.WithContext(ctx).Model(&repository.User{})
+	if userType != "" {
+		query = query.Where("type = ?", userType)
+	}
+	if search != "" {
+		like := "%" + search + "%"
+		query = query.Where("name LIKE ? OR phone LIKE ?", like, like)
+	}
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+	if err := query.Order("created_at DESC").Find(&users).Error; err != nil {
+		return nil, 0, err
+	}
+
+	result := make([]map[string]interface{}, 0, len(users))
+	for _, user := range users {
+		identities := userIdentityCandidates(user)
+		today, week, month := s.countOrders(ctx, "user_id", identities)
+		pointsBalance := s.sumPointsBalance(ctx, identities)
+		vipLevel := resolveVIPLevel(pointsBalance)
+		result = append(result, map[string]interface{}{
+			"id":                user.UID,
+			"role_id":           user.RoleID,
+			"name":              user.Name,
+			"phone":             user.Phone,
+			"created_at":        formatTime(user.CreatedAt),
+			"order_count_today": today,
+			"order_count_week":  week,
+			"order_count_month": month,
+			"points_balance":    pointsBalance,
+			"vip_level":         vipLevel,
+		})
+	}
+
+	return result, total, nil
+}
+
+func (s *AdminService) CreateUser(ctx context.Context, phone, name, password, userType string) error {
+	if !isValidPhone(phone) {
+		return fmt.Errorf("手机号格式不正确")
+	}
+	if password == "" {
+		return fmt.Errorf("密码不能为空")
+	}
+	if userType == "" {
+		userType = "customer"
+	}
+	var count int64
+	s.db.WithContext(ctx).Model(&repository.User{}).Where("phone = ?", phone).Count(&count)
+	if count > 0 {
+		return fmt.Errorf("手机号已存在")
+	}
+	hash, err := hashPassword(password)
+	if err != nil {
+		return err
+	}
+	user := repository.User{
+		Phone:        phone,
+		Name:         name,
+		PasswordHash: hash,
+		Type:         userType,
+	}
+	if err := s.db.WithContext(ctx).Create(&user).Error; err != nil {
+		return err
+	}
+	if user.RoleID == 0 {
+		s.db.Model(&user).Update("role_id", int(user.ID))
+	}
+	return nil
+}
+
+func (s *AdminService) ResetUserPassword(ctx context.Context, id string) (string, error) {
+	resolvedID, err := resolveEntityID(ctx, s.db, "users", id)
+	if err != nil {
+		return "", err
+	}
+	hash, err := hashPassword(defaultAdminPassword)
+	if err != nil {
+		return "", err
+	}
+	if err := s.db.WithContext(ctx).Model(&repository.User{}).Where("id = ?", resolvedID).Update("password_hash", hash).Error; err != nil {
+		return "", err
+	}
+	return defaultAdminPassword, nil
+}
+
+func (s *AdminService) DeleteUserOrders(ctx context.Context, id string) (int64, error) {
+	resolvedID, err := resolveEntityID(ctx, s.db, "users", id)
+	if err != nil {
+		return 0, err
+	}
+	userID := fmt.Sprintf("%d", resolvedID)
+	var user repository.User
+	if err := s.db.WithContext(ctx).First(&user, resolvedID).Error; err != nil {
+		user = repository.User{}
+	}
+	res := s.db.WithContext(ctx).Where("user_id = ? OR user_id = ?", userID, user.Phone).Delete(&repository.Order{})
+	return res.RowsAffected, res.Error
+}
+
+func (s *AdminService) DeleteUser(ctx context.Context, id string) error {
+	resolvedID, err := resolveEntityID(ctx, s.db, "users", id)
+	if err != nil {
+		return err
+	}
+	return s.db.WithContext(ctx).Delete(&repository.User{}, resolvedID).Error
+}
+
+func (s *AdminService) DeleteAllUsers(ctx context.Context) (int64, error) {
+	res := s.db.WithContext(ctx).Where("1 = 1").Delete(&repository.User{})
+	return res.RowsAffected, res.Error
+}
+
+func (s *AdminService) ReorganizeUserRoleIDs(ctx context.Context) error {
+	var users []repository.User
+	if err := s.db.WithContext(ctx).Order("created_at ASC").Find(&users).Error; err != nil {
+		return err
+	}
+	for i, user := range users {
+		newID := i + 1
+		if err := s.db.WithContext(ctx).Model(&repository.User{}).Where("id = ?", user.ID).Update("role_id", newID).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Riders
+func (s *AdminService) ListRiders(ctx context.Context, search string, limit, offset int) ([]map[string]interface{}, int64, error) {
+	var riders []repository.Rider
+	var total int64
+
+	query := s.db.WithContext(ctx).Model(&repository.Rider{})
+	if search != "" {
+		like := "%" + search + "%"
+		query = query.Where("name LIKE ? OR phone LIKE ?", like, like)
+	}
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+	if err := query.Order("created_at DESC").Find(&riders).Error; err != nil {
+		return nil, 0, err
+	}
+
+	result := make([]map[string]interface{}, 0, len(riders))
+	now := time.Now()
+	for _, rider := range riders {
+		today, week, month := s.countOrders(ctx, "rider_id", riderOrderIdentities(rider))
+		isOnline := riderOnlineActive(rider, now)
+		status := "offline"
+		if isOnline {
+			status = "online"
+		}
+		rating := rider.Rating
+		if rider.RatingCount == 0 && rating <= 0 {
+			rating = 5
+		}
+		result = append(result, map[string]interface{}{
+			"id":                rider.UID,
+			"role_id":           rider.RoleID,
+			"name":              rider.Name,
+			"phone":             rider.Phone,
+			"is_online":         isOnline,
+			"rating":            rating,
+			"rating_count":      rider.RatingCount,
+			"status":            status,
+			"created_at":        formatTime(rider.CreatedAt),
+			"order_count_today": today,
+			"order_count_week":  week,
+			"order_count_month": month,
+		})
+	}
+
+	return result, total, nil
+}
+
+func riderOrderIdentities(rider repository.Rider) []string {
+	candidates := []string{
+		fmt.Sprintf("%d", rider.ID),
+		strings.TrimSpace(rider.UID),
+		strconv.Itoa(rider.RoleID),
+		strings.TrimSpace(rider.Phone),
+	}
+	seen := make(map[string]struct{}, len(candidates))
+	out := make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		if candidate == "" {
+			continue
+		}
+		if _, exists := seen[candidate]; exists {
+			continue
+		}
+		seen[candidate] = struct{}{}
+		out = append(out, candidate)
+	}
+	return out
+}
+
+func (s *AdminService) GetRider(ctx context.Context, id string) (map[string]interface{}, error) {
+	resolvedID, err := resolveEntityID(ctx, s.db, "riders", id)
+	if err != nil {
+		return nil, fmt.Errorf("无效的骑手ID")
+	}
+
+	var rider repository.Rider
+	if err := s.db.WithContext(ctx).First(&rider, resolvedID).Error; err != nil {
+		return nil, fmt.Errorf("骑手不存在")
+	}
+	if !riderOnlineActive(rider, time.Now()) {
+		rider.IsOnline = false
+	}
+
+	onboardingInfo, _ := s.GetLatestOnboardingInfo(ctx, "rider", rider.ID)
+	return map[string]interface{}{
+		"id":                      rider.UID,
+		"role_id":                 rider.RoleID,
+		"name":                    rider.Name,
+		"phone":                   rider.Phone,
+		"is_online":               rider.IsOnline,
+		"rating":                  rider.Rating,
+		"rating_count":            rider.RatingCount,
+		"id_card_front":           rider.IDCardFront,
+		"id_card_image":           rider.IDCardFront,
+		"emergency_contact_name":  rider.EmergencyContactName,
+		"emergency_contact_phone": rider.EmergencyContactPhone,
+		"created_at":              formatTime(rider.CreatedAt),
+		"updated_at":              formatTime(rider.UpdatedAt),
+		"onboarding_info":         onboardingInfo,
+	}, nil
+}
+
+func (s *AdminService) CreateRider(ctx context.Context, phone, name, password string) error {
+	if !isValidPhone(phone) {
+		return fmt.Errorf("手机号格式不正确")
+	}
+	if password == "" {
+		return fmt.Errorf("密码不能为空")
+	}
+	var count int64
+	s.db.WithContext(ctx).Model(&repository.Rider{}).Where("phone = ?", phone).Count(&count)
+	if count > 0 {
+		return fmt.Errorf("手机号已存在")
+	}
+	hash, err := hashPassword(password)
+	if err != nil {
+		return err
+	}
+	rider := repository.Rider{
+		Phone:        phone,
+		Name:         name,
+		PasswordHash: hash,
+		IsOnline:     false,
+	}
+	if err := s.db.WithContext(ctx).Create(&rider).Error; err != nil {
+		return err
+	}
+	if rider.RoleID == 0 {
+		s.db.Model(&rider).Update("role_id", int(rider.ID))
+	}
+	return nil
+}
+
+func (s *AdminService) UpdateRider(ctx context.Context, id string, phone, name, idCardFront, emergencyContactName, emergencyContactPhone string) error {
+	resolvedID, err := resolveEntityID(ctx, s.db, "riders", id)
+	if err != nil {
+		return fmt.Errorf("无效的骑手ID")
+	}
+	if strings.TrimSpace(name) == "" {
+		return fmt.Errorf("姓名不能为空")
+	}
+	if phone == "" || !isValidPhone(phone) {
+		return fmt.Errorf("手机号格式不正确")
+	}
+	if emergencyContactPhone != "" && !isValidPhone(emergencyContactPhone) {
+		return fmt.Errorf("紧急联系人电话格式不正确")
+	}
+
+	var rider repository.Rider
+	if err := s.db.WithContext(ctx).First(&rider, resolvedID).Error; err != nil {
+		return fmt.Errorf("骑手不存在")
+	}
+
+	var count int64
+	s.db.WithContext(ctx).Model(&repository.Rider{}).
+		Where("phone = ? AND id <> ?", phone, resolvedID).
+		Count(&count)
+	if count > 0 {
+		return fmt.Errorf("手机号已存在")
+	}
+
+	if strings.TrimSpace(idCardFront) == "" {
+		idCardFront = rider.IDCardFront
+	}
+	if strings.TrimSpace(emergencyContactName) == "" {
+		emergencyContactName = rider.EmergencyContactName
+	}
+	if strings.TrimSpace(emergencyContactPhone) == "" {
+		emergencyContactPhone = rider.EmergencyContactPhone
+	}
+
+	updates := map[string]interface{}{
+		"phone":                   strings.TrimSpace(phone),
+		"name":                    strings.TrimSpace(name),
+		"id_card_front":           strings.TrimSpace(idCardFront),
+		"emergency_contact_name":  strings.TrimSpace(emergencyContactName),
+		"emergency_contact_phone": strings.TrimSpace(emergencyContactPhone),
+	}
+	return s.db.WithContext(ctx).Model(&repository.Rider{}).Where("id = ?", resolvedID).Updates(updates).Error
+}
+
+func (s *AdminService) ResetRiderPassword(ctx context.Context, id string) (string, error) {
+	resolvedID, err := resolveEntityID(ctx, s.db, "riders", id)
+	if err != nil {
+		return "", err
+	}
+	hash, err := hashPassword(defaultAdminPassword)
+	if err != nil {
+		return "", err
+	}
+	if err := s.db.WithContext(ctx).Model(&repository.Rider{}).Where("id = ?", resolvedID).Update("password_hash", hash).Error; err != nil {
+		return "", err
+	}
+	return defaultAdminPassword, nil
+}
+
+func (s *AdminService) DeleteRiderOrders(ctx context.Context, id string) (int64, error) {
+	resolvedID, err := resolveEntityID(ctx, s.db, "riders", id)
+	if err != nil {
+		return 0, err
+	}
+	riderID := fmt.Sprintf("%d", resolvedID)
+	var rider repository.Rider
+	if err := s.db.WithContext(ctx).First(&rider, resolvedID).Error; err != nil {
+		rider = repository.Rider{}
+	}
+	res := s.db.WithContext(ctx).Where("rider_id = ? OR rider_id = ?", riderID, rider.Phone).Delete(&repository.Order{})
+	return res.RowsAffected, res.Error
+}
+
+func (s *AdminService) DeleteRider(ctx context.Context, id string) error {
+	resolvedID, err := resolveEntityID(ctx, s.db, "riders", id)
+	if err != nil {
+		return err
+	}
+	return s.db.WithContext(ctx).Delete(&repository.Rider{}, resolvedID).Error
+}
+
+func (s *AdminService) DeleteAllRiders(ctx context.Context) (int64, error) {
+	res := s.db.WithContext(ctx).Where("1 = 1").Delete(&repository.Rider{})
+	return res.RowsAffected, res.Error
+}
+
+func (s *AdminService) ReorganizeRiderRoleIDs(ctx context.Context) error {
+	var riders []repository.Rider
+	if err := s.db.WithContext(ctx).Order("created_at ASC").Find(&riders).Error; err != nil {
+		return err
+	}
+	for i, rider := range riders {
+		newID := i + 1
+		if err := s.db.WithContext(ctx).Model(&repository.Rider{}).Where("id = ?", rider.ID).Update("role_id", newID).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Merchants
+func (s *AdminService) ListMerchants(ctx context.Context, search string, limit, offset int) ([]map[string]interface{}, int64, error) {
+	var merchants []repository.Merchant
+	var total int64
+
+	query := s.db.WithContext(ctx).Model(&repository.Merchant{})
+	if search != "" {
+		like := "%" + search + "%"
+		query = query.Where("name LIKE ? OR phone LIKE ?", like, like)
+	}
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+	if err := query.Order("created_at DESC").Find(&merchants).Error; err != nil {
+		return nil, 0, err
+	}
+
+	result := make([]map[string]interface{}, 0, len(merchants))
+	for _, merchant := range merchants {
+		result = append(result, map[string]interface{}{
+			"id":                merchant.UID,
+			"role_id":           merchant.RoleID,
+			"name":              merchant.Name,
+			"owner_name":        merchant.OwnerName,
+			"phone":             merchant.Phone,
+			"is_online":         merchant.IsOnline,
+			"created_at":        formatTime(merchant.CreatedAt),
+			"order_count_today": 0,
+			"order_count_week":  0,
+			"order_count_month": 0,
+		})
+	}
+
+	return result, total, nil
+}
+
+func (s *AdminService) GetMerchant(ctx context.Context, id string) (map[string]interface{}, error) {
+	resolvedID, err := resolveEntityID(ctx, s.db, "merchants", id)
+	if err != nil {
+		return nil, fmt.Errorf("无效的商户ID")
+	}
+
+	var merchant repository.Merchant
+	if err := s.db.WithContext(ctx).First(&merchant, resolvedID).Error; err != nil {
+		return nil, fmt.Errorf("商户不存在")
+	}
+
+	onboardingInfo, _ := s.GetLatestOnboardingInfo(ctx, "merchant", merchant.ID)
+	return map[string]interface{}{
+		"id":                     merchant.UID,
+		"role_id":                merchant.RoleID,
+		"name":                   merchant.Name,
+		"owner_name":             merchant.OwnerName,
+		"phone":                  merchant.Phone,
+		"business_license_image": merchant.BusinessLicenseImage,
+		"is_online":              merchant.IsOnline,
+		"created_at":             formatTime(merchant.CreatedAt),
+		"updated_at":             formatTime(merchant.UpdatedAt),
+		"onboarding_info":        onboardingInfo,
+	}, nil
+}
+
+func (s *AdminService) CreateMerchant(ctx context.Context, phone, name, ownerName, password string) error {
+	if !isValidPhone(phone) {
+		return fmt.Errorf("手机号格式不正确")
+	}
+	if password == "" {
+		return fmt.Errorf("密码不能为空")
+	}
+	if ownerName == "" {
+		ownerName = name
+	}
+	var count int64
+	s.db.WithContext(ctx).Model(&repository.Merchant{}).Where("phone = ?", phone).Count(&count)
+	if count > 0 {
+		return fmt.Errorf("手机号已存在")
+	}
+	hash, err := hashPassword(password)
+	if err != nil {
+		return err
+	}
+	merchant := repository.Merchant{
+		Phone:        phone,
+		Name:         name,
+		OwnerName:    ownerName,
+		PasswordHash: hash,
+		IsOnline:     false,
+	}
+	if err := s.db.WithContext(ctx).Create(&merchant).Error; err != nil {
+		return err
+	}
+	if merchant.RoleID == 0 {
+		s.db.Model(&merchant).Update("role_id", int(merchant.ID))
+	}
+	return nil
+}
+
+func (s *AdminService) UpdateMerchant(ctx context.Context, id string, phone, name, ownerName, businessLicenseImage string) error {
+	resolvedID, err := resolveEntityID(ctx, s.db, "merchants", id)
+	if err != nil {
+		return fmt.Errorf("无效的商户ID")
+	}
+	if phone == "" || !isValidPhone(phone) {
+		return fmt.Errorf("手机号格式不正确")
+	}
+	if name == "" {
+		return fmt.Errorf("商户名称不能为空")
+	}
+	if ownerName == "" {
+		ownerName = name
+	}
+
+	var merchant repository.Merchant
+	if err := s.db.WithContext(ctx).First(&merchant, resolvedID).Error; err != nil {
+		return fmt.Errorf("商户不存在")
+	}
+
+	var count int64
+	s.db.WithContext(ctx).Model(&repository.Merchant{}).
+		Where("phone = ? AND id <> ?", phone, resolvedID).
+		Count(&count)
+	if count > 0 {
+		return fmt.Errorf("手机号已存在")
+	}
+
+	if strings.TrimSpace(businessLicenseImage) == "" {
+		businessLicenseImage = merchant.BusinessLicenseImage
+	}
+
+	updates := map[string]interface{}{
+		"phone":                  phone,
+		"name":                   name,
+		"owner_name":             ownerName,
+		"business_license_image": strings.TrimSpace(businessLicenseImage),
+	}
+	return s.db.WithContext(ctx).Model(&repository.Merchant{}).Where("id = ?", resolvedID).Updates(updates).Error
+}
+
+func (s *AdminService) GetLatestOnboardingInfo(ctx context.Context, entityType string, entityID uint) (map[string]interface{}, error) {
+	entityType = strings.TrimSpace(entityType)
+	if entityID == 0 || (entityType != "merchant" && entityType != "rider") {
+		return nil, nil
+	}
+
+	var submission repository.OnboardingInviteSubmission
+	if err := s.db.WithContext(ctx).
+		Where("entity_type = ? AND entity_id = ?", entityType, entityID).
+		Order("id DESC").
+		First(&submission).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	info := map[string]interface{}{
+		"submission_id": submission.ID,
+		"source":        submission.Source,
+		"invite_type":   submission.InviteType,
+		"invite_link_id": func() uint {
+			if submission.InviteLinkID == nil {
+				return 0
+			}
+			return *submission.InviteLinkID
+		}(),
+		"submitted_at": formatTime(submission.CreatedAt),
+	}
+
+	if submission.InviteLinkID != nil && *submission.InviteLinkID > 0 {
+		var link repository.OnboardingInviteLink
+		if err := s.db.WithContext(ctx).First(&link, *submission.InviteLinkID).Error; err == nil {
+			info["invite_status"] = link.Status
+			info["invite_expires_at"] = formatTime(link.ExpiresAt)
+			info["invite_used_at"] = formatTimePtr(link.UsedAt)
+			info["invite_note"] = link.Note
+		}
+	}
+
+	return info, nil
+}
+
+func (s *AdminService) ResetMerchantPassword(ctx context.Context, id string) (string, error) {
+	resolvedID, err := resolveEntityID(ctx, s.db, "merchants", id)
+	if err != nil {
+		return "", err
+	}
+	hash, err := hashPassword(defaultAdminPassword)
+	if err != nil {
+		return "", err
+	}
+	if err := s.db.WithContext(ctx).Model(&repository.Merchant{}).Where("id = ?", resolvedID).Update("password_hash", hash).Error; err != nil {
+		return "", err
+	}
+	return defaultAdminPassword, nil
+}
+
+func (s *AdminService) DeleteMerchant(ctx context.Context, id string) error {
+	resolvedID, err := resolveEntityID(ctx, s.db, "merchants", id)
+	if err != nil {
+		return err
+	}
+	return s.db.WithContext(ctx).Delete(&repository.Merchant{}, resolvedID).Error
+}
+
+func (s *AdminService) DeleteAllMerchants(ctx context.Context) (int64, error) {
+	res := s.db.WithContext(ctx).Where("1 = 1").Delete(&repository.Merchant{})
+	return res.RowsAffected, res.Error
+}
+
+func (s *AdminService) ReorganizeMerchantRoleIDs(ctx context.Context) error {
+	var merchants []repository.Merchant
+	if err := s.db.WithContext(ctx).Order("created_at ASC").Find(&merchants).Error; err != nil {
+		return err
+	}
+	for i, merchant := range merchants {
+		newID := i + 1
+		if err := s.db.WithContext(ctx).Model(&repository.Merchant{}).Where("id = ?", merchant.ID).Update("role_id", newID).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Orders (admin)
+func (s *AdminService) ListOrders(
+	ctx context.Context,
+	search,
+	status,
+	bizType string,
+	limit,
+	offset int,
+	role string,
+	merchantID int64,
+	merchantPhone string,
+) ([]repository.Order, int64, error) {
+	var orders []repository.Order
+	var total int64
+
+	query := s.db.WithContext(ctx).Model(&repository.Order{})
+	if strings.TrimSpace(role) == "merchant" {
+		if merchantID <= 0 {
+			return nil, 0, fmt.Errorf("%w: merchant identity is missing", ErrUnauthorized)
+		}
+		merchantIDText := strconv.FormatInt(merchantID, 10)
+		shopSubQuery := s.db.WithContext(ctx).
+			Model(&repository.Shop{}).
+			Select("id").
+			Where("merchant_id = ?", merchantID)
+		if strings.TrimSpace(merchantPhone) != "" {
+			query = query.Where("(shop_id IN (?) OR merchant_id = ? OR merchant_id = ?)", shopSubQuery, merchantIDText, merchantPhone)
+		} else {
+			query = query.Where("(shop_id IN (?) OR merchant_id = ?)", shopSubQuery, merchantIDText)
+		}
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	bizType = strings.ToLower(strings.TrimSpace(bizType))
+	if bizType != "" {
+		if bizType == "takeout" {
+			query = query.Where("(biz_type = ? OR biz_type IS NULL OR biz_type = '')", bizType)
+		} else {
+			query = query.Where("biz_type = ?", bizType)
+		}
+	}
+	if search != "" {
+		like := "%" + search + "%"
+		query = query.Where(
+			"uid LIKE ? OR tsid LIKE ? OR CAST(id AS TEXT) LIKE ? OR daily_order_id LIKE ? OR user_id LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ? OR rider_name LIKE ? OR rider_phone LIKE ?",
+			like, like, like, like, like, like, like, like, like,
+		)
+	}
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+	if err := query.Order("created_at DESC").Find(&orders).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return orders, total, nil
+}
+
+func (s *AdminService) GetOrder(ctx context.Context, id uint) (*repository.Order, error) {
+	var order repository.Order
+	if err := s.db.WithContext(ctx).First(&order, id).Error; err != nil {
+		return nil, err
+	}
+	return &order, nil
+}
+
+func (s *AdminService) DeleteAllOrders(ctx context.Context) (int64, error) {
+	res := s.db.WithContext(ctx).Where("1 = 1").Delete(&repository.Order{})
+	return res.RowsAffected, res.Error
+}
+
+func quoteTableNameForDialect(dialect, table string) string {
+	switch strings.ToLower(strings.TrimSpace(dialect)) {
+	case "postgres":
+		escaped := strings.ReplaceAll(table, `"`, `""`)
+		return fmt.Sprintf(`"%s"`, escaped)
+	default:
+		escaped := strings.ReplaceAll(table, "`", "``")
+		return fmt.Sprintf("`%s`", escaped)
+	}
+}
+
+func (s *AdminService) ClearAllBusinessData(ctx context.Context) (map[string]interface{}, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("database is not initialized")
+	}
+
+	tables, err := s.db.Migrator().GetTables()
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(tables)
+
+	protectedTables := []string{
+		"admins",
+		"settings",
+		"id_codebook",
+		"id_sequences",
+		"schema_migrations",
+		"goose_db_version",
+		"sqlite_sequence",
+	}
+	protectedSet := make(map[string]struct{}, len(protectedTables))
+	for _, table := range protectedTables {
+		protectedSet[strings.ToLower(strings.TrimSpace(table))] = struct{}{}
+	}
+
+	clearedTables := make(map[string]int64)
+	var clearedRows int64
+
+	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		dialect := strings.ToLower(strings.TrimSpace(tx.Dialector.Name()))
+		if dialect == "mysql" {
+			if err := tx.Exec("SET FOREIGN_KEY_CHECKS = 0").Error; err != nil {
+				return err
+			}
+			defer func() {
+				_ = tx.Exec("SET FOREIGN_KEY_CHECKS = 1").Error
+			}()
+		}
+
+		for _, table := range tables {
+			normalizedTable := strings.ToLower(strings.TrimSpace(table))
+			if normalizedTable == "" {
+				continue
+			}
+			if _, keep := protectedSet[normalizedTable]; keep {
+				continue
+			}
+
+			var rowCount int64
+			if err := tx.Table(table).Count(&rowCount).Error; err != nil {
+				return err
+			}
+			if rowCount <= 0 {
+				continue
+			}
+
+			quotedTable := quoteTableNameForDialect(dialect, table)
+			if err := tx.Exec(fmt.Sprintf("DELETE FROM %s", quotedTable)).Error; err != nil {
+				return err
+			}
+			clearedTables[table] = rowCount
+			clearedRows += rowCount
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"clearedRows":     clearedRows,
+		"tableCount":      len(clearedTables),
+		"clearedTables":   clearedTables,
+		"protectedTables": protectedTables,
+	}, nil
+}
+
+// Export / Import
+func (s *AdminService) ExportUsers(ctx context.Context) ([]map[string]interface{}, error) {
+	var users []repository.User
+	if err := s.db.WithContext(ctx).Find(&users).Error; err != nil {
+		return nil, err
+	}
+	results := make([]map[string]interface{}, 0, len(users))
+	for _, user := range users {
+		results = append(results, map[string]interface{}{
+			"id":            user.UID,
+			"role_id":       user.RoleID,
+			"phone":         user.Phone,
+			"name":          user.Name,
+			"type":          user.Type,
+			"password_hash": user.PasswordHash,
+			"created_at":    formatTime(user.CreatedAt),
+			"updated_at":    formatTime(user.UpdatedAt),
+		})
+	}
+	return results, nil
+}
+
+func (s *AdminService) ImportUsers(ctx context.Context, items []map[string]interface{}) (int, int) {
+	successCount := 0
+	errorCount := 0
+	for _, item := range items {
+		user := repository.User{}
+		if id := parseInt64(item["id"]); id > 0 {
+			user.ID = uint(id)
+		}
+		user.RoleID = int(parseInt64(item["role_id"]))
+		user.Phone = parseString(item["phone"])
+		user.Name = parseString(item["name"])
+		user.Type = parseString(item["type"])
+		if user.Type == "" {
+			user.Type = "customer"
+		}
+		if hash := parseString(item["password_hash"]); hash != "" {
+			user.PasswordHash = hash
+		} else if pw := parseString(item["password"]); pw != "" {
+			if hash, err := hashPassword(pw); err == nil {
+				user.PasswordHash = hash
+			}
+		} else if hash, err := hashPassword(defaultAdminPassword); err == nil {
+			user.PasswordHash = hash
+		}
+
+		if err := s.db.WithContext(ctx).Save(&user).Error; err != nil {
+			errorCount++
+			continue
+		}
+		if user.RoleID == 0 {
+			s.db.Model(&user).Update("role_id", int(user.ID))
+		}
+		successCount++
+	}
+	return successCount, errorCount
+}
+
+func (s *AdminService) ExportRiders(ctx context.Context) ([]map[string]interface{}, error) {
+	var riders []repository.Rider
+	if err := s.db.WithContext(ctx).Find(&riders).Error; err != nil {
+		return nil, err
+	}
+	results := make([]map[string]interface{}, 0, len(riders))
+	for _, rider := range riders {
+		results = append(results, map[string]interface{}{
+			"id":            rider.UID,
+			"role_id":       rider.RoleID,
+			"phone":         rider.Phone,
+			"name":          rider.Name,
+			"is_online":     rider.IsOnline,
+			"password_hash": rider.PasswordHash,
+			"created_at":    formatTime(rider.CreatedAt),
+			"updated_at":    formatTime(rider.UpdatedAt),
+		})
+	}
+	return results, nil
+}
+
+func (s *AdminService) ImportRiders(ctx context.Context, items []map[string]interface{}) (int, int) {
+	successCount := 0
+	errorCount := 0
+	for _, item := range items {
+		rider := repository.Rider{}
+		if id := parseInt64(item["id"]); id > 0 {
+			rider.ID = uint(id)
+		}
+		rider.RoleID = int(parseInt64(item["role_id"]))
+		rider.Phone = parseString(item["phone"])
+		rider.Name = parseString(item["name"])
+		rider.IsOnline = parseBool(item["is_online"])
+		if hash := parseString(item["password_hash"]); hash != "" {
+			rider.PasswordHash = hash
+		} else if pw := parseString(item["password"]); pw != "" {
+			if hash, err := hashPassword(pw); err == nil {
+				rider.PasswordHash = hash
+			}
+		} else if hash, err := hashPassword(defaultAdminPassword); err == nil {
+			rider.PasswordHash = hash
+		}
+
+		if err := s.db.WithContext(ctx).Save(&rider).Error; err != nil {
+			errorCount++
+			continue
+		}
+		if rider.RoleID == 0 {
+			s.db.Model(&rider).Update("role_id", int(rider.ID))
+		}
+		successCount++
+	}
+	return successCount, errorCount
+}
+
+func (s *AdminService) ExportMerchants(ctx context.Context) ([]map[string]interface{}, error) {
+	var merchants []repository.Merchant
+	if err := s.db.WithContext(ctx).Find(&merchants).Error; err != nil {
+		return nil, err
+	}
+	results := make([]map[string]interface{}, 0, len(merchants))
+	for _, merchant := range merchants {
+		results = append(results, map[string]interface{}{
+			"id":            merchant.UID,
+			"role_id":       merchant.RoleID,
+			"phone":         merchant.Phone,
+			"name":          merchant.Name,
+			"is_online":     merchant.IsOnline,
+			"password_hash": merchant.PasswordHash,
+			"created_at":    formatTime(merchant.CreatedAt),
+			"updated_at":    formatTime(merchant.UpdatedAt),
+		})
+	}
+	return results, nil
+}
+
+func (s *AdminService) ImportMerchants(ctx context.Context, items []map[string]interface{}) (int, int) {
+	successCount := 0
+	errorCount := 0
+	for _, item := range items {
+		merchant := repository.Merchant{}
+		if id := parseInt64(item["id"]); id > 0 {
+			merchant.ID = uint(id)
+		}
+		merchant.RoleID = int(parseInt64(item["role_id"]))
+		merchant.Phone = parseString(item["phone"])
+		merchant.Name = parseString(item["name"])
+		merchant.IsOnline = parseBool(item["is_online"])
+		if hash := parseString(item["password_hash"]); hash != "" {
+			merchant.PasswordHash = hash
+		} else if pw := parseString(item["password"]); pw != "" {
+			if hash, err := hashPassword(pw); err == nil {
+				merchant.PasswordHash = hash
+			}
+		} else if hash, err := hashPassword(defaultAdminPassword); err == nil {
+			merchant.PasswordHash = hash
+		}
+
+		if err := s.db.WithContext(ctx).Save(&merchant).Error; err != nil {
+			errorCount++
+			continue
+		}
+		if merchant.RoleID == 0 {
+			s.db.Model(&merchant).Update("role_id", int(merchant.ID))
+		}
+		successCount++
+	}
+	return successCount, errorCount
+}
+
+func (s *AdminService) ExportOrders(ctx context.Context) ([]map[string]interface{}, error) {
+	var orders []repository.Order
+	if err := s.db.WithContext(ctx).Find(&orders).Error; err != nil {
+		return nil, err
+	}
+	results := make([]map[string]interface{}, 0, len(orders))
+	for _, order := range orders {
+		results = append(results, map[string]interface{}{
+			"id":                  order.UID,
+			"daily_order_id":      order.DailyOrderID,
+			"daily_order_number":  order.DailyOrderNumber,
+			"user_id":             order.UserID,
+			"customer_name":       order.CustomerName,
+			"customer_phone":      order.CustomerPhone,
+			"rider_id":            order.RiderID,
+			"rider_name":          order.RiderName,
+			"rider_phone":         order.RiderPhone,
+			"shop_id":             order.ShopID,
+			"shop_name":           order.ShopName,
+			"status":              order.Status,
+			"service_type":        order.ServiceType,
+			"service_description": order.ServiceDescription,
+			"package_name":        order.PackageName,
+			"package_price":       order.PackagePrice,
+			"phone_model":         order.PhoneModel,
+			"special_notes":       order.SpecialNotes,
+			"preferred_time":      order.PreferredTime,
+			"food_request":        order.FoodRequest,
+			"food_shop":           order.FoodShop,
+			"drink_request":       order.DrinkRequest,
+			"delivery_request":    order.DeliveryRequest,
+			"errand_request":      order.ErrandRequest,
+			"dorm_number":         order.DormNumber,
+			"address":             order.Address,
+			"total_price":         order.TotalPrice,
+			"items":               order.Items,
+			"created_at":          formatTime(order.CreatedAt),
+			"updated_at":          formatTime(order.UpdatedAt),
+		})
+	}
+	return results, nil
+}
+
+func (s *AdminService) ImportOrders(ctx context.Context, items []map[string]interface{}) (int, int) {
+	successCount := 0
+	errorCount := 0
+	for _, item := range items {
+		order := repository.Order{}
+		if id := parseInt64(item["id"]); id > 0 {
+			order.ID = uint(id)
+		}
+		order.DailyOrderID = parseString(item["daily_order_id"])
+		order.DailyOrderNumber = int(parseInt64(item["daily_order_number"]))
+		order.UserID = parseString(item["user_id"])
+		order.CustomerName = parseString(item["customer_name"])
+		order.CustomerPhone = parseString(item["customer_phone"])
+		order.RiderID = parseString(item["rider_id"])
+		order.RiderName = parseString(item["rider_name"])
+		order.RiderPhone = parseString(item["rider_phone"])
+		order.ShopID = parseString(item["shop_id"])
+		order.ShopName = parseString(item["shop_name"])
+		order.Status = parseString(item["status"])
+		order.ServiceType = parseString(item["service_type"])
+		order.ServiceDescription = parseString(item["service_description"])
+		order.PackageName = parseString(item["package_name"])
+		order.PackagePrice = parseFloat(item["package_price"])
+		order.PhoneModel = parseString(item["phone_model"])
+		order.SpecialNotes = parseString(item["special_notes"])
+		order.PreferredTime = parseString(item["preferred_time"])
+		order.FoodRequest = parseString(item["food_request"])
+		order.FoodShop = parseString(item["food_shop"])
+		order.DrinkRequest = parseString(item["drink_request"])
+		order.DeliveryRequest = parseString(item["delivery_request"])
+		order.ErrandRequest = parseString(item["errand_request"])
+		order.DormNumber = parseString(item["dorm_number"])
+		order.Address = parseString(item["address"])
+		order.TotalPrice = parseFloat(item["total_price"])
+		order.Items = parseString(item["items"])
+
+		if err := s.db.WithContext(ctx).Save(&order).Error; err != nil {
+			errorCount++
+			continue
+		}
+		successCount++
+	}
+	return successCount, errorCount
+}
+
+// Stats and ranks
+func (s *AdminService) GetStats(ctx context.Context) (map[string]interface{}, error) {
+	var customerCount int64
+	var totalOrders int64
+	var todayOrders int64
+	var riderCount int64
+	var onlineRiderCount int64
+	var pendingOrdersCount int64
+
+	s.db.WithContext(ctx).Model(&repository.User{}).Where("type = ?", "customer").Count(&customerCount)
+	s.db.WithContext(ctx).Model(&repository.Order{}).Count(&totalOrders)
+
+	startToday := startOfDay(time.Now())
+	s.db.WithContext(ctx).Model(&repository.Order{}).Where("created_at >= ?", startToday).Count(&todayOrders)
+
+	onlineCutoff := riderOnlineCutoff(time.Now())
+	s.db.WithContext(ctx).Model(&repository.Rider{}).Count(&riderCount)
+	s.db.WithContext(ctx).Model(&repository.Rider{}).Where("is_online = ? AND updated_at >= ?", true, onlineCutoff).Count(&onlineRiderCount)
+	s.db.WithContext(ctx).Model(&repository.Order{}).Where("status = ?", "pending").Count(&pendingOrdersCount)
+
+	return map[string]interface{}{
+		"customerCount":      customerCount,
+		"totalOrders":        totalOrders,
+		"todayOrders":        todayOrders,
+		"riderCount":         riderCount,
+		"onlineRiderCount":   onlineRiderCount,
+		"pendingOrdersCount": pendingOrdersCount,
+	}, nil
+}
+
+func (s *AdminService) GetUserRanks(ctx context.Context, period, rankType string) ([]map[string]interface{}, error) {
+	start := periodStart(period)
+	if start.IsZero() {
+		start = startOfDay(time.Now().AddDate(0, 0, -6))
+	}
+	var users []repository.User
+	if err := s.db.WithContext(ctx).Find(&users).Error; err != nil {
+		return nil, err
+	}
+
+	results := make([]map[string]interface{}, 0, len(users))
+	for _, user := range users {
+		userID := fmt.Sprintf("%d", user.ID)
+		query := s.db.WithContext(ctx).Model(&repository.Order{}).Where("created_at >= ?", start).Where("user_id = ? OR user_id = ?", userID, user.Phone)
+		if rankType == "amount" {
+			var sum float64
+			query.Select("COALESCE(SUM(total_price),0)").Scan(&sum)
+			results = append(results, map[string]interface{}{
+				"name":  displayName(user.Name, user.Phone),
+				"value": fmt.Sprintf("%.2f", sum),
+			})
+		} else {
+			var count int64
+			query.Count(&count)
+			results = append(results, map[string]interface{}{
+				"name":  displayName(user.Name, user.Phone),
+				"value": count,
+			})
+		}
+	}
+
+	// sort descending by value (amount or count)
+	sortResults(results, rankType == "amount")
+	return results, nil
+}
+
+func (s *AdminService) GetRiderRanks(ctx context.Context, period string) ([]map[string]interface{}, error) {
+	start := periodStart(period)
+	if start.IsZero() {
+		start = startOfDay(time.Now().AddDate(0, 0, -6))
+	}
+	var riders []repository.Rider
+	if err := s.db.WithContext(ctx).Find(&riders).Error; err != nil {
+		return nil, err
+	}
+	results := make([]map[string]interface{}, 0, len(riders))
+	for _, rider := range riders {
+		riderID := fmt.Sprintf("%d", rider.ID)
+		var count int64
+		s.db.WithContext(ctx).Model(&repository.Order{}).Where("created_at >= ?", start).Where("rider_id = ? OR rider_id = ?", riderID, rider.Phone).Count(&count)
+		results = append(results, map[string]interface{}{
+			"name":  displayName(rider.Name, rider.Phone),
+			"value": count,
+			"level": rider.Level,
+		})
+	}
+
+	sortResults(results, false)
+	return results, nil
+}
+
+// Settings
+func (s *AdminService) GetSetting(ctx context.Context, key string, dest interface{}) error {
+	var settings []repository.Setting
+	if err := s.db.WithContext(ctx).Where("key = ?", key).Limit(1).Find(&settings).Error; err != nil {
+		return err
+	}
+	if len(settings) == 0 {
+		return nil
+	}
+	setting := settings[0]
+	if setting.Value == "" {
+		return nil
+	}
+	return json.Unmarshal([]byte(setting.Value), dest)
+}
+
+func (s *AdminService) SaveSetting(ctx context.Context, key string, value interface{}) error {
+	payload, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	setting := repository.Setting{Key: key, Value: string(payload)}
+	return s.db.WithContext(ctx).Save(&setting).Error
+}
+
+func (s *AdminService) ListCarousel(ctx context.Context) ([]repository.Carousel, error) {
+	var items []repository.Carousel
+	if err := s.db.WithContext(ctx).Order("sort_order ASC, created_at DESC").Find(&items).Error; err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (s *AdminService) CreateCarousel(ctx context.Context, item *repository.Carousel) error {
+	return s.db.WithContext(ctx).Create(item).Error
+}
+
+func (s *AdminService) UpdateCarousel(ctx context.Context, id string, updates map[string]interface{}) error {
+	resolvedID, err := resolveEntityID(ctx, s.db, "carousels", id)
+	if err != nil {
+		return err
+	}
+	return s.db.WithContext(ctx).Model(&repository.Carousel{}).Where("id = ?", resolvedID).Updates(updates).Error
+}
+
+func (s *AdminService) DeleteCarousel(ctx context.Context, id string) error {
+	resolvedID, err := resolveEntityID(ctx, s.db, "carousels", id)
+	if err != nil {
+		return err
+	}
+	return s.db.WithContext(ctx).Delete(&repository.Carousel{}, resolvedID).Error
+}
+
+func (s *AdminService) ListPushMessages(ctx context.Context) ([]repository.PushMessage, error) {
+	var items []repository.PushMessage
+	if err := s.db.WithContext(ctx).Order("created_at DESC").Find(&items).Error; err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (s *AdminService) CreatePushMessage(ctx context.Context, item *repository.PushMessage) error {
+	return s.db.WithContext(ctx).Create(item).Error
+}
+
+func (s *AdminService) UpdatePushMessage(ctx context.Context, id string, updates map[string]interface{}) error {
+	resolvedID, err := resolveEntityID(ctx, s.db, "push_messages", id)
+	if err != nil {
+		return err
+	}
+	return s.db.WithContext(ctx).Model(&repository.PushMessage{}).Where("id = ?", resolvedID).Updates(updates).Error
+}
+
+func (s *AdminService) DeletePushMessage(ctx context.Context, id string) error {
+	resolvedID, err := resolveEntityID(ctx, s.db, "push_messages", id)
+	if err != nil {
+		return err
+	}
+	return s.db.WithContext(ctx).Delete(&repository.PushMessage{}, resolvedID).Error
+}
+
+func (s *AdminService) ListPublicAPIs(ctx context.Context) ([]map[string]interface{}, error) {
+	var items []repository.PublicAPI
+	if err := s.db.WithContext(ctx).Order("created_at DESC").Find(&items).Error; err != nil {
+		return nil, err
+	}
+
+	results := make([]map[string]interface{}, 0, len(items))
+	for _, item := range items {
+		perms := []string{}
+		if item.Permissions != "" {
+			_ = json.Unmarshal([]byte(item.Permissions), &perms)
+		}
+		results = append(results, map[string]interface{}{
+			"id":          item.UID,
+			"name":        item.Name,
+			"path":        item.Path,
+			"permissions": perms,
+			"api_key":     item.APIKey,
+			"description": item.Description,
+			"is_active":   item.IsActive,
+			"created_at":  formatTime(item.CreatedAt),
+		})
+	}
+	return results, nil
+}
+
+func (s *AdminService) CreatePublicAPI(ctx context.Context, name, path string, permissions []string, apiKey, desc string, isActive bool) error {
+	payload, _ := json.Marshal(permissions)
+	item := repository.PublicAPI{
+		Name:        name,
+		Path:        path,
+		Permissions: string(payload),
+		APIKey:      apiKey,
+		Description: desc,
+		IsActive:    isActive,
+	}
+	return s.db.WithContext(ctx).Create(&item).Error
+}
+
+func (s *AdminService) UpdatePublicAPI(ctx context.Context, id string, updates map[string]interface{}) error {
+	resolvedID, err := resolveEntityID(ctx, s.db, "public_apis", id)
+	if err != nil {
+		return err
+	}
+	if perms, ok := updates["permissions"].([]string); ok {
+		payload, _ := json.Marshal(perms)
+		updates["permissions"] = string(payload)
+	}
+	return s.db.WithContext(ctx).Model(&repository.PublicAPI{}).Where("id = ?", resolvedID).Updates(updates).Error
+}
+
+func (s *AdminService) DeletePublicAPI(ctx context.Context, id string) error {
+	resolvedID, err := resolveEntityID(ctx, s.db, "public_apis", id)
+	if err != nil {
+		return err
+	}
+	return s.db.WithContext(ctx).Delete(&repository.PublicAPI{}, resolvedID).Error
+}
+
+// helpers
+func formatTime(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format("2006-01-02 15:04:05")
+}
+
+func formatTimePtr(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return formatTime(*t)
+}
+
+func startOfDay(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+}
+
+func periodStart(period string) time.Time {
+	now := time.Now()
+	switch period {
+	case "week":
+		return startOfDay(now.AddDate(0, 0, -6))
+	case "month":
+		return time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	default:
+		return time.Time{}
+	}
+}
+
+func displayName(name, phone string) string {
+	if strings.TrimSpace(name) != "" {
+		return name
+	}
+	return phone
+}
+
+func (s *AdminService) countOrders(ctx context.Context, field string, values []string) (int64, int64, int64) {
+	startToday := startOfDay(time.Now())
+	startWeek := startOfDay(time.Now().AddDate(0, 0, -6))
+	startMonth := time.Date(time.Now().Year(), time.Now().Month(), 1, 0, 0, 0, 0, time.Now().Location())
+
+	filter := s.db.WithContext(ctx).Model(&repository.Order{})
+	filtered := toInterfaceSlice(values)
+	if len(filtered) == 0 {
+		return 0, 0, 0
+	}
+	filter = filter.Where(field+" IN ?", filtered)
+
+	var today int64
+	filter.Where("created_at >= ?", startToday).Count(&today)
+
+	var week int64
+	filter.Where("created_at >= ?", startWeek).Count(&week)
+
+	var month int64
+	filter.Where("created_at >= ?", startMonth).Count(&month)
+
+	return today, week, month
+}
+
+func (s *AdminService) sumPointsBalance(ctx context.Context, values []string) int64 {
+	filtered := toInterfaceSlice(values)
+	if len(filtered) == 0 {
+		return 0
+	}
+
+	var balance int64
+	now := time.Now()
+	if err := s.db.WithContext(ctx).
+		Model(&repository.PointsLedger{}).
+		Where("user_id IN ? AND (expires_at IS NULL OR expires_at > ?)", filtered, now).
+		Select("COALESCE(SUM(`change`), 0)").
+		Scan(&balance).Error; err != nil {
+		return 0
+	}
+
+	return balance
+}
+
+func userIdentityCandidates(user repository.User) []string {
+	values := []string{
+		user.UID,
+		user.TSID,
+		fmt.Sprintf("%d", user.ID),
+		user.Phone,
+	}
+	if user.RoleID > 0 {
+		values = append(values, fmt.Sprintf("%d", user.RoleID))
+	}
+	return uniqueNonEmptyStrings(values...)
+}
+
+func uniqueNonEmptyStrings(values ...string) []string {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		key := strings.TrimSpace(value)
+		if key == "" {
+			continue
+		}
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		result = append(result, key)
+	}
+	return result
+}
+
+func resolveVIPLevel(pointsBalance int64) string {
+	switch {
+	case pointsBalance >= 8000:
+		return "至尊VIP"
+	case pointsBalance >= 5000:
+		return "尊贵VIP"
+	case pointsBalance >= 3000:
+		return "黄金VIP"
+	case pointsBalance >= 800:
+		return "优质VIP"
+	default:
+		return "普通用户"
+	}
+}
+
+func toInterfaceSlice(items []string) []interface{} {
+	out := make([]interface{}, 0, len(items))
+	for _, item := range items {
+		if item == "" {
+			continue
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+func sortResults(items []map[string]interface{}, isAmount bool) {
+	// simple bubble sort for small datasets
+	for i := 0; i < len(items); i++ {
+		for j := i + 1; j < len(items); j++ {
+			if compareRank(items[i], items[j], isAmount) < 0 {
+				items[i], items[j] = items[j], items[i]
+			}
+		}
+	}
+}
+
+func compareRank(a, b map[string]interface{}, isAmount bool) int {
+	if isAmount {
+		av := parseFloat(a["value"])
+		bv := parseFloat(b["value"])
+		if av > bv {
+			return 1
+		}
+		if av < bv {
+			return -1
+		}
+		return 0
+	}
+	av := parseInt64(a["value"])
+	bv := parseInt64(b["value"])
+	if av > bv {
+		return 1
+	}
+	if av < bv {
+		return -1
+	}
+	return 0
+}
+
+func parseFloat(v interface{}) float64 {
+	switch t := v.(type) {
+	case float64:
+		return t
+	case int64:
+		return float64(t)
+	case int:
+		return float64(t)
+	case string:
+		f, _ := strconv.ParseFloat(t, 64)
+		return f
+	default:
+		return 0
+	}
+}
+
+func parseInt64(v interface{}) int64 {
+	switch t := v.(type) {
+	case int64:
+		return t
+	case int:
+		return int64(t)
+	case float64:
+		return int64(t)
+	case string:
+		i, _ := strconv.ParseInt(t, 10, 64)
+		return i
+	default:
+		return 0
+	}
+}
+
+func parseString(v interface{}) string {
+	switch t := v.(type) {
+	case string:
+		return t
+	case []byte:
+		return string(t)
+	case float64:
+		return strconv.FormatFloat(t, 'f', -1, 64)
+	case int:
+		return strconv.Itoa(t)
+	case int64:
+		return strconv.FormatInt(t, 10)
+	default:
+		return ""
+	}
+}
+
+func parseBool(v interface{}) bool {
+	switch t := v.(type) {
+	case bool:
+		return t
+	case int:
+		return t != 0
+	case int64:
+		return t != 0
+	case float64:
+		return t != 0
+	case string:
+		return t == "1" || strings.ToLower(t) == "true"
+	default:
+		return false
+	}
+}
+
+// GetUsers 获取用户列表（带分页和搜索）
+func (s *AdminService) GetUsers(ctx context.Context, page, limit int, search, userType string) (map[string]interface{}, error) {
+	offset := (page - 1) * limit
+	var users []repository.User
+	var total int64
+
+	query := s.db.Model(&repository.User{})
+	if userType != "" {
+		query = query.Where("type = ?", userType)
+	}
+	if search != "" {
+		query = query.Where("phone LIKE ? OR name LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	if err := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&users).Error; err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"users": users,
+		"total": total,
+	}, nil
+}
+
+// GetRiders 获取骑手列表（带分页和搜索）
+func (s *AdminService) GetRiders(ctx context.Context, page, limit int, search string) (map[string]interface{}, error) {
+	offset := (page - 1) * limit
+	var riders []repository.Rider
+	var total int64
+
+	query := s.db.Model(&repository.Rider{})
+	if search != "" {
+		query = query.Where("phone LIKE ? OR name LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	if err := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&riders).Error; err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	for i := range riders {
+		if !riderOnlineActive(riders[i], now) {
+			riders[i].IsOnline = false
+		}
+	}
+
+	return map[string]interface{}{
+		"riders": riders,
+		"total":  total,
+	}, nil
+}
+
+// GetMerchants 获取商户列表（带分页和搜索）
+func (s *AdminService) GetMerchants(ctx context.Context, page, limit int, search string) (map[string]interface{}, error) {
+	offset := (page - 1) * limit
+	var merchants []repository.Merchant
+	var total int64
+
+	query := s.db.Model(&repository.Merchant{})
+	if search != "" {
+		query = query.Where("phone LIKE ? OR name LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	if err := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&merchants).Error; err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"merchants": merchants,
+		"total":     total,
+	}, nil
+}
+
+// ReorganizeRoleIds 重组角色ID
+func (s *AdminService) ReorganizeRoleIds(ctx context.Context, userType string) error {
+	switch userType {
+	case "customer":
+		var users []repository.User
+		if err := s.db.Where("type = ?", "customer").Order("created_at ASC").Find(&users).Error; err != nil {
+			return err
+		}
+		for i, user := range users {
+			if err := s.db.Model(&user).Update("role_id", i+1).Error; err != nil {
+				return err
+			}
+		}
+	case "rider":
+		var riders []repository.Rider
+		if err := s.db.Order("created_at ASC").Find(&riders).Error; err != nil {
+			return err
+		}
+		for i, rider := range riders {
+			if err := s.db.Model(&rider).Update("role_id", i+1).Error; err != nil {
+				return err
+			}
+		}
+	case "merchant":
+		var merchants []repository.Merchant
+		if err := s.db.Order("created_at ASC").Find(&merchants).Error; err != nil {
+			return err
+		}
+		for i, merchant := range merchants {
+			if err := s.db.Model(&merchant).Update("role_id", i+1).Error; err != nil {
+				return err
+			}
+		}
+	default:
+		return fmt.Errorf("invalid user type: %s", userType)
+	}
+	return nil
+}

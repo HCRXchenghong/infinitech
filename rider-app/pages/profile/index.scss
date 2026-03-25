@@ -1,0 +1,278 @@
+.container {
+  min-height: 100vh;
+  background: #f3f4f6;
+}
+
+.profile-header {
+  background: white;
+  padding: 0 32rpx 32rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.user-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32rpx 0;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.avatar {
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 50%;
+  border: 4rpx solid #f3f4f6;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+}
+
+.user-detail {
+  flex: 1;
+}
+
+.user-name {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.badges {
+  display: flex;
+  gap: 16rpx;
+}
+
+.badge-level {
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 20rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 24rpx;
+  font-weight: bold;
+  border: 2rpx solid #fde68a;
+}
+
+.badge-rating {
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 20rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 24rpx;
+  border: 2rpx solid #fed7aa;
+}
+
+.badge-id {
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 20rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 24rpx;
+}
+
+.content-scroll {
+  height: calc(100vh - 300rpx);
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.stats-card {
+  background: linear-gradient(135deg, #009bf5 0%, #0284c7 100%);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  color: white;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 155, 245, 0.2);
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+  opacity: 0.9;
+}
+
+.stats-title {
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+.stats-badge {
+  font-size: 22rpx;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx;
+}
+
+.stats-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 32rpx;
+}
+
+.earnings-box {
+  flex: 1;
+}
+
+.earnings-label {
+  font-size: 24rpx;
+  opacity: 0.8;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.earnings-amount {
+  font-size: 60rpx;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.online-box {
+  text-align: right;
+}
+
+.online-label {
+  font-size: 24rpx;
+  opacity: 0.8;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.online-time {
+  font-size: 36rpx;
+  font-weight: bold;
+}
+
+.stats-grid {
+  display: flex;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  backdrop-filter: blur(10rpx);
+  border: 2rpx solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-item {
+  flex: 1;
+  text-align: center;
+  border-right: 2rpx solid rgba(255, 255, 255, 0.2);
+  
+  &:last-child {
+    border-right: none;
+  }
+}
+
+.stat-label {
+  font-size: 22rpx;
+  opacity: 0.7;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.stat-value {
+  font-size: 36rpx;
+  font-weight: bold;
+  display: block;
+}
+
+.wallet-card,
+.menu-card {
+  background: white;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.card-header,
+.card-header-simple {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.card-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.card-link {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.link-text {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.link-arrow {
+  font-size: 32rpx;
+  color: #9ca3af;
+}
+
+.menu-card {
+  padding: 0;
+}
+
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32rpx;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-left {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.menu-icon {
+  font-size: 40rpx;
+}
+
+.menu-icon-img {
+  width: 48rpx;
+  height: 48rpx;
+}
+
+.menu-name {
+  font-size: 30rpx;
+  color: #1f2937;
+}
+
+.menu-arrow {
+  font-size: 32rpx;
+  color: #d1d5db;
+}
+
+.logout-wrapper {
+  padding: 24rpx 0 64rpx;
+}
+
+.btn-logout {
+  width: 100%;
+  background: white;
+  color: #ef4444;
+  padding: 24rpx;
+  border-radius: 24rpx;
+  font-weight: 500;
+  font-size: 32rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  border: 2rpx solid #f3f4f6;
+}

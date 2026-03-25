@@ -1,0 +1,17 @@
+{
+  "name": "flint-os-uniapp",
+  "version": "1.0.0",
+  "description": "Flint OS Uni-app Version",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "sass": "^1.62.1",
+    "sass-loader": "^10.1.1",
+    "socket.io-client": "^4.8.3"
+  }
+}

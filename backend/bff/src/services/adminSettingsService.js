@@ -1,0 +1,296 @@
+/**
+ * Admin Settings Controller - 管理后台设置控制器
+ * 处理轮播图、推送消息、系统设置等
+ */
+
+const FormData = require("form-data");
+const fs = require("fs");
+const { logger } = require("../utils/logger");
+const { verifyCriticalCredential } = require("../utils/criticalActionVerify");
+const {
+  CLEAR_ALL_VERIFY_ACCOUNT,
+  CLEAR_ALL_VERIFY_PASSWORD,
+  BFF_COMBINED_LOG_PATH,
+  BFF_ERROR_LOG_PATH,
+  GO_COMBINED_LOG_PATH,
+  GO_ERROR_LOG_PATH,
+} = require("./adminSettings/constants");
+const {
+  normalizePublicAssetUrl,
+  handleProxyError,
+  requestSettingsRaw,
+  proxySettingsRequest,
+} = require("./adminSettings/proxyClient");
+const { safeUnlinkTempFile, clearLogFile } = require("./adminSettings/fileOps");
+
+function createProxyHandler(method, pathResolver, optionsResolver) {
+  return async function proxyHandler(req, res) {
+    const path = typeof pathResolver === "function" ? pathResolver(req) : pathResolver;
+    const options = typeof optionsResolver === "function" ? optionsResolver(req) : (optionsResolver || {});
+    return proxySettingsRequest(req, res, method, path, options);
+  };
+}
+
+const getCarousel = createProxyHandler("get", "/api/carousel", (req) => ({ params: req.query }));
+const createCarousel = createProxyHandler("post", "/api/carousel", (req) => ({ body: req.body }));
+const updateCarousel = createProxyHandler("put", (req) => `/api/carousel/${req.params.id}`, (req) => ({ body: req.body }));
+const deleteCarousel = createProxyHandler("delete", (req) => `/api/carousel/${req.params.id}`);
+
+const getPushMessages = createProxyHandler("get", "/api/push-messages", (req) => ({ params: req.query }));
+const createPushMessage = createProxyHandler("post", "/api/push-messages", (req) => ({ body: req.body }));
+const updatePushMessage = createProxyHandler("put", (req) => `/api/push-messages/${req.params.id}`, (req) => ({ body: req.body }));
+const deletePushMessage = createProxyHandler("delete", (req) => `/api/push-messages/${req.params.id}`);
+
+const getDebugMode = createProxyHandler("get", "/api/debug-mode");
+const updateDebugMode = createProxyHandler("post", "/api/debug-mode", (req) => ({ body: req.body }));
+
+const getSMSConfig = createProxyHandler("get", "/api/sms-config");
+const updateSMSConfig = createProxyHandler("post", "/api/sms-config", (req) => ({ body: req.body }));
+
+const getWeatherConfig = createProxyHandler("get", "/api/weather-config");
+const updateWeatherConfig = createProxyHandler("post", "/api/weather-config", (req) => ({ body: req.body }));
+
+const getWechatLoginConfig = createProxyHandler("get", "/api/wechat-login-config");
+const updateWechatLoginConfig = createProxyHandler("post", "/api/wechat-login-config", (req) => ({ body: req.body }));
+
+const getServiceSettings = createProxyHandler("get", "/api/service-settings");
+const updateServiceSettings = createProxyHandler("post", "/api/service-settings", (req) => ({ body: req.body }));
+const getPublicRuntimeSettings = createProxyHandler("get", "/api/public/runtime-settings");
+const getCharitySettings = createProxyHandler("get", "/api/charity-settings");
+const updateCharitySettings = createProxyHandler("post", "/api/charity-settings", (req) => ({ body: req.body }));
+const getPublicCharitySettings = createProxyHandler("get", "/api/public/charity-settings");
+const getVIPSettings = createProxyHandler("get", "/api/vip-settings");
+const updateVIPSettings = createProxyHandler("post", "/api/vip-settings", (req) => ({ body: req.body }));
+const getPublicVIPSettings = createProxyHandler("get", "/api/public/vip-settings");
+
+const getPayMode = createProxyHandler("get", "/api/pay-config/mode");
+const updatePayMode = createProxyHandler("post", "/api/pay-config/mode", (req) => ({ body: req.body }));
+const getWxpayConfig = createProxyHandler("get", "/api/pay-config/wxpay");
+const updateWxpayConfig = createProxyHandler("post", "/api/pay-config/wxpay", (req) => ({ body: req.body }));
+const getAlipayConfig = createProxyHandler("get", "/api/pay-config/alipay");
+const updateAlipayConfig = createProxyHandler("post", "/api/pay-config/alipay", (req) => ({ body: req.body }));
+
+const getCoinRatio = createProxyHandler("get", "/api/coin-ratio");
+const updateCoinRatio = createProxyHandler("post", "/api/coin-ratio", (req) => ({ body: req.body }));
+const adminRecharge = createProxyHandler("post", "/api/admin/wallet/recharge", (req) => ({ body: req.body }));
+
+const getWeather = createProxyHandler("get", "/api/weather", (req) => ({
+  params: req.query || {},
+  includeClientIp: true,
+}));
+
+async function getAppDownloadConfig(req, res) {
+  try {
+    const response = await requestSettingsRaw(req, "get", "/api/app-download-config", {
+      validateStatus(status) {
+        return status < 500;
+      }
+    });
+    const data = response.data || {};
+    if (data.ios_url) {
+      data.ios_url = normalizePublicAssetUrl(req, data.ios_url);
+    }
+    if (data.android_url) {
+      data.android_url = normalizePublicAssetUrl(req, data.android_url);
+    }
+    return res.status(response.status).json(data);
+  } catch (error) {
+    return handleProxyError(res, error, "getAppDownloadConfig", { success: false, error: error.message });
+  }
+}
+
+async function updateAppDownloadConfig(req, res) {
+  try {
+    const response = await requestSettingsRaw(req, "post", "/api/app-download-config", {
+      body: req.body,
+      validateStatus(status) {
+        return status < 500;
+      }
+    });
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return handleProxyError(res, error, "updateAppDownloadConfig", { success: false, error: error.message });
+  }
+}
+
+async function uploadImage(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: "没有上传文件" });
+  }
+
+  const tempFilePath = req.file.path;
+  try {
+    const form = new FormData();
+    form.append("image", fs.createReadStream(tempFilePath), req.file.originalname);
+    const response = await requestSettingsRaw(req, "post", "/api/upload-image", {
+      body: form,
+      headers: form.getHeaders(),
+      validateStatus(status) {
+        return status < 500;
+      }
+    });
+
+    const data = response.data && typeof response.data === "object"
+      ? { ...response.data }
+      : response.data;
+    if (data && data.imageUrl) {
+      data.imageUrl = normalizePublicAssetUrl(req, data.imageUrl);
+    }
+
+    return res.json(data);
+  } catch (error) {
+    return handleProxyError(res, error, "uploadImage", { success: false, error: error.message });
+  } finally {
+    safeUnlinkTempFile(tempFilePath);
+  }
+}
+
+async function uploadPackage(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: "没有上传文件" });
+  }
+
+  const tempFilePath = req.file.path;
+  try {
+    const form = new FormData();
+    form.append("file", fs.createReadStream(tempFilePath), req.file.originalname);
+    const response = await requestSettingsRaw(req, "post", "/api/upload/package", {
+      body: form,
+      headers: form.getHeaders(),
+      validateStatus(status) {
+        return status < 500;
+      }
+    });
+
+    const data = response.data && typeof response.data === "object"
+      ? { ...response.data }
+      : response.data;
+    if (data && data.url) {
+      data.url = normalizePublicAssetUrl(req, data.url);
+    }
+
+    return res.status(response.status).json(data);
+  } catch (error) {
+    return handleProxyError(res, error, "uploadPackage", { success: false, error: error.message });
+  } finally {
+    safeUnlinkTempFile(tempFilePath);
+  }
+}
+
+async function clearAllData(req, res) {
+  const verifyAccount = String(req.body?.verifyAccount || "").trim();
+  const verifyPassword = String(req.body?.verifyPassword || "");
+  const operatorId = String(req.operator?.operatorId || "");
+  const operatorName = String(req.operator?.operatorName || "");
+
+  const verified = verifyCriticalCredential({
+    req,
+    verifyAccount,
+    verifyPassword,
+    expectedAccount: CLEAR_ALL_VERIFY_ACCOUNT,
+    expectedPassword: CLEAR_ALL_VERIFY_PASSWORD,
+  });
+
+  if (!verified.ok) {
+    logger.warn("POST /api/settings/clear-all-data", {
+      action: "clear_all_data_verify_failed",
+      verifyAccount,
+      operatorId,
+      operatorName,
+      ip: req.ip,
+      principal: verified.principal,
+      remainingAttempts: verified.remainingAttempts,
+      lockedUntil: verified.lockedUntil || null,
+    });
+    return res.status(verified.status || 401).json({
+      success: false,
+      error: verified.error || "二次验证失败，账号或密码错误",
+      lockedUntil: verified.lockedUntil || null,
+    });
+  }
+
+  try {
+    const goResponse = await requestSettingsRaw(req, "post", "/api/admin/clear-all-data", {
+      body: {},
+      timeout: 30000,
+      validateStatus: (status) => status < 500,
+    });
+    if (goResponse.status >= 400) {
+      return res.status(goResponse.status).json(goResponse.data);
+    }
+
+    const logCleanup = [
+      clearLogFile(BFF_COMBINED_LOG_PATH),
+      clearLogFile(BFF_ERROR_LOG_PATH),
+      clearLogFile(GO_COMBINED_LOG_PATH),
+      clearLogFile(GO_ERROR_LOG_PATH),
+    ];
+    const logCleared = logCleanup.reduce((sum, item) => sum + Number(item.cleared || 0), 0);
+
+    logger.info("POST /api/settings/clear-all-data", {
+      action: "clear_all_data",
+      operatorId,
+      operatorName,
+      ip: req.ip,
+      principal: verified.principal,
+      logCleared,
+      logCleanup,
+      goResult: goResponse.data,
+    });
+
+    return res.json({
+      success: true,
+      goResult: goResponse.data,
+      logCleared,
+      logCleanup,
+    });
+  } catch (error) {
+    return handleProxyError(res, error, "clearAllData", {
+      success: false,
+      error: error.message || "清空全部信息失败",
+    });
+  }
+}
+
+module.exports = {
+  getCarousel,
+  createCarousel,
+  updateCarousel,
+  deleteCarousel,
+  getPushMessages,
+  createPushMessage,
+  updatePushMessage,
+  deletePushMessage,
+  getDebugMode,
+  updateDebugMode,
+  getSMSConfig,
+  updateSMSConfig,
+  getWeatherConfig,
+  updateWeatherConfig,
+  getWechatLoginConfig,
+  updateWechatLoginConfig,
+  getServiceSettings,
+  updateServiceSettings,
+  getPublicRuntimeSettings,
+  getCharitySettings,
+  updateCharitySettings,
+  getPublicCharitySettings,
+  getVIPSettings,
+  updateVIPSettings,
+  getPublicVIPSettings,
+  getAppDownloadConfig,
+  updateAppDownloadConfig,
+  getPayMode,
+  updatePayMode,
+  getWxpayConfig,
+  updateWxpayConfig,
+  getAlipayConfig,
+  updateAlipayConfig,
+  uploadImage,
+  uploadPackage,
+  getWeather,
+  getCoinRatio,
+  updateCoinRatio,
+  adminRecharge,
+  clearAllData,
+};

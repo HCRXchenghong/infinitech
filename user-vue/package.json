@@ -1,0 +1,17 @@
+{
+  "name": "user-vue",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build:mp-weixin": "BABEL_DISABLE_CACHE=1 UNI_INPUT_DIR=$PWD UNI_OUTPUT_DIR=$PWD/unpackage/dist/dev/mp-weixin UNI_PLATFORM=mp-weixin NODE_ENV=production VUE_CLI_CONTEXT=/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli /Applications/HBuilderX.app/Contents/HBuilderX/plugins/node/node /Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli/bin/uniapp-cli.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "weapp.socket.io": "^2.2.1"
+  }
+}

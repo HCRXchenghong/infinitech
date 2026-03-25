@@ -1,0 +1,91 @@
+﻿name: android-stage-g-gates
+
+on:
+  workflow_dispatch:
+    inputs:
+      metrics_url:
+        description: "Optional live metrics endpoint URL for gray gate"
+        required: false
+        default: ""
+        type: string
+      run_instrumentation:
+        description: "Run connectedDebugAndroidTest on emulator"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  quality_and_gray:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Run stage G gate (quality + gray decision)
+        shell: pwsh
+        env:
+          GRAY_METRICS_URL: ${{ inputs.metrics_url != '' && inputs.metrics_url || secrets.GRAY_METRICS_URL }}
+          GRAY_METRICS_BEARER_TOKEN: ${{ secrets.GRAY_METRICS_BEARER_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GRAY_METRICS_URL)) {
+            powershell -ExecutionPolicy Bypass -File scripts/Run-StageGGates.ps1 -MetricsPath docs/gray/sample_metrics_pass.json -DecisionOutputPath docs/gray/last_decision.json -GenerateSignoffReport
+          }
+          else {
+            powershell -ExecutionPolicy Bypass -File scripts/Run-StageGGates.ps1 -MetricsUrl $env:GRAY_METRICS_URL -DecisionOutputPath docs/gray/last_decision.json -GenerateSignoffReport
+          }
+
+      - name: Upload gray decision artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gray-rollout-decision
+          path: docs/gray/last_decision.json
+
+      - name: Upload sign-off report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-signoff-report
+          path: |
+            docs/signoff/release_signoff_report.json
+            docs/signoff/release_signoff_report.md
+
+  instrumentation:
+    needs: quality_and_gray
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_instrumentation }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Run connected instrumentation tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          profile: pixel_5
+          script: ./gradlew :app:connectedDebugAndroidTest
+
+      - name: Upload instrumentation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-instrumentation-report
+          path: app/build/reports/androidTests/connected

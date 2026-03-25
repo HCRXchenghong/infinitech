@@ -1,0 +1,43 @@
+{
+  "completed": false,
+  "all_passed": false,
+  "owner": "",
+  "updated_at": "",
+  "items": [
+    {
+      "name": "login_register_reset_password",
+      "passed": false,
+      "note": ""
+    },
+    {
+      "name": "shop_browse_search_category",
+      "passed": false,
+      "note": ""
+    },
+    {
+      "name": "order_cart_confirm_pay_detail",
+      "passed": false,
+      "note": ""
+    },
+    {
+      "name": "order_refund_review",
+      "passed": false,
+      "note": ""
+    },
+    {
+      "name": "wallet_balance_recharge_withdraw_bills",
+      "passed": false,
+      "note": ""
+    },
+    {
+      "name": "message_chat_customer_service_reconnect",
+      "passed": false,
+      "note": ""
+    },
+    {
+      "name": "extended_domains_errand_medicine_dining_charity",
+      "passed": false,
+      "note": ""
+    }
+  ]
+}

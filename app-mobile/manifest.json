@@ -1,0 +1,38 @@
+{
+  "name": "悦享e食App",
+  "appid": "__UNI_APP__",
+  "displayName": "悦享e食",
+  "app-plus": {
+    "config": {
+      "API_BASE_URL": "http://127.0.0.1:25500",
+      "SOCKET_URL": "http://127.0.0.1:9898"
+    },
+    "modules": {},
+    "distribute": {
+      "android": {
+        "permissions": [
+          "<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\"/>",
+          "<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\"/>"
+        ],
+        "permissionExternalStorage": {
+          "request": "none",
+          "prompt": "应用需要访问存储权限，以保存图片等信息"
+        },
+        "usesCleartextTraffic": true
+      },
+      "ios": {
+        "dSYMs": false,
+        "capabilities": {
+          "entitlements": {
+            "com.apple.developer.networking.wifi-info": true
+          }
+        },
+        "plist": {
+          "NSAppTransportSecurity": {
+            "NSAllowsArbitraryLoads": true
+          }
+        }
+      }
+    }
+  }
+}

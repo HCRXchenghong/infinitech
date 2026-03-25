@@ -1,0 +1,9 @@
+.page { display: flex; flex-direction: column; gap: 14px; }
+.title-row { display: flex; justify-content: space-between; align-items: center; }
+.title { font-size: 18px; font-weight: 800; }
+.card-title { font-weight: 700; margin-bottom: 12px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.stack-col { display: flex; flex-direction: column; gap: 14px; }
+.empty-tip { text-align: center; color: #909399; padding: 16px 0; font-size: 13px; }
+.clickable-row { cursor: pointer; }
+.clickable-row:hover td { background: #f5f7fa !important; }

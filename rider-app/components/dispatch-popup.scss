@@ -1,0 +1,146 @@
+.dispatch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx;
+}
+
+.dispatch-card {
+  width: 660rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  overflow: hidden;
+}
+
+.dispatch-header {
+  padding: 28rpx 32rpx;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+}
+
+.dispatch-title {
+  display: block;
+  font-size: 34rpx;
+  color: #fff;
+  font-weight: 700;
+}
+
+.dispatch-subtitle {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.dispatch-body {
+  padding: 28rpx 32rpx 32rpx;
+}
+
+.dispatch-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 24rpx;
+}
+
+.dispatch-price {
+  font-size: 56rpx;
+  line-height: 1;
+  color: #ea580c;
+  font-weight: 700;
+}
+
+.dispatch-time {
+  font-size: 24rpx;
+  color: #374151;
+}
+
+.dispatch-line-item {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 18rpx;
+}
+
+.dispatch-line-info {
+  flex: 1;
+}
+
+.dispatch-name {
+  display: block;
+  font-size: 30rpx;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.dispatch-addr {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.dispatch-dot {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  line-height: 36rpx;
+  text-align: center;
+  font-size: 18rpx;
+  font-weight: 700;
+  margin-top: 6rpx;
+
+  &.pickup {
+    border: 2rpx solid #1f2937;
+    color: #1f2937;
+    background: #fff;
+  }
+
+  &.delivery {
+    color: #fff;
+    background: #009bf5;
+  }
+}
+
+.dispatch-total {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #4b5563;
+}
+
+.dispatch-reject-tip {
+  margin: 12rpx 0 24rpx;
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.dispatch-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.btn-dispatch-secondary,
+.btn-dispatch-primary {
+  flex: 1;
+  height: 82rpx;
+  border: none;
+  border-radius: 14rpx;
+  font-size: 28rpx;
+}
+
+.btn-dispatch-secondary {
+  color: #4b5563;
+  background: #f3f4f6;
+}
+
+.btn-dispatch-primary {
+  color: #fff;
+  background: #009bf5;
+}
+
+.btn-dispatch-secondary[disabled],
+.btn-dispatch-primary[disabled] {
+  opacity: 0.6;
+}

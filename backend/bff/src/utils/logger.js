@@ -1,0 +1,32 @@
+/**
+ * 日志工具
+ */
+
+const winston = require('winston');
+const config = require('../config');
+
+const logger = winston.createLogger({
+  level: config.logLevel,
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  defaultMeta: { service: 'bff' },
+  transports: [
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' })
+  ]
+});
+
+// 开发环境输出到控制台
+if (config.env !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.simple()
+    )
+  }));
+}
+
+module.exports = { logger };

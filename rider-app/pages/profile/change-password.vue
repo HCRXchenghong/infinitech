@@ -1,0 +1,190 @@
+<template>
+  <view class="page">
+    <view class="tabs">
+      <text class="tab-item" :class="{ active: verifyType === 'password' }" @tap="verifyType = 'password'">
+        原密码验证
+      </text>
+      <text class="tab-item" :class="{ active: verifyType === 'code' }" @tap="verifyType = 'code'">
+        验证码验证
+      </text>
+    </view>
+
+    <view class="form">
+      <view v-if="verifyType === 'password'">
+        <input v-model="oldPassword" class="input" placeholder="原密码" password maxlength="20" />
+      </view>
+
+      <view v-if="verifyType === 'code'">
+        <input v-model="phone" class="input" placeholder="手机号" type="number" maxlength="11" />
+        <view class="code-row">
+          <input v-model="code" class="input" placeholder="验证码" type="number" maxlength="6" />
+          <text class="code-btn" :class="{ off: codeCooldown > 0 }" @tap="sendCode">
+            {{ codeCooldown > 0 ? codeCooldown + 's' : '获取验证码' }}
+          </text>
+        </view>
+      </view>
+
+      <input v-model="newPassword" class="input" placeholder="新密码（6-20位）" password maxlength="20" />
+      <input v-model="confirmPassword" class="input" placeholder="确认新密码" password maxlength="20" />
+
+      <button class="btn" @tap="submitChangePassword">确认修改</button>
+    </view>
+  </view>
+</template>
+
+<script lang="ts">
+import Vue from 'vue'
+import { requestSMSCode, changePassword } from '../../shared-ui/api'
+
+export default Vue.extend({
+  data() {
+    return {
+      verifyType: 'password',
+      oldPassword: '',
+      phone: '',
+      code: '',
+      newPassword: '',
+      confirmPassword: '',
+      codeCooldown: 0
+    }
+  },
+  onLoad() {
+    const profile = uni.getStorageSync('riderProfile')
+    if (profile && profile.phone) {
+      this.phone = profile.phone
+    }
+  },
+  methods: {
+    async sendCode() {
+      if (this.codeCooldown > 0) return
+      if (!/^1\d{10}$/.test(this.phone)) {
+        uni.showToast({ title: '请输入正确手机号', icon: 'none' })
+        return
+      }
+
+      try {
+        await requestSMSCode(this.phone, 'rider_change_password')
+        uni.showToast({ title: '验证码已发送', icon: 'success' })
+        this.codeCooldown = 60
+        const timer = setInterval(() => {
+          this.codeCooldown--
+          if (this.codeCooldown <= 0) clearInterval(timer)
+        }, 1000)
+      } catch (err: any) {
+        uni.showToast({ title: err.error || '发送失败', icon: 'none' })
+      }
+    },
+    async submitChangePassword() {
+      if (this.newPassword.length < 6) {
+        uni.showToast({ title: '密码至少6位', icon: 'none' })
+        return
+      }
+
+      if (this.newPassword !== this.confirmPassword) {
+        uni.showToast({ title: '两次密码不一致', icon: 'none' })
+        return
+      }
+
+      try {
+        await changePassword({
+          verifyType: this.verifyType,
+          oldPassword: this.oldPassword,
+          phone: this.phone,
+          code: this.code,
+          newPassword: this.newPassword
+        })
+
+        uni.showToast({ title: '密码修改成功', icon: 'success' })
+        setTimeout(() => uni.navigateBack(), 1500)
+      } catch (err: any) {
+        uni.showToast({ title: err.error || '修改失败', icon: 'none' })
+      }
+    }
+  }
+})
+</script>
+
+<style lang="scss" scoped>
+.page {
+  min-height: 100vh;
+  background: #f3f4f6;
+}
+
+.tabs {
+  display: flex;
+  background: white;
+  padding: 32rpx;
+  gap: 32rpx;
+}
+
+.tab-item {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  font-size: 30rpx;
+  color: #6b7280;
+  background: #f9fafb;
+  border-radius: 16rpx;
+
+  &.active {
+    background: linear-gradient(135deg, #009bf5 0%, #0284c7 100%);
+    color: white;
+    font-weight: 600;
+  }
+}
+
+.form {
+  padding: 32rpx;
+}
+
+.input {
+  width: 100%;
+  height: 96rpx;
+  background: white;
+  border-radius: 16rpx;
+  padding: 0 32rpx;
+  font-size: 32rpx;
+  margin-bottom: 32rpx;
+  box-sizing: border-box;
+}
+
+.code-row {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 32rpx;
+}
+
+.code-row .input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.code-btn {
+  width: 200rpx;
+  height: 96rpx;
+  line-height: 96rpx;
+  text-align: center;
+  background: linear-gradient(135deg, #009bf5 0%, #0284c7 100%);
+  color: white;
+  font-size: 28rpx;
+  border-radius: 16rpx;
+  font-weight: 600;
+
+  &.off {
+    background: #d1d5db;
+  }
+}
+
+.btn {
+  width: 100%;
+  height: 96rpx;
+  background: linear-gradient(135deg, #009bf5 0%, #0284c7 100%);
+  color: white;
+  font-size: 32rpx;
+  font-weight: 600;
+  border-radius: 16rpx;
+  border: none;
+  margin-top: 32rpx;
+}
+</style>

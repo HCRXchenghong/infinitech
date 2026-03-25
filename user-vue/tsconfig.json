@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "strict": false,
+    "noImplicitAny": false,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "useDefineForClassFields": false,
+    "lib": ["es2018", "dom"]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.d.ts",
+    "**/*.js",
+    "**/*.vue"
+  ],
+  "exclude": [
+    "node_modules",
+    "unpackage"
+  ]
+}

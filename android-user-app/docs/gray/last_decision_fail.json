@@ -1,0 +1,66 @@
+﻿{
+    "evaluated_at_utc":  "2026-02-27T13:09:04.5714734Z",
+    "source":  "file:docs\\gray\\sample_metrics_fail.json",
+    "threshold_path":  "docs/gray/rollout_thresholds.json",
+    "decision":  "STOP_ROLLOUT_AND_ROLLBACK",
+    "violations":  [
+                       "crash_rate actual=0.023 exceeds max=0.01",
+                       "anr_rate actual=0.007 exceeds max=0.005",
+                       "api_failure_rate actual=0.081 exceeds max=0.05",
+                       "order_conversion_drop_ratio actual=0.089 exceeds max=0.05",
+                       "customer_service_first_response_seconds actual=168 exceeds max=90",
+                       "socket_connect_success_rate actual=0.942 below min=0.98",
+                       "pay_success_rate actual=0.964 below min=0.985",
+                       "refund_success_rate actual=0.935 below min=0.97"
+                   ],
+    "checks":  [
+                   {
+                       "Metric":  "crash_rate",
+                       "Rule":  "actual \u003c= 0.01",
+                       "Actual":  0.023,
+                       "Result":  "FAIL"
+                   },
+                   {
+                       "Metric":  "anr_rate",
+                       "Rule":  "actual \u003c= 0.005",
+                       "Actual":  0.007,
+                       "Result":  "FAIL"
+                   },
+                   {
+                       "Metric":  "api_failure_rate",
+                       "Rule":  "actual \u003c= 0.05",
+                       "Actual":  0.081,
+                       "Result":  "FAIL"
+                   },
+                   {
+                       "Metric":  "order_conversion_drop_ratio",
+                       "Rule":  "actual \u003c= 0.05",
+                       "Actual":  0.089,
+                       "Result":  "FAIL"
+                   },
+                   {
+                       "Metric":  "customer_service_first_response_seconds",
+                       "Rule":  "actual \u003c= 90",
+                       "Actual":  168,
+                       "Result":  "FAIL"
+                   },
+                   {
+                       "Metric":  "socket_connect_success_rate",
+                       "Rule":  "actual \u003e= 0.98",
+                       "Actual":  0.942,
+                       "Result":  "FAIL"
+                   },
+                   {
+                       "Metric":  "pay_success_rate",
+                       "Rule":  "actual \u003e= 0.985",
+                       "Actual":  0.964,
+                       "Result":  "FAIL"
+                   },
+                   {
+                       "Metric":  "refund_success_rate",
+                       "Rule":  "actual \u003e= 0.97",
+                       "Actual":  0.935,
+                       "Result":  "FAIL"
+                   }
+               ]
+}

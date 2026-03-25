@@ -1,0 +1,15 @@
+{
+  "window_minutes": 30,
+  "max": {
+    "crash_rate": 0.01,
+    "anr_rate": 0.005,
+    "api_failure_rate": 0.05,
+    "order_conversion_drop_ratio": 0.05,
+    "customer_service_first_response_seconds": 90
+  },
+  "min": {
+    "socket_connect_success_rate": 0.98,
+    "pay_success_rate": 0.985,
+    "refund_success_rate": 0.97
+  }
+}

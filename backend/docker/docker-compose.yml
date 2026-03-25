@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: yuexiang-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: yuexiang_user
+      POSTGRES_PASSWORD: yuexiang_password
+      POSTGRES_DB: yuexiang
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U yuexiang_user -d yuexiang']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - yuexiang-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: yuexiang-redis
+    restart: unless-stopped
+    ports:
+      - '2550:2550'
+    volumes:
+      - redis_data:/data
+    command: redis-server --port 2550 --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-p', '2550', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - yuexiang-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: yuexiang-mysql-legacy
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: yuexiang
+      MYSQL_USER: yuexiang_user
+      MYSQL_PASSWORD: yuexiang_password
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password
+    profiles:
+      - legacy-mysql
+    networks:
+      - yuexiang-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: yuexiang-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin_password
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    profiles:
+      - messaging
+    networks:
+      - yuexiang-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  mysql_data:
+  rabbitmq_data:
+
+networks:
+  yuexiang-network:
+    driver: bridge

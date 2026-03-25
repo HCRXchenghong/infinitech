@@ -1,0 +1,410 @@
+
+.refund-page {
+  min-height: 100vh;
+  background: #f5f7fa;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: 89px;
+  padding-top: 45px;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  box-sizing: border-box;
+  border-bottom: 1px solid #f2f3f5;
+}
+
+.nav-left,
+.nav-right {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-icon {
+  width: 22px;
+  height: 22px;
+  opacity: 0.85;
+}
+
+.nav-title {
+  flex: 1;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.scroll-content {
+  position: fixed;
+  top: 89px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  padding: 12px;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(80px + constant(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+}
+
+.info-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f1f1f;
+}
+
+.card-hint {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.order-brief {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shop-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid #f0f0f0;
+}
+
+.order-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shop-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f1f1f;
+}
+
+.order-time {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.refund-types {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.type-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+  
+  &.active {
+    background: #eff6ff;
+    border-color: #0095ff;
+  }
+}
+
+.type-name {
+  font-size: 15px;
+  color: #1f1f1f;
+  font-weight: 500;
+}
+
+.check-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #0095ff;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.product-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+  
+  &.selected {
+    background: #eff6ff;
+    border-color: #0095ff;
+  }
+}
+
+.product-checkbox {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.checkbox-checked {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #0095ff;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.checkbox-unchecked {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #d1d5db;
+  background: #fff;
+}
+
+.product-image {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  background: #f5f5f5;
+  flex-shrink: 0;
+}
+
+.product-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.product-name {
+  font-size: 14px;
+  color: #1f1f1f;
+  font-weight: 500;
+}
+
+.product-spec {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.product-price {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.refund-amount-row {
+  height: 48px;
+  border-radius: 12px;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+}
+
+.refund-amount-prefix {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin-right: 6px;
+}
+
+.refund-amount-input {
+  flex: 1;
+  font-size: 16px;
+  color: #111827;
+}
+
+.refund-amount-tip {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #9ca3af;
+  line-height: 1.6;
+}
+
+.problem-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #1f1f1f;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+
+.char-count {
+  text-align: right;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 8px;
+}
+
+.upload-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.image-item {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.uploaded-image {
+  width: 100%;
+  height: 100%;
+}
+
+.delete-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.upload-btn {
+  width: 100px;
+  height: 100px;
+  border-radius: 12px;
+  border: 2px dashed #d1d5db;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #f9fafb;
+}
+
+.upload-icon {
+  font-size: 32px;
+  color: #9ca3af;
+}
+
+.upload-text {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.contact-label {
+  font-size: 14px;
+  color: #6b7280;
+  min-width: 70px;
+}
+
+.contact-input {
+  flex: 1;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #1f1f1f;
+}
+
+.bottom-placeholder {
+  height: 20px;
+}
+
+.bottom-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(16px + constant(safe-area-inset-bottom, 0px));
+  background: #fff;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+  z-index: 100;
+  border-top: 1px solid #f2f3f5;
+}
+
+.submit-btn {
+  width: 100%;
+  height: 48px;
+  background: #0095ff;
+  color: #fff;
+  border-radius: 24px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  
+  &::after {
+    border: none;
+  }
+  
+  &:active {
+    opacity: 0.85;
+    transform: scale(0.98);
+  }
+}

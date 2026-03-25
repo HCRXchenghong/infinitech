@@ -1,0 +1,58 @@
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+*.swp
+*.swo
+
+# Local tooling
+.codex-tmp/
+.claude/
+
+# Dependencies
+**/node_modules/
+
+# Frontend build output
+**/dist/
+**/unpackage/
+**/.vite/
+**/coverage/
+**/build/
+**/.gradle/
+**/.kotlin/
+**/.cxx/
+**/.externalNativeBuild/
+**/DerivedData/
+**/.derivedData/
+
+# Go build/test artifacts
+**/bin/
+**/*.test
+**/*.out
+
+# Logs and runtime data
+logs/
+**/logs/
+*.log
+backend/go/data/
+socket-server/chat.db
+socket-server/chat.db-*
+
+# Local env and secrets
+**/.env
+**/.env.*
+!.env.example
+
+# Uploads and caches
+data/uploads/
+uploads/
+.npm-cache/
+
+# OS / temp
+*.tmp
+*.temp
+**/local.properties
+
+# Nested repo backup created during monorepo migration
+ios-user-app/悦享e食/.git.legacy-backup/

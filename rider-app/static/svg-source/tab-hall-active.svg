@@ -1,0 +1,7 @@
+<svg width="81" height="81" viewBox="0 0 81 81" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 抢单大厅图标 - 网格（选中状态） -->
+  <rect x="16" y="16" width="20" height="20" rx="4" fill="#009bf5"/>
+  <rect x="45" y="16" width="20" height="20" rx="4" fill="#009bf5"/>
+  <rect x="16" y="45" width="20" height="20" rx="4" fill="#009bf5"/>
+  <rect x="45" y="45" width="20" height="20" rx="4" fill="#009bf5"/>
+</svg>

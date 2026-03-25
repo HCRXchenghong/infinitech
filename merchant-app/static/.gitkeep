@@ -1,0 +1,14 @@
+# 静态资源目录
+
+请在此目录下放置以下图标文件：
+
+- tab-home.png (首页-未选中)
+- tab-home-active.png (首页-选中)
+- tab-orders.png (订单-未选中)
+- tab-orders-active.png (订单-选中)
+- tab-menu.png (商品-未选中)
+- tab-menu-active.png (商品-选中)
+- tab-store.png (店铺-未选中)
+- tab-store-active.png (店铺-选中)
+
+建议尺寸：81px * 81px (或更大，uni-app会自动缩放)

@@ -1,0 +1,23 @@
+{
+  "name": "rider-app",
+  "version": "1.0.0",
+  "description": "悦享e食骑手端",
+  "main": "main.ts",
+  "scripts": {
+    "dev:app": "uni -p app",
+    "build:app": "uni build -p app"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.7.5",
+    "vue": "^2.7.14"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "^3.4.8",
+    "@dcloudio/uni-cli-shared": "^3.0.0-4020920240930001",
+    "@dcloudio/uni-app-plus": "^3.0.0-4020920240930001",
+    "@dcloudio/vite-plugin-uni": "^3.0.0-4020920240930001",
+    "@types/socket.io-client": "^3.0.0",
+    "sass": "^1.77.6",
+    "vite": "^5.3.3"
+  }
+}

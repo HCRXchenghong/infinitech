@@ -1,0 +1,148 @@
+{
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "商户登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/reset-password/index",
+      "style": {
+        "navigationBarTitleText": "忘记密码",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/set-password/index",
+      "style": {
+        "navigationBarTitleText": "设置新密码",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "经营概况",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/orders/list",
+      "style": {
+        "navigationBarTitleText": "订单管理",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/orders/detail",
+      "style": {
+        "navigationBarTitleText": "订单详情"
+      }
+    },
+    {
+      "path": "pages/messages/chat",
+      "style": {
+        "navigationBarTitleText": "在线沟通",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/menu/list",
+      "style": {
+        "navigationBarTitleText": "商品管理",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/menu/add",
+      "style": {
+        "navigationBarTitleText": "新建商品"
+      }
+    },
+    {
+      "path": "pages/menu/edit",
+      "style": {
+        "navigationBarTitleText": "编辑商品"
+      }
+    },
+    {
+      "path": "pages/store/index",
+      "style": {
+        "navigationBarTitleText": "店铺设置",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/store/settings",
+      "style": {
+        "navigationBarTitleText": "店铺基础设置"
+      }
+    },
+    {
+      "path": "pages/store/create",
+      "style": {
+        "navigationBarTitleText": "创建店铺",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/store/shop-switch",
+      "style": {
+        "navigationBarTitleText": "切换店铺"
+      }
+    },
+    {
+      "path": "pages/store/app-settings",
+      "style": {
+        "navigationBarTitleText": "设置",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/store/wallet",
+      "style": {
+        "navigationBarTitleText": "我的钱包"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#9CA3AF",
+    "selectedColor": "#009bf5",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "经营",
+        "iconPath": "static/tab-home.png",
+        "selectedIconPath": "static/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/orders/list",
+        "text": "订单",
+        "iconPath": "static/tab-orders.png",
+        "selectedIconPath": "static/tab-orders-active.png"
+      },
+      {
+        "pagePath": "pages/menu/list",
+        "text": "商品",
+        "iconPath": "static/tab-menu.png",
+        "selectedIconPath": "static/tab-menu-active.png"
+      },
+      {
+        "pagePath": "pages/store/index",
+        "text": "店铺",
+        "iconPath": "static/tab-store.png",
+        "selectedIconPath": "static/tab-store-active.png"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "商户端",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f3f4f6"
+  }
+}

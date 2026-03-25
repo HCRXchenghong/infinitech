@@ -1,0 +1,190 @@
+// Errand module UI baseline (aligned with current app styles)
+// Usage: in <style lang="scss"> add `@import "@/styles/errand.scss";`
+//
+// App style cues:
+// - Background: #f4f4f4 / #f5f7fa
+// - Primary: #009bf5 (and sometimes #0095ff)
+// - Card radius: 12
+// - Buttons: solid primary, pill radius
+
+$e-bg: #f4f4f4;
+$e-card: #ffffff;
+$e-text: #111827;
+$e-subtext: #6b7280;
+$e-muted: #9ca3af;
+$e-line: #e5e7eb;
+$e-soft: #f9fafb;
+$e-primary: #009bf5;
+$e-danger: #ef4444;
+
+$e-radius: 12px;
+
+.e-page {
+  min-height: 100vh;
+  background: $e-bg;
+}
+
+.e-content {
+  // Keep consistent with existing pages (10px gutters)
+  padding: 10px 10px 80px;
+  box-sizing: border-box;
+  min-height: 100vh;
+}
+
+.e-card {
+  background: $e-card;
+  border-radius: $e-radius;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.e-card.flat {
+  border: 1px solid $e-line;
+}
+
+.e-section-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: $e-text;
+  margin-bottom: 6px;
+}
+
+.e-section-sub {
+  display: block;
+  font-size: 12px;
+  color: $e-muted;
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.e-label {
+  display: block;
+  font-size: 12px;
+  color: $e-subtext;
+  margin-bottom: 6px;
+}
+
+.e-input,
+.e-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: $e-soft;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 14px;
+  color: $e-text;
+}
+
+.e-textarea {
+  min-height: 70px;
+}
+
+.e-placeholder {
+  color: $e-muted;
+}
+
+.e-row {
+  display: flex;
+  align-items: center;
+}
+
+.e-between {
+  justify-content: space-between;
+}
+
+.e-gap-8 {
+  gap: 8px;
+}
+
+.e-bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 56px;
+  padding: 0 10px;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #fff;
+  border-top: 1px solid $e-line;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.e-price {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.e-price-label {
+  font-size: 12px;
+  color: $e-subtext;
+}
+
+.e-price-value {
+  margin-top: 2px;
+  font-size: 18px;
+  font-weight: 900;
+  color: $e-danger;
+}
+
+.e-btn {
+  height: 40px;
+  border-radius: 999px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.e-btn.primary {
+  color: #fff;
+  background: $e-primary;
+}
+
+.e-btn.ghost {
+  color: #374151;
+  background: #fff;
+  border: 1px solid $e-line;
+}
+
+.e-btn.disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  box-shadow: none;
+  border: 1px solid #e5e7eb;
+}
+
+.e-chip-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.e-chip {
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid $e-line;
+  background: #fff;
+}
+
+.e-chip.active {
+  background: #eff6ff;
+  border-color: $e-primary;
+  color: $e-primary;
+  font-weight: 600;
+}
+
+.e-hint {
+  padding: 2px 4px 0;
+  font-size: 12px;
+  color: $e-muted;
+  line-height: 1.6;
+}
+

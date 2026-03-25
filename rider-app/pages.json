@@ -1,0 +1,212 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^message-popup$": "@/components/message-popup.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "骑手登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/reset-password/index",
+      "style": {
+        "navigationBarTitleText": "忘记密码",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/set-password/index",
+      "style": {
+        "navigationBarTitleText": "设置新密码",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/hall/index",
+      "style": {
+        "navigationBarTitleText": "抢单大厅",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/tasks/index",
+      "style": {
+        "navigationBarTitleText": "我的任务",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/tasks/detail",
+      "style": {
+        "navigationBarTitleText": "任务详情",
+        "navigationBarBackgroundColor": "#009bf5",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/wallet",
+      "style": {
+        "navigationBarTitleText": "我的钱包"
+      }
+    },
+    {
+      "path": "pages/profile/wallet-bills/index",
+      "style": {
+        "navigationBarTitleText": "账单明细",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/wallet-recharge/index",
+      "style": {
+        "navigationBarTitleText": "钱包充值",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/wallet-withdraw/index",
+      "style": {
+        "navigationBarTitleText": "钱包提现",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/earnings",
+      "style": {
+        "navigationBarTitleText": "收入明细"
+      }
+    },
+    {
+      "path": "pages/profile/data-stats",
+      "style": {
+        "navigationBarTitleText": "数据统计"
+      }
+    },
+    {
+      "path": "pages/profile/settings",
+      "style": {
+        "navigationBarTitleText": "设置"
+      }
+    },
+    {
+      "path": "pages/profile/avatar-upload",
+      "style": {
+        "navigationBarTitleText": "更换头像"
+      }
+    },
+    {
+      "path": "pages/profile/personal-info",
+      "style": {
+        "navigationBarTitleText": "个人信息"
+      }
+    },
+    {
+      "path": "pages/profile/change-phone",
+      "style": {
+        "navigationBarTitleText": "修改手机号"
+      }
+    },
+    {
+      "path": "pages/profile/change-password",
+      "style": {
+        "navigationBarTitleText": "修改密码"
+      }
+    },
+    {
+      "path": "pages/profile/order-settings",
+      "style": {
+        "navigationBarTitleText": "接单设置"
+      }
+    },
+    {
+      "path": "pages/profile/health-cert",
+      "style": {
+        "navigationBarTitleText": "健康证管理"
+      }
+    },
+    {
+      "path": "pages/profile/insurance",
+      "style": {
+        "navigationBarTitleText": "保险保障"
+      }
+    },
+    {
+      "path": "pages/profile/appeal",
+      "style": {
+        "navigationBarTitleText": "违规申诉"
+      }
+    },
+    {
+      "path": "pages/profile/rider-home",
+      "style": {
+        "navigationBarTitleText": "骑手之家"
+      }
+    },
+    {
+      "path": "pages/profile/history",
+      "style": {
+        "navigationBarTitleText": "历史订单"
+      }
+    },
+    {
+      "path": "pages/profile/developer",
+      "style": {
+        "navigationBarTitleText": "开发者选项",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/service/index",
+      "style": {
+        "navigationBarTitleText": "客服",
+        "navigationStyle": "custom"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f3f4f6",
+    "navigationBarTitleText": "悦享e食骑手端"
+  },
+  "tabBar": {
+    "color": "#9ca3af",
+    "selectedColor": "#009bf5",
+    "borderStyle": "black",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/hall/index",
+        "text": "大厅",
+        "iconPath": "static/icons/tab-hall.png",
+        "selectedIconPath": "static/icons/tab-hall-active.png"
+      },
+      {
+        "pagePath": "pages/tasks/index",
+        "text": "任务",
+        "iconPath": "static/icons/tab-tasks.png",
+        "selectedIconPath": "static/icons/tab-tasks-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "static/icons/tab-profile.png",
+        "selectedIconPath": "static/icons/tab-profile-active.png"
+      }
+    ]
+  }
+}

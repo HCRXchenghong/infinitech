@@ -1,0 +1,364 @@
+.layout {
+  display: flex;
+  height: 100vh;
+  background: #f5f7fa;
+  color: #1f2d3d;
+  overflow: hidden;
+}
+
+.sider {
+  background: linear-gradient(-45deg, #1a8fe3, #0070c9, #005fa3, #1e3a8a, #0097ff, #00d6ff);
+  background-size: 400% 400%;
+  animation: waveFlow 12s ease-in-out infinite;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 20px 16px;
+  color: #fff;
+  box-shadow: 4px 0 24px rgba(0, 80, 180, 0.3);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 230px;
+  overflow: hidden;
+  z-index: 100;
+  flex-shrink: 0;
+}
+
+.sider::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(ellipse at center, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at center, rgba(0, 214, 255, 0.1) 0%, transparent 60%);
+  animation: wave1 8s ease-in-out infinite;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sider::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 40%, rgba(0, 214, 255, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 80% 60%, rgba(26, 143, 227, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 70% 50% at 50% 80%, rgba(0, 112, 201, 0.12) 0%, transparent 50%);
+  animation: wave2 10s ease-in-out infinite;
+  opacity: 0.8;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 18px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  position: relative;
+  z-index: 1;
+}
+
+.logo-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: contain;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.logo-text {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-right: -4px;
+}
+
+.menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 4px;
+}
+
+.menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.menu-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.menu-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.menu-group-title:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.menu-group-arrow {
+  font-size: 12px;
+  opacity: 0.9;
+  transition: transform 0.2s;
+}
+
+.menu-group-arrow.open {
+  transform: rotate(180deg);
+}
+
+.menu-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 8px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 13px 16px;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.88);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 15px;
+  letter-spacing: 0.3px;
+}
+
+.menu-item-child {
+  font-size: 14px;
+  padding: 11px 14px;
+}
+
+.menu-item:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.menu-item.active {
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-weight: 600;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  margin-left: 230px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.header {
+  height: 60px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.bread {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.content {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.tabs-wrap {
+  padding: 10px 16px 0;
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.tabs-nav :deep(.el-tabs__header) {
+  margin: 0;
+}
+
+.tabs-nav :deep(.el-tabs__item) {
+  border-radius: 8px 8px 0 0;
+}
+
+.sider-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  z-index: 1;
+}
+
+.logout-btn {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+}
+
+.logout-btn:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.main.welcome-mode {
+  background: linear-gradient(-45deg, #1a8fe3, #0070c9, #005fa3, #1e3a8a, #0097ff, #00d6ff);
+  background-size: 400% 400%;
+  animation: waveFlow 12s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.main.welcome-mode::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(ellipse at center, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at center, rgba(0, 214, 255, 0.1) 0%, transparent 60%);
+  animation: wave1 8s ease-in-out infinite;
+  opacity: 0.6;
+}
+
+.main.welcome-mode::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 40%, rgba(0, 214, 255, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 80% 60%, rgba(26, 143, 227, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 70% 50% at 50% 80%, rgba(0, 112, 201, 0.12) 0%, transparent 50%);
+  animation: wave2 10s ease-in-out infinite;
+  opacity: 0.8;
+}
+
+@keyframes waveFlow {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  25% {
+    background-position: 50% 25%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  75% {
+    background-position: 50% 75%;
+  }
+}
+
+@keyframes wave1 {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  25% {
+    transform: translate(5%, -5%) rotate(5deg) scale(1.05);
+  }
+  50% {
+    transform: translate(-3%, 3%) rotate(-3deg) scale(0.95);
+  }
+  75% {
+    transform: translate(3%, -2%) rotate(2deg) scale(1.02);
+  }
+}
+
+@keyframes wave2 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.8;
+  }
+  33% {
+    transform: translate(-20px, 15px) scale(1.08);
+    opacity: 0.6;
+  }
+  66% {
+    transform: translate(15px, -20px) scale(0.92);
+    opacity: 0.9;
+  }
+}
+
+.main.welcome-mode .header {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 1;
+}
+
+.main.welcome-mode .bread {
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+}
+
+.main.welcome-mode .content {
+  background: transparent;
+  position: relative;
+  z-index: 1;
+}
+

@@ -1,0 +1,10 @@
+# 忽略数据库文件
+chat.db
+chat.db-shm
+chat.db-wal
+
+# 依赖
+node_modules/
+
+# 日志
+*.log

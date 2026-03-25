@@ -1,0 +1,168 @@
+.page {
+  height: 100vh;
+  background: #f5f8fc;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: calc(var(--status-bar-height) + 18rpx) 24rpx 14rpx;
+  background: #ffffff;
+  border-bottom: 1rpx solid #e7eef7;
+}
+
+.title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #102d49;
+}
+
+.sub {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #6f879f;
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  padding: 14rpx 24rpx;
+  box-sizing: border-box;
+}
+
+.section {
+  background: #ffffff;
+  border: 1rpx solid #e3ebf6;
+  border-radius: 18rpx;
+  padding: 18rpx;
+  margin-bottom: 14rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #153757;
+}
+
+.form-item {
+  margin-top: 14rpx;
+}
+
+.label {
+  display: block;
+  font-size: 23rpx;
+  color: #5f7894;
+  margin-bottom: 8rpx;
+}
+
+.required::before {
+  content: '*';
+  color: #d03030;
+  margin-right: 4rpx;
+}
+
+.input,
+.picker {
+  height: 72rpx;
+  line-height: 72rpx;
+  border-radius: 12rpx;
+  border: 1rpx solid #dce8f4;
+  background: #f8fbff;
+  padding: 0 16rpx;
+  box-sizing: border-box;
+  font-size: 24rpx;
+  color: #153757;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 132rpx;
+  border-radius: 12rpx;
+  border: 1rpx solid #dce8f4;
+  background: #f8fbff;
+  padding: 12rpx 16rpx;
+  box-sizing: border-box;
+  font-size: 24rpx;
+}
+
+.split-row {
+  margin-top: 14rpx;
+  display: flex;
+  gap: 12rpx;
+}
+
+.half-item {
+  flex: 1;
+}
+
+.upload-row {
+  margin-top: 14rpx;
+  display: flex;
+  gap: 12rpx;
+
+  &.single .upload-item {
+    flex: 1;
+  }
+}
+
+.upload-item {
+  flex: 1;
+  min-height: 172rpx;
+  border-radius: 12rpx;
+  border: 1rpx dashed #cbdced;
+  background: #f8fbff;
+  padding: 10rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.upload-title {
+  font-size: 22rpx;
+  color: #587390;
+  margin-bottom: 8rpx;
+}
+
+.upload-placeholder {
+  font-size: 22rpx;
+  color: #8aa0b5;
+}
+
+.upload-image {
+  width: 100%;
+  height: 108rpx;
+  border-radius: 8rpx;
+}
+
+.switch-row {
+  margin-top: 12rpx;
+  padding: 10rpx 4rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer {
+  background: #ffffff;
+  border-top: 1rpx solid #e3ecf7;
+  padding: 12rpx 24rpx calc(12rpx + env(safe-area-inset-bottom));
+}
+
+.submit-btn {
+  height: 76rpx;
+  line-height: 76rpx;
+  border-radius: 14rpx;
+  border: none;
+  background: linear-gradient(140deg, #009bf5, #0076c3);
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.bottom-space {
+  height: 12rpx;
+}

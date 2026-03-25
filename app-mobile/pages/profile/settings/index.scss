@@ -1,0 +1,174 @@
+.settings-page {
+  min-height: 100vh;
+  background: #f5f7fa;
+  display: flex;
+  flex-direction: column;
+}
+
+// 顶部导航栏
+.page-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: 89px;
+  padding-top: 45px;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  box-sizing: border-box;
+  border-bottom: 1px solid #f2f3f5;
+}
+
+.nav-left,
+.nav-right {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-icon {
+  width: 22px;
+  height: 22px;
+  opacity: 0.85;
+}
+
+.nav-title {
+  flex: 1;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.scroll-content {
+  position: fixed;
+  top: 89px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+// 分组标题
+.section {
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-size: 13px;
+  color: #9ca3af;
+  padding: 0 4px 8px;
+  font-weight: 500;
+}
+
+// 卡片
+.card {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+// 行
+.row {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #f3f4f6;
+  min-height: 52px;
+  box-sizing: border-box;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &.arrow:active {
+    background: #f9fafb;
+  }
+
+  &.between {
+    justify-content: space-between;
+  }
+}
+
+.row-left {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.row-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.row-label {
+  font-size: 15px;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.row-right {
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+.row-value {
+  font-size: 14px;
+  color: #9ca3af;
+  margin-right: 8px;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arrow-icon {
+  font-size: 18px;
+  color: #c7c7cc;
+}
+
+// 退出登录
+.logout-section {
+  padding: 12px 0 24px;
+}
+
+.logout-btn {
+  width: 100%;
+  height: 50px;
+  background: #fff;
+  border: 1.5px solid #fecaca;
+  border-radius: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(239, 68, 68, 0.1);
+
+  &::after {
+    border: none;
+  }
+
+  &:active {
+    background: #fef2f2;
+    transform: scale(0.98);
+  }
+}
+
+.bottom-placeholder {
+  height: 20px;
+}

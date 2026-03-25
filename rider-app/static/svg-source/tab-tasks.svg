@@ -1,0 +1,8 @@
+<svg width="81" height="81" viewBox="0 0 81 81" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 任务图标 - 剪贴板 -->
+  <rect x="24" y="16" width="33" height="49" rx="4" stroke="#9ca3af" stroke-width="3" fill="none"/>
+  <rect x="32" y="12" width="17" height="8" rx="2" fill="#9ca3af"/>
+  <path d="M 32 30 L 49 30" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 32 40 L 49 40" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 32 50 L 44 50" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
+</svg>

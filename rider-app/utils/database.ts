@@ -1,0 +1,108 @@
+// SQLite 数据库管理
+const DB_NAME = 'rider_messages.db';
+const DB_PATH = '_doc/rider_messages.db';
+
+class Database {
+  open(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // @ts-ignore
+      plus.sqlite.openDatabase({
+        name: DB_NAME,
+        path: DB_PATH,
+        success: () => {
+          this.initTables().then(resolve).catch(reject);
+        },
+        fail: (err: any) => {
+          // 已打开时视为成功，避免重复 open 报错打断流程
+          if (err && (err.code === -1402 || String(err.message || '').includes('Same Name Already Open'))) {
+            this.initTables().then(resolve).catch(reject);
+            return;
+          }
+          console.error('数据库打开失败:', err);
+          reject(err);
+        }
+      });
+    });
+  }
+
+  initTables(): Promise<void> {
+    return this.executeSql(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY,
+        chatId TEXT,
+        sender TEXT,
+        senderId TEXT,
+        content TEXT,
+        messageType TEXT,
+        timestamp INTEGER,
+        isSelf INTEGER DEFAULT 0,
+        avatar TEXT
+      )
+    `).then(() => {
+      return this.executeSql('ALTER TABLE messages ADD COLUMN avatar TEXT').catch(() => {});
+    });
+  }
+
+  executeSql(sql: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // @ts-ignore
+      plus.sqlite.executeSql({
+        name: DB_NAME,
+        // @ts-ignore
+        sql: sql,
+        success: () => resolve(),
+        fail: (err: any) => reject(err)
+      });
+    });
+  }
+
+  selectSql(sql: string): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      // @ts-ignore
+      plus.sqlite.selectSql({
+        name: DB_NAME,
+        // @ts-ignore
+        sql: sql,
+        success: (res: any) => resolve(res),
+        fail: (err: any) => reject(err)
+      });
+    });
+  }
+
+  escapeSqlText(value: any): string {
+    return String(value || '').replace(/'/g, "''")
+  }
+
+  saveMessage(chatId: string | number, message: any) {
+    const chatIdText = this.escapeSqlText(chatId)
+    const avatar = this.escapeSqlText(message.avatar)
+    const sender = this.escapeSqlText(message.sender)
+    const senderId = this.escapeSqlText(message.senderId)
+    const content = this.escapeSqlText(message.content)
+    const messageId = this.escapeSqlText(message.id)
+    const messageType = this.escapeSqlText(message.messageType || 'text')
+    const timestamp = Number(message.timestamp || Date.now())
+    const isSelf = Number(message.isSelf || 0)
+    // @ts-ignore
+    plus.sqlite.executeSql({
+      name: DB_NAME,
+      // @ts-ignore
+      sql: `INSERT OR REPLACE INTO messages (id, chatId, sender, senderId, content, messageType, timestamp, isSelf, avatar) VALUES ('${messageId}', '${chatIdText}', '${sender}', '${senderId}', '${content}', '${messageType}', ${timestamp}, ${isSelf}, '${avatar}')`,
+      success: () => {},
+      fail: (err: any) => console.error('❌ 保存失败:', err)
+    });
+  }
+
+  getMessages(chatId: string | number): Promise<any[]> {
+    const chatIdText = this.escapeSqlText(chatId)
+    // @ts-ignore
+    return this.selectSql(`SELECT * FROM messages WHERE chatId = '${chatIdText}' ORDER BY timestamp ASC`);
+  }
+
+  deleteMessagesByChatId(chatId: string | number): Promise<void> {
+    const chatIdText = this.escapeSqlText(chatId)
+    return this.executeSql(`DELETE FROM messages WHERE chatId = '${chatIdText}'`)
+  }
+}
+
+export const db = new Database();

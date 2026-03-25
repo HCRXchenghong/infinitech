@@ -1,0 +1,112 @@
+/* 全局样式 - 隐藏滚动条 */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+}
+
+html.public-no-scroll,
+body.public-no-scroll {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+#app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+  overflow-x: hidden;
+}
+
+body.public-no-scroll #app {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* 全局卡片升级 */
+.el-card {
+  border-radius: 14px !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06) !important;
+  transition: box-shadow 0.2s ease !important;
+}
+
+.el-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.el-card__body {
+  padding: 20px 22px !important;
+}
+
+/* 全局按钮升级 */
+.el-button {
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+}
+
+.el-button--primary {
+  --el-button-bg-color: #0070c9 !important;
+  --el-button-border-color: #0070c9 !important;
+  --el-button-hover-bg-color: #0284c7 !important;
+  --el-button-hover-border-color: #0284c7 !important;
+  --el-button-active-bg-color: #005fa3 !important;
+  --el-button-active-border-color: #005fa3 !important;
+}
+
+/* 全局输入框升级 */
+.el-input__wrapper {
+  border-radius: 8px !important;
+}
+
+.el-textarea__inner {
+  border-radius: 8px !important;
+}
+
+/* 全局表格升级 */
+.el-table {
+  border-radius: 10px !important;
+  overflow: hidden !important;
+}
+
+.el-table th.el-table__cell {
+  background: #f8fafc !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+}
+
+/* 全局对话框升级 */
+.el-dialog {
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15) !important;
+}
+
+.el-dialog__header {
+  padding: 20px 24px 16px !important;
+  border-bottom: 1px solid #f0f0f0 !important;
+}
+
+.el-dialog__body {
+  padding: 20px 24px !important;
+}
+
+.el-dialog__footer {
+  padding: 16px 24px 20px !important;
+  border-top: 1px solid #f0f0f0 !important;
+}
+
+/* 全局标签升级 */
+.el-tag {
+  border-radius: 6px !important;
+}

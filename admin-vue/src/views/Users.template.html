@@ -1,0 +1,270 @@
+<template>
+  <div class="page">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>用户管理</span>
+        </div>
+        <ResponsiveActions :is-mobile="isMobile">
+          <!-- PC端布局 -->
+          <template #desktop>
+            <el-input
+              v-model="searchKeyword"
+              placeholder="搜索姓名/手机号"
+              size="small"
+              style="width: 200px; margin-right: 8px;"
+              clearable
+              @keyup.enter="handleSearch"
+            />
+            <el-button size="small" @click="handleSearch">搜索</el-button>
+            <el-button size="small" @click="loadUsers(true)" :loading="loading">刷新</el-button>
+            <el-button type="warning" size="small" @click="handleReorganizeIds" :loading="reorganizing">ID重组</el-button>
+            <el-button type="primary" size="small" @click="showAddDialog">新增用户</el-button>
+            <el-button type="success" size="small" @click="openInviteDialog">老用户邀请</el-button>
+            <el-button type="danger" size="small" @click="handleClearAllUsers" :loading="clearing">清空用户</el-button>
+          </template>
+          
+          <!-- 移动端布局 -->
+          <template #mobile>
+            <div class="mobile-search-row">
+              <el-input
+                v-model="searchKeyword"
+                placeholder="搜索姓名/手机号"
+                size="small"
+                clearable
+                @keyup.enter="handleSearch"
+              >
+                <template #prefix>
+                  <el-icon><Search /></el-icon>
+                </template>
+              </el-input>
+              <el-button size="small" type="primary" @click="handleSearch" :icon="Search">搜索</el-button>
+            </div>
+            <div class="mobile-filter-row">
+              <el-button size="small" @click="loadUsers(true)" :loading="loading" :icon="Refresh">刷新</el-button>
+              <el-dropdown trigger="click" @command="handleMobileAction">
+                <el-button size="small" :icon="More">
+                  更多
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="reorganize">
+                      <el-icon><Sort /></el-icon>
+                      <span>ID重组</span>
+                    </el-dropdown-item>
+                    <el-dropdown-item command="add" divided>
+                      <el-icon><Plus /></el-icon>
+                      <span>新增用户</span>
+                    </el-dropdown-item>
+                    <el-dropdown-item command="invite">
+                      <el-icon><Plus /></el-icon>
+                      <span>老用户邀请</span>
+                    </el-dropdown-item>
+                    <el-dropdown-item command="clear">
+                      <el-icon><Delete /></el-icon>
+                      <span>清空用户</span>
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
+          </template>
+        </ResponsiveActions>
+      </div>
+      <PageStateAlert :message="loadError" />
+      <!-- PC端表格 -->
+      <el-table v-if="!isMobile" :data="users" stripe size="small" v-loading="loading">
+        <el-table-column label="ID" width="150">
+          <template #default="{ row }">
+            {{ formatRoleId(row.role_id !== undefined && row.role_id !== null ? row.role_id : row.id, 'user') }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="name" label="姓名" />
+        <el-table-column prop="phone" label="手机号" />
+        <el-table-column prop="created_at" label="注册时间" />
+        <el-table-column label="VIP等级" width="120" align="center">
+          <template #default="{ row }">
+            <el-tag :type="vipTagType(row.vip_level)" size="small" effect="plain">
+              {{ row.vip_level || '普通用户' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="300" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              type="primary"
+              text
+              size="small"
+              @click="openDetail(row)"
+            >
+              查看
+            </el-button>
+            <el-button
+              type="primary"
+              link
+              size="small"
+              @click="handleResetPassword(row)"
+              :loading="resettingPassword === row.id"
+            >
+              重置密码
+            </el-button>
+            <el-button
+              type="warning"
+              link
+              size="small"
+              @click="handleDeleteUserOrders(row)"
+              :loading="deletingOrders === row.id"
+            >
+              清除订单
+            </el-button>
+            <el-button
+              type="danger"
+              link
+              size="small"
+              @click="handleDeleteUser(row)"
+              :loading="deletingUser === row.id"
+            >
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
+        <template #empty>
+          <el-empty :description="loadError ? '加载失败，暂无可显示数据' : '暂无用户数据'" :image-size="90" />
+        </template>
+      </el-table>
+
+      <!-- 移动端卡片列表 -->
+      <div v-else class="mobile-users-list" v-loading="loading">
+        <div
+          v-for="user in users"
+          :key="user.id"
+          class="mobile-user-card"
+          @click="openDetail(user)"
+        >
+          <div class="mobile-user-header">
+            <div class="mobile-user-id">ID: {{ user.role_id !== undefined && user.role_id !== null ? user.role_id : user.id }}</div>
+            <div class="mobile-user-name">{{ user.name || '-' }}</div>
+          </div>
+          
+          <div class="mobile-user-info">
+            <div class="info-item">
+              <span class="info-label">📱 手机：</span>
+              <span class="info-value">{{ user.phone || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">📅 注册：</span>
+              <span class="info-value">{{ formatTime(user.created_at) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">👑 VIP：</span>
+              <span class="info-value">{{ user.vip_level || '普通用户' }}</span>
+            </div>
+          </div>
+
+          <div class="mobile-user-stats">
+            <div class="stat-item">
+              <span class="stat-label">今日订单</span>
+              <span class="stat-value today">{{ user.order_count_today || 0 }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">本周订单</span>
+              <span class="stat-value week">{{ user.order_count_week || 0 }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">本月订单</span>
+              <span class="stat-value month">{{ user.order_count_month || 0 }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-if="users.length === 0 && !loading" class="mobile-empty-state">
+          <div class="empty-icon">👥</div>
+          <div class="empty-text">暂无用户</div>
+        </div>
+      </div>
+
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="isMobile ? [5, 10, 15] : [15, 30, 50, 100]"
+          :total="total"
+          :layout="isMobile ? 'total, prev, pager, next' : 'total, sizes, prev, pager, next, jumper'"
+          @size-change="handleSizeChange"
+          @current-change="handlePageChange"
+        />
+      </div>
+    </div>
+
+    <!-- 用户详情对话框 -->
+    <el-dialog v-model="detailVisible" title="用户详情" width="600px" :close-on-click-modal="false">
+      <div class="detail-container">
+        <!-- 基本信息 -->
+        <el-descriptions title="基本信息" :column="2" size="small" border>
+          <el-descriptions-item label="用户ID">{{ detail.id || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="角色ID">{{ detail.role_id || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="姓名">{{ detail.name || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="手机号">{{ detail.phone || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="VIP等级">{{ detail.vip_level || '普通用户' }}</el-descriptions-item>
+          <el-descriptions-item label="积分余额">{{ detail.points_balance ?? 0 }}</el-descriptions-item>
+          <el-descriptions-item label="注册时间" :span="2">{{ detail.created_at || '-' }}</el-descriptions-item>
+        </el-descriptions>
+        <el-descriptions title="订单统计" :column="2" size="small" border style="margin-top: 16px;">
+          <el-descriptions-item label="今日订单">
+            <span style="font-weight: 600; color: #409eff;">{{ detail.order_count_today || 0 }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="本周订单">
+            <span style="font-weight: 600; color: #67c23a;">{{ detail.order_count_week || 0 }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="本月订单" :span="2">
+            <span style="font-weight: 600; color: #e6a23c;">{{ detail.order_count_month || 0 }}</span>
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 新增用户对话框 -->
+    <el-dialog v-model="addDialogVisible" title="新增用户" width="500px" :close-on-click-modal="false">
+      <el-form :model="newUser" label-width="100px">
+        <el-form-item label="手机号" required>
+          <el-input v-model="newUser.phone" placeholder="请输入手机号" />
+        </el-form-item>
+        <el-form-item label="姓名" required>
+          <el-input v-model="newUser.name" placeholder="请输入姓名" />
+        </el-form-item>
+        <el-form-item label="密码" required>
+          <el-input v-model="newUser.password" type="password" placeholder="至少6位密码" show-password />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="addDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleAddUser" :loading="addingUser">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="inviteDialogVisible" title="老用户邀请链接" width="620px" :close-on-click-modal="false">
+      <el-form :model="inviteForm" label-width="110px">
+        <el-form-item label="有效期(小时)">
+          <el-input-number v-model="inviteForm.expires_hours" :min="1" :max="720" />
+        </el-form-item>
+        <el-form-item label="可用次数">
+          <el-input-number v-model="inviteForm.max_uses" :min="1" :max="1000" />
+        </el-form-item>
+        <el-form-item label="邀请链接" v-if="inviteResult.invite_url">
+          <el-input v-model="inviteResult.invite_url" readonly />
+        </el-form-item>
+        <el-form-item label="状态" v-if="inviteResult.invite_url">
+          <span class="invite-meta">总次数：{{ inviteResult.max_uses || 1 }}，剩余：{{ getInviteRemainingUses() }}，过期时间：{{ formatInviteDateTime(inviteResult.expires_at) }}</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="inviteDialogVisible = false">关闭</el-button>
+        <el-button v-if="inviteResult.invite_url" @click="copyInviteUrl">复制链接</el-button>
+        <el-button type="primary" :loading="creatingInvite" @click="createInviteLink">生成链接</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+

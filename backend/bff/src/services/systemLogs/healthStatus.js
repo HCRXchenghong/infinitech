@@ -1,0 +1,190 @@
+const net = require("net");
+const axios = require("axios");
+const config = require("../../config");
+const {
+  HEALTH_CHECK_TIMEOUT_MS,
+} = require("./constants");
+const { toPositiveInt } = require("./helpers");
+
+function normalizeUrl(raw) {
+  const value = String(raw || "").trim();
+  if (!value) {
+    return "";
+  }
+  return value.replace(/\/+$/, "");
+}
+
+function parseUrlHostPort(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    const isHttps = url.protocol === "https:";
+    return {
+      host: url.hostname,
+      port: Number.parseInt(url.port || (isHttps ? "443" : "80"), 10)
+    };
+  } catch (error) {
+    return { host: "", port: 0 };
+  }
+}
+
+function probeTcp(host, port, timeoutMs) {
+  return new Promise((resolve) => {
+    if (!host || !Number.isFinite(port) || port <= 0) {
+      resolve({
+        ok: false,
+        latencyMs: null,
+        error: "invalid_host_or_port"
+      });
+      return;
+    }
+
+    const startMs = Date.now();
+    const socket = net.createConnection({ host, port });
+    let done = false;
+
+    const finish = (payload) => {
+      if (done) {
+        return;
+      }
+      done = true;
+      socket.destroy();
+      resolve(payload);
+    };
+
+    socket.setTimeout(timeoutMs);
+    socket.once("connect", () => {
+      finish({
+        ok: true,
+        latencyMs: Date.now() - startMs,
+        error: ""
+      });
+    });
+    socket.once("timeout", () => {
+      finish({
+        ok: false,
+        latencyMs: Date.now() - startMs,
+        error: `timeout_${timeoutMs}ms`
+      });
+    });
+    socket.once("error", (error) => {
+      finish({
+        ok: false,
+        latencyMs: Date.now() - startMs,
+        error: error && error.code ? String(error.code) : String(error && error.message ? error.message : "tcp_error")
+      });
+    });
+  });
+}
+
+async function probeHttp(url, timeoutMs) {
+  if (!url) {
+    return {
+      ok: false,
+      latencyMs: null,
+      httpStatus: null,
+      error: "empty_url"
+    };
+  }
+
+  const startMs = Date.now();
+  try {
+    const response = await axios.get(url, {
+      timeout: timeoutMs,
+      validateStatus: () => true
+    });
+    return {
+      ok: response.status >= 200 && response.status < 300,
+      latencyMs: Date.now() - startMs,
+      httpStatus: response.status,
+      error: ""
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      latencyMs: Date.now() - startMs,
+      httpStatus: null,
+      error: error && error.code ? String(error.code) : String(error && error.message ? error.message : "http_error")
+    };
+  }
+}
+
+async function collectServiceStatus() {
+  const timeoutMs = toPositiveInt(process.env.SYSTEM_LOG_HEALTH_TIMEOUT_MS, HEALTH_CHECK_TIMEOUT_MS);
+  const bffPort = toPositiveInt(config.port, 25500);
+  const bffHealthUrl = `http://127.0.0.1:${bffPort}/health`;
+  const goBaseUrl = normalizeUrl(config.goApiUrl);
+  const goHealthUrl = goBaseUrl ? `${goBaseUrl}/health` : "";
+  const goAddress = parseUrlHostPort(goBaseUrl);
+
+  const redisHost = String(config.redis?.host || "").trim();
+  const redisPort = toPositiveInt(config.redis?.port, 2550);
+
+  const [bffCheck, goCheck, redisCheck] = await Promise.all([
+    probeHttp(bffHealthUrl, timeoutMs),
+    probeHttp(goHealthUrl, timeoutMs),
+    probeTcp(redisHost, redisPort, timeoutMs)
+  ]);
+
+  const services = [
+    {
+      key: "bff",
+      label: "BFF",
+      type: "http",
+      target: bffHealthUrl,
+      host: "127.0.0.1",
+      port: bffPort,
+      status: bffCheck.ok ? "up" : "down",
+      healthy: bffCheck.ok,
+      latencyMs: bffCheck.latencyMs,
+      httpStatus: bffCheck.httpStatus,
+      error: bffCheck.error
+    },
+    {
+      key: "go",
+      label: "Go API",
+      type: "http",
+      target: goHealthUrl || "-",
+      host: goAddress.host,
+      port: goAddress.port,
+      status: goCheck.ok ? "up" : "down",
+      healthy: goCheck.ok,
+      latencyMs: goCheck.latencyMs,
+      httpStatus: goCheck.httpStatus,
+      error: goCheck.error
+    },
+    {
+      key: "redis",
+      label: "Redis",
+      type: "tcp",
+      target: redisHost ? `${redisHost}:${redisPort}` : "-",
+      host: redisHost,
+      port: redisPort,
+      status: redisCheck.ok ? "up" : "down",
+      healthy: redisCheck.ok,
+      latencyMs: redisCheck.latencyMs,
+      httpStatus: null,
+      error: redisCheck.error
+    }
+  ];
+
+  const bffUp = services[0].healthy;
+  const goUp = services[1].healthy;
+  const redisUp = services[2].healthy;
+
+  let overall = "ok";
+  if (!bffUp || !goUp) {
+    overall = "down";
+  } else if (!redisUp) {
+    overall = "degraded";
+  }
+
+  return {
+    checkedAt: new Date().toISOString(),
+    overall,
+    services
+  };
+}
+
+module.exports = {
+  collectServiceStatus,
+};

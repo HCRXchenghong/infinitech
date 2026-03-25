@@ -1,0 +1,76 @@
+// 公共样式
+* {
+  box-sizing: border-box;
+}
+
+page {
+  background-color: #f3f4f6;
+}
+
+// 工具类
+.text-primary {
+  color: #009bf5;
+}
+
+.bg-primary {
+  background-color: #009bf5;
+}
+
+.text-gray {
+  color: #6b7280;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.rounded {
+  border-radius: 8rpx;
+}
+
+.rounded-lg {
+  border-radius: 16rpx;
+}
+
+.rounded-xl {
+  border-radius: 24rpx;
+}
+
+.shadow-sm {
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+.shadow-md {
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+}
+
+// 动画
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}

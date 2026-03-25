@@ -1,0 +1,703 @@
+<template>
+  <div class="api-documentation-page">
+    <!-- 顶部工具栏 -->
+    <div class="doc-header">
+      <div class="header-content">
+        <div class="header-left">
+          <h1 class="doc-title">
+            <el-icon><Document /></el-icon>
+            API 开发文档
+          </h1>
+          <p class="doc-subtitle">悦享e食平台 - 完整API接口文档</p>
+        </div>
+        <div class="header-actions">
+          <el-button type="primary" @click="downloadFullDocumentation" :loading="downloading">
+            <el-icon><Download /></el-icon>
+            下载完整文档
+          </el-button>
+          <el-button @click="refreshDocumentation">
+            <el-icon><Refresh /></el-icon>
+            刷新
+          </el-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 文档内容区域 -->
+    <div class="doc-container">
+      <!-- 主内容区 -->
+      <div class="doc-main">
+        <div class="markdown-body" ref="markdownContainer">
+          <!-- 简介 -->
+          <section id="introduction" class="doc-section">
+            <h1>简介</h1>
+            <p>欢迎使用悦享e食平台API开发文档。本文档提供了完整的API接口说明，帮助开发者快速集成平台数据。</p>
+            <div class="info-box">
+              <el-icon><InfoFilled /></el-icon>
+              <div>
+                <strong>重要提示</strong>
+                <p>所有API接口都需要通过API Key进行认证。请在管理后台创建API Key并配置相应的访问权限。</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- 快速开始 -->
+          <section id="quick-start" class="doc-section">
+            <h1>快速开始</h1>
+            <h2>1. 获取API Key</h2>
+            <p>在管理后台的"系统设置" → "对外API接口管理"中创建API Key，并配置相应的访问权限。</p>
+            
+            <h2>2. 基础请求示例</h2>
+            <div class="code-block">
+              <div class="code-header">
+                <span>bash</span>
+                <el-button text @click="copyCode('quick-start-curl')">
+                  <el-icon><DocumentCopy /></el-icon>
+                  复制
+                </el-button>
+              </div>
+              <pre><code id="quick-start-curl">curl -X POST "/api/v1/query" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key_here" \
+  -d '{
+    "resource": "orders",
+    "action": "list",
+    "params": {
+      "page": 1,
+      "limit": 20
+    }
+  }'</code></pre>
+            </div>
+
+            <h2>3. 响应格式</h2>
+            <div class="code-block">
+              <div class="code-header">
+                <span>json</span>
+                <el-button text @click="copyCode('response-format')">
+                  <el-icon><DocumentCopy /></el-icon>
+                  复制
+                </el-button>
+              </div>
+              <pre><code id="response-format">{
+  "success": true,
+  "data": {
+    "items": [...],
+    "total": 100,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 5
+  },
+  "resource": "orders",
+  "action": "list"
+}</code></pre>
+            </div>
+          </section>
+
+          <!-- 统一查询接口 -->
+          <section id="unified-query" class="doc-section">
+            <h1>统一查询接口</h1>
+            <p>统一的API查询端点，支持多种资源类型的查询操作。</p>
+            
+            <div class="endpoint-card">
+              <div class="endpoint-method post">POST</div>
+              <div class="endpoint-path">/api/v1/query</div>
+            </div>
+            <div class="info-box" style="margin-top: 12px;">
+              <el-icon><InfoFilled /></el-icon>
+              <div>
+                <strong>接口地址说明</strong>
+                <p>使用相对路径 <code>/api/v1/query</code>，无论部署到哪个域名（如 <code>https://your-domain.com</code> 或 <code>https://your-domain.com</code>），都可以直接使用相对路径访问，系统会自动使用当前部署的域名。</p>
+                <p style="margin-top: 8px;">当前部署地址示例：<code>{{ apiBaseUrl }}/api/v1/query</code></p>
+              </div>
+            </div>
+
+            <h2>认证方式</h2>
+            <h3>方式一：请求头（推荐）</h3>
+            <div class="code-block">
+              <div class="code-header">
+                <span>http</span>
+                <el-button text @click="copyCode('auth-header')">
+                  <el-icon><DocumentCopy /></el-icon>
+                  复制
+                </el-button>
+              </div>
+              <pre><code id="auth-header">X-API-Key: your_api_key_here</code></pre>
+            </div>
+
+            <h3>方式二：请求参数</h3>
+            <div class="code-block">
+              <div class="code-header">
+                <span>json</span>
+                <el-button text @click="copyCode('auth-body')">
+                  <el-icon><DocumentCopy /></el-icon>
+                  复制
+                </el-button>
+              </div>
+              <pre><code id="auth-body">{
+  "api_key": "your_api_key_here",
+  "resource": "orders",
+  "action": "list",
+  "params": {}
+}</code></pre>
+            </div>
+
+            <h2>请求参数</h2>
+            <table class="params-table">
+              <thead>
+                <tr>
+                  <th>参数名</th>
+                  <th>类型</th>
+                  <th>必填</th>
+                  <th>说明</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>resource</code></td>
+                  <td>string</td>
+                  <td>是</td>
+                  <td>资源类型：<code>orders</code>、<code>users</code>、<code>riders</code>、<code>merchants</code>、<code>products</code>、<code>categories</code></td>
+                </tr>
+                <tr>
+                  <td><code>action</code></td>
+                  <td>string</td>
+                  <td>否</td>
+                  <td>操作类型：<code>list</code>（列表，默认）、<code>get</code>（单个）</td>
+                </tr>
+                <tr>
+                  <td><code>params</code></td>
+                  <td>object</td>
+                  <td>否</td>
+                  <td>查询参数，见下方说明</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h3>列表查询参数（action: list）</h3>
+            <table class="params-table">
+              <thead>
+                <tr>
+                  <th>参数名</th>
+                  <th>类型</th>
+                  <th>必填</th>
+                  <th>说明</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>page</code></td>
+                  <td>number</td>
+                  <td>否</td>
+                  <td>页码，默认1</td>
+                </tr>
+                <tr>
+                  <td><code>limit</code></td>
+                  <td>number</td>
+                  <td>否</td>
+                  <td>每页数量，默认20，最多100</td>
+                </tr>
+                <tr>
+                  <td><code>search</code></td>
+                  <td>string</td>
+                  <td>否</td>
+                  <td>搜索关键词</td>
+                </tr>
+                <tr>
+                  <td><code>status</code></td>
+                  <td>string</td>
+                  <td>否</td>
+                  <td>状态筛选（仅订单）</td>
+                </tr>
+                <tr>
+                  <td><code>type</code></td>
+                  <td>string</td>
+                  <td>否</td>
+                  <td>类型筛选（仅用户）</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h3>单个查询参数（action: get）</h3>
+            <table class="params-table">
+              <thead>
+                <tr>
+                  <th>参数名</th>
+                  <th>类型</th>
+                  <th>必填</th>
+                  <th>说明</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>id</code></td>
+                  <td>number</td>
+                  <td>是</td>
+                  <td>资源ID</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h2>资源类型说明</h2>
+            <div class="resource-grid">
+              <div class="resource-card" v-for="resource in resourceTypes" :key="resource.name">
+                <div class="resource-header">
+                  <el-icon><component :is="iconMap[resource.icon]" /></el-icon>
+                  <strong>{{ resource.name }}</strong>
+                </div>
+                <p>{{ resource.description }}</p>
+                <div class="resource-permissions">
+                  <el-tag size="small" v-for="perm in resource.permissions" :key="perm">{{ perm }}</el-tag>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 公开API端点 -->
+          <section id="public-apis" class="doc-section">
+            <h1>公开API端点</h1>
+            <p>除了统一查询接口外，平台还提供了专门的公开API端点，用于获取特定类型的数据。</p>
+
+            <!-- 仪表盘API -->
+            <div class="api-group">
+              <h2>仪表盘数据</h2>
+              <div class="api-endpoint">
+                <div class="endpoint-card">
+                  <div class="endpoint-method get">GET</div>
+                  <div class="endpoint-path">/api/public/dashboard/stats</div>
+                </div>
+                <p>获取平台统计数据，包括今日订单、今日收入、本月收入等。</p>
+                <div class="code-block">
+                  <div class="code-header">
+                    <span>bash</span>
+                    <el-button text @click="copyCode('dashboard-stats')">
+                      <el-icon><DocumentCopy /></el-icon>
+                      复制
+                    </el-button>
+                  </div>
+                  <pre><code id="dashboard-stats">curl -X GET "/api/public/dashboard/stats" \
+  -H "X-API-Key: your_api_key_here"</code></pre>
+                </div>
+                <p class="permission-required">需要权限：<el-tag size="small">dashboard</el-tag></p>
+              </div>
+
+              <div class="api-endpoint">
+                <div class="endpoint-card">
+                  <div class="endpoint-method get">GET</div>
+                  <div class="endpoint-path">/api/public/dashboard/user-ranks</div>
+                </div>
+                <p>获取用户下单排名（周/月）。</p>
+                <table class="params-table">
+                  <thead>
+                    <tr>
+                      <th>参数名</th>
+                      <th>类型</th>
+                      <th>必填</th>
+                      <th>说明</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><code>period</code></td>
+                      <td>string</td>
+                      <td>否</td>
+                      <td>时间周期：<code>week</code>（周）、<code>month</code>（月），默认week</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p class="permission-required">需要权限：<el-tag size="small">dashboard</el-tag></p>
+              </div>
+
+              <div class="api-endpoint">
+                <div class="endpoint-card">
+                  <div class="endpoint-method get">GET</div>
+                  <div class="endpoint-path">/api/public/dashboard/rider-ranks</div>
+                </div>
+                <p>获取骑手排名（日/周/月）。</p>
+                <table class="params-table">
+                  <thead>
+                    <tr>
+                      <th>参数名</th>
+                      <th>类型</th>
+                      <th>必填</th>
+                      <th>说明</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><code>period</code></td>
+                      <td>string</td>
+                      <td>否</td>
+                      <td>时间周期：<code>day</code>（日）、<code>week</code>（周）、<code>month</code>（月），默认week</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p class="permission-required">需要权限：<el-tag size="small">dashboard</el-tag></p>
+              </div>
+            </div>
+
+            <!-- 订单API -->
+            <div class="api-group">
+              <h2>订单数据</h2>
+              <div class="api-endpoint">
+                <div class="endpoint-card">
+                  <div class="endpoint-method get">GET</div>
+                  <div class="endpoint-path">/api/public/orders</div>
+                </div>
+                <p>获取订单列表，支持分页、搜索和状态筛选。</p>
+                <table class="params-table">
+                  <thead>
+                    <tr>
+                      <th>参数名</th>
+                      <th>类型</th>
+                      <th>必填</th>
+                      <th>说明</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><code>page</code></td>
+                      <td>number</td>
+                      <td>否</td>
+                      <td>页码，默认1</td>
+                    </tr>
+                    <tr>
+                      <td><code>limit</code></td>
+                      <td>number</td>
+                      <td>否</td>
+                      <td>每页数量，默认15</td>
+                    </tr>
+                    <tr>
+                      <td><code>search</code></td>
+                      <td>string</td>
+                      <td>否</td>
+                      <td>搜索关键词（订单号、客户姓名、骑手姓名）</td>
+                    </tr>
+                    <tr>
+                      <td><code>status</code></td>
+                      <td>string</td>
+                      <td>否</td>
+                      <td>订单状态：<code>pending</code>、<code>confirmed</code>、<code>preparing</code>、<code>ready</code>、<code>delivering</code>、<code>completed</code>、<code>cancelled</code></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p class="permission-required">需要权限：<el-tag size="small">orders</el-tag></p>
+              </div>
+
+              <div class="api-endpoint">
+                <div class="endpoint-card">
+                  <div class="endpoint-method get">GET</div>
+                  <div class="endpoint-path">/api/public/orders/:id</div>
+                </div>
+                <p>获取单个订单详情。</p>
+                <p class="permission-required">需要权限：<el-tag size="small">orders</el-tag></p>
+              </div>
+
+              <div class="api-endpoint">
+                <div class="endpoint-card">
+                  <div class="endpoint-method get">GET</div>
+                  <div class="endpoint-path">/api/public/orders/stats</div>
+                </div>
+                <p>获取订单统计数据。</p>
+                <p class="permission-required">需要权限：<el-tag size="small">orders</el-tag></p>
+              </div>
+            </div>
+
+            <!-- 用户API -->
+            <div class="api-group">
+              <h2>用户数据</h2>
+              <div class="api-endpoint">
+                <div class="endpoint-card">
+                  <div class="endpoint-method get">GET</div>
+                  <div class="endpoint-path">/api/public/users</div>
+                </div>
+                <p>获取用户列表，支持分页和搜索。</p>
+                <p class="permission-required">需要权限：<el-tag size="small">users</el-tag></p>
+              </div>
+
+              <div class="api-endpoint">
+                <div class="endpoint-card">
+                  <div class="endpoint-method get">GET</div>
+                  <div class="endpoint-path">/api/public/users/:id</div>
+                </div>
+                <p>获取单个用户详情。</p>
+                <p class="permission-required">需要权限：<el-tag size="small">users</el-tag></p>
+              </div>
+
+              <div class="api-endpoint">
+                <div class="endpoint-card">
+                  <div class="endpoint-method get">GET</div>
+                  <div class="endpoint-path">/api/public/users/stats</div>
+                </div>
+                <p>获取用户统计数据。</p>
+                <p class="permission-required">需要权限：<el-tag size="small">users</el-tag></p>
+              </div>
+            </div>
+
+            <!-- 骑手API -->
+            <div class="api-group">
+              <h2>骑手数据</h2>
+              <div class="api-endpoint">
+                <div class="endpoint-card">
+                  <div class="endpoint-method get">GET</div>
+                  <div class="endpoint-path">/api/public/riders</div>
+                </div>
+                <p>获取骑手列表，支持分页和搜索。</p>
+                <p class="permission-required">需要权限：<el-tag size="small">riders</el-tag></p>
+              </div>
+
+              <div class="api-endpoint">
+                <div class="endpoint-card">
+                  <div class="endpoint-method get">GET</div>
+                  <div class="endpoint-path">/api/public/riders/:id</div>
+                </div>
+                <p>获取单个骑手详情。</p>
+                <p class="permission-required">需要权限：<el-tag size="small">riders</el-tag></p>
+              </div>
+
+              <div class="api-endpoint">
+                <div class="endpoint-card">
+                  <div class="endpoint-method get">GET</div>
+                  <div class="endpoint-path">/api/public/riders/stats</div>
+                </div>
+                <p>获取骑手统计数据。</p>
+                <p class="permission-required">需要权限：<el-tag size="small">riders</el-tag></p>
+              </div>
+            </div>
+          </section>
+
+          <!-- 权限说明 -->
+          <section id="permissions" class="doc-section">
+            <h1>权限说明</h1>
+            <p>每个API Key可以配置不同的访问权限，用于控制可以访问哪些类型的数据。</p>
+            
+            <table class="params-table">
+              <thead>
+                <tr>
+                  <th>权限标识</th>
+                  <th>说明</th>
+                  <th>可访问的资源</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>orders</code></td>
+                  <td>订单数据访问权限</td>
+                  <td>订单列表、订单详情、订单统计</td>
+                </tr>
+                <tr>
+                  <td><code>users</code></td>
+                  <td>用户数据访问权限</td>
+                  <td>用户列表、用户详情、用户统计</td>
+                </tr>
+                <tr>
+                  <td><code>riders</code></td>
+                  <td>骑手数据访问权限</td>
+                  <td>骑手列表、骑手详情、骑手统计</td>
+                </tr>
+                <tr>
+                  <td><code>merchants</code></td>
+                  <td>商户数据访问权限</td>
+                  <td>商户列表、商户详情</td>
+                </tr>
+                <tr>
+                  <td><code>products</code></td>
+                  <td>商品数据访问权限</td>
+                  <td>商品列表、商品详情、商品分类</td>
+                </tr>
+                <tr>
+                  <td><code>categories</code></td>
+                  <td>分类数据访问权限</td>
+                  <td>分类列表、分类详情</td>
+                </tr>
+                <tr>
+                  <td><code>dashboard</code></td>
+                  <td>仪表盘数据访问权限</td>
+                  <td>平台统计、用户排名、骑手排名</td>
+                </tr>
+                <tr>
+                  <td><code>all</code></td>
+                  <td>全部数据访问权限</td>
+                  <td>所有资源类型</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="warning-box">
+              <el-icon><WarningFilled /></el-icon>
+              <div>
+                <strong>权限限制</strong>
+                <p>如果API Key没有某个资源的访问权限，请求该资源时会返回403错误。</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- 错误码说明 -->
+          <section id="error-codes" class="doc-section">
+            <h1>错误码说明</h1>
+            <table class="params-table">
+              <thead>
+                <tr>
+                  <th>状态码</th>
+                  <th>说明</th>
+                  <th>解决方案</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>200</code></td>
+                  <td>请求成功</td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td><code>400</code></td>
+                  <td>请求参数错误</td>
+                  <td>检查请求参数格式和必填项</td>
+                </tr>
+                <tr>
+                  <td><code>401</code></td>
+                  <td>未提供API Key或API Key无效</td>
+                  <td>检查API Key是否正确，是否已启用</td>
+                </tr>
+                <tr>
+                  <td><code>403</code></td>
+                  <td>API Key没有访问该资源的权限</td>
+                  <td>在管理后台为API Key配置相应权限</td>
+                </tr>
+                <tr>
+                  <td><code>500</code></td>
+                  <td>服务器内部错误</td>
+                  <td>联系技术支持</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <!-- 代码示例 -->
+          <section id="code-examples" class="doc-section">
+            <h1>代码示例</h1>
+            
+            <h2>JavaScript (fetch)</h2>
+            <div class="code-block">
+              <div class="code-header">
+                <span>javascript</span>
+                <el-button text @click="copyCode('js-example')">
+                  <el-icon><DocumentCopy /></el-icon>
+                  复制
+                </el-button>
+              </div>
+              <pre><code id="js-example">// 使用统一查询接口（相对路径，自动适应域名）
+fetch('/api/v1/query', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': 'your_api_key_here'
+  },
+  body: JSON.stringify({
+    resource: 'orders',
+    action: 'list',
+    params: {
+      page: 1,
+      limit: 20
+    }
+  })
+})
+.then(response => response.json())
+.then(data => {
+  console.log('Success:', data);
+})
+.catch(error => {
+  console.error('Error:', error);
+});</code></pre>
+            </div>
+
+            <h2>Python (requests)</h2>
+            <div class="code-block">
+              <div class="code-header">
+                <span>python</span>
+                <el-button text @click="copyCode('python-example')">
+                  <el-icon><DocumentCopy /></el-icon>
+                  复制
+                </el-button>
+              </div>
+              <pre><code id="python-example">import requests
+import os
+
+# 使用环境变量或配置获取基础URL，支持自动适应不同部署环境
+base_url = os.getenv('API_BASE_URL', '{{ apiBaseUrl }}')  # 默认使用当前部署地址
+url = f'{base_url}/api/v1/query'
+headers = {
+    'Content-Type': 'application/json',
+    'X-API-Key': 'your_api_key_here'
+}
+data = {
+    'resource': 'orders',
+    'action': 'list',
+    'params': {
+        'page': 1,
+        'limit': 20
+    }
+}
+
+response = requests.post(url, json=data, headers=headers)
+result = response.json()
+print(result)</code></pre>
+            </div>
+
+            <h2>Java (OkHttp)</h2>
+            <div class="code-block">
+              <div class="code-header">
+                <span>java</span>
+                <el-button text @click="copyCode('java-example')">
+                  <el-icon><DocumentCopy /></el-icon>
+                  复制
+                </el-button>
+              </div>
+              <pre><code id="java-example">import okhttp3.*;
+import java.io.IOException;
+
+public class ApiClient {
+    // 从配置或环境变量获取基础URL，支持自动适应不同部署环境
+    private static final String BASE_URL = System.getenv("API_BASE_URL") != null 
+        ? System.getenv("API_BASE_URL") 
+        : "{{ apiBaseUrl }}";  // 默认使用当前部署地址
+    
+    public static void main(String[] args) throws IOException {
+        OkHttpClient client = new OkHttpClient();
+        
+        String json = "{\"resource\":\"orders\",\"action\":\"list\",\"params\":{\"page\":1,\"limit\":20}}";
+        RequestBody body = RequestBody.create(json, MediaType.parse("application/json"));
+        
+        Request request = new Request.Builder()
+            .url(BASE_URL + "/api/v1/query")
+            .post(body)
+            .addHeader("Content-Type", "application/json")
+            .addHeader("X-API-Key", "your_api_key_here")
+            .build();
+        
+        try (Response response = client.newCall(request).execute()) {
+            System.out.println(response.body().string());
+        }
+    }
+}</code></pre>
+            </div>
+          </section>
+
+          <!-- 注意事项 -->
+          <section id="notes" class="doc-section">
+            <h1>注意事项</h1>
+            <ul class="notes-list">
+              <li>API Key需要先在管理后台配置并启用</li>
+              <li>每个API Key的权限是独立的，需要根据实际需求配置</li>
+              <li>建议使用HTTPS协议以保证数据传输安全</li>
+              <li>请求频率建议控制在合理范围内，避免对服务器造成压力</li>
+              <li>单个查询时，如果资源不存在，会返回null</li>
+              <li>所有时间字段使用ISO 8601格式（YYYY-MM-DD HH:mm:ss）</li>
+              <li>分页查询时，limit最大值为100</li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
