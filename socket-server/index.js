@@ -11,8 +11,6 @@ import { logger } from './logger.js';
 import { normalizeMessageData } from './messagePayload.js';
 import { setupSupportNamespaces } from './supportNamespaces.js';
 import { setupRiderNamespace } from './riderNamespace.js';
-import { setupAiStaffNamespace } from './aiStaffNamespace.js';
-import { setupAiNamespace } from './aiNamespace.js';
 import { validateSocketIdentity } from './socketIdentity.js';
 import { allowFixedWindowRateLimit, attachSocketIoRedisAdapter, initRedisState } from './redisState.js';
 
@@ -491,24 +489,6 @@ setupRiderNamespace({
   addOnlineUser,
   removeOnlineUser,
   saveMessage
-});
-
-setupAiStaffNamespace({
-  io,
-  authMiddleware,
-  addOnlineUser,
-  removeOnlineUser
-});
-
-setupAiNamespace({
-  io,
-  authMiddleware,
-  addOnlineUser,
-  removeOnlineUser,
-  getMessages,
-  saveMessage,
-  clearMessages,
-  normalizeMessageData
 });
 
 setInterval(async () => {

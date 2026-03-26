@@ -15,12 +15,14 @@ function createRequestAuditMiddleware({ logger, parseOperatorFromAuthHeader }) {
     const actorType = inferActorTypeByPath(req.path);
     const actionScene = inferActionScene(req.method, req.path);
     const actionSubject = extractSubject(req, actionScene);
+    const requestId = String(req.requestId || req.get?.("X-Request-ID") || "").trim();
 
     req.operator = operator;
     req.logTsid = logTsid;
 
     res.on("finish", () => {
       logger.info(`${req.method} ${req.path}`, {
+        requestId,
         logTsid,
         ip: clientIp,
         actorType,

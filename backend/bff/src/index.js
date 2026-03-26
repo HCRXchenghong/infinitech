@@ -17,6 +17,7 @@ const { errorHandler } = require("./middleware/errorHandler");
 const { logger } = require("./utils/logger");
 const { parseOperatorFromAuthHeader } = require("./utils/authIdentity");
 const { createRequestAuditMiddleware } = require("./middleware/requestAudit");
+const { createRequestIdMiddleware } = require("./middleware/requestId");
 const { createInviteRuntimeGuard } = require("./middleware/inviteRuntimeGuard");
 const { createUploadsProxy } = require("./middleware/uploadsProxy");
 const { createRedisRateLimiter } = require("./middleware/apiRateLimiter");
@@ -80,6 +81,7 @@ app.set("trust proxy", 1);
 app.use(express.json({ limit: config.bodyLimits.jsonBytes }));
 app.use(express.urlencoded({ extended: true, limit: config.bodyLimits.urlencodedBytes }));
 
+app.use(createRequestIdMiddleware());
 app.use(createRequestAuditMiddleware({ logger, parseOperatorFromAuthHeader }));
 app.use(createInviteRuntimeGuard({ logger }));
 

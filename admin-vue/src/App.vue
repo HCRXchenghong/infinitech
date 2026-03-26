@@ -83,7 +83,7 @@ const adminUser = ref(null);
 const openedTabs = ref([]);
 const activeTab = ref('');
 const openedMenuGroups = ref([]);
-const retiredPaths = new Set(['/customer-service', '/ai-staff']);
+const retiredPaths = new Set(['/customer-service']);
 const PUBLIC_ROUTE_EXACT = new Set(['/login', '/download', '/access-denied']);
 const PUBLIC_ROUTE_PREFIXES = ['/invite/', '/coupon/'];
 

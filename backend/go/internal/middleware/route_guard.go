@@ -95,7 +95,6 @@ var routeGuardRules = []routeGuardRule{
 	{path: "/api/upload/package", methods: methods("POST"), guard: guardAdminOnly},
 	{path: "/api/system-logs", prefix: true, guard: guardAdminOnly},
 	{path: "/api/recharge", guard: guardAdminOnly},
-	{path: "/api/openclaw", prefix: true, guard: guardAdminOnly},
 	{path: "/api/notifications/admin", prefix: true, guard: guardAdminOnly},
 	{path: "/api/featured-products", methods: methods("POST"), guard: guardAdminOnly},
 	{path: "/api/featured-products/:id", methods: methods("DELETE"), guard: guardAdminOnly},

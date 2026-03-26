@@ -131,13 +131,6 @@ func main() {
 		&repository.PointsGood{},
 		&repository.PointsRedemption{},
 		&repository.PointsLedger{},
-		&repository.OpenClawConfig{},
-		&repository.OpenClawMCP{},
-		&repository.OpenClawSkill{},
-		&repository.OpenClawStaff{},
-		&repository.OpenClawConversation{},
-		&repository.OpenClawMessage{},
-		&repository.OpenClawTask{},
 		// 钱包 & 财务中心
 		&repository.WalletAccount{},
 		&repository.WalletTransaction{},
@@ -243,9 +236,6 @@ func main() {
 	if services.MobilePush != nil {
 		go services.MobilePush.StartDeliveryWorker(pushWorkerCtx)
 	}
-	if err := services.OpenClaw.EnsureDefaults(); err != nil {
-		log.Printf("⚠️ OpenClaw 默认数据初始化失败: %v", err)
-	}
 
 	// 初始化处理器
 	handlers := handler.NewHandlers(services)
@@ -293,6 +283,7 @@ func main() {
 
 	// 中间件
 	r.Use(middleware.CORS())
+	r.Use(middleware.RequestID())
 	r.Use(middleware.Logger())
 	r.Use(middleware.Recovery())
 	r.Use(middleware.RequestBodyLimit(cfg.HTTP.MaxBodyBytes, cfg.HTTP.MaxUploadBytes))
@@ -1195,48 +1186,6 @@ func main() {
 			onboardingAdmin.GET("", handlers.OnboardingInvite.AdminListInvites)
 			onboardingAdmin.POST("/:id/revoke", handlers.OnboardingInvite.AdminRevokeInvite)
 			onboardingAdmin.GET("/submissions", handlers.OnboardingInvite.AdminListSubmissions)
-		}
-
-		// OpenClaw AI员工管理
-		openclaw := api.Group("/openclaw")
-		{
-			// 配置管理
-			openclaw.GET("/config", handlers.OpenClaw.GetConfig)
-			openclaw.GET("/configs", handlers.OpenClaw.ListConfigs)
-			openclaw.POST("/configs", handlers.OpenClaw.CreateConfig)
-			openclaw.PUT("/configs/:id", handlers.OpenClaw.UpdateConfig)
-			openclaw.DELETE("/configs/:id", handlers.OpenClaw.DeleteConfig)
-			openclaw.POST("/gateway/enable", handlers.OpenClaw.EnableGateway)
-
-			// 员工配置
-			openclaw.GET("/staffs", handlers.OpenClaw.ListStaffs)
-			openclaw.POST("/staffs", handlers.OpenClaw.CreateStaff)
-			openclaw.PUT("/staffs/:id", handlers.OpenClaw.UpdateStaff)
-			openclaw.DELETE("/staffs/:id", handlers.OpenClaw.DeleteStaff)
-
-			// MCP管理
-			openclaw.GET("/mcps", handlers.OpenClaw.ListMCPs)
-			openclaw.POST("/mcps", handlers.OpenClaw.CreateMCP)
-			openclaw.PUT("/mcps/:id", handlers.OpenClaw.UpdateMCP)
-			openclaw.DELETE("/mcps/:id", handlers.OpenClaw.DeleteMCP)
-
-			// Skill管理
-			openclaw.GET("/skills", handlers.OpenClaw.ListSkills)
-			openclaw.POST("/skills", handlers.OpenClaw.CreateSkill)
-			openclaw.PUT("/skills/:id", handlers.OpenClaw.UpdateSkill)
-			openclaw.DELETE("/skills/:id", handlers.OpenClaw.DeleteSkill)
-
-			// 任务管理
-			openclaw.GET("/tasks", handlers.OpenClaw.ListTasks)
-			openclaw.GET("/tasks/:id", handlers.OpenClaw.GetTask)
-			openclaw.POST("/tasks", handlers.OpenClaw.CreateTask)
-			openclaw.PUT("/tasks/:id/status", handlers.OpenClaw.UpdateTaskStatus)
-
-			// 会话管理
-			openclaw.GET("/staffs/:id/conversations", handlers.OpenClaw.ListStaffConversations)
-			openclaw.POST("/conversations", handlers.OpenClaw.CreateConversation)
-			openclaw.GET("/conversations/:id/messages", handlers.OpenClaw.ListConversationMessages)
-			openclaw.POST("/conversations/:id/messages", handlers.OpenClaw.CreateConversationMessage)
 		}
 
 		// 用户侧收藏与评价

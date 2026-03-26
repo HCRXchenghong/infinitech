@@ -13,7 +13,7 @@ BFF_PORT="${BFF_PORT:-25500}"
 GO_LOG="${GO_LOG:-/tmp/yuexiang_go_${GO_PORT}.log}"
 BFF_LOG="${BFF_LOG:-/tmp/yuexiang_bff_${BFF_PORT}.log}"
 GO_HEALTH_URL="${GO_HEALTH_URL:-http://127.0.0.1:${GO_PORT}/health}"
-BFF_HEALTH_URL="${BFF_HEALTH_URL:-http://127.0.0.1:${BFF_PORT}/api/openclaw/config}"
+BFF_HEALTH_URL="${BFF_HEALTH_URL:-http://127.0.0.1:${BFF_PORT}/health}"
 
 is_port_listening() {
   local port="$1"

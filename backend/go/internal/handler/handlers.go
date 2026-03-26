@@ -30,7 +30,6 @@ type Handlers struct {
 	Rider            *RiderHandler
 	Upload           *UploadHandler
 	FileUpload       *FileUploadHandler
-	OpenClaw         *OpenClawHandler
 	Wallet           *WalletHandler
 	Payment          *PaymentHandler
 	Financial        *FinancialHandler
@@ -65,7 +64,6 @@ func NewHandlers(services *service.Services) *Handlers {
 		Cooperation:      NewCooperationHandler(services.Cooperation),
 		Invite:           NewInviteHandler(services.Invite),
 		OnboardingInvite: NewOnboardingInviteHandler(services.OnboardingInvite),
-		OpenClaw:         NewOpenClawHandler(services.OpenClaw),
 		Wallet:           NewWalletHandler(services.Wallet),
 		Payment:          NewPaymentHandler(services.Payment),
 		Financial:        NewFinancialHandler(services.Financial),

@@ -27,7 +27,6 @@ type Services struct {
 	Cooperation      *CooperationService
 	Invite           *InviteService
 	OnboardingInvite *OnboardingInviteService
-	OpenClaw         *OpenClawService
 	RiskControl      *RiskControlService
 	Payment          *PaymentService
 	Wallet           *WalletService
@@ -75,7 +74,6 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 		Cooperation:      NewCooperationService(repos.DB),
 		Invite:           NewInviteService(repos.DB, pointsService),
 		OnboardingInvite: NewOnboardingInviteService(repos.DB),
-		OpenClaw:         NewOpenClawService(repos.DB),
 		RiskControl:      riskControlService,
 		Payment:          paymentService,
 		Wallet:           walletService,
