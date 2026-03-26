@@ -282,6 +282,38 @@ export default Vue.extend({
       }
     },
 
+    async switchChat(nextChatId: string | number, payload: any = {}) {
+      const normalizedChatId = String(nextChatId || '').trim()
+      if (!normalizedChatId) return
+
+      this.stopLoadRetry()
+      this.chatId = normalizedChatId
+      this.chatRole = payload.role ? String(payload.role).toLowerCase() : this.inferRoleByChatId(this.chatId)
+      this.targetId = payload.targetId ? String(payload.targetId).trim() : ''
+      this.orderId = payload.orderId ? String(payload.orderId).trim() : ''
+      this.chatTitle = payload.name
+        ? this.safeDecode(payload.name)
+        : this.chatRole === 'admin'
+          ? this.supportChatTitle
+          : this.inferTitleByRole(this.chatRole)
+      this.otherAvatar = payload.avatar
+        ? this.safeDecode(payload.avatar)
+        : this.defaultAvatarByRole(this.chatRole)
+      this.messages = []
+
+      if (typeof uni.setNavigationBarTitle === 'function') {
+        uni.setNavigationBarTitle({
+          title: this.chatRole === 'admin' ? this.supportChatTitle : this.chatTitle
+        })
+      }
+
+      messageManager.setCurrentChatId(this.chatId)
+      await this.initDatabase()
+      await this.ensureConversationExists()
+      await this.loadServerHistory()
+      this.requestLoadMessagesWithRetry()
+    },
+
     requestLoadMessagesWithRetry() {
       const loaded = this.requestLoadMessages()
       if (!loaded) {

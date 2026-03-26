@@ -71,6 +71,9 @@ class MessageManager {
    */
   setCurrentChatId(chatId: string | number | null) {
     this.currentChatId = chatId
+    if (chatId !== null && chatId !== undefined && chatId !== '') {
+      this.clearUnreadMessages(chatId)
+    }
   }
 
   /**
@@ -234,6 +237,16 @@ class MessageManager {
   navigateToChat(message: MessageData) {
     const pages = getCurrentPages()
     const currentPage = pages[pages.length - 1]
+    const role =
+      message.senderRole === 'merchant'
+        ? 'merchant'
+        : message.senderRole === 'user'
+          ? 'user'
+          : message.senderRole === 'rider'
+            ? 'rider'
+            : 'admin'
+    const name = this.formatSenderName(message)
+    const avatar = this.getSenderAvatar(message)
 
     // 检查当前是否已经在客服页面
     if (currentPage && currentPage.route === 'pages/service/index') {
@@ -241,14 +254,18 @@ class MessageManager {
       // @ts-ignore
       const vm = currentPage.$vm
       if (vm && vm.switchChat) {
-        vm.switchChat(message.chatId)
+        vm.switchChat(message.chatId, { role, name, avatar })
       }
       return
     }
 
     // 跳转到客服页面
     uni.navigateTo({
-      url: `/pages/service/index?chatId=${message.chatId}`,
+      url:
+        `/pages/service/index?chatId=${encodeURIComponent(String(message.chatId || ''))}` +
+        `&role=${encodeURIComponent(role)}` +
+        `&name=${encodeURIComponent(name)}` +
+        `&avatar=${encodeURIComponent(avatar)}`,
       fail: () => {
         uni.showToast({
           title: '打开聊天失败',
