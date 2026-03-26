@@ -133,6 +133,7 @@ function forceLogout() {
   uni.removeStorageSync('tokenExpiresAt')
   uni.removeStorageSync('userProfile')
   uni.removeStorageSync('authMode')
+  uni.removeStorageSync('user_vue_push_registration')
 
   // 清除本地缓存数据
   try {

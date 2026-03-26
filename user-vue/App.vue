@@ -11,6 +11,7 @@ import { configWizard } from '@/shared-ui/config-helper'
 import config from '@/shared-ui/config'
 import { setupRequestInterceptor, forceLogout, manualRefreshToken } from '@/shared-ui/request-interceptor'
 import { checkAndClearCacheIfNeeded } from '@/shared-ui/cache-cleaner'
+import { registerCurrentPushDevice, clearPushRegistrationState } from '@/shared-ui/push-registration'
 
 export default Vue.extend({
   onLaunch() {
@@ -43,6 +44,22 @@ export default Vue.extend({
     })
   },
   methods: {
+    async syncPushRegistration() {
+      const token = uni.getStorageSync('token')
+      const authMode = uni.getStorageSync('authMode')
+
+      if (!token || authMode !== 'user') {
+        clearPushRegistrationState()
+        return
+      }
+
+      try {
+        await registerCurrentPushDevice()
+      } catch (err) {
+        console.error('[App] 推送设备注册失败:', err)
+      }
+    },
+
     async validateAuth() {
       const token = uni.getStorageSync('token')
       const refreshToken = uni.getStorageSync('refreshToken')
@@ -78,6 +95,7 @@ export default Vue.extend({
           forceLogout()
         } else {
           // login state verified
+          void this.syncPushRegistration()
         }
       } catch (err) {
         console.error('❌ Token验证请求失败:', err)
@@ -90,9 +108,11 @@ export default Vue.extend({
       uni.removeStorageSync('tokenExpiresAt')
       uni.removeStorageSync('userProfile')
       uni.removeStorageSync('authMode')
+      clearPushRegistrationState()
     }
   },
   onShow() {
+    void this.syncPushRegistration()
   },
   onHide() {
   }

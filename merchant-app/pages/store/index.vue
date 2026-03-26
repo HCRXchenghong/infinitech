@@ -85,6 +85,7 @@
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { fetchShopDetail, fetchWalletBalance, updateShop } from '@/shared-ui/api'
+import { unregisterCurrentPushDevice, clearPushRegistrationState } from '@/shared-ui/push-registration'
 import {
   clearMerchantContext,
   ensureMerchantShops,
@@ -212,11 +213,17 @@ function logout() {
     title: '退出登录',
     content: '确认退出当前商户账号？',
     confirmText: '退出',
-    success: (res: any) => {
+    success: async (res: any) => {
       if (!res.confirm) return
+      try {
+        await unregisterCurrentPushDevice()
+      } catch (_err) {
+        clearPushRegistrationState()
+      }
       uni.removeStorageSync('token')
       uni.removeStorageSync('merchantProfile')
       uni.removeStorageSync('authMode')
+      clearPushRegistrationState()
       clearMerchantContext()
       uni.reLaunch({ url: '/pages/login/index' })
     },

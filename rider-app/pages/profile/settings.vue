@@ -100,6 +100,7 @@
 import Vue from 'vue'
 import { fetchRiderInfo, updateRiderStatus } from '../../shared-ui/api'
 import { getAppVersionLabel } from '../../shared-ui/app-version'
+import { unregisterCurrentPushDevice, clearPushRegistrationState } from '../../shared-ui/push-registration'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '../../shared-ui/support-runtime'
 import notification from '../../utils/notification'
 
@@ -291,7 +292,14 @@ export default Vue.extend({
             await updateRiderStatus(false)
           } catch (_err) {}
 
+          try {
+            await unregisterCurrentPushDevice()
+          } catch (_err) {
+            clearPushRegistrationState()
+          }
+
           uni.clearStorageSync()
+          clearPushRegistrationState()
           uni.showToast({
             title: '已退出登录',
             icon: 'success',

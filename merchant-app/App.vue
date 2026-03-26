@@ -1,5 +1,6 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
+import { registerCurrentPushDevice, clearPushRegistrationState } from '@/shared-ui/push-registration'
 
 export default defineComponent({
   onLaunch() {
@@ -11,6 +12,22 @@ export default defineComponent({
   onHide() {
   },
   methods: {
+    async syncPushRegistration() {
+      const token = uni.getStorageSync('token')
+      const authMode = uni.getStorageSync('authMode')
+
+      if (!token || authMode !== 'merchant') {
+        clearPushRegistrationState()
+        return
+      }
+
+      try {
+        await registerCurrentPushDevice()
+      } catch (err) {
+        console.error('[MerchantApp] 推送设备注册失败:', err)
+      }
+    },
+
     checkAuth() {
       const token = uni.getStorageSync('token')
       const authMode = uni.getStorageSync('authMode')
@@ -25,14 +42,23 @@ export default defineComponent({
       const route = currentPage ? currentPage.route : ''
 
       if (publicRoutes.has(route)) {
+        if (!token || authMode !== 'merchant') {
+          clearPushRegistrationState()
+        } else {
+          void this.syncPushRegistration()
+        }
         return
       }
 
       if (!token || authMode !== 'merchant') {
+        clearPushRegistrationState()
         uni.reLaunch({
           url: '/pages/login/index'
         })
+        return
       }
+
+      void this.syncPushRegistration()
     }
   }
 })

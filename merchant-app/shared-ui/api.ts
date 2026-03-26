@@ -46,6 +46,7 @@ function forceMerchantLogout() {
   uni.removeStorageSync('merchantProfile')
   uni.removeStorageSync('merchantCurrentShopId')
   uni.removeStorageSync('authMode')
+  uni.removeStorageSync('merchant_push_registration')
   uni.reLaunch({ url: '/pages/login/index' })
 }
 
@@ -501,3 +502,12 @@ export const markAllConversationsRead = () =>
   apiPost('/api/messages/conversations/read-all', {})
 
 export const fetchPublicRuntimeSettings = () => apiGet('/api/public/runtime-settings')
+
+export const registerPushDevice = (payload: Record<string, any>) =>
+  apiPost('/api/mobile/push/devices/register', payload)
+
+export const unregisterPushDevice = (payload: Record<string, any>) =>
+  apiPost('/api/mobile/push/devices/unregister', payload)
+
+export const ackPushMessage = (payload: Record<string, any>) =>
+  apiPost('/api/mobile/push/ack', payload)

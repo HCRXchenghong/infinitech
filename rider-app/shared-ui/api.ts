@@ -13,6 +13,24 @@ export const fetchPublicRuntimeSettings = () => request({
   method: 'GET'
 })
 
+export const registerPushDevice = (payload: Record<string, any>) => request({
+  url: '/api/mobile/push/devices/register',
+  method: 'POST',
+  data: payload
+})
+
+export const unregisterPushDevice = (payload: Record<string, any>) => request({
+  url: '/api/mobile/push/devices/unregister',
+  method: 'POST',
+  data: payload
+})
+
+export const ackPushMessage = (payload: Record<string, any>) => request({
+  url: '/api/mobile/push/ack',
+  method: 'POST',
+  data: payload
+})
+
 function readAuthToken(): string {
   const raw = String(uni.getStorageSync('token') || uni.getStorageSync('access_token') || '').trim()
   if (!raw) return ''

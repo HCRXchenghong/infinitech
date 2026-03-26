@@ -360,6 +360,24 @@ export const fetchDefaultUserAddress = async (userId) => {
   return res?.data || null
 }
 
+export const registerPushDevice = (payload) => request({
+  url: '/api/mobile/push/devices/register',
+  method: 'POST',
+  data: payload
+})
+
+export const unregisterPushDevice = (payload) => request({
+  url: '/api/mobile/push/devices/unregister',
+  method: 'POST',
+  data: payload
+})
+
+export const ackPushMessage = (payload) => request({
+  url: '/api/mobile/push/ack',
+  method: 'POST',
+  data: payload
+})
+
 export const createUserAddress = (userId, payload) => request({
   url: `/api/user/${encodeURIComponent(userId)}/addresses`,
   method: 'POST',

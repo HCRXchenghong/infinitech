@@ -132,6 +132,7 @@ function forceLogout() {
   uni.removeStorageSync('tokenExpiresAt')
   uni.removeStorageSync('userProfile')
   uni.removeStorageSync('authMode')
+  uni.removeStorageSync('app_mobile_push_registration')
 
   // 清除本地缓存数据
   try {

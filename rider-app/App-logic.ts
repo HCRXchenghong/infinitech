@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import riderOrderStore, { loadRiderData } from './shared-ui/riderOrderStore'
 import { heartbeatRiderStatus, fetchRiderOrders } from './shared-ui/api'
+import { registerCurrentPushDevice, clearPushRegistrationState } from './shared-ui/push-registration'
 import messageManager from './utils/message-manager'
 import createSocket from './utils/socket-io'
 import config from './shared-ui/config'
@@ -44,6 +45,7 @@ export default Vue.extend({
     notification.init().catch(err => {
       console.error('[App] 通知初始化失败:', err)
     })
+    void this.syncPushRegistration()
     // 启动时同步一次骑手状态，避免心跳循环拿不到初始在线状态
     loadRiderData().finally(() => {
       if (this.isRiderOnline) {
@@ -54,6 +56,7 @@ export default Vue.extend({
     setTimeout(() => { this.tryConnectSocket() }, 1500)
   },
   async onShow() {
+    void this.syncPushRegistration()
     // 每次回到前台先同步一次服务端状态，避免使用本地默认值
     await loadRiderData()
     if (this.isRiderOnline) {
@@ -66,6 +69,22 @@ export default Vue.extend({
     }
   },
   methods: {
+    async syncPushRegistration() {
+      const token = uni.getStorageSync('token')
+      const authMode = uni.getStorageSync('authMode')
+
+      if (!token || authMode !== 'rider') {
+        clearPushRegistrationState()
+        return
+      }
+
+      try {
+        await registerCurrentPushDevice()
+      } catch (err) {
+        console.error('[App] 骑手推送设备注册失败:', err)
+      }
+    },
+
     startHeartbeatLoop() {
       if (this.heartbeatTimer) return
       this.sendHeartbeat()
@@ -103,6 +122,7 @@ export default Vue.extend({
       }
 
       if (!token || authMode !== 'rider') {
+        clearPushRegistrationState()
         return
       }
 
