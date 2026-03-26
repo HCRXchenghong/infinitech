@@ -238,6 +238,7 @@ npm run build
 - `socket-server` 骑手命名空间已移除无实际用途的本地 `onlineRiders` 单机状态表
 - OpenClaw / SuchPeople 相关 Go 服务、Socket 命名空间、配置和启动脚本入口现已全部移除
 - `socket-server` 客服会话列表与消息历史现在改为 Go 权威消息服务优先加载，本地 `chat.db` 仅保留兜底读取
+- 用户端与 App 端消息首页现在改为服务端会话列表为准，本地缓存只在接口失败时兜底，不再把本地旧会话和服务端结果混成双事实源
 - Go API 与 BFF 现已统一补上 `X-Request-ID`，便于后续压测、审计和故障排查串联日志
 - BFF 转发到 Go 时现在会带上真实客户端 IP，便于审计和保护策略
 

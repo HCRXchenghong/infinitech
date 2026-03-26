@@ -92,7 +92,7 @@
           <image src="/static/icons/empty-message.svg" mode="aspectFit" class="empty-icon-img" />
         </view>
         <text class="empty-text">暂无消息</text>
-        <text class="empty-hint">您的消息将显示在这里</text>
+        <text class="empty-hint">你的消息会显示在这里</text>
       </view>
 
       <view
@@ -251,34 +251,20 @@ export default {
       }
     },
 
-    mergeServerAndLegacySessions(serverList, legacyList) {
-      const result = []
-      const seen = new Set()
-
-      const append = (item) => {
-        const normalized = this.normalizeSession(item)
-        if (!normalized.roomId) return
-        if (seen.has(normalized.roomId)) return
-        seen.add(normalized.roomId)
-        result.push(normalized)
-      }
-
-      serverList.forEach(append)
-      legacyList.forEach(append)
-
-      return result.sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
-    },
-
     async loadSessions() {
-      const legacySessions = this.readStoredSessions()
       try {
         const response = await fetchConversations()
         const serverSessions = Array.isArray(response) ? response : []
-        this.sessions = this.mergeServerAndLegacySessions(serverSessions, legacySessions)
+        this.sessions = serverSessions
+          .map((item) => this.normalizeSession(item))
+          .filter((item) => item.roomId)
+          .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
         this.saveSessions()
       } catch (err) {
-        console.error('加载服务端会话失败:', err)
-        this.sessions = legacySessions.map((item) => this.normalizeSession(item)).filter((item) => item.roomId)
+        console.error('加载服务端会话失败，回退本地缓存:', err)
+        this.sessions = this.readStoredSessions()
+          .map((item) => this.normalizeSession(item))
+          .filter((item) => item.roomId)
       }
     },
 
@@ -361,7 +347,7 @@ export default {
         markAllNotificationsRead()
       ])
 
-      await this.loadNotificationSummary()
+      await Promise.all([this.loadSessions(), this.loadNotificationSummary()])
       uni.showToast({ title: '已清除未读', icon: 'none' })
     },
 
