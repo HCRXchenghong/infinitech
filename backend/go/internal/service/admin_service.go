@@ -70,6 +70,28 @@ type PushMessageStats struct {
 	LatestAcknowledged *time.Time `json:"latest_acknowledged_at,omitempty"`
 }
 
+type PushMessageDeliveryItem struct {
+	ID             string     `json:"id"`
+	UserID         string     `json:"user_id"`
+	UserType       string     `json:"user_type"`
+	DeviceToken    string     `json:"device_token"`
+	Status         string     `json:"status"`
+	Action         string     `json:"action"`
+	EventType      string     `json:"event_type"`
+	RetryCount     int        `json:"retry_count"`
+	SentAt         *time.Time `json:"sent_at,omitempty"`
+	AcknowledgedAt *time.Time `json:"acknowledged_at,omitempty"`
+	ErrorCode      string     `json:"error_code,omitempty"`
+	ErrorMessage   string     `json:"error_message,omitempty"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+}
+
+type PushMessageDeliveryList struct {
+	MessageID string                    `json:"message_id"`
+	Total     int64                     `json:"total"`
+	Items     []PushMessageDeliveryItem `json:"items"`
+}
+
 func (s *AdminService) Login(ctx context.Context, req AdminLoginRequest) (*AdminLoginResponse, int, error) {
 	if !isValidPhone(req.Phone) {
 		return &AdminLoginResponse{Success: false, Error: "手机号格式不正确"}, 400, fmt.Errorf("invalid phone")
@@ -1548,7 +1570,10 @@ func (s *AdminService) ListPushMessages(ctx context.Context) ([]repository.PushM
 }
 
 func (s *AdminService) CreatePushMessage(ctx context.Context, item *repository.PushMessage) error {
-	return s.db.WithContext(ctx).Create(item).Error
+	if err := s.db.WithContext(ctx).Create(item).Error; err != nil {
+		return err
+	}
+	return s.syncPushMessageDeliveries(ctx, item)
 }
 
 func (s *AdminService) UpdatePushMessage(ctx context.Context, id string, updates map[string]interface{}) error {
@@ -1556,7 +1581,15 @@ func (s *AdminService) UpdatePushMessage(ctx context.Context, id string, updates
 	if err != nil {
 		return err
 	}
-	return s.db.WithContext(ctx).Model(&repository.PushMessage{}).Where("id = ?", resolvedID).Updates(updates).Error
+	if err := s.db.WithContext(ctx).Model(&repository.PushMessage{}).Where("id = ?", resolvedID).Updates(updates).Error; err != nil {
+		return err
+	}
+
+	var message repository.PushMessage
+	if err := s.db.WithContext(ctx).Where("id = ?", resolvedID).First(&message).Error; err != nil {
+		return err
+	}
+	return s.syncPushMessageDeliveries(ctx, &message)
 }
 
 func (s *AdminService) DeletePushMessage(ctx context.Context, id string) error {
@@ -1568,17 +1601,15 @@ func (s *AdminService) DeletePushMessage(ctx context.Context, id string) error {
 }
 
 func (s *AdminService) GetPushMessageStats(ctx context.Context, id string) (*PushMessageStats, error) {
-	resolvedID, err := resolveEntityID(ctx, s.db, "push_messages", id)
+	message, err := s.getPushMessageByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-
-	var message repository.PushMessage
-	if err := s.db.WithContext(ctx).Where("id = ?", resolvedID).First(&message).Error; err != nil {
+	if err := s.syncPushMessageDeliveries(ctx, message); err != nil {
 		return nil, err
 	}
 
-	messageIDs := collectPushMessageLookupIDs(message, id)
+	messageIDs := collectPushMessageLookupIDs(*message, id)
 	baseQuery := s.db.WithContext(ctx).Model(&repository.PushDelivery{}).Where("message_id IN ?", messageIDs)
 
 	var totalDeliveries int64
@@ -1629,7 +1660,7 @@ func (s *AdminService) GetPushMessageStats(ctx context.Context, id string) (*Pus
 	}
 
 	stats := &PushMessageStats{
-		MessageID:       strings.TrimSpace(message.UID),
+		MessageID:       canonicalPushMessageID(*message),
 		TotalDeliveries: totalDeliveries,
 		TotalUsers:      totalUsers,
 		ReceivedCount:   receivedUsers,
@@ -1645,6 +1676,241 @@ func (s *AdminService) GetPushMessageStats(ctx context.Context, id string) (*Pus
 	}
 
 	return stats, nil
+}
+
+func (s *AdminService) ListPushMessageDeliveries(ctx context.Context, id string, limit int) (*PushMessageDeliveryList, error) {
+	message, err := s.getPushMessageByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.syncPushMessageDeliveries(ctx, message); err != nil {
+		return nil, err
+	}
+
+	messageIDs := collectPushMessageLookupIDs(*message, id)
+	query := s.db.WithContext(ctx).
+		Model(&repository.PushDelivery{}).
+		Where("message_id IN ?", messageIDs)
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+
+	var deliveries []repository.PushDelivery
+	if err := s.db.WithContext(ctx).
+		Where("message_id IN ?", messageIDs).
+		Order("acknowledged_at DESC").
+		Order("updated_at DESC").
+		Limit(limit).
+		Find(&deliveries).Error; err != nil {
+		return nil, err
+	}
+
+	items := make([]PushMessageDeliveryItem, 0, len(deliveries))
+	for _, delivery := range deliveries {
+		items = append(items, PushMessageDeliveryItem{
+			ID:             strings.TrimSpace(delivery.UID),
+			UserID:         strings.TrimSpace(delivery.UserID),
+			UserType:       strings.TrimSpace(delivery.UserType),
+			DeviceToken:    strings.TrimSpace(delivery.DeviceToken),
+			Status:         strings.TrimSpace(delivery.Status),
+			Action:         strings.TrimSpace(delivery.Action),
+			EventType:      strings.TrimSpace(delivery.EventType),
+			RetryCount:     delivery.RetryCount,
+			SentAt:         delivery.SentAt,
+			AcknowledgedAt: delivery.AcknowledgedAt,
+			ErrorCode:      strings.TrimSpace(delivery.ErrorCode),
+			ErrorMessage:   strings.TrimSpace(delivery.ErrorMessage),
+			UpdatedAt:      delivery.UpdatedAt,
+		})
+	}
+
+	return &PushMessageDeliveryList{
+		MessageID: canonicalPushMessageID(*message),
+		Total:     total,
+		Items:     items,
+	}, nil
+}
+
+func (s *AdminService) getPushMessageByID(ctx context.Context, id string) (*repository.PushMessage, error) {
+	resolvedID, err := resolveEntityID(ctx, s.db, "push_messages", id)
+	if err != nil {
+		return nil, err
+	}
+
+	var message repository.PushMessage
+	if err := s.db.WithContext(ctx).Where("id = ?", resolvedID).First(&message).Error; err != nil {
+		return nil, err
+	}
+	return &message, nil
+}
+
+func (s *AdminService) syncPushMessageDeliveries(ctx context.Context, message *repository.PushMessage) error {
+	if s == nil || s.db == nil || message == nil {
+		return nil
+	}
+
+	messageID := canonicalPushMessageID(*message)
+	if messageID == "" {
+		return nil
+	}
+
+	now := time.Now()
+	if !shouldMaterializePushMessage(*message, now) {
+		return s.db.WithContext(ctx).
+			Model(&repository.PushDelivery{}).
+			Where("message_id = ?", messageID).
+			Where("status IN ?", []string{"queued", "pending", "inactive"}).
+			Updates(map[string]interface{}{
+				"status":     "inactive",
+				"updated_at": now,
+			}).Error
+	}
+
+	var devices []repository.PushDevice
+	if err := s.db.WithContext(ctx).
+		Where("is_active = ?", true).
+		Order("last_registered_at DESC").
+		Order("updated_at DESC").
+		Order("id DESC").
+		Find(&devices).Error; err != nil {
+		return err
+	}
+
+	latestDevices := make([]repository.PushDevice, 0, len(devices))
+	seenRecipients := make(map[string]struct{}, len(devices))
+	for _, device := range devices {
+		key := buildPushRecipientKey(device.UserType, device.UserID)
+		if key == "" {
+			continue
+		}
+		if _, exists := seenRecipients[key]; exists {
+			continue
+		}
+		seenRecipients[key] = struct{}{}
+		latestDevices = append(latestDevices, device)
+	}
+
+	var existing []repository.PushDelivery
+	if err := s.db.WithContext(ctx).
+		Where("message_id = ?", messageID).
+		Find(&existing).Error; err != nil {
+		return err
+	}
+	existingMap := make(map[string]repository.PushDelivery, len(existing))
+	for _, item := range existing {
+		existingMap[buildPushRecipientKey(item.UserType, item.UserID)] = item
+	}
+
+	payload, _ := json.Marshal(map[string]interface{}{
+		"messageId": messageID,
+		"title":     strings.TrimSpace(message.Title),
+		"content":   strings.TrimSpace(message.Content),
+		"imageUrl":  strings.TrimSpace(message.ImageURL),
+	})
+	payloadText := string(payload)
+
+	for _, device := range latestDevices {
+		key := buildPushRecipientKey(device.UserType, device.UserID)
+		if current, exists := existingMap[key]; exists {
+			updates := map[string]interface{}{
+				"device_token": device.DeviceToken,
+				"event_type":   "admin_push_message",
+				"payload":      payloadText,
+				"updated_at":   now,
+			}
+			if current.Status == "" || current.Status == "inactive" || current.Status == "queued" {
+				updates["status"] = "queued"
+			}
+			if err := s.db.WithContext(ctx).
+				Model(&repository.PushDelivery{}).
+				Where("id = ?", current.ID).
+				Updates(updates).Error; err != nil {
+				return err
+			}
+			continue
+		}
+
+		record := repository.PushDelivery{
+			MessageID:   messageID,
+			UserID:      strings.TrimSpace(device.UserID),
+			UserType:    strings.TrimSpace(device.UserType),
+			DeviceToken: strings.TrimSpace(device.DeviceToken),
+			EventType:   "admin_push_message",
+			Status:      "queued",
+			Payload:     payloadText,
+		}
+		if err := s.db.WithContext(ctx).Create(&record).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func shouldMaterializePushMessage(message repository.PushMessage, now time.Time) bool {
+	if !message.IsActive {
+		return false
+	}
+
+	if start, ok := parsePushScheduleTime(message.ScheduledStartTime); ok && now.Before(start) {
+		return false
+	}
+	if end, ok := parsePushScheduleTime(message.ScheduledEndTime); ok && now.After(end) {
+		return false
+	}
+	return true
+}
+
+func parsePushScheduleTime(raw string) (time.Time, bool) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return time.Time{}, false
+	}
+
+	layouts := []string{
+		time.RFC3339,
+		"2006-01-02 15:04:05",
+		"2006-01-02 15:04",
+		"2006-01-02T15:04:05",
+		"2006-01-02T15:04",
+	}
+	for _, layout := range layouts {
+		if parsed, err := time.ParseInLocation(layout, value, time.Local); err == nil {
+			return parsed, true
+		}
+	}
+	return time.Time{}, false
+}
+
+func canonicalPushMessageID(message repository.PushMessage) string {
+	if uid := strings.TrimSpace(message.UID); uid != "" {
+		return uid
+	}
+	if tsid := strings.TrimSpace(message.TSID); tsid != "" {
+		return tsid
+	}
+	if message.ID > 0 {
+		return strconv.FormatUint(uint64(message.ID), 10)
+	}
+	return ""
+}
+
+func buildPushRecipientKey(userType, userID string) string {
+	normalizedType := strings.TrimSpace(userType)
+	normalizedID := strings.TrimSpace(userID)
+	if normalizedType == "" || normalizedID == "" {
+		return ""
+	}
+	return normalizedType + "::" + normalizedID
 }
 
 func collectPushMessageLookupIDs(message repository.PushMessage, rawID string) []string {

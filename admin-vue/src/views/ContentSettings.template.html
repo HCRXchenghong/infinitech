@@ -633,7 +633,7 @@
     <el-dialog
       v-model="pushMessageStatsVisible"
       title="推送消息统计"
-      :width="isMobile ? '95%' : '500px'"
+      :width="isMobile ? '95%' : '720px'"
       :close-on-click-modal="false"
     >
       <div v-if="currentPushMessageStats" style="padding: 20px;">
@@ -651,9 +651,28 @@
             <span style="color: #f56c6c; font-weight: 600;">{{ currentPushMessageStats.unread_count }}</span>
           </el-descriptions-item>
           <el-descriptions-item label="已读率">
-            {{ currentPushMessageStats.read_rate }}
+            {{ currentPushMessageStats.read_rate_display }}
+          </el-descriptions-item>
+          <el-descriptions-item label="投递记录数">
+            {{ currentPushMessageStats.total_deliveries }}
           </el-descriptions-item>
         </el-descriptions>
+        <div style="margin-top: 16px;">
+          <div style="font-weight: 600; margin-bottom: 8px;">最近投递明细</div>
+          <el-table
+            :data="currentPushMessageDeliveries"
+            size="small"
+            border
+            max-height="280"
+            v-loading="pushMessageDeliveryLoading"
+          >
+            <el-table-column prop="user_type" label="角色" width="90" />
+            <el-table-column prop="user_id" label="用户ID" min-width="120" />
+            <el-table-column prop="status" label="状态" width="110" />
+            <el-table-column prop="action" label="回执" width="100" />
+            <el-table-column prop="device_token" label="设备" min-width="180" show-overflow-tooltip />
+          </el-table>
+        </div>
       </div>
       <template #footer>
         <el-button @click="pushMessageStatsVisible = false">关闭</el-button>

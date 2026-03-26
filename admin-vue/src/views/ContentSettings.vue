@@ -24,6 +24,8 @@ const savingPushMessage = ref(false);
 const pushMessageForm = reactive(createEmptyPushMessageForm());
 const pushMessageStatsVisible = ref(false);
 const currentPushMessageStats = ref(null);
+const pushMessageDeliveryLoading = ref(false);
+const currentPushMessageDeliveries = ref([]);
 
 // 移动端检测
 const isMobile = ref(window.innerWidth <= 768);
@@ -378,14 +380,27 @@ async function deletePushMessage(message) {
 
 async function showPushMessageStats(message) {
   try {
-    const { data } = await request.get(`/api/push-messages/${message.id}/stats`);
+    pushMessageDeliveryLoading.value = true;
+    const [{ data: stats }, { data: deliveries }] = await Promise.all([
+      request.get(`/api/push-messages/${message.id}/stats`),
+      request.get(`/api/push-messages/${message.id}/deliveries`, {
+        params: { limit: 50 }
+      })
+    ]);
     currentPushMessageStats.value = {
       ...message,
-      ...data
+      ...stats,
+      read_rate_display: typeof stats?.read_rate_percent === 'number'
+        ? `${stats.read_rate_percent.toFixed(2)}%`
+        : '0.00%'
     };
+    currentPushMessageDeliveries.value = Array.isArray(deliveries?.items) ? deliveries.items : [];
     pushMessageStatsVisible.value = true;
   } catch (error) {
     ElMessage.error('获取统计信息失败: ' + (error?.response?.data?.error || error.message));
+    currentPushMessageDeliveries.value = [];
+  } finally {
+    pushMessageDeliveryLoading.value = false;
   }
 }
 

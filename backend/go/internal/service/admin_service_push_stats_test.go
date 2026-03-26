@@ -35,6 +35,7 @@ func newAdminServiceForPushStatsTest(t *testing.T) (*AdminService, *gorm.DB) {
 		&repository.IDSequence{},
 		&repository.IDLegacyMapping{},
 		&repository.PushMessage{},
+		&repository.PushDevice{},
 		&repository.PushDelivery{},
 	); err != nil {
 		t.Fatalf("auto migrate failed: %v", err)
@@ -148,5 +149,99 @@ func TestAdminServiceGetPushMessageStats(t *testing.T) {
 	}
 	if stats.LatestAcknowledged == nil || !stats.LatestAcknowledged.Equal(later) {
 		t.Fatalf("expected latest acknowledged_at to equal %s, got %+v", later, stats.LatestAcknowledged)
+	}
+}
+
+func TestAdminServiceCreatePushMessageMaterializesDeliveries(t *testing.T) {
+	svc, db := newAdminServiceForPushStatsTest(t)
+	ctx := context.Background()
+
+	devices := []repository.PushDevice{
+		{
+			UnifiedIdentity: repository.UnifiedIdentity{
+				UID:  "26032600000101",
+				TSID: "260326000000000000000101",
+			},
+			UserID:           "1001",
+			UserType:         "customer",
+			DeviceToken:      "token-customer-new",
+			IsActive:         true,
+			LastRegisteredAt: time.Now().Add(2 * time.Minute),
+			LastSeenAt:       time.Now().Add(2 * time.Minute),
+		},
+		{
+			UnifiedIdentity: repository.UnifiedIdentity{
+				UID:  "26032600000102",
+				TSID: "260326000000000000000102",
+			},
+			UserID:           "1001",
+			UserType:         "customer",
+			DeviceToken:      "token-customer-old",
+			IsActive:         true,
+			LastRegisteredAt: time.Now(),
+			LastSeenAt:       time.Now(),
+		},
+		{
+			UnifiedIdentity: repository.UnifiedIdentity{
+				UID:  "26032600000103",
+				TSID: "260326000000000000000103",
+			},
+			UserID:           "2001",
+			UserType:         "rider",
+			DeviceToken:      "token-rider",
+			IsActive:         true,
+			LastRegisteredAt: time.Now().Add(time.Minute),
+			LastSeenAt:       time.Now().Add(time.Minute),
+		},
+	}
+	if err := db.Create(&devices).Error; err != nil {
+		t.Fatalf("create push devices failed: %v", err)
+	}
+
+	message := repository.PushMessage{
+		Title:     "Queued Push",
+		Content:   "queued body",
+		IsActive:  true,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	if err := svc.CreatePushMessage(ctx, &message); err != nil {
+		t.Fatalf("CreatePushMessage failed: %v", err)
+	}
+
+	var deliveries []repository.PushDelivery
+	if err := db.Order("user_type ASC, user_id ASC").Find(&deliveries).Error; err != nil {
+		t.Fatalf("query deliveries failed: %v", err)
+	}
+	if len(deliveries) != 2 {
+		t.Fatalf("expected 2 deliveries, got %d", len(deliveries))
+	}
+	if deliveries[0].Status != "queued" || deliveries[1].Status != "queued" {
+		t.Fatalf("expected queued deliveries, got %+v", deliveries)
+	}
+	if deliveries[0].MessageID != message.UID || deliveries[1].MessageID != message.UID {
+		t.Fatalf("expected message id %q, got %+v", message.UID, deliveries)
+	}
+
+	deliveryByRecipient := map[string]repository.PushDelivery{}
+	for _, delivery := range deliveries {
+		deliveryByRecipient[delivery.UserType+"::"+delivery.UserID] = delivery
+	}
+	if deliveryByRecipient["customer::1001"].DeviceToken != "token-customer-new" {
+		t.Fatalf("expected latest customer device token, got %+v", deliveryByRecipient["customer::1001"])
+	}
+	if deliveryByRecipient["rider::2001"].DeviceToken != "token-rider" {
+		t.Fatalf("expected rider delivery token, got %+v", deliveryByRecipient["rider::2001"])
+	}
+
+	deliveryList, err := svc.ListPushMessageDeliveries(ctx, message.UID, 20)
+	if err != nil {
+		t.Fatalf("ListPushMessageDeliveries failed: %v", err)
+	}
+	if deliveryList.Total != 2 {
+		t.Fatalf("expected total deliveries 2, got %d", deliveryList.Total)
+	}
+	if len(deliveryList.Items) != 2 {
+		t.Fatalf("expected 2 delivery items, got %d", len(deliveryList.Items))
 	}
 }

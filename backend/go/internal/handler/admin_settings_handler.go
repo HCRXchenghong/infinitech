@@ -431,6 +431,32 @@ func (h *AdminSettingsHandler) GetPushMessageStats(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
+func (h *AdminSettingsHandler) GetPushMessageDeliveries(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		return
+	}
+
+	limit, err := strconv.Atoi(strings.TrimSpace(c.DefaultQuery("limit", "50")))
+	if err != nil {
+		limit = 50
+	}
+
+	deliveries, listErr := h.admin.ListPushMessageDeliveries(c.Request.Context(), id, limit)
+	if listErr != nil {
+		status := http.StatusInternalServerError
+		lower := strings.ToLower(listErr.Error())
+		if strings.Contains(lower, "record not found") || strings.Contains(lower, "invalid id") {
+			status = http.StatusNotFound
+		}
+		c.JSON(status, gin.H{"success": false, "error": listErr.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, deliveries)
+}
+
 func (h *AdminSettingsHandler) UpdatePushMessage(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {

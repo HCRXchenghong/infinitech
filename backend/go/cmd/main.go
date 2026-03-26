@@ -753,6 +753,7 @@ func main() {
 		api.GET("/push-messages", handlers.AdminSettings.GetPushMessages)
 		api.POST("/push-messages", handlers.AdminSettings.CreatePushMessage)
 		api.GET("/push-messages/:id/stats", handlers.AdminSettings.GetPushMessageStats)
+		api.GET("/push-messages/:id/deliveries", handlers.AdminSettings.GetPushMessageDeliveries)
 		api.PUT("/push-messages/:id", handlers.AdminSettings.UpdatePushMessage)
 		api.DELETE("/push-messages/:id", handlers.AdminSettings.DeletePushMessage)
 

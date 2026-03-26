@@ -165,6 +165,7 @@ router.delete('/carousel/:id', adminSettingsController.deleteCarousel);
 router.get('/push-messages', adminSettingsController.getPushMessages);
 router.post('/push-messages', adminSettingsController.createPushMessage);
 router.get('/push-messages/:id/stats', adminSettingsController.getPushMessageStats);
+router.get('/push-messages/:id/deliveries', adminSettingsController.getPushMessageDeliveries);
 router.put('/push-messages/:id', adminSettingsController.updatePushMessage);
 router.delete('/push-messages/:id', adminSettingsController.deletePushMessage);
 
