@@ -7,7 +7,6 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
-const rateLimit = require("express-rate-limit");
 const { createServer } = require("http");
 const os = require("os");
 require("dotenv").config();
@@ -20,6 +19,7 @@ const { parseOperatorFromAuthHeader } = require("./utils/authIdentity");
 const { createRequestAuditMiddleware } = require("./middleware/requestAudit");
 const { createInviteRuntimeGuard } = require("./middleware/inviteRuntimeGuard");
 const { createUploadsProxy } = require("./middleware/uploadsProxy");
+const { createRedisRateLimiter } = require("./middleware/apiRateLimiter");
 
 const app = express();
 const httpServer = createServer(app);
@@ -27,17 +27,16 @@ httpServer.requestTimeout = config.http.requestTimeoutMs;
 httpServer.headersTimeout = config.http.headersTimeoutMs;
 httpServer.keepAliveTimeout = config.http.keepAliveTimeoutMs;
 
-const apiRateLimiter = rateLimit({
+const apiRateLimiter = createRedisRateLimiter({
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.max,
-  standardHeaders: true,
-  legacyHeaders: false,
+  prefix: config.rateLimit.redisPrefix,
+  enabled: config.rateLimit.redisEnabled,
+  redisConnectTimeoutMs: config.rateLimit.redisConnectTimeoutMs,
+  redisConfig: config.redis,
+  logger,
   skip(req) {
     return req.path === "/health" || req.path === "/api/health";
-  },
-  message: {
-    success: false,
-    error: "请求过于频繁，请稍后再试",
   },
 });
 

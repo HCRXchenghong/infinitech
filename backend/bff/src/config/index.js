@@ -9,6 +9,16 @@ function toPositiveInt(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function toBoolean(value, fallback) {
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  if (["true", "1", "yes", "on"].includes(normalized)) return true;
+  if (["false", "0", "no", "off"].includes(normalized)) return false;
+  return fallback;
+}
+
 function normalizeOrigin(raw) {
   const value = String(raw || "").trim();
   if (!value) {
@@ -79,6 +89,7 @@ module.exports = {
   },
 
   redis: {
+    enabled: toBoolean(process.env.REDIS_ENABLED, true),
     host: process.env.REDIS_HOST || "127.0.0.1",
     port: process.env.REDIS_PORT || 2550,
     password: process.env.REDIS_PASSWORD || "",
@@ -115,7 +126,10 @@ module.exports = {
 
   rateLimit: {
     windowMs: toPositiveInt(process.env.BFF_API_RATE_LIMIT_WINDOW_MS, 60 * 1000),
-    max: toPositiveInt(process.env.BFF_API_RATE_LIMIT_MAX, productionLike ? 600 : 3000)
+    max: toPositiveInt(process.env.BFF_API_RATE_LIMIT_MAX, productionLike ? 600 : 3000),
+    redisEnabled: toBoolean(process.env.BFF_REDIS_RATE_LIMIT_ENABLED, productionLike && toBoolean(process.env.REDIS_ENABLED, true)),
+    redisPrefix: String(process.env.BFF_REDIS_RATE_LIMIT_PREFIX || "ratelimit:bff:api").trim() || "ratelimit:bff:api",
+    redisConnectTimeoutMs: toPositiveInt(process.env.BFF_REDIS_RATE_LIMIT_CONNECT_TIMEOUT_MS, 1000)
   },
 
   logLevel: process.env.LOG_LEVEL || "info",

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 )
 
 type fixedWindowRecord struct {
@@ -133,4 +135,77 @@ func GlobalRateLimit(window time.Duration, maxRequests int) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func RedisBackedRateLimit(rdb *redis.Client, prefix string, window time.Duration, maxRequests int) gin.HandlerFunc {
+	fallbackLimiter := newFixedWindowLimiter(window, maxRequests)
+	normalizedPrefix := strings.TrimSpace(prefix)
+	if normalizedPrefix == "" {
+		normalizedPrefix = "ratelimit:http"
+	}
+
+	return func(c *gin.Context) {
+		if shouldSkipProtection(c.Request.URL.Path) || strings.EqualFold(c.Request.Method, http.MethodOptions) {
+			c.Next()
+			return
+		}
+
+		clientIP := strings.TrimSpace(c.ClientIP())
+		if clientIP == "" {
+			clientIP = "unknown"
+		}
+
+		allowed, retryAfter, err := allowWithRedis(c.Request.Context(), rdb, normalizedPrefix, clientIP, window, maxRequests, time.Now())
+		if err != nil {
+			allowed, retryAfter = fallbackLimiter.allow(clientIP, time.Now())
+		}
+		if !allowed {
+			c.Header("Retry-After", strconv.Itoa(int(math.Ceil(retryAfter.Seconds()))))
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+				"error": "too many requests, please retry later",
+			})
+			return
+		}
+
+		c.Next()
+	}
+}
+
+func allowWithRedis(parent context.Context, rdb *redis.Client, prefix, key string, window time.Duration, maxRequests int, now time.Time) (bool, time.Duration, error) {
+	if rdb == nil {
+		return false, 0, fmt.Errorf("redis rate limiter requires redis client")
+	}
+
+	windowMs := window.Milliseconds()
+	if windowMs <= 0 {
+		windowMs = 1000
+	}
+	bucket := now.UnixMilli() / windowMs
+	redisKey := fmt.Sprintf("%s:%d:%s", prefix, bucket, key)
+
+	ctx, cancel := context.WithTimeout(parent, 250*time.Millisecond)
+	defer cancel()
+
+	count, err := rdb.Incr(ctx, redisKey).Result()
+	if err != nil {
+		return false, 0, err
+	}
+	if count == 1 {
+		if err := rdb.PExpire(ctx, redisKey, window+time.Second).Err(); err != nil {
+			return false, 0, err
+		}
+	}
+	if int(count) <= maxRequests {
+		return true, 0, nil
+	}
+
+	ttl, err := rdb.PTTL(ctx, redisKey).Result()
+	if err != nil {
+		return false, 0, err
+	}
+	if ttl < 0 {
+		ttl = window
+	}
+
+	return false, ttl, nil
 }

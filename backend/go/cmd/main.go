@@ -297,7 +297,11 @@ func main() {
 	r.Use(middleware.Recovery())
 	r.Use(middleware.RequestBodyLimit(cfg.HTTP.MaxBodyBytes, cfg.HTTP.MaxUploadBytes))
 	if cfg.HTTP.RateLimitEnabled {
-		r.Use(middleware.GlobalRateLimit(cfg.HTTP.RateLimitWindow, cfg.HTTP.RateLimitMax))
+		if rdb != nil {
+			r.Use(middleware.RedisBackedRateLimit(rdb, "ratelimit:go:http", cfg.HTTP.RateLimitWindow, cfg.HTTP.RateLimitMax))
+		} else {
+			r.Use(middleware.GlobalRateLimit(cfg.HTTP.RateLimitWindow, cfg.HTTP.RateLimitMax))
+		}
 	}
 	r.Use(middleware.UnifiedIDResolver(db))
 

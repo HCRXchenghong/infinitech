@@ -223,8 +223,10 @@ npm run build
 - BFF 已新增 JSON / urlencoded 请求体大小限制
 - BFF 上传已新增字段和文件数量、大小限制
 - BFF HTTP server 已显式设置 request、headers、keep-alive 超时
+- BFF 现已支持 Redis 优先的分布式限流，Redis 不可用时自动回退到本地内存限流
 - Go API 已切换到 `gin.New()`，避免重复默认中间件开销
 - Go API 已增加 trusted proxies、multipart memory 上限、全局请求体限制、全局限流中间件
+- Go API 在 Redis 可用时会优先使用 Redis 分布式限流，Redis 不可用时自动回退到单机限流
 - `socket-server` 已增加敏感接口固定窗口限流
 - `socket-server` 已增加 JSON 和 multipart 请求体上限
 - `socket-server` 已增加 HTTP server 超时设置与更紧的 Socket.IO ping / buffer 限制
@@ -266,6 +268,7 @@ npm run build
 
 - 现在不能对外宣称“万人并发一定不会出问题”
 - 这一轮已经补的是明显的默认薄弱点和单机保护层
+- Go 与 BFF 已经具备 Redis 优先的限流能力，但 `socket-server` 当前仍主要是单机保护层
 - 真正面向千人、万人级稳定性，还需要继续完成：
 - Redis 分布式限流
 - PostgreSQL 生产部署与连接池压测
