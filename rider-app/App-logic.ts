@@ -2,6 +2,7 @@ import Vue from 'vue'
 import riderOrderStore, { loadRiderData } from './shared-ui/riderOrderStore'
 import { heartbeatRiderStatus, fetchRiderOrders } from './shared-ui/api'
 import { registerCurrentPushDevice, clearPushRegistrationState } from './shared-ui/push-registration'
+import { startPushEventBridge } from './shared-ui/push-events'
 import messageManager from './utils/message-manager'
 import createSocket from './utils/socket-io'
 import config from './shared-ui/config'
@@ -45,6 +46,7 @@ export default Vue.extend({
     notification.init().catch(err => {
       console.error('[App] 通知初始化失败:', err)
     })
+    void startPushEventBridge()
     void this.syncPushRegistration()
     // 启动时同步一次骑手状态，避免心跳循环拿不到初始在线状态
     loadRiderData().finally(() => {

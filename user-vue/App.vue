@@ -12,11 +12,13 @@ import config from '@/shared-ui/config'
 import { setupRequestInterceptor, forceLogout, manualRefreshToken } from '@/shared-ui/request-interceptor'
 import { checkAndClearCacheIfNeeded } from '@/shared-ui/cache-cleaner'
 import { registerCurrentPushDevice, clearPushRegistrationState } from '@/shared-ui/push-registration'
+import { startPushEventBridge } from '@/shared-ui/push-events'
 
 export default Vue.extend({
   onLaunch() {
     // 0. 检查版本并清除缓存（如果需要）
     checkAndClearCacheIfNeeded()
+    void startPushEventBridge()
 
     // 1. 安装请求拦截器（必须最先执行）
     setupRequestInterceptor()

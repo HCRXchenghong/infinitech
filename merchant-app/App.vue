@@ -1,9 +1,11 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { registerCurrentPushDevice, clearPushRegistrationState } from '@/shared-ui/push-registration'
+import { startPushEventBridge } from '@/shared-ui/push-events'
 
 export default defineComponent({
   onLaunch() {
+    void startPushEventBridge()
     this.checkAuth()
   },
   onShow() {

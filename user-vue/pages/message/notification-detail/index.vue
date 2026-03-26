@@ -66,7 +66,7 @@
 </template>
 
 <script>
-import { fetchNotificationDetail, markNotificationRead } from '@/shared-ui/api.js'
+import { fetchNotificationDetail, markNotificationRead, ackPushMessage } from '@/shared-ui/api.js'
 
 const NOTIFICATION_READ_EVENT = 'official-notification-read'
 
@@ -85,6 +85,10 @@ export default {
   },
   onLoad(options) {
     const id = options.id
+    const messageId = options.messageId
+    if (messageId) {
+      void this.ackPushOpened(messageId)
+    }
     if (id) {
       this.loadNotification(id)
     } else {
@@ -95,6 +99,18 @@ export default {
     }
   },
   methods: {
+    async ackPushOpened(messageId) {
+      try {
+        await ackPushMessage({
+          messageId: String(messageId),
+          action: 'opened',
+          timestamp: new Date().toISOString()
+        })
+      } catch (err) {
+        console.error('推送打开回执失败:', err)
+      }
+    },
+
     async loadNotification(id) {
       this.loading = true
       try {
