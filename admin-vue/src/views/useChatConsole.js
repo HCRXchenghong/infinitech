@@ -54,6 +54,7 @@ export function useChatConsole(options = {}) {
   } = options;
 
   let socketRef = null;
+  let refreshChatsTimer = null;
 
   const searchQuery = ref('');
   const selectedChat = ref(null);
@@ -93,6 +94,16 @@ export function useChatConsole(options = {}) {
     } catch (error) {
       console.error('加载服务端会话列表失败:', error);
     }
+  }
+
+  function scheduleRefreshChats(delay = 250) {
+    if (refreshChatsTimer) {
+      clearTimeout(refreshChatsTimer);
+    }
+    refreshChatsTimer = setTimeout(() => {
+      refreshChatsTimer = null;
+      void refreshChats();
+    }, delay);
   }
 
   async function syncReadState(chatId) {
@@ -170,6 +181,7 @@ export function useChatConsole(options = {}) {
 
     socket.emit('join_chat', { chatId: chat.id, userId: 'admin', role: 'admin' });
     socket.emit('mark_all_read', { chatId: chat.id });
+    scheduleRefreshChats();
   }
 
   function sendMessage() {
@@ -415,6 +427,7 @@ export function useChatConsole(options = {}) {
 
       if (!upsertBeforeSelectedCheck && pushIncomingToSelectedChat(data, incomingChatId)) {
         void syncReadState(incomingChatId);
+        scheduleRefreshChats();
         return;
       }
 
@@ -431,6 +444,7 @@ export function useChatConsole(options = {}) {
           void syncReadState(incomingChatId);
         }
       }
+      scheduleRefreshChats();
     });
 
     socket.on('messages_loaded', async (data) => {
@@ -458,21 +472,28 @@ export function useChatConsole(options = {}) {
         msg.id = data.messageId;
         msg.status = 'sent';
       }
+      scheduleRefreshChats();
     });
 
     socket.on('message_read', (data) => {
       const msg = messages.value.find((item) => item.id === data.messageId);
       if (msg) msg.status = 'read';
+      scheduleRefreshChats();
     });
 
     socket.on('all_messages_read', () => {
       messages.value.forEach((msg) => {
         if (msg.isSelf && msg.status !== 'read') msg.status = 'read';
       });
+      scheduleRefreshChats();
     });
   });
 
   onUnmounted(() => {
+    if (refreshChatsTimer) {
+      clearTimeout(refreshChatsTimer);
+      refreshChatsTimer = null;
+    }
     if (!socketRef) return;
 
     socketRef.off('connect');

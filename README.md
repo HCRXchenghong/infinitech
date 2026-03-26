@@ -192,6 +192,8 @@ npm run build
 ### 7.8 本轮新增完成
 - `socket-server/riderNamespace.js` 已开始把骑手直聊消息同步回 Go 权威消息服务，不再只落本地 `chat.db`
 - 这让骑手直聊消息也进入统一的服务端会话/历史模型，为后续彻底收口 `chat.db` 继续往前推进了一步
+- `rider-app/App-logic.ts` 已把 `/rider` 命名空间收到的直聊消息转进统一前端实时事件流，骑手当前聊天页不再只能靠重新进页拉历史才能看到新消息
+- `admin-vue/src/views/useChatConsole.js` 已在实时消息、已读回执后延迟回拉服务端会话列表，后台会话摘要与未读开始重新锚回服务端权威源
 
 ## 8. 当前仍未完成的大项
 
