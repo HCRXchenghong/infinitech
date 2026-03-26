@@ -14,6 +14,7 @@ import { setupRiderNamespace } from './riderNamespace.js';
 import { setupAiStaffNamespace } from './aiStaffNamespace.js';
 import { setupAiNamespace } from './aiNamespace.js';
 import { validateSocketIdentity } from './socketIdentity.js';
+import { allowFixedWindowRateLimit, initRedisState } from './redisState.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -38,6 +39,7 @@ const SOCKET_MAX_HTTP_BUFFER_BYTES = toPositiveInt(process.env.SOCKET_MAX_HTTP_B
 
 let monitorNamespace;
 let supportNamespace;
+initRedisState();
 
 async function convertHeicIfNeeded(filePath, ext) {
   if (ext.toLowerCase() !== '.heic' && ext.toLowerCase() !== '.heif') return filePath;
@@ -221,47 +223,6 @@ function getClientIp(req) {
   return 'unknown';
 }
 
-function createFixedWindowLimiter(windowMs, maxRequests) {
-  const records = new Map();
-  let lastCleanupAt = Date.now();
-
-  return {
-    allow(key) {
-      const now = Date.now();
-      if (now - lastCleanupAt >= windowMs * 2) {
-        for (const [recordKey, record] of records.entries()) {
-          if (now - record.windowStart >= windowMs * 2) {
-            records.delete(recordKey);
-          }
-        }
-        lastCleanupAt = now;
-      }
-
-      const existing = records.get(key);
-      if (!existing || now - existing.windowStart >= windowMs) {
-        records.set(key, { windowStart: now, count: 1 });
-        return { allowed: true, retryAfterMs: 0 };
-      }
-
-      if (existing.count >= maxRequests) {
-        return {
-          allowed: false,
-          retryAfterMs: Math.max(windowMs - (now - existing.windowStart), 0)
-        };
-      }
-
-      existing.count += 1;
-      records.set(key, existing);
-      return { allowed: true, retryAfterMs: 0 };
-    }
-  };
-}
-
-const httpRateLimiter = createFixedWindowLimiter(
-  SOCKET_HTTP_RATE_LIMIT_WINDOW_MS,
-  SOCKET_HTTP_RATE_LIMIT_MAX
-);
-
 function shouldApplyHttpRateLimit(pathname) {
   return pathname === '/api/upload'
     || pathname === '/api/generate-token'
@@ -269,12 +230,17 @@ function shouldApplyHttpRateLimit(pathname) {
     || pathname === '/api/stats';
 }
 
-function enforceHttpRateLimit(req, res, pathname) {
+async function enforceHttpRateLimit(req, res, pathname) {
   if (req.method === 'OPTIONS' || !shouldApplyHttpRateLimit(pathname)) {
     return true;
   }
 
-  const { allowed, retryAfterMs } = httpRateLimiter.allow(getClientIp(req));
+  const { allowed, retryAfterMs } = await allowFixedWindowRateLimit({
+    prefix: 'ratelimit:socket:http',
+    key: getClientIp(req),
+    windowMs: SOCKET_HTTP_RATE_LIMIT_WINDOW_MS,
+    maxRequests: SOCKET_HTTP_RATE_LIMIT_MAX
+  });
   if (allowed) return true;
 
   res.setHeader('Retry-After', String(Math.max(1, Math.ceil(retryAfterMs / 1000))));
@@ -325,7 +291,7 @@ const httpServer = createServer(async (req, res) => {
     return;
   }
 
-  if (!enforceHttpRateLimit(req, res, pathname)) {
+  if (!(await enforceHttpRateLimit(req, res, pathname))) {
     return;
   }
 
@@ -416,7 +382,7 @@ const httpServer = createServer(async (req, res) => {
         });
       }
 
-      const token = generateToken(identity.socketUserId, identity.role, {
+      const token = await generateToken(identity.socketUserId, identity.role, {
         authToken: identity.authToken,
         authPayload: identity.payload,
         metadata: {

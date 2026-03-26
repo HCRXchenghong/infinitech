@@ -230,6 +230,8 @@ npm run build
 - `socket-server` 已增加敏感接口固定窗口限流
 - `socket-server` 已增加 JSON 和 multipart 请求体上限
 - `socket-server` 已增加 HTTP server 超时设置与更紧的 Socket.IO ping / buffer 限制
+- `socket-server` 现已支持 Redis 优先的共享 token 会话存储，解决多实例下“发 token 的实例”和“校验 token 的实例”互不认账的问题
+- `socket-server` 的 HTTP 敏感接口限流现已支持 Redis 优先的分布式固定窗口限流，Redis 不可用时自动回退到本地内存限流
 - BFF 转发到 Go 时现在会带上真实客户端 IP，便于审计和保护策略
 
 ## 9. 当前仍未完成的大项
@@ -269,6 +271,7 @@ npm run build
 - 现在不能对外宣称“万人并发一定不会出问题”
 - 这一轮已经补的是明显的默认薄弱点和单机保护层
 - Go 与 BFF 已经具备 Redis 优先的限流能力，但 `socket-server` 当前仍主要是单机保护层
+- `socket-server` 虽然已经把 token 会话和 HTTP limiter 推进到 Redis 优先模式，但在线人数、房间状态和跨实例实时广播还没有完全分布式化
 - 真正面向千人、万人级稳定性，还需要继续完成：
 - Redis 分布式限流
 - PostgreSQL 生产部署与连接池压测

@@ -3,9 +3,7 @@ import crypto from 'crypto';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-
-const SOCKET_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const socketSessions = new Map();
+import { createSocketSessionRecord, getSocketSessionRecord, initRedisState } from './redisState.js';
 
 function loadLocalEnvFile() {
   const envPath = join(dirname(fileURLToPath(import.meta.url)), '.env');
@@ -32,50 +30,8 @@ function loadLocalEnvFile() {
   }
 }
 
-function cleanupExpiredSessions() {
-  const now = Date.now();
-  for (const [sessionId, session] of socketSessions.entries()) {
-    if (!session || session.expiresAt <= now) {
-      socketSessions.delete(sessionId);
-    }
-  }
-}
-
-function createSocketSession(userId, role, options = {}) {
-  cleanupExpiredSessions();
-
-  const sessionId = crypto.randomUUID();
-  const expiresAt = Date.now() + Math.max(1, Number(options.ttlMs || SOCKET_SESSION_TTL_MS));
-  socketSessions.set(sessionId, {
-    userId: String(userId || ''),
-    role: String(role || ''),
-    authToken: String(options.authToken || '').trim(),
-    authPayload: options.authPayload || null,
-    metadata: options.metadata || {},
-    expiresAt
-  });
-
-  return {
-    sessionId,
-    expiresAt
-  };
-}
-
-function getSocketSession(sessionId) {
-  cleanupExpiredSessions();
-  const normalizedSessionId = String(sessionId || '').trim();
-  if (!normalizedSessionId) return null;
-
-  const session = socketSessions.get(normalizedSessionId);
-  if (!session) return null;
-  if (session.expiresAt <= Date.now()) {
-    socketSessions.delete(normalizedSessionId);
-    return null;
-  }
-  return session;
-}
-
 loadLocalEnvFile();
+initRedisState();
 
 const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
 if (!JWT_SECRET) {
@@ -84,16 +40,8 @@ if (!JWT_SECRET) {
 
 const AES_KEY = crypto.scryptSync(JWT_SECRET, 'salt', 32);
 
-const cleanupTimer = setInterval(() => {
-  cleanupExpiredSessions();
-}, 60 * 1000);
-
-if (typeof cleanupTimer.unref === 'function') {
-  cleanupTimer.unref();
-}
-
-export function generateToken(userId, role, options = {}) {
-  const session = createSocketSession(userId, role, options);
+export async function generateToken(userId, role, options = {}) {
+  const session = await createSocketSessionRecord(userId, role, options);
   return jwt.sign(
     {
       userId: String(userId || ''),
@@ -135,28 +83,32 @@ export function decryptMessage(encrypted) {
   }
 }
 
-export function authMiddleware(socket, next) {
-  const token = socket.handshake.auth?.token || socket.handshake.query?.token;
-  if (!token) {
-    return next(new Error('\u8ba4\u8bc1\u5931\u8d25\uff1a\u7f3a\u5c11 token'));
-  }
+export async function authMiddleware(socket, next) {
+  try {
+    const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+    if (!token) {
+      return next(new Error('\u8ba4\u8bc1\u5931\u8d25\uff1a\u7f3a\u5c11 token'));
+    }
 
-  const decoded = verifyToken(token);
-  if (!decoded || !decoded.sessionId) {
-    return next(new Error('\u8ba4\u8bc1\u5931\u8d25\uff1atoken \u65e0\u6548\u6216\u5df2\u8fc7\u671f'));
-  }
+    const decoded = verifyToken(token);
+    if (!decoded || !decoded.sessionId) {
+      return next(new Error('\u8ba4\u8bc1\u5931\u8d25\uff1atoken \u65e0\u6548\u6216\u5df2\u8fc7\u671f'));
+    }
 
-  const session = getSocketSession(decoded.sessionId);
-  if (!session) {
-    return next(new Error('\u8ba4\u8bc1\u5931\u8d25\uff1asocket \u4f1a\u8bdd\u4e0d\u5b58\u5728\u6216\u5df2\u8fc7\u671f'));
-  }
+    const session = await getSocketSessionRecord(decoded.sessionId);
+    if (!session) {
+      return next(new Error('\u8ba4\u8bc1\u5931\u8d25\uff1asocket \u4f1a\u8bdd\u4e0d\u5b58\u5728\u6216\u5df2\u8fc7\u671f'));
+    }
 
-  socket.userId = session.userId;
-  socket.userRole = session.role;
-  socket.sessionId = decoded.sessionId;
-  socket.authToken = session.authToken;
-  socket.authPayload = session.authPayload;
-  socket.socketAuthMetadata = session.metadata || {};
-  socket.authenticated = true;
-  next();
+    socket.userId = session.userId;
+    socket.userRole = session.role;
+    socket.sessionId = decoded.sessionId;
+    socket.authToken = session.authToken;
+    socket.authPayload = session.authPayload;
+    socket.socketAuthMetadata = session.metadata || {};
+    socket.authenticated = true;
+    next();
+  } catch (err) {
+    next(err);
+  }
 }

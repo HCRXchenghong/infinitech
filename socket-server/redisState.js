@@ -1,0 +1,226 @@
+import { createClient } from 'redis';
+import crypto from 'crypto';
+import { existsSync, readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import { logger } from './logger.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SOCKET_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function loadLocalEnvFile() {
+  const envPath = join(__dirname, '.env');
+  if (!existsSync(envPath)) return;
+
+  const lines = readFileSync(envPath, 'utf8').split('\n');
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+
+    const idx = line.indexOf('=');
+    if (idx <= 0) continue;
+
+    const key = line.slice(0, idx).trim();
+    let value = line.slice(idx + 1).trim();
+
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+
+function toPositiveInt(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function toBoolean(value, fallback) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const normalized = String(value).trim().toLowerCase();
+  if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
+}
+
+loadLocalEnvFile();
+
+const redisEnabled = toBoolean(process.env.SOCKET_REDIS_ENABLED ?? process.env.REDIS_ENABLED, true);
+const redisConfig = {
+  host: String(process.env.SOCKET_REDIS_HOST || process.env.REDIS_HOST || '127.0.0.1').trim(),
+  port: toPositiveInt(process.env.SOCKET_REDIS_PORT || process.env.REDIS_PORT, 2550),
+  password: String(process.env.SOCKET_REDIS_PASSWORD || process.env.REDIS_PASSWORD || '').trim(),
+  database: toPositiveInt(process.env.SOCKET_REDIS_DB || process.env.REDIS_DB, 0),
+  connectTimeout: toPositiveInt(process.env.SOCKET_REDIS_CONNECT_TIMEOUT_MS, 1000)
+};
+
+const localSessionStore = new Map();
+const localRateLimitStore = new Map();
+let redisClient = null;
+let redisConnectPromise = null;
+let redisDisabledUntil = 0;
+
+function cleanupLocalSessions() {
+  const now = Date.now();
+  for (const [sessionId, session] of localSessionStore.entries()) {
+    if (!session || session.expiresAt <= now) {
+      localSessionStore.delete(sessionId);
+    }
+  }
+}
+
+function cleanupLocalRateLimit(windowMs) {
+  const now = Date.now();
+  for (const [key, record] of localRateLimitStore.entries()) {
+    if (!record || now - record.windowStart >= windowMs * 2) {
+      localRateLimitStore.delete(key);
+    }
+  }
+}
+
+async function ensureRedisClient() {
+  if (!redisEnabled) return null;
+  if (redisClient?.isOpen) return redisClient;
+  if (redisConnectPromise) return redisConnectPromise;
+  if (Date.now() < redisDisabledUntil) return null;
+
+  const client = createClient({
+    socket: {
+      host: redisConfig.host,
+      port: redisConfig.port,
+      connectTimeout: redisConfig.connectTimeout,
+      reconnectStrategy: false
+    },
+    password: redisConfig.password || undefined,
+    database: redisConfig.database
+  });
+
+  client.on('error', (err) => {
+    logger.warn('socket-server redis client error:', err?.message || err);
+  });
+
+  redisConnectPromise = client.connect()
+    .then(() => {
+      redisClient = client;
+      redisDisabledUntil = 0;
+      logger.info(`socket-server redis connected: ${redisConfig.host}:${redisConfig.port}/${redisConfig.database}`);
+      return redisClient;
+    })
+    .catch((err) => {
+      redisDisabledUntil = Date.now() + 30_000;
+      logger.warn('socket-server redis unavailable, falling back to local state:', err?.message || err);
+      try {
+        client.disconnect();
+      } catch (_err) {
+        // ignore cleanup errors
+      }
+      return null;
+    })
+    .finally(() => {
+      redisConnectPromise = null;
+    });
+
+  return redisConnectPromise;
+}
+
+export function initRedisState() {
+  void ensureRedisClient();
+}
+
+export async function createSocketSessionRecord(userId, role, options = {}) {
+  cleanupLocalSessions();
+
+  const sessionId = crypto.randomUUID();
+  const ttlMs = Math.max(1, Number(options.ttlMs || SOCKET_SESSION_TTL_MS));
+  const expiresAt = Date.now() + ttlMs;
+  const record = {
+    userId: String(userId || ''),
+    role: String(role || ''),
+    authToken: String(options.authToken || '').trim(),
+    authPayload: options.authPayload || null,
+    metadata: options.metadata || {},
+    expiresAt
+  };
+
+  const client = await ensureRedisClient();
+  if (client) {
+    await client.set(`socket:session:${sessionId}`, JSON.stringify(record), {
+      PX: ttlMs
+    });
+  } else {
+    localSessionStore.set(sessionId, record);
+  }
+
+  return { sessionId, expiresAt };
+}
+
+export async function getSocketSessionRecord(sessionId) {
+  const normalizedSessionId = String(sessionId || '').trim();
+  if (!normalizedSessionId) return null;
+
+  const client = await ensureRedisClient();
+  if (client) {
+    const payload = await client.get(`socket:session:${normalizedSessionId}`);
+    if (!payload) return null;
+    try {
+      return JSON.parse(payload);
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  cleanupLocalSessions();
+  const session = localSessionStore.get(normalizedSessionId);
+  if (!session) return null;
+  if (session.expiresAt <= Date.now()) {
+    localSessionStore.delete(normalizedSessionId);
+    return null;
+  }
+  return session;
+}
+
+export async function allowFixedWindowRateLimit({ prefix, key, windowMs, maxRequests }) {
+  const normalizedPrefix = String(prefix || 'ratelimit:socket').trim() || 'ratelimit:socket';
+  const normalizedKey = String(key || 'unknown').trim() || 'unknown';
+  const safeWindowMs = Math.max(1, Number(windowMs || 60_000));
+  const safeMaxRequests = Math.max(1, Number(maxRequests || 1));
+  const bucket = Math.floor(Date.now() / safeWindowMs);
+  const client = await ensureRedisClient();
+
+  if (client) {
+    const redisKey = `${normalizedPrefix}:${bucket}:${normalizedKey}`;
+    const count = await client.incr(redisKey);
+    if (count === 1) {
+      await client.pExpire(redisKey, safeWindowMs + 1000);
+    }
+    if (count <= safeMaxRequests) {
+      return { allowed: true, retryAfterMs: 0 };
+    }
+    const ttl = await client.pTTL(redisKey);
+    return {
+      allowed: false,
+      retryAfterMs: ttl > 0 ? ttl : safeWindowMs
+    };
+  }
+
+  cleanupLocalRateLimit(safeWindowMs);
+  const localKey = `${normalizedPrefix}:${normalizedKey}`;
+  const now = Date.now();
+  const existing = localRateLimitStore.get(localKey);
+  if (!existing || now - existing.windowStart >= safeWindowMs) {
+    localRateLimitStore.set(localKey, { windowStart: now, count: 1 });
+    return { allowed: true, retryAfterMs: 0 };
+  }
+  if (existing.count >= safeMaxRequests) {
+    return {
+      allowed: false,
+      retryAfterMs: Math.max(safeWindowMs - (now - existing.windowStart), 0)
+    };
+  }
+  existing.count += 1;
+  localRateLimitStore.set(localKey, existing);
+  return { allowed: true, retryAfterMs: 0 };
+}
