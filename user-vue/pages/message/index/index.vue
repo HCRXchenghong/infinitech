@@ -25,13 +25,12 @@
       </view>
     </view>
 
-    <scroll-view
-      scroll-y
-      class="message-list"
-      :refresher-enabled="false"
-      @scroll="onScroll"
-    >
-      <view v-if="currentTab === 'all' || currentTab === 'notification'" class="message-card" @tap="goNotifications">
+    <scroll-view scroll-y class="message-list" :refresher-enabled="false" @scroll="onScroll">
+      <view
+        v-if="currentTab === 'all' || currentTab === 'notification'"
+        class="message-card"
+        @tap="goNotifications"
+      >
         <view class="card-content">
           <view class="avatar-info">
             <view class="notification-avatar">
@@ -85,7 +84,10 @@
         </view>
       </view>
 
-      <view v-if="filteredSessions.length === 0 && currentTab !== 'all' && currentTab !== 'notification'" class="empty-state">
+      <view
+        v-if="filteredSessions.length === 0 && currentTab !== 'all' && currentTab !== 'notification'"
+        class="empty-state"
+      >
         <view class="empty-icon-wrapper">
           <image src="/static/icons/empty-message.svg" mode="aspectFit" class="empty-icon-img" />
         </view>
@@ -93,7 +95,10 @@
         <text class="empty-hint">您的消息将显示在这里</text>
       </view>
 
-      <view v-if="filteredSessions.length > 0 || currentTab === 'all' || currentTab === 'notification'" class="list-footer">
+      <view
+        v-if="filteredSessions.length > 0 || currentTab === 'all' || currentTab === 'notification'"
+        class="list-footer"
+      >
         <view class="footer-line"></view>
         <text class="footer-text">仅显示最近一个月的消息</text>
         <view class="footer-line"></view>
@@ -103,17 +108,24 @@
 </template>
 
 <script>
-import { fetchNotificationList, markAllNotificationsRead } from '@/shared-ui/api.js'
-import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/shared-ui/support-runtime.js'
+import {
+  fetchConversations,
+  fetchNotificationList,
+  markAllConversationsRead,
+  markAllNotificationsRead,
+  markConversationRead
+} from '@/shared-ui/api.js'
+import {
+  getCachedSupportRuntimeSettings,
+  loadSupportRuntimeSettings
+} from '@/shared-ui/support-runtime.js'
 
 export default {
   data() {
     const supportRuntime = getCachedSupportRuntimeSettings()
     return {
       currentTab: 'all',
-      isRefreshing: false,
       scrollTop: 0,
-      isSelectMode: false,
       userId: '',
       tabs: [
         { id: 'all', name: '全部' },
@@ -131,15 +143,10 @@ export default {
   computed: {
     filteredSessions() {
       if (this.currentTab === 'all') return this.sessions
-      if (this.currentTab === 'rider') return this.sessions.filter(s => s.role === 'rider')
-      if (this.currentTab === 'shop') return this.sessions.filter(s => s.role === 'shop')
+      if (this.currentTab === 'rider') return this.sessions.filter((item) => item.role === 'rider')
+      if (this.currentTab === 'shop') return this.sessions.filter((item) => item.role === 'shop')
       if (this.currentTab === 'notification') return []
       return this.sessions
-    }
-  },
-  onLoad(options) {
-    if (options && options.select === '1') {
-      this.isSelectMode = true
     }
   },
   onShow() {
@@ -147,9 +154,9 @@ export default {
   },
   methods: {
     async initializePage() {
+      this.userId = this.resolveUserId()
       await this.loadSupportRuntimeConfig()
-      this.loadSessions()
-      this.loadNotificationSummary()
+      await Promise.all([this.loadSessions(), this.loadNotificationSummary()])
     },
 
     async loadSupportRuntimeConfig() {
@@ -159,7 +166,12 @@ export default {
 
     resolveUserId() {
       const profile = uni.getStorageSync('userProfile') || {}
-      const uid = profile.id || profile.userId || profile.phone || uni.getStorageSync('userId') || uni.getStorageSync('phone')
+      const uid =
+        profile.id ||
+        profile.userId ||
+        profile.phone ||
+        uni.getStorageSync('userId') ||
+        uni.getStorageSync('phone')
       return uid ? String(uid) : ''
     },
 
@@ -181,28 +193,31 @@ export default {
       }
       const date = raw ? new Date(raw) : null
       if (!date || Number.isNaN(date.getTime())) return '暂无通知'
-      const hh = String(date.getHours()).padStart(2, '0')
-      const mm = String(date.getMinutes()).padStart(2, '0')
-      return `${hh}:${mm}`
+      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
     },
 
     normalizeSession(item = {}) {
       const role = this.normalizeRole(item.role)
-      const roomId = String(item.roomId || item.id || '')
-      const id = String(item.id || roomId || `${role}_${Date.now()}`)
+      const roomId = String(item.roomId || item.chatId || item.id || '')
       const updatedAt = Number(item.updatedAt || Date.now())
       return {
-        id,
+        id: String(item.id || item.chatId || roomId || `${role}_${Date.now()}`),
         roomId,
         role,
         orderId: item.orderId ? String(item.orderId) : '',
         targetId: item.targetId ? String(item.targetId) : '',
-        name: String(item.name || (role === 'rider' ? '骑手' : role === 'shop' ? '商家' : this.supportTitle)),
-        avatarUrl: String(item.avatarUrl || (role === 'shop'
-          ? '/static/images/default-shop.svg'
-          : role === 'cs'
-            ? '/static/images/logo.png'
-            : '/static/images/default-avatar.svg')),
+        name: String(
+          item.name || (role === 'rider' ? '骑手' : role === 'shop' ? '商家' : this.supportTitle)
+        ),
+        avatarUrl: String(
+          item.avatarUrl ||
+            item.avatar ||
+            (role === 'shop'
+              ? '/static/images/default-shop.svg'
+              : role === 'cs'
+                ? '/static/images/logo.png'
+                : '/static/images/default-avatar.svg')
+        ),
         tag: this.getRoleTag(role),
         tagClass: this.getTagClass(role),
         time: String(item.time || this.formatClock(updatedAt)),
@@ -224,9 +239,9 @@ export default {
       }
     },
 
-    saveSessions() {
+    saveSessions(list = this.sessions) {
       try {
-        const payload = this.sessions
+        const payload = list
           .slice()
           .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
           .slice(0, 100)
@@ -236,33 +251,35 @@ export default {
       }
     },
 
-    mergeOfficialSession(list) {
-      const supportRoomId = this.userId || 'user_default'
-      const cachedOfficial = list.find(item => this.normalizeRole(item.role) === 'cs')
-      const official = this.normalizeSession({
-        id: `support_${supportRoomId}`,
-        roomId: supportRoomId,
-        role: 'cs',
-        name: this.supportTitle,
-        avatarUrl: '/static/images/logo.png',
-        unread: cachedOfficial ? Number(cachedOfficial.unread || 0) : 0,
-        time: cachedOfficial ? cachedOfficial.time : undefined,
-        updatedAt: cachedOfficial ? cachedOfficial.updatedAt : undefined
-      })
-      const others = list.filter(item => this.normalizeRole(item.role) !== 'cs')
-      return [official, ...others]
+    mergeServerAndLegacySessions(serverList, legacyList) {
+      const result = []
+      const seen = new Set()
+
+      const append = (item) => {
+        const normalized = this.normalizeSession(item)
+        if (!normalized.roomId) return
+        if (seen.has(normalized.roomId)) return
+        seen.add(normalized.roomId)
+        result.push(normalized)
+      }
+
+      serverList.forEach(append)
+      legacyList.forEach(append)
+
+      return result.sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
     },
 
-    loadSessions() {
-      this.userId = this.resolveUserId()
-      const localSessions = this.readStoredSessions()
-        .map(item => this.normalizeSession(item))
-        .filter(item => item.roomId)
-
-      this.sessions = this.mergeOfficialSession(localSessions)
-        .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
-
-      this.saveSessions()
+    async loadSessions() {
+      const legacySessions = this.readStoredSessions()
+      try {
+        const response = await fetchConversations()
+        const serverSessions = Array.isArray(response) ? response : []
+        this.sessions = this.mergeServerAndLegacySessions(serverSessions, legacySessions)
+        this.saveSessions()
+      } catch (err) {
+        console.error('加载服务端会话失败:', err)
+        this.sessions = legacySessions.map((item) => this.normalizeSession(item)).filter((item) => item.roomId)
+      }
     },
 
     async loadNotificationSummary() {
@@ -282,16 +299,13 @@ export default {
     },
 
     switchTab(tabId) {
-      if (this.currentTab !== tabId) {
-        this.currentTab = tabId
-      }
+      this.currentTab = tabId
     },
 
     getRoleTag(role) {
       const tags = {
         rider: '骑手',
         shop: '商家',
-        group: '群聊',
         cs: '客服'
       }
       return tags[role] || ''
@@ -301,16 +315,22 @@ export default {
       const classes = {
         rider: 'tag-rider',
         shop: 'tag-shop',
-        group: 'tag-group',
         cs: 'tag-cs'
       }
       return classes[role] || ''
     },
 
-    openChat(item) {
+    async openChat(item) {
       item.unread = 0
       item.updatedAt = Date.now()
       this.saveSessions()
+
+      try {
+        await markConversationRead(item.roomId || item.id)
+      } catch (err) {
+        console.error('同步会话已读失败:', err)
+      }
+
       const chatType = this.normalizeRole(item.role) === 'cs' ? 'support' : 'direct'
       const roomId = item.roomId || item.id
       uni.navigateTo({
@@ -333,16 +353,13 @@ export default {
     },
 
     async clearUnread() {
-      this.sessions.forEach(s => {
-        s.unread = 0
-      })
+      this.sessions = this.sessions.map((item) => ({ ...item, unread: 0 }))
       this.saveSessions()
 
-      try {
-        await markAllNotificationsRead()
-      } catch (err) {
-        console.error('清空通知未读失败:', err)
-      }
+      await Promise.allSettled([
+        markAllConversationsRead(),
+        markAllNotificationsRead()
+      ])
 
       await this.loadNotificationSummary()
       uni.showToast({ title: '已清除未读', icon: 'none' })
@@ -353,9 +370,7 @@ export default {
     },
 
     goNotifications() {
-      uni.navigateTo({
-        url: '/pages/message/notification-list/index'
-      })
+      uni.navigateTo({ url: '/pages/message/notification-list/index' })
     }
   }
 }

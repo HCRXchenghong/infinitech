@@ -31,12 +31,14 @@ type ChatTarget struct {
 }
 
 type UpsertConversationInput struct {
-	TargetType   string `json:"targetType"`
-	TargetID     string `json:"targetId"`
-	TargetPhone  string `json:"targetPhone"`
-	TargetName   string `json:"targetName"`
-	TargetAvatar string `json:"targetAvatar"`
-	CreatedBy    string `json:"createdBy"`
+	ChatID        string `json:"chatId"`
+	TargetType    string `json:"targetType"`
+	TargetID      string `json:"targetId"`
+	TargetPhone   string `json:"targetPhone"`
+	TargetName    string `json:"targetName"`
+	TargetAvatar  string `json:"targetAvatar"`
+	TargetOrderID string `json:"targetOrderId"`
+	CreatedBy     string `json:"createdBy"`
 }
 
 type SyncMessageInput struct {
@@ -58,18 +60,53 @@ type SyncMessageInput struct {
 	TargetAvatar      string      `json:"targetAvatar"`
 }
 
+type conversationScope struct {
+	role   string
+	ids    []string
+	phones []string
+}
+
+type conversationParty struct {
+	Role     string
+	ChatID   string
+	ID       string
+	UID      string
+	LegacyID uint
+	Phone    string
+	Name     string
+	Avatar   string
+}
+
+type conversationUpdate struct {
+	Preview        string
+	MessageType    string
+	LastSenderRole string
+	MessageAt      time.Time
+	UnreadDelta    int64
+	MarkRead       bool
+}
+
 func NewMessageService(db *gorm.DB) *MessageService {
 	return &MessageService{db: db}
 }
 
-// GetConversations 获取会话列表
 func (s *MessageService) GetConversations(ctx context.Context) ([]map[string]interface{}, error) {
 	if s.db == nil {
 		return []map[string]interface{}{}, nil
 	}
 
-	var rows []repository.SupportConversation
-	if err := s.db.WithContext(ctx).
+	scope, err := messageConversationScopeFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	query := applyConversationScope(
+		s.db.WithContext(ctx).Model(&repository.MessageConversation{}),
+		scope,
+	)
+
+	var rows []repository.MessageConversation
+	if err := query.
 		Order("COALESCE(last_message_at, updated_at) DESC").
 		Find(&rows).Error; err != nil {
 		return nil, err
@@ -81,28 +118,33 @@ func (s *MessageService) GetConversations(ctx context.Context) ([]map[string]int
 		if lastMessage == "" {
 			lastMessage = "[暂无消息]"
 		}
+
 		updatedAt := row.UpdatedAt
 		if row.LastMessageAt != nil {
 			updatedAt = *row.LastMessageAt
 		}
+
 		list = append(list, map[string]interface{}{
 			"id":          row.ChatID,
 			"chatId":      row.ChatID,
-			"name":        firstNonEmpty(row.TargetName, defaultNameByRole(row.TargetType)),
-			"phone":       strings.TrimSpace(row.TargetPhone),
-			"role":        normalizeTargetRole(row.TargetType),
-			"avatar":      strings.TrimSpace(row.TargetAvatar),
+			"roomId":      row.ChatID,
+			"name":        firstNonEmpty(row.PeerName, defaultNameByRole(row.PeerRole)),
+			"phone":       strings.TrimSpace(row.PeerPhone),
+			"role":        normalizeConversationListRole(row.PeerRole),
+			"avatar":      strings.TrimSpace(row.PeerAvatar),
+			"avatarUrl":   strings.TrimSpace(row.PeerAvatar),
 			"lastMessage": lastMessage,
 			"msg":         lastMessage,
 			"time":        formatClock(updatedAt),
-			"unread":      0,
+			"unread":      maxInt64(row.UnreadCount, 0),
 			"updatedAt":   updatedAt.UnixMilli(),
+			"targetId":    strings.TrimSpace(row.PeerID),
 		})
 	}
+
 	return list, nil
 }
 
-// GetMessageHistory 获取消息历史
 func (s *MessageService) GetMessageHistory(ctx context.Context, roomID string) ([]map[string]interface{}, error) {
 	if s.db == nil {
 		return []map[string]interface{}{}, nil
@@ -111,6 +153,10 @@ func (s *MessageService) GetMessageHistory(ctx context.Context, roomID string) (
 	chatID := strings.TrimSpace(roomID)
 	if chatID == "" {
 		return []map[string]interface{}{}, nil
+	}
+
+	if err := s.ensureConversationAccess(ctx, chatID); err != nil {
+		return nil, err
 	}
 
 	var rows []repository.SupportMessage
@@ -129,31 +175,89 @@ func (s *MessageService) GetMessageHistory(ctx context.Context, roomID string) (
 			idValue = strconv.FormatUint(uint64(row.ID), 10)
 		}
 		list = append(list, map[string]interface{}{
-			"id":         idValue,
-			"chatId":     row.ChatID,
-			"senderId":   strings.TrimSpace(row.SenderID),
-			"senderRole": strings.TrimSpace(row.SenderRole),
-			"sender":     firstNonEmpty(row.SenderName, defaultNameByRole(row.SenderRole)),
-			"content":    row.Content,
-			"messageType": firstNonEmpty(
-				strings.TrimSpace(row.MessageType),
-				"text",
-			),
-			"coupon":   parseJSONText(row.CouponData),
-			"order":    parseJSONText(row.OrderData),
-			"imageUrl": strings.TrimSpace(row.ImageURL),
-			"avatar":   strings.TrimSpace(row.Avatar),
-			"time":     formatClock(row.CreatedAt),
-			"status":   "sent",
+			"id":          idValue,
+			"chatId":      row.ChatID,
+			"senderId":    strings.TrimSpace(row.SenderID),
+			"senderRole":  strings.TrimSpace(row.SenderRole),
+			"sender":      firstNonEmpty(row.SenderName, defaultNameByRole(row.SenderRole)),
+			"content":     row.Content,
+			"messageType": firstNonEmpty(strings.TrimSpace(row.MessageType), "text"),
+			"coupon":      parseJSONText(row.CouponData),
+			"order":       parseJSONText(row.OrderData),
+			"imageUrl":    strings.TrimSpace(row.ImageURL),
+			"avatar":      strings.TrimSpace(row.Avatar),
+			"time":        formatClock(row.CreatedAt),
+			"status":      "sent",
 		})
 	}
 
 	return list, nil
 }
 
+func (s *MessageService) MarkConversationRead(ctx context.Context, chatID string) error {
+	if s.db == nil {
+		return nil
+	}
+
+	normalizedChatID := strings.TrimSpace(chatID)
+	if normalizedChatID == "" {
+		return fmt.Errorf("chatId is required")
+	}
+
+	scope, err := messageConversationScopeFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	query := applyConversationScope(
+		s.db.WithContext(ctx).Model(&repository.MessageConversation{}).
+			Where("chat_id = ?", normalizedChatID),
+		scope,
+	)
+	result := query.Updates(map[string]interface{}{
+		"unread_count": 0,
+		"last_read_at": now,
+		"updated_at":   now,
+	})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (s *MessageService) MarkAllConversationsRead(ctx context.Context) error {
+	if s.db == nil {
+		return nil
+	}
+
+	scope, err := messageConversationScopeFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	query := applyConversationScope(
+		s.db.WithContext(ctx).Model(&repository.MessageConversation{}),
+		scope,
+	)
+	return query.Updates(map[string]interface{}{
+		"unread_count": 0,
+		"last_read_at": now,
+		"updated_at":   now,
+	}).Error
+}
+
 func (s *MessageService) SearchChatTargets(ctx context.Context, keyword string, limit int) ([]ChatTarget, error) {
 	if s.db == nil {
 		return []ChatTarget{}, nil
+	}
+
+	if authContextRole(ctx) != "admin" {
+		return nil, fmt.Errorf("only admin can search chat targets")
 	}
 
 	kw := strings.TrimSpace(keyword)
@@ -225,72 +329,36 @@ func (s *MessageService) SearchChatTargets(ctx context.Context, keyword string, 
 	return list, nil
 }
 
-func (s *MessageService) UpsertConversation(ctx context.Context, input UpsertConversationInput) (*repository.SupportConversation, error) {
+func (s *MessageService) UpsertConversation(ctx context.Context, input UpsertConversationInput) (*repository.MessageConversation, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("db not initialized")
 	}
 
-	role := normalizeTargetRole(input.TargetType)
-	if role == "" {
-		return nil, fmt.Errorf("targetType is required")
-	}
-
-	target, err := s.resolveTarget(ctx, role, input.TargetID, input.TargetPhone)
+	owner, err := s.resolveCurrentOwner(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	name := firstNonEmpty(strings.TrimSpace(input.TargetName), target.Name, defaultNameByRole(role))
-	avatar := firstNonEmpty(strings.TrimSpace(input.TargetAvatar), target.Avatar)
-	chatID := target.ChatID
+	peer, err := s.resolveConversationPeer(
+		ctx,
+		input.TargetType,
+		input.TargetID,
+		input.TargetPhone,
+		input.TargetName,
+		input.TargetAvatar,
+		input.ChatID,
+		owner,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	chatID := resolveConversationChatID(input.ChatID, peer.ChatID, defaultChatIDForOwner(owner))
 	if chatID == "" {
-		return nil, fmt.Errorf("target chat id is empty")
+		return nil, fmt.Errorf("chatId is required")
 	}
 
-	now := time.Now()
-	var conversation repository.SupportConversation
-	err = s.db.WithContext(ctx).Where("chat_id = ?", chatID).First(&conversation).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		conversation = repository.SupportConversation{
-			ChatID:         chatID,
-			TargetType:     role,
-			TargetUID:      target.UID,
-			TargetLegacyID: target.LegacyID,
-			TargetPhone:    target.Phone,
-			TargetName:     name,
-			TargetAvatar:   avatar,
-			CreatedBy:      strings.TrimSpace(input.CreatedBy),
-			LastMessage:    "",
-			UpdatedAt:      now,
-		}
-		if err := s.db.WithContext(ctx).Create(&conversation).Error; err != nil {
-			return nil, err
-		}
-		return &conversation, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	updates := map[string]interface{}{
-		"target_type":      role,
-		"target_uid":       target.UID,
-		"target_legacy_id": target.LegacyID,
-		"target_phone":     target.Phone,
-		"target_name":      name,
-		"target_avatar":    avatar,
-		"updated_at":       now,
-	}
-	if strings.TrimSpace(input.CreatedBy) != "" {
-		updates["created_by"] = strings.TrimSpace(input.CreatedBy)
-	}
-	if err := s.db.WithContext(ctx).Model(&conversation).Updates(updates).Error; err != nil {
-		return nil, err
-	}
-	if err := s.db.WithContext(ctx).Where("id = ?", conversation.ID).First(&conversation).Error; err != nil {
-		return nil, err
-	}
-	return &conversation, nil
+	return s.upsertConversationRow(ctx, owner, peer, chatID, conversationUpdate{})
 }
 
 func (s *MessageService) SyncMessage(ctx context.Context, input SyncMessageInput) (*repository.SupportMessage, error) {
@@ -303,14 +371,28 @@ func (s *MessageService) SyncMessage(ctx context.Context, input SyncMessageInput
 		return nil, fmt.Errorf("chatId is required")
 	}
 
+	sender, err := s.resolveCurrentSender(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+
+	target, err := s.resolveConversationPeer(
+		ctx,
+		input.TargetType,
+		input.TargetID,
+		input.TargetPhone,
+		input.TargetName,
+		input.TargetAvatar,
+		input.ChatID,
+		sender,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	messageType := strings.TrimSpace(input.MessageType)
 	if messageType == "" {
 		messageType = "text"
-	}
-
-	senderRole := strings.TrimSpace(input.SenderRole)
-	if senderRole == "" {
-		senderRole = "user"
 	}
 
 	externalID := strings.TrimSpace(input.ExternalMessageID)
@@ -328,79 +410,383 @@ func (s *MessageService) SyncMessage(ctx context.Context, input SyncMessageInput
 	}
 
 	now := time.Now()
-	if _, err := s.UpsertConversation(ctx, UpsertConversationInput{
-		TargetType:   firstNonEmpty(input.TargetType, "user"),
-		TargetID:     firstNonEmpty(input.TargetID, chatID),
-		TargetPhone:  input.TargetPhone,
-		TargetName:   input.TargetName,
-		TargetAvatar: input.TargetAvatar,
-		CreatedBy:    input.SenderID,
-	}); err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
-		}
-		minimalConversation := repository.SupportConversation{
-			ChatID:         chatID,
-			TargetType:     normalizeTargetRole(firstNonEmpty(input.TargetType, senderRole, "user")),
-			TargetPhone:    strings.TrimSpace(input.TargetPhone),
-			TargetName:     firstNonEmpty(strings.TrimSpace(input.TargetName), defaultNameByRole(input.TargetType)),
-			TargetAvatar:   strings.TrimSpace(input.TargetAvatar),
-			CreatedBy:      strings.TrimSpace(input.SenderID),
-			LastMessage:    "",
-			LastMessageAt:  nil,
-			LastSenderRole: "",
-		}
-		if minimalConversation.TargetType == "" {
-			minimalConversation.TargetType = "user"
-		}
-		_ = s.db.WithContext(ctx).Where("chat_id = ?", chatID).FirstOrCreate(&minimalConversation).Error
-	}
-
 	message := repository.SupportMessage{
 		ChatID:            chatID,
 		ExternalMessageID: externalID,
-		SenderID:          strings.TrimSpace(input.SenderID),
-		SenderRole:        senderRole,
-		SenderName:        firstNonEmpty(strings.TrimSpace(input.SenderName), defaultNameByRole(senderRole)),
-		Content:           strings.TrimSpace(input.Content),
+		SenderID:          strings.TrimSpace(sender.ID),
+		SenderRole:        strings.TrimSpace(sender.Role),
+		SenderName:        firstNonEmpty(strings.TrimSpace(sender.Name), defaultNameByRole(sender.Role)),
+		Content:           stringifyMessageContent(input.Content),
 		MessageType:       messageType,
 		CouponData:        marshalJSONText(input.Coupon),
 		OrderData:         marshalJSONText(input.Order),
 		ImageURL:          strings.TrimSpace(input.ImageURL),
-		Avatar:            strings.TrimSpace(input.Avatar),
+		Avatar:            firstNonEmpty(strings.TrimSpace(input.Avatar), strings.TrimSpace(sender.Avatar)),
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
+
 	if err := s.db.WithContext(ctx).Create(&message).Error; err != nil {
 		return nil, err
 	}
 
 	preview := buildMessagePreview(messageType, message.Content)
+	if _, err := s.upsertConversationRow(ctx, sender, target, chatID, conversationUpdate{
+		Preview:        preview,
+		MessageType:    messageType,
+		LastSenderRole: sender.Role,
+		MessageAt:      now,
+		MarkRead:       true,
+	}); err != nil {
+		return nil, err
+	}
+
+	if target.Role != "" && !sameConversationParty(sender, target) {
+		if _, err := s.upsertConversationRow(ctx, target, sender, chatID, conversationUpdate{
+			Preview:        preview,
+			MessageType:    messageType,
+			LastSenderRole: sender.Role,
+			MessageAt:      now,
+			UnreadDelta:    1,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	_ = s.syncLegacySupportConversation(ctx, chatID, sender, target, preview, messageType, now)
+	return &message, nil
+}
+
+func (s *MessageService) resolveCurrentOwner(ctx context.Context) (conversationParty, error) {
+	role := authContextRole(ctx)
+	switch role {
+	case "user":
+		return s.resolveActorParty(ctx, "user", authContextString(ctx, "user_id"), authContextString(ctx, "user_phone"), "", "")
+	case "merchant":
+		return s.resolveActorParty(ctx, "merchant", authContextString(ctx, "merchant_id"), authContextString(ctx, "merchant_phone"), "", "")
+	case "rider":
+		return s.resolveActorParty(ctx, "rider", authContextString(ctx, "rider_id"), authContextString(ctx, "rider_phone"), "", "")
+	case "admin":
+		return conversationParty{
+			Role:   "admin",
+			ID:     firstNonEmpty(authContextString(ctx, "admin_id"), "support"),
+			Name:   firstNonEmpty(authContextString(ctx, "admin_name"), "平台客服"),
+			Avatar: "",
+			ChatID: firstNonEmpty(authContextString(ctx, "admin_id"), "support"),
+		}, nil
+	default:
+		return conversationParty{}, fmt.Errorf("unauthorized conversation access")
+	}
+}
+
+func (s *MessageService) resolveCurrentSender(ctx context.Context, input SyncMessageInput) (conversationParty, error) {
+	role := authContextRole(ctx)
+	switch role {
+	case "admin":
+		return conversationParty{
+			Role:   "admin",
+			ID:     firstNonEmpty(authContextString(ctx, "admin_id"), strings.TrimSpace(input.SenderID), "support"),
+			Name:   firstNonEmpty(authContextString(ctx, "admin_name"), strings.TrimSpace(input.SenderName), "平台客服"),
+			Avatar: strings.TrimSpace(input.Avatar),
+			ChatID: firstNonEmpty(strings.TrimSpace(input.ChatID), authContextString(ctx, "admin_id"), "support"),
+		}, nil
+	case "user":
+		return s.resolveActorParty(ctx, "user", authContextString(ctx, "user_id"), authContextString(ctx, "user_phone"), input.SenderName, input.Avatar)
+	case "merchant":
+		return s.resolveActorParty(ctx, "merchant", authContextString(ctx, "merchant_id"), authContextString(ctx, "merchant_phone"), input.SenderName, input.Avatar)
+	case "rider":
+		return s.resolveActorParty(ctx, "rider", authContextString(ctx, "rider_id"), authContextString(ctx, "rider_phone"), input.SenderName, input.Avatar)
+	default:
+		fallbackRole := normalizeConversationRole(input.SenderRole)
+		if fallbackRole == "" {
+			return conversationParty{}, fmt.Errorf("sender role is required")
+		}
+		return s.resolveActorParty(ctx, fallbackRole, input.SenderID, "", input.SenderName, input.Avatar)
+	}
+}
+
+func (s *MessageService) resolveActorParty(ctx context.Context, role, rawID, rawPhone, rawName, rawAvatar string) (conversationParty, error) {
+	normalizedRole := normalizeConversationRole(role)
+	if normalizedRole == "admin" {
+		return conversationParty{
+			Role:   "admin",
+			ID:     firstNonEmpty(strings.TrimSpace(rawID), "support"),
+			Phone:  strings.TrimSpace(rawPhone),
+			Name:   firstNonEmpty(strings.TrimSpace(rawName), "平台客服"),
+			Avatar: strings.TrimSpace(rawAvatar),
+			ChatID: firstNonEmpty(strings.TrimSpace(rawID), strings.TrimSpace(rawPhone), "support"),
+		}, nil
+	}
+
+	target, err := s.resolveTarget(ctx, normalizedRole, rawID, rawPhone)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return conversationParty{
+				Role:   normalizedRole,
+				ID:     strings.TrimSpace(rawID),
+				Phone:  strings.TrimSpace(rawPhone),
+				Name:   firstNonEmpty(strings.TrimSpace(rawName), defaultNameByRole(normalizedRole)),
+				Avatar: strings.TrimSpace(rawAvatar),
+				ChatID: resolveConversationChatID(rawID, rawPhone),
+			}, nil
+		}
+		return conversationParty{}, err
+	}
+
+	target.Name = firstNonEmpty(strings.TrimSpace(rawName), target.Name, defaultNameByRole(normalizedRole))
+	target.Avatar = firstNonEmpty(strings.TrimSpace(rawAvatar), target.Avatar)
+	return conversationParty{
+		Role:     normalizedRole,
+		ChatID:   resolveConversationChatID(target.ChatID, rawID, rawPhone),
+		ID:       firstNonEmpty(target.ID, strings.TrimSpace(rawID)),
+		UID:      target.UID,
+		LegacyID: target.LegacyID,
+		Phone:    firstNonEmpty(target.Phone, strings.TrimSpace(rawPhone)),
+		Name:     target.Name,
+		Avatar:   target.Avatar,
+	}, nil
+}
+
+func (s *MessageService) resolveConversationPeer(ctx context.Context, rawRole, rawID, rawPhone, rawName, rawAvatar, rawChatID string, owner conversationParty) (conversationParty, error) {
+	role := normalizeConversationRole(rawRole)
+	if role == "" {
+		if owner.Role == "admin" {
+			role = "user"
+		} else {
+			role = "admin"
+		}
+	}
+
+	peer, err := s.resolveActorParty(ctx, role, rawID, rawPhone, rawName, rawAvatar)
+	if err != nil {
+		return conversationParty{}, err
+	}
+	peer.Role = role
+	peer.Name = firstNonEmpty(strings.TrimSpace(rawName), peer.Name, defaultNameByRole(role))
+	peer.Avatar = firstNonEmpty(strings.TrimSpace(rawAvatar), peer.Avatar)
+	peer.ChatID = resolveConversationChatID(rawChatID, peer.ChatID, defaultChatIDForOwner(owner))
+	if role == "admin" && peer.ID == "" {
+		peer.ID = "support"
+	}
+	return peer, nil
+}
+
+func (s *MessageService) ensureConversationAccess(ctx context.Context, chatID string) error {
+	if authContextRole(ctx) == "admin" {
+		return nil
+	}
+
+	scope, err := messageConversationScopeFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	query := applyConversationScope(
+		s.db.WithContext(ctx).Model(&repository.MessageConversation{}).
+			Where("chat_id = ?", strings.TrimSpace(chatID)),
+		scope,
+	)
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return err
+	}
+	if total == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (s *MessageService) upsertConversationRow(ctx context.Context, owner, peer conversationParty, chatID string, update conversationUpdate) (*repository.MessageConversation, error) {
+	if strings.TrimSpace(owner.Role) == "" || strings.TrimSpace(owner.ID) == "" || strings.TrimSpace(chatID) == "" {
+		return nil, fmt.Errorf("conversation owner and chatId are required")
+	}
+
+	var row repository.MessageConversation
+	err := s.db.WithContext(ctx).
+		Where("owner_role = ? AND owner_id = ? AND chat_id = ?", owner.Role, owner.ID, chatID).
+		First(&row).Error
+
+	preview := strings.TrimSpace(update.Preview)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		record := repository.MessageConversation{
+			OwnerRole:       owner.Role,
+			OwnerID:         owner.ID,
+			OwnerPhone:      strings.TrimSpace(owner.Phone),
+			ChatID:          chatID,
+			PeerRole:        normalizeConversationListRole(peer.Role),
+			PeerID:          strings.TrimSpace(peer.ID),
+			PeerPhone:       strings.TrimSpace(peer.Phone),
+			PeerName:        firstNonEmpty(peer.Name, defaultNameByRole(peer.Role)),
+			PeerAvatar:      strings.TrimSpace(peer.Avatar),
+			LastMessage:     preview,
+			LastMessageType: strings.TrimSpace(update.MessageType),
+			LastSenderRole:  strings.TrimSpace(update.LastSenderRole),
+			UnreadCount:     maxInt64(update.UnreadDelta, 0),
+			CreatedAt:       time.Now(),
+			UpdatedAt:       time.Now(),
+		}
+		if !update.MessageAt.IsZero() {
+			record.LastMessageAt = ptrTime(update.MessageAt)
+		}
+		if update.MarkRead {
+			record.LastReadAt = ptrTime(update.MessageAtOrNow())
+			record.UnreadCount = 0
+		}
+		if err := s.db.WithContext(ctx).Create(&record).Error; err != nil {
+			return nil, err
+		}
+		return &record, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
 	updates := map[string]interface{}{
+		"owner_phone": strings.TrimSpace(owner.Phone),
+		"peer_role":   normalizeConversationListRole(peer.Role),
+		"peer_id":     strings.TrimSpace(peer.ID),
+		"peer_phone":  strings.TrimSpace(peer.Phone),
+		"peer_name":   firstNonEmpty(peer.Name, defaultNameByRole(peer.Role)),
+		"peer_avatar": strings.TrimSpace(peer.Avatar),
+		"updated_at":  time.Now(),
+	}
+
+	if preview != "" {
+		updates["last_message"] = preview
+		updates["last_message_type"] = strings.TrimSpace(update.MessageType)
+		updates["last_sender_role"] = strings.TrimSpace(update.LastSenderRole)
+		if !update.MessageAt.IsZero() {
+			updates["last_message_at"] = update.MessageAt
+		}
+	}
+
+	if update.MarkRead {
+		updates["unread_count"] = 0
+		updates["last_read_at"] = update.MessageAtOrNow()
+	} else if update.UnreadDelta > 0 {
+		updates["unread_count"] = row.UnreadCount + update.UnreadDelta
+	}
+
+	if err := s.db.WithContext(ctx).
+		Model(&row).
+		Updates(updates).Error; err != nil {
+		return nil, err
+	}
+	if err := s.db.WithContext(ctx).Where("id = ?", row.ID).First(&row).Error; err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
+func (s *MessageService) syncLegacySupportConversation(ctx context.Context, chatID string, sender, target conversationParty, preview, messageType string, messageAt time.Time) error {
+	legacyTarget := conversationParty{}
+	switch {
+	case sender.Role == "admin" && isBusinessActor(target.Role):
+		legacyTarget = target
+	case target.Role == "admin" && isBusinessActor(sender.Role):
+		legacyTarget = sender
+	default:
+		return nil
+	}
+
+	var row repository.SupportConversation
+	err := s.db.WithContext(ctx).
+		Where("chat_id = ?", chatID).
+		First(&row).Error
+
+	now := messageAt
+	if now.IsZero() {
+		now = time.Now()
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		record := repository.SupportConversation{
+			ChatID:          chatID,
+			TargetType:      legacyTarget.Role,
+			TargetUID:       legacyTarget.UID,
+			TargetLegacyID:  legacyTarget.LegacyID,
+			TargetPhone:     legacyTarget.Phone,
+			TargetName:      firstNonEmpty(legacyTarget.Name, defaultNameByRole(legacyTarget.Role)),
+			TargetAvatar:    legacyTarget.Avatar,
+			LastMessage:     preview,
+			LastMessageType: messageType,
+			LastSenderRole:  sender.Role,
+			LastMessageAt:   ptrTime(now),
+			CreatedBy:       firstNonEmpty(sender.ID, sender.Phone),
+			UpdatedAt:       now,
+		}
+		return s.db.WithContext(ctx).Create(&record).Error
+	}
+	if err != nil {
+		return err
+	}
+
+	return s.db.WithContext(ctx).Model(&row).Updates(map[string]interface{}{
+		"target_type":       legacyTarget.Role,
+		"target_uid":        legacyTarget.UID,
+		"target_legacy_id":  legacyTarget.LegacyID,
+		"target_phone":      legacyTarget.Phone,
+		"target_name":       firstNonEmpty(legacyTarget.Name, defaultNameByRole(legacyTarget.Role)),
+		"target_avatar":     legacyTarget.Avatar,
 		"last_message":      preview,
 		"last_message_type": messageType,
-		"last_sender_role":  senderRole,
+		"last_sender_role":  sender.Role,
 		"last_message_at":   now,
 		"updated_at":        now,
-	}
-	if senderRole != "admin" {
-		if strings.TrimSpace(message.SenderName) != "" {
-			updates["target_name"] = strings.TrimSpace(message.SenderName)
-		}
-		if strings.TrimSpace(message.SenderID) != "" {
-			updates["target_phone"] = strings.TrimSpace(message.SenderID)
-		}
-		if strings.TrimSpace(message.Avatar) != "" {
-			updates["target_avatar"] = strings.TrimSpace(message.Avatar)
-		}
-	}
+	}).Error
+}
 
-	_ = s.db.WithContext(ctx).
-		Model(&repository.SupportConversation{}).
-		Where("chat_id = ?", chatID).
-		Updates(updates).Error
+func (u conversationUpdate) MessageAtOrNow() time.Time {
+	if !u.MessageAt.IsZero() {
+		return u.MessageAt
+	}
+	return time.Now()
+}
 
-	return &message, nil
+func messageConversationScopeFromContext(ctx context.Context) (conversationScope, error) {
+	role := authContextRole(ctx)
+	switch role {
+	case "admin":
+		return conversationScope{
+			role: "admin",
+			ids:  uniqueStrings(authContextString(ctx, "admin_id"), "support"),
+		}, nil
+	case "user":
+		return conversationScope{
+			role:   "user",
+			ids:    uniqueStrings(authContextString(ctx, "user_id"), authContextString(ctx, "user_phone")),
+			phones: uniqueStrings(authContextString(ctx, "user_phone")),
+		}, nil
+	case "merchant":
+		return conversationScope{
+			role:   "merchant",
+			ids:    uniqueStrings(authContextString(ctx, "merchant_id"), authContextString(ctx, "merchant_phone")),
+			phones: uniqueStrings(authContextString(ctx, "merchant_phone")),
+		}, nil
+	case "rider":
+		return conversationScope{
+			role:   "rider",
+			ids:    uniqueStrings(authContextString(ctx, "rider_id"), authContextString(ctx, "rider_phone")),
+			phones: uniqueStrings(authContextString(ctx, "rider_phone")),
+		}, nil
+	default:
+		return conversationScope{}, fmt.Errorf("unauthorized conversation access")
+	}
+}
+
+func applyConversationScope(query *gorm.DB, scope conversationScope) *gorm.DB {
+	query = query.Where("owner_role = ?", scope.role)
+	switch {
+	case len(scope.ids) > 0 && len(scope.phones) > 0:
+		return query.Where("(owner_id IN ? OR owner_phone IN ?)", scope.ids, scope.phones)
+	case len(scope.ids) > 0:
+		return query.Where("owner_id IN ?", scope.ids)
+	case len(scope.phones) > 0:
+		return query.Where("owner_phone IN ?", scope.phones)
+	default:
+		return query.Where("1 = 0")
+	}
 }
 
 func (s *MessageService) searchRoleTargets(ctx context.Context, role, keyword string, limit int) ([]ChatTarget, error) {
@@ -430,7 +816,7 @@ func (s *MessageService) searchRoleTargets(ctx context.Context, role, keyword st
 		}
 		list := make([]ChatTarget, 0, len(rows))
 		for _, item := range rows {
-			target := ChatTarget{
+			list = append(list, ChatTarget{
 				Role:     "user",
 				ChatID:   chooseChatID(item.UID, item.ID, item.Phone),
 				ID:       firstNonEmpty(item.UID, strconv.FormatUint(uint64(item.ID), 10)),
@@ -438,8 +824,7 @@ func (s *MessageService) searchRoleTargets(ctx context.Context, role, keyword st
 				LegacyID: item.ID,
 				Phone:    strings.TrimSpace(item.Phone),
 				Name:     firstNonEmpty(strings.TrimSpace(item.Name), strings.TrimSpace(item.Phone), "用户"),
-			}
-			list = append(list, target)
+			})
 		}
 		return list, nil
 	case "rider":
@@ -462,7 +847,7 @@ func (s *MessageService) searchRoleTargets(ctx context.Context, role, keyword st
 		}
 		list := make([]ChatTarget, 0, len(rows))
 		for _, item := range rows {
-			target := ChatTarget{
+			list = append(list, ChatTarget{
 				Role:     "rider",
 				ChatID:   chooseChatID(item.UID, item.ID, item.Phone),
 				ID:       firstNonEmpty(item.UID, strconv.FormatUint(uint64(item.ID), 10)),
@@ -471,8 +856,7 @@ func (s *MessageService) searchRoleTargets(ctx context.Context, role, keyword st
 				Phone:    strings.TrimSpace(item.Phone),
 				Name:     firstNonEmpty(strings.TrimSpace(item.Name), strings.TrimSpace(item.Phone), "骑手"),
 				Avatar:   strings.TrimSpace(item.Avatar),
-			}
-			list = append(list, target)
+			})
 		}
 		return list, nil
 	case "merchant":
@@ -494,7 +878,7 @@ func (s *MessageService) searchRoleTargets(ctx context.Context, role, keyword st
 		}
 		list := make([]ChatTarget, 0, len(rows))
 		for _, item := range rows {
-			target := ChatTarget{
+			list = append(list, ChatTarget{
 				Role:     "merchant",
 				ChatID:   chooseChatID(item.UID, item.ID, item.Phone),
 				ID:       firstNonEmpty(item.UID, strconv.FormatUint(uint64(item.ID), 10)),
@@ -502,8 +886,7 @@ func (s *MessageService) searchRoleTargets(ctx context.Context, role, keyword st
 				LegacyID: item.ID,
 				Phone:    strings.TrimSpace(item.Phone),
 				Name:     firstNonEmpty(strings.TrimSpace(item.Name), strings.TrimSpace(item.Phone), "商家"),
-			}
-			list = append(list, target)
+			})
 		}
 		return list, nil
 	default:
@@ -686,6 +1069,34 @@ func normalizeTargetRole(role string) string {
 	}
 }
 
+func normalizeConversationRole(role string) string {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case "user", "customer":
+		return "user"
+	case "rider":
+		return "rider"
+	case "merchant", "shop":
+		return "merchant"
+	case "admin", "support", "cs":
+		return "admin"
+	default:
+		return ""
+	}
+}
+
+func normalizeConversationListRole(role string) string {
+	switch normalizeConversationRole(role) {
+	case "merchant":
+		return "merchant"
+	case "rider":
+		return "rider"
+	case "user":
+		return "user"
+	default:
+		return "cs"
+	}
+}
+
 func applyIdentifierFilter(query *gorm.DB, raw string) *gorm.DB {
 	idText := strings.TrimSpace(raw)
 	switch {
@@ -726,6 +1137,21 @@ func marshalJSONText(value interface{}) string {
 	return string(buf)
 }
 
+func stringifyMessageContent(value interface{}) string {
+	switch v := value.(type) {
+	case nil:
+		return ""
+	case string:
+		return strings.TrimSpace(v)
+	default:
+		buf, err := json.Marshal(v)
+		if err != nil {
+			return fmt.Sprintf("%v", v)
+		}
+		return string(buf)
+	}
+}
+
 func buildMessagePreview(messageType, content string) string {
 	switch strings.ToLower(strings.TrimSpace(messageType)) {
 	case "image":
@@ -734,6 +1160,10 @@ func buildMessagePreview(messageType, content string) string {
 		return "[优惠券]"
 	case "order":
 		return "[订单]"
+	case "audio":
+		return "[语音]"
+	case "location":
+		return "[位置]"
 	default:
 		text := strings.TrimSpace(content)
 		if text == "" {
@@ -751,11 +1181,13 @@ func formatClock(t time.Time) string {
 }
 
 func defaultNameByRole(role string) string {
-	switch normalizeTargetRole(role) {
+	switch normalizeConversationRole(role) {
 	case "rider":
 		return "骑手"
 	case "merchant":
 		return "商家"
+	case "admin":
+		return "平台客服"
 	default:
 		return "用户"
 	}
@@ -768,6 +1200,66 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func uniqueStrings(values ...string) []string {
+	result := make([]string, 0, len(values))
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		normalized := strings.TrimSpace(value)
+		if normalized == "" {
+			continue
+		}
+		if _, ok := seen[normalized]; ok {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		result = append(result, normalized)
+	}
+	return result
+}
+
+func resolveConversationChatID(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
+func defaultChatIDForOwner(owner conversationParty) string {
+	return resolveConversationChatID(owner.ChatID, owner.ID, owner.Phone)
+}
+
+func ptrTime(value time.Time) *time.Time {
+	if value.IsZero() {
+		return nil
+	}
+	copied := value
+	return &copied
+}
+
+func sameConversationParty(left, right conversationParty) bool {
+	return normalizeConversationRole(left.Role) == normalizeConversationRole(right.Role) &&
+		firstNonEmpty(left.ID, left.Phone) != "" &&
+		firstNonEmpty(left.ID, left.Phone) == firstNonEmpty(right.ID, right.Phone)
+}
+
+func isBusinessActor(role string) bool {
+	switch normalizeConversationRole(role) {
+	case "user", "merchant", "rider":
+		return true
+	default:
+		return false
+	}
+}
+
+func maxInt64(value, fallback int64) int64 {
+	if value < fallback {
+		return fallback
+	}
+	return value
 }
 
 func targetMatchScore(keyword string, target ChatTarget) int {

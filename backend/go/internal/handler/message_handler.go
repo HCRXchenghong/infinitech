@@ -19,36 +19,58 @@ func NewMessageHandler(service *service.MessageService) *MessageHandler {
 	return &MessageHandler{service: service}
 }
 
-// GetConversations 获取会话列表
-// @Summary 获取会话列表
-// @Tags 消息
-// @Produce json
-// @Success 200 {array} map[string]interface{}
-// @Router /messages/conversations [get]
 func (h *MessageHandler) GetConversations(c *gin.Context) {
 	conversations, err := h.service.GetConversations(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		status := http.StatusInternalServerError
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			status = http.StatusNotFound
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, conversations)
 }
 
-// GetMessageHistory 获取消息历史
-// @Summary 获取消息历史
-// @Tags 消息
-// @Produce json
-// @Param roomId path string true "房间ID"
-// @Success 200 {array} map[string]interface{}
-// @Router /messages/{roomId} [get]
 func (h *MessageHandler) GetMessageHistory(c *gin.Context) {
 	roomID := c.Param("roomId")
 	messages, err := h.service.GetMessageHistory(c.Request.Context(), roomID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		status := http.StatusInternalServerError
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			status = http.StatusNotFound
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, messages)
+}
+
+func (h *MessageHandler) MarkConversationRead(c *gin.Context) {
+	chatID := strings.TrimSpace(c.Param("chatId"))
+	if chatID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "chatId 不能为空"})
+		return
+	}
+
+	if err := h.service.MarkConversationRead(c.Request.Context(), chatID); err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			status = http.StatusNotFound
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "chatId": chatID})
+}
+
+func (h *MessageHandler) MarkAllConversationsRead(c *gin.Context) {
+	if err := h.service.MarkAllConversationsRead(c.Request.Context()); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
 func (h *MessageHandler) SearchTargets(c *gin.Context) {
@@ -67,7 +89,7 @@ func (h *MessageHandler) SearchTargets(c *gin.Context) {
 
 	targets, err := h.service.SearchChatTargets(c.Request.Context(), keyword, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"targets": targets})
@@ -78,14 +100,6 @@ func (h *MessageHandler) UpsertConversation(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
 		return
-	}
-
-	if req.CreatedBy == "" {
-		if adminName, ok := c.Get("admin_name"); ok {
-			req.CreatedBy = strings.TrimSpace(messageValueToString(adminName))
-		} else if adminID, ok := c.Get("admin_id"); ok {
-			req.CreatedBy = strings.TrimSpace(messageValueToString(adminID))
-		}
 	}
 
 	conversation, err := h.service.UpsertConversation(c.Request.Context(), req)
@@ -102,15 +116,21 @@ func (h *MessageHandler) UpsertConversation(c *gin.Context) {
 	if conversation.LastMessageAt != nil {
 		updatedAt = *conversation.LastMessageAt
 	}
+
 	c.JSON(http.StatusOK, gin.H{
+		"id":          conversation.ChatID,
 		"chatId":      conversation.ChatID,
-		"role":        conversation.TargetType,
-		"name":        conversation.TargetName,
-		"phone":       conversation.TargetPhone,
-		"avatar":      conversation.TargetAvatar,
+		"roomId":      conversation.ChatID,
+		"role":        conversation.PeerRole,
+		"name":        conversation.PeerName,
+		"phone":       conversation.PeerPhone,
+		"avatar":      conversation.PeerAvatar,
+		"avatarUrl":   conversation.PeerAvatar,
 		"lastMessage": conversation.LastMessage,
 		"time":        updatedAt.Format("15:04"),
 		"updatedAt":   updatedAt.UnixMilli(),
+		"unread":      conversation.UnreadCount,
+		"targetId":    conversation.PeerID,
 	})
 }
 
@@ -125,9 +145,6 @@ func (h *MessageHandler) SyncMessage(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "chatId 不能为空"})
 		return
 	}
-	if strings.TrimSpace(req.SenderRole) == "" {
-		req.SenderRole = "admin"
-	}
 
 	message, err := h.service.SyncMessage(c.Request.Context(), req)
 	if err != nil {
@@ -139,6 +156,7 @@ func (h *MessageHandler) SyncMessage(c *gin.Context) {
 	if responseID == "" {
 		responseID = strconv.FormatUint(uint64(message.ID), 10)
 	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":          responseID,
 		"chatId":      message.ChatID,
@@ -150,23 +168,4 @@ func (h *MessageHandler) SyncMessage(c *gin.Context) {
 		"time":        message.CreatedAt.Format("15:04"),
 		"avatar":      message.Avatar,
 	})
-}
-
-func messageValueToString(value interface{}) string {
-	switch v := value.(type) {
-	case string:
-		return v
-	case int:
-		return strconv.Itoa(v)
-	case int64:
-		return strconv.FormatInt(v, 10)
-	case uint:
-		return strconv.FormatUint(uint64(v), 10)
-	case uint64:
-		return strconv.FormatUint(v, 10)
-	case float64:
-		return strconv.FormatInt(int64(v), 10)
-	default:
-		return ""
-	}
 }

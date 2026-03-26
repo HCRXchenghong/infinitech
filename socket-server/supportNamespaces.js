@@ -1,6 +1,7 @@
 import { logger } from './logger.js';
 import { normalizeMessageData } from './messagePayload.js';
 import { authorizeSupportChatAccess, normalizeChatId } from './supportAccess.js';
+import { requestBackend } from './socketIdentity.js';
 
 function emitSupportMessage(supportNamespace, chatId, message) {
   const roomName = `chat_${chatId}`;
@@ -44,6 +45,84 @@ function resolveSupportPreview(messageType, content) {
   }
 }
 
+function normalizeBackendTargetRole(value, socketUserRole = '') {
+  const normalized = String(value || '').trim().toLowerCase();
+  switch (normalized) {
+    case 'merchant':
+    case 'shop':
+      return 'merchant';
+    case 'rider':
+      return 'rider';
+    case 'user':
+    case 'customer':
+      return 'user';
+    case 'admin':
+    case 'support':
+    case 'cs':
+      return 'admin';
+    default:
+      return socketUserRole === 'admin' ? 'user' : 'admin';
+  }
+}
+
+async function syncMessageToBackend(socket, chatId, rawData, message) {
+  const authHeader = String(socket?.authToken || '').trim();
+  if (!authHeader || !chatId || !message) return;
+
+  const payload = {
+    chatId,
+    externalMessageId: String(message.id || ''),
+    senderId: message.senderId,
+    senderRole: message.senderRole,
+    senderName: message.sender,
+    content: message.content,
+    messageType: message.messageType,
+    coupon: message.coupon,
+    order: message.order,
+    imageUrl: message.imageUrl,
+    avatar: message.avatar,
+    targetType: normalizeBackendTargetRole(rawData?.targetType || rawData?.role, socket?.userRole),
+    targetId: String(rawData?.targetId || '').trim(),
+    targetPhone: String(rawData?.targetPhone || '').trim(),
+    targetName: String(rawData?.targetName || rawData?.name || '').trim(),
+    targetAvatar: String(rawData?.targetAvatar || rawData?.avatar || '').trim()
+  };
+
+  try {
+    const { response, data } = await requestBackend('/api/messages/sync', {
+      method: 'POST',
+      headers: { Authorization: authHeader },
+      body: payload
+    });
+    if (!response.ok) {
+      logger.warn('消息同步到 Go 失败:', response.status, data?.error || '');
+    }
+  } catch (err) {
+    logger.warn('消息同步到 Go 失败:', err?.message || err);
+  }
+}
+
+async function markConversationReadOnBackend(socket, chatId) {
+  const authHeader = String(socket?.authToken || '').trim();
+  const normalizedChatId = normalizeChatId(chatId);
+  if (!authHeader || !normalizedChatId) return;
+
+  try {
+    const { response, data } = await requestBackend(
+      `/api/messages/conversations/${encodeURIComponent(normalizedChatId)}/read`,
+      {
+        method: 'POST',
+        headers: { Authorization: authHeader }
+      }
+    );
+    if (!response.ok && response.status !== 404) {
+      logger.warn('会话已读状态同步失败:', response.status, data?.error || '');
+    }
+  } catch (err) {
+    logger.warn('会话已读状态同步失败:', err?.message || err);
+  }
+}
+
 function buildSupportChatList(db, getUnreadCount, userId, options = {}) {
   const defaultRole = options.defaultRole || 'user';
   const fallbackRoleFromRow = Boolean(options.fallbackRoleFromRow);
@@ -82,7 +161,7 @@ function buildSupportChatList(db, getUnreadCount, userId, options = {}) {
 }
 
 function createSupportMessageHandler({ saveMessage, supportNamespace, monitorNamespace }) {
-  return function handleSendMessage(data, socket, chatType = 'support') {
+  return async function handleSendMessage(data, socket, chatType = 'support') {
     try {
       const normalizedChatId = normalizeChatId(data?.chatId);
       if (!normalizedChatId) {
@@ -121,6 +200,7 @@ function createSupportMessageHandler({ saveMessage, supportNamespace, monitorNam
       };
 
       logger.info('Broadcasting message:', message);
+      await syncMessageToBackend(socket, normalizedChatId, data, message);
       emitSupportMessage(supportNamespace, normalizedChatId, message);
       emitMonitorMessage(monitorNamespace, message);
 
@@ -181,17 +261,18 @@ export function setupSupportNamespaces({
       socket.emit('all_chats_loaded', { chats: chatList });
     });
 
-    socket.on('join_chat', (data) => {
+    socket.on('join_chat', async (data) => {
       const chatId = normalizeChatId(data?.chatId);
       if (!chatId) {
         emitAccessDenied(socket, 'join_chat_denied', data?.chatId);
         return;
       }
       socket.join(`chat_${chatId}`);
+      await markConversationReadOnBackend(socket, chatId);
       logger.info(`Monitor admin joined chat_${chatId}`);
     });
 
-    socket.on('load_messages', (data) => {
+    socket.on('load_messages', async (data) => {
       const chatId = normalizeChatId(data?.chatId);
       if (!chatId) {
         emitAccessDenied(socket, 'load_messages_denied', data?.chatId);
@@ -199,15 +280,16 @@ export function setupSupportNamespaces({
       }
       const messages = getMessages('support', chatId);
       socket.emit('messages_loaded', { chatId, messages });
+      await markConversationReadOnBackend(socket, chatId);
     });
 
-    socket.on('send_message', (data) => {
+    socket.on('send_message', async (data) => {
       const chatId = normalizeChatId(data?.chatId);
       if (!chatId) {
         emitAccessDenied(socket, 'message_denied', data?.chatId);
         return;
       }
-      handleSendMessage({ ...data, chatId }, socket);
+      await handleSendMessage({ ...data, chatId }, socket);
     });
 
     socket.on('mark_read', (data) => {
@@ -220,7 +302,7 @@ export function setupSupportNamespaces({
       socket.to(`chat_${chatId}`).emit('message_read', { messageId: data.messageId, readBy: socket.userId });
     });
 
-    socket.on('mark_all_read', (data) => {
+    socket.on('mark_all_read', async (data) => {
       const chatId = normalizeChatId(data?.chatId);
       if (!chatId) {
         emitAccessDenied(socket, 'mark_all_read_denied', data?.chatId);
@@ -228,6 +310,7 @@ export function setupSupportNamespaces({
       }
       markAllRead('support', chatId, socket.userId);
       socket.to(`chat_${chatId}`).emit('all_messages_read', { chatId, readBy: socket.userId });
+      await markConversationReadOnBackend(socket, chatId);
     });
 
     socket.on('clear_messages', (data) => {
@@ -264,6 +347,7 @@ export function setupSupportNamespaces({
       }
 
       socket.join(`chat_${access.chatId}`);
+      await markConversationReadOnBackend(socket, access.chatId);
       logger.info(`${socket.userRole} ${socket.userId} (${socket.id}) joined chat_${access.chatId}`);
     });
 
@@ -289,6 +373,7 @@ export function setupSupportNamespaces({
 
       const messages = getMessages('support', access.chatId);
       socket.emit('messages_loaded', { chatId: access.chatId, messages });
+      await markConversationReadOnBackend(socket, access.chatId);
     });
 
     socket.on('send_message', async (data) => {
@@ -298,7 +383,7 @@ export function setupSupportNamespaces({
         return;
       }
 
-      handleSendMessage({ ...data, chatId: access.chatId }, socket);
+      await handleSendMessage({ ...data, chatId: access.chatId }, socket);
     });
 
     socket.on('mark_read', async (data) => {
@@ -321,6 +406,7 @@ export function setupSupportNamespaces({
 
       markAllRead('support', access.chatId, socket.userId);
       socket.to(`chat_${access.chatId}`).emit('all_messages_read', { chatId: access.chatId, readBy: socket.userId });
+      await markConversationReadOnBackend(socket, access.chatId);
     });
 
     socket.on('clear_messages', (data) => {

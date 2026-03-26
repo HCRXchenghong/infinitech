@@ -27,7 +27,7 @@ function buildBackendUrl(pathname) {
   return `${baseUrl}${normalizedPath}`;
 }
 
-async function requestBackend(pathname, options = {}) {
+export async function requestBackend(pathname, options = {}) {
   const headers = Object.assign({}, options.headers || {});
   const requestInit = {
     method: options.method || 'GET',
@@ -71,7 +71,7 @@ async function requestBackend(pathname, options = {}) {
   };
 }
 
-async function expectBackendOk(pathname, options = {}) {
+export async function expectBackendOk(pathname, options = {}) {
   const { response, data } = await requestBackend(pathname, options);
   if (!response.ok) {
     throw createHttpError(

@@ -547,6 +547,20 @@
 - `user-vue/pages/profile/address-list/index.vue`, `user-vue/pages/profile/address-edit/index.vue`, `app-mobile/pages/profile/address-list/index.vue`, and `app-mobile/pages/profile/address-edit/index.vue` were rewritten in clean UTF-8 and now read/write real server addresses while continuing to mirror the legacy `addresses` / `selectedAddress` cache keys
 - `user-vue/pages/order/confirm/index.vue` and `app-mobile/pages/order/confirm/index.vue` now honor `selectedAddressId`, fall back to the server default address when local cache is empty, and submit `addressId` with the order payload
 
+## Batch 46 Completed
+- Collapse the active consumer message entry path toward a server-authoritative conversation model instead of local-only session truth
+- Sync support-socket messages and read-state changes back into the Go message service so unread/history state no longer splits between `chat.db` and client storage
+- Keep the rollout compatibility-safe by retaining local cache only as a migration/display cache while making server conversations the primary source for message lists and history
+
+### Batch 46 Fixed
+- `backend/go/internal/repository/message_models.go`, `backend/go/internal/service/message_service.go`, and `backend/go/internal/handler/message_handler.go` now add persisted `message_conversations` rows, scoped conversation reads by authenticated actor, server-side unread counters, `mark-read` endpoints, and conversation/message sync flows that upsert both sender and recipient conversation state
+- `backend/go/cmd/main.go` now migrates `message_conversations` and exposes `/api/messages/conversations/read-all` plus `/api/messages/conversations/:chatId/read`
+- `backend/bff/src/controllers/messageController.js` and `backend/bff/src/routes/message.js` now proxy the expanded message surface including read-state sync and conversation upsert calls
+- `socket-server/socketIdentity.js` and `socket-server/supportNamespaces.js` now forward support-message writes and read-state transitions into the Go message service so socket delivery no longer leaves the service-side conversation state stale
+- `user-vue/shared-ui/api.js` and `app-mobile/shared-ui/api.js` now expose `upsertConversation`, `markConversationRead`, and `markAllConversationsRead`
+- `user-vue/pages/message/index/index.vue` and `app-mobile/pages/message/index/index.vue` now load the server conversation list as the primary source, keep legacy local sessions only as a compatibility merge, and sync per-conversation/all-conversation read actions back to the server
+- `user-vue/pages/message/chat/page-logic.js` and `app-mobile/pages/message/chat/page-logic.js` now create the server conversation on entry, load history from the server first, sync read state after history/incoming messages, and send target metadata with socket messages so the backend can maintain authoritative peer rows
+
 ## Verification
 - Passed `node --check` on modified `socket-server` and `backend/bff` modules
 - Passed `backend/bff` test suite: `npm test -- --runInBand`
@@ -591,6 +605,13 @@
 - Passed `gofmt -w backend/go/internal/handler/user_address_handler.go`
 - Passed `gofmt -w backend/go/internal/service/user_address_service_test.go`
 - Passed `gofmt -w backend/go/internal/service/order_service_address_test.go`
+- Passed `gofmt -w backend/go/internal/repository/message_models.go`
+- Passed `gofmt -w backend/go/internal/service/message_service.go`
+- Passed `gofmt -w backend/go/internal/handler/message_handler.go`
+- Passed `node --check` on `backend/bff/src/controllers/messageController.js`
+- Passed `node --check` on `backend/bff/src/routes/message.js`
+- Passed `node --check` on `socket-server/supportNamespaces.js`
+- Passed `node --check` on `socket-server/socketIdentity.js`
 - Passed `admin-vue` production build: `npm run build`
 
 ## Remaining High-Priority Items
@@ -598,7 +619,8 @@
 - Fix finance overview double-count risk and the underlying accounting rules
 - Replace remaining placeholder or mock-driven pages outside the now-fixed auth / invite entry paths
 - Expand automated coverage around sensitive admin / finance mutations
+- Continue removing legacy local-session fallbacks after the rest of the user / merchant / rider message entry points are fully migrated to the new server conversation model
 
 ## Next Repair Focus
-- Remaining message / native unfinished integrations and parity issues
+- Remaining message / native unfinished integrations and parity issues, especially merchant/rider parity and admin workbench convergence
 - Broader architecture and duplicate-code reduction work

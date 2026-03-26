@@ -705,6 +705,22 @@ export const fetchConversations = () => request({
   url: '/api/messages/conversations' 
 })
 
+export const upsertConversation = (payload) => request({
+  url: '/api/messages/conversations/upsert',
+  method: 'POST',
+  data: payload
+})
+
+export const markConversationRead = (chatId) => request({
+  url: `/api/messages/conversations/${encodeURIComponent(chatId)}/read`,
+  method: 'POST'
+})
+
+export const markAllConversationsRead = () => request({
+  url: '/api/messages/conversations/read-all',
+  method: 'POST'
+})
+
 export const fetchHistory = (roomId) => request({ 
   url: `/api/messages/${roomId}` 
 })

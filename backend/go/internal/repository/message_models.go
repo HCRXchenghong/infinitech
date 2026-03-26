@@ -25,6 +25,32 @@ func (SupportConversation) TableName() string {
 	return "support_conversations"
 }
 
+// MessageConversation stores per-actor conversation snapshots and unread state.
+type MessageConversation struct {
+	ID              uint       `gorm:"primaryKey" json:"id"`
+	OwnerRole       string     `gorm:"size:20;not null;index:idx_message_conversations_owner_chat,unique;index" json:"ownerRole"`
+	OwnerID         string     `gorm:"size:64;not null;index:idx_message_conversations_owner_chat,unique;index" json:"ownerId"`
+	OwnerPhone      string     `gorm:"size:20;index" json:"ownerPhone"`
+	ChatID          string     `gorm:"size:64;not null;index:idx_message_conversations_owner_chat,unique;index" json:"chatId"`
+	PeerRole        string     `gorm:"size:20;not null;index" json:"peerRole"`
+	PeerID          string     `gorm:"size:64;index" json:"peerId"`
+	PeerPhone       string     `gorm:"size:20;index" json:"peerPhone"`
+	PeerName        string     `gorm:"size:100" json:"peerName"`
+	PeerAvatar      string     `gorm:"size:500" json:"peerAvatar"`
+	LastMessage     string     `gorm:"type:text" json:"lastMessage"`
+	LastMessageType string     `gorm:"size:20" json:"lastMessageType"`
+	LastSenderRole  string     `gorm:"size:20" json:"lastSenderRole"`
+	LastMessageAt   *time.Time `gorm:"index" json:"lastMessageAt"`
+	LastReadAt      *time.Time `gorm:"index" json:"lastReadAt"`
+	UnreadCount     int64      `gorm:"not null;default:0" json:"unreadCount"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
+}
+
+func (MessageConversation) TableName() string {
+	return "message_conversations"
+}
+
 // SupportMessage stores persisted support messages.
 type SupportMessage struct {
 	ID                uint      `gorm:"primaryKey" json:"legacyId,omitempty"`

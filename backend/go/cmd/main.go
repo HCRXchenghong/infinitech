@@ -137,6 +137,7 @@ func main() {
 		&repository.ExternalAuthSession{},
 		&repository.CaptchaChallenge{},
 		&repository.SMSVerificationCode{},
+		&repository.MessageConversation{},
 		&repository.SupportConversation{},
 		&repository.SupportMessage{},
 		&repository.DiningBuddyParty{},
@@ -1225,6 +1226,8 @@ func main() {
 		{
 			messages.GET("/targets/search", handlers.Message.SearchTargets)
 			messages.POST("/conversations/upsert", handlers.Message.UpsertConversation)
+			messages.POST("/conversations/read-all", handlers.Message.MarkAllConversationsRead)
+			messages.POST("/conversations/:chatId/read", handlers.Message.MarkConversationRead)
 			messages.POST("/sync", handlers.Message.SyncMessage)
 			messages.GET("/conversations", handlers.Message.GetConversations) // 必须在 /:roomId 之前
 			messages.GET("/:roomId", handlers.Message.GetMessageHistory)
@@ -1373,6 +1376,8 @@ func main() {
 	log.Println("  POST /api/auth/register")
 	log.Println("  GET  /api/messages/targets/search")
 	log.Println("  POST /api/messages/conversations/upsert")
+	log.Println("  POST /api/messages/conversations/read-all")
+	log.Println("  POST /api/messages/conversations/:chatId/read")
 	log.Println("  POST /api/messages/sync")
 	log.Println("  GET  /api/messages/conversations")
 	log.Println("  GET  /api/messages/:roomId")

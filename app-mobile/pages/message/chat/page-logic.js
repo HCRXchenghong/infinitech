@@ -1,6 +1,11 @@
 import createSocket from '@/utils/socket-io'
 import config from '@/shared-ui/config'
-import { reverseGeocode } from '@/shared-ui/api.js'
+import {
+  fetchHistory,
+  markConversationRead,
+  reverseGeocode,
+  upsertConversation
+} from '@/shared-ui/api.js'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/shared-ui/support-runtime.js'
 
 const DEFAULT_SELF_AVATAR = '/static/images/my-avatar.svg'
@@ -230,12 +235,13 @@ export default {
     }
 
     this.bootstrapProfile()
+    this.restoreLocalMessages()
+    this.initAudioPlayer()
+    this.initRecorderManager()
     this.loadSupportRuntimeConfig()
-      .finally(() => {
-        this.restoreLocalMessages()
-        this.upsertSession('[暂无消息]', false)
-        this.initAudioPlayer()
-        this.initRecorderManager()
+      .finally(async () => {
+        await this.ensureConversationExists()
+        await this.loadServerHistory()
         this.initSocket()
         this.seedWelcomeMessage()
         this.$nextTick(() => this.scrollToBottom())
@@ -318,6 +324,24 @@ export default {
       }
     },
 
+    normalizeTargetType() {
+      const role = String(this.role || '').toLowerCase()
+      if (role === 'rider') return 'rider'
+      if (role === 'shop' || role === 'merchant') return 'merchant'
+      return 'admin'
+    },
+
+    buildConversationPayload() {
+      return {
+        chatId: this.roomId,
+        targetType: this.normalizeTargetType(),
+        targetId: this.targetId || (this.isSupportConversation() ? 'support' : ''),
+        targetPhone: '',
+        targetName: this.title || this.getConversationTitle(),
+        targetAvatar: this.otherAvatar || ''
+      }
+    },
+
     seedWelcomeMessage() {
       if (this.messages.length > 0) return
 
@@ -374,6 +398,60 @@ export default {
         )
       } catch (err) {
         console.error('保存聊天缓存失败:', err)
+      }
+    },
+
+    normalizeHistoryMessages(list = []) {
+      return list.map((item, index) => {
+        const isSelf =
+          String(item.senderId || '') === String(this.userId) &&
+          item.senderRole === 'user'
+        const normalized = normalizeMessageContent(item.messageType || 'text', item.content)
+
+        return {
+          mid: item.id || `${Date.now()}_${index}`,
+          from: isSelf ? 'me' : 'other',
+          text: normalized.text,
+          type: normalized.type,
+          rawContent: normalized.rawContent,
+          meta: normalized.meta,
+          time: item.time || nowTime(),
+          showTime: index === 0 || list[index - 1].time !== item.time,
+          status: isSelf ? item.status || 'success' : 'success',
+          officialIntervention: !!item.officialIntervention,
+          interventionLabel: item.interventionLabel || '瀹樻柟浠嬪叆',
+          previewText: normalized.preview
+        }
+      })
+    },
+
+    async ensureConversationExists() {
+      try {
+        await upsertConversation(this.buildConversationPayload())
+      } catch (err) {
+        console.error('鍒濆鍖栨湇鍔＄浼氳瘽澶辫触:', err)
+      }
+    },
+
+    async syncReadState() {
+      try {
+        await markConversationRead(this.roomId)
+      } catch (err) {
+        console.error('鍚屾浼氳瘽宸茶澶辫触:', err)
+      }
+    },
+
+    async loadServerHistory() {
+      try {
+        const response = await fetchHistory(this.roomId)
+        const list = Array.isArray(response) ? response : []
+        if (list.length > 0) {
+          this.messages = this.normalizeHistoryMessages(list)
+          this.persistLocalMessages()
+        }
+        await this.syncReadState()
+      } catch (err) {
+        console.error('鍔犺浇鏈嶅姟绔秷鎭巻鍙插け璐?', err)
       }
     },
 
@@ -470,15 +548,18 @@ export default {
           userId: this.userId,
           role: 'user'
         })
-        sock.emit('load_messages', {
-          chatId: this.roomId
-        })
       })
 
       sock.on('messages_loaded', (payload) => {
         if (!payload || String(payload.chatId) !== String(this.roomId)) return
+        if (this.messages.length > 0) return
 
         const list = Array.isArray(payload.messages) ? payload.messages : []
+        this.messages = this.normalizeHistoryMessages(list)
+        this.persistLocalMessages()
+        this.syncReadState()
+        this.$nextTick(() => this.scrollToBottom())
+        return
         this.messages = list.map((item, index) => {
           const isSelf =
             String(item.senderId || '') === String(this.userId) &&
@@ -526,7 +607,8 @@ export default {
               interventionLabel: payload.interventionLabel || '官方介入'
             }
           )
-          this.upsertSession(this.previewText(payload), true)
+          this.syncReadState()
+          return
         }
       })
 
@@ -654,12 +736,13 @@ export default {
         avatar: this.userAvatar,
         messageType,
         content,
+        targetType: this.normalizeTargetType(),
+        targetId: this.targetId || (this.isSupportConversation() ? 'support' : ''),
+        targetPhone: '',
+        targetName: this.title || this.getConversationTitle(),
+        targetAvatar: this.otherAvatar || '',
         tempId: msgId
       })
-      this.upsertSession(
-        previewText || normalizeMessageContent(messageType, content).preview,
-        false
-      )
       this.scheduleSendStatusTimeout(msgId)
       this.panelType = ''
       return true

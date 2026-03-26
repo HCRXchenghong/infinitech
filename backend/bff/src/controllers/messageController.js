@@ -16,6 +16,15 @@ async function upsertConversation(req, res, next) {
   await proxyPost(req, res, next, '/messages/conversations/upsert');
 }
 
+async function markConversationRead(req, res, next) {
+  const { chatId } = req.params;
+  await proxyPost(req, res, next, `/messages/conversations/${encodeURIComponent(chatId)}/read`);
+}
+
+async function markAllConversationsRead(req, res, next) {
+  await proxyPost(req, res, next, '/messages/conversations/read-all');
+}
+
 async function syncMessage(req, res, next) {
   await proxyPost(req, res, next, '/messages/sync');
 }
@@ -40,6 +49,8 @@ async function getMessageHistory(req, res, next) {
 module.exports = {
   searchTargets,
   upsertConversation,
+  markConversationRead,
+  markAllConversationsRead,
   syncMessage,
   getConversations,
   getMessageHistory
