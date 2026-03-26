@@ -232,6 +232,8 @@ npm run build
 - `socket-server` 已增加 HTTP server 超时设置与更紧的 Socket.IO ping / buffer 限制
 - `socket-server` 现已支持 Redis 优先的共享 token 会话存储，解决多实例下“发 token 的实例”和“校验 token 的实例”互不认账的问题
 - `socket-server` 的 HTTP 敏感接口限流现已支持 Redis 优先的分布式固定窗口限流，Redis 不可用时自动回退到本地内存限流
+- `socket-server` 已接入 Socket.IO Redis adapter，多实例下的房间广播和跨实例实时事件同步不再只依赖单机内存
+- `socket-server` 在线人数现在会优先走 Redis 共享 presence 统计，Redis 不可用时自动回退到本地计数
 - BFF 转发到 Go 时现在会带上真实客户端 IP，便于审计和保护策略
 
 ## 9. 当前仍未完成的大项
@@ -270,12 +272,12 @@ npm run build
 
 - 现在不能对外宣称“万人并发一定不会出问题”
 - 这一轮已经补的是明显的默认薄弱点和单机保护层
-- Go 与 BFF 已经具备 Redis 优先的限流能力，但 `socket-server` 当前仍主要是单机保护层
-- `socket-server` 虽然已经把 token 会话和 HTTP limiter 推进到 Redis 优先模式，但在线人数、房间状态和跨实例实时广播还没有完全分布式化
+- Go、BFF 与 `socket-server` 现在都已经具备 Redis 优先的限流或共享状态能力，但全链路仍未完成所有分布式治理
+- `socket-server` 已经补上 Redis adapter、共享 token 会话和共享在线人数，但消息持久化事实源仍需继续往 Go 收口
 - 真正面向千人、万人级稳定性，还需要继续完成：
-- Redis 分布式限流
+- 更细粒度的 Redis 分布式限流
 - PostgreSQL 生产部署与连接池压测
-- Socket 横向扩展
+- Socket 横向扩展压测与故障演练
 - 推送外部供应商接入
 - 首页与消息等主链路压测基线
 

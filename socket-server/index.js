@@ -14,7 +14,7 @@ import { setupRiderNamespace } from './riderNamespace.js';
 import { setupAiStaffNamespace } from './aiStaffNamespace.js';
 import { setupAiNamespace } from './aiNamespace.js';
 import { validateSocketIdentity } from './socketIdentity.js';
-import { allowFixedWindowRateLimit, initRedisState } from './redisState.js';
+import { allowFixedWindowRateLimit, attachSocketIoRedisAdapter, initRedisState } from './redisState.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -349,7 +349,7 @@ const httpServer = createServer(async (req, res) => {
 
   if (pathname === '/api/stats' && req.method === 'GET') {
     const stats = getServerStats();
-    stats.onlineUsers = getOnlineCount();
+    stats.onlineUsers = await getOnlineCount();
     writeJson(res, 200, stats);
     return;
   }
@@ -466,6 +466,7 @@ const io = new Server(httpServer, {
   pingInterval: SOCKET_PING_INTERVAL_MS,
   maxHttpBufferSize: SOCKET_MAX_HTTP_BUFFER_BYTES
 });
+await attachSocketIoRedisAdapter(io);
 
 ({
   monitorNamespace,
@@ -510,10 +511,14 @@ setupAiNamespace({
   normalizeMessageData
 });
 
-setInterval(() => {
-  const stats = getServerStats();
-  stats.onlineUsers = getOnlineCount();
-  monitorNamespace.to('monitor_all').emit('server_stats', stats);
+setInterval(async () => {
+  try {
+    const stats = getServerStats();
+    stats.onlineUsers = await getOnlineCount();
+    monitorNamespace.to('monitor_all').emit('server_stats', stats);
+  } catch (err) {
+    logger.warn('server stats broadcast failed:', err?.message || err);
+  }
 }, 5000);
 
 httpServer.listen(PORT, () => {

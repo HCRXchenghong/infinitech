@@ -1,4 +1,5 @@
 import { createClient } from 'redis';
+import { createAdapter } from '@socket.io/redis-adapter';
 import crypto from 'crypto';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
@@ -56,12 +57,14 @@ const redisConfig = {
   database: toPositiveInt(process.env.SOCKET_REDIS_DB || process.env.REDIS_DB, 0),
   connectTimeout: toPositiveInt(process.env.SOCKET_REDIS_CONNECT_TIMEOUT_MS, 1000)
 };
+const SOCKET_ONLINE_TTL_MS = toPositiveInt(process.env.SOCKET_ONLINE_TTL_MS, 120_000);
 
 const localSessionStore = new Map();
 const localRateLimitStore = new Map();
 let redisClient = null;
 let redisConnectPromise = null;
 let redisDisabledUntil = 0;
+let adapterClientsPromise = null;
 
 function cleanupLocalSessions() {
   const now = Date.now();
@@ -126,8 +129,38 @@ async function ensureRedisClient() {
   return redisConnectPromise;
 }
 
+async function ensureAdapterClients() {
+  if (adapterClientsPromise) return adapterClientsPromise;
+
+  adapterClientsPromise = (async () => {
+    const client = await ensureRedisClient();
+    if (!client) return null;
+
+    const pubClient = client.duplicate();
+    const subClient = client.duplicate();
+    await Promise.all([pubClient.connect(), subClient.connect()]);
+    return { pubClient, subClient };
+  })().catch((err) => {
+    logger.warn('socket-server redis adapter unavailable, falling back to single-instance adapter:', err?.message || err);
+    return null;
+  }).finally(() => {
+    adapterClientsPromise = null;
+  });
+
+  return adapterClientsPromise;
+}
+
 export function initRedisState() {
   void ensureRedisClient();
+}
+
+export async function attachSocketIoRedisAdapter(io) {
+  const adapterClients = await ensureAdapterClients();
+  if (!adapterClients) return false;
+
+  io.adapter(createAdapter(adapterClients.pubClient, adapterClients.subClient));
+  logger.info('socket-server Redis adapter enabled for cross-instance broadcasting');
+  return true;
 }
 
 export async function createSocketSessionRecord(userId, role, options = {}) {
@@ -223,4 +256,63 @@ export async function allowFixedWindowRateLimit({ prefix, key, windowMs, maxRequ
   existing.count += 1;
   localRateLimitStore.set(localKey, existing);
   return { allowed: true, retryAfterMs: 0 };
+}
+
+export async function upsertOnlinePresence(socketId, payload, ttlMs = SOCKET_ONLINE_TTL_MS) {
+  const normalizedSocketId = String(socketId || '').trim();
+  if (!normalizedSocketId) return;
+
+  const client = await ensureRedisClient();
+  if (!client) return;
+
+  const expiresAt = Date.now() + ttlMs;
+  await client.multi()
+    .set(`socket:online:${normalizedSocketId}`, JSON.stringify({
+      ...payload,
+      socketId: normalizedSocketId,
+      expiresAt
+    }), { PX: ttlMs })
+    .zAdd('socket:online:index', [{ score: expiresAt, value: normalizedSocketId }])
+    .exec();
+}
+
+export async function refreshOnlinePresence(entries, ttlMs = SOCKET_ONLINE_TTL_MS) {
+  const client = await ensureRedisClient();
+  if (!client || !Array.isArray(entries) || entries.length === 0) return;
+
+  const expiresAt = Date.now() + ttlMs;
+  const multi = client.multi();
+  for (const entry of entries) {
+    const normalizedSocketId = String(entry?.socketId || '').trim();
+    if (!normalizedSocketId) continue;
+    multi.set(`socket:online:${normalizedSocketId}`, JSON.stringify({
+      ...entry,
+      socketId: normalizedSocketId,
+      expiresAt
+    }), { PX: ttlMs });
+    multi.zAdd('socket:online:index', [{ score: expiresAt, value: normalizedSocketId }]);
+  }
+  await multi.exec();
+}
+
+export async function removeOnlinePresence(socketId) {
+  const normalizedSocketId = String(socketId || '').trim();
+  if (!normalizedSocketId) return;
+
+  const client = await ensureRedisClient();
+  if (!client) return;
+
+  await client.multi()
+    .del(`socket:online:${normalizedSocketId}`)
+    .zRem('socket:online:index', normalizedSocketId)
+    .exec();
+}
+
+export async function getOnlinePresenceCount(localCount = 0) {
+  const client = await ensureRedisClient();
+  if (!client) return Number(localCount || 0);
+
+  const now = Date.now();
+  await client.zRemRangeByScore('socket:online:index', '-inf', now);
+  return client.zCard('socket:online:index');
 }
