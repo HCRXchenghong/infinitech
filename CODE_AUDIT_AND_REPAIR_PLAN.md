@@ -561,6 +561,17 @@
 - `user-vue/pages/message/index/index.vue` and `app-mobile/pages/message/index/index.vue` now load the server conversation list as the primary source, keep legacy local sessions only as a compatibility merge, and sync per-conversation/all-conversation read actions back to the server
 - `user-vue/pages/message/chat/page-logic.js` and `app-mobile/pages/message/chat/page-logic.js` now create the server conversation on entry, load history from the server first, sync read state after history/incoming messages, and send target metadata with socket messages so the backend can maintain authoritative peer rows
 
+## Batch 47 Completed
+- Extend the message-authority migration to the remaining high-traffic merchant and admin chat surfaces instead of leaving those entry points on socket-local chat lists and history
+- Make the admin support/monitor workbenches read conversation lists and history from the service API first while preserving socket real-time delivery
+- Keep the merchant chat rollout compatibility-safe by leaving local message cache as a display fallback but making server history/read-state the primary path
+
+### Batch 47 Fixed
+- `merchant-app/shared-ui/api.ts` now exposes `upsertConversation` and `markConversationRead` so the merchant client can use the same server conversation contract as the consumer clients
+- `merchant-app/pages/messages/chat.vue` now creates the server conversation on entry, loads message history from `/api/messages/:chatId`, syncs read state back to the server, and sends target metadata with outbound socket messages so merchant conversations no longer depend on local-only session truth
+- `admin-vue/src/views/chatConsoleApi.js` now centralizes message conversation REST calls for the admin workbenches
+- `admin-vue/src/views/useChatConsole.js` now refreshes the chat list from `/api/messages/conversations`, loads selected chat history from `/api/messages/:chatId`, and syncs read state through the service API while still using socket events for live message delivery and status updates
+
 ## Verification
 - Passed `node --check` on modified `socket-server` and `backend/bff` modules
 - Passed `backend/bff` test suite: `npm test -- --runInBand`
@@ -612,6 +623,7 @@
 - Passed `node --check` on `backend/bff/src/routes/message.js`
 - Passed `node --check` on `socket-server/supportNamespaces.js`
 - Passed `node --check` on `socket-server/socketIdentity.js`
+- Passed `node --check` on `admin-vue/src/views/chatConsoleApi.js`
 - Passed `admin-vue` production build: `npm run build`
 
 ## Remaining High-Priority Items
@@ -622,5 +634,5 @@
 - Continue removing legacy local-session fallbacks after the rest of the user / merchant / rider message entry points are fully migrated to the new server conversation model
 
 ## Next Repair Focus
-- Remaining message / native unfinished integrations and parity issues, especially merchant/rider parity and admin workbench convergence
+- Remaining message / native unfinished integrations and parity issues, especially rider-side parity and global unread/notification convergence
 - Broader architecture and duplicate-code reduction work

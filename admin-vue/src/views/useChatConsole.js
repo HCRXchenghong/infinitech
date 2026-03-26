@@ -3,6 +3,11 @@ import { ElMessage } from 'element-plus';
 import socketService, { SOCKET_HTTP_BASE } from '@/utils/socket';
 import messageDB from '@/utils/messageDB';
 import {
+  fetchMessageConversations,
+  fetchMessageHistory,
+  markMessageConversationRead
+} from './chatConsoleApi';
+import {
   normalizeChatId,
   createSeenMessageTracker,
   isAdminSender,
@@ -82,6 +87,25 @@ export function useChatConsole(options = {}) {
     return socketRef;
   }
 
+  async function refreshChats() {
+    try {
+      chats.value = mapLoadedChats(await fetchMessageConversations());
+    } catch (error) {
+      console.error('加载服务端会话列表失败:', error);
+    }
+  }
+
+  async function syncReadState(chatId) {
+    const normalizedChatId = normalizeChatId(chatId);
+    if (!normalizedChatId) return;
+
+    try {
+      await markMessageConversationRead(normalizedChatId);
+    } catch (error) {
+      console.error('同步服务端已读状态失败:', error);
+    }
+  }
+
   function scrollToBottom() {
     if (messagesContainer.value) {
       messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
@@ -115,9 +139,23 @@ export function useChatConsole(options = {}) {
       console.error('加载本地消息失败:', error);
     }
 
-    const socket = getSocket();
-    if (socket) {
-      socket.emit('load_messages', resolveLoadMessagesPayload(loadMessagesExtra, normalizedChatId));
+    try {
+      const serverMessages = await fetchMessageHistory(normalizedChatId);
+      messages.value = mapLoadedMessages(serverMessages);
+      serverMessages.forEach((msg) => {
+        hasSeenMessage(normalizedChatId, msg.id);
+      });
+
+      try {
+        await saveLoadedMessages(messageDB, normalizedChatId, serverMessages);
+      } catch (error) {
+        console.error('淇濆瓨娑堟伅澶辫触:', error);
+      }
+
+      await syncReadState(normalizedChatId);
+      nextTick(() => scrollToBottom());
+    } catch (error) {
+      console.error('加载服务端消息失败:', error);
     }
   }
 
@@ -340,11 +378,11 @@ export function useChatConsole(options = {}) {
         beforeInitLoad(socket, { selectedChat });
       }
 
-      socket.emit('load_all_chats');
+      void refreshChats();
 
       if (selectedChat.value) {
         socket.emit('join_chat', { chatId: selectedChat.value.id, userId: 'admin', role: 'admin' });
-        socket.emit('load_messages', resolveLoadMessagesPayload(loadMessagesExtra, selectedChat.value.id));
+        void loadMessages(selectedChat.value.id);
       }
     }
 
@@ -357,7 +395,9 @@ export function useChatConsole(options = {}) {
     }
 
     socket.on('all_chats_loaded', (data) => {
-      chats.value = mapLoadedChats(data.chats || []);
+      if (!chats.value.length) {
+        chats.value = mapLoadedChats(data.chats || []);
+      }
     });
 
     socket.on('new_message', async (data) => {
@@ -374,6 +414,7 @@ export function useChatConsole(options = {}) {
       }
 
       if (!upsertBeforeSelectedCheck && pushIncomingToSelectedChat(data, incomingChatId)) {
+        void syncReadState(incomingChatId);
         return;
       }
 
@@ -386,7 +427,9 @@ export function useChatConsole(options = {}) {
       });
 
       if (upsertBeforeSelectedCheck) {
-        pushIncomingToSelectedChat(data, incomingChatId);
+        if (pushIncomingToSelectedChat(data, incomingChatId)) {
+          void syncReadState(incomingChatId);
+        }
       }
     });
 
@@ -405,6 +448,7 @@ export function useChatConsole(options = {}) {
         console.error('保存消息失败:', error);
       }
 
+      await syncReadState(loadedChatId);
       nextTick(() => scrollToBottom());
     });
 

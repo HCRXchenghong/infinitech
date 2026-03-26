@@ -491,4 +491,13 @@ export const fetchConversations = () => apiGet('/api/messages/conversations')
 
 export const fetchHistory = (roomId: string) => apiGet(`/api/messages/${roomId}`)
 
+export const upsertConversation = (payload: Record<string, any>) =>
+  apiPost('/api/messages/conversations/upsert', payload)
+
+export const markConversationRead = (chatId: string) =>
+  apiPost(`/api/messages/conversations/${encodeURIComponent(chatId)}/read`, {})
+
+export const markAllConversationsRead = () =>
+  apiPost('/api/messages/conversations/read-all', {})
+
 export const fetchPublicRuntimeSettings = () => apiGet('/api/public/runtime-settings')

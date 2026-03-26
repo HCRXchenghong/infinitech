@@ -60,6 +60,7 @@ import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 import createSocket from '@/utils/socket-io'
 import config from '@/shared-ui/config'
+import { fetchHistory, markConversationRead, upsertConversation } from '@/shared-ui/api'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/shared-ui/support-runtime'
 import { getMerchantId, getMerchantProfile } from '@/shared-ui/merchantContext'
 
@@ -129,6 +130,23 @@ function inferTitleByRole(role: ChatRole) {
   return '用户会话'
 }
 
+function normalizeTargetType() {
+  if (chatRole.value === 'rider') return 'rider'
+  if (chatRole.value === 'admin') return 'admin'
+  return 'user'
+}
+
+function buildConversationPayload() {
+  return {
+    chatId: chatId.value,
+    targetType: normalizeTargetType(),
+    targetId: targetId.value || (chatRole.value === 'admin' ? 'support' : ''),
+    targetPhone: '',
+    targetName: chatTitle.value || inferTitleByRole(chatRole.value),
+    targetAvatar: ''
+  }
+}
+
 async function loadSupportRuntimeConfig(updateChatTitle = false) {
   const supportRuntime = await loadSupportRuntimeSettings()
   supportTitle.value = supportRuntime.title
@@ -185,6 +203,41 @@ function toViewMessage(raw: any): ViewMessage {
     status: 'sent',
     officialIntervention: !!raw?.officialIntervention,
     interventionLabel: String(raw?.interventionLabel || '官方介入')
+  }
+}
+
+function normalizeHistoryMessages(list: any[]) {
+  return (list || []).map((item: any) => toViewMessage(item))
+}
+
+async function ensureConversationExists() {
+  try {
+    await upsertConversation(buildConversationPayload())
+  } catch (err) {
+    console.error('初始化服务端会话失败:', err)
+  }
+}
+
+async function syncReadState() {
+  try {
+    await markConversationRead(chatId.value)
+  } catch (err) {
+    console.error('同步会话已读失败:', err)
+  }
+}
+
+async function loadServerHistory() {
+  try {
+    const response: any = await fetchHistory(chatId.value)
+    const list = Array.isArray(response) ? response : []
+    if (list.length > 0) {
+      messages.value = normalizeHistoryMessages(list)
+      persistLocalMessages()
+      scrollToBottom()
+    }
+    await syncReadState()
+  } catch (err) {
+    console.error('加载服务端聊天记录失败:', err)
   }
 }
 
@@ -260,14 +313,15 @@ function connectSocket(token: string) {
       userId: merchantId.value,
       role: 'merchant'
     })
-    sock.emit('load_messages', { chatId: chatId.value })
   })
 
   sock.on('messages_loaded', (payload: any) => {
     if (!payload || String(payload.chatId) !== String(chatId.value)) return
+    if (messages.value.length > 0) return
     const list = Array.isArray(payload.messages) ? payload.messages : []
-    messages.value = list.map((item: any) => toViewMessage(item))
+    messages.value = normalizeHistoryMessages(list)
     persistLocalMessages()
+    syncReadState()
     scrollToBottom()
   })
 
@@ -278,6 +332,7 @@ function connectSocket(token: string) {
       messages.value.push(normalized)
       persistLocalMessages()
       scrollToBottom()
+      syncReadState()
     }
   })
 
@@ -349,6 +404,11 @@ function sendText() {
     avatar: merchantAvatar.value,
     messageType: 'text',
     content,
+    targetType: normalizeTargetType(),
+    targetId: targetId.value || (chatRole.value === 'admin' ? 'support' : ''),
+    targetPhone: '',
+    targetName: chatTitle.value || inferTitleByRole(chatRole.value),
+    targetAvatar: '',
     tempId: mid
   })
 
@@ -394,6 +454,11 @@ function chooseImage() {
               avatar: merchantAvatar.value,
               messageType: 'image',
               content: imageUrl,
+              targetType: normalizeTargetType(),
+              targetId: targetId.value || (chatRole.value === 'admin' ? 'support' : ''),
+              targetPhone: '',
+              targetName: chatTitle.value || inferTitleByRole(chatRole.value),
+              targetAvatar: '',
               tempId: mid
             })
 
@@ -446,10 +511,12 @@ onLoad((options: any = {}) => {
 
   const explicitTitle = safeDecode(options.name || '')
   chatTitle.value = explicitTitle || inferTitleByRole(chatRole.value)
-  void loadSupportRuntimeConfig(!explicitTitle)
-
   restoreLocalMessages()
-  initSocket()
+  void loadSupportRuntimeConfig(!explicitTitle).finally(async () => {
+    await ensureConversationExists()
+    await loadServerHistory()
+    initSocket()
+  })
 })
 
 onUnload(() => {
