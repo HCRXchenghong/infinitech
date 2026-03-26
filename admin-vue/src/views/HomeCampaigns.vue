@@ -13,14 +13,27 @@
       <PageStateAlert :message="pageError" />
 
       <div class="filters">
-        <el-select v-model="filters.objectType" clearable placeholder="对象类型" size="small" style="width: 140px">
+        <el-select
+          v-model="filters.objectType"
+          clearable
+          placeholder="对象类型"
+          size="small"
+          style="width: 140px"
+        >
           <el-option label="商户" value="shop" />
           <el-option label="商品" value="product" />
         </el-select>
-        <el-select v-model="filters.status" clearable placeholder="投放状态" size="small" style="width: 140px">
+        <el-select
+          v-model="filters.status"
+          clearable
+          placeholder="投放状态"
+          size="small"
+          style="width: 140px"
+        >
           <el-option label="草稿" value="draft" />
           <el-option label="已审核" value="approved" />
           <el-option label="投放中" value="active" />
+          <el-option label="已排期" value="scheduled" />
           <el-option label="已暂停" value="paused" />
           <el-option label="已驳回" value="rejected" />
           <el-option label="已结束" value="ended" />
@@ -70,7 +83,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="promoteLabel" label="前台标识" width="100" />
+        <el-table-column prop="promoteLabel" label="前台标识" width="120" />
         <el-table-column prop="startAt" label="开始时间" width="170" />
         <el-table-column prop="endAt" label="结束时间" width="170" />
         <el-table-column label="操作" width="260" fixed="right">
@@ -137,9 +150,14 @@
             <el-table-column prop="name" label="名称" min-width="160" />
             <el-table-column label="来源" width="120">
               <template #default="{ row }">
-                <el-tag size="small" :type="row.isPromoted ? 'warning' : 'info'">
-                  {{ row.isPromoted ? '推广' : formatPositionSource(row.positionSource) }}
+                <el-tag size="small" :type="positionSourceTagType(row.positionSource)">
+                  {{ formatPositionSource(row.positionSource) }}
                 </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="前台标识" width="120">
+              <template #default="{ row }">
+                {{ row.isPromoted ? row.promoteLabel || '推广' : '-' }}
               </template>
             </el-table-column>
           </el-table>
@@ -156,9 +174,14 @@
             <el-table-column prop="name" label="名称" min-width="160" />
             <el-table-column label="来源" width="120">
               <template #default="{ row }">
-                <el-tag size="small" :type="row.isPromoted ? 'warning' : 'info'">
-                  {{ row.isPromoted ? '推广' : formatPositionSource(row.positionSource) }}
+                <el-tag size="small" :type="positionSourceTagType(row.positionSource)">
+                  {{ formatPositionSource(row.positionSource) }}
                 </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="前台标识" width="120">
+              <template #default="{ row }">
+                {{ row.isPromoted ? row.promoteLabel || '推广' : '-' }}
               </template>
             </el-table-column>
           </el-table>
@@ -168,7 +191,7 @@
 
     <el-dialog
       v-model="dialogVisible"
-      :title="editingId ? '编辑首页推广计划' : (form.isPositionLocked ? '锁定位次' : '新建首页推广计划')"
+      :title="dialogTitle"
       width="760px"
       :close-on-click-modal="false"
     >
@@ -190,7 +213,13 @@
         </el-row>
 
         <el-form-item label="投放对象">
-          <el-select v-model="form.targetId" filterable clearable style="width: 100%" placeholder="请选择投放对象">
+          <el-select
+            v-model="form.targetId"
+            filterable
+            clearable
+            style="width: 100%"
+            placeholder="请选择投放对象"
+          >
             <el-option
               v-for="item in targetOptions"
               :key="item.id"
@@ -310,6 +339,20 @@ const filters = reactive({
 
 const form = reactive(createEmptyForm())
 
+const dialogTitle = computed(() => {
+  if (editingId.value) return '编辑首页推广计划'
+  if (form.isPositionLocked) return '锁定位次'
+  return '新建首页推广计划'
+})
+
+const targetOptions = computed(() => {
+  const current = form.objectType === 'product' ? products.value : shops.value
+  return current.map((item) => ({
+    id: String(item.id || ''),
+    name: item.name || `ID ${item.id || '-'}`,
+  }))
+})
+
 function createEmptyForm() {
   const now = new Date()
   const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
@@ -329,14 +372,6 @@ function createEmptyForm() {
     endAt: formatDateTime(nextWeek),
   }
 }
-
-const targetOptions = computed(() => {
-  const current = form.objectType === 'product' ? products.value : shops.value
-  return current.map((item) => ({
-    id: String(item.id || ''),
-    name: item.name || `ID ${item.id || '-'}`,
-  }))
-})
 
 function formatDateTime(date) {
   const year = date.getFullYear()
@@ -401,6 +436,19 @@ function statusTagType(status) {
   }
 }
 
+function positionSourceTagType(source) {
+  switch (source) {
+    case 'manual_locked':
+      return 'danger'
+    case 'paid_campaign':
+      return 'warning'
+    case 'featured':
+      return 'success'
+    default:
+      return 'info'
+  }
+}
+
 function formatStatus(status) {
   const map = {
     draft: '草稿',
@@ -416,8 +464,8 @@ function formatStatus(status) {
 
 function formatPositionSource(source) {
   const map = {
-    featured: '推荐',
-    organic: '自然',
+    featured: '推荐位',
+    organic: '自然排序',
     paid_campaign: '付费计划',
     manual_locked: '手工锁位',
   }
@@ -548,7 +596,7 @@ async function changeStatus(row, action) {
 }
 
 onMounted(() => {
-  loadAll()
+  void loadAll()
 })
 </script>
 

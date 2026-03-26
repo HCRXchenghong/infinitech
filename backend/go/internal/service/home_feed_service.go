@@ -123,7 +123,7 @@ func (s *HomeFeedService) ListCampaigns(ctx context.Context, query HomePromotion
 	var campaigns []repository.HomePromotionCampaign
 
 	dbQuery := s.db.WithContext(ctx).Model(&repository.HomePromotionCampaign{})
-	if status := normalizeHomePromotionStatus(query.Status, ""); status != "" {
+	if status := normalizeOptionalHomePromotionStatus(query.Status); status != "" {
 		dbQuery = dbQuery.Where("status = ?", status)
 	}
 	if objectType := normalizeHomePromotionObjectType(query.ObjectType); objectType != "" {
@@ -656,6 +656,14 @@ func normalizeHomePromotionStatus(value string, fallback string) string {
 	default:
 		return ""
 	}
+}
+
+func normalizeOptionalHomePromotionStatus(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	return normalizeHomePromotionStatus(value, "")
 }
 
 func normalizePromotionLabel(label string) string {
