@@ -76,11 +76,18 @@ type PushConfig struct {
 }
 
 type HTTPConfig struct {
-	ReadTimeout       time.Duration
-	ReadHeaderTimeout time.Duration
-	WriteTimeout      time.Duration
-	IdleTimeout       time.Duration
-	ShutdownTimeout   time.Duration
+	ReadTimeout        time.Duration
+	ReadHeaderTimeout  time.Duration
+	WriteTimeout       time.Duration
+	IdleTimeout        time.Duration
+	ShutdownTimeout    time.Duration
+	MaxBodyBytes       int64
+	MaxUploadBytes     int64
+	MaxMultipartMemory int64
+	RateLimitEnabled   bool
+	RateLimitWindow    time.Duration
+	RateLimitMax       int
+	TrustedProxies     []string
 }
 
 func Load() *Config {
@@ -143,11 +150,18 @@ func Load() *Config {
 			RetryBackoff:     time.Duration(getEnvInt("PUSH_DISPATCH_RETRY_BACKOFF_SECONDS", 60)) * time.Second,
 		},
 		HTTP: HTTPConfig{
-			ReadTimeout:       time.Duration(getEnvInt("HTTP_READ_TIMEOUT_SECONDS", 15)) * time.Second,
-			ReadHeaderTimeout: time.Duration(getEnvInt("HTTP_READ_HEADER_TIMEOUT_SECONDS", 10)) * time.Second,
-			WriteTimeout:      time.Duration(getEnvInt("HTTP_WRITE_TIMEOUT_SECONDS", 30)) * time.Second,
-			IdleTimeout:       time.Duration(getEnvInt("HTTP_IDLE_TIMEOUT_SECONDS", 60)) * time.Second,
-			ShutdownTimeout:   time.Duration(getEnvInt("HTTP_SHUTDOWN_TIMEOUT_SECONDS", 15)) * time.Second,
+			ReadTimeout:        time.Duration(getEnvInt("HTTP_READ_TIMEOUT_SECONDS", 15)) * time.Second,
+			ReadHeaderTimeout:  time.Duration(getEnvInt("HTTP_READ_HEADER_TIMEOUT_SECONDS", 10)) * time.Second,
+			WriteTimeout:       time.Duration(getEnvInt("HTTP_WRITE_TIMEOUT_SECONDS", 30)) * time.Second,
+			IdleTimeout:        time.Duration(getEnvInt("HTTP_IDLE_TIMEOUT_SECONDS", 60)) * time.Second,
+			ShutdownTimeout:    time.Duration(getEnvInt("HTTP_SHUTDOWN_TIMEOUT_SECONDS", 15)) * time.Second,
+			MaxBodyBytes:       int64(getEnvInt("HTTP_MAX_BODY_BYTES", 1024*1024)),
+			MaxUploadBytes:     int64(getEnvInt("HTTP_MAX_UPLOAD_BYTES", 12*1024*1024)),
+			MaxMultipartMemory: int64(getEnvInt("HTTP_MAX_MULTIPART_MEMORY_BYTES", 8*1024*1024)),
+			RateLimitEnabled:   strings.EqualFold(getEnv("HTTP_RATE_LIMIT_ENABLED", "true"), "true"),
+			RateLimitWindow:    time.Duration(getEnvInt("HTTP_RATE_LIMIT_WINDOW_SECONDS", 60)) * time.Second,
+			RateLimitMax:       getEnvInt("HTTP_RATE_LIMIT_MAX_REQUESTS", defaultHTTPRateLimitMax(env)),
+			TrustedProxies:     parseCSV(getEnv("TRUSTED_PROXY_CIDRS", "127.0.0.1,::1")),
 		},
 	}
 }
@@ -221,6 +235,27 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("PUSH_DISPATCH_RETRY_BACKOFF_SECONDS must be greater than 0")
 	}
 
+	if c.HTTP.MaxBodyBytes <= 0 {
+		return fmt.Errorf("HTTP_MAX_BODY_BYTES must be greater than 0")
+	}
+	if c.HTTP.MaxUploadBytes <= 0 {
+		return fmt.Errorf("HTTP_MAX_UPLOAD_BYTES must be greater than 0")
+	}
+	if c.HTTP.MaxUploadBytes < c.HTTP.MaxBodyBytes {
+		return fmt.Errorf("HTTP_MAX_UPLOAD_BYTES must be greater than or equal to HTTP_MAX_BODY_BYTES")
+	}
+	if c.HTTP.MaxMultipartMemory <= 0 {
+		return fmt.Errorf("HTTP_MAX_MULTIPART_MEMORY_BYTES must be greater than 0")
+	}
+	if c.HTTP.RateLimitEnabled {
+		if c.HTTP.RateLimitWindow <= 0 {
+			return fmt.Errorf("HTTP_RATE_LIMIT_WINDOW_SECONDS must be greater than 0")
+		}
+		if c.HTTP.RateLimitMax <= 0 {
+			return fmt.Errorf("HTTP_RATE_LIMIT_MAX_REQUESTS must be greater than 0")
+		}
+	}
+
 	return nil
 }
 
@@ -259,6 +294,18 @@ func max(value int, floor int) int {
 	return value
 }
 
+func parseCSV(raw string) []string {
+	parts := strings.Split(strings.TrimSpace(raw), ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		value := strings.TrimSpace(part)
+		if value != "" {
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
 func normalizeDatabaseDriver(value string) string {
 	return strings.ToLower(strings.TrimSpace(value))
 }
@@ -268,6 +315,13 @@ func defaultRedisRequired(env string) string {
 		return "true"
 	}
 	return "false"
+}
+
+func defaultHTTPRateLimitMax(env string) int {
+	if isProductionLikeEnv(env) {
+		return 1200
+	}
+	return 6000
 }
 
 func isProductionLikeEnv(env string) bool {

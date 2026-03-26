@@ -75,6 +75,7 @@ function buildGoRequestOptions(req, options = {}) {
   const withAuth = withForwardAuth(req, {
     headers: options.headers || {}
   }, {
+    includeClientIp: true,
     preferExtraHeaders: Boolean(options.preferExtraHeaders)
   });
 

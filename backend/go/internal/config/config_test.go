@@ -36,6 +36,20 @@ func newValidConfigForTest() *Config {
 			MaxRetries:       5,
 			RetryBackoff:     60 * time.Second,
 		},
+		HTTP: HTTPConfig{
+			ReadTimeout:        15 * time.Second,
+			ReadHeaderTimeout:  10 * time.Second,
+			WriteTimeout:       30 * time.Second,
+			IdleTimeout:        60 * time.Second,
+			ShutdownTimeout:    15 * time.Second,
+			MaxBodyBytes:       1024 * 1024,
+			MaxUploadBytes:     12 * 1024 * 1024,
+			MaxMultipartMemory: 8 * 1024 * 1024,
+			RateLimitEnabled:   true,
+			RateLimitWindow:    60 * time.Second,
+			RateLimitMax:       6000,
+			TrustedProxies:     []string{"127.0.0.1", "::1"},
+		},
 	}
 }
 

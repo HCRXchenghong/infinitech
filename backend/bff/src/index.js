@@ -7,6 +7,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
+const rateLimit = require("express-rate-limit");
 const { createServer } = require("http");
 const os = require("os");
 require("dotenv").config();
@@ -22,6 +23,23 @@ const { createUploadsProxy } = require("./middleware/uploadsProxy");
 
 const app = express();
 const httpServer = createServer(app);
+httpServer.requestTimeout = config.http.requestTimeoutMs;
+httpServer.headersTimeout = config.http.headersTimeoutMs;
+httpServer.keepAliveTimeout = config.http.keepAliveTimeoutMs;
+
+const apiRateLimiter = rateLimit({
+  windowMs: config.rateLimit.windowMs,
+  max: config.rateLimit.max,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip(req) {
+    return req.path === "/health" || req.path === "/api/health";
+  },
+  message: {
+    success: false,
+    error: "请求过于频繁，请稍后再试",
+  },
+});
 
 function resolveLanIPv4() {
   const interfaces = os.networkInterfaces() || {};
@@ -60,8 +78,8 @@ app.use(helmet());
 app.use(compression());
 app.use(cors(corsOptions));
 app.set("trust proxy", 1);
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: config.bodyLimits.jsonBytes }));
+app.use(express.urlencoded({ extended: true, limit: config.bodyLimits.urlencodedBytes }));
 
 app.use(createRequestAuditMiddleware({ logger, parseOperatorFromAuthHeader }));
 app.use(createInviteRuntimeGuard({ logger }));
@@ -71,7 +89,7 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/uploads", createUploadsProxy({ goApiUrl: config.goApiUrl, logger }));
-app.use("/api", routes);
+app.use("/api", apiRateLimiter, routes);
 app.use(errorHandler);
 
 const PORT = config.port || 25500;

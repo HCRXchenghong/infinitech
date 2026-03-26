@@ -20,6 +20,22 @@ const __dirname = dirname(__filename);
 const PORT = process.env.SOCKET_PORT || 9898;
 const TRUSTED_TOKEN_API_SECRET = String(process.env.TOKEN_API_SECRET || '').trim();
 
+function toPositiveInt(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const SOCKET_HTTP_REQUEST_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_HTTP_REQUEST_TIMEOUT_MS, 30_000);
+const SOCKET_HTTP_HEADERS_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_HTTP_HEADERS_TIMEOUT_MS, 35_000);
+const SOCKET_HTTP_KEEP_ALIVE_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_HTTP_KEEP_ALIVE_TIMEOUT_MS, 5_000);
+const SOCKET_JSON_BODY_LIMIT_BYTES = toPositiveInt(process.env.SOCKET_JSON_BODY_LIMIT_BYTES, 1024 * 1024);
+const SOCKET_UPLOAD_LIMIT_BYTES = toPositiveInt(process.env.SOCKET_UPLOAD_LIMIT_BYTES, 12 * 1024 * 1024);
+const SOCKET_HTTP_RATE_LIMIT_WINDOW_MS = toPositiveInt(process.env.SOCKET_HTTP_RATE_LIMIT_WINDOW_MS, 60_000);
+const SOCKET_HTTP_RATE_LIMIT_MAX = toPositiveInt(process.env.SOCKET_HTTP_RATE_LIMIT_MAX, 300);
+const SOCKET_PING_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_PING_TIMEOUT_MS, 20_000);
+const SOCKET_PING_INTERVAL_MS = toPositiveInt(process.env.SOCKET_PING_INTERVAL_MS, 25_000);
+const SOCKET_MAX_HTTP_BUFFER_BYTES = toPositiveInt(process.env.SOCKET_MAX_HTTP_BUFFER_BYTES, 4 * 1024 * 1024);
+
 let monitorNamespace;
 let supportNamespace;
 
@@ -50,7 +66,13 @@ if (!existsSync(UPLOAD_DIR)) {
   mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
-function parseMultipart(req) {
+function createPayloadTooLargeError(limitBytes) {
+  const error = new Error(`Payload too large (max ${limitBytes} bytes)`);
+  error.statusCode = 413;
+  return error;
+}
+
+function parseMultipart(req, maxBytes) {
   return new Promise((resolve, reject) => {
     const contentType = req.headers['content-type'] || '';
     const boundaryMatch = contentType.match(/boundary=(.+)/);
@@ -58,10 +80,29 @@ function parseMultipart(req) {
 
     const boundary = boundaryMatch[1];
     const chunks = [];
+    let totalBytes = 0;
+    let settled = false;
 
-    req.on('data', (chunk) => chunks.push(chunk));
+    const fail = (err) => {
+      if (settled) return;
+      settled = true;
+      reject(err);
+    };
+
+    req.on('data', (chunk) => {
+      totalBytes += chunk.length;
+      if (totalBytes > maxBytes) {
+        const error = createPayloadTooLargeError(maxBytes);
+        req.destroy(error);
+        fail(error);
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on('end', () => {
-      const buffer = Buffer.concat(chunks);
+      if (settled) return;
+
+      const buffer = Buffer.concat(chunks, totalBytes);
       const str = buffer.toString('binary');
       const parts = str.split(`--${boundary}`);
 
@@ -85,9 +126,9 @@ function parseMultipart(req) {
         return resolve({ filename: newFilename, originalName: filename });
       }
 
-      reject(new Error('No file found'));
+      fail(new Error('No file found'));
     });
-    req.on('error', reject);
+    req.on('error', fail);
   });
 }
 
@@ -120,13 +161,32 @@ function writeJson(res, statusCode, payload) {
   res.end(JSON.stringify(payload));
 }
 
-function readJsonBody(req) {
+function readJsonBody(req, maxBytes) {
   return new Promise((resolve, reject) => {
-    let body = '';
+    const chunks = [];
+    let totalBytes = 0;
+    let settled = false;
+
+    const fail = (err) => {
+      if (settled) return;
+      settled = true;
+      reject(err);
+    };
+
     req.on('data', (chunk) => {
-      body += chunk;
+      totalBytes += chunk.length;
+      if (totalBytes > maxBytes) {
+        const error = createPayloadTooLargeError(maxBytes);
+        req.destroy(error);
+        fail(error);
+        return;
+      }
+      chunks.push(chunk);
     });
     req.on('end', () => {
+      if (settled) return;
+
+      const body = Buffer.concat(chunks, totalBytes).toString('utf8');
       if (!body.trim()) {
         resolve({});
         return;
@@ -137,11 +197,89 @@ function readJsonBody(req) {
       } catch (_err) {
         const error = new Error('Invalid JSON body');
         error.statusCode = 400;
-        reject(error);
+        fail(error);
       }
     });
-    req.on('error', reject);
+    req.on('error', fail);
   });
+}
+
+function getClientIp(req) {
+  const candidates = [
+    req.headers['x-forwarded-for'],
+    req.headers['x-real-ip'],
+    req.socket?.remoteAddress,
+    req.connection?.remoteAddress
+  ];
+
+  for (const candidate of candidates) {
+    const value = Array.isArray(candidate) ? candidate[0] : candidate;
+    const normalized = String(value || '').split(',')[0].trim();
+    if (normalized) return normalized;
+  }
+
+  return 'unknown';
+}
+
+function createFixedWindowLimiter(windowMs, maxRequests) {
+  const records = new Map();
+  let lastCleanupAt = Date.now();
+
+  return {
+    allow(key) {
+      const now = Date.now();
+      if (now - lastCleanupAt >= windowMs * 2) {
+        for (const [recordKey, record] of records.entries()) {
+          if (now - record.windowStart >= windowMs * 2) {
+            records.delete(recordKey);
+          }
+        }
+        lastCleanupAt = now;
+      }
+
+      const existing = records.get(key);
+      if (!existing || now - existing.windowStart >= windowMs) {
+        records.set(key, { windowStart: now, count: 1 });
+        return { allowed: true, retryAfterMs: 0 };
+      }
+
+      if (existing.count >= maxRequests) {
+        return {
+          allowed: false,
+          retryAfterMs: Math.max(windowMs - (now - existing.windowStart), 0)
+        };
+      }
+
+      existing.count += 1;
+      records.set(key, existing);
+      return { allowed: true, retryAfterMs: 0 };
+    }
+  };
+}
+
+const httpRateLimiter = createFixedWindowLimiter(
+  SOCKET_HTTP_RATE_LIMIT_WINDOW_MS,
+  SOCKET_HTTP_RATE_LIMIT_MAX
+);
+
+function shouldApplyHttpRateLimit(pathname) {
+  return pathname === '/api/upload'
+    || pathname === '/api/generate-token'
+    || pathname === '/api/messages'
+    || pathname === '/api/stats';
+}
+
+function enforceHttpRateLimit(req, res, pathname) {
+  if (req.method === 'OPTIONS' || !shouldApplyHttpRateLimit(pathname)) {
+    return true;
+  }
+
+  const { allowed, retryAfterMs } = httpRateLimiter.allow(getClientIp(req));
+  if (allowed) return true;
+
+  res.setHeader('Retry-After', String(Math.max(1, Math.ceil(retryAfterMs / 1000))));
+  writeJson(res, 429, { error: 'Too many requests, please retry later' });
+  return false;
 }
 
 function isTrustedSocketApiRequest(req) {
@@ -176,19 +314,24 @@ const httpServer = createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Token-Api-Secret, X-Api-Secret');
 
+  if (origin && !corsOrigin) {
+    writeJson(res, 403, { success: false, error: 'Origin not allowed' });
+    return;
+  }
+
   if (req.method === 'OPTIONS') {
-    if (origin && !corsOrigin) {
-      writeJson(res, 403, { success: false, error: 'Origin not allowed' });
-      return;
-    }
     res.writeHead(200);
     res.end();
     return;
   }
 
+  if (!enforceHttpRateLimit(req, res, pathname)) {
+    return;
+  }
+
   if (pathname === '/api/upload' && req.method === 'POST') {
     try {
-      const { filename } = await parseMultipart(req);
+      const { filename } = await parseMultipart(req, SOCKET_UPLOAD_LIMIT_BYTES);
       const ext = extname(filename).toLowerCase();
       let finalFilename = filename;
 
@@ -203,7 +346,7 @@ const httpServer = createServer(async (req, res) => {
       writeJson(res, 200, { url, filename: finalFilename });
     } catch (err) {
       logger.error('上传失败:', err);
-      writeJson(res, 500, { error: '上传失败' });
+      writeJson(res, Number(err?.statusCode || 500), { error: err?.message || '上传失败' });
     }
     return;
   }
@@ -247,7 +390,7 @@ const httpServer = createServer(async (req, res) => {
 
   if (pathname === '/api/generate-token' && req.method === 'POST') {
     try {
-      const body = await readJsonBody(req);
+      const body = await readJsonBody(req, SOCKET_JSON_BODY_LIMIT_BYTES);
       let identity;
 
       if (isTrustedSocketApiRequest(req)) {
@@ -317,7 +460,7 @@ const httpServer = createServer(async (req, res) => {
     }
 
     try {
-      const data = await readJsonBody(req);
+      const data = await readJsonBody(req, SOCKET_JSON_BODY_LIMIT_BYTES);
       const messageData = normalizeMessageData(data);
       const result = saveMessage('support', data.chatId, messageData);
       const message = {
@@ -344,12 +487,18 @@ const httpServer = createServer(async (req, res) => {
   res.end();
 });
 
+httpServer.requestTimeout = SOCKET_HTTP_REQUEST_TIMEOUT_MS;
+httpServer.headersTimeout = SOCKET_HTTP_HEADERS_TIMEOUT_MS;
+httpServer.keepAliveTimeout = SOCKET_HTTP_KEEP_ALIVE_TIMEOUT_MS;
+
 const io = new Server(httpServer, {
   cors: {
     origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : '*',
     methods: ['GET', 'POST']
   },
-  maxHttpBufferSize: 10 * 1024 * 1024
+  pingTimeout: SOCKET_PING_TIMEOUT_MS,
+  pingInterval: SOCKET_PING_INTERVAL_MS,
+  maxHttpBufferSize: SOCKET_MAX_HTTP_BUFFER_BYTES
 });
 
 ({

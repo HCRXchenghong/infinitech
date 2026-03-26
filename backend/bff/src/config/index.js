@@ -4,6 +4,11 @@
 
 require("dotenv").config();
 
+function toPositiveInt(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 function normalizeOrigin(raw) {
   const value = String(raw || "").trim();
   if (!value) {
@@ -57,6 +62,8 @@ function buildCorsOrigins() {
 }
 
 const adminTokenSecret = requireSharedSecret();
+const env = process.env.NODE_ENV || process.env.ENV || "development";
+const productionLike = ["production", "prod", "staging"].includes(String(env).trim().toLowerCase());
 
 module.exports = {
   port: process.env.BFF_PORT || 25500,
@@ -89,11 +96,28 @@ module.exports = {
   adminQrLoginSecret: String(process.env.ADMIN_QR_LOGIN_SECRET || adminTokenSecret).trim(),
   corsOrigins: buildCorsOrigins(),
 
+  http: {
+    requestTimeoutMs: toPositiveInt(process.env.BFF_REQUEST_TIMEOUT_MS, 30000),
+    headersTimeoutMs: toPositiveInt(process.env.BFF_HEADERS_TIMEOUT_MS, 35000),
+    keepAliveTimeoutMs: toPositiveInt(process.env.BFF_KEEP_ALIVE_TIMEOUT_MS, 5000)
+  },
+
+  bodyLimits: {
+    jsonBytes: toPositiveInt(process.env.BFF_JSON_LIMIT_BYTES, 1024 * 1024),
+    urlencodedBytes: toPositiveInt(process.env.BFF_URLENCODED_LIMIT_BYTES, 1024 * 1024)
+  },
+
+  uploads: {
+    fileSizeBytes: toPositiveInt(process.env.BFF_UPLOAD_MAX_FILE_SIZE_BYTES, 10 * 1024 * 1024),
+    fieldSizeBytes: toPositiveInt(process.env.BFF_UPLOAD_MAX_FIELD_SIZE_BYTES, 64 * 1024),
+    files: toPositiveInt(process.env.BFF_UPLOAD_MAX_FILES, 1)
+  },
+
   rateLimit: {
-    windowMs: 15 * 60 * 1000,
-    max: 100
+    windowMs: toPositiveInt(process.env.BFF_API_RATE_LIMIT_WINDOW_MS, 60 * 1000),
+    max: toPositiveInt(process.env.BFF_API_RATE_LIMIT_MAX, productionLike ? 600 : 3000)
   },
 
   logLevel: process.env.LOG_LEVEL || "info",
-  env: process.env.NODE_ENV || "development"
+  env
 };

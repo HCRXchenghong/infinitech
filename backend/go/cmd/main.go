@@ -285,12 +285,20 @@ func main() {
 	}
 
 	// 创建路由
-	r := gin.Default()
+	r := gin.New()
+	if err := r.SetTrustedProxies(cfg.HTTP.TrustedProxies); err != nil {
+		log.Fatal("Failed to configure trusted proxies:", err)
+	}
+	r.MaxMultipartMemory = cfg.HTTP.MaxMultipartMemory
 
 	// 中间件
 	r.Use(middleware.CORS())
 	r.Use(middleware.Logger())
 	r.Use(middleware.Recovery())
+	r.Use(middleware.RequestBodyLimit(cfg.HTTP.MaxBodyBytes, cfg.HTTP.MaxUploadBytes))
+	if cfg.HTTP.RateLimitEnabled {
+		r.Use(middleware.GlobalRateLimit(cfg.HTTP.RateLimitWindow, cfg.HTTP.RateLimitMax))
+	}
 	r.Use(middleware.UnifiedIDResolver(db))
 
 	// 静态资源
