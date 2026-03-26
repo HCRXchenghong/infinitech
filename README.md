@@ -234,6 +234,8 @@ npm run build
 - `socket-server` 的 HTTP 敏感接口限流现已支持 Redis 优先的分布式固定窗口限流，Redis 不可用时自动回退到本地内存限流
 - `socket-server` 已接入 Socket.IO Redis adapter，多实例下的房间广播和跨实例实时事件同步不再只依赖单机内存
 - `socket-server` 在线人数现在会优先走 Redis 共享 presence 统计，Redis 不可用时自动回退到本地计数
+- `socket-server` 客服订单房间鉴权缓存现在会优先走 Redis 共享缓存，减少多实例下重复回源 Go 校验
+- `socket-server` 骑手命名空间已移除无实际用途的本地 `onlineRiders` 单机状态表
 - BFF 转发到 Go 时现在会带上真实客户端 IP，便于审计和保护策略
 
 ## 9. 当前仍未完成的大项

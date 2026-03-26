@@ -1,18 +1,15 @@
 import { fetchOrderDetailWithAuth } from './socketIdentity.js';
+import { getCachedJsonValue, setCachedJsonValue } from './redisState.js';
 
 const ORDER_ACCESS_TTL_MS = 30 * 1000;
-const orderAccessCache = new Map();
-
-function cleanupOrderAccessCache() {
-  const now = Date.now();
-  for (const [key, value] of orderAccessCache.entries()) {
-    if (!value || value.expiresAt <= now) {
-      orderAccessCache.delete(key);
-    }
-  }
-}
+const ORDER_ACCESS_CACHE_PREFIX = 'socket:access:order';
 
 function getCacheKey(socket, chatId) {
+  const userId = String(socket?.userId || '').trim();
+  const role = String(socket?.userRole || '').trim().toLowerCase();
+  if (userId && role) {
+    return `${role}:${userId}:${normalizeChatId(chatId)}`;
+  }
   return `${socket?.sessionId || socket?.id || 'anonymous'}:${normalizeChatId(chatId)}`;
 }
 
@@ -74,24 +71,38 @@ async function canAccessOrderRoom(socket, orderRoom) {
     return false;
   }
 
-  cleanupOrderAccessCache();
   const cacheKey = getCacheKey(socket, `${orderRoom.type}:${orderRoom.orderId}`);
-  const cached = orderAccessCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) {
+  const cached = await getCachedJsonValue({
+    prefix: ORDER_ACCESS_CACHE_PREFIX,
+    key: cacheKey
+  });
+  if (cached && typeof cached.allowed === 'boolean') {
     return cached.allowed;
   }
 
   try {
     await fetchOrderDetailWithAuth(orderRoom.orderId, socket.authToken);
-    orderAccessCache.set(cacheKey, {
-      allowed: true,
-      expiresAt: Date.now() + ORDER_ACCESS_TTL_MS
+    await setCachedJsonValue({
+      prefix: ORDER_ACCESS_CACHE_PREFIX,
+      key: cacheKey,
+      value: {
+        allowed: true,
+        orderId: orderRoom.orderId,
+        scope: orderRoom.type
+      },
+      ttlMs: ORDER_ACCESS_TTL_MS
     });
     return true;
   } catch (_err) {
-    orderAccessCache.set(cacheKey, {
-      allowed: false,
-      expiresAt: Date.now() + ORDER_ACCESS_TTL_MS
+    await setCachedJsonValue({
+      prefix: ORDER_ACCESS_CACHE_PREFIX,
+      key: cacheKey,
+      value: {
+        allowed: false,
+        orderId: orderRoom.orderId,
+        scope: orderRoom.type
+      },
+      ttlMs: ORDER_ACCESS_TTL_MS
     });
     return false;
   }

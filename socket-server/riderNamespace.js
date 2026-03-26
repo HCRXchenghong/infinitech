@@ -160,7 +160,6 @@ export function setupRiderNamespace({
 }) {
   const riderNamespace = io.of('/rider');
   riderNamespace.use(authMiddleware);
-  const onlineRiders = new Map();
 
   riderNamespace.on('connection', (socket) => {
     logger.info('Rider connected:', socket.userId, 'Role:', socket.userRole);
@@ -173,7 +172,6 @@ export function setupRiderNamespace({
 
       const riderId = String(socket.userId || '').trim();
       socket.join(`rider_${riderId}`);
-      onlineRiders.set(riderId, socket.id);
       logger.info(`Rider ${riderId} joined room rider_${riderId}`);
     });
 
@@ -223,19 +221,12 @@ export function setupRiderNamespace({
     });
 
     socket.on('disconnect', () => {
-      for (const [riderId, sid] of onlineRiders.entries()) {
-        if (sid === socket.id) {
-          onlineRiders.delete(riderId);
-          break;
-        }
-      }
       removeOnlineUser(socket.id);
       logger.info('Rider disconnected:', socket.userId);
     });
   });
 
   return {
-    riderNamespace,
-    onlineRiders
+    riderNamespace
   };
 }

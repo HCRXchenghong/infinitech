@@ -61,6 +61,7 @@ const SOCKET_ONLINE_TTL_MS = toPositiveInt(process.env.SOCKET_ONLINE_TTL_MS, 120
 
 const localSessionStore = new Map();
 const localRateLimitStore = new Map();
+const localJsonCacheStore = new Map();
 let redisClient = null;
 let redisConnectPromise = null;
 let redisDisabledUntil = 0;
@@ -80,6 +81,15 @@ function cleanupLocalRateLimit(windowMs) {
   for (const [key, record] of localRateLimitStore.entries()) {
     if (!record || now - record.windowStart >= windowMs * 2) {
       localRateLimitStore.delete(key);
+    }
+  }
+}
+
+function cleanupLocalJsonCache() {
+  const now = Date.now();
+  for (const [key, record] of localJsonCacheStore.entries()) {
+    if (!record || record.expiresAt <= now) {
+      localJsonCacheStore.delete(key);
     }
   }
 }
@@ -256,6 +266,53 @@ export async function allowFixedWindowRateLimit({ prefix, key, windowMs, maxRequ
   existing.count += 1;
   localRateLimitStore.set(localKey, existing);
   return { allowed: true, retryAfterMs: 0 };
+}
+
+export async function getCachedJsonValue({ prefix, key }) {
+  const normalizedPrefix = String(prefix || 'socket:cache').trim() || 'socket:cache';
+  const normalizedKey = String(key || '').trim();
+  if (!normalizedKey) return null;
+
+  const cacheKey = `${normalizedPrefix}:${normalizedKey}`;
+  const client = await ensureRedisClient();
+  if (client) {
+    const payload = await client.get(cacheKey);
+    if (!payload) return null;
+    try {
+      return JSON.parse(payload);
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  cleanupLocalJsonCache();
+  const record = localJsonCacheStore.get(cacheKey);
+  if (!record) return null;
+  if (record.expiresAt <= Date.now()) {
+    localJsonCacheStore.delete(cacheKey);
+    return null;
+  }
+  return record.value;
+}
+
+export async function setCachedJsonValue({ prefix, key, value, ttlMs }) {
+  const normalizedPrefix = String(prefix || 'socket:cache').trim() || 'socket:cache';
+  const normalizedKey = String(key || '').trim();
+  if (!normalizedKey) return false;
+
+  const cacheKey = `${normalizedPrefix}:${normalizedKey}`;
+  const safeTtlMs = Math.max(1, Number(ttlMs || 60_000));
+  const client = await ensureRedisClient();
+  if (client) {
+    await client.set(cacheKey, JSON.stringify(value), { PX: safeTtlMs });
+    return true;
+  }
+
+  localJsonCacheStore.set(cacheKey, {
+    value,
+    expiresAt: Date.now() + safeTtlMs
+  });
+  return true;
 }
 
 export async function upsertOnlinePresence(socketId, payload, ttlMs = SOCKET_ONLINE_TTL_MS) {
