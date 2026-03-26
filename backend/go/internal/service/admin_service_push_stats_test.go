@@ -132,6 +132,18 @@ func TestAdminServiceGetPushMessageStats(t *testing.T) {
 	if stats.TotalUsers != 3 {
 		t.Fatalf("expected 3 users, got %d", stats.TotalUsers)
 	}
+	if stats.QueuedCount != 0 {
+		t.Fatalf("expected queued count 0, got %d", stats.QueuedCount)
+	}
+	if stats.SentCount != 3 {
+		t.Fatalf("expected sent count 3, got %d", stats.SentCount)
+	}
+	if stats.FailedCount != 0 {
+		t.Fatalf("expected failed count 0, got %d", stats.FailedCount)
+	}
+	if stats.AcknowledgedCount != 3 {
+		t.Fatalf("expected acknowledged count 3, got %d", stats.AcknowledgedCount)
+	}
 	if stats.ReceivedCount != 3 {
 		t.Fatalf("expected 3 received users, got %d", stats.ReceivedCount)
 	}
@@ -165,6 +177,7 @@ func TestAdminServiceCreatePushMessageMaterializesDeliveries(t *testing.T) {
 			UserID:           "1001",
 			UserType:         "customer",
 			DeviceToken:      "token-customer-new",
+			AppEnv:           "prod",
 			IsActive:         true,
 			LastRegisteredAt: time.Now().Add(2 * time.Minute),
 			LastSeenAt:       time.Now().Add(2 * time.Minute),
@@ -177,6 +190,7 @@ func TestAdminServiceCreatePushMessageMaterializesDeliveries(t *testing.T) {
 			UserID:           "1001",
 			UserType:         "customer",
 			DeviceToken:      "token-customer-old",
+			AppEnv:           "prod",
 			IsActive:         true,
 			LastRegisteredAt: time.Now(),
 			LastSeenAt:       time.Now(),
@@ -189,6 +203,7 @@ func TestAdminServiceCreatePushMessageMaterializesDeliveries(t *testing.T) {
 			UserID:           "2001",
 			UserType:         "rider",
 			DeviceToken:      "token-rider",
+			AppEnv:           "test",
 			IsActive:         true,
 			LastRegisteredAt: time.Now().Add(time.Minute),
 			LastSeenAt:       time.Now().Add(time.Minute),
@@ -230,8 +245,14 @@ func TestAdminServiceCreatePushMessageMaterializesDeliveries(t *testing.T) {
 	if deliveryByRecipient["customer::1001"].DeviceToken != "token-customer-new" {
 		t.Fatalf("expected latest customer device token, got %+v", deliveryByRecipient["customer::1001"])
 	}
+	if deliveryByRecipient["customer::1001"].AppEnv != "prod" {
+		t.Fatalf("expected customer app env prod, got %+v", deliveryByRecipient["customer::1001"])
+	}
 	if deliveryByRecipient["rider::2001"].DeviceToken != "token-rider" {
 		t.Fatalf("expected rider delivery token, got %+v", deliveryByRecipient["rider::2001"])
+	}
+	if deliveryByRecipient["rider::2001"].AppEnv != "test" {
+		t.Fatalf("expected rider app env test, got %+v", deliveryByRecipient["rider::2001"])
 	}
 
 	deliveryList, err := svc.ListPushMessageDeliveries(ctx, message.UID, 20)

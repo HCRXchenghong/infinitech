@@ -62,6 +62,10 @@ type PushMessageStats struct {
 	MessageID          string     `json:"message_id"`
 	TotalDeliveries    int64      `json:"total_deliveries"`
 	TotalUsers         int64      `json:"total_users"`
+	QueuedCount        int64      `json:"queued_count"`
+	SentCount          int64      `json:"sent_count"`
+	FailedCount        int64      `json:"failed_count"`
+	AcknowledgedCount  int64      `json:"acknowledged_count"`
 	ReceivedCount      int64      `json:"received_count"`
 	ReadCount          int64      `json:"read_count"`
 	UnreadCount        int64      `json:"unread_count"`
@@ -71,19 +75,23 @@ type PushMessageStats struct {
 }
 
 type PushMessageDeliveryItem struct {
-	ID             string     `json:"id"`
-	UserID         string     `json:"user_id"`
-	UserType       string     `json:"user_type"`
-	DeviceToken    string     `json:"device_token"`
-	Status         string     `json:"status"`
-	Action         string     `json:"action"`
-	EventType      string     `json:"event_type"`
-	RetryCount     int        `json:"retry_count"`
-	SentAt         *time.Time `json:"sent_at,omitempty"`
-	AcknowledgedAt *time.Time `json:"acknowledged_at,omitempty"`
-	ErrorCode      string     `json:"error_code,omitempty"`
-	ErrorMessage   string     `json:"error_message,omitempty"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID                string     `json:"id"`
+	UserID            string     `json:"user_id"`
+	UserType          string     `json:"user_type"`
+	DeviceToken       string     `json:"device_token"`
+	AppEnv            string     `json:"app_env"`
+	Status            string     `json:"status"`
+	Action            string     `json:"action"`
+	EventType         string     `json:"event_type"`
+	DispatchProvider  string     `json:"dispatch_provider"`
+	ProviderMessageID string     `json:"provider_message_id"`
+	RetryCount        int        `json:"retry_count"`
+	NextRetryAt       *time.Time `json:"next_retry_at,omitempty"`
+	SentAt            *time.Time `json:"sent_at,omitempty"`
+	AcknowledgedAt    *time.Time `json:"acknowledged_at,omitempty"`
+	ErrorCode         string     `json:"error_code,omitempty"`
+	ErrorMessage      string     `json:"error_message,omitempty"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 type PushMessageDeliveryList struct {
@@ -1622,6 +1630,42 @@ func (s *AdminService) GetPushMessageStats(ctx context.Context, id string) (*Pus
 		return nil, err
 	}
 
+	var queuedCount int64
+	if err := s.db.WithContext(ctx).
+		Model(&repository.PushDelivery{}).
+		Where("message_id IN ?", messageIDs).
+		Where("status IN ?", []string{"queued", "dispatching", "retry_pending", "pending"}).
+		Count(&queuedCount).Error; err != nil {
+		return nil, err
+	}
+
+	var sentCount int64
+	if err := s.db.WithContext(ctx).
+		Model(&repository.PushDelivery{}).
+		Where("message_id IN ?", messageIDs).
+		Where("status IN ?", []string{"sent", "acknowledged"}).
+		Count(&sentCount).Error; err != nil {
+		return nil, err
+	}
+
+	var failedCount int64
+	if err := s.db.WithContext(ctx).
+		Model(&repository.PushDelivery{}).
+		Where("message_id IN ?", messageIDs).
+		Where("status = ?", "failed").
+		Count(&failedCount).Error; err != nil {
+		return nil, err
+	}
+
+	var acknowledgedCount int64
+	if err := s.db.WithContext(ctx).
+		Model(&repository.PushDelivery{}).
+		Where("message_id IN ?", messageIDs).
+		Where("status = ?", "acknowledged").
+		Count(&acknowledgedCount).Error; err != nil {
+		return nil, err
+	}
+
 	receivedUsers, err := countDistinctPushDeliveryUsers(
 		s.db.WithContext(ctx).
 			Model(&repository.PushDelivery{}).
@@ -1660,12 +1704,16 @@ func (s *AdminService) GetPushMessageStats(ctx context.Context, id string) (*Pus
 	}
 
 	stats := &PushMessageStats{
-		MessageID:       canonicalPushMessageID(*message),
-		TotalDeliveries: totalDeliveries,
-		TotalUsers:      totalUsers,
-		ReceivedCount:   receivedUsers,
-		ReadCount:       readUsers,
-		UnreadCount:     unreadCount,
+		MessageID:         canonicalPushMessageID(*message),
+		TotalDeliveries:   totalDeliveries,
+		TotalUsers:        totalUsers,
+		QueuedCount:       queuedCount,
+		SentCount:         sentCount,
+		FailedCount:       failedCount,
+		AcknowledgedCount: acknowledgedCount,
+		ReceivedCount:     receivedUsers,
+		ReadCount:         readUsers,
+		UnreadCount:       unreadCount,
 	}
 	if totalUsers > 0 {
 		stats.ReadRate = float64(readUsers) / float64(totalUsers)
@@ -1708,6 +1756,7 @@ func (s *AdminService) ListPushMessageDeliveries(ctx context.Context, id string,
 	if err := s.db.WithContext(ctx).
 		Where("message_id IN ?", messageIDs).
 		Order("acknowledged_at DESC").
+		Order("sent_at DESC").
 		Order("updated_at DESC").
 		Limit(limit).
 		Find(&deliveries).Error; err != nil {
@@ -1717,19 +1766,23 @@ func (s *AdminService) ListPushMessageDeliveries(ctx context.Context, id string,
 	items := make([]PushMessageDeliveryItem, 0, len(deliveries))
 	for _, delivery := range deliveries {
 		items = append(items, PushMessageDeliveryItem{
-			ID:             strings.TrimSpace(delivery.UID),
-			UserID:         strings.TrimSpace(delivery.UserID),
-			UserType:       strings.TrimSpace(delivery.UserType),
-			DeviceToken:    strings.TrimSpace(delivery.DeviceToken),
-			Status:         strings.TrimSpace(delivery.Status),
-			Action:         strings.TrimSpace(delivery.Action),
-			EventType:      strings.TrimSpace(delivery.EventType),
-			RetryCount:     delivery.RetryCount,
-			SentAt:         delivery.SentAt,
-			AcknowledgedAt: delivery.AcknowledgedAt,
-			ErrorCode:      strings.TrimSpace(delivery.ErrorCode),
-			ErrorMessage:   strings.TrimSpace(delivery.ErrorMessage),
-			UpdatedAt:      delivery.UpdatedAt,
+			ID:                strings.TrimSpace(delivery.UID),
+			UserID:            strings.TrimSpace(delivery.UserID),
+			UserType:          strings.TrimSpace(delivery.UserType),
+			DeviceToken:       strings.TrimSpace(delivery.DeviceToken),
+			AppEnv:            strings.TrimSpace(delivery.AppEnv),
+			Status:            strings.TrimSpace(delivery.Status),
+			Action:            strings.TrimSpace(delivery.Action),
+			EventType:         strings.TrimSpace(delivery.EventType),
+			DispatchProvider:  strings.TrimSpace(delivery.DispatchProvider),
+			ProviderMessageID: strings.TrimSpace(delivery.ProviderMessageID),
+			RetryCount:        delivery.RetryCount,
+			NextRetryAt:       delivery.NextRetryAt,
+			SentAt:            delivery.SentAt,
+			AcknowledgedAt:    delivery.AcknowledgedAt,
+			ErrorCode:         strings.TrimSpace(delivery.ErrorCode),
+			ErrorMessage:      strings.TrimSpace(delivery.ErrorMessage),
+			UpdatedAt:         delivery.UpdatedAt,
 		})
 	}
 
@@ -1768,10 +1821,11 @@ func (s *AdminService) syncPushMessageDeliveries(ctx context.Context, message *r
 		return s.db.WithContext(ctx).
 			Model(&repository.PushDelivery{}).
 			Where("message_id = ?", messageID).
-			Where("status IN ?", []string{"queued", "pending", "inactive"}).
+			Where("status IN ?", []string{"queued", "pending", "inactive", "retry_pending", "dispatching"}).
 			Updates(map[string]interface{}{
-				"status":     "inactive",
-				"updated_at": now,
+				"status":        "inactive",
+				"next_retry_at": nil,
+				"updated_at":    now,
 			}).Error
 	}
 
@@ -1817,18 +1871,31 @@ func (s *AdminService) syncPushMessageDeliveries(ctx context.Context, message *r
 		"imageUrl":  strings.TrimSpace(message.ImageURL),
 	})
 	payloadText := string(payload)
+	activeRecipients := make(map[string]struct{}, len(latestDevices))
 
 	for _, device := range latestDevices {
 		key := buildPushRecipientKey(device.UserType, device.UserID)
+		activeRecipients[key] = struct{}{}
 		if current, exists := existingMap[key]; exists {
-			updates := map[string]interface{}{
-				"device_token": device.DeviceToken,
-				"event_type":   "admin_push_message",
-				"payload":      payloadText,
-				"updated_at":   now,
+			updates := map[string]interface{}{"updated_at": now}
+			if shouldUpdatePushDeliveryMutableState(current.Status) {
+				updates["device_token"] = device.DeviceToken
+				updates["app_env"] = strings.TrimSpace(device.AppEnv)
+				updates["event_type"] = "admin_push_message"
+				updates["payload"] = payloadText
 			}
-			if current.Status == "" || current.Status == "inactive" || current.Status == "queued" {
+			if shouldResetPushDeliveryToQueue(current, device, payloadText) {
 				updates["status"] = "queued"
+				updates["retry_count"] = 0
+				updates["next_retry_at"] = nil
+				updates["error_code"] = ""
+				updates["error_message"] = ""
+				updates["dispatch_provider"] = ""
+				updates["provider_message_id"] = ""
+				updates["sent_at"] = nil
+			}
+			if len(updates) == 1 {
+				continue
 			}
 			if err := s.db.WithContext(ctx).
 				Model(&repository.PushDelivery{}).
@@ -1844,11 +1911,35 @@ func (s *AdminService) syncPushMessageDeliveries(ctx context.Context, message *r
 			UserID:      strings.TrimSpace(device.UserID),
 			UserType:    strings.TrimSpace(device.UserType),
 			DeviceToken: strings.TrimSpace(device.DeviceToken),
+			AppEnv:      strings.TrimSpace(device.AppEnv),
 			EventType:   "admin_push_message",
 			Status:      "queued",
 			Payload:     payloadText,
 		}
 		if err := s.db.WithContext(ctx).Create(&record).Error; err != nil {
+			return err
+		}
+	}
+
+	for _, current := range existing {
+		key := buildPushRecipientKey(current.UserType, current.UserID)
+		if key == "" {
+			continue
+		}
+		if _, exists := activeRecipients[key]; exists {
+			continue
+		}
+		if !shouldUpdatePushDeliveryMutableState(current.Status) {
+			continue
+		}
+		if err := s.db.WithContext(ctx).
+			Model(&repository.PushDelivery{}).
+			Where("id = ?", current.ID).
+			Updates(map[string]interface{}{
+				"status":        "inactive",
+				"next_retry_at": nil,
+				"updated_at":    now,
+			}).Error; err != nil {
 			return err
 		}
 	}
@@ -1911,6 +2002,31 @@ func buildPushRecipientKey(userType, userID string) string {
 		return ""
 	}
 	return normalizedType + "::" + normalizedID
+}
+
+func shouldUpdatePushDeliveryMutableState(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "", "inactive", "queued", "pending", "retry_pending", "failed", "dispatching":
+		return true
+	default:
+		return false
+	}
+}
+
+func shouldResetPushDeliveryToQueue(current repository.PushDelivery, device repository.PushDevice, payloadText string) bool {
+	status := strings.ToLower(strings.TrimSpace(current.Status))
+	deviceTokenChanged := strings.TrimSpace(current.DeviceToken) != strings.TrimSpace(device.DeviceToken)
+	payloadChanged := strings.TrimSpace(current.Payload) != strings.TrimSpace(payloadText)
+	appEnvChanged := strings.TrimSpace(current.AppEnv) != strings.TrimSpace(device.AppEnv)
+
+	switch status {
+	case "", "inactive", "queued", "pending":
+		return deviceTokenChanged || payloadChanged || appEnvChanged || status != "queued"
+	case "retry_pending", "failed", "dispatching":
+		return deviceTokenChanged || payloadChanged || appEnvChanged
+	default:
+		return false
+	}
 }
 
 func collectPushMessageLookupIDs(message repository.PushMessage, rawID string) []string {

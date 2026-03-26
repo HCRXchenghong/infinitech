@@ -304,6 +304,16 @@ npm run build
 - 推送统计弹层现在可以直接查看最近投递明细
 - 当前仍未完成真正的外部推送下发执行器，但“推送任务 -> delivery 记录 -> 后台统计/明细”这一段已经成型
 
+### 11.7 推送派发执行器与失败重试
+- Go 端已补后台推送 delivery 执行器，支持轮询 `queued / retry_pending` 任务并自动派发
+- 当前支持两种派发 provider：
+  - `log`：本地开发模拟派发
+  - `webhook`：通过 `PUSH_DISPATCH_WEBHOOK_URL` 对接外部推送网关
+- delivery 状态现在已经形成闭环：`queued -> dispatching -> sent / retry_pending / failed -> acknowledged`
+- delivery 表新增 `app_env / dispatch_provider / provider_message_id / next_retry_at`
+- 后台推送统计已补 `queued_count / sent_count / failed_count / acknowledged_count`
+- 当前仍未完成的推送项，只剩“真正的厂商网关接入”和“终端送达回执更细粒度展示”
+
 ## 12. 管理端配置原则
 
 后续继续遵守这个边界：
@@ -341,10 +351,10 @@ npm run build
 ## 15. 下一批优先级
 
 如果继续沿当前主计划推进，下一批优先顺序建议保持为：
-1. 推送真正的派发执行器与后台明细面板
-2. 商家端 / 骑手端 / 后台消息口径剩余收口
-3. 首页商户 / 商品推广位后台能力
-4. PostgreSQL + Redis 生产默认路径收口
+1. 商家端 / 骑手端 / 后台消息口径剩余收口
+2. 首页商户 / 商品推广位后台能力
+3. PostgreSQL + Redis 生产默认路径收口
+4. 推送外部厂商网关接入与更细粒度送达面板
 5. `App / H5` 站内 1v1 音频通话
 
 ## 16. 当前已知非阻断问题

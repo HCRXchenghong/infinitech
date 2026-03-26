@@ -28,21 +28,25 @@ func (PushDevice) TableName() string {
 type PushDelivery struct {
 	ID uint `gorm:"primaryKey" json:"legacyId,omitempty"`
 	UnifiedIdentity
-	MessageID      string     `gorm:"size:64;index:idx_push_delivery_message;uniqueIndex:uniq_push_delivery_message_user,priority:1;not null" json:"message_id"`
-	UserID         string     `gorm:"size:32;index;uniqueIndex:uniq_push_delivery_message_user,priority:2" json:"user_id"`
-	UserType       string     `gorm:"size:20;index;uniqueIndex:uniq_push_delivery_message_user,priority:3" json:"user_type"`
-	DeviceToken    string     `gorm:"size:255;index" json:"device_token"`
-	EventType      string     `gorm:"size:64;index" json:"event_type"`
-	Status         string     `gorm:"size:32;index" json:"status"`
-	Action         string     `gorm:"size:32" json:"action"`
-	Payload        string     `gorm:"type:text" json:"payload"`
-	RetryCount     int        `gorm:"default:0" json:"retry_count"`
-	SentAt         *time.Time `gorm:"type:datetime" json:"sent_at"`
-	AcknowledgedAt *time.Time `gorm:"type:datetime" json:"acknowledged_at"`
-	ErrorCode      string     `gorm:"size:64" json:"error_code"`
-	ErrorMessage   string     `gorm:"type:text" json:"error_message"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	MessageID         string     `gorm:"size:64;index:idx_push_delivery_message;uniqueIndex:uniq_push_delivery_message_user,priority:1;not null" json:"message_id"`
+	UserID            string     `gorm:"size:32;index;uniqueIndex:uniq_push_delivery_message_user,priority:2" json:"user_id"`
+	UserType          string     `gorm:"size:20;index;uniqueIndex:uniq_push_delivery_message_user,priority:3" json:"user_type"`
+	DeviceToken       string     `gorm:"size:255;index" json:"device_token"`
+	AppEnv            string     `gorm:"size:20" json:"app_env"`
+	EventType         string     `gorm:"size:64;index" json:"event_type"`
+	Status            string     `gorm:"size:32;index" json:"status"`
+	Action            string     `gorm:"size:32" json:"action"`
+	Payload           string     `gorm:"type:text" json:"payload"`
+	DispatchProvider  string     `gorm:"size:32" json:"dispatch_provider"`
+	ProviderMessageID string     `gorm:"size:128" json:"provider_message_id"`
+	RetryCount        int        `gorm:"default:0" json:"retry_count"`
+	NextRetryAt       *time.Time `gorm:"type:datetime;index" json:"next_retry_at"`
+	SentAt            *time.Time `gorm:"type:datetime" json:"sent_at"`
+	AcknowledgedAt    *time.Time `gorm:"type:datetime" json:"acknowledged_at"`
+	ErrorCode         string     `gorm:"size:64" json:"error_code"`
+	ErrorMessage      string     `gorm:"type:text" json:"error_message"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 func (PushDelivery) TableName() string {

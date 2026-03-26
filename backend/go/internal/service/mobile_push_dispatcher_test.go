@@ -1,0 +1,211 @@
+package service
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/glebarez/sqlite"
+	"github.com/yuexiang/go-api/internal/idkit"
+	"github.com/yuexiang/go-api/internal/repository"
+	"gorm.io/gorm"
+)
+
+func newMobilePushServiceForDispatchTest(t *testing.T, options MobilePushOptions) (*MobilePushService, *gorm.DB) {
+	t.Helper()
+
+	dbPath := filepath.Join(t.TempDir(), "mobile_push_dispatch_test.db")
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("resolve sql db failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = sqlDB.Close()
+	})
+
+	if err := db.AutoMigrate(
+		&repository.IDCodebook{},
+		&repository.IDSequence{},
+		&repository.IDLegacyMapping{},
+		&repository.PushDelivery{},
+	); err != nil {
+		t.Fatalf("auto migrate failed: %v", err)
+	}
+	if err := idkit.Bootstrap(db); err != nil {
+		t.Fatalf("bootstrap idkit failed: %v", err)
+	}
+
+	return newMobilePushServiceWithOptions(db, nil, options), db
+}
+
+func TestMobilePushServiceDispatchDueDeliveriesWebhookSuccess(t *testing.T) {
+	ctx := context.Background()
+	requests := make([]PushDispatchRequest, 0, 1)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		var payload PushDispatchRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode webhook request failed: %v", err)
+		}
+		requests = append(requests, payload)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"providerMessageId":"provider-001"}`))
+	}))
+	defer server.Close()
+
+	svc, db := newMobilePushServiceForDispatchTest(t, MobilePushOptions{
+		DispatchEnabled: true,
+		ProviderName:    "webhook",
+		WebhookURL:      server.URL,
+		RequestTimeout:  2 * time.Second,
+		BatchSize:       10,
+		MaxRetries:      2,
+		RetryBackoff:    time.Minute,
+	})
+
+	delivery := repository.PushDelivery{
+		MessageID:   "26032700000001",
+		UserID:      "1001",
+		UserType:    "customer",
+		DeviceToken: "token-1",
+		AppEnv:      "prod",
+		EventType:   "admin_push_message",
+		Status:      "queued",
+		Payload:     `{"messageId":"26032700000001","title":"Hello","content":"World","route":"/pages/message/index/index"}`,
+	}
+	if err := db.Create(&delivery).Error; err != nil {
+		t.Fatalf("create delivery failed: %v", err)
+	}
+
+	processed, err := svc.dispatchDueDeliveries(ctx, 10)
+	if err != nil {
+		t.Fatalf("dispatchDueDeliveries failed: %v", err)
+	}
+	if processed != 1 {
+		t.Fatalf("expected processed count 1, got %d", processed)
+	}
+	if len(requests) != 1 {
+		t.Fatalf("expected 1 webhook request, got %d", len(requests))
+	}
+	if requests[0].MessageID != delivery.MessageID {
+		t.Fatalf("expected webhook message id %q, got %q", delivery.MessageID, requests[0].MessageID)
+	}
+
+	var stored repository.PushDelivery
+	if err := db.Where("id = ?", delivery.ID).Take(&stored).Error; err != nil {
+		t.Fatalf("query stored delivery failed: %v", err)
+	}
+	if stored.Status != "sent" {
+		t.Fatalf("expected sent status, got %q", stored.Status)
+	}
+	if stored.SentAt == nil {
+		t.Fatal("expected sent_at to be set")
+	}
+	if stored.DispatchProvider != "webhook" {
+		t.Fatalf("expected dispatch provider webhook, got %q", stored.DispatchProvider)
+	}
+	if stored.ProviderMessageID != "provider-001" {
+		t.Fatalf("expected provider message id provider-001, got %q", stored.ProviderMessageID)
+	}
+	if stored.ErrorCode != "" || stored.ErrorMessage != "" {
+		t.Fatalf("expected no dispatch error, got code=%q message=%q", stored.ErrorCode, stored.ErrorMessage)
+	}
+}
+
+func TestMobilePushServiceDispatchDueDeliveriesRetryAndFail(t *testing.T) {
+	ctx := context.Background()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "temporary push outage", http.StatusBadGateway)
+	}))
+	defer server.Close()
+
+	svc, db := newMobilePushServiceForDispatchTest(t, MobilePushOptions{
+		DispatchEnabled: true,
+		ProviderName:    "webhook",
+		WebhookURL:      server.URL,
+		RequestTimeout:  2 * time.Second,
+		BatchSize:       10,
+		MaxRetries:      1,
+		RetryBackoff:    time.Minute,
+	})
+
+	delivery := repository.PushDelivery{
+		MessageID:   "26032700000002",
+		UserID:      "2001",
+		UserType:    "rider",
+		DeviceToken: "token-2",
+		AppEnv:      "test",
+		EventType:   "admin_push_message",
+		Status:      "queued",
+		Payload:     `{"messageId":"26032700000002","title":"Retry","content":"Body"}`,
+	}
+	if err := db.Create(&delivery).Error; err != nil {
+		t.Fatalf("create delivery failed: %v", err)
+	}
+
+	processed, err := svc.dispatchDueDeliveries(ctx, 10)
+	if err != nil {
+		t.Fatalf("first dispatchDueDeliveries failed: %v", err)
+	}
+	if processed != 1 {
+		t.Fatalf("expected processed count 1 on first attempt, got %d", processed)
+	}
+
+	var firstAttempt repository.PushDelivery
+	if err := db.Where("id = ?", delivery.ID).Take(&firstAttempt).Error; err != nil {
+		t.Fatalf("query first attempt delivery failed: %v", err)
+	}
+	if firstAttempt.Status != "retry_pending" {
+		t.Fatalf("expected retry_pending status, got %q", firstAttempt.Status)
+	}
+	if firstAttempt.RetryCount != 1 {
+		t.Fatalf("expected retry_count 1, got %d", firstAttempt.RetryCount)
+	}
+	if firstAttempt.NextRetryAt == nil {
+		t.Fatal("expected next_retry_at to be set after first failure")
+	}
+	if firstAttempt.ErrorCode != "http_502" {
+		t.Fatalf("expected http_502 error code, got %q", firstAttempt.ErrorCode)
+	}
+
+	if err := db.Model(&repository.PushDelivery{}).
+		Where("id = ?", delivery.ID).
+		Update("next_retry_at", time.Now().Add(-time.Second)).Error; err != nil {
+		t.Fatalf("update next_retry_at failed: %v", err)
+	}
+
+	processed, err = svc.dispatchDueDeliveries(ctx, 10)
+	if err != nil {
+		t.Fatalf("second dispatchDueDeliveries failed: %v", err)
+	}
+	if processed != 1 {
+		t.Fatalf("expected processed count 1 on second attempt, got %d", processed)
+	}
+
+	var secondAttempt repository.PushDelivery
+	if err := db.Where("id = ?", delivery.ID).Take(&secondAttempt).Error; err != nil {
+		t.Fatalf("query second attempt delivery failed: %v", err)
+	}
+	if secondAttempt.Status != "failed" {
+		t.Fatalf("expected failed status, got %q", secondAttempt.Status)
+	}
+	if secondAttempt.RetryCount != 2 {
+		t.Fatalf("expected retry_count 2, got %d", secondAttempt.RetryCount)
+	}
+	if secondAttempt.NextRetryAt != nil {
+		t.Fatalf("expected next_retry_at cleared after terminal failure, got %+v", secondAttempt.NextRetryAt)
+	}
+	if secondAttempt.DispatchProvider != "webhook" {
+		t.Fatalf("expected dispatch provider webhook, got %q", secondAttempt.DispatchProvider)
+	}
+}

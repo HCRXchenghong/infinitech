@@ -48,8 +48,8 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 	financialService := NewFinancialService(repos.Wallet)
 	groupbuyService := NewGroupbuyService(repos.DB, walletSignSecret)
 	opNotificationService := NewOpNotificationService(repos.DB)
-	mobilePushService := NewMobilePushService(repos.DB)
 	adminService := NewAdminService(repos.DB, repos.Redis, cfg.JWT.Secret)
+	mobilePushService := NewMobilePushService(repos.DB, cfg, adminService)
 	mobileMapService := NewMobileMapService(cfg, adminService)
 	captchaService := NewCaptchaService(repos.DB)
 

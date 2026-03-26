@@ -17,6 +17,7 @@ type Config struct {
 	JWT      JWTConfig
 	Invite   InviteConfig
 	Map      MapConfig
+	Push     PushConfig
 	HTTP     HTTPConfig
 }
 
@@ -59,6 +60,17 @@ type MapConfig struct {
 	SearchURL  string
 	ReverseURL string
 	Timeout    time.Duration
+}
+
+type PushConfig struct {
+	DispatchEnabled  bool
+	DispatchProvider string
+	WebhookURL       string
+	RequestTimeout   time.Duration
+	PollInterval     time.Duration
+	BatchSize        int
+	MaxRetries       int
+	RetryBackoff     time.Duration
 }
 
 type HTTPConfig struct {
@@ -117,6 +129,16 @@ func Load() *Config {
 			ReverseURL: getEnv("MAP_REVERSE_URL", getEnv("OSM_GEOCODER_REVERSE_URL", "http://127.0.0.1:8082/reverse")),
 			Timeout:    time.Duration(getEnvInt("MAP_TIMEOUT_SECONDS", getEnvInt("OSM_GEOCODER_TIMEOUT_SECONDS", 5))) * time.Second,
 		},
+		Push: PushConfig{
+			DispatchEnabled:  strings.EqualFold(getEnv("PUSH_DISPATCH_ENABLED", "false"), "true"),
+			DispatchProvider: strings.ToLower(strings.TrimSpace(getEnv("PUSH_DISPATCH_PROVIDER", "log"))),
+			WebhookURL:       strings.TrimSpace(os.Getenv("PUSH_DISPATCH_WEBHOOK_URL")),
+			RequestTimeout:   time.Duration(getEnvInt("PUSH_DISPATCH_TIMEOUT_SECONDS", 5)) * time.Second,
+			PollInterval:     time.Duration(getEnvInt("PUSH_DISPATCH_POLL_SECONDS", 15)) * time.Second,
+			BatchSize:        getEnvInt("PUSH_DISPATCH_BATCH_SIZE", 100),
+			MaxRetries:       getEnvInt("PUSH_DISPATCH_MAX_RETRIES", 5),
+			RetryBackoff:     time.Duration(getEnvInt("PUSH_DISPATCH_RETRY_BACKOFF_SECONDS", 60)) * time.Second,
+		},
 		HTTP: HTTPConfig{
 			ReadTimeout:       time.Duration(getEnvInt("HTTP_READ_TIMEOUT_SECONDS", 15)) * time.Second,
 			ReadHeaderTimeout: time.Duration(getEnvInt("HTTP_READ_HEADER_TIMEOUT_SECONDS", 10)) * time.Second,
@@ -160,6 +182,32 @@ func (c *Config) Validate() error {
 	}
 	if c.Database.ConnMaxIdleTime <= 0 {
 		return fmt.Errorf("DB_CONN_MAX_IDLE_TIME_MINUTES must be greater than 0")
+	}
+
+	if c.Push.DispatchEnabled {
+		switch c.Push.DispatchProvider {
+		case "log", "webhook":
+		default:
+			return fmt.Errorf("unsupported PUSH_DISPATCH_PROVIDER %q", c.Push.DispatchProvider)
+		}
+		if c.Push.DispatchProvider == "webhook" && strings.TrimSpace(c.Push.WebhookURL) == "" {
+			return fmt.Errorf("PUSH_DISPATCH_WEBHOOK_URL is required when PUSH_DISPATCH_PROVIDER=webhook")
+		}
+	}
+	if c.Push.RequestTimeout <= 0 {
+		return fmt.Errorf("PUSH_DISPATCH_TIMEOUT_SECONDS must be greater than 0")
+	}
+	if c.Push.PollInterval <= 0 {
+		return fmt.Errorf("PUSH_DISPATCH_POLL_SECONDS must be greater than 0")
+	}
+	if c.Push.BatchSize <= 0 {
+		return fmt.Errorf("PUSH_DISPATCH_BATCH_SIZE must be greater than 0")
+	}
+	if c.Push.MaxRetries < 0 {
+		return fmt.Errorf("PUSH_DISPATCH_MAX_RETRIES must be 0 or greater")
+	}
+	if c.Push.RetryBackoff <= 0 {
+		return fmt.Errorf("PUSH_DISPATCH_RETRY_BACKOFF_SECONDS must be greater than 0")
 	}
 
 	return nil

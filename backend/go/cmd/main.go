@@ -224,6 +224,11 @@ func main() {
 
 	// 初始化服务层
 	services := service.NewServices(repos, cfg)
+	pushWorkerCtx, pushWorkerCancel := context.WithCancel(context.Background())
+	defer pushWorkerCancel()
+	if services.MobilePush != nil {
+		go services.MobilePush.StartDeliveryWorker(pushWorkerCtx)
+	}
 	if err := services.OpenClaw.EnsureDefaults(); err != nil {
 		log.Printf("⚠️ OpenClaw 默认数据初始化失败: %v", err)
 	}
@@ -1439,6 +1444,7 @@ func main() {
 		}
 	case sig := <-stopSignals:
 		log.Printf("Shutdown signal received: %s", sig.String())
+		pushWorkerCancel()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 		defer cancel()
 		if err := server.Shutdown(shutdownCtx); err != nil {

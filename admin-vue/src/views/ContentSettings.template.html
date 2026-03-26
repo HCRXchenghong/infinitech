@@ -656,6 +656,18 @@
           <el-descriptions-item label="投递记录数">
             {{ currentPushMessageStats.total_deliveries }}
           </el-descriptions-item>
+          <el-descriptions-item label="Queued">
+            {{ currentPushMessageStats.queued_count }}
+          </el-descriptions-item>
+          <el-descriptions-item label="Sent">
+            {{ currentPushMessageStats.sent_count }}
+          </el-descriptions-item>
+          <el-descriptions-item label="Failed">
+            <span style="color: #f56c6c; font-weight: 600;">{{ currentPushMessageStats.failed_count }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="Acked">
+            {{ currentPushMessageStats.acknowledged_count }}
+          </el-descriptions-item>
         </el-descriptions>
         <div style="margin-top: 16px;">
           <div style="font-weight: 600; margin-bottom: 8px;">最近投递明细</div>

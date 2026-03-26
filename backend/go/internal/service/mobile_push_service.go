@@ -6,17 +6,75 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yuexiang/go-api/internal/config"
 	"github.com/yuexiang/go-api/internal/repository"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
 type MobilePushService struct {
-	db *gorm.DB
+	db                 *gorm.DB
+	admin              *AdminService
+	dispatchEnabled    bool
+	dispatchProvider   PushDispatchProvider
+	dispatchBatchSize  int
+	dispatchMaxRetries int
+	retryBackoff       time.Duration
+	pollInterval       time.Duration
 }
 
-func NewMobilePushService(db *gorm.DB) *MobilePushService {
-	return &MobilePushService{db: db}
+type MobilePushOptions struct {
+	DispatchEnabled bool
+	ProviderName    string
+	WebhookURL      string
+	RequestTimeout  time.Duration
+	PollInterval    time.Duration
+	BatchSize       int
+	MaxRetries      int
+	RetryBackoff    time.Duration
+}
+
+func NewMobilePushService(db *gorm.DB, cfg *config.Config, admin *AdminService) *MobilePushService {
+	options := MobilePushOptions{}
+	if cfg != nil {
+		options = MobilePushOptions{
+			DispatchEnabled: cfg.Push.DispatchEnabled,
+			ProviderName:    cfg.Push.DispatchProvider,
+			WebhookURL:      cfg.Push.WebhookURL,
+			RequestTimeout:  cfg.Push.RequestTimeout,
+			PollInterval:    cfg.Push.PollInterval,
+			BatchSize:       cfg.Push.BatchSize,
+			MaxRetries:      cfg.Push.MaxRetries,
+			RetryBackoff:    cfg.Push.RetryBackoff,
+		}
+	}
+	return newMobilePushServiceWithOptions(db, admin, options)
+}
+
+func newMobilePushServiceWithOptions(db *gorm.DB, admin *AdminService, options MobilePushOptions) *MobilePushService {
+	service := &MobilePushService{
+		db:                 db,
+		admin:              admin,
+		dispatchEnabled:    options.DispatchEnabled,
+		dispatchBatchSize:  options.BatchSize,
+		dispatchMaxRetries: options.MaxRetries,
+		retryBackoff:       options.RetryBackoff,
+		pollInterval:       options.PollInterval,
+	}
+	if service.dispatchBatchSize <= 0 {
+		service.dispatchBatchSize = 100
+	}
+	if service.dispatchMaxRetries < 0 {
+		service.dispatchMaxRetries = 0
+	}
+	if service.retryBackoff <= 0 {
+		service.retryBackoff = time.Minute
+	}
+	if service.pollInterval <= 0 {
+		service.pollInterval = 15 * time.Second
+	}
+	service.dispatchProvider = newPushDispatchProvider(options)
+	return service
 }
 
 type PushRegistrationInput struct {
@@ -213,12 +271,14 @@ func (s *MobilePushService) AckDelivery(ctx context.Context, input PushAckInput)
 	}
 
 	record := repository.PushDelivery{
-		MessageID:      messageID,
-		UserID:         authID,
-		UserType:       authType,
-		Status:         "acknowledged",
-		Action:         action,
-		AcknowledgedAt: &ackAt,
+		MessageID:         messageID,
+		UserID:            authID,
+		UserType:          authType,
+		Status:            "acknowledged",
+		Action:            action,
+		AcknowledgedAt:    &ackAt,
+		DispatchProvider:  "",
+		ProviderMessageID: "",
 	}
 	return s.db.WithContext(ctx).Create(&record).Error
 }
