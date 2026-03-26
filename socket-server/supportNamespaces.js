@@ -160,6 +160,45 @@ function buildSupportChatList(db, getUnreadCount, userId, options = {}) {
   });
 }
 
+async function fetchConversationListFromBackend(socket, fallbackChats = []) {
+  const authHeader = String(socket?.authToken || '').trim();
+  if (!authHeader) return fallbackChats;
+
+  try {
+    const { response, data } = await requestBackend('/api/messages/conversations', {
+      headers: { Authorization: authHeader }
+    });
+    if (response.ok && Array.isArray(data)) {
+      return data;
+    }
+    logger.warn('会话列表从 Go 加载失败，回退本地列表:', response.status, data?.error || '');
+  } catch (err) {
+    logger.warn('会话列表从 Go 加载失败，回退本地列表:', err?.message || err);
+  }
+
+  return fallbackChats;
+}
+
+async function fetchMessagesFromBackend(socket, chatId, fallbackMessages = []) {
+  const authHeader = String(socket?.authToken || '').trim();
+  const normalizedChatId = normalizeChatId(chatId);
+  if (!authHeader || !normalizedChatId) return fallbackMessages;
+
+  try {
+    const { response, data } = await requestBackend(`/api/messages/${encodeURIComponent(normalizedChatId)}`, {
+      headers: { Authorization: authHeader }
+    });
+    if (response.ok && Array.isArray(data)) {
+      return data;
+    }
+    logger.warn('消息历史从 Go 加载失败，回退本地历史:', response.status, data?.error || '');
+  } catch (err) {
+    logger.warn('消息历史从 Go 加载失败，回退本地历史:', err?.message || err);
+  }
+
+  return fallbackMessages;
+}
+
 function createSupportMessageHandler({ saveMessage, supportNamespace, monitorNamespace }) {
   return async function handleSendMessage(data, socket, chatType = 'support') {
     try {
@@ -257,8 +296,11 @@ export function setupSupportNamespaces({
     });
 
     socket.on('load_all_chats', () => {
-      const chatList = buildSupportChatList(db, getUnreadCount, socket.userId, { defaultRole: 'user' });
-      socket.emit('all_chats_loaded', { chats: chatList });
+      void (async () => {
+        const fallbackChats = buildSupportChatList(db, getUnreadCount, socket.userId, { defaultRole: 'user' });
+        const chatList = await fetchConversationListFromBackend(socket, fallbackChats);
+        socket.emit('all_chats_loaded', { chats: chatList });
+      })();
     });
 
     socket.on('join_chat', async (data) => {
@@ -278,7 +320,8 @@ export function setupSupportNamespaces({
         emitAccessDenied(socket, 'load_messages_denied', data?.chatId);
         return;
       }
-      const messages = getMessages('support', chatId);
+      const fallbackMessages = getMessages('support', chatId);
+      const messages = await fetchMessagesFromBackend(socket, chatId, fallbackMessages);
       socket.emit('messages_loaded', { chatId, messages });
       await markConversationReadOnBackend(socket, chatId);
     });
@@ -357,11 +400,14 @@ export function setupSupportNamespaces({
         return;
       }
 
-      const chatList = buildSupportChatList(db, getUnreadCount, socket.userId, {
-        defaultRole: 'user',
-        fallbackRoleFromRow: true
-      });
-      socket.emit('all_chats_loaded', { chats: chatList });
+      void (async () => {
+        const fallbackChats = buildSupportChatList(db, getUnreadCount, socket.userId, {
+          defaultRole: 'user',
+          fallbackRoleFromRow: true
+        });
+        const chatList = await fetchConversationListFromBackend(socket, fallbackChats);
+        socket.emit('all_chats_loaded', { chats: chatList });
+      })();
     });
 
     socket.on('load_messages', async (data) => {
@@ -371,7 +417,8 @@ export function setupSupportNamespaces({
         return;
       }
 
-      const messages = getMessages('support', access.chatId);
+      const fallbackMessages = getMessages('support', access.chatId);
+      const messages = await fetchMessagesFromBackend(socket, access.chatId, fallbackMessages);
       socket.emit('messages_loaded', { chatId: access.chatId, messages });
       await markConversationReadOnBackend(socket, access.chatId);
     });
