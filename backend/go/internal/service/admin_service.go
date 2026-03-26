@@ -58,6 +58,18 @@ type AdminLoginResponse struct {
 	Error   string                 `json:"error,omitempty"`
 }
 
+type PushMessageStats struct {
+	MessageID          string     `json:"message_id"`
+	TotalDeliveries    int64      `json:"total_deliveries"`
+	TotalUsers         int64      `json:"total_users"`
+	ReceivedCount      int64      `json:"received_count"`
+	ReadCount          int64      `json:"read_count"`
+	UnreadCount        int64      `json:"unread_count"`
+	ReadRate           float64    `json:"read_rate"`
+	ReadRatePercent    float64    `json:"read_rate_percent"`
+	LatestAcknowledged *time.Time `json:"latest_acknowledged_at,omitempty"`
+}
+
 func (s *AdminService) Login(ctx context.Context, req AdminLoginRequest) (*AdminLoginResponse, int, error) {
 	if !isValidPhone(req.Phone) {
 		return &AdminLoginResponse{Success: false, Error: "手机号格式不正确"}, 400, fmt.Errorf("invalid phone")
@@ -1553,6 +1565,128 @@ func (s *AdminService) DeletePushMessage(ctx context.Context, id string) error {
 		return err
 	}
 	return s.db.WithContext(ctx).Delete(&repository.PushMessage{}, resolvedID).Error
+}
+
+func (s *AdminService) GetPushMessageStats(ctx context.Context, id string) (*PushMessageStats, error) {
+	resolvedID, err := resolveEntityID(ctx, s.db, "push_messages", id)
+	if err != nil {
+		return nil, err
+	}
+
+	var message repository.PushMessage
+	if err := s.db.WithContext(ctx).Where("id = ?", resolvedID).First(&message).Error; err != nil {
+		return nil, err
+	}
+
+	messageIDs := collectPushMessageLookupIDs(message, id)
+	baseQuery := s.db.WithContext(ctx).Model(&repository.PushDelivery{}).Where("message_id IN ?", messageIDs)
+
+	var totalDeliveries int64
+	if err := baseQuery.Count(&totalDeliveries).Error; err != nil {
+		return nil, err
+	}
+
+	totalUsers, err := countDistinctPushDeliveryUsers(baseQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	receivedUsers, err := countDistinctPushDeliveryUsers(
+		s.db.WithContext(ctx).
+			Model(&repository.PushDelivery{}).
+			Where("message_id IN ?", messageIDs).
+			Where("action IN ?", []string{"received", "opened"}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	readUsers, err := countDistinctPushDeliveryUsers(
+		s.db.WithContext(ctx).
+			Model(&repository.PushDelivery{}).
+			Where("message_id IN ?", messageIDs).
+			Where("action = ?", "opened"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	unreadCount := totalUsers - readUsers
+	if unreadCount < 0 {
+		unreadCount = 0
+	}
+
+	var latestRecord repository.PushDelivery
+	latestErr := s.db.WithContext(ctx).
+		Model(&repository.PushDelivery{}).
+		Where("message_id IN ?", messageIDs).
+		Where("acknowledged_at IS NOT NULL").
+		Order("acknowledged_at DESC").
+		Limit(1).
+		Take(&latestRecord).Error
+	if latestErr != nil && !errors.Is(latestErr, gorm.ErrRecordNotFound) {
+		return nil, latestErr
+	}
+
+	stats := &PushMessageStats{
+		MessageID:       strings.TrimSpace(message.UID),
+		TotalDeliveries: totalDeliveries,
+		TotalUsers:      totalUsers,
+		ReceivedCount:   receivedUsers,
+		ReadCount:       readUsers,
+		UnreadCount:     unreadCount,
+	}
+	if totalUsers > 0 {
+		stats.ReadRate = float64(readUsers) / float64(totalUsers)
+		stats.ReadRatePercent = stats.ReadRate * 100
+	}
+	if latestRecord.AcknowledgedAt != nil {
+		stats.LatestAcknowledged = latestRecord.AcknowledgedAt
+	}
+
+	return stats, nil
+}
+
+func collectPushMessageLookupIDs(message repository.PushMessage, rawID string) []string {
+	values := []string{
+		strings.TrimSpace(rawID),
+		strings.TrimSpace(message.UID),
+		strings.TrimSpace(message.TSID),
+	}
+	if message.ID > 0 {
+		values = append(values, strconv.FormatUint(uint64(message.ID), 10))
+	}
+
+	seen := make(map[string]struct{}, len(values))
+	ids := make([]string, 0, len(values))
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		ids = append(ids, value)
+	}
+	return ids
+}
+
+func countDistinctPushDeliveryUsers(query *gorm.DB) (int64, error) {
+	rows, err := query.Session(&gorm.Session{}).
+		Select("user_id, user_type").
+		Group("user_id, user_type").
+		Rows()
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	var count int64
+	for rows.Next() {
+		count++
+	}
+	return count, rows.Err()
 }
 
 func (s *AdminService) ListPublicAPIs(ctx context.Context) ([]map[string]interface{}, error) {

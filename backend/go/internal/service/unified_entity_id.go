@@ -20,10 +20,6 @@ func resolveEntityID(ctx context.Context, db *gorm.DB, tableName, rawID string) 
 		return 0, fmt.Errorf("invalid id")
 	}
 
-	if parsed, err := strconv.ParseUint(idText, 10, 64); err == nil && parsed > 0 {
-		return uint(parsed), nil
-	}
-
 	var lookup struct {
 		ID uint `gorm:"column:id"`
 	}
@@ -34,6 +30,9 @@ func resolveEntityID(ctx context.Context, db *gorm.DB, tableName, rawID string) 
 	case idkit.TSIDPattern.MatchString(idText):
 		query = query.Where("tsid = ?", idText)
 	default:
+		if parsed, err := strconv.ParseUint(idText, 10, 64); err == nil && parsed > 0 {
+			return uint(parsed), nil
+		}
 		return 0, fmt.Errorf("invalid id")
 	}
 

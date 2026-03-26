@@ -28,9 +28,9 @@ func (PushDevice) TableName() string {
 type PushDelivery struct {
 	ID uint `gorm:"primaryKey" json:"legacyId,omitempty"`
 	UnifiedIdentity
-	MessageID      string     `gorm:"size:64;uniqueIndex;not null" json:"message_id"`
-	UserID         string     `gorm:"size:32;index" json:"user_id"`
-	UserType       string     `gorm:"size:20;index" json:"user_type"`
+	MessageID      string     `gorm:"size:64;index:idx_push_delivery_message;uniqueIndex:uniq_push_delivery_message_user,priority:1;not null" json:"message_id"`
+	UserID         string     `gorm:"size:32;index;uniqueIndex:uniq_push_delivery_message_user,priority:2" json:"user_id"`
+	UserType       string     `gorm:"size:20;index;uniqueIndex:uniq_push_delivery_message_user,priority:3" json:"user_type"`
 	DeviceToken    string     `gorm:"size:255;index" json:"device_token"`
 	EventType      string     `gorm:"size:64;index" json:"event_type"`
 	Status         string     `gorm:"size:32;index" json:"status"`

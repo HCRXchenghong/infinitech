@@ -197,6 +197,9 @@ func main() {
 	if err := ensureWalletAccountIndexes(db); err != nil {
 		log.Printf("⚠️  钱包索引检查失败: %v", err)
 	}
+	if err := ensurePushDeliveryIndexes(db); err != nil {
+		log.Printf("鈿狅笍  鎺ㄩ€佸洖鎵х储寮曟鏌ュけ璐? %v", err)
+	}
 	if err := ensureShopMerchantTypeBackfill(db); err != nil {
 		log.Printf("⚠️  商户类型字段回填失败: %v", err)
 	}
@@ -749,6 +752,7 @@ func main() {
 
 		api.GET("/push-messages", handlers.AdminSettings.GetPushMessages)
 		api.POST("/push-messages", handlers.AdminSettings.CreatePushMessage)
+		api.GET("/push-messages/:id/stats", handlers.AdminSettings.GetPushMessageStats)
 		api.PUT("/push-messages/:id", handlers.AdminSettings.UpdatePushMessage)
 		api.DELETE("/push-messages/:id", handlers.AdminSettings.DeletePushMessage)
 
@@ -1477,6 +1481,33 @@ func ensureWalletAccountIndexes(db *gorm.DB) error {
 		}
 		if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_wallet_accounts_user_id ON wallet_accounts(user_id)").Error; err != nil {
 			return fmt.Errorf("create wallet user_id index failed: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func ensurePushDeliveryIndexes(db *gorm.DB) error {
+	if !db.Migrator().HasTable(&repository.PushDelivery{}) {
+		return nil
+	}
+
+	migrator := db.Migrator()
+	if migrator.HasIndex(&repository.PushDelivery{}, "idx_push_deliveries_message_id") {
+		if err := migrator.DropIndex(&repository.PushDelivery{}, "idx_push_deliveries_message_id"); err != nil {
+			return fmt.Errorf("drop legacy push delivery message unique index failed: %w", err)
+		}
+	}
+
+	if !migrator.HasIndex(&repository.PushDelivery{}, "uniq_push_delivery_message_user") {
+		if err := migrator.CreateIndex(&repository.PushDelivery{}, "uniq_push_delivery_message_user"); err != nil {
+			return fmt.Errorf("create push delivery composite unique index failed: %w", err)
+		}
+	}
+
+	if !migrator.HasIndex(&repository.PushDelivery{}, "idx_push_delivery_message") {
+		if err := migrator.CreateIndex(&repository.PushDelivery{}, "idx_push_delivery_message"); err != nil {
+			return fmt.Errorf("create push delivery message index failed: %w", err)
 		}
 	}
 
