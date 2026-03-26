@@ -1,5 +1,6 @@
 import { logger } from './logger.js';
 import { normalizeMessageData } from './messagePayload.js';
+import { requestBackend } from './socketIdentity.js';
 
 function generateRiderChatId(riderId, otherId, type) {
   const str = `${type}_${riderId}_${otherId}`;
@@ -43,7 +44,49 @@ function emitMessageSentAck(socket, messageId) {
   socket.emit('message_sent', { messageId, status: 'sent' });
 }
 
-function relayMessageToRider({ socket, riderNamespace, saveMessage, data, fromType, senderDefault, eventName }) {
+async function syncRiderMessageToBackend(socket, message, target = {}) {
+  const authHeader = String(socket?.authToken || '').trim();
+  if (!authHeader || !message?.chatId) return;
+
+  const payload = {
+    chatId: String(message.chatId),
+    externalMessageId: String(message.id || ''),
+    senderId: String(message.senderId || ''),
+    senderRole: String(message.senderRole || ''),
+    senderName: String(message.sender || ''),
+    content: message.content,
+    messageType: message.messageType,
+    avatar: message.avatar || '',
+    targetType: String(target.type || '').trim().toLowerCase(),
+    targetId: String(target.id || '').trim(),
+    targetPhone: String(target.phone || '').trim(),
+    targetName: String(target.name || '').trim(),
+    targetAvatar: String(target.avatar || '').trim()
+  };
+
+  try {
+    const { response, data } = await requestBackend('/api/messages/sync', {
+      method: 'POST',
+      headers: { Authorization: authHeader },
+      body: payload
+    });
+    if (!response.ok) {
+      logger.warn('Rider message sync to Go failed:', response.status, data?.error || '');
+    }
+  } catch (err) {
+    logger.warn('Rider message sync to Go failed:', err?.message || err);
+  }
+}
+
+async function relayMessageToRider({
+  socket,
+  riderNamespace,
+  saveMessage,
+  data,
+  fromType,
+  senderDefault,
+  eventName
+}) {
   const riderId = String(data?.riderId || '').trim();
   if (!riderId) {
     socket.emit(`${eventName}_denied`, { message: 'missing riderId' });
@@ -59,13 +102,21 @@ function relayMessageToRider({ socket, riderNamespace, saveMessage, data, fromTy
     avatar: data?.avatar || ''
   }, socket);
 
+  await syncRiderMessageToBackend(socket, message, {
+    type: 'rider',
+    id: riderId,
+    phone: data?.riderPhone,
+    name: data?.riderName,
+    avatar: data?.riderAvatar
+  });
+
   riderNamespace.to(`rider_${riderId}`).emit(eventName, message);
   emitMessageSentAck(socket, message.id);
 
   logger.info(`Rider relay ${message.senderRole} ${message.senderId} -> rider ${riderId}, chatId: ${chatId}`);
 }
 
-function relayRiderMessage({ socket, riderNamespace, saveMessage, data }) {
+async function relayRiderMessage({ socket, riderNamespace, saveMessage, data }) {
   const targetId = String(data?.targetId || '').trim();
   const targetType = String(data?.targetType || '').trim().toLowerCase();
   if (!targetId || !['merchant', 'user'].includes(targetType)) {
@@ -77,10 +128,18 @@ function relayRiderMessage({ socket, riderNamespace, saveMessage, data }) {
   const message = saveAndBuildRiderMessage(saveMessage, chatId, {
     chatId,
     content: data?.content,
-    sender: '骑手',
+    sender: data?.sender || '骑手',
     messageType: data?.messageType || 'text',
     avatar: data?.avatar || ''
   }, socket);
+
+  await syncRiderMessageToBackend(socket, message, {
+    type: targetType,
+    id: targetId,
+    phone: data?.targetPhone,
+    name: data?.targetName,
+    avatar: data?.targetAvatar
+  });
 
   if (targetType === 'merchant') {
     riderNamespace.to(`merchant_${targetId}`).emit('rider_message', message);
@@ -118,12 +177,12 @@ export function setupRiderNamespace({
       logger.info(`Rider ${riderId} joined room rider_${riderId}`);
     });
 
-    socket.on('send_to_rider', (data) => {
+    socket.on('send_to_rider', async (data) => {
       if (!ensureSocketRole(socket, 'merchant', 'send_to_rider')) {
         return;
       }
 
-      relayMessageToRider({
+      await relayMessageToRider({
         socket,
         riderNamespace,
         saveMessage,
@@ -134,28 +193,28 @@ export function setupRiderNamespace({
       });
     });
 
-    socket.on('user_send_to_rider', (data) => {
+    socket.on('user_send_to_rider', async (data) => {
       if (!ensureSocketRole(socket, 'user', 'user_send_to_rider')) {
         return;
       }
 
-      relayMessageToRider({
+      await relayMessageToRider({
         socket,
         riderNamespace,
         saveMessage,
         data,
         fromType: 'user',
-        senderDefault: '顾客',
+        senderDefault: '用户',
         eventName: 'user_message'
       });
     });
 
-    socket.on('rider_send_message', (data) => {
+    socket.on('rider_send_message', async (data) => {
       if (!ensureSocketRole(socket, 'rider', 'rider_send_message')) {
         return;
       }
 
-      relayRiderMessage({
+      await relayRiderMessage({
         socket,
         riderNamespace,
         saveMessage,
