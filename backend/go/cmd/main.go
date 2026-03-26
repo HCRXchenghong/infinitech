@@ -75,6 +75,20 @@ func main() {
 	if err := cfg.Validate(); err != nil {
 		log.Fatal("Invalid configuration:", err)
 	}
+	log.Printf(
+		"Runtime baseline: env=%s db_driver=%s redis_enabled=%t redis_required=%t",
+		cfg.Env,
+		cfg.Database.Driver,
+		cfg.Redis.Enabled,
+		cfg.Redis.Required,
+	)
+	if cfg.Database.AllowLegacyProductionDriver && cfg.UsesLegacyProductionDatabaseDriver() {
+		log.Printf(
+			"⚠️ legacy production database driver override enabled: db_driver=%s env=%s",
+			cfg.Database.Driver,
+			cfg.Env,
+		)
+	}
 
 	// 初始化数据库
 	db, err := repository.InitDB(cfg)

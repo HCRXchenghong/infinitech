@@ -192,6 +192,8 @@ npm run build
 ### 7.8 本轮新增完成
 - `socket-server/riderNamespace.js` 已开始把骑手直聊消息同步回 Go 权威消息服务，不再只落本地 `chat.db`
 - 这让骑手直聊消息也进入统一的服务端会话/历史模型，为后续彻底收口 `chat.db` 继续往前推进了一步
+- `backend/go/internal/config/config.go` 现在已经把生产基线收紧到 `PostgreSQL + Redis`，生产环境默认拒绝 `sqlite`，也会拒绝未显式放行的 `mysql`
+- `backend/go/.env.example` 已切到本地 `PostgreSQL + Redis` 默认示例，只保留 `sqlite / mysql` 的明确受限注释入口
 - `admin-vue/src/views/HomeCampaigns.vue` 已重写成干净的首页推广管理页，后台可直接查看商户区 / 商品区的当前生效位次、来源和前台标识
 - 首页推广服务补上了回归测试，已经覆盖“手工锁位优先于付费推广”和“活动有效状态回显”这两条核心规则
 - `rider-app/App-logic.ts` 已把 `/rider` 命名空间收到的直聊消息转进统一前端实时事件流，骑手当前聊天页不再只能靠重新进页拉历史才能看到新消息
@@ -200,8 +202,7 @@ npm run build
 ## 8. 当前仍未完成的大项
 
 ### 8.1 生产架构硬化
-- Go 主库仍需彻底切到 `PostgreSQL` 默认生产路径
-- Redis 在生产环境下仍需改成强依赖并 fail-fast
+- Go 配置层已经按 `PostgreSQL + Redis` 固定生产基线，生产环境会对数据库驱动和 Redis 必填条件做硬校验
 - BFF / Go / Socket 的统一限流、超时、请求体限制、标准错误模型还要继续补齐
 - 上传链路还需要进一步从本地/内存模式收口到流式存储抽象
 - 健康检查、readiness、结构化日志、请求 ID、关键业务埋点仍要继续补齐
@@ -299,7 +300,7 @@ npm run build
 继续按当前总计划推进时，建议保持这个顺序：
 1. 商家端 / 骑手端 / 后台消息口径剩余收口
 2. 首页商户 / 商品推广位后台能力
-3. PostgreSQL + Redis 生产默认路径收口
+3. BFF / Go / Socket 统一限流、超时、请求体限制收口
 4. 推送外部厂商网关接入与更细粒度送达面板
 5. `App / H5` 站内 1v1 音频通话
 

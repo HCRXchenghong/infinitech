@@ -30,6 +30,8 @@ type DatabaseConfig struct {
 	Driver   string
 	DSN      string
 
+	AllowLegacyProductionDriver bool
+
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxLifetime time.Duration
@@ -95,17 +97,18 @@ func Load() *Config {
 		Env:  env,
 		Port: getEnv("GO_API_PORT", "1029"),
 		Database: DatabaseConfig{
-			Host:            getEnv("DB_HOST", "127.0.0.1"),
-			Port:            getEnv("DB_PORT", "5432"),
-			User:            getEnv("DB_USER", "yuexiang_user"),
-			Password:        getEnv("DB_PASSWORD", "yuexiang_password"),
-			DBName:          getEnv("DB_NAME", "yuexiang"),
-			Driver:          normalizeDatabaseDriver(getEnv("DB_DRIVER", "postgres")),
-			DSN:             strings.TrimSpace(os.Getenv("DB_DSN")),
-			MaxOpenConns:    getEnvInt("DB_MAX_OPEN_CONNS", 40),
-			MaxIdleConns:    getEnvInt("DB_MAX_IDLE_CONNS", 20),
-			ConnMaxLifetime: time.Duration(getEnvInt("DB_CONN_MAX_LIFETIME_MINUTES", 60)) * time.Minute,
-			ConnMaxIdleTime: time.Duration(getEnvInt("DB_CONN_MAX_IDLE_TIME_MINUTES", 30)) * time.Minute,
+			Host:                        getEnv("DB_HOST", "127.0.0.1"),
+			Port:                        getEnv("DB_PORT", "5432"),
+			User:                        getEnv("DB_USER", "yuexiang_user"),
+			Password:                    getEnv("DB_PASSWORD", "yuexiang_password"),
+			DBName:                      getEnv("DB_NAME", "yuexiang"),
+			Driver:                      normalizeDatabaseDriver(getEnv("DB_DRIVER", "postgres")),
+			DSN:                         strings.TrimSpace(os.Getenv("DB_DSN")),
+			AllowLegacyProductionDriver: strings.EqualFold(getEnv("ALLOW_LEGACY_PRODUCTION_DB_DRIVER", "false"), "true"),
+			MaxOpenConns:                getEnvInt("DB_MAX_OPEN_CONNS", 40),
+			MaxIdleConns:                getEnvInt("DB_MAX_IDLE_CONNS", 20),
+			ConnMaxLifetime:             time.Duration(getEnvInt("DB_CONN_MAX_LIFETIME_MINUTES", 60)) * time.Minute,
+			ConnMaxIdleTime:             time.Duration(getEnvInt("DB_CONN_MAX_IDLE_TIME_MINUTES", 30)) * time.Minute,
 		},
 		Redis: RedisConfig{
 			Host:     getEnv("REDIS_HOST", "127.0.0.1"),
@@ -161,6 +164,14 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("DB_DRIVER=sqlite is not allowed in %s environment", c.Env)
 	}
 
+	if isProductionLikeEnv(c.Env) && driver != "postgres" && !c.Database.AllowLegacyProductionDriver {
+		return fmt.Errorf(
+			"DB_DRIVER=%s is not allowed in %s environment; production baseline requires postgres (set ALLOW_LEGACY_PRODUCTION_DB_DRIVER=true only for emergency compatibility)",
+			driver,
+			c.Env,
+		)
+	}
+
 	if driver != "sqlite" && strings.TrimSpace(c.Database.DSN) == "" {
 		if strings.TrimSpace(c.Database.Host) == "" || strings.TrimSpace(c.Database.Port) == "" || strings.TrimSpace(c.Database.User) == "" || strings.TrimSpace(c.Database.DBName) == "" {
 			return fmt.Errorf("database connection settings are incomplete for driver %s", driver)
@@ -211,6 +222,15 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+func (c *Config) IsProductionLike() bool {
+	return isProductionLikeEnv(c.Env)
+}
+
+func (c *Config) UsesLegacyProductionDatabaseDriver() bool {
+	driver := normalizeDatabaseDriver(c.Database.Driver)
+	return c.IsProductionLike() && driver != "postgres"
 }
 
 func getEnv(key, defaultValue string) string {
