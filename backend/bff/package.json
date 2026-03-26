@@ -33,7 +33,6 @@
     "mysql2": "^3.6.5",
     "pg": "^8.11.3",
     "redis": "^4.6.10",
-    "socket.io": "^4.5.4",
     "winston": "^3.11.0"
   },
   "devDependencies": {

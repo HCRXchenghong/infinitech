@@ -64,7 +64,7 @@ RTC 与首页推广的边界也已固定：
 
 - `backend/go`：Go 主 API，逐步收口为业务事实源
 - `backend/bff`：Node.js BFF 与统一代理层
-- `socket-server`：实时网关、Socket 事件桥接
+- `socket-server`：唯一实时网关、Socket 事件桥接
 - `admin-vue`：管理后台 Web
 - `user-vue`：用户端 uni-app
 - `app-mobile`：用户 App 端 uni-app
@@ -240,7 +240,7 @@ npm run build
 
 ### 9.1 生产架构硬化
 
-- 当前 Go 与 `socket-server` 的限流仍是单机内存版，不是分布式版
+- Go、BFF 与 `socket-server` 已具备 Redis 优先的分布式限流或共享状态能力，但细粒度治理、压测和故障演练还未完成
 - 上传链路虽已限流和限体积，但仍偏本地磁盘模式，后续还需要流式存储 / 对象存储抽象
 - 结构化日志、请求 ID、关键业务埋点、错误分级、更多 readiness / 依赖自检仍需继续补齐
 
