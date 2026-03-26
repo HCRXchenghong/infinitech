@@ -1,6 +1,7 @@
 
 import Vue from 'vue'
 import config from '@/shared-ui/config'
+import { fetchHistory, markConversationRead, upsertConversation } from '@/shared-ui/api'
 import { loadSupportRuntimeSettings } from '@/shared-ui/support-runtime'
 import { serviceDataMethods } from './service-data-methods'
 import { db } from '@/utils/database'
@@ -21,6 +22,8 @@ export default Vue.extend({
       riderName: '骑手',
       avatarUrl: '',
       chatId: 'rider_default',
+      targetId: '',
+      orderId: '',
       chatRole: 'admin',
       supportChatTitle: '平台客服',
       chatTitle: '平台客服',
@@ -48,6 +51,14 @@ export default Vue.extend({
     if (queryChatId !== undefined && queryChatId !== null && queryChatId !== '') {
       this.chatId = String(queryChatId).trim()
     }
+    const queryTargetId = options.targetId || options.peerId
+    if (queryTargetId !== undefined && queryTargetId !== null && queryTargetId !== '') {
+      this.targetId = this.safeDecode(queryTargetId)
+    }
+    const queryOrderId = options.orderId || options.order_id
+    if (queryOrderId !== undefined && queryOrderId !== null && queryOrderId !== '') {
+      this.orderId = this.safeDecode(queryOrderId)
+    }
     if (!this.chatId) {
       this.chatId = this.riderId || 'rider_default'
     }
@@ -57,7 +68,6 @@ export default Vue.extend({
 
     const queryName = options.name ? this.safeDecode(options.name) : ''
     this.chatTitle = queryName || this.inferTitleByRole(this.chatRole)
-    void this.loadSupportRuntimeConfig(!queryName)
 
     if (options.avatar) {
       this.otherAvatar = this.safeDecode(options.avatar)
@@ -76,10 +86,15 @@ export default Vue.extend({
       }
     }
 
-    this.initDatabase()
     this.loadRecentOrders()
     this.bindSocketEvents()
-    this.requestLoadMessagesWithRetry()
+    Promise.resolve(this.loadSupportRuntimeConfig(!queryName))
+      .finally(async () => {
+        await this.initDatabase()
+        await this.ensureConversationExists()
+        await this.loadServerHistory()
+        this.requestLoadMessagesWithRetry()
+      })
 
     messageManager.setCurrentChatId(this.chatId)
   },
@@ -104,7 +119,105 @@ export default Vue.extend({
     },
 
     async initDatabase() {
-      try { await db.open() } catch (err) { /* ignore */ }
+      try {
+        await db.open()
+        await this.loadCachedMessages()
+      } catch (err) {
+        /* ignore */
+      }
+    },
+
+    async loadCachedMessages() {
+      try {
+        const rows = await db.getMessages(this.chatId)
+        if (!Array.isArray(rows) || rows.length === 0) return
+
+        this.messages = rows.map((item: any) => {
+          const senderId = item?.senderId != null ? String(item.senderId) : ''
+          const isSelf = Number(item?.isSelf || 0) === 1 || (senderId === String(this.riderId) && item?.senderRole === 'rider')
+          return {
+            ...this.normalizeIncomingMessage(item, isSelf),
+            status: isSelf ? 'sent' : undefined
+          }
+        })
+        this.$nextTick(() => { this.scrollToBottom() })
+      } catch (err) {
+        console.error('[RiderService] 加载本地消息缓存失败:', err)
+      }
+    },
+
+    normalizeTargetType() {
+      if (this.chatRole === 'user') return 'user'
+      if (this.chatRole === 'merchant') return 'merchant'
+      return 'admin'
+    },
+
+    buildConversationPayload() {
+      return {
+        chatId: this.chatId,
+        targetType: this.normalizeTargetType(),
+        targetId: this.targetId || (this.chatRole === 'admin' ? 'support' : ''),
+        targetPhone: '',
+        targetName: this.chatTitle || this.inferTitleByRole(this.chatRole),
+        targetAvatar: this.otherAvatar || '',
+        targetOrderId: this.orderId || ''
+      }
+    },
+
+    normalizeHistoryMessages(list: any[] = []) {
+      return list.map((item: any) => {
+        const senderId = item?.senderId != null ? String(item.senderId) : ''
+        const isSelf = item?.senderRole === 'rider' && senderId === String(this.riderId)
+        return {
+          ...this.normalizeIncomingMessage(item, isSelf),
+          status: isSelf ? (item?.status || 'sent') : undefined
+        }
+      })
+    },
+
+    async ensureConversationExists() {
+      try {
+        await upsertConversation(this.buildConversationPayload())
+      } catch (err) {
+        console.error('[RiderService] 初始化服务端会话失败:', err)
+      }
+    },
+
+    async syncReadState() {
+      try {
+        await markConversationRead(this.chatId)
+      } catch (err) {
+        console.error('[RiderService] 同步会话已读失败:', err)
+      }
+    },
+
+    async loadServerHistory() {
+      try {
+        const response: any = await fetchHistory(this.chatId)
+        const list = Array.isArray(response) ? response : []
+        if (list.length > 0) {
+          this.messages = this.normalizeHistoryMessages(list)
+          list.forEach((item: any) => {
+            const senderId = item?.senderId != null ? String(item.senderId) : ''
+            db.saveMessage(this.chatId, {
+              id: String(item.id),
+              chatId: this.chatId,
+              sender: item.sender,
+              senderId: item.senderId,
+              senderRole: item.senderRole,
+              content: item.content,
+              messageType: item.messageType || 'text',
+              timestamp: Date.now(),
+              isSelf: item.senderRole === 'rider' && senderId === String(this.riderId) ? 1 : 0,
+              avatar: item.avatar || ''
+            })
+          })
+          this.$nextTick(() => { this.scrollToBottom() })
+        }
+        await this.syncReadState()
+      } catch (err) {
+        console.error('[RiderService] 加载服务端消息历史失败:', err)
+      }
     },
 
     /**
@@ -146,8 +259,11 @@ export default Vue.extend({
     },
 
     requestLoadMessages() {
-      this.ensureJoinChat()
-      return this.socketEmit('load_messages', { chatId: this.chatId })
+      const joined = this.ensureJoinChat()
+      if (joined && this.messages.length === 0) {
+        return this.socketEmit('load_messages', { chatId: this.chatId })
+      }
+      return joined
     },
 
     ensureJoinChat() {
@@ -195,6 +311,7 @@ export default Vue.extend({
     onSocketConnected(payload: any) {
       if (payload && payload.namespace && payload.namespace !== 'support') return
       this.ensureJoinChat()
+      void this.loadServerHistory()
       this.requestLoadMessages()
       this.stopLoadRetry()
     },
@@ -207,27 +324,26 @@ export default Vue.extend({
 
     onMessagesLoaded(payload: any) {
       if (!payload || String(payload.chatId) !== String(this.chatId)) return
-      if (payload.messages) {
-        this.messages = payload.messages.map((m: any) => {
-          const senderId = m?.senderId != null ? String(m.senderId) : ''
-          const isSelf = m.senderRole === 'rider' && senderId === String(this.riderId)
-          return this.normalizeIncomingMessage(m, isSelf)
-        })
+      if (Array.isArray(payload.messages) && this.messages.length === 0) {
+        this.messages = this.normalizeHistoryMessages(payload.messages)
         payload.messages.forEach((m: any) => {
+          const senderId = m?.senderId != null ? String(m.senderId) : ''
           db.saveMessage(this.chatId, {
             id: String(m.id),
             chatId: this.chatId,
             sender: m.sender,
             senderId: m.senderId,
+            senderRole: m.senderRole,
             content: m.content,
             messageType: m.messageType || 'text',
             timestamp: Date.now(),
-            isSelf: m.senderRole === 'rider' ? 1 : 0,
+            isSelf: m.senderRole === 'rider' && senderId === String(this.riderId) ? 1 : 0,
             avatar: m.avatar || ''
           })
         })
         this.$nextTick(() => { this.scrollToBottom() })
       }
+      void this.syncReadState()
     },
 
     onNewMessage(payload: any) {
@@ -240,6 +356,7 @@ export default Vue.extend({
           chatId: this.chatId,
           sender: payload.sender,
           senderId: payload.senderId,
+          senderRole: payload.senderRole,
           content: payload.content,
           messageType: payload.messageType || 'text',
           timestamp: Date.now(),
@@ -248,6 +365,7 @@ export default Vue.extend({
         })
         this.$nextTick(() => { this.scrollToBottom() })
       }
+      void this.syncReadState()
     },
 
     onMessageSent(data: any) {
@@ -263,23 +381,38 @@ export default Vue.extend({
       if (msg) msg.status = 'read'
     },
 
-    resendMessage(msg: any) {
-      msg.status = 'sending'
-      const tempId = Date.now()
-      msg.id = tempId
-      const emitted = this.socketEmit('send_message', {
+    buildOutgoingSocketPayload(messageType: string, content: any, tempId: number) {
+      return {
         chatId: this.chatId,
         senderId: this.riderId,
         senderRole: 'rider',
         type: 'support',
-        messageType: msg.type,
-        content: msg.type === 'order'
-          ? JSON.stringify(msg.order || this.normalizeOrder(msg.content) || {})
-          : msg.content,
+        messageType,
+        content,
         sender: this.riderName,
         avatar: this.avatarUrl,
-        tempId
-      })
+        tempId,
+        targetType: this.normalizeTargetType(),
+        targetId: this.targetId || (this.chatRole === 'admin' ? 'support' : ''),
+        targetName: this.chatTitle || this.inferTitleByRole(this.chatRole),
+        targetAvatar: this.otherAvatar || ''
+      }
+    },
+
+    resendMessage(msg: any) {
+      msg.status = 'sending'
+      const tempId = Date.now()
+      msg.id = tempId
+      const emitted = this.socketEmit(
+        'send_message',
+        this.buildOutgoingSocketPayload(
+          msg.type,
+          msg.type === 'order'
+            ? JSON.stringify(msg.order || this.normalizeOrder(msg.content) || {})
+            : msg.content,
+          tempId
+        )
+      )
       if (!emitted) {
         msg.status = 'failed'
         uni.showToast({ title: '客服连接中，请稍后重试', icon: 'none' })
@@ -303,17 +436,10 @@ export default Vue.extend({
       }
       this.messages.push(newMsg)
 
-      const emitted = this.socketEmit('send_message', {
-        chatId: this.chatId,
-        senderId: this.riderId,
-        senderRole: 'rider',
-        type: 'support',
-        messageType: 'text',
-        content: this.inputText,
-        sender: this.riderName,
-        avatar: this.avatarUrl,
-        tempId
-      })
+      const emitted = this.socketEmit(
+        'send_message',
+        this.buildOutgoingSocketPayload('text', this.inputText, tempId)
+      )
 
       if (!emitted) {
         const msg = this.messages.find((m: any) => m.id === tempId)
@@ -361,17 +487,10 @@ export default Vue.extend({
                   const tempId = Date.now()
                   const newMsg = { id: tempId, content: data.url, type: 'image', isSelf: true, status: 'sending' }
                   this.messages.push(newMsg)
-                  const emitted = this.socketEmit('send_message', {
-                    chatId: this.chatId,
-                    senderId: this.riderId,
-                    senderRole: 'rider',
-                    type: 'support',
-                    messageType: 'image',
-                    content: data.url,
-                    sender: this.riderName,
-                    avatar: this.avatarUrl,
-                    tempId
-                  })
+                  const emitted = this.socketEmit(
+                    'send_message',
+                    this.buildOutgoingSocketPayload('image', data.url, tempId)
+                  )
                   if (!emitted) {
                     const msg = this.messages.find((m: any) => m.id === tempId)
                     if (msg) msg.status = 'failed'
@@ -417,17 +536,10 @@ export default Vue.extend({
       const tempId = Date.now()
       const newMsg = { id: tempId, content: '', type: 'order', isSelf: true, order: normalizedOrder, status: 'sending' }
       this.messages.push(newMsg)
-      const emitted = this.socketEmit('send_message', {
-        chatId: this.chatId,
-        senderId: this.riderId,
-        senderRole: 'rider',
-        type: 'support',
-        messageType: 'order',
-        content: JSON.stringify(normalizedOrder),
-        sender: this.riderName,
-        avatar: this.avatarUrl,
-        tempId
-      })
+      const emitted = this.socketEmit(
+        'send_message',
+        this.buildOutgoingSocketPayload('order', JSON.stringify(normalizedOrder), tempId)
+      )
       if (!emitted) {
         const msg = this.messages.find((m: any) => m.id === tempId)
         if (msg) msg.status = 'failed'

@@ -98,6 +98,32 @@ export const verifySMSCodeCheck = (phone: string, scene: string, code: string) =
   data: { phone, scene, code }
 })
 
+export const fetchConversations = () => request({
+  url: '/api/messages/conversations',
+  method: 'GET'
+})
+
+export const upsertConversation = (payload: Record<string, any>) => request({
+  url: '/api/messages/conversations/upsert',
+  method: 'POST',
+  data: payload
+})
+
+export const markConversationRead = (chatId: string) => request({
+  url: `/api/messages/conversations/${encodeURIComponent(chatId)}/read`,
+  method: 'POST'
+})
+
+export const markAllConversationsRead = () => request({
+  url: '/api/messages/conversations/read-all',
+  method: 'POST'
+})
+
+export const fetchHistory = (roomId: string) => request({
+  url: `/api/messages/${encodeURIComponent(roomId)}`,
+  method: 'GET'
+})
+
 // 获取骑手信息
 export const fetchRiderInfo = () => {
   const riderId = uni.getStorageSync('riderId')
