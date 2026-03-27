@@ -394,7 +394,9 @@ export default Vue.extend({
           senderRole: payload.senderRole,
           content: payload.content,
           messageType: payload.messageType || 'text',
-          timestamp: Date.now(),
+          timestamp: Number.isFinite(Number(payload?.timestamp || payload?.createdAt))
+            ? Number(payload.timestamp || payload.createdAt)
+            : Date.now(),
           isSelf: 0,
           avatar: payload.avatar || ''
         })
@@ -407,6 +409,12 @@ export default Vue.extend({
       const msg = this.messages.find((m: any) => m.id === data.tempId)
       if (msg) {
         msg.id = data.messageId
+        if (data.time) {
+          msg.time = data.time
+        }
+        if (Number.isFinite(Number(data?.timestamp || data?.createdAt))) {
+          msg.timestamp = Number(data.timestamp || data.createdAt)
+        }
         msg.status = 'sent'
       }
     },

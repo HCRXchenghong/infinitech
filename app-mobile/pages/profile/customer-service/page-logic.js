@@ -203,6 +203,12 @@ export default {
         const msg = this.messages.find(m => m.id === data.tempId)
         if (msg) {
           msg.id = data.messageId
+          if (data.time) {
+            msg.time = data.time
+          }
+          if (Number.isFinite(Number(data.timestamp || data.createdAt))) {
+            msg.timestamp = Number(data.timestamp || data.createdAt)
+          }
           msg.status = 'sent'
         }
       })

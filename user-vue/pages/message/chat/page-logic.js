@@ -550,6 +550,8 @@ export default {
             payload.messageType || 'text',
             false,
             {
+              timestamp: payload.timestamp || payload.createdAt,
+              time: payload.time || '',
               officialIntervention: !!payload.officialIntervention,
               interventionLabel: payload.interventionLabel || '官方介入'
             }
@@ -562,6 +564,13 @@ export default {
         const msg = this.messages.find((item) => item.mid === data.tempId)
         if (msg) {
           msg.mid = data.messageId
+          if (data.time) {
+            msg.time = data.time
+          }
+          msg.timestamp = this.resolveMessageTimestamp(
+            data.timestamp || data.createdAt,
+            msg.timestamp || Date.now()
+          )
           msg.status = 'success'
           this.persistLocalMessages()
         }
@@ -622,6 +631,7 @@ export default {
       const mid = `${Date.now()}_${Math.floor(Math.random() * 1000)}`
       const normalized = normalizeMessageContent(type, text)
       const timestamp = this.resolveMessageTimestamp(extra.timestamp, Date.now())
+      const time = extra.time || nowTime()
       this.messages.push({
         mid,
         from,
@@ -630,7 +640,7 @@ export default {
         rawContent: normalized.rawContent,
         meta: normalized.meta,
         timestamp,
-        time: nowTime(),
+        time,
         showTime,
         status: from === 'me' ? 'sending' : 'success',
         officialIntervention: !!extra.officialIntervention,

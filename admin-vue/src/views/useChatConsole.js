@@ -468,6 +468,12 @@ export function useChatConsole(options = {}) {
       const msg = messages.value.find((item) => item.id === data.tempId);
       if (msg) {
         msg.id = data.messageId;
+        if (data.time) {
+          msg.time = data.time;
+        }
+        if (Number.isFinite(Number(data?.timestamp || data?.createdAt))) {
+          msg.timestamp = Number(data.timestamp || data.createdAt);
+        }
         msg.status = 'sent';
       }
       scheduleRefreshChats();

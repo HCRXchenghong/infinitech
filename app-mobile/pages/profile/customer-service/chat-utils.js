@@ -36,11 +36,17 @@ export function normalizeOrder(order) {
 
 export function normalizeIncomingMessage(payload, isSelf) {
   const type = payload && payload.messageType ? payload.messageType : (payload && payload.type ? payload.type : 'text');
+  const timestamp = Number.isFinite(Number(payload && (payload.timestamp || payload.createdAt)))
+    ? Number(payload.timestamp || payload.createdAt)
+    : Date.now();
   return {
     id: payload && payload.id ? payload.id : Date.now(),
     content: payload ? payload.content : '',
     type,
     isSelf: !!isSelf,
+    timestamp,
+    time: payload && payload.time ? payload.time : new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+    avatar: payload && payload.avatar ? payload.avatar : '',
     order: type === 'order' ? normalizeOrder(payload && (payload.order || payload.content)) : null
   };
 }

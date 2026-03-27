@@ -45,6 +45,11 @@ export function formatMessageTime(timestamp) {
   return new Date(timestamp).toLocaleTimeString('zh-CN', TIME_OPTIONS);
 }
 
+export function resolveMessageTimestamp(rawValue, fallback = Date.now()) {
+  const value = Number(rawValue);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
 export function mapLoadedChats(list) {
   return (list || []).map((chat) => ({
     id: normalizeChatId(chat.id),
@@ -60,10 +65,11 @@ export function mapLoadedChats(list) {
 
 export function mapCachedMessages(list) {
   return (list || []).map((item) => ({
+    timestamp: resolveMessageTimestamp(item.timestamp, Date.now()),
     id: item.id,
     sender: item.sender,
     content: item.content,
-    time: formatMessageTime(item.timestamp || Date.now()),
+    time: formatMessageTime(resolveMessageTimestamp(item.timestamp, Date.now())),
     isSelf: item.senderRole === 'admin',
     type: item.messageType,
     coupon: item.coupon,
@@ -73,20 +79,24 @@ export function mapCachedMessages(list) {
 }
 
 export function mapLoadedMessages(list) {
-  return (list || []).map((item) => ({
-    id: item.id,
-    sender: item.sender,
-    senderId: item.senderId,
-    senderRole: item.senderRole,
-    content: item.content,
-    time: item.time,
-    isSelf: item.senderRole === 'admin',
-    type: item.messageType || 'text',
-    coupon: item.coupon,
-    order: item.order,
-    avatar: item.avatar,
-    status: item.status || 'sent'
-  }));
+  return (list || []).map((item, index) => {
+    const timestamp = resolveMessageTimestamp(item?.timestamp || item?.createdAt, Date.now() + index);
+    return {
+      id: item.id,
+      sender: item.sender,
+      senderId: item.senderId,
+      senderRole: item.senderRole,
+      content: item.content,
+      timestamp,
+      time: item.time || formatMessageTime(timestamp),
+      isSelf: item.senderRole === 'admin',
+      type: item.messageType || 'text',
+      coupon: item.coupon,
+      order: item.order,
+      avatar: item.avatar,
+      status: item.status || 'sent'
+    };
+  });
 }
 
 export function createOutgoingTempMessage({
@@ -98,11 +108,13 @@ export function createOutgoingTempMessage({
   order,
   status
 }) {
+  const timestamp = Date.now();
   return {
     id,
     sender,
     content,
-    time: formatMessageTime(Date.now()),
+    timestamp,
+    time: formatMessageTime(timestamp),
     isSelf: true,
     type,
     coupon,
@@ -112,13 +124,15 @@ export function createOutgoingTempMessage({
 }
 
 export function createIncomingDisplayMessage(data) {
+  const timestamp = resolveMessageTimestamp(data?.timestamp || data?.createdAt, Date.now());
   return {
     id: data.id || Date.now(),
     sender: data.sender,
     senderId: data.senderId,
     senderRole: data.senderRole,
     content: data.content,
-    time: data.time,
+    timestamp,
+    time: data.time || formatMessageTime(timestamp),
     isSelf: false,
     type: data.messageType || 'text',
     coupon: data.coupon,

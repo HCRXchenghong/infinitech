@@ -27,6 +27,10 @@ function ensureSocketRole(socket, expectedRole, eventName) {
 function saveAndBuildRiderMessage(saveMessage, chatId, messageInput, socket) {
   const messageData = normalizeMessageData(messageInput, socket);
   const result = saveMessage('rider_chat', chatId, messageData);
+  const timestamp = Number.isFinite(Number(result?.timestamp))
+    ? Number(result.timestamp)
+    : Date.now();
+  const createdAt = String(result?.createdAt || '');
   return {
     id: result.lastInsertRowid,
     chatId,
@@ -36,12 +40,21 @@ function saveAndBuildRiderMessage(saveMessage, chatId, messageInput, socket) {
     content: messageData.content,
     messageType: messageData.messageType,
     avatar: messageData.avatar,
-    timestamp: Date.now()
+    timestamp,
+    createdAt,
+    time: new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
   };
 }
 
-function emitMessageSentAck(socket, messageId) {
-  socket.emit('message_sent', { messageId, status: 'sent' });
+function emitMessageSentAck(socket, message, tempId) {
+  socket.emit('message_sent', {
+    tempId,
+    messageId: message?.id,
+    status: 'sent',
+    timestamp: message?.timestamp,
+    createdAt: message?.createdAt,
+    time: message?.time
+  });
 }
 
 async function syncRiderMessageToBackend(socket, message, target = {}) {
@@ -111,7 +124,7 @@ async function relayMessageToRider({
   });
 
   riderNamespace.to(`rider_${riderId}`).emit(eventName, message);
-  emitMessageSentAck(socket, message.id);
+  emitMessageSentAck(socket, message, data?.tempId);
 
   logger.info(`Rider relay ${message.senderRole} ${message.senderId} -> rider ${riderId}, chatId: ${chatId}`);
 }
@@ -147,7 +160,7 @@ async function relayRiderMessage({ socket, riderNamespace, saveMessage, data }) 
     riderNamespace.to(`user_${targetId}`).emit('rider_message', message);
   }
 
-  emitMessageSentAck(socket, message.id);
+  emitMessageSentAck(socket, message, data?.tempId);
   logger.info(`Rider ${socket.userId} -> ${targetType} ${targetId}, chatId: ${chatId}`);
 }
 

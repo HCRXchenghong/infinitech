@@ -21,6 +21,9 @@ function normalizeBearerToken(raw: any) {
 }
 
 function normalizeRiderIncomingMessage(payload: any, senderRole: 'merchant' | 'user', fallbackName: string) {
+  const timestamp = Number.isFinite(Number(payload?.timestamp || payload?.createdAt))
+    ? Number(payload.timestamp || payload.createdAt)
+    : Date.now()
   return {
     id: payload?.id || Date.now(),
     chatId: String(payload?.chatId || `${senderRole}_${payload?.senderId || payload?.targetId || ''}`),
@@ -30,7 +33,7 @@ function normalizeRiderIncomingMessage(payload: any, senderRole: 'merchant' | 'u
     content: payload?.content || '',
     messageType: payload?.messageType || 'text',
     avatar: payload?.avatar || null,
-    timestamp: Date.now()
+    timestamp
   }
 }
 
@@ -236,7 +239,9 @@ export default Vue.extend({
             content: payload?.content || '',
             messageType: payload?.messageType || 'text',
             avatar: payload?.avatar || null,
-            timestamp: Date.now()
+            timestamp: Number.isFinite(Number(payload?.timestamp || payload?.createdAt))
+              ? Number(payload.timestamp || payload.createdAt)
+              : Date.now()
           })
         }
         uni.$emit('socket:new_message', payload)

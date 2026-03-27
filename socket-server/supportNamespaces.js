@@ -219,6 +219,11 @@ function createSupportMessageHandler({ saveMessage, supportNamespace, monitorNam
       }
 
       const result = saveMessage(chatType, normalizedChatId, messageData);
+      const timestamp = Number.isFinite(Number(result?.timestamp))
+        ? Number(result.timestamp)
+        : Date.now();
+      const createdAt = String(result?.createdAt || '');
+      const time = new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
       const message = {
         id: result.lastInsertRowid,
         chatId: normalizedChatId,
@@ -226,7 +231,9 @@ function createSupportMessageHandler({ saveMessage, supportNamespace, monitorNam
         senderId: messageData.senderId,
         senderRole: messageData.senderRole,
         content: messageData.content,
-        time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+        timestamp,
+        createdAt,
+        time,
         messageType: messageData.messageType,
         coupon: messageData.coupon,
         order: messageData.order,
@@ -247,7 +254,10 @@ function createSupportMessageHandler({ saveMessage, supportNamespace, monitorNam
         tempId: data.tempId,
         messageId: message.id,
         status: 'sent',
-        officialIntervention: isMonitorIntervention
+        officialIntervention: isMonitorIntervention,
+        timestamp,
+        createdAt,
+        time
       });
 
       return message;

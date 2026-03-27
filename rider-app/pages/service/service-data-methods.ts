@@ -3,12 +3,20 @@ import { fetchRiderOrders, request as apiRequest } from '@/shared-ui/api'
 export const serviceDataMethods = {
   normalizeIncomingMessage(payload: any, isSelf: boolean) {
     const type = payload?.messageType || payload?.type || 'text'
+    const timestamp = Number.isFinite(Number(payload?.timestamp || payload?.createdAt))
+      ? Number(payload.timestamp || payload.createdAt)
+      : Date.now()
     return {
       id: payload?.id || Date.now(),
       content: payload?.content || '',
       type,
       isSelf,
+      sender: payload?.sender || '',
+      senderId: payload?.senderId || '',
+      senderRole: payload?.senderRole || '',
       avatar: payload?.avatar || '',
+      timestamp,
+      time: payload?.time || new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       coupon: payload?.coupon || null,
       order: type === 'order' ? this.normalizeOrder(payload?.order || payload?.content) : null,
       officialIntervention: !!payload?.officialIntervention,

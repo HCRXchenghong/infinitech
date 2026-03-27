@@ -93,6 +93,18 @@ function nextUnifiedIds(bucketCode = CHAT_BUCKET) {
   };
 }
 
+function parseCreatedAtTimestamp(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return Date.now();
+
+  const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
+  const withTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized)
+    ? normalized
+    : `${normalized}Z`;
+  const timestamp = new Date(withTimezone).getTime();
+  return Number.isFinite(timestamp) ? timestamp : Date.now();
+}
+
 export function saveMessage(chatType, chatId, messageData) {
   const ids = nextUnifiedIds(CHAT_BUCKET);
   const messageUid = String(messageData.uid || ids.uid);
@@ -105,7 +117,7 @@ export function saveMessage(chatType, chatId, messageData) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  return stmt.run(
+  const insertResult = stmt.run(
     messageUid,
     messageTsid,
     chatType,
@@ -123,6 +135,15 @@ export function saveMessage(chatType, chatId, messageData) {
     messageData.avatar || null,
     messageData.status || 'sent'
   );
+
+  const insertedRow = db.prepare('SELECT created_at FROM messages WHERE id = ?').get(insertResult.lastInsertRowid);
+  const createdAt = insertedRow?.created_at || '';
+
+  return {
+    ...insertResult,
+    createdAt,
+    timestamp: parseCreatedAtTimestamp(createdAt)
+  };
 }
 
 export function getMessages(chatType, chatId, limit = 100) {
@@ -136,6 +157,8 @@ export function getMessages(chatType, chatId, limit = 100) {
   const rows = stmt.all(chatType, chatId, limit);
 
   return rows.reverse().map(row => {
+    const createdAt = row.created_at || '';
+    const timestamp = parseCreatedAtTimestamp(createdAt);
     const officialIntervention = row.sender_role === 'admin' && String(row.content || '').startsWith('[官方介入]');
     return {
       id: row.uid || row.id,
@@ -149,7 +172,9 @@ export function getMessages(chatType, chatId, limit = 100) {
       senderUid: row.sender_uid || '',
       senderRole: row.sender_role,
       content: row.content,
-      time: new Date(row.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+      timestamp,
+      createdAt,
+      time: new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       messageType: row.message_type,
       coupon: row.coupon_data ? JSON.parse(row.coupon_data) : null,
       order: row.order_data ? JSON.parse(row.order_data) : null,

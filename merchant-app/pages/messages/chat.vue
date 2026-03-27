@@ -358,6 +358,13 @@ function connectSocket(token: string) {
     const index = messages.value.findIndex((item) => item.mid === String(payload?.tempId || ''))
     if (index < 0) return
     messages.value[index].mid = String(payload?.messageId || messages.value[index].mid)
+    messages.value[index].timestamp = resolveMessageTimestamp(
+      payload?.timestamp || payload?.createdAt,
+      messages.value[index].timestamp || Date.now()
+    )
+    if (payload?.time) {
+      messages.value[index].time = String(payload.time)
+    }
     messages.value[index].status = 'sent'
     persistLocalMessages()
   })
