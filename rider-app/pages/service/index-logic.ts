@@ -176,6 +176,28 @@ export default Vue.extend({
       })
     },
 
+    async replaceCachedHistory(list: any[] = []) {
+      const baseTimestamp = Date.now()
+      await db.deleteMessagesByChatId(this.chatId)
+      list.forEach((item: any, index: number) => {
+        const senderId = item?.senderId != null ? String(item.senderId) : ''
+        db.saveMessage(this.chatId, {
+          id: String(item.id),
+          chatId: this.chatId,
+          sender: item.sender,
+          senderId: item.senderId,
+          senderRole: item.senderRole,
+          content: item.content,
+          messageType: item.messageType || 'text',
+          timestamp: Number.isFinite(Number(item?.timestamp))
+            ? Number(item.timestamp)
+            : baseTimestamp + index,
+          isSelf: item.senderRole === 'rider' && senderId === String(this.riderId) ? 1 : 0,
+          avatar: item.avatar || ''
+        })
+      })
+    },
+
     async ensureConversationExists() {
       try {
         await upsertConversation(this.buildConversationPayload())
@@ -198,22 +220,7 @@ export default Vue.extend({
         const list = Array.isArray(response) ? response : []
         this.messages = this.normalizeHistoryMessages(list)
         this.historyFromLocalFallback = false
-        await db.deleteMessagesByChatId(this.chatId)
-        list.forEach((item: any) => {
-          const senderId = item?.senderId != null ? String(item.senderId) : ''
-          db.saveMessage(this.chatId, {
-            id: String(item.id),
-            chatId: this.chatId,
-            sender: item.sender,
-            senderId: item.senderId,
-            senderRole: item.senderRole,
-            content: item.content,
-            messageType: item.messageType || 'text',
-            timestamp: Date.now(),
-            isSelf: item.senderRole === 'rider' && senderId === String(this.riderId) ? 1 : 0,
-            avatar: item.avatar || ''
-          })
-        })
+        await this.replaceCachedHistory(list)
         this.$nextTick(() => { this.scrollToBottom() })
         await this.syncReadState()
       } catch (err) {
@@ -366,24 +373,7 @@ export default Vue.extend({
       }
       this.messages = this.normalizeHistoryMessages(payload.messages)
       this.historyFromLocalFallback = false
-      void db.deleteMessagesByChatId(this.chatId)
-        .then(() => {
-          payload.messages.forEach((m: any) => {
-            const senderId = m?.senderId != null ? String(m.senderId) : ''
-            db.saveMessage(this.chatId, {
-              id: String(m.id),
-              chatId: this.chatId,
-              sender: m.sender,
-              senderId: m.senderId,
-              senderRole: m.senderRole,
-              content: m.content,
-              messageType: m.messageType || 'text',
-              timestamp: Date.now(),
-              isSelf: m.senderRole === 'rider' && senderId === String(this.riderId) ? 1 : 0,
-              avatar: m.avatar || ''
-            })
-          })
-        })
+      void this.replaceCachedHistory(payload.messages)
         .catch((error: any) => {
           console.error('[RiderService] 保存服务端消息缓存失败:', error)
         })
