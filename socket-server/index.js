@@ -427,11 +427,17 @@ const httpServer = createServer(async (req, res) => {
       const data = await readJsonBody(req, SOCKET_JSON_BODY_LIMIT_BYTES);
       const messageData = normalizeMessageData(data);
       const result = saveMessage('support', data.chatId, messageData);
+      const timestamp = Number.isFinite(Number(result?.timestamp))
+        ? Number(result.timestamp)
+        : Date.now();
+      const createdAt = String(result?.createdAt || '');
       const message = {
         id: result.lastInsertRowid,
         chatId: data.chatId,
         ...messageData,
-        time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+        timestamp,
+        createdAt,
+        time: new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
       };
 
       if (supportNamespace) {

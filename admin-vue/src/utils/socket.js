@@ -114,7 +114,10 @@ class SocketService {
           messageType: data.messageType,
           coupon: data.coupon,
           order: data.order,
-          imageUrl: data.imageUrl
+          imageUrl: data.imageUrl,
+          timestamp: Number.isFinite(Number(data?.timestamp || data?.createdAt))
+            ? Number(data.timestamp || data.createdAt)
+            : Date.now()
         }).catch(() => {});
       }
     }
@@ -135,7 +138,10 @@ class SocketService {
             messageType: data.messageType,
             coupon: data.coupon,
             order: data.order,
-            imageUrl: data.imageUrl
+            imageUrl: data.imageUrl,
+            timestamp: Number.isFinite(Number(data?.timestamp || data?.createdAt))
+              ? Number(data.timestamp || data.createdAt)
+              : Date.now()
           }).catch((err) => console.error('Failed to cache message:', err));
         }
         callback(data);
