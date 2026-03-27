@@ -127,6 +127,16 @@ class SocketService {
     const namespace = arguments.length > 2 ? arguments[2] : null;
     const socket = namespace ? this.sockets.get(namespace) : this.currentSocket;
     if (socket) {
+      const listenerKey = `${namespace || ''}::${event}`;
+      if (!this.listeners.has(listenerKey)) {
+        this.listeners.set(listenerKey, new Map());
+      }
+      const listenerBucket = this.listeners.get(listenerKey);
+      const existingWrappedCallback = listenerBucket.get(callback);
+      if (existingWrappedCallback) {
+        socket.off(event, existingWrappedCallback);
+      }
+
       const wrappedCallback = (data) => {
         if (event === 'new_message' && data.chatId) {
           messageDB.saveMessage({
@@ -146,12 +156,8 @@ class SocketService {
         }
         callback(data);
       };
-      socket.off(event, wrappedCallback);
+      listenerBucket.set(callback, wrappedCallback);
       socket.on(event, wrappedCallback);
-      if (!this.listeners.has(event)) {
-        this.listeners.set(event, []);
-      }
-      this.listeners.get(event).push(wrappedCallback);
     }
   }
 
@@ -159,7 +165,16 @@ class SocketService {
     const namespace = arguments.length > 2 ? arguments[2] : null;
     const socket = namespace ? this.sockets.get(namespace) : this.currentSocket;
     if (socket) {
-      socket.off(event, callback);
+      const listenerKey = `${namespace || ''}::${event}`;
+      const listenerBucket = this.listeners.get(listenerKey);
+      const wrappedCallback = listenerBucket?.get(callback) || callback;
+      socket.off(event, wrappedCallback);
+      if (listenerBucket?.has(callback)) {
+        listenerBucket.delete(callback);
+        if (listenerBucket.size === 0) {
+          this.listeners.delete(listenerKey);
+        }
+      }
     }
   }
 
@@ -170,6 +185,11 @@ class SocketService {
         socket.disconnect();
         this.sockets.delete(namespace);
       }
+      Array.from(this.listeners.keys()).forEach((key) => {
+        if (key.startsWith(`${namespace}::`)) {
+          this.listeners.delete(key);
+        }
+      });
     } else {
       this.sockets.forEach((socket) => socket.disconnect());
       this.sockets.clear();

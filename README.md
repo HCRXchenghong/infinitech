@@ -194,6 +194,7 @@ npm run build
 - Go 消息历史接口现在会返回权威 `timestamp / createdAt`，用户端、App 端、商家端、后台和骑手端缓存开始按服务端时间戳保序，继续减少各端用 `Date.now()` 伪造历史时间带来的排序漂移
 - `socket-server` 的实时消息、`messages_loaded` 本地兜底历史、以及发送成功回执现在也开始透传统一的 `timestamp / createdAt / time`，继续把新消息和历史消息的时间口径往同一套服务端时间收紧
 - 旧的 `/api/messages` HTTP 同步入口和后台通用 `socket.js` 本地缓存也已补齐同样的时间字段，避免老入口继续把时间口径拉回客户端本地时钟
+- 后台通用 `socket.js` 的事件监听现在按 `namespace + event + callback` 去重和解绑，减少后台页长时间运行后的重复监听与消息回调堆积风险
 - 用户端、App 端、商家端、骑手端、后台客服工作台已开始持续收口到服务端会话模型
 - `/api/messages/conversations`、历史消息、已读同步已进入主链路
 - Socket 层已开始把消息和已读状态同步回 Go 服务
