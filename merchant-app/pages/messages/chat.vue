@@ -95,6 +95,7 @@ const reconnectTimer = ref<any>(null)
 
 const messages = ref<ViewMessage[]>([])
 const scrollIntoView = ref('')
+const historyFromLocalFallback = ref(false)
 
 const navSubtitle = computed(() => {
   if (chatRole.value === 'admin') return `${supportTitle.value}会话`
@@ -172,10 +173,12 @@ function restoreLocalMessages() {
     if (Array.isArray(list)) {
       messages.value = list
       scrollToBottom()
+      return messages.value.length > 0
     }
   } catch (err) {
     messages.value = []
   }
+  return false
 }
 
 function persistLocalMessages() {
@@ -230,14 +233,15 @@ async function loadServerHistory() {
   try {
     const response: any = await fetchHistory(chatId.value)
     const list = Array.isArray(response) ? response : []
-    if (list.length > 0) {
-      messages.value = normalizeHistoryMessages(list)
-      persistLocalMessages()
-      scrollToBottom()
-    }
+    messages.value = normalizeHistoryMessages(list)
+    historyFromLocalFallback.value = false
+    persistLocalMessages()
+    scrollToBottom()
     await syncReadState()
   } catch (err) {
     console.error('加载服务端聊天记录失败:', err)
+    historyFromLocalFallback.value = restoreLocalMessages()
+    scrollToBottom()
   }
 }
 
@@ -317,9 +321,10 @@ function connectSocket(token: string) {
 
   sock.on('messages_loaded', (payload: any) => {
     if (!payload || String(payload.chatId) !== String(chatId.value)) return
-    if (messages.value.length > 0) return
+    if (messages.value.length > 0 && !historyFromLocalFallback.value) return
     const list = Array.isArray(payload.messages) ? payload.messages : []
     messages.value = normalizeHistoryMessages(list)
+    historyFromLocalFallback.value = false
     persistLocalMessages()
     syncReadState()
     scrollToBottom()
@@ -511,7 +516,6 @@ onLoad((options: any = {}) => {
 
   const explicitTitle = safeDecode(options.name || '')
   chatTitle.value = explicitTitle || inferTitleByRole(chatRole.value)
-  restoreLocalMessages()
   void loadSupportRuntimeConfig(!explicitTitle).finally(async () => {
     await ensureConversationExists()
     await loadServerHistory()

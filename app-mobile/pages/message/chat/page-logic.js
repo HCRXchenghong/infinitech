@@ -209,6 +209,7 @@ export default {
       merchantWelcomeMessage: supportRuntime.merchantWelcomeMessage,
       riderWelcomeMessage: supportRuntime.riderWelcomeMessage,
       hasExplicitTitle: false,
+      historyFromLocalFallback: false,
       socket: null,
       isConnected: false,
       reconnectTimer: null,
@@ -235,7 +236,6 @@ export default {
     }
 
     this.bootstrapProfile()
-    this.restoreLocalMessages()
     this.initAudioPlayer()
     this.initRecorderManager()
     this.loadSupportRuntimeConfig()
@@ -384,10 +384,12 @@ export default {
               previewText: item.previewText || normalized.preview
             }
           })
+          return this.messages.length > 0
         }
       } catch (err) {
         console.error('恢复聊天缓存失败:', err)
       }
+      return false
     },
 
     persistLocalMessages() {
@@ -419,7 +421,7 @@ export default {
           showTime: index === 0 || list[index - 1].time !== item.time,
           status: isSelf ? item.status || 'success' : 'success',
           officialIntervention: !!item.officialIntervention,
-          interventionLabel: item.interventionLabel || '瀹樻柟浠嬪叆',
+          interventionLabel: item.interventionLabel || '官方介入',
           previewText: normalized.preview
         }
       })
@@ -429,7 +431,7 @@ export default {
       try {
         await upsertConversation(this.buildConversationPayload())
       } catch (err) {
-        console.error('鍒濆鍖栨湇鍔＄浼氳瘽澶辫触:', err)
+        console.error('初始化服务端会话失败:', err)
       }
     },
 
@@ -437,7 +439,7 @@ export default {
       try {
         await markConversationRead(this.roomId)
       } catch (err) {
-        console.error('鍚屾浼氳瘽宸茶澶辫触:', err)
+        console.error('同步会话已读失败:', err)
       }
     },
 
@@ -445,13 +447,14 @@ export default {
       try {
         const response = await fetchHistory(this.roomId)
         const list = Array.isArray(response) ? response : []
-        if (list.length > 0) {
-          this.messages = this.normalizeHistoryMessages(list)
-          this.persistLocalMessages()
-        }
+        this.messages = this.normalizeHistoryMessages(list)
+        this.historyFromLocalFallback = false
+        this.persistLocalMessages()
         await this.syncReadState()
       } catch (err) {
-        console.error('鍔犺浇鏈嶅姟绔秷鎭巻鍙插け璐?', err)
+        console.error('加载服务端消息历史失败:', err)
+        this.historyFromLocalFallback = this.restoreLocalMessages()
+        this.$nextTick(() => this.scrollToBottom())
       }
     },
 
@@ -506,40 +509,13 @@ export default {
 
       sock.on('messages_loaded', (payload) => {
         if (!payload || String(payload.chatId) !== String(this.roomId)) return
-        if (this.messages.length > 0) return
+        if (this.messages.length > 0 && !this.historyFromLocalFallback) return
 
         const list = Array.isArray(payload.messages) ? payload.messages : []
         this.messages = this.normalizeHistoryMessages(list)
+        this.historyFromLocalFallback = false
         this.persistLocalMessages()
         this.syncReadState()
-        this.$nextTick(() => this.scrollToBottom())
-        return
-        this.messages = list.map((item, index) => {
-          const isSelf =
-            String(item.senderId || '') === String(this.userId) &&
-            item.senderRole === 'user'
-          const normalized = normalizeMessageContent(
-            item.messageType || 'text',
-            item.content
-          )
-
-          return {
-            mid: item.id || `${Date.now()}_${index}`,
-            from: isSelf ? 'me' : 'other',
-            text: normalized.text,
-            type: normalized.type,
-            rawContent: normalized.rawContent,
-            meta: normalized.meta,
-            time: item.time || nowTime(),
-            showTime: index === 0 || list[index - 1].time !== item.time,
-            status: isSelf ? item.status || 'success' : 'success',
-            officialIntervention: !!item.officialIntervention,
-            interventionLabel: item.interventionLabel || '官方介入',
-            previewText: normalized.preview
-          }
-        })
-
-        this.persistLocalMessages()
         this.$nextTick(() => this.scrollToBottom())
       })
 

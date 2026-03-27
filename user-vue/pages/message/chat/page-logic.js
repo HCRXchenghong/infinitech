@@ -209,6 +209,7 @@ export default {
       merchantWelcomeMessage: supportRuntime.merchantWelcomeMessage,
       riderWelcomeMessage: supportRuntime.riderWelcomeMessage,
       hasExplicitTitle: false,
+      historyFromLocalFallback: false,
       socket: null,
       isConnected: false,
       reconnectTimer: null,
@@ -235,7 +236,6 @@ export default {
     }
 
     this.bootstrapProfile()
-    this.restoreLocalMessages()
     this.initAudioPlayer()
     this.initRecorderManager()
     this.loadSupportRuntimeConfig()
@@ -384,10 +384,12 @@ export default {
               previewText: item.previewText || normalized.preview
             }
           })
+          return this.messages.length > 0
         }
       } catch (err) {
         console.error('恢复聊天缓存失败:', err)
       }
+      return false
     },
 
     persistLocalMessages() {
@@ -445,13 +447,14 @@ export default {
       try {
         const response = await fetchHistory(this.roomId)
         const list = Array.isArray(response) ? response : []
-        if (list.length > 0) {
-          this.messages = this.normalizeHistoryMessages(list)
-          this.persistLocalMessages()
-        }
+        this.messages = this.normalizeHistoryMessages(list)
+        this.historyFromLocalFallback = false
+        this.persistLocalMessages()
         await this.syncReadState()
       } catch (err) {
         console.error('加载服务端消息历史失败:', err)
+        this.historyFromLocalFallback = this.restoreLocalMessages()
+        this.$nextTick(() => this.scrollToBottom())
       }
     },
 
@@ -506,10 +509,11 @@ export default {
 
       sock.on('messages_loaded', (payload) => {
         if (!payload || String(payload.chatId) !== String(this.roomId)) return
-        if (this.messages.length > 0) return
+        if (this.messages.length > 0 && !this.historyFromLocalFallback) return
 
         const list = Array.isArray(payload.messages) ? payload.messages : []
         this.messages = this.normalizeHistoryMessages(list)
+        this.historyFromLocalFallback = false
         this.persistLocalMessages()
         this.syncReadState()
         this.$nextTick(() => this.scrollToBottom())
