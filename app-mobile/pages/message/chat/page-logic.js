@@ -455,52 +455,6 @@ export default {
       }
     },
 
-    upsertSession(lastMsgText, incoming) {
-      const sessionKey = `user_message_sessions_${this.userId || 'guest'}`
-      let sessions = []
-
-      try {
-        const raw = uni.getStorageSync(sessionKey)
-        sessions = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : []
-        if (!Array.isArray(sessions)) sessions = []
-      } catch (err) {
-        sessions = []
-      }
-
-      const role = this.role || (this.chatType === 'support' ? 'cs' : 'shop')
-      const sessionId = this.roomId
-      const index = sessions.findIndex(
-        (item) => String(item.id || item.roomId) === String(sessionId)
-      )
-
-      const session = {
-        id: sessionId,
-        roomId: this.roomId,
-        role,
-        targetId: this.targetId || '',
-        orderId: this.orderId || '',
-        name:
-          this.title ||
-          (role === 'rider' ? '骑手' : role === 'shop' ? '商家' : this.supportTitle),
-        avatarUrl: this.otherAvatar || DEFAULT_OTHER_AVATAR,
-        tag: role === 'rider' ? '骑手' : role === 'shop' ? '商家' : '客服',
-        time: nowTime(),
-        unread: incoming ? 1 : 0,
-        updatedAt: Date.now(),
-        online: true,
-        lastMessage: lastMsgText || '[暂无消息]'
-      }
-
-      if (index >= 0) {
-        const old = sessions[index]
-        sessions.splice(index, 1)
-        session.unread = incoming ? Number(old.unread || 0) + 1 : Number(old.unread || 0)
-      }
-
-      sessions.unshift(session)
-      uni.setStorageSync(sessionKey, JSON.stringify(sessions.slice(0, 100)))
-    },
-
     async initSocket() {
       if (!this.userId) return
 
