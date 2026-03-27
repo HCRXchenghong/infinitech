@@ -58,6 +58,7 @@ export function useChatConsole(options = {}) {
 
   const chats = ref([]);
   const messages = ref([]);
+  const messagesFromLocalFallback = ref(false);
   const { hasSeenMessage } = createSeenMessageTracker();
 
   const contextMenu = ref({ show: false, x: 0, y: 0, chat: null });
@@ -107,6 +108,24 @@ export function useChatConsole(options = {}) {
     }
   }
 
+  async function loadCachedMessages(chatId) {
+    const normalizedChatId = normalizeChatId(chatId);
+    if (!normalizedChatId) return false;
+
+    try {
+      const cachedMessages = await messageDB.getMessages(normalizedChatId);
+      if (cachedMessages && cachedMessages.length > 0) {
+        messages.value = mapCachedMessages(cachedMessages);
+        nextTick(() => scrollToBottom());
+        return true;
+      }
+    } catch (error) {
+      console.error('加载本地消息失败:', error);
+    }
+
+    return false;
+  }
+
   function emitSendMessage(payload) {
     const socket = getSocket();
     if (!socket || !selectedChat.value) return;
@@ -125,18 +144,9 @@ export function useChatConsole(options = {}) {
     if (!normalizedChatId) return;
 
     try {
-      const cachedMessages = await messageDB.getMessages(normalizedChatId);
-      if (cachedMessages && cachedMessages.length > 0) {
-        messages.value = mapCachedMessages(cachedMessages);
-        nextTick(() => scrollToBottom());
-      }
-    } catch (error) {
-      console.error('加载本地消息失败:', error);
-    }
-
-    try {
       const serverMessages = await fetchMessageHistory(normalizedChatId);
       messages.value = mapLoadedMessages(serverMessages);
+      messagesFromLocalFallback.value = false;
       serverMessages.forEach((msg) => {
         hasSeenMessage(normalizedChatId, msg.id);
       });
@@ -151,6 +161,7 @@ export function useChatConsole(options = {}) {
       nextTick(() => scrollToBottom());
     } catch (error) {
       console.error('加载服务端消息失败:', error);
+      messagesFromLocalFallback.value = await loadCachedMessages(normalizedChatId);
     }
   }
 
@@ -161,6 +172,7 @@ export function useChatConsole(options = {}) {
     chat.id = normalizeChatId(chat.id);
     selectedChat.value = chat;
     chat.unread = 0;
+    messagesFromLocalFallback.value = false;
     void loadMessages(chat.id);
 
     socket.emit('join_chat', { chatId: chat.id, userId: 'admin', role: 'admin' });
@@ -434,8 +446,10 @@ export function useChatConsole(options = {}) {
     socket.on('messages_loaded', async (data) => {
       const loadedChatId = normalizeChatId(data.chatId);
       if (!selectedChat.value || loadedChatId !== normalizeChatId(selectedChat.value.id)) return;
+      if (messages.value.length > 0 && !messagesFromLocalFallback.value) return;
 
       messages.value = mapLoadedMessages(data.messages || []);
+      messagesFromLocalFallback.value = false;
       (data.messages || []).forEach((msg) => {
         hasSeenMessage(loadedChatId, msg.id);
       });

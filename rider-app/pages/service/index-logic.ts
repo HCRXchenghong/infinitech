@@ -33,6 +33,7 @@ export default Vue.extend({
       recentOrders: [] as any[],
       showOrderDetailPopup: false,
       currentOrderDetail: null as any,
+      historyFromLocalFallback: false,
       loadRetryTimer: null as any,
       loadRetryCount: 0,
       maxLoadRetry: 20
@@ -121,7 +122,6 @@ export default Vue.extend({
     async initDatabase() {
       try {
         await db.open()
-        await this.loadCachedMessages()
       } catch (err) {
         /* ignore */
       }
@@ -130,7 +130,7 @@ export default Vue.extend({
     async loadCachedMessages() {
       try {
         const rows = await db.getMessages(this.chatId)
-        if (!Array.isArray(rows) || rows.length === 0) return
+        if (!Array.isArray(rows) || rows.length === 0) return false
 
         this.messages = rows.map((item: any) => {
           const senderId = item?.senderId != null ? String(item.senderId) : ''
@@ -141,6 +141,7 @@ export default Vue.extend({
           }
         })
         this.$nextTick(() => { this.scrollToBottom() })
+        return this.messages.length > 0
       } catch (err) {
         console.error('[RiderService] 加载本地消息缓存失败:', err)
       }
@@ -195,27 +196,28 @@ export default Vue.extend({
       try {
         const response: any = await fetchHistory(this.chatId)
         const list = Array.isArray(response) ? response : []
-        if (list.length > 0) {
-          this.messages = this.normalizeHistoryMessages(list)
-          list.forEach((item: any) => {
-            const senderId = item?.senderId != null ? String(item.senderId) : ''
-            db.saveMessage(this.chatId, {
-              id: String(item.id),
-              chatId: this.chatId,
-              sender: item.sender,
-              senderId: item.senderId,
-              senderRole: item.senderRole,
-              content: item.content,
-              messageType: item.messageType || 'text',
-              timestamp: Date.now(),
-              isSelf: item.senderRole === 'rider' && senderId === String(this.riderId) ? 1 : 0,
-              avatar: item.avatar || ''
-            })
+        this.messages = this.normalizeHistoryMessages(list)
+        this.historyFromLocalFallback = false
+        await db.deleteMessagesByChatId(this.chatId)
+        list.forEach((item: any) => {
+          const senderId = item?.senderId != null ? String(item.senderId) : ''
+          db.saveMessage(this.chatId, {
+            id: String(item.id),
+            chatId: this.chatId,
+            sender: item.sender,
+            senderId: item.senderId,
+            senderRole: item.senderRole,
+            content: item.content,
+            messageType: item.messageType || 'text',
+            timestamp: Date.now(),
+            isSelf: item.senderRole === 'rider' && senderId === String(this.riderId) ? 1 : 0,
+            avatar: item.avatar || ''
           })
-          this.$nextTick(() => { this.scrollToBottom() })
-        }
+        })
+        this.$nextTick(() => { this.scrollToBottom() })
         await this.syncReadState()
       } catch (err) {
+        this.historyFromLocalFallback = await this.loadCachedMessages()
         console.error('[RiderService] 加载服务端消息历史失败:', err)
       }
     },
@@ -300,6 +302,7 @@ export default Vue.extend({
         ? this.safeDecode(payload.avatar)
         : this.defaultAvatarByRole(this.chatRole)
       this.messages = []
+      this.historyFromLocalFallback = false
 
       if (typeof uni.setNavigationBarTitle === 'function') {
         uni.setNavigationBarTitle({
@@ -356,25 +359,35 @@ export default Vue.extend({
 
     onMessagesLoaded(payload: any) {
       if (!payload || String(payload.chatId) !== String(this.chatId)) return
-      if (Array.isArray(payload.messages) && this.messages.length === 0) {
-        this.messages = this.normalizeHistoryMessages(payload.messages)
-        payload.messages.forEach((m: any) => {
-          const senderId = m?.senderId != null ? String(m.senderId) : ''
-          db.saveMessage(this.chatId, {
-            id: String(m.id),
-            chatId: this.chatId,
-            sender: m.sender,
-            senderId: m.senderId,
-            senderRole: m.senderRole,
-            content: m.content,
-            messageType: m.messageType || 'text',
-            timestamp: Date.now(),
-            isSelf: m.senderRole === 'rider' && senderId === String(this.riderId) ? 1 : 0,
-            avatar: m.avatar || ''
+      if (!Array.isArray(payload.messages)) return
+      if (this.messages.length > 0 && !this.historyFromLocalFallback) {
+        void this.syncReadState()
+        return
+      }
+      this.messages = this.normalizeHistoryMessages(payload.messages)
+      this.historyFromLocalFallback = false
+      void db.deleteMessagesByChatId(this.chatId)
+        .then(() => {
+          payload.messages.forEach((m: any) => {
+            const senderId = m?.senderId != null ? String(m.senderId) : ''
+            db.saveMessage(this.chatId, {
+              id: String(m.id),
+              chatId: this.chatId,
+              sender: m.sender,
+              senderId: m.senderId,
+              senderRole: m.senderRole,
+              content: m.content,
+              messageType: m.messageType || 'text',
+              timestamp: Date.now(),
+              isSelf: m.senderRole === 'rider' && senderId === String(this.riderId) ? 1 : 0,
+              avatar: m.avatar || ''
+            })
           })
         })
-        this.$nextTick(() => { this.scrollToBottom() })
-      }
+        .catch((error: any) => {
+          console.error('[RiderService] 保存服务端消息缓存失败:', error)
+        })
+      this.$nextTick(() => { this.scrollToBottom() })
       void this.syncReadState()
     },
 
