@@ -360,21 +360,31 @@ export default {
       return `user_chat_messages_${this.userId || 'guest'}_${this.roomId}`
     },
 
+    resolveMessageTimestamp(rawValue, fallback = Date.now()) {
+      const value = Number(rawValue)
+      return Number.isFinite(value) && value > 0 ? value : fallback
+    },
+
     restoreLocalMessages() {
       try {
         const raw = uni.getStorageSync(this.getMessageStorageKey())
         const parsed = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : []
         if (Array.isArray(parsed)) {
-          this.messages = parsed.map((item) => {
+          this.messages = parsed.map((item, index) => {
             const normalized = normalizeMessageContent(
               item.type || 'text',
               Object.prototype.hasOwnProperty.call(item || {}, 'rawContent')
                 ? item.rawContent
                 : item.text
             )
+            const timestamp = this.resolveMessageTimestamp(
+              item.timestamp || item.createdAt,
+              Date.now() + index
+            )
 
             return {
               ...item,
+              timestamp,
               type: normalized.type,
               text: normalized.text,
               rawContent: Object.prototype.hasOwnProperty.call(item || {}, 'rawContent')
@@ -409,6 +419,12 @@ export default {
           String(item.senderId || '') === String(this.userId) &&
           item.senderRole === 'user'
         const normalized = normalizeMessageContent(item.messageType || 'text', item.content)
+        const timestamp = this.resolveMessageTimestamp(
+          item.timestamp || item.createdAt,
+          Date.now() + index
+        )
+        const time = item.time || nowTime()
+        const previousTime = index === 0 ? '' : (list[index - 1].time || nowTime())
 
         return {
           mid: item.id || `${Date.now()}_${index}`,
@@ -417,8 +433,9 @@ export default {
           type: normalized.type,
           rawContent: normalized.rawContent,
           meta: normalized.meta,
-          time: item.time || nowTime(),
-          showTime: index === 0 || list[index - 1].time !== item.time,
+          timestamp,
+          time,
+          showTime: index === 0 || previousTime !== time,
           status: isSelf ? item.status || 'success' : 'success',
           officialIntervention: !!item.officialIntervention,
           interventionLabel: item.interventionLabel || '官方介入',
@@ -605,6 +622,7 @@ export default {
     addMessage(from, text, type = 'text', showTime = false, extra = {}) {
       const mid = `${Date.now()}_${Math.floor(Math.random() * 1000)}`
       const normalized = normalizeMessageContent(type, text)
+      const timestamp = this.resolveMessageTimestamp(extra.timestamp, Date.now())
       this.messages.push({
         mid,
         from,
@@ -612,6 +630,7 @@ export default {
         type: normalized.type,
         rawContent: normalized.rawContent,
         meta: normalized.meta,
+        timestamp,
         time: nowTime(),
         showTime,
         status: from === 'me' ? 'sending' : 'success',

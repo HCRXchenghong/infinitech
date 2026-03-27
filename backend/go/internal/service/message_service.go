@@ -186,6 +186,8 @@ func (s *MessageService) GetMessageHistory(ctx context.Context, roomID string) (
 			"order":       parseJSONText(row.OrderData),
 			"imageUrl":    strings.TrimSpace(row.ImageURL),
 			"avatar":      strings.TrimSpace(row.Avatar),
+			"timestamp":   row.CreatedAt.UnixMilli(),
+			"createdAt":   row.CreatedAt.UnixMilli(),
 			"time":        formatClock(row.CreatedAt),
 			"status":      "sent",
 		})

@@ -71,6 +71,7 @@ interface ViewMessage {
   self: boolean
   text: string
   type: string
+  timestamp: number
   time: string
   status: 'sending' | 'sent' | 'failed'
   officialIntervention: boolean
@@ -116,6 +117,11 @@ function nowClock() {
   const hh = String(d.getHours()).padStart(2, '0')
   const mm = String(d.getMinutes()).padStart(2, '0')
   return `${hh}:${mm}`
+}
+
+function resolveMessageTimestamp(rawValue: any, fallback = Date.now()) {
+  const value = Number(rawValue)
+  return Number.isFinite(value) && value > 0 ? value : fallback
 }
 
 function normalizeRole(raw: any): ChatRole {
@@ -171,7 +177,10 @@ function restoreLocalMessages() {
     const raw = uni.getStorageSync(localMessageKey())
     const list = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : []
     if (Array.isArray(list)) {
-      messages.value = list
+      messages.value = list.map((item: any, index: number) => ({
+        ...item,
+        timestamp: resolveMessageTimestamp(item?.timestamp || item?.createdAt, Date.now() + index)
+      }))
       scrollToBottom()
       return messages.value.length > 0
     }
@@ -197,11 +206,13 @@ function scrollToBottom() {
 function toViewMessage(raw: any): ViewMessage {
   const senderId = raw?.senderId != null ? String(raw.senderId) : ''
   const self = raw?.senderRole === 'merchant' && senderId === String(merchantId.value)
+  const timestamp = resolveMessageTimestamp(raw?.timestamp || raw?.createdAt, Date.now())
   return {
     mid: String(raw?.id || `${Date.now()}_${Math.random()}`),
     self,
     text: String(raw?.content || ''),
     type: String(raw?.messageType || 'text'),
+    timestamp,
     time: String(raw?.time || nowClock()),
     status: 'sent',
     officialIntervention: !!raw?.officialIntervention,
@@ -252,11 +263,13 @@ function appendLocalMessage(
   status: 'sending' | 'sent' | 'failed' = 'sending'
 ) {
   const mid = `${Date.now()}_${Math.floor(Math.random() * 1000)}`
+  const timestamp = Date.now()
   messages.value.push({
     mid,
     self,
     text: content,
     type,
+    timestamp,
     time: nowClock(),
     status,
     officialIntervention: false,
