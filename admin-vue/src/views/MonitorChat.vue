@@ -23,7 +23,7 @@
             <div class="chat-meta">
               <div class="chat-time">{{ chat.time }}</div>
               <div v-if="chat.unread > 0 && !chat.muted" class="chat-badge">{{ chat.unread }}</div>
-              <div v-if="chat.muted" class="chat-muted">🔕</div>
+              <div v-if="chat.muted" class="chat-muted">已静音</div>
             </div>
           </div>
         </div>
@@ -61,7 +61,7 @@
                   <img :src="msg.content" alt="图片" @click="previewImage(msg.content)" />
                 </div>
                 <div v-else-if="msg.type === 'coupon'" class="message-bubble message-coupon">
-                  <div class="coupon-icon">🎫</div>
+                  <div class="coupon-icon">券</div>
                   <div class="coupon-info">
                     <div class="coupon-name">{{ msg.coupon.name }}</div>
                     <div class="coupon-amount">¥{{ msg.coupon.amount }}</div>
@@ -77,10 +77,10 @@
                 <div v-else class="message-bubble">{{ msg.content }}</div>
                 <div class="message-meta">
                   <span class="message-time">{{ msg.time }}</span>
-                  <span v-if="msg.isSelf && msg.status === 'sending'" class="msg-status sending">⏳</span>
-                  <span v-if="msg.isSelf && msg.status === 'failed'" class="msg-status failed" @click="resendMessage(msg)">❗发送失败</span>
-                  <span v-if="msg.isSelf && msg.status === 'sent'" class="msg-status sent">✓</span>
-                  <span v-if="msg.isSelf && msg.status === 'read'" class="msg-status read">✓✓</span>
+                  <span v-if="msg.isSelf && msg.status === 'sending'" class="msg-status sending">发送中</span>
+                  <span v-if="msg.isSelf && msg.status === 'failed'" class="msg-status failed" @click="resendMessage(msg)">发送失败，点击重试</span>
+                  <span v-if="msg.isSelf && msg.status === 'sent'" class="msg-status sent">已发送</span>
+                  <span v-if="msg.isSelf && msg.status === 'read'" class="msg-status read">已读</span>
                 </div>
               </div>
             </div>
@@ -110,14 +110,14 @@
           </div>
         </div>
         <div v-else class="chat-empty">
-          <div class="empty-icon">💬</div>
+          <div class="empty-icon">消息</div>
           <div class="empty-text">选择一个聊天开始对话</div>
         </div>
       </div>
     </div>
 
     <el-dialog v-model="showCouponDialog" title="选择优惠券" width="500px">
-      <div class="coupon-list">
+      <div v-if="coupons.length" class="coupon-list">
         <div
           v-for="coupon in coupons"
           :key="coupon.id"
@@ -129,10 +129,11 @@
           <div class="coupon-desc">{{ coupon.desc }}</div>
         </div>
       </div>
+      <div v-else class="dialog-empty">暂无可发送优惠券</div>
     </el-dialog>
 
     <el-dialog v-model="showOrderDialog" title="选择订单" width="500px">
-      <div class="order-list">
+      <div v-if="orders.length" class="order-list">
         <div
           v-for="order in orders"
           :key="order.id"
@@ -146,6 +147,7 @@
           </div>
         </div>
       </div>
+      <div v-else class="dialog-empty">暂无可发送订单</div>
     </el-dialog>
 
     <el-image-viewer v-if="showImageViewer" :url-list="[previewImageUrl]" @close="showImageViewer = false" />
@@ -196,11 +198,6 @@ const {
   defaultChatName: (data) => `聊天 #${data.chatId}`,
   awaitIncomingSave: true,
   upsertBeforeSelectedCheck: true,
-  coupons: [
-    { id: 1, name: '新用户专享', amount: 10, desc: '满30可用' },
-    { id: 2, name: '配送优惠券', amount: 5, desc: '无门槛' },
-    { id: 3, name: '满减优惠券', amount: 20, desc: '满100可用' }
-  ],
   async onClearMessages({ socket, selectedChat, messages, clearingMessages }) {
     if (!selectedChat.value || clearingMessages.value || !socket) return;
 

@@ -21,32 +21,18 @@ import {
   upsertChatFromIncoming
 } from './chatConsoleHelpers';
 
-const DEFAULT_ORDERS = [
-  { id: 1, orderNo: '202401010001', productName: '麻辣香锅', amount: 45, status: '配送中' },
-  { id: 2, orderNo: '202401010002', productName: '黄焖鸡米饭', amount: 32, status: '已完成' },
-  { id: 3, orderNo: '202401010003', productName: '重庆小面', amount: 28, status: '待接单' }
-];
-
 function resolveDefaultChatName(defaultChatName, data) {
   return typeof defaultChatName === 'function' ? defaultChatName(data) : defaultChatName;
-}
-
-function resolveLoadMessagesPayload(loadMessagesExtra, chatId) {
-  const base = { chatId };
-  const extra = typeof loadMessagesExtra === 'function' ? loadMessagesExtra(chatId) : loadMessagesExtra;
-  if (extra && typeof extra === 'object') return { ...base, ...extra };
-  return base;
 }
 
 export function useChatConsole(options = {}) {
   const {
     namespace,
-    loadMessagesExtra,
     beforeInitLoad,
     defaultChatName = '聊天',
     disabledActionMessage = '按平台规则，仅平台监控页可彻底删除聊天记录',
     coupons: couponSeed = [],
-    orders: orderSeed = DEFAULT_ORDERS,
+    orders: orderSeed = [],
     awaitIncomingSave = false,
     upsertBeforeSelectedCheck = false,
     onClearMessages,
@@ -97,9 +83,7 @@ export function useChatConsole(options = {}) {
   }
 
   function scheduleRefreshChats(delay = 250) {
-    if (refreshChatsTimer) {
-      clearTimeout(refreshChatsTimer);
-    }
+    if (refreshChatsTimer) clearTimeout(refreshChatsTimer);
     refreshChatsTimer = setTimeout(() => {
       refreshChatsTimer = null;
       void refreshChats();
@@ -160,7 +144,7 @@ export function useChatConsole(options = {}) {
       try {
         await saveLoadedMessages(messageDB, normalizedChatId, serverMessages);
       } catch (error) {
-        console.error('淇濆瓨娑堟伅澶辫触:', error);
+        console.error('保存服务端消息缓存失败:', error);
       }
 
       await syncReadState(normalizedChatId);
@@ -177,7 +161,7 @@ export function useChatConsole(options = {}) {
     chat.id = normalizeChatId(chat.id);
     selectedChat.value = chat;
     chat.unread = 0;
-    loadMessages(chat.id);
+    void loadMessages(chat.id);
 
     socket.emit('join_chat', { chatId: chat.id, userId: 'admin', role: 'admin' });
     socket.emit('mark_all_read', { chatId: chat.id });
