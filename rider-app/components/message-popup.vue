@@ -14,7 +14,7 @@
 
       <view class="popup-content" @click.stop="handleClick">
         <text class="message-text">{{ displayContent }}</text>
-        <text class="view-detail">点击查看详情 ›</text>
+        <text class="view-detail">点击查看详情 ></text>
       </view>
     </view>
   </view>
@@ -55,26 +55,15 @@ export default Vue.extend({
     }
   },
   mounted() {
-    const pages = getCurrentPages()
-    const currentPage = pages[pages.length - 1]
-
-    // 获取系统信息
     try {
       const systemInfo = uni.getSystemInfoSync()
       this.statusBarHeight = systemInfo.statusBarHeight || 44
       this.statusBarTop = 0
-
-      // #ifdef APP-PLUS
-      this.statusBarTop = 0
-      // #endif
     } catch (e) {
-      // system info retrieval failure is non-critical
+      // ignore
     }
 
-    // 监听弹窗状态变化
     uni.$on('popup-state-change', this.onPopupStateChange)
-
-    // 同时监听直接事件（兼容性）
     uni.$on('show-message-popup', this.onShowMessage)
     uni.$on('hide-message-popup', this.onHideMessage)
     uni.$on('test-popup-event', this.onShowMessage)
@@ -92,7 +81,7 @@ export default Vue.extend({
     onShowMessage(message: any) {
       this.popupState = {
         visible: true,
-        message: message
+        message
       }
     },
     onHideMessage() {
@@ -199,10 +188,10 @@ export default Vue.extend({
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 56rpx;
+  font-size: 40rpx;
   line-height: 1;
   color: #64748b;
-  font-weight: 300;
+  font-weight: 400;
   flex-shrink: 0;
 }
 

@@ -23,8 +23,6 @@ export interface MessageData {
 
 class MessageManager {
   private currentChatId: string | number | null = null
-  private messageQueue: MessageData[] = []
-  private isPopupVisible = false
   private listeners: Array<(message: MessageData) => void> = []
 
   constructor() {
@@ -51,9 +49,6 @@ class MessageManager {
 
   setCurrentChatId(chatId: string | number | null) {
     this.currentChatId = chatId
-    if (chatId !== null && chatId !== undefined && chatId !== '') {
-      this.clearUnreadMessages(chatId)
-    }
   }
 
   getCurrentChatId(): string | number | null {
@@ -89,11 +84,6 @@ class MessageManager {
     const riderId = uni.getStorageSync('riderId')
     if (String(message.senderId) === String(riderId)) {
       return
-    }
-
-    this.messageQueue.push(message)
-    if (this.messageQueue.length > 10) {
-      this.messageQueue.shift()
     }
 
     notification.notifyMessage({
@@ -205,57 +195,6 @@ class MessageManager {
 
   hidePopup() {
     uni.$emit('hide-message-popup')
-  }
-
-  clearQueue() {
-    this.messageQueue = []
-  }
-
-  getUnreadCount(): number {
-    return this.messageQueue.length
-  }
-
-  setPopupVisible(visible: boolean) {
-    this.isPopupVisible = visible
-  }
-
-  isPopupCurrentlyVisible(): boolean {
-    return this.isPopupVisible
-  }
-
-  saveUnreadMessage(message: MessageData) {
-    try {
-      const key = `unread_messages_${message.chatId}`
-      let messages: MessageData[] = uni.getStorageSync(key) || []
-      messages.push(message)
-
-      if (messages.length > 50) {
-        messages = messages.slice(-50)
-      }
-
-      uni.setStorageSync(key, messages)
-    } catch (e) {
-      console.error('保存未读消息失败:', e)
-    }
-  }
-
-  clearUnreadMessages(chatId: string | number) {
-    try {
-      const key = `unread_messages_${chatId}`
-      uni.removeStorageSync(key)
-    } catch (e) {
-      console.error('清除未读消息失败:', e)
-    }
-  }
-
-  getUnreadMessages(chatId: string | number): MessageData[] {
-    try {
-      const key = `unread_messages_${chatId}`
-      return uni.getStorageSync(key) || []
-    } catch (e) {
-      console.error('获取未读消息失败:', e)
-      return []
-    }
   }
 }
 
