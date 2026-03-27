@@ -60,6 +60,9 @@ function saveDB() {
 export default {
   async saveMessage(message) {
     const database = await initDB();
+    const timestamp = Number.isFinite(Number(message.timestamp))
+      ? Number(message.timestamp)
+      : Date.now();
     database.run(
       `INSERT OR REPLACE INTO messages (id, chatId, sender, senderId, senderRole, content, messageType, timestamp, coupon, orderData, imageUrl, avatar)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -71,7 +74,7 @@ export default {
         message.senderRole || 'user',
         message.content || '',
         message.messageType || 'text',
-        Date.now(),
+        timestamp,
         message.coupon ? JSON.stringify(message.coupon) : null,
         message.order ? JSON.stringify(message.order) : null,
         message.imageUrl || null,

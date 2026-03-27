@@ -144,12 +144,23 @@ function toDbRecord(chatId, message) {
 }
 
 export function saveIncomingMessage(messageDB, chatId, message) {
-  return messageDB.saveMessage(toDbRecord(chatId, message));
+  return messageDB.saveMessage({
+    ...toDbRecord(chatId, message),
+    timestamp: message.timestamp
+  });
 }
 
 export async function saveLoadedMessages(messageDB, chatId, list) {
-  for (const message of (list || [])) {
-    await messageDB.saveMessage(toDbRecord(chatId, message));
+  await messageDB.clearMessages(chatId);
+
+  const baseTimestamp = Date.now();
+  for (const [index, message] of (list || []).entries()) {
+    await messageDB.saveMessage({
+      ...toDbRecord(chatId, message),
+      timestamp: Number.isFinite(Number(message?.timestamp))
+        ? Number(message.timestamp)
+        : baseTimestamp + index
+    });
   }
 }
 
