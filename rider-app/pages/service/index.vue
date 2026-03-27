@@ -14,7 +14,7 @@
           <text class="menu-text">举报客服</text>
         </view>
         <view class="menu-item" @click="clearMessages">
-          <text class="menu-text">删除聊天记录</text>
+          <text class="menu-text">清除本地记录</text>
         </view>
       </view>
     </view>
@@ -49,7 +49,7 @@
             <view class="coupon-icon">券</view>
             <view class="coupon-info">
               <text class="coupon-name">{{ msg.coupon.name }}</text>
-              <text class="coupon-amount">￥{{ msg.coupon.amount }}</text>
+              <text class="coupon-amount">¥{{ msg.coupon.amount }}</text>
             </view>
           </view>
           <view
@@ -66,7 +66,7 @@
             </text>
             <view class="order-card-meta">
               <text class="order-card-no">#{{ formatOrderNo(msg.order) }}</text>
-              <text class="order-card-amount">￥{{ formatOrderAmount(msg.order) }}</text>
+              <text class="order-card-amount">¥{{ formatOrderAmount(msg.order) }}</text>
             </view>
             <text class="order-card-link">查看详情</text>
           </view>
@@ -115,7 +115,7 @@
       <view class="order-picker" @click.stop>
         <view class="picker-header">
           <text class="picker-title">选择订单</text>
-          <text class="picker-close" @click="showOrderPicker = false">x</text>
+          <text class="picker-close" @click="showOrderPicker = false">×</text>
         </view>
         <scroll-view class="picker-list" scroll-y>
           <view v-if="!recentOrders.length" class="picker-empty">暂无可发送订单</view>
@@ -130,7 +130,7 @@
               <text class="order-picker-no">#{{ formatOrderNo(order) }}</text>
             </view>
             <view class="order-picker-right">
-              <text class="order-picker-amount">￥{{ formatOrderAmount(order) }}</text>
+              <text class="order-picker-amount">¥{{ formatOrderAmount(order) }}</text>
               <text class="order-picker-status">{{ getOrderStatusText(order) }}</text>
             </view>
           </view>

@@ -614,12 +614,8 @@ export default Vue.extend({
       this.showMenu = false
       uni.showModal({
         title: '举报客服',
-        content: '确定要举报该客服吗？',
-        success: (res: any) => {
-          if (res.confirm) {
-            uni.showToast({ title: '举报已提交', icon: 'success' })
-          }
-        }
+        content: '在线举报能力建设中，请联系平台运营处理。',
+        showCancel: false
       })
     },
 
@@ -627,13 +623,13 @@ export default Vue.extend({
       this.showMenu = false
       uni.showModal({
         title: '删除聊天记录',
-        content: '确定要删除所有聊天记录吗？',
+        content: '确定要删除当前会话的本地聊天记录吗？',
         success: async (res: any) => {
           if (res.confirm) {
             try {
               await db.deleteMessagesByChatId(this.chatId)
               this.messages = []
-              uni.showToast({ title: '仅清除本地记录', icon: 'success' })
+              uni.showToast({ title: '已清除本地记录', icon: 'success' })
             } catch (err) {
               uni.showToast({ title: '删除失败', icon: 'none' })
             }
