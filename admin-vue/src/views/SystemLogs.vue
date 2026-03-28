@@ -43,6 +43,7 @@
             <span v-if="item.latencyMs !== null && item.latencyMs !== undefined">耗时 {{ item.latencyMs }}ms</span>
             <span v-if="item.error" class="service-error">{{ item.error }}</span>
           </div>
+          <div v-if="item.detail" class="service-detail">{{ item.detail }}</div>
         </div>
       </div>
       <el-empty v-else description="暂无服务状态数据" :image-size="56" />

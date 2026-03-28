@@ -82,7 +82,8 @@ async function probeHttp(url, timeoutMs) {
       ok: false,
       latencyMs: null,
       httpStatus: null,
-      error: "empty_url"
+      error: "empty_url",
+      body: null
     };
   }
 
@@ -96,16 +97,54 @@ async function probeHttp(url, timeoutMs) {
       ok: response.status >= 200 && response.status < 300,
       latencyMs: Date.now() - startMs,
       httpStatus: response.status,
-      error: ""
+      error: "",
+      body: response.data || null
     };
   } catch (error) {
     return {
       ok: false,
       latencyMs: Date.now() - startMs,
       httpStatus: null,
-      error: error && error.code ? String(error.code) : String(error && error.message ? error.message : "http_error")
+      error: error && error.code ? String(error.code) : String(error && error.message ? error.message : "http_error"),
+      body: error && error.response ? error.response.data || null : null
     };
   }
+}
+
+function buildProbeDetail(result) {
+  const body = result && result.body && typeof result.body === "object" ? result.body : null;
+  if (!body) {
+    return "";
+  }
+
+  const details = [];
+  if (body.status) {
+    details.push(`status=${body.status}`);
+  }
+  if (body.error) {
+    details.push(`error=${body.error}`);
+  }
+  if (body.redis && typeof body.redis === "object") {
+    if (typeof body.redis.connected === "boolean") {
+      details.push(`redisConnected=${body.redis.connected}`);
+    }
+    if (body.redis.mode) {
+      details.push(`redisMode=${body.redis.mode}`);
+    }
+  }
+  if (body.dependencies && body.dependencies.goApi) {
+    const goApi = body.dependencies.goApi;
+    const goApiDetail = [
+      `goApiOk=${goApi.ok === true}`,
+      goApi.probe ? `goApiProbe=${goApi.probe}` : "",
+      goApi.error ? `goApiError=${goApi.error}` : ""
+    ].filter(Boolean).join(" ");
+    if (goApiDetail) {
+      details.push(goApiDetail);
+    }
+  }
+
+  return details.join(" | ");
 }
 
 async function probeHttpWithFallback(urls, timeoutMs) {
@@ -171,7 +210,8 @@ async function collectServiceStatus() {
       healthy: bffCheck.ok,
       latencyMs: bffCheck.latencyMs,
       httpStatus: bffCheck.httpStatus,
-      error: bffCheck.error
+      error: bffCheck.error,
+      detail: buildProbeDetail(bffCheck)
     },
     {
       key: "go",
@@ -185,7 +225,8 @@ async function collectServiceStatus() {
       healthy: goCheck.ok,
       latencyMs: goCheck.latencyMs,
       httpStatus: goCheck.httpStatus,
-      error: goCheck.error
+      error: goCheck.error,
+      detail: buildProbeDetail(goCheck)
     },
     {
       key: "socket",
@@ -199,7 +240,8 @@ async function collectServiceStatus() {
       healthy: socketCheck.ok,
       latencyMs: socketCheck.latencyMs,
       httpStatus: socketCheck.httpStatus,
-      error: socketCheck.error
+      error: socketCheck.error,
+      detail: buildProbeDetail(socketCheck)
     },
     {
       key: "redis",
@@ -213,7 +255,8 @@ async function collectServiceStatus() {
       healthy: redisCheck.ok,
       latencyMs: redisCheck.latencyMs,
       httpStatus: null,
-      error: redisCheck.error
+      error: redisCheck.error,
+      detail: ""
     }
   ];
 
