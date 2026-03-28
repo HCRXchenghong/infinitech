@@ -1,5 +1,6 @@
 const DEFAULT_TIMEOUT_MS = 5000;
 const DEFAULT_MAX_FALLBACK_MESSAGES = 5000;
+const DEFAULT_MAX_PUSH_QUEUE = 5000;
 
 function normalizeBaseUrl(value, fallback) {
   const text = String(value || fallback || '').trim();
@@ -113,7 +114,7 @@ function evaluateBffReady(body) {
   return failures;
 }
 
-function evaluateGoReady(body) {
+function evaluateGoReady(body, maxPushQueue) {
   const failures = [];
   if (!body || typeof body !== 'object') {
     failures.push('missing_go_ready_body');
@@ -129,6 +130,21 @@ function evaluateGoReady(body) {
   const redis = body.dependencies && body.dependencies.redis;
   if (redis && redis.required === true && redis.ok !== true) {
     failures.push('go_redis_required_but_not_ready');
+  }
+  const pushWorker = body.dependencies && body.dependencies.pushWorker;
+  const worker = pushWorker && pushWorker.worker && typeof pushWorker.worker === 'object' ? pushWorker.worker : null;
+  const queue = worker && worker.queue && typeof worker.queue === 'object' ? worker.queue : null;
+  if (worker && worker.enabled === true) {
+    if (worker.running !== true) {
+      failures.push('push_worker_not_running');
+    }
+    const cycle = String(worker.lastCycleStatus || '').trim().toLowerCase();
+    if (cycle && (cycle.includes('failed') || cycle.includes('error'))) {
+      failures.push(`push_cycle=${cycle}`);
+    }
+    if (queue && Number.isFinite(Number(queue.total)) && Number(queue.total) > maxPushQueue) {
+      failures.push(`push_queue=${queue.total}>${maxPushQueue}`);
+    }
   }
   return failures;
 }
@@ -200,6 +216,7 @@ async function main() {
   const socketBaseUrl = normalizeBaseUrl(process.env.SOCKET_BASE_URL, 'http://127.0.0.1:9898');
   const adminToken = String(process.env.ADMIN_TOKEN || '').trim();
   const maxFallbackMessages = parseIntegerEnv(process.env.PREFLIGHT_MAX_FALLBACK_MESSAGES, DEFAULT_MAX_FALLBACK_MESSAGES);
+  const maxPushQueue = parseIntegerEnv(process.env.PREFLIGHT_MAX_PUSH_QUEUE, DEFAULT_MAX_PUSH_QUEUE);
   const allowDegradedSystemHealth = parseBooleanEnv(process.env.PREFLIGHT_ALLOW_DEGRADED_SYSTEM_HEALTH, false);
 
   const probes = [
@@ -213,7 +230,7 @@ async function main() {
       label: 'Go ready',
       url: `${goBaseUrl}/ready`,
       summary: () => '',
-      validate: evaluateGoReady
+      validate: (body) => evaluateGoReady(body, maxPushQueue)
     },
     {
       label: 'Socket ready',
@@ -242,7 +259,7 @@ async function main() {
   let hasFailure = false;
   console.log(`Release preflight started at ${new Date().toISOString()}`);
   console.log(`Targets: BFF=${bffBaseUrl} GO=${goBaseUrl} SOCKET=${socketBaseUrl}`);
-  console.log(`Thresholds: maxFallbackMessages=${maxFallbackMessages} allowDegradedSystemHealth=${allowDegradedSystemHealth}`);
+  console.log(`Thresholds: maxFallbackMessages=${maxFallbackMessages} maxPushQueue=${maxPushQueue} allowDegradedSystemHealth=${allowDegradedSystemHealth}`);
   if (!adminToken) {
     console.log('Admin system health probe skipped: ADMIN_TOKEN not provided');
   }
