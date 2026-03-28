@@ -147,6 +147,8 @@
         <div class="im-info">
           <div class="im-label">数据库</div>
           <div class="im-value">{{ imStats.dbSizeMB }} MB</div>
+          <div class="im-detail">兜底会话 {{ fallbackBuffer.chatCount }} · 消息 {{ fallbackBuffer.messageCount }}</div>
+          <div class="im-detail">启动裁剪 {{ fallbackPrunedTotal }} 条 · 最老 {{ fallbackOldestAgeLabel }}</div>
           <div class="im-detail">运行 {{ formatUptime(imStats.uptime) }}</div>
         </div>
       </div>
@@ -268,11 +270,13 @@ import {
   getAqiText,
   formatUpdateTime,
   formatPresenceConnectedAt,
+  formatBufferAge,
   formatNumber,
   getRankName,
   getRankType,
   normalizeOnlinePresenceSample,
   normalizeRedisHealth,
+  normalizeFallbackBuffer,
   getRedisModeLabel,
   getRedisModeTagType,
   getRedisModeHint
@@ -317,6 +321,9 @@ const hourlyList = computed(() => Array.isArray(weatherData.value?.hourly_foreca
 const minutelyList = computed(() => Array.isArray(weatherData.value?.minutely_precip?.data) ? weatherData.value.minutely_precip.data : []);
 const onlinePresenceSample = computed(() => normalizeOnlinePresenceSample(imStats.value?.onlinePresenceSample).slice(0, 8));
 const imRedis = computed(() => normalizeRedisHealth(imStats.value?.redis));
+const fallbackBuffer = computed(() => normalizeFallbackBuffer(imStats.value?.fallbackBuffer));
+const fallbackPrunedTotal = computed(() => fallbackBuffer.value.startupExpiredPruned + fallbackBuffer.value.startupOverflowPruned);
+const fallbackOldestAgeLabel = computed(() => formatBufferAge(fallbackBuffer.value.oldestTimestamp));
 const presenceEmptyDescription = computed(() => {
   if (imRedis.value.mode === 'redis' || imRedis.value.mode === 'redis-no-adapter') {
     return '暂无在线连接样本';
@@ -333,6 +340,9 @@ function applyImStatsPatch(data) {
     data?.onlinePresenceSample !== undefined ? data.onlinePresenceSample : merged.onlinePresenceSample
   );
   merged.redis = normalizeRedisHealth(data?.redis !== undefined ? data.redis : merged.redis);
+  merged.fallbackBuffer = normalizeFallbackBuffer(
+    data?.fallbackBuffer !== undefined ? data.fallbackBuffer : merged.fallbackBuffer
+  );
   imStats.value = merged;
 }
 

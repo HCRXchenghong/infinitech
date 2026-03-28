@@ -3,6 +3,17 @@ export function createDefaultImStats() {
     online: false,
     onlineUsers: 0,
     onlinePresenceSample: [],
+    fallbackBuffer: {
+      messageCount: 0,
+      chatCount: 0,
+      oldestTimestamp: 0,
+      newestTimestamp: 0,
+      retentionDays: 30,
+      perChatLimit: 500,
+      startupExpiredPruned: 0,
+      startupOverflowPruned: 0,
+      lastMaintenanceAt: 0
+    },
     redis: {
       enabled: false,
       connected: false,
@@ -179,6 +190,42 @@ export function normalizeRedisHealth(raw) {
     port: Number.isFinite(Number(health.port)) ? Number(health.port) : 0,
     database: Number.isFinite(Number(health.database)) ? Number(health.database) : 0
   };
+}
+
+function toFiniteNumber(value, fallback = 0) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+export function normalizeFallbackBuffer(raw) {
+  const buffer = raw && typeof raw === 'object' ? raw : {};
+  return {
+    messageCount: Math.max(0, Math.floor(toFiniteNumber(buffer.messageCount))),
+    chatCount: Math.max(0, Math.floor(toFiniteNumber(buffer.chatCount))),
+    oldestTimestamp: Math.max(0, toFiniteNumber(buffer.oldestTimestamp)),
+    newestTimestamp: Math.max(0, toFiniteNumber(buffer.newestTimestamp)),
+    retentionDays: Math.max(1, Math.floor(toFiniteNumber(buffer.retentionDays, 30))),
+    perChatLimit: Math.max(1, Math.floor(toFiniteNumber(buffer.perChatLimit, 500))),
+    startupExpiredPruned: Math.max(0, Math.floor(toFiniteNumber(buffer.startupExpiredPruned))),
+    startupOverflowPruned: Math.max(0, Math.floor(toFiniteNumber(buffer.startupOverflowPruned))),
+    lastMaintenanceAt: Math.max(0, toFiniteNumber(buffer.lastMaintenanceAt))
+  };
+}
+
+export function formatBufferAge(timestamp) {
+  const numeric = toFiniteNumber(timestamp);
+  if (!numeric || numeric <= 0) return '无历史';
+
+  const diffMs = Math.max(Date.now() - numeric, 0);
+  const diffMinutes = Math.floor(diffMs / 60000);
+  if (diffMinutes < 1) return '刚刚';
+  if (diffMinutes < 60) return `${diffMinutes} 分钟前`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} 小时前`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} 天前`;
 }
 
 export function getRedisModeLabel(mode) {

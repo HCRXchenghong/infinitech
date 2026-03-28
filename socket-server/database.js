@@ -10,6 +10,11 @@ const UNIFIED_PREFIX = '250724';
 const CHAT_BUCKET = '83';
 const FALLBACK_CHAT_HISTORY_LIMIT = 500;
 const FALLBACK_CHAT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const startupMaintenanceStats = {
+  expiredPruned: 0,
+  overflowPruned: 0,
+  lastMaintenanceAt: 0
+};
 
 db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
@@ -197,8 +202,11 @@ function pruneMessages(chatType, chatId, keepCount = FALLBACK_CHAT_HISTORY_LIMIT
   stmt.run(chatType, chatId, chatType, chatId, limit);
 }
 
-pruneExpiredMessages();
-pruneOverflowMessages();
+const startupExpiredPruneResult = pruneExpiredMessages();
+const startupOverflowPruneResult = pruneOverflowMessages();
+startupMaintenanceStats.expiredPruned = Number(startupExpiredPruneResult?.changes || 0);
+startupMaintenanceStats.overflowPruned = Number(startupOverflowPruneResult?.changes || 0);
+startupMaintenanceStats.lastMaintenanceAt = Date.now();
 
 export function saveMessage(chatType, chatId, messageData) {
   const ids = nextUnifiedIds(CHAT_BUCKET);
@@ -361,6 +369,29 @@ export function replaceMessages(chatType, chatId, list = []) {
   });
 
   return transaction(normalizedList);
+}
+
+export function getFallbackBufferStats() {
+  const summary = db.prepare(`
+    SELECT
+      COUNT(*) AS message_count,
+      COUNT(DISTINCT chat_type || ':' || chat_id) AS chat_count,
+      MIN(COALESCE(event_timestamp, CAST(strftime('%s', created_at) AS INTEGER) * 1000)) AS oldest_timestamp,
+      MAX(COALESCE(event_timestamp, CAST(strftime('%s', created_at) AS INTEGER) * 1000)) AS newest_timestamp
+    FROM messages
+  `).get();
+
+  return {
+    messageCount: Number(summary?.message_count || 0),
+    chatCount: Number(summary?.chat_count || 0),
+    oldestTimestamp: Number(summary?.oldest_timestamp || 0),
+    newestTimestamp: Number(summary?.newest_timestamp || 0),
+    retentionDays: Math.round(FALLBACK_CHAT_RETENTION_MS / (24 * 60 * 60 * 1000)),
+    perChatLimit: FALLBACK_CHAT_HISTORY_LIMIT,
+    startupExpiredPruned: startupMaintenanceStats.expiredPruned,
+    startupOverflowPruned: startupMaintenanceStats.overflowPruned,
+    lastMaintenanceAt: startupMaintenanceStats.lastMaintenanceAt
+  };
 }
 
 export function reconcileMessage(chatType, chatId, localMessageId, localLegacyId, message) {
