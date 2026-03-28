@@ -61,7 +61,7 @@ const CATEGORY_DISPLAY_MAP = CATEGORIES.reduce((result, item) => {
   return result
 }, {})
 
-function buildEmojiCategoryIcon(emoji = '🧩', background = '#F3F4F6') {
+function buildEmojiCategoryIcon(emoji = '🍽', background = '#F3F4F6') {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="${background}"/><text x="24" y="32" font-size="26" text-anchor="middle">${emoji}</text></svg>`
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
@@ -72,7 +72,7 @@ function normalizeRemoteCategory(raw = {}) {
 
   const display = CATEGORY_DISPLAY_MAP[name] || {}
   const bg = display.bg || '#F3F4F6'
-  const image = display.image || buildEmojiCategoryIcon(raw.icon || raw.emoji || '🧩', bg)
+  const image = display.image || buildEmojiCategoryIcon(raw.icon || raw.emoji || '🍽', bg)
 
   return {
     ...display,

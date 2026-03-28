@@ -71,7 +71,7 @@ function normalizeFeaturedProduct(item = {}) {
     detail: item.detail || item.description || '',
     isPromoted: Boolean(item.isPromoted),
     promoteLabel: item.promoteLabel || '',
-    positionSource: item.positionSource || 'featured',
+    positionSource: item.positionSource || 'featured'
   }
 }
 
@@ -82,7 +82,7 @@ export default {
     FeaturedSection,
     HomeShopCard,
     LocationModal,
-    WeatherModal,
+    WeatherModal
   },
   data() {
     return {
@@ -97,13 +97,13 @@ export default {
       weatherRequesting: false,
       lastWeatherRefreshAt: 0,
       showLocationModalFlag: false,
-      showWeatherModalFlag: false,
+      showWeatherModalFlag: false
     }
   },
   computed: {
     weatherText() {
       return `${this.weather.temp}° ${this.weather.condition}`
-    },
+    }
   },
   onLoad() {
     this.getLocation()
@@ -238,7 +238,7 @@ export default {
       const directMap = {
         美食: '/pages/category/food/index',
         甜点饮品: '/pages/category/dessert/index',
-        超市便利: '/pages/category/market/index',
+        超市便利: '/pages/category/market/index'
       }
       const direct = directMap[cat.name]
       if (direct) {
@@ -254,7 +254,7 @@ export default {
         return
       }
       uni.navigateTo({
-        url: `/pages/product/detail/index?id=${item.id}&shopId=${item.shopId || ''}`,
+        url: `/pages/product/detail/index?id=${item.id}&shopId=${item.shopId || ''}`
       })
     },
     goFeatured() {
@@ -283,7 +283,7 @@ export default {
           this.currentAddress = selectedAddress || '请手动选择地址'
           uni.showToast({
             title: isPermissionIssue ? '定位权限异常，请手动选址' : '定位失败，请手动选址',
-            icon: 'none',
+            icon: 'none'
           })
         })
     },
@@ -313,8 +313,8 @@ export default {
     },
     goShopDetail(id) {
       uni.navigateTo({ url: `/pages/shop/detail/index?id=${id}` })
-    },
-  },
+    }
+  }
 }
 </script>
 
