@@ -207,6 +207,9 @@ export default {
           if (data.time) {
             msg.time = data.time
           }
+          if (data.createdAt) {
+            msg.createdAt = data.createdAt
+          }
           msg.timestamp = resolveIncomingMessageTimestamp(data.timestamp || data.createdAt, msg.timestamp || Date.now())
           msg.status = 'sent'
         }
@@ -293,12 +296,16 @@ export default {
       }
 
       const tempId = this.createLocalMessageId('send')
+      const timestamp = Date.now()
       const newMsg = {
         id: tempId,
         content: this.inputText,
         type: 'text',
         isSelf: true,
-        status: 'sending'
+        status: 'sending',
+        timestamp,
+        createdAt: timestamp,
+        time: new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
       }
       this.messages.push(newMsg)
 
@@ -328,7 +335,11 @@ export default {
     resendMessage(msg) {
       msg.status = 'sending'
       const tempId = this.createLocalMessageId('resend')
+      const timestamp = Date.now()
       msg.id = tempId
+      msg.timestamp = timestamp
+      msg.createdAt = timestamp
+      msg.time = new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 
       this.socket.emit('send_message', {
         chatId: this.chatId,
@@ -367,12 +378,16 @@ export default {
                 const data = JSON.parse(uploadRes.data)
                 if (data.url) {
                   const tempId = this.createLocalMessageId('image')
+                  const timestamp = Date.now()
                   const newMsg = {
                     id: tempId,
                     content: data.url,
                     type: 'image',
                     isSelf: true,
-                    status: 'sending'
+                    status: 'sending',
+                    timestamp,
+                    createdAt: timestamp,
+                    time: new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
                   }
                   this.messages.push(newMsg)
 
@@ -416,13 +431,17 @@ export default {
         return
       }
       const tempId = this.createLocalMessageId('order')
+      const timestamp = Date.now()
       const newMsg = {
         id: tempId,
         content: '',
         type: 'order',
         isSelf: true,
         order: normalizedOrder,
-        status: 'sending'
+        status: 'sending',
+        timestamp,
+        createdAt: timestamp,
+        time: new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
       }
       this.messages.push(newMsg)
 
