@@ -73,6 +73,7 @@ type PushConfig struct {
 	BatchSize        int
 	MaxRetries       int
 	RetryBackoff     time.Duration
+	ReadyMaxQueue    int64
 }
 
 type HTTPConfig struct {
@@ -148,6 +149,7 @@ func Load() *Config {
 			BatchSize:        getEnvInt("PUSH_DISPATCH_BATCH_SIZE", 100),
 			MaxRetries:       getEnvInt("PUSH_DISPATCH_MAX_RETRIES", 5),
 			RetryBackoff:     time.Duration(getEnvInt("PUSH_DISPATCH_RETRY_BACKOFF_SECONDS", 60)) * time.Second,
+			ReadyMaxQueue:    int64(getEnvInt("PUSH_READY_MAX_QUEUE", 5000)),
 		},
 		HTTP: HTTPConfig{
 			ReadTimeout:        time.Duration(getEnvInt("HTTP_READ_TIMEOUT_SECONDS", 15)) * time.Second,
@@ -233,6 +235,9 @@ func (c *Config) Validate() error {
 	}
 	if c.Push.RetryBackoff <= 0 {
 		return fmt.Errorf("PUSH_DISPATCH_RETRY_BACKOFF_SECONDS must be greater than 0")
+	}
+	if c.Push.ReadyMaxQueue < 0 {
+		return fmt.Errorf("PUSH_READY_MAX_QUEUE must be 0 or greater")
 	}
 
 	if c.HTTP.MaxBodyBytes <= 0 {

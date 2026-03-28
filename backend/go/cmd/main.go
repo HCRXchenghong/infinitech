@@ -315,10 +315,12 @@ func main() {
 		defer cancel()
 
 		pushWorker := gin.H{}
+		var pushWorkerSnapshot service.MobilePushWorkerStatus
 		if services.MobilePush != nil {
+			pushWorkerSnapshot = services.MobilePush.WorkerStatusSnapshot(ctx)
 			pushWorker = gin.H{
 				"ok":     true,
-				"worker": services.MobilePush.WorkerStatusSnapshot(ctx),
+				"worker": pushWorkerSnapshot,
 			}
 		}
 
@@ -354,6 +356,64 @@ func main() {
 						"database":   gin.H{"ok": true},
 						"pushWorker": pushWorker,
 					},
+				})
+				return
+			}
+		}
+
+		if services.MobilePush != nil && pushWorkerSnapshot.Enabled {
+			if !pushWorkerSnapshot.Running {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"status":  "degraded",
+					"service": "go-api",
+					"error":   "push worker not running",
+					"dependencies": gin.H{
+						"database": gin.H{"ok": true},
+						"redis": gin.H{
+							"ok":       !cfg.Redis.Enabled || rdb != nil,
+							"enabled":  cfg.Redis.Enabled,
+							"required": cfg.Redis.Required,
+						},
+						"pushWorker": pushWorker,
+					},
+				})
+				return
+			}
+
+			cycleStatus := strings.ToLower(strings.TrimSpace(pushWorkerSnapshot.LastCycleStatus))
+			if strings.Contains(cycleStatus, "failed") || strings.Contains(cycleStatus, "error") {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"status":  "degraded",
+					"service": "go-api",
+					"error":   "push worker cycle failed",
+					"dependencies": gin.H{
+						"database": gin.H{"ok": true},
+						"redis": gin.H{
+							"ok":       !cfg.Redis.Enabled || rdb != nil,
+							"enabled":  cfg.Redis.Enabled,
+							"required": cfg.Redis.Required,
+						},
+						"pushWorker": pushWorker,
+					},
+				})
+				return
+			}
+
+			if cfg.Push.ReadyMaxQueue > 0 && pushWorkerSnapshot.Queue.Total > cfg.Push.ReadyMaxQueue {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"status":  "degraded",
+					"service": "go-api",
+					"error":   "push queue too large",
+					"dependencies": gin.H{
+						"database": gin.H{"ok": true},
+						"redis": gin.H{
+							"ok":       !cfg.Redis.Enabled || rdb != nil,
+							"enabled":  cfg.Redis.Enabled,
+							"required": cfg.Redis.Required,
+						},
+						"pushWorker": pushWorker,
+					},
+					"maxPushQueue": cfg.Push.ReadyMaxQueue,
 				})
 				return
 			}

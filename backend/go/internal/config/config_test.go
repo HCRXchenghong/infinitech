@@ -35,6 +35,7 @@ func newValidConfigForTest() *Config {
 			BatchSize:        100,
 			MaxRetries:       5,
 			RetryBackoff:     60 * time.Second,
+			ReadyMaxQueue:    5000,
 		},
 		HTTP: HTTPConfig{
 			ReadTimeout:        15 * time.Second,
@@ -116,5 +117,14 @@ func TestValidateRejectsRequiredRedisWhenDisabled(t *testing.T) {
 
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("expected required redis disabled to be rejected")
+	}
+}
+
+func TestValidateRejectsNegativePushReadyMaxQueue(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.Push.ReadyMaxQueue = -1
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected negative push ready max queue to be rejected")
 	}
 }
