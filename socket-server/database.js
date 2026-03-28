@@ -8,6 +8,7 @@ const __dirname = dirname(__filename);
 const db = new Database(join(__dirname, 'chat.db'));
 const UNIFIED_PREFIX = '250724';
 const CHAT_BUCKET = '83';
+const FALLBACK_CHAT_HISTORY_LIMIT = 500;
 
 // 创建表
 db.exec(`
@@ -134,6 +135,26 @@ function normalizeCreatedAtForStorage(value, fallbackTimestamp = Date.now()) {
   return new Date(fallbackTimestamp).toISOString();
 }
 
+function pruneMessages(chatType, chatId, keepCount = FALLBACK_CHAT_HISTORY_LIMIT) {
+  const limit = Number.isFinite(Number(keepCount)) && Number(keepCount) > 0
+    ? Math.max(1, Math.floor(Number(keepCount)))
+    : FALLBACK_CHAT_HISTORY_LIMIT;
+
+  const stmt = db.prepare(`
+    DELETE FROM messages
+    WHERE chat_type = ? AND chat_id = ?
+      AND id NOT IN (
+        SELECT id
+        FROM messages
+        WHERE chat_type = ? AND chat_id = ?
+        ORDER BY COALESCE(event_timestamp, CAST(strftime('%s', created_at) AS INTEGER) * 1000) DESC, id DESC
+        LIMIT ?
+      )
+  `);
+
+  stmt.run(chatType, chatId, chatType, chatId, limit);
+}
+
 export function saveMessage(chatType, chatId, messageData) {
   const ids = nextUnifiedIds(CHAT_BUCKET);
   const messageUid = String(messageData.uid || ids.uid);
@@ -170,6 +191,7 @@ export function saveMessage(chatType, chatId, messageData) {
   const insertedRow = db.prepare('SELECT created_at, event_timestamp FROM messages WHERE id = ?').get(insertResult.lastInsertRowid);
   const createdAt = insertedRow?.created_at || '';
   const persistedEventTimestamp = resolveEventTimestamp(insertedRow?.event_timestamp, eventTimestamp);
+  pruneMessages(chatType, chatId);
 
   return {
     ...insertResult,
@@ -290,6 +312,7 @@ export function replaceMessages(chatType, chatId, list = []) {
         String(message?.readAt || '').trim() || null
       );
     });
+    pruneMessages(chatType, chatId);
   });
 
   return transaction(normalizedList);
