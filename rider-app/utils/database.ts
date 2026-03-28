@@ -3,6 +3,27 @@ const DB_NAME = 'rider_messages.db';
 const DB_PATH = '_doc/rider_messages.db';
 
 class Database {
+  resolveMessageTimestamp(rawValue: any, fallback = Date.now()): number {
+    const directValue = Number(rawValue)
+    if (Number.isFinite(directValue) && directValue > 0) {
+      return directValue
+    }
+
+    const text = String(rawValue || '').trim()
+    if (!text) return fallback
+
+    const parsedValue = Date.parse(text)
+    return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : fallback
+  }
+
+  resolveMessageId(message: any, chatId: string | number, fallbackTimestamp: number): string {
+    const rawId = message?.id || message?.uid || message?.tsid
+    if (rawId !== undefined && rawId !== null && String(rawId).trim()) {
+      return String(rawId)
+    }
+    return `${String(chatId || 'chat')}_${fallbackTimestamp}`
+  }
+
   open(): Promise<void> {
     return new Promise((resolve, reject) => {
       // @ts-ignore
@@ -79,9 +100,9 @@ class Database {
     const sender = this.escapeSqlText(message.sender)
     const senderId = this.escapeSqlText(message.senderId)
     const content = this.escapeSqlText(message.content)
-    const messageId = this.escapeSqlText(message.id)
+    const timestamp = this.resolveMessageTimestamp(message.timestamp ?? message.createdAt, Date.now())
+    const messageId = this.escapeSqlText(this.resolveMessageId(message, chatId, timestamp))
     const messageType = this.escapeSqlText(message.messageType || 'text')
-    const timestamp = Number(message.timestamp || Date.now())
     const isSelf = Number(message.isSelf || 0)
     // @ts-ignore
     plus.sqlite.executeSql({

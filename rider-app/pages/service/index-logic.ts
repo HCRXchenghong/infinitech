@@ -181,15 +181,16 @@ export default Vue.extend({
       await db.deleteMessagesByChatId(this.chatId)
       list.forEach((item: any, index: number) => {
         const senderId = item?.senderId != null ? String(item.senderId) : ''
+        const messageTimestamp = this.resolveMessageTimestamp(item?.timestamp || item?.createdAt, baseTimestamp + index)
         db.saveMessage(this.chatId, {
-          id: String(item.id),
+          id: item?.id || item?.uid || item?.tsid || `local_${messageTimestamp}`,
           chatId: this.chatId,
           sender: item.sender,
           senderId: item.senderId,
           senderRole: item.senderRole,
           content: item.content,
           messageType: item.messageType || 'text',
-          timestamp: this.resolveMessageTimestamp(item?.timestamp || item?.createdAt, baseTimestamp + index),
+          timestamp: messageTimestamp,
           isSelf: item.senderRole === 'rider' && senderId === String(this.riderId) ? 1 : 0,
           avatar: item.avatar || ''
         })
@@ -384,15 +385,16 @@ export default Vue.extend({
       const senderId = payload?.senderId != null ? String(payload.senderId) : ''
       if (senderId !== String(this.riderId) || payload.senderRole !== 'rider') {
         this.messages.push(this.normalizeIncomingMessage(payload, false))
+        const messageTimestamp = this.resolveMessageTimestamp(payload?.timestamp || payload?.createdAt, Date.now())
         db.saveMessage(this.chatId, {
-          id: String(payload.id),
+          id: payload?.id || payload?.uid || payload?.tsid || `local_${messageTimestamp}`,
           chatId: this.chatId,
           sender: payload.sender,
           senderId: payload.senderId,
           senderRole: payload.senderRole,
           content: payload.content,
           messageType: payload.messageType || 'text',
-          timestamp: this.resolveMessageTimestamp(payload?.timestamp || payload?.createdAt, Date.now()),
+          timestamp: messageTimestamp,
           isSelf: 0,
           avatar: payload.avatar || ''
         })
