@@ -74,6 +74,7 @@ type PushConfig struct {
 	MaxRetries       int
 	RetryBackoff     time.Duration
 	ReadyMaxQueue    int64
+	ReadyMaxQueueAge time.Duration
 }
 
 type HTTPConfig struct {
@@ -151,6 +152,7 @@ func Load() *Config {
 			MaxRetries:       getEnvInt("PUSH_DISPATCH_MAX_RETRIES", 5),
 			RetryBackoff:     time.Duration(getEnvInt("PUSH_DISPATCH_RETRY_BACKOFF_SECONDS", 60)) * time.Second,
 			ReadyMaxQueue:    int64(getEnvInt("PUSH_READY_MAX_QUEUE", 5000)),
+			ReadyMaxQueueAge: time.Duration(getEnvInt("PUSH_READY_MAX_QUEUE_AGE_SECONDS", 1800)) * time.Second,
 		},
 		HTTP: HTTPConfig{
 			ReadTimeout:        time.Duration(getEnvInt("HTTP_READ_TIMEOUT_SECONDS", 15)) * time.Second,
@@ -240,6 +242,9 @@ func (c *Config) Validate() error {
 	}
 	if c.Push.ReadyMaxQueue < 0 {
 		return fmt.Errorf("PUSH_READY_MAX_QUEUE must be 0 or greater")
+	}
+	if c.Push.ReadyMaxQueueAge < 0 {
+		return fmt.Errorf("PUSH_READY_MAX_QUEUE_AGE_SECONDS must be 0 or greater")
 	}
 
 	if c.HTTP.MaxBodyBytes <= 0 {

@@ -10,6 +10,7 @@ import {
 const DEFAULT_TIMEOUT_MS = 5000;
 const DEFAULT_MAX_FALLBACK_MESSAGES = 5000;
 const DEFAULT_MAX_PUSH_QUEUE = 5000;
+const DEFAULT_MAX_PUSH_QUEUE_AGE_MS = 30 * 60 * 1000;
 const DEFAULT_MAX_RECENT_SOCKET_FALLBACK_MS = 10 * 60 * 1000;
 const DEFAULT_MAX_PUSH_CONSECUTIVE_FAILURES = 2;
 const DEFAULT_MAX_PUSH_SUCCESS_STALE_MS = 15 * 60 * 1000;
@@ -196,7 +197,7 @@ function evaluateGoReady(body, maxPushQueue) {
   return failures;
 }
 
-function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStaleMs) {
+function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStaleMs, maxQueueAgeMs) {
   const failures = [];
   const pushWorker = body && body.dependencies && body.dependencies.pushWorker;
   const worker = pushWorker && pushWorker.worker && typeof pushWorker.worker === "object" ? pushWorker.worker : null;
@@ -212,6 +213,13 @@ function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStale
 
   const queueTotal = queue ? parseIntegerEnv(queue.total, 0) : 0;
   if (queueTotal <= 0 || maxSuccessStaleMs <= 0) {
+    if (queue && maxQueueAgeMs > 0) {
+      const queuedAgeSeconds = parseIntegerEnv(queue.oldestQueuedAgeSeconds, 0);
+      const queuedAgeMs = queuedAgeSeconds > 0 ? queuedAgeSeconds * 1000 : 0;
+      if (queuedAgeMs > maxQueueAgeMs) {
+        failures.push(`push_oldest_queue_age=${formatDurationMs(queuedAgeMs)}>${formatDurationMs(maxQueueAgeMs)}`);
+      }
+    }
     return failures;
   }
 
@@ -224,6 +232,13 @@ function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStale
   const staleMs = Math.max(Date.now() - lastSuccessAt, 0);
   if (staleMs > maxSuccessStaleMs) {
     failures.push(`push_last_success_age=${formatDurationMs(staleMs)}>${formatDurationMs(maxSuccessStaleMs)}`);
+  }
+  if (queue && maxQueueAgeMs > 0) {
+    const queuedAgeSeconds = parseIntegerEnv(queue.oldestQueuedAgeSeconds, 0);
+    const queuedAgeMs = queuedAgeSeconds > 0 ? queuedAgeSeconds * 1000 : 0;
+    if (queuedAgeMs > maxQueueAgeMs) {
+      failures.push(`push_oldest_queue_age=${formatDurationMs(queuedAgeMs)}>${formatDurationMs(maxQueueAgeMs)}`);
+    }
   }
   return failures;
 }
@@ -317,6 +332,7 @@ async function main() {
   const adminToken = String(process.env.ADMIN_TOKEN || '').trim();
   const maxFallbackMessages = parseIntegerEnv(process.env.PREFLIGHT_MAX_FALLBACK_MESSAGES, DEFAULT_MAX_FALLBACK_MESSAGES);
   const maxPushQueue = parseIntegerEnv(process.env.PREFLIGHT_MAX_PUSH_QUEUE, DEFAULT_MAX_PUSH_QUEUE);
+  const maxPushQueueAgeMs = parseIntegerEnv(process.env.PREFLIGHT_MAX_PUSH_QUEUE_AGE_MS, DEFAULT_MAX_PUSH_QUEUE_AGE_MS);
   const maxRecentSocketFallbackMs = parseIntegerEnv(
     process.env.PREFLIGHT_MAX_RECENT_SOCKET_FALLBACK_MS,
     DEFAULT_MAX_RECENT_SOCKET_FALLBACK_MS
@@ -383,6 +399,7 @@ async function main() {
   console.log(`Targets: BFF=${bffBaseUrl} GO=${goBaseUrl} SOCKET=${socketBaseUrl}`);
   console.log(
     `Thresholds: maxFallbackMessages=${maxFallbackMessages} maxPushQueue=${maxPushQueue} `
+    + `maxPushQueueAge=${formatDurationMs(maxPushQueueAgeMs)} `
     + `maxPushConsecutiveFailures=${maxPushConsecutiveFailures} `
     + `maxPushSuccessStale=${formatDurationMs(maxPushSuccessStaleMs)} `
     + `requiredSocketRedisMode=${requiredSocketRedisMode || 'none'} `
@@ -410,7 +427,7 @@ async function main() {
     }
     const validationFailures = typeof probe.validate === 'function' ? probe.validate(result.body) : [];
     const extraFailures = probe.label === "Go ready"
-      ? evaluatePushWorkerSignals(result.body, maxPushConsecutiveFailures, maxPushSuccessStaleMs)
+      ? evaluatePushWorkerSignals(result.body, maxPushConsecutiveFailures, maxPushSuccessStaleMs, maxPushQueueAgeMs)
       : [];
     const allFailures = [...validationFailures, ...extraFailures];
     if (allFailures.length > 0) {

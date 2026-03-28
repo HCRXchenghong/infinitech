@@ -185,7 +185,11 @@ function buildProbeDetail(result) {
       queue.queued ? `pushQueued=${queue.queued}` : "",
       queue.retryPending ? `pushRetry=${queue.retryPending}` : "",
       queue.dispatching ? `pushDispatching=${queue.dispatching}` : "",
-      queue.failed ? `pushFailed=${queue.failed}` : ""
+      queue.failed ? `pushFailed=${queue.failed}` : "",
+      queue.oldestQueuedAt ? `pushOldestQueuedAt=${queue.oldestQueuedAt}` : "",
+      queue.oldestQueuedAgeSeconds !== undefined ? `pushOldestQueuedAgeSeconds=${queue.oldestQueuedAgeSeconds}` : "",
+      queue.oldestDispatchingAt ? `pushOldestDispatchingAt=${queue.oldestDispatchingAt}` : "",
+      queue.oldestDispatchingAgeSeconds !== undefined ? `pushOldestDispatchingAgeSeconds=${queue.oldestDispatchingAgeSeconds}` : ""
     ].filter(Boolean).join(" ");
     if (pushDetail) {
       details.push(pushDetail);

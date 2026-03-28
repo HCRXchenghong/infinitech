@@ -48,14 +48,18 @@ type MobilePushWorkerStatus struct {
 }
 
 type MobilePushQueueSnapshot struct {
-	Total        int64 `json:"total"`
-	Queued       int64 `json:"queued"`
-	Pending      int64 `json:"pending"`
-	RetryPending int64 `json:"retryPending"`
-	Dispatching  int64 `json:"dispatching"`
-	Sent         int64 `json:"sent"`
-	Failed       int64 `json:"failed"`
-	Acknowledged int64 `json:"acknowledged"`
+	Total                       int64  `json:"total"`
+	Queued                      int64  `json:"queued"`
+	Pending                     int64  `json:"pending"`
+	RetryPending                int64  `json:"retryPending"`
+	Dispatching                 int64  `json:"dispatching"`
+	Sent                        int64  `json:"sent"`
+	Failed                      int64  `json:"failed"`
+	Acknowledged                int64  `json:"acknowledged"`
+	OldestQueuedAt              string `json:"oldestQueuedAt,omitempty"`
+	OldestQueuedAgeSeconds      int64  `json:"oldestQueuedAgeSeconds"`
+	OldestDispatchingAt         string `json:"oldestDispatchingAt,omitempty"`
+	OldestDispatchingAgeSeconds int64  `json:"oldestDispatchingAgeSeconds"`
 }
 
 type MobilePushOptions struct {
@@ -192,6 +196,37 @@ func (s *MobilePushService) QueueSnapshot(ctx context.Context) MobilePushQueueSn
 			snapshot.Failed += count
 		case "acknowledged":
 			snapshot.Acknowledged += count
+		}
+	}
+
+	now := time.Now()
+	type oldestRow struct {
+		Oldest time.Time
+	}
+
+	var queuedRow oldestRow
+	if err := s.db.WithContext(ctx).
+		Model(&repository.PushDelivery{}).
+		Select("MIN(created_at) AS oldest").
+		Where("status IN ?", []string{"queued", "pending", "retry_pending"}).
+		Scan(&queuedRow).Error; err == nil && !queuedRow.Oldest.IsZero() {
+		snapshot.OldestQueuedAt = queuedRow.Oldest.Format(time.RFC3339)
+		ageSeconds := int64(now.Sub(queuedRow.Oldest) / time.Second)
+		if ageSeconds > 0 {
+			snapshot.OldestQueuedAgeSeconds = ageSeconds
+		}
+	}
+
+	var dispatchingRow oldestRow
+	if err := s.db.WithContext(ctx).
+		Model(&repository.PushDelivery{}).
+		Select("MIN(updated_at) AS oldest").
+		Where("status = ?", "dispatching").
+		Scan(&dispatchingRow).Error; err == nil && !dispatchingRow.Oldest.IsZero() {
+		snapshot.OldestDispatchingAt = dispatchingRow.Oldest.Format(time.RFC3339)
+		ageSeconds := int64(now.Sub(dispatchingRow.Oldest) / time.Second)
+		if ageSeconds > 0 {
+			snapshot.OldestDispatchingAgeSeconds = ageSeconds
 		}
 	}
 

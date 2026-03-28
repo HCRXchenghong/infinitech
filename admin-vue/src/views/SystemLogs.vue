@@ -297,6 +297,10 @@ const SIGNAL_LABELS = {
   pushRetry: "待重试",
   pushDispatching: "派发中",
   pushFailed: "失败数",
+  pushOldestQueuedAt: "最老排队时间",
+  pushOldestQueuedAgeSeconds: "最老排队年龄",
+  pushOldestDispatchingAt: "最老派发时间",
+  pushOldestDispatchingAgeSeconds: "最老派发年龄",
 };
 
 const loading = ref(false);
@@ -418,6 +422,7 @@ function normalizeSignalValue(value) {
   const text = String(value || "").trim();
   if (text === "true") return "正常";
   if (text === "false") return "异常";
+  if (/^\d+$/.test(text)) return text;
   return text;
 }
 
@@ -440,13 +445,29 @@ function resolveSignalType(key, rawValue) {
     if (value === "dispatching") return "info";
     return "warning";
   }
-  if (["fallbackMessages", "fallbackChats", "fallbackListHits", "fallbackHistoryHits", "pushQueue", "pushQueued", "pushRetry", "pushDispatching", "pushFailed", "pushConsecutiveFailures"].includes(key)) {
+  if ([
+    "fallbackMessages",
+    "fallbackChats",
+    "fallbackListHits",
+    "fallbackHistoryHits",
+    "pushQueue",
+    "pushQueued",
+    "pushRetry",
+    "pushDispatching",
+    "pushFailed",
+    "pushConsecutiveFailures",
+    "pushOldestQueuedAgeSeconds",
+    "pushOldestDispatchingAgeSeconds",
+  ].includes(key)) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric) || numeric <= 0) {
       return "info";
     }
     if (key === "pushFailed" || key === "pushConsecutiveFailures") {
       return numeric >= 3 ? "danger" : "warning";
+    }
+    if (key === "pushOldestQueuedAgeSeconds" || key === "pushOldestDispatchingAgeSeconds") {
+      return numeric >= 900 ? "danger" : "warning";
     }
     return "warning";
   }
@@ -480,7 +501,7 @@ function parseServiceDetail(detail) {
 }
 
 function getServiceSignals(item) {
-  return parseServiceDetail(item?.detail).slice(0, 8);
+  return parseServiceDetail(item?.detail).slice(0, 12);
 }
 
 async function loadLogs() {

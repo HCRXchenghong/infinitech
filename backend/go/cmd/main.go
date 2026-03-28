@@ -417,6 +417,26 @@ func main() {
 				})
 				return
 			}
+
+			if cfg.Push.ReadyMaxQueueAge > 0 &&
+				pushWorkerSnapshot.Queue.OldestQueuedAgeSeconds > int64(cfg.Push.ReadyMaxQueueAge/time.Second) {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"status":  "degraded",
+					"service": "go-api",
+					"error":   "push queue oldest age too large",
+					"dependencies": gin.H{
+						"database": gin.H{"ok": true},
+						"redis": gin.H{
+							"ok":       !cfg.Redis.Enabled || rdb != nil,
+							"enabled":  cfg.Redis.Enabled,
+							"required": cfg.Redis.Required,
+						},
+						"pushWorker": pushWorker,
+					},
+					"maxPushQueueAgeSeconds": int64(cfg.Push.ReadyMaxQueueAge / time.Second),
+				})
+				return
+			}
 		}
 
 		c.JSON(http.StatusOK, gin.H{

@@ -36,6 +36,7 @@ func newValidConfigForTest() *Config {
 			MaxRetries:       5,
 			RetryBackoff:     60 * time.Second,
 			ReadyMaxQueue:    5000,
+			ReadyMaxQueueAge: 30 * time.Minute,
 		},
 		HTTP: HTTPConfig{
 			ReadTimeout:        15 * time.Second,
@@ -127,6 +128,15 @@ func TestValidateRejectsNegativePushReadyMaxQueue(t *testing.T) {
 
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("expected negative push ready max queue to be rejected")
+	}
+}
+
+func TestValidateRejectsNegativePushReadyMaxQueueAge(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.Push.ReadyMaxQueueAge = -1 * time.Second
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected negative push ready max queue age to be rejected")
 	}
 }
 
