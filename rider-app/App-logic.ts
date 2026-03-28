@@ -20,12 +20,23 @@ function normalizeBearerToken(raw: any) {
   return /^bearer\s+/i.test(token) ? token : `Bearer ${token}`
 }
 
+function resolveRiderMessageTimestamp(rawValue: any, fallback = Date.now()) {
+  const directValue = Number(rawValue)
+  if (Number.isFinite(directValue) && directValue > 0) {
+    return directValue
+  }
+
+  const text = String(rawValue || '').trim()
+  if (!text) return fallback
+
+  const parsedValue = Date.parse(text)
+  return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : fallback
+}
+
 function normalizeRiderIncomingMessage(payload: any, senderRole: 'merchant' | 'user', fallbackName: string) {
-  const timestamp = Number.isFinite(Number(payload?.timestamp || payload?.createdAt))
-    ? Number(payload.timestamp || payload.createdAt)
-    : Date.now()
+  const timestamp = resolveRiderMessageTimestamp(payload?.timestamp || payload?.createdAt, Date.now())
   return {
-    id: payload?.id || Date.now(),
+    id: payload?.id || payload?.uid || payload?.tsid || `local_${timestamp}`,
     chatId: String(payload?.chatId || `${senderRole}_${payload?.senderId || payload?.targetId || ''}`),
     sender: payload?.sender || payload?.merchantName || payload?.userName || fallbackName,
     senderId: String(payload?.senderId || payload?.merchantId || payload?.userId || ''),
@@ -239,9 +250,7 @@ export default Vue.extend({
             content: payload?.content || '',
             messageType: payload?.messageType || 'text',
             avatar: payload?.avatar || null,
-            timestamp: Number.isFinite(Number(payload?.timestamp || payload?.createdAt))
-              ? Number(payload.timestamp || payload.createdAt)
-              : Date.now()
+            timestamp: resolveRiderMessageTimestamp(payload?.timestamp || payload?.createdAt, Date.now())
           })
         }
         uni.$emit('socket:new_message', payload)
