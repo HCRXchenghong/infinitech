@@ -19,6 +19,15 @@ const nowTime = () => {
   return `${h}:${m}`
 }
 
+const formatClockByTimestamp = (timestamp) => {
+  const value = Number(timestamp)
+  if (!Number.isFinite(value) || value <= 0) return nowTime()
+  const d = new Date(value)
+  const h = String(d.getHours()).padStart(2, '0')
+  const m = String(d.getMinutes()).padStart(2, '0')
+  return `${h}:${m}`
+}
+
 const safeDecode = (value) => {
   try {
     return decodeURIComponent(value || '')
@@ -385,6 +394,7 @@ export default {
             return {
               ...item,
               timestamp,
+              time: item.time || formatClockByTimestamp(timestamp),
               type: normalized.type,
               text: normalized.text,
               rawContent: Object.prototype.hasOwnProperty.call(item || {}, 'rawContent')
@@ -423,8 +433,17 @@ export default {
           item.timestamp || item.createdAt,
           Date.now() + index
         )
-        const time = item.time || nowTime()
-        const previousTime = index === 0 ? '' : (list[index - 1].time || nowTime())
+        const time = item.time || formatClockByTimestamp(timestamp)
+        const previousItem = index === 0 ? null : list[index - 1]
+        const previousTimestamp = previousItem
+          ? this.resolveMessageTimestamp(
+              previousItem.timestamp || previousItem.createdAt,
+              timestamp
+            )
+          : 0
+        const previousTime = index === 0
+          ? ''
+          : (previousItem.time || formatClockByTimestamp(previousTimestamp))
 
         return {
           mid: item.id || `${Date.now()}_${index}`,
@@ -564,13 +583,11 @@ export default {
         const msg = this.messages.find((item) => item.mid === data.tempId)
         if (msg) {
           msg.mid = data.messageId
-          if (data.time) {
-            msg.time = data.time
-          }
           msg.timestamp = this.resolveMessageTimestamp(
             data.timestamp || data.createdAt,
             msg.timestamp || Date.now()
           )
+          msg.time = data.time || formatClockByTimestamp(msg.timestamp)
           msg.status = 'success'
           this.persistLocalMessages()
         }
