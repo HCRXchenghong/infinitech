@@ -38,7 +38,7 @@ class MessageManager {
       const currentPage = pages[pages.length - 1]
       if (currentPage && currentPage.route === 'pages/service/index') {
         // @ts-ignore
-        this.currentChatId = currentPage.$vm?.chatId || null
+        this.currentChatId = this.normalizeChatId(currentPage.$vm?.chatId)
       }
     })
 
@@ -47,8 +47,14 @@ class MessageManager {
     })
   }
 
+  private normalizeChatId(chatId: string | number | null | undefined): string | null {
+    if (chatId === undefined || chatId === null) return null
+    const normalized = String(chatId).trim()
+    return normalized ? normalized : null
+  }
+
   setCurrentChatId(chatId: string | number | null) {
-    this.currentChatId = chatId
+    this.currentChatId = this.normalizeChatId(chatId)
   }
 
   getCurrentChatId(): string | number | null {
@@ -77,7 +83,8 @@ class MessageManager {
   }
 
   handleNewMessage(message: MessageData) {
-    if (this.currentChatId === message.chatId) {
+    const incomingChatId = this.normalizeChatId(message.chatId)
+    if (incomingChatId && this.currentChatId === incomingChatId) {
       return
     }
 
@@ -91,10 +98,13 @@ class MessageManager {
       senderRole: message.senderRole,
       content: message.content,
       messageType: message.messageType,
-      chatId: message.chatId
+      chatId: incomingChatId || ''
     })
 
-    uni.$emit('show-message-popup', message)
+    uni.$emit('show-message-popup', {
+      ...message,
+      chatId: incomingChatId || ''
+    })
     this.notifyListeners(message)
   }
 
@@ -129,8 +139,12 @@ class MessageManager {
   }
 
   formatTime(timestamp: number): string {
+    const safeTimestamp = Number(timestamp)
+    if (!Number.isFinite(safeTimestamp) || safeTimestamp <= 0) {
+      return '刚刚'
+    }
     const now = Date.now()
-    const diff = now - timestamp
+    const diff = now - safeTimestamp
 
     if (diff < 60000) {
       return '刚刚'
@@ -142,7 +156,7 @@ class MessageManager {
       return `${Math.floor(diff / 3600000)}小时前`
     }
 
-    const date = new Date(timestamp)
+    const date = new Date(safeTimestamp)
     return `${date.getMonth() + 1}/${date.getDate()}`
   }
 
@@ -154,6 +168,14 @@ class MessageManager {
   }
 
   navigateToChat(message: MessageData) {
+    const chatId = this.normalizeChatId(message.chatId)
+    if (!chatId) {
+      uni.showToast({
+        title: '会话信息缺失',
+        icon: 'none'
+      })
+      return
+    }
     const pages = getCurrentPages()
     const currentPage = pages[pages.length - 1]
     const role =
@@ -171,14 +193,14 @@ class MessageManager {
       // @ts-ignore
       const vm = currentPage.$vm
       if (vm && vm.switchChat) {
-        vm.switchChat(message.chatId, { role, name, avatar })
+        vm.switchChat(chatId, { role, name, avatar })
       }
       return
     }
 
     uni.navigateTo({
       url:
-        `/pages/service/index?chatId=${encodeURIComponent(String(message.chatId || ''))}` +
+        `/pages/service/index?chatId=${encodeURIComponent(chatId)}` +
         `&role=${encodeURIComponent(role)}` +
         `&name=${encodeURIComponent(name)}` +
         `&avatar=${encodeURIComponent(avatar)}`,
