@@ -88,6 +88,7 @@ function saveAndBuildRiderMessage(saveMessage, chatId, messageInput, socket) {
 
 function emitMessageSentAck(socket, message, tempId) {
   socket.emit('message_sent', {
+    chatId: message?.chatId,
     tempId,
     messageId: message?.id,
     status: 'sent',

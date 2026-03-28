@@ -490,6 +490,8 @@ export function useChatConsole(options = {}) {
     });
 
     socket.on('message_sent', (data) => {
+      const selectedId = normalizeChatId(selectedChat.value?.id);
+      if (data?.chatId && normalizeChatId(data.chatId) !== selectedId) return;
       const msg = messages.value.find((item) => item.id === data.tempId);
       if (msg) {
         msg.id = data.messageId;

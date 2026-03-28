@@ -609,6 +609,7 @@ export default {
       })
 
       sock.on('message_sent', (data) => {
+        if (data?.chatId && String(data.chatId) !== String(this.roomId)) return
         const msg = this.messages.find((item) => item.mid === data.tempId)
         if (msg) {
           msg.mid = data.messageId

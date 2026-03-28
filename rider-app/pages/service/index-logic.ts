@@ -409,6 +409,7 @@ export default Vue.extend({
     },
 
     onMessageSent(data: any) {
+      if (data?.chatId && String(data.chatId) !== String(this.chatId)) return
       const msg = this.messages.find((m: any) => m.id === data.tempId)
       const nextStatus = msg?.status === 'read' ? 'read' : 'sent'
       if (msg) {

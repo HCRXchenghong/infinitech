@@ -400,6 +400,7 @@ function connectSocket(token: string) {
   })
 
   sock.on('message_sent', (payload: any) => {
+    if (payload?.chatId && String(payload.chatId) !== String(chatId.value)) return
     const index = messages.value.findIndex((item) => item.mid === String(payload?.tempId || ''))
     if (index < 0) return
     messages.value[index].mid = String(payload?.messageId || messages.value[index].mid)

@@ -201,6 +201,7 @@ export default {
       })
 
       sock.on('message_sent', (data) => {
+        if (data?.chatId && String(data.chatId) !== String(this.chatId)) return
         const msg = this.messages.find(m => m.id === data.tempId)
         if (msg) {
           msg.id = data.messageId

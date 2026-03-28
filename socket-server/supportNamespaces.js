@@ -355,6 +355,7 @@ function createSupportMessageHandler({ saveMessage, reconcileMessage, supportNam
       emitMonitorMessage(monitorNamespace, message);
 
       socket.emit('message_sent', {
+        chatId,
         tempId: data.tempId,
         messageId: message.id,
         status: 'sent',
