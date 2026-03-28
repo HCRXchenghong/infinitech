@@ -42,6 +42,7 @@ export function useChatConsole(options = {}) {
 
   let socketRef = null;
   let refreshChatsTimer = null;
+  let localMessageSeed = 0;
 
   const searchQuery = ref('');
   const selectedChat = ref(null);
@@ -74,6 +75,11 @@ export function useChatConsole(options = {}) {
 
   function getSocket() {
     return socketRef;
+  }
+
+  function createLocalMessageId(prefix = 'local') {
+    localMessageSeed += 1;
+    return `${prefix}_${selectedChat.value?.id || 'chat'}_${Date.now()}_${localMessageSeed}`;
   }
 
   async function refreshChats() {
@@ -194,7 +200,7 @@ export function useChatConsole(options = {}) {
     if (!selectedChat.value || !content || sendingMessage.value || !getSocket()) return;
 
     sendingMessage.value = true;
-    const tempId = Date.now();
+    const tempId = createLocalMessageId('send');
 
     messages.value.push(createOutgoingTempMessage({
       id: tempId,
@@ -235,7 +241,7 @@ export function useChatConsole(options = {}) {
       if (!data.url) throw new Error('上传失败');
 
       messages.value.push(createOutgoingTempMessage({
-        id: Date.now(),
+        id: createLocalMessageId('image'),
         content: data.url,
         type: 'image'
       }));
@@ -260,7 +266,7 @@ export function useChatConsole(options = {}) {
 
     sendingCoupon.value = true;
     messages.value.push(createOutgoingTempMessage({
-      id: Date.now(),
+      id: createLocalMessageId('coupon'),
       content: '',
       type: 'coupon',
       coupon
@@ -283,7 +289,7 @@ export function useChatConsole(options = {}) {
 
     sendingOrder.value = true;
     messages.value.push(createOutgoingTempMessage({
-      id: Date.now(),
+      id: createLocalMessageId('order'),
       content: '',
       type: 'order',
       order

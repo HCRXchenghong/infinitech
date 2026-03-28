@@ -200,6 +200,7 @@ npm run build
 - `socket-server` 本地 `chat.db` 已新增 `event_timestamp`，本地回退时也尽量按原始消息时间排序。
 - `socket-server /api/stats` 与后台首页已接入 Redis 在线样本展示。
 - 本轮继续统一了双端聊天页、商家聊天页、骑手实时消息桥和 `socket-server` 本地兜底层对 `createdAt` 字符串的解析，并把历史消息 fallback ID 改成稳定格式，继续减少排序抖动和重复渲染。
+- 本轮继续把骑手客服页、双端客服页和后台客服工作台里的临时消息 ID 改成稳定生成器，进一步降低 ack 匹配和本地重试阶段因裸时间戳冲突带来的误判风险。
 
 ### 8.6 推送链路推进
 

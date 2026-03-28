@@ -30,6 +30,7 @@ export default {
       socketToken: '',
       socketInitializing: false,
       reconnectTimer: null,
+      localMessageSeed: 0,
       supportTitle: supportRuntime.title,
       supportWelcomeMessage: supportRuntime.welcomeMessage
     }
@@ -252,6 +253,10 @@ export default {
       }
       this.socketInitializing = false
     },
+    createLocalMessageId(prefix = 'local', timestamp = Date.now()) {
+      this.localMessageSeed = Number(this.localMessageSeed || 0) + 1
+      return `${prefix}_${this.chatId || 'chat'}_${timestamp}_${this.localMessageSeed}`
+    },
     normalizeIncomingMessage(payload, isSelf) {
       return normalizeIncomingMessagePayload(payload, isSelf)
     },
@@ -269,11 +274,13 @@ export default {
     },
 
     addWelcomeMessage() {
+      const timestamp = Date.now()
       this.messages.push({
-        id: Date.now(),
+        id: this.createLocalMessageId('welcome', timestamp),
         content: this.supportWelcomeMessage,
         type: 'text',
-        isSelf: false
+        isSelf: false,
+        timestamp
       })
     },
 
@@ -285,7 +292,7 @@ export default {
         return
       }
 
-      const tempId = Date.now()
+      const tempId = this.createLocalMessageId('send')
       const newMsg = {
         id: tempId,
         content: this.inputText,
@@ -320,7 +327,7 @@ export default {
 
     resendMessage(msg) {
       msg.status = 'sending'
-      const tempId = Date.now()
+      const tempId = this.createLocalMessageId('resend')
       msg.id = tempId
 
       this.socket.emit('send_message', {
@@ -359,7 +366,7 @@ export default {
               try {
                 const data = JSON.parse(uploadRes.data)
                 if (data.url) {
-                  const tempId = Date.now()
+                  const tempId = this.createLocalMessageId('image')
                   const newMsg = {
                     id: tempId,
                     content: data.url,
@@ -408,7 +415,7 @@ export default {
         uni.showToast({ title: '订单信息异常', icon: 'none' })
         return
       }
-      const tempId = Date.now()
+      const tempId = this.createLocalMessageId('order')
       const newMsg = {
         id: tempId,
         content: '',

@@ -14,11 +14,25 @@ export const serviceDataMethods = {
     return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : fallback
   },
 
+  resolveMessageId(payload: any, fallback: string) {
+    const explicitId = payload?.id ?? payload?.uid ?? payload?.tsid ?? payload?.messageId
+    if (explicitId !== undefined && explicitId !== null && String(explicitId).trim()) {
+      return String(explicitId)
+    }
+    return fallback
+  },
+
+  createLocalMessageId(prefix = 'local', timestamp = Date.now()) {
+    const nextSeed = Number(this.localMessageSeed || 0) + 1
+    this.localMessageSeed = nextSeed
+    return `${prefix}_${this.chatId || 'chat'}_${timestamp}_${nextSeed}`
+  },
+
   normalizeIncomingMessage(payload: any, isSelf: boolean) {
     const type = payload?.messageType || payload?.type || 'text'
     const timestamp = this.resolveMessageTimestamp(payload?.timestamp || payload?.createdAt, Date.now())
     return {
-      id: payload?.id || payload?.uid || payload?.tsid || `local_${timestamp}`,
+      id: this.resolveMessageId(payload, `incoming_${this.chatId || 'chat'}_${timestamp}`),
       content: payload?.content || '',
       type,
       isSelf,

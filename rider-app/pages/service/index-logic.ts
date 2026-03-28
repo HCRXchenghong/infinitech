@@ -34,6 +34,7 @@ export default Vue.extend({
       showOrderDetailPopup: false,
       currentOrderDetail: null as any,
       historyFromLocalFallback: false,
+      localMessageSeed: 0,
       loadRetryTimer: null as any,
       loadRetryCount: 0,
       maxLoadRetry: 20
@@ -183,7 +184,7 @@ export default Vue.extend({
         const senderId = item?.senderId != null ? String(item.senderId) : ''
         const messageTimestamp = this.resolveMessageTimestamp(item?.timestamp || item?.createdAt, baseTimestamp + index)
         db.saveMessage(this.chatId, {
-          id: item?.id || item?.uid || item?.tsid || `local_${messageTimestamp}`,
+          id: this.resolveMessageId(item, `history_${this.chatId}_${messageTimestamp}_${index}`),
           chatId: this.chatId,
           sender: item.sender,
           senderId: item.senderId,
@@ -387,7 +388,7 @@ export default Vue.extend({
         this.messages.push(this.normalizeIncomingMessage(payload, false))
         const messageTimestamp = this.resolveMessageTimestamp(payload?.timestamp || payload?.createdAt, Date.now())
         db.saveMessage(this.chatId, {
-          id: payload?.id || payload?.uid || payload?.tsid || `local_${messageTimestamp}`,
+          id: this.resolveMessageId(payload, `incoming_${this.chatId}_${messageTimestamp}`),
           chatId: this.chatId,
           sender: payload.sender,
           senderId: payload.senderId,
@@ -440,7 +441,7 @@ export default Vue.extend({
 
     resendMessage(msg: any) {
       msg.status = 'sending'
-      const tempId = Date.now()
+      const tempId = this.createLocalMessageId('resend')
       msg.id = tempId
       const emitted = this.socketEmit(
         'send_message',
@@ -465,7 +466,8 @@ export default Vue.extend({
     sendMessage() {
       if (!this.inputText.trim()) return
 
-      const tempId = Date.now()
+      const tempTimestamp = Date.now()
+      const tempId = this.createLocalMessageId('send', tempTimestamp)
       const newMsg = {
         id: tempId,
         content: this.inputText,
@@ -498,7 +500,7 @@ export default Vue.extend({
         senderId: this.riderId,
         content: this.inputText,
         messageType: 'text',
-        timestamp: Date.now(),
+        timestamp: tempTimestamp,
         isSelf: 1,
         avatar: this.avatarUrl || ''
       })
@@ -523,7 +525,8 @@ export default Vue.extend({
               try {
                 const data = JSON.parse(uploadRes.data)
                 if (data.url) {
-                  const tempId = Date.now()
+                  const messageTimestamp = Date.now()
+                  const tempId = this.createLocalMessageId('image', messageTimestamp)
                   const newMsg = { id: tempId, content: data.url, type: 'image', isSelf: true, status: 'sending' }
                   this.messages.push(newMsg)
                   const emitted = this.socketEmit(
@@ -547,7 +550,7 @@ export default Vue.extend({
                     senderId: this.riderId,
                     content: data.url,
                     messageType: 'image',
-                    timestamp: Date.now(),
+                    timestamp: messageTimestamp,
                     isSelf: 1,
                     avatar: this.avatarUrl || ''
                   })
@@ -572,7 +575,8 @@ export default Vue.extend({
         uni.showToast({ title: '订单信息异常', icon: 'none' })
         return
       }
-      const tempId = Date.now()
+      const tempTimestamp = Date.now()
+      const tempId = this.createLocalMessageId('order', tempTimestamp)
       const newMsg = { id: tempId, content: '', type: 'order', isSelf: true, order: normalizedOrder, status: 'sending' }
       this.messages.push(newMsg)
       const emitted = this.socketEmit(
