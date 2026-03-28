@@ -108,11 +108,39 @@ async function probeHttp(url, timeoutMs) {
   }
 }
 
+async function probeHttpWithFallback(urls, timeoutMs) {
+  const targets = Array.isArray(urls) ? urls.filter(Boolean) : [urls].filter(Boolean);
+  if (targets.length === 0) {
+    return {
+      ok: false,
+      latencyMs: null,
+      httpStatus: null,
+      error: "empty_url",
+      target: "",
+      probe: ""
+    };
+  }
+
+  let lastResult = null;
+  for (const target of targets) {
+    const result = await probeHttp(target, timeoutMs);
+    const probe = /\/ready(?:\?|$)/.test(target) ? "ready" : "health";
+    lastResult = { ...result, target, probe };
+    if (result.ok) {
+      return lastResult;
+    }
+  }
+
+  return lastResult;
+}
+
 async function collectServiceStatus() {
   const timeoutMs = toPositiveInt(process.env.SYSTEM_LOG_HEALTH_TIMEOUT_MS, HEALTH_CHECK_TIMEOUT_MS);
   const bffPort = toPositiveInt(config.port, 25500);
+  const bffReadyUrl = `http://127.0.0.1:${bffPort}/ready`;
   const bffHealthUrl = `http://127.0.0.1:${bffPort}/health`;
   const goBaseUrl = normalizeUrl(config.goApiUrl);
+  const goReadyUrl = goBaseUrl ? `${goBaseUrl}/ready` : "";
   const goHealthUrl = goBaseUrl ? `${goBaseUrl}/health` : "";
   const goAddress = parseUrlHostPort(goBaseUrl);
 
@@ -120,8 +148,8 @@ async function collectServiceStatus() {
   const redisPort = toPositiveInt(config.redis?.port, 2550);
 
   const [bffCheck, goCheck, redisCheck] = await Promise.all([
-    probeHttp(bffHealthUrl, timeoutMs),
-    probeHttp(goHealthUrl, timeoutMs),
+    probeHttpWithFallback([bffReadyUrl, bffHealthUrl], timeoutMs),
+    probeHttpWithFallback([goReadyUrl, goHealthUrl], timeoutMs),
     probeTcp(redisHost, redisPort, timeoutMs)
   ]);
 
@@ -130,7 +158,8 @@ async function collectServiceStatus() {
       key: "bff",
       label: "BFF",
       type: "http",
-      target: bffHealthUrl,
+      target: bffCheck.target || bffReadyUrl,
+      probe: bffCheck.probe || "ready",
       host: "127.0.0.1",
       port: bffPort,
       status: bffCheck.ok ? "up" : "down",
@@ -143,7 +172,8 @@ async function collectServiceStatus() {
       key: "go",
       label: "Go API",
       type: "http",
-      target: goHealthUrl || "-",
+      target: goCheck.target || goReadyUrl || goHealthUrl || "-",
+      probe: goCheck.probe || "ready",
       host: goAddress.host,
       port: goAddress.port,
       status: goCheck.ok ? "up" : "down",
@@ -157,6 +187,7 @@ async function collectServiceStatus() {
       label: "Redis",
       type: "tcp",
       target: redisHost ? `${redisHost}:${redisPort}` : "-",
+      probe: "tcp",
       host: redisHost,
       port: redisPort,
       status: redisCheck.ok ? "up" : "down",

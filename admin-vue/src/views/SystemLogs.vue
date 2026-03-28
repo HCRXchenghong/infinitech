@@ -34,7 +34,10 @@
               {{ serviceStatusText(item.status) }}
             </el-tag>
           </div>
-          <div class="service-target">{{ item.target || '-' }}</div>
+          <div class="service-target">
+            {{ item.target || '-' }}
+            <span v-if="item.probe" class="service-probe">· 探针 {{ formatProbeType(item.probe) }}</span>
+          </div>
           <div class="service-meta">
             <span v-if="item.httpStatus">HTTP {{ item.httpStatus }}</span>
             <span v-if="item.latencyMs !== null && item.latencyMs !== undefined">耗时 {{ item.latencyMs }}ms</span>
@@ -323,6 +326,13 @@ function serviceStatusText(status) {
   if (status === 'degraded') return '降级';
   if (status === 'down' || status === 'error') return '异常';
   return '未知';
+}
+
+function formatProbeType(probe) {
+  if (probe === 'ready') return '/ready';
+  if (probe === 'health') return '/health';
+  if (probe === 'tcp') return 'TCP';
+  return String(probe || '-');
 }
 
 function overallStatusText(status) {

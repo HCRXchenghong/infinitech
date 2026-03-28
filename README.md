@@ -246,6 +246,7 @@ npm run build
 - Go API 与 BFF 已统一补上 `X-Request-ID`。
 - BFF 转发到 Go 时会带上真实客户端 IP。
 - BFF 与 `socket-server` 已补齐 `/ready` 探针：BFF 会校验 Go API 就绪状态，`socket-server` 会显式暴露 Redis 就绪状态，便于发布探活、编排与巡检。
+- 后台系统日志里的服务状态面板已优先按 `/ready` 探针判断 BFF 与 Go API，就绪失败才回退 `/health`，运维看到的状态更接近真实可接流量状态。
 
 ## 9. 当前仍未完成的大项
 
