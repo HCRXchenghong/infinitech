@@ -3,7 +3,8 @@ import { createServer } from 'http';
 import { db, saveMessage, getMessages, clearMessages, replaceMessages, reconcileMessage, markAsRead, markAllRead, getUnreadCount } from './database.js';
 import { authMiddleware, generateToken } from './auth.js';
 import { getServerStats, addOnlineUser, removeOnlineUser, getOnlineCount, getOnlineUsers } from './monitor.js';
-import { writeFileSync, mkdirSync, existsSync, createReadStream } from 'fs';
+import Busboy from 'busboy';
+import { mkdirSync, existsSync, createReadStream, createWriteStream, unlinkSync } from 'fs';
 import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
@@ -79,63 +80,124 @@ function createPayloadTooLargeError(limitBytes) {
   return error;
 }
 
+function createBadRequestError(message) {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+}
+
+function resolveUploadExtension(filename, mimeType = '') {
+  const explicitExt = extname(String(filename || '')).toLowerCase();
+  if (explicitExt) return explicitExt;
+
+  const mime = String(mimeType || '').trim().toLowerCase();
+  const mimeMap = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/gif': '.gif',
+    'image/webp': '.webp',
+    'image/bmp': '.bmp',
+    'image/heic': '.heic',
+    'image/heif': '.heif',
+    'audio/mpeg': '.mp3',
+    'audio/mp4': '.m4a',
+    'audio/aac': '.aac',
+    'audio/wav': '.wav',
+    'audio/ogg': '.ogg',
+    'audio/amr': '.amr'
+  };
+  return mimeMap[mime] || '.bin';
+}
+
 function parseMultipart(req, maxBytes) {
   return new Promise((resolve, reject) => {
-    const contentType = req.headers['content-type'] || '';
-    const boundaryMatch = contentType.match(/boundary=(.+)/);
-    if (!boundaryMatch) return reject(new Error('No boundary'));
+    let busboy;
+    try {
+      busboy = Busboy({
+        headers: req.headers,
+        limits: {
+          files: 1,
+          fileSize: maxBytes,
+          fields: 16,
+          parts: 32
+        }
+      });
+    } catch (_err) {
+      reject(createBadRequestError('Invalid multipart upload'));
+      return;
+    }
 
-    const boundary = boundaryMatch[1];
-    const chunks = [];
-    let totalBytes = 0;
     let settled = false;
+    let fileFound = false;
+    let tempFilePath = '';
+    let writer = null;
+
+    const cleanup = () => {
+      if (!tempFilePath) return;
+      try {
+        if (existsSync(tempFilePath)) {
+          unlinkSync(tempFilePath);
+        }
+      } catch (_err) {
+        // ignore cleanup failure
+      }
+    };
 
     const fail = (err) => {
       if (settled) return;
       settled = true;
+       try {
+        if (writer) {
+          writer.destroy();
+        }
+      } catch (_destroyError) {
+        // ignore
+      }
+      cleanup();
       reject(err);
     };
 
-    req.on('data', (chunk) => {
-      totalBytes += chunk.length;
-      if (totalBytes > maxBytes) {
-        const error = createPayloadTooLargeError(maxBytes);
-        req.destroy(error);
-        fail(error);
+    busboy.on('file', (_fieldName, file, info = {}) => {
+      if (fileFound) {
+        file.resume();
+        fail(createBadRequestError('Only one file upload is supported'));
         return;
       }
-      chunks.push(chunk);
+      fileFound = true;
+
+      const originalName = String(info.filename || '').trim() || 'upload.bin';
+      const ext = resolveUploadExtension(originalName, info.mimeType);
+      const filename = `${crypto.randomBytes(16).toString('hex')}${ext}`;
+      tempFilePath = join(UPLOAD_DIR, filename);
+      writer = createWriteStream(tempFilePath, { flags: 'wx' });
+
+      file.on('limit', () => {
+        fail(createPayloadTooLargeError(maxBytes));
+      });
+      file.on('error', (err) => fail(err));
+      writer.on('error', (err) => fail(err));
+      writer.on('finish', () => {
+        if (settled) return;
+        settled = true;
+        resolve({ filename, originalName });
+      });
+
+      file.pipe(writer);
     });
-    req.on('end', () => {
-      if (settled) return;
 
-      const buffer = Buffer.concat(chunks, totalBytes);
-      const str = buffer.toString('binary');
-      const parts = str.split(`--${boundary}`);
-
-      for (const part of parts) {
-        if (!part.includes('filename=')) continue;
-
-        const filenameMatch = part.match(/filename="(.+?)"/);
-        const filename = filenameMatch ? filenameMatch[1] : 'upload.jpg';
-        const ext = extname(filename) || '.jpg';
-        const headerEnd = part.indexOf('\r\n\r\n');
-        if (headerEnd === -1) continue;
-
-        let fileData = part.substring(headerEnd + 4);
-        if (fileData.endsWith('\r\n')) {
-          fileData = fileData.substring(0, fileData.length - 2);
-        }
-
-        const newFilename = `${crypto.randomBytes(16).toString('hex')}${ext}`;
-        const filePath = join(UPLOAD_DIR, newFilename);
-        writeFileSync(filePath, fileData, 'binary');
-        return resolve({ filename: newFilename, originalName: filename });
-      }
-
-      fail(new Error('No file found'));
+    busboy.on('filesLimit', () => {
+      fail(createBadRequestError('Only one file upload is supported'));
+    });
+    busboy.on('partsLimit', () => {
+      fail(createBadRequestError('Too many multipart parts'));
+    });
+    busboy.on('error', (err) => fail(err));
+    busboy.on('finish', () => {
+      if (settled || fileFound) return;
+      fail(createBadRequestError('No file found'));
     });
     req.on('error', fail);
+    req.pipe(busboy);
   });
 }
 

@@ -117,6 +117,7 @@
 - `socket-server` 已纳入 CI smoke-check。
 - `admin-vue` 已做显式 vendor chunk 拆分，主包集中度明显下降。
 - 后台首页现在能直接看到 `socket-server` fallback 命中、历史回写次数和最近回退时间。
+- `socket-server` 上传入口已改成流式 multipart 解析，不再把整包文件一次性读入内存。
 
 ## 6. 当前仍未完成的重点
 
@@ -247,6 +248,7 @@ node scripts/http-load-smoke.mjs
 - 2026-03-29：BFF `/ready` 默认也会检查 `socket-server /ready`，不再只看 Go。
 - 2026-03-29：`socket-server` 的 readiness、stats 和后台首页已经能看到 Redis adapter 是否真实启用，而不是只有 Redis 是否连上。
 - 2026-03-29：后台首页新增 `socket-server` fallback 命中与历史回写指标，能直接判断当前是否在大量依赖本地 `chat.db` 兜底。
+- 2026-03-29：`socket-server` 上传链路改成 Busboy 流式解析，开始按流控和文件大小限制处理单文件上传。
 - 2026-03-29：多端消息已继续按 `chatId` 过滤 `message_sent / message_read / all_messages_read`，减少串会话污染。
 - 2026-03-29：`socket-server/chat.db` 已继续收紧为短期 emergency buffer，加入启动裁剪、按会话上限裁剪、按时间淘汰和 fallback 统计暴露。
 - 2026-03-29：BFF、Go、`socket-server` 已继续补齐 request id 透传、健康聚合和运维面板信息。
