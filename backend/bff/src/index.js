@@ -73,6 +73,24 @@ function buildGoProbeDetail(body) {
     if (pushWorker.lastError) {
       details.push(`pushError=${pushWorker.lastError}`);
     }
+    const queue = pushWorker.queue && typeof pushWorker.queue === "object" ? pushWorker.queue : null;
+    if (queue) {
+      if (queue.total !== undefined) {
+        details.push(`pushQueue=${queue.total}`);
+      }
+      if (queue.queued) {
+        details.push(`pushQueued=${queue.queued}`);
+      }
+      if (queue.retryPending) {
+        details.push(`pushRetry=${queue.retryPending}`);
+      }
+      if (queue.dispatching) {
+        details.push(`pushDispatching=${queue.dispatching}`);
+      }
+      if (queue.failed) {
+        details.push(`pushFailed=${queue.failed}`);
+      }
+    }
   }
 
   return details.join(" | ");

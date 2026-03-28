@@ -31,15 +31,27 @@ type MobilePushService struct {
 }
 
 type MobilePushWorkerStatus struct {
-	Enabled             bool   `json:"enabled"`
-	Running             bool   `json:"running"`
-	Provider            string `json:"provider"`
-	PollIntervalSeconds int    `json:"pollIntervalSeconds"`
-	BatchSize           int    `json:"batchSize"`
-	LastCycleStatus     string `json:"lastCycleStatus"`
-	LastProcessedCount  int    `json:"lastProcessedCount"`
-	LastCycleAt         string `json:"lastCycleAt,omitempty"`
-	LastError           string `json:"lastError,omitempty"`
+	Enabled             bool                    `json:"enabled"`
+	Running             bool                    `json:"running"`
+	Provider            string                  `json:"provider"`
+	PollIntervalSeconds int                     `json:"pollIntervalSeconds"`
+	BatchSize           int                     `json:"batchSize"`
+	LastCycleStatus     string                  `json:"lastCycleStatus"`
+	LastProcessedCount  int                     `json:"lastProcessedCount"`
+	LastCycleAt         string                  `json:"lastCycleAt,omitempty"`
+	LastError           string                  `json:"lastError,omitempty"`
+	Queue               MobilePushQueueSnapshot `json:"queue"`
+}
+
+type MobilePushQueueSnapshot struct {
+	Total        int64 `json:"total"`
+	Queued       int64 `json:"queued"`
+	Pending      int64 `json:"pending"`
+	RetryPending int64 `json:"retryPending"`
+	Dispatching  int64 `json:"dispatching"`
+	Sent         int64 `json:"sent"`
+	Failed       int64 `json:"failed"`
+	Acknowledged int64 `json:"acknowledged"`
 }
 
 type MobilePushOptions struct {
@@ -126,7 +138,57 @@ func (s *MobilePushService) recordDispatchCycle(status string, processed int, er
 	}
 }
 
-func (s *MobilePushService) WorkerStatusSnapshot() MobilePushWorkerStatus {
+func (s *MobilePushService) QueueSnapshot(ctx context.Context) MobilePushQueueSnapshot {
+	snapshot := MobilePushQueueSnapshot{}
+	if s == nil || s.db == nil {
+		return snapshot
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	type queueRow struct {
+		Status string
+		Count  int64
+	}
+
+	var rows []queueRow
+	if err := s.db.WithContext(ctx).
+		Model(&repository.PushDelivery{}).
+		Select("status, COUNT(*) AS count").
+		Group("status").
+		Scan(&rows).Error; err != nil {
+		return snapshot
+	}
+
+	for _, row := range rows {
+		count := row.Count
+		if count <= 0 {
+			continue
+		}
+		snapshot.Total += count
+		switch strings.ToLower(strings.TrimSpace(row.Status)) {
+		case "queued":
+			snapshot.Queued += count
+		case "pending":
+			snapshot.Pending += count
+		case "retry_pending":
+			snapshot.RetryPending += count
+		case "dispatching":
+			snapshot.Dispatching += count
+		case "sent":
+			snapshot.Sent += count
+		case "failed":
+			snapshot.Failed += count
+		case "acknowledged":
+			snapshot.Acknowledged += count
+		}
+	}
+
+	return snapshot
+}
+
+func (s *MobilePushService) WorkerStatusSnapshot(ctx context.Context) MobilePushWorkerStatus {
 	if s == nil {
 		return MobilePushWorkerStatus{
 			Enabled:         false,
@@ -170,6 +232,7 @@ func (s *MobilePushService) WorkerStatusSnapshot() MobilePushWorkerStatus {
 	if !lastCycleAt.IsZero() {
 		snapshot.LastCycleAt = lastCycleAt.Format(time.RFC3339)
 	}
+	snapshot.Queue = s.QueueSnapshot(ctx)
 	return snapshot
 }
 

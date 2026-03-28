@@ -318,7 +318,7 @@ func main() {
 		if services.MobilePush != nil {
 			pushWorker = gin.H{
 				"ok":     true,
-				"worker": services.MobilePush.WorkerStatusSnapshot(),
+				"worker": services.MobilePush.WorkerStatusSnapshot(ctx),
 			}
 		}
 

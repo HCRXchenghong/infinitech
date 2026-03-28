@@ -146,6 +146,7 @@ function buildProbeDetail(result) {
   if (body.dependencies && body.dependencies.pushWorker) {
     const pushWorker = body.dependencies.pushWorker;
     const worker = pushWorker.worker && typeof pushWorker.worker === "object" ? pushWorker.worker : {};
+    const queue = worker.queue && typeof worker.queue === "object" ? worker.queue : {};
     const pushDetail = [
       `pushWorkerOk=${pushWorker.ok === true}`,
       worker.enabled !== undefined ? `pushEnabled=${worker.enabled === true}` : "",
@@ -153,7 +154,12 @@ function buildProbeDetail(result) {
       worker.provider ? `pushProvider=${worker.provider}` : "",
       worker.lastCycleStatus ? `pushCycle=${worker.lastCycleStatus}` : "",
       worker.lastProcessedCount !== undefined ? `pushProcessed=${worker.lastProcessedCount}` : "",
-      worker.lastError ? `pushError=${worker.lastError}` : ""
+      worker.lastError ? `pushError=${worker.lastError}` : "",
+      queue.total !== undefined ? `pushQueue=${queue.total}` : "",
+      queue.queued ? `pushQueued=${queue.queued}` : "",
+      queue.retryPending ? `pushRetry=${queue.retryPending}` : "",
+      queue.dispatching ? `pushDispatching=${queue.dispatching}` : "",
+      queue.failed ? `pushFailed=${queue.failed}` : ""
     ].filter(Boolean).join(" ");
     if (pushDetail) {
       details.push(pushDetail);
