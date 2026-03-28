@@ -1,6 +1,7 @@
 const DEFAULT_TIMEOUT_MS = 5000;
 const DEFAULT_MAX_FALLBACK_MESSAGES = 5000;
 const DEFAULT_MAX_PUSH_QUEUE = 5000;
+const DEFAULT_MAX_RECENT_SOCKET_FALLBACK_MS = 10 * 60 * 1000;
 
 function normalizeBaseUrl(value, fallback) {
   const text = String(value || fallback || '').trim();
@@ -18,6 +19,16 @@ function parseBooleanEnv(value, fallback = false) {
 function parseIntegerEnv(value, fallback) {
   const parsed = Number.parseInt(String(value || '').trim(), 10);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function formatDurationMs(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return '0ms';
+  if (numeric < 1000) return `${numeric}ms`;
+  if (numeric < 60_000) return `${Math.round(numeric / 1000)}s`;
+  const minutes = Math.floor(numeric / 60_000);
+  const seconds = Math.round((numeric % 60_000) / 1000);
+  return `${minutes}m${seconds}s`;
 }
 
 function withTimeout(promise, timeoutMs) {
@@ -78,12 +89,24 @@ function collectSocketSummary(body) {
   if (!body || typeof body !== 'object') return '';
   const redis = body.redis && typeof body.redis === 'object' ? body.redis : null;
   const fallback = body.fallbackBuffer && typeof body.fallbackBuffer === 'object' ? body.fallbackBuffer : null;
+  const fallbackRuntime = body.fallbackRuntime && typeof body.fallbackRuntime === 'object' ? body.fallbackRuntime : null;
+  const lastFallbackAt = fallbackRuntime
+    ? Math.max(
+      Number(fallbackRuntime.lastConversationListFallbackAt || 0),
+      Number(fallbackRuntime.lastMessageHistoryFallbackAt || 0)
+    )
+    : 0;
+  const lastFallbackAgeMs = lastFallbackAt > 0 ? Math.max(Date.now() - lastFallbackAt, 0) : 0;
   return [
     redis ? `redisMode=${redis.mode || 'unknown'}` : '',
     redis && typeof redis.connected === 'boolean' ? `redisConnected=${redis.connected}` : '',
     redis && typeof redis.adapterEnabled === 'boolean' ? `adapter=${redis.adapterEnabled}` : '',
     fallback && fallback.messageCount !== undefined ? `fallbackMessages=${fallback.messageCount}` : '',
-    fallback && fallback.chatCount !== undefined ? `fallbackChats=${fallback.chatCount}` : ''
+    fallback && fallback.chatCount !== undefined ? `fallbackChats=${fallback.chatCount}` : '',
+    fallbackRuntime && fallbackRuntime.conversationListFallbackCount !== undefined ? `fallbackListHits=${fallbackRuntime.conversationListFallbackCount}` : '',
+    fallbackRuntime && fallbackRuntime.messageHistoryFallbackCount !== undefined ? `fallbackHistoryHits=${fallbackRuntime.messageHistoryFallbackCount}` : '',
+    fallbackRuntime && fallbackRuntime.historyRefreshWriteCount !== undefined ? `fallbackRefreshWrites=${fallbackRuntime.historyRefreshWriteCount}` : '',
+    lastFallbackAgeMs > 0 ? `lastFallbackAgo=${formatDurationMs(lastFallbackAgeMs)}` : ''
   ].filter(Boolean).join(' ');
 }
 
@@ -149,7 +172,7 @@ function evaluateGoReady(body, maxPushQueue) {
   return failures;
 }
 
-function evaluateSocketReady(body) {
+function evaluateSocketReady(body, requiredRedisMode) {
   const failures = [];
   if (!body || typeof body !== 'object') {
     failures.push('missing_socket_ready_body');
@@ -167,10 +190,17 @@ function evaluateSocketReady(body) {
       failures.push('socket_adapter_not_enabled');
     }
   }
+  const normalizedRequiredMode = String(requiredRedisMode || '').trim();
+  if (normalizedRequiredMode && redis) {
+    const actualMode = String(redis.mode || '').trim();
+    if (actualMode !== normalizedRequiredMode) {
+      failures.push(`socket_redis_mode=${actualMode || 'unknown'}!=${normalizedRequiredMode}`);
+    }
+  }
   return failures;
 }
 
-function evaluateSocketStats(body, maxFallbackMessages) {
+function evaluateSocketStats(body, maxFallbackMessages, maxRecentSocketFallbackMs) {
   const failures = [];
   if (!body || typeof body !== 'object') {
     failures.push('missing_socket_stats_body');
@@ -179,6 +209,20 @@ function evaluateSocketStats(body, maxFallbackMessages) {
   const fallback = body.fallbackBuffer && typeof body.fallbackBuffer === 'object' ? body.fallbackBuffer : null;
   if (fallback && Number.isFinite(Number(fallback.messageCount)) && Number(fallback.messageCount) > maxFallbackMessages) {
     failures.push(`fallback_messages=${fallback.messageCount}>${maxFallbackMessages}`);
+  }
+  const fallbackRuntime = body.fallbackRuntime && typeof body.fallbackRuntime === 'object' ? body.fallbackRuntime : null;
+  const recentThreshold = Number(maxRecentSocketFallbackMs);
+  if (fallbackRuntime && Number.isFinite(recentThreshold) && recentThreshold > 0) {
+    const lastFallbackAt = Math.max(
+      Number(fallbackRuntime.lastConversationListFallbackAt || 0),
+      Number(fallbackRuntime.lastMessageHistoryFallbackAt || 0)
+    );
+    if (lastFallbackAt > 0) {
+      const ageMs = Math.max(Date.now() - lastFallbackAt, 0);
+      if (ageMs <= recentThreshold) {
+        failures.push(`recent_socket_fallback=${formatDurationMs(ageMs)}<=${formatDurationMs(recentThreshold)}`);
+      }
+    }
   }
   return failures;
 }
@@ -217,6 +261,11 @@ async function main() {
   const adminToken = String(process.env.ADMIN_TOKEN || '').trim();
   const maxFallbackMessages = parseIntegerEnv(process.env.PREFLIGHT_MAX_FALLBACK_MESSAGES, DEFAULT_MAX_FALLBACK_MESSAGES);
   const maxPushQueue = parseIntegerEnv(process.env.PREFLIGHT_MAX_PUSH_QUEUE, DEFAULT_MAX_PUSH_QUEUE);
+  const maxRecentSocketFallbackMs = parseIntegerEnv(
+    process.env.PREFLIGHT_MAX_RECENT_SOCKET_FALLBACK_MS,
+    DEFAULT_MAX_RECENT_SOCKET_FALLBACK_MS
+  );
+  const requiredSocketRedisMode = String(process.env.PREFLIGHT_REQUIRE_SOCKET_REDIS_MODE || 'redis').trim();
   const allowDegradedSystemHealth = parseBooleanEnv(process.env.PREFLIGHT_ALLOW_DEGRADED_SYSTEM_HEALTH, false);
 
   const probes = [
@@ -236,13 +285,13 @@ async function main() {
       label: 'Socket ready',
       url: `${socketBaseUrl}/ready`,
       summary: collectSocketSummary,
-      validate: evaluateSocketReady
+      validate: (body) => evaluateSocketReady(body, requiredSocketRedisMode)
     },
     {
       label: 'Socket stats',
       url: `${socketBaseUrl}/api/stats`,
       summary: collectSocketSummary,
-      validate: (body) => evaluateSocketStats(body, maxFallbackMessages)
+      validate: (body) => evaluateSocketStats(body, maxFallbackMessages, maxRecentSocketFallbackMs)
     }
   ];
 
@@ -259,7 +308,12 @@ async function main() {
   let hasFailure = false;
   console.log(`Release preflight started at ${new Date().toISOString()}`);
   console.log(`Targets: BFF=${bffBaseUrl} GO=${goBaseUrl} SOCKET=${socketBaseUrl}`);
-  console.log(`Thresholds: maxFallbackMessages=${maxFallbackMessages} maxPushQueue=${maxPushQueue} allowDegradedSystemHealth=${allowDegradedSystemHealth}`);
+  console.log(
+    `Thresholds: maxFallbackMessages=${maxFallbackMessages} maxPushQueue=${maxPushQueue} `
+    + `requiredSocketRedisMode=${requiredSocketRedisMode || 'none'} `
+    + `maxRecentSocketFallback=${formatDurationMs(maxRecentSocketFallbackMs)} `
+    + `allowDegradedSystemHealth=${allowDegradedSystemHealth}`
+  );
   if (!adminToken) {
     console.log('Admin system health probe skipped: ADMIN_TOKEN not provided');
   }

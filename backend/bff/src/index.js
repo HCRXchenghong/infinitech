@@ -181,6 +181,18 @@ function buildSocketProbeDetail(body) {
       details.push(`fallbackChats=${fallback.chatCount}`);
     }
   }
+  const fallbackRuntime = body.fallbackRuntime && typeof body.fallbackRuntime === "object" ? body.fallbackRuntime : null;
+  if (fallbackRuntime) {
+    if (fallbackRuntime.conversationListFallbackCount !== undefined) {
+      details.push(`fallbackListHits=${fallbackRuntime.conversationListFallbackCount}`);
+    }
+    if (fallbackRuntime.messageHistoryFallbackCount !== undefined) {
+      details.push(`fallbackHistoryHits=${fallbackRuntime.messageHistoryFallbackCount}`);
+    }
+    if (fallbackRuntime.historyRefreshWriteCount !== undefined) {
+      details.push(`fallbackRefreshWrites=${fallbackRuntime.historyRefreshWriteCount}`);
+    }
+  }
   return details.join(" | ");
 }
 

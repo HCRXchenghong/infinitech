@@ -299,7 +299,8 @@ function getSocketOperationalStatus() {
   const stats = getServerStats();
   return {
     redis: getRedisHealthSnapshot(),
-    fallbackBuffer: stats.fallbackBuffer || null
+    fallbackBuffer: stats.fallbackBuffer || null,
+    fallbackRuntime: stats.fallbackRuntime || null
   };
 }
 

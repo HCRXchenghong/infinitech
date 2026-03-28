@@ -242,6 +242,7 @@ node scripts/http-load-smoke.mjs
 - 2026-03-29：`admin-vue` 构建加入显式 vendor chunk 拆分，继续压低后台主包集中度。
 - 2026-03-29：新增 `scripts/release-preflight.mjs`，发布前会校验 BFF / Go / `socket-server` 的 readiness、stats 和系统健康。
 - 2026-03-29：发布前巡检脚本继续加严，已经会阻断 socket fallback 过大、push worker 未运行、push 队列积压过高等风险。
+- 2026-03-29：发布前巡检脚本现在还会校验 `socket-server` 是否处于 `redis` 广播模式，并阻断最近仍在频繁命中本地 fallback 的实例。
 - 2026-03-29：Go `/ready` 现在会把 push worker 运行态和队列快照纳入 readiness 判定。
 - 2026-03-29：BFF `/ready` 默认也会检查 `socket-server /ready`，不再只看 Go。
 - 2026-03-29：`socket-server` 的 readiness、stats 和后台首页已经能看到 Redis adapter 是否真实启用，而不是只有 Redis 是否连上。
