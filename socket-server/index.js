@@ -39,6 +39,7 @@ const SOCKET_HTTP_RATE_LIMIT_MAX = toPositiveInt(process.env.SOCKET_HTTP_RATE_LI
 const SOCKET_PING_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_PING_TIMEOUT_MS, 20_000);
 const SOCKET_PING_INTERVAL_MS = toPositiveInt(process.env.SOCKET_PING_INTERVAL_MS, 25_000);
 const SOCKET_MAX_HTTP_BUFFER_BYTES = toPositiveInt(process.env.SOCKET_MAX_HTTP_BUFFER_BYTES, 4 * 1024 * 1024);
+const SOCKET_READY_MAX_FALLBACK_MESSAGES = toPositiveInt(process.env.SOCKET_READY_MAX_FALLBACK_MESSAGES, 5_000);
 
 let monitorNamespace;
 let supportNamespace;
@@ -339,6 +340,7 @@ const httpServer = createServer(async (req, res) => {
   if ((pathname === '/ready' || pathname === '/api/ready') && req.method === 'GET') {
     const readiness = getSocketOperationalStatus();
     const redis = readiness.redis;
+    const fallbackBuffer = readiness.fallbackBuffer || {};
     if (redis.enabled && !redis.connected) {
       writeSocketStatus(res, 503, 'degraded', {
         error: 'redis not ready',
@@ -349,6 +351,14 @@ const httpServer = createServer(async (req, res) => {
     if (redis.enabled && redis.connected && !redis.adapterEnabled) {
       writeSocketStatus(res, 503, 'degraded', {
         error: 'socket adapter not ready',
+        ...readiness
+      });
+      return;
+    }
+    if (Number.isFinite(Number(fallbackBuffer.messageCount)) && Number(fallbackBuffer.messageCount) > SOCKET_READY_MAX_FALLBACK_MESSAGES) {
+      writeSocketStatus(res, 503, 'degraded', {
+        error: 'fallback buffer too large',
+        maxFallbackMessages: SOCKET_READY_MAX_FALLBACK_MESSAGES,
         ...readiness
       });
       return;
