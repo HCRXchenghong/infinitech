@@ -8,7 +8,6 @@ import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import { logger } from './logger.js';
-import { normalizeMessageData } from './messagePayload.js';
 import { setupSupportNamespaces } from './supportNamespaces.js';
 import { setupRiderNamespace } from './riderNamespace.js';
 import { validateSocketIdentity } from './socketIdentity.js';
@@ -27,19 +26,6 @@ const TRUSTED_TOKEN_API_SECRET = String(process.env.TOKEN_API_SECRET || '').trim
 
 function toPositiveInt(value, fallback) {
   const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function resolveMessageTimestamp(rawValue, fallback = Date.now()) {
-  const numericValue = Number(rawValue);
-  if (Number.isFinite(numericValue) && numericValue > 0) {
-    return numericValue;
-  }
-
-  const stringValue = String(rawValue || '').trim();
-  if (!stringValue) return fallback;
-
-  const parsed = Date.parse(stringValue.replace(' ', 'T'));
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
@@ -255,7 +241,6 @@ function getClientIp(req) {
 function shouldApplyHttpRateLimit(pathname) {
   return pathname === '/api/upload'
     || pathname === '/api/generate-token'
-    || pathname === '/api/messages'
     || pathname === '/api/stats';
 }
 
@@ -466,57 +451,6 @@ const httpServer = createServer(async (req, res) => {
       const statusCode = Number(err?.statusCode || 500);
       writeJson(res, statusCode, {
         error: err?.message || 'Failed to generate socket token'
-      });
-    }
-    return;
-  }
-
-  if (pathname === '/api/messages' && req.method === 'GET') {
-    if (!isTrustedSocketApiRequest(req)) {
-      writeJson(res, 403, { error: 'Forbidden' });
-      return;
-    }
-
-    const chatId = requestUrl.searchParams.get('chatId') || '1';
-    const lastId = Number.parseInt(requestUrl.searchParams.get('lastId') || '0', 10);
-    const allMessages = getMessages('support', chatId);
-    const newMessages = allMessages.filter((msg) => Number(msg.legacyId || msg.id || 0) > lastId);
-    writeJson(res, 200, { messages: newMessages });
-    return;
-  }
-
-  if (pathname === '/api/messages' && req.method === 'POST') {
-    if (!isTrustedSocketApiRequest(req)) {
-      writeJson(res, 403, { error: 'Forbidden' });
-      return;
-    }
-
-    try {
-      const data = await readJsonBody(req, SOCKET_JSON_BODY_LIMIT_BYTES);
-      const messageData = normalizeMessageData(data);
-      const result = saveMessage('support', data.chatId, messageData);
-      const timestamp = resolveMessageTimestamp(result?.timestamp ?? result?.createdAt, Date.now());
-      const createdAt = String(result?.createdAt || '');
-      const message = {
-        id: result.uid || result.lastInsertRowid,
-        legacyId: result.lastInsertRowid,
-        uid: result.uid || '',
-        tsid: result.tsid || '',
-        chatId: data.chatId,
-        ...messageData,
-        timestamp,
-        createdAt,
-        time: new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-      };
-
-      if (supportNamespace) {
-        supportNamespace.emit('new_message', message);
-      }
-
-      writeJson(res, 200, { success: true, message });
-    } catch (err) {
-      writeJson(res, Number(err?.statusCode || 500), {
-        error: err?.message || 'Failed to sync message'
       });
     }
     return;
