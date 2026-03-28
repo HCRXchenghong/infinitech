@@ -143,6 +143,22 @@ function buildProbeDetail(result) {
       details.push(goApiDetail);
     }
   }
+  if (body.dependencies && body.dependencies.pushWorker) {
+    const pushWorker = body.dependencies.pushWorker;
+    const worker = pushWorker.worker && typeof pushWorker.worker === "object" ? pushWorker.worker : {};
+    const pushDetail = [
+      `pushWorkerOk=${pushWorker.ok === true}`,
+      worker.enabled !== undefined ? `pushEnabled=${worker.enabled === true}` : "",
+      worker.running !== undefined ? `pushRunning=${worker.running === true}` : "",
+      worker.provider ? `pushProvider=${worker.provider}` : "",
+      worker.lastCycleStatus ? `pushCycle=${worker.lastCycleStatus}` : "",
+      worker.lastProcessedCount !== undefined ? `pushProcessed=${worker.lastProcessedCount}` : "",
+      worker.lastError ? `pushError=${worker.lastError}` : ""
+    ].filter(Boolean).join(" ");
+    if (pushDetail) {
+      details.push(pushDetail);
+    }
+  }
 
   return details.join(" | ");
 }

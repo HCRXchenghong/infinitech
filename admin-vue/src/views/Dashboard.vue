@@ -150,13 +150,31 @@
           <div class="im-detail">运行 {{ formatUptime(imStats.uptime) }}</div>
         </div>
       </div>
+      <div class="im-card">
+        <div class="im-info">
+          <div class="im-label">广播模式</div>
+          <div class="im-value">{{ getRedisModeLabel(imRedis.mode) }}</div>
+          <div class="im-detail">
+            Redis {{ imRedis.connected ? '已连接' : '未连接' }}
+            · Adapter {{ imRedis.adapterEnabled ? '已启用' : '未启用' }}
+          </div>
+        </div>
+        <div class="im-mode-tags">
+          <el-tag size="small" :type="getRedisModeTagType(imRedis.mode)">{{ getRedisModeLabel(imRedis.mode) }}</el-tag>
+          <el-tag size="small" effect="plain">{{ imRedis.enabled ? `DB ${imRedis.database}` : '本地模式' }}</el-tag>
+        </div>
+      </div>
     </div>
 
     <div class="panel presence-panel">
       <div class="panel-title">
         <div class="presence-title-block">
           <span>在线连接样本</span>
-          <div class="presence-caption">Redis 共享在线态，用于排查多实例实时服务在线连接</div>
+          <div class="presence-caption">{{ getRedisModeHint(imRedis) }}</div>
+        </div>
+        <div class="presence-status-tags">
+          <el-tag size="small" :type="getRedisModeTagType(imRedis.mode)">{{ getRedisModeLabel(imRedis.mode) }}</el-tag>
+          <el-tag size="small" effect="plain">在线 {{ imStats.onlineUsers }}</el-tag>
         </div>
       </div>
       <div v-if="onlinePresenceSample.length" class="presence-list">
@@ -170,7 +188,7 @@
           </div>
         </div>
       </div>
-      <el-empty v-else description="暂无在线连接样本" :image-size="90" />
+      <el-empty v-else :description="presenceEmptyDescription" :image-size="90" />
     </div>
 
     <div class="rank-row">
@@ -253,7 +271,11 @@ import {
   formatNumber,
   getRankName,
   getRankType,
-  normalizeOnlinePresenceSample
+  normalizeOnlinePresenceSample,
+  normalizeRedisHealth,
+  getRedisModeLabel,
+  getRedisModeTagType,
+  getRedisModeHint
 } from './dashboardHelpers';
 
 const router = useRouter();
@@ -294,12 +316,23 @@ const forecastList = computed(() => Array.isArray(weatherData.value?.forecast) ?
 const hourlyList = computed(() => Array.isArray(weatherData.value?.hourly_forecast) ? weatherData.value.hourly_forecast : []);
 const minutelyList = computed(() => Array.isArray(weatherData.value?.minutely_precip?.data) ? weatherData.value.minutely_precip.data : []);
 const onlinePresenceSample = computed(() => normalizeOnlinePresenceSample(imStats.value?.onlinePresenceSample).slice(0, 8));
+const imRedis = computed(() => normalizeRedisHealth(imStats.value?.redis));
+const presenceEmptyDescription = computed(() => {
+  if (imRedis.value.mode === 'redis' || imRedis.value.mode === 'redis-no-adapter') {
+    return '暂无在线连接样本';
+  }
+  if (imRedis.value.mode === 'local-fallback') {
+    return '当前处于单机回退模式，暂无共享在线样本';
+  }
+  return 'Redis 未启用，暂无共享在线样本';
+});
 
 function applyImStatsPatch(data) {
   const merged = { ...imStats.value, ...(data || {}) };
   merged.onlinePresenceSample = normalizeOnlinePresenceSample(
     data?.onlinePresenceSample !== undefined ? data.onlinePresenceSample : merged.onlinePresenceSample
   );
+  merged.redis = normalizeRedisHealth(data?.redis !== undefined ? data.redis : merged.redis);
   imStats.value = merged;
 }
 

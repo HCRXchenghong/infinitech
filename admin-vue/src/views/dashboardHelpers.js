@@ -3,6 +3,12 @@ export function createDefaultImStats() {
     online: false,
     onlineUsers: 0,
     onlinePresenceSample: [],
+    redis: {
+      enabled: false,
+      connected: false,
+      adapterEnabled: false,
+      mode: 'disabled'
+    },
     memoryUsage: 0,
     cpuUsage: 0,
     dbSizeMB: 0,
@@ -158,6 +164,63 @@ export function normalizeOnlinePresenceSample(sample) {
       };
     })
     .sort((a, b) => b.connectedAt - a.connectedAt);
+}
+
+export function normalizeRedisHealth(raw) {
+  const health = raw && typeof raw === 'object' ? raw : {};
+  return {
+    enabled: health.enabled === true,
+    connected: health.connected === true,
+    connecting: health.connecting === true,
+    adapterConnecting: health.adapterConnecting === true,
+    adapterEnabled: health.adapterEnabled === true,
+    mode: String(health.mode || (health.enabled ? 'local-fallback' : 'disabled')).trim() || 'disabled',
+    host: String(health.host || '').trim(),
+    port: Number.isFinite(Number(health.port)) ? Number(health.port) : 0,
+    database: Number.isFinite(Number(health.database)) ? Number(health.database) : 0
+  };
+}
+
+export function getRedisModeLabel(mode) {
+  switch (String(mode || '').trim()) {
+    case 'redis':
+      return 'Redis 共享广播';
+    case 'redis-no-adapter':
+      return 'Redis 已连通，Adapter 未启用';
+    case 'local-fallback':
+      return '单机回退模式';
+    case 'disabled':
+    default:
+      return 'Redis 未启用';
+  }
+}
+
+export function getRedisModeTagType(mode) {
+  switch (String(mode || '').trim()) {
+    case 'redis':
+      return 'success';
+    case 'redis-no-adapter':
+      return 'warning';
+    case 'local-fallback':
+      return 'danger';
+    case 'disabled':
+    default:
+      return 'info';
+  }
+}
+
+export function getRedisModeHint(redisHealth) {
+  const redis = normalizeRedisHealth(redisHealth);
+  if (!redis.enabled) {
+    return '当前未启用 Redis，共享在线态与跨实例广播不会生效。';
+  }
+  if (redis.connected && redis.adapterEnabled) {
+    return 'Redis 与 Socket.IO Redis adapter 都已启用，可支持多实例共享在线态与跨实例广播。';
+  }
+  if (redis.connected && !redis.adapterEnabled) {
+    return 'Redis 已连接，但 Socket.IO Redis adapter 未启用，当前广播仍可能退回单实例。';
+  }
+  return 'Redis 未就绪，实时服务当前处于单机回退模式。';
 }
 
 export function formatPresenceRole(role) {

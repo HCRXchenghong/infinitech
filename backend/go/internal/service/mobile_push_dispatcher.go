@@ -156,12 +156,19 @@ func (s *MobilePushService) StartDeliveryWorker(ctx context.Context) {
 		return
 	}
 	if !s.dispatchEnabled {
+		s.setWorkerRunning(false)
+		s.recordDispatchCycle("disabled", 0, nil)
 		log.Println("[push-dispatch] worker disabled")
 		return
 	}
 
-	if err := s.RunDispatchCycle(ctx, s.dispatchBatchSize); err != nil {
+	s.setWorkerRunning(true)
+	processed, err := s.RunDispatchCycle(ctx, s.dispatchBatchSize)
+	if err != nil {
+		s.recordDispatchCycle("error", processed, err)
 		log.Printf("[push-dispatch] initial cycle failed: %v", err)
+	} else {
+		s.recordDispatchCycle("ok", processed, nil)
 	}
 
 	ticker := time.NewTicker(s.pollInterval)
@@ -170,19 +177,25 @@ func (s *MobilePushService) StartDeliveryWorker(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			s.setWorkerRunning(false)
+			s.recordDispatchCycle("stopped", 0, nil)
 			log.Println("[push-dispatch] worker stopped")
 			return
 		case <-ticker.C:
-			if err := s.RunDispatchCycle(ctx, s.dispatchBatchSize); err != nil {
+			processed, err := s.RunDispatchCycle(ctx, s.dispatchBatchSize)
+			if err != nil {
+				s.recordDispatchCycle("error", processed, err)
 				log.Printf("[push-dispatch] cycle failed: %v", err)
+				continue
 			}
+			s.recordDispatchCycle("ok", processed, nil)
 		}
 	}
 }
 
-func (s *MobilePushService) RunDispatchCycle(ctx context.Context, limit int) error {
+func (s *MobilePushService) RunDispatchCycle(ctx context.Context, limit int) (int, error) {
 	if s == nil || s.db == nil || !s.dispatchEnabled {
-		return nil
+		return 0, nil
 	}
 	if limit <= 0 {
 		limit = s.dispatchBatchSize
@@ -192,17 +205,17 @@ func (s *MobilePushService) RunDispatchCycle(ctx context.Context, limit int) err
 	}
 
 	if err := s.syncActiveAdminPushMessages(ctx); err != nil {
-		return err
+		return 0, err
 	}
 
 	processed, err := s.dispatchDueDeliveries(ctx, limit)
 	if err != nil {
-		return err
+		return processed, err
 	}
 	if processed > 0 {
 		log.Printf("[push-dispatch] processed deliveries=%d", processed)
 	}
-	return nil
+	return processed, nil
 }
 
 func (s *MobilePushService) dispatchDueDeliveries(ctx context.Context, limit int) (int, error) {

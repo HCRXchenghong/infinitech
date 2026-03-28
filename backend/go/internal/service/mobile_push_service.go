@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/yuexiang/go-api/internal/config"
@@ -21,6 +22,24 @@ type MobilePushService struct {
 	dispatchMaxRetries int
 	retryBackoff       time.Duration
 	pollInterval       time.Duration
+	statusMu           sync.RWMutex
+	workerRunning      bool
+	lastCycleAt        time.Time
+	lastCycleStatus    string
+	lastProcessedCount int
+	lastError          string
+}
+
+type MobilePushWorkerStatus struct {
+	Enabled             bool   `json:"enabled"`
+	Running             bool   `json:"running"`
+	Provider            string `json:"provider"`
+	PollIntervalSeconds int    `json:"pollIntervalSeconds"`
+	BatchSize           int    `json:"batchSize"`
+	LastCycleStatus     string `json:"lastCycleStatus"`
+	LastProcessedCount  int    `json:"lastProcessedCount"`
+	LastCycleAt         string `json:"lastCycleAt,omitempty"`
+	LastError           string `json:"lastError,omitempty"`
 }
 
 type MobilePushOptions struct {
@@ -74,7 +93,84 @@ func newMobilePushServiceWithOptions(db *gorm.DB, admin *AdminService, options M
 		service.pollInterval = 15 * time.Second
 	}
 	service.dispatchProvider = newPushDispatchProvider(options)
+	if service.dispatchEnabled {
+		service.lastCycleStatus = "not_started"
+	} else {
+		service.lastCycleStatus = "disabled"
+	}
 	return service
+}
+
+func (s *MobilePushService) setWorkerRunning(running bool) {
+	if s == nil {
+		return
+	}
+	s.statusMu.Lock()
+	s.workerRunning = running
+	s.statusMu.Unlock()
+}
+
+func (s *MobilePushService) recordDispatchCycle(status string, processed int, err error) {
+	if s == nil {
+		return
+	}
+	s.statusMu.Lock()
+	defer s.statusMu.Unlock()
+	s.lastCycleAt = time.Now()
+	s.lastCycleStatus = strings.TrimSpace(status)
+	s.lastProcessedCount = processed
+	if err != nil {
+		s.lastError = strings.TrimSpace(err.Error())
+	} else {
+		s.lastError = ""
+	}
+}
+
+func (s *MobilePushService) WorkerStatusSnapshot() MobilePushWorkerStatus {
+	if s == nil {
+		return MobilePushWorkerStatus{
+			Enabled:         false,
+			Running:         false,
+			Provider:        "",
+			BatchSize:       0,
+			LastCycleStatus: "unavailable",
+		}
+	}
+
+	s.statusMu.RLock()
+	running := s.workerRunning
+	lastCycleAt := s.lastCycleAt
+	lastCycleStatus := strings.TrimSpace(s.lastCycleStatus)
+	lastProcessedCount := s.lastProcessedCount
+	lastError := s.lastError
+	s.statusMu.RUnlock()
+
+	provider := ""
+	if s.dispatchProvider != nil {
+		provider = strings.TrimSpace(s.dispatchProvider.Name())
+	}
+	if lastCycleStatus == "" {
+		if s.dispatchEnabled {
+			lastCycleStatus = "not_started"
+		} else {
+			lastCycleStatus = "disabled"
+		}
+	}
+
+	snapshot := MobilePushWorkerStatus{
+		Enabled:             s.dispatchEnabled,
+		Running:             running,
+		Provider:            provider,
+		PollIntervalSeconds: int(s.pollInterval / time.Second),
+		BatchSize:           s.dispatchBatchSize,
+		LastCycleStatus:     lastCycleStatus,
+		LastProcessedCount:  lastProcessedCount,
+		LastError:           strings.TrimSpace(lastError),
+	}
+	if !lastCycleAt.IsZero() {
+		snapshot.LastCycleAt = lastCycleAt.Format(time.RFC3339)
+	}
+	return snapshot
 }
 
 type PushRegistrationInput struct {

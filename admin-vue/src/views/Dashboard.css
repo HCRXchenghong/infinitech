@@ -380,10 +380,24 @@
   gap: 4px;
 }
 
+.presence-status-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .presence-caption {
   font-size: 12px;
   color: #8a97aa;
   font-weight: 500;
+}
+
+.im-mode-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .presence-list {
@@ -443,5 +457,9 @@
 @media (max-width: 768px) {
   .im-status-row {
     grid-template-columns: 1fr;
+  }
+
+  .presence-status-tags {
+    margin-top: 8px;
   }
 }

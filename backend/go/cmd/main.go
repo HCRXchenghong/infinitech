@@ -314,11 +314,20 @@ func main() {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
 		defer cancel()
 
+		pushWorker := gin.H{}
+		if services.MobilePush != nil {
+			pushWorker = gin.H{
+				"ok":     true,
+				"worker": services.MobilePush.WorkerStatusSnapshot(),
+			}
+		}
+
 		if err := sqlDB.PingContext(ctx); err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"status":  "degraded",
-				"service": "go-api",
-				"error":   "database not ready",
+				"status":       "degraded",
+				"service":      "go-api",
+				"error":        "database not ready",
+				"dependencies": gin.H{"pushWorker": pushWorker},
 			})
 			return
 		}
@@ -329,6 +338,10 @@ func main() {
 					"status":  "degraded",
 					"service": "go-api",
 					"error":   "redis not initialized",
+					"dependencies": gin.H{
+						"database":   gin.H{"ok": true},
+						"pushWorker": pushWorker,
+					},
 				})
 				return
 			}
@@ -337,6 +350,10 @@ func main() {
 					"status":  "degraded",
 					"service": "go-api",
 					"error":   "redis not ready",
+					"dependencies": gin.H{
+						"database":   gin.H{"ok": true},
+						"pushWorker": pushWorker,
+					},
 				})
 				return
 			}
@@ -346,6 +363,15 @@ func main() {
 			"status":    "ready",
 			"service":   "go-api",
 			"timestamp": time.Now().Format(time.RFC3339),
+			"dependencies": gin.H{
+				"database": gin.H{"ok": true},
+				"redis": gin.H{
+					"ok":       !cfg.Redis.Enabled || rdb != nil,
+					"enabled":  cfg.Redis.Enabled,
+					"required": cfg.Redis.Required,
+				},
+				"pushWorker": pushWorker,
+			},
 		})
 	}
 	r.GET("/health", healthHandler)
