@@ -116,6 +116,18 @@ async function listSystemLogs(req, res) {
   }
 }
 
+async function getSystemHealth(req, res) {
+  try {
+    const serviceStatus = await collectServiceStatus();
+    return res.json({
+      success: true,
+      serviceStatus
+    });
+  } catch (error) {
+    return handleControllerError(res, error, "getSystemHealth", "加载系统健康状态失败");
+  }
+}
+
 function verifySystemLogMutation(req, action) {
   const verifyAccount = String(req.body?.verifyAccount || "").trim();
   const verifyPassword = String(req.body?.verifyPassword || "");
@@ -271,6 +283,7 @@ async function clearSystemLogs(req, res) {
 
 module.exports = {
   listSystemLogs,
+  getSystemHealth,
   deleteSystemLog,
   clearSystemLogs
 };

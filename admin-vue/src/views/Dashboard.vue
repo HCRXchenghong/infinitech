@@ -166,6 +166,14 @@
           <el-tag size="small" effect="plain">{{ imRedis.enabled ? `DB ${imRedis.database}` : '本地模式' }}</el-tag>
         </div>
       </div>
+      <div class="im-card">
+        <div class="im-info">
+          <div class="im-label">发布探针</div>
+          <div class="im-value">{{ runtimeHealthStatusLabel }}</div>
+          <div class="im-detail">{{ runtimeHealthSummary }}</div>
+          <div class="im-detail">{{ pushWorkerSummary }}</div>
+        </div>
+      </div>
     </div>
 
     <div class="panel presence-panel">
@@ -289,6 +297,7 @@ const imStats = ref(createDefaultImStats());
 let imSocket = null;
 
 const statsCards = ref(createDefaultStatsCards());
+const runtimeHealth = ref({ overall: 'unknown', services: [] });
 
 const userTab = ref('week');
 const riderTab = ref('week');
@@ -324,6 +333,38 @@ const imRedis = computed(() => normalizeRedisHealth(imStats.value?.redis));
 const fallbackBuffer = computed(() => normalizeFallbackBuffer(imStats.value?.fallbackBuffer));
 const fallbackPrunedTotal = computed(() => fallbackBuffer.value.startupExpiredPruned + fallbackBuffer.value.startupOverflowPruned);
 const fallbackOldestAgeLabel = computed(() => formatBufferAge(fallbackBuffer.value.oldestTimestamp));
+const runtimeHealthServices = computed(() => Array.isArray(runtimeHealth.value?.services) ? runtimeHealth.value.services : []);
+const runtimeGoHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'go') || null);
+const runtimeSocketHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'socket') || null);
+const runtimeRedisHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'redis') || null);
+const runtimeHealthStatusLabel = computed(() => {
+  if (runtimeHealth.value?.overall === 'ok') return '已就绪';
+  if (runtimeHealth.value?.overall === 'degraded') return '部分降级';
+  if (runtimeHealth.value?.overall === 'down') return '未就绪';
+  return '未知';
+});
+const runtimeHealthSummary = computed(() => {
+  const segments = [
+    runtimeGoHealth.value ? `Go ${runtimeGoHealth.value.status === 'up' ? 'up' : 'down'}` : '',
+    runtimeSocketHealth.value ? `Socket ${runtimeSocketHealth.value.status === 'up' ? 'up' : 'down'}` : '',
+    runtimeRedisHealth.value ? `Redis ${runtimeRedisHealth.value.status === 'up' ? 'up' : 'down'}` : ''
+  ].filter(Boolean);
+  return segments.join(' · ') || '探针数据未加载';
+});
+const pushWorkerSummary = computed(() => {
+  const detail = String(runtimeGoHealth.value?.detail || '');
+  const cycle = extractHealthDetail(detail, 'pushCycle');
+  const running = extractHealthDetail(detail, 'pushRunning');
+  const queue = extractHealthDetail(detail, 'pushQueue');
+  const failed = extractHealthDetail(detail, 'pushFailed');
+  const segments = [
+    running ? `worker ${running === 'true' ? 'running' : 'stopped'}` : '',
+    cycle ? `cycle ${cycle}` : '',
+    queue ? `queue ${queue}` : '',
+    failed ? `failed ${failed}` : ''
+  ].filter(Boolean);
+  return segments.join(' · ') || 'push 状态未暴露';
+});
 const presenceEmptyDescription = computed(() => {
   if (imRedis.value.mode === 'redis' || imRedis.value.mode === 'redis-no-adapter') {
     return '暂无在线连接样本';
@@ -344,6 +385,12 @@ function applyImStatsPatch(data) {
     data?.fallbackBuffer !== undefined ? data.fallbackBuffer : merged.fallbackBuffer
   );
   imStats.value = merged;
+}
+
+function extractHealthDetail(detail, key) {
+  const source = String(detail || '');
+  const match = source.match(new RegExp(`${key}=([^\\s|]+)`));
+  return match ? String(match[1] || '').trim() : '';
 }
 
 function resetWeatherTimer() {
@@ -367,6 +414,22 @@ async function loadWeatherConfig() {
     weatherConfig.value.refresh_interval_minutes = 10;
     weatherCacheDurationMs.value = 10 * 60 * 1000;
     resetWeatherTimer();
+  }
+}
+
+async function loadSystemHealth() {
+  try {
+    const { data } = await request.get('/api/system-health');
+    const nextStatus = data?.serviceStatus || {};
+    runtimeHealth.value = {
+      overall: String(nextStatus.overall || 'unknown'),
+      services: Array.isArray(nextStatus.services) ? nextStatus.services : []
+    };
+  } catch (_error) {
+    runtimeHealth.value = {
+      overall: 'unknown',
+      services: []
+    };
   }
 }
 
@@ -418,7 +481,7 @@ async function refreshData() {
   weatherCache.value = null;
   ranksCache.value.clear();
   cacheTimestamp.value = { stats: 0, weather: 0 };
-  await Promise.all([loadStats(true), loadOrders(true), loadWeather(true)]);
+  await Promise.all([loadStats(true), loadOrders(true), loadWeather(true), loadSystemHealth()]);
 }
 
 async function loadWeather(forceRefresh = false) {

@@ -188,6 +188,7 @@ router.get('/app-download-config', adminSettingsController.getAppDownloadConfig)
 router.post('/app-download-config', adminSettingsController.updateAppDownloadConfig);
 router.post('/upload-package', upload.single('file'), adminSettingsController.uploadPackage);
 router.get('/system-logs', systemLogsController.listSystemLogs);
+router.get('/system-health', systemLogsController.getSystemHealth);
 router.post('/system-logs/delete', systemLogsController.deleteSystemLog);
 router.post('/system-logs/clear', systemLogsController.clearSystemLogs);
 
