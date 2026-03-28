@@ -120,6 +120,8 @@ import {
   loadSupportRuntimeSettings
 } from '@/shared-ui/support-runtime.js'
 
+const SESSION_CACHE_MAX_AGE = 12 * 60 * 60 * 1000
+
 export default {
   data() {
     const supportRuntime = getCachedSupportRuntimeSettings()
@@ -295,8 +297,19 @@ export default {
       try {
         const raw = uni.getStorageSync(this.getSessionStorageKey())
         if (!raw) return []
-        const list = typeof raw === 'string' ? JSON.parse(raw) : raw
-        return Array.isArray(list) ? list : []
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+        if (Array.isArray(parsed)) {
+          return parsed
+        }
+
+        const cachedAt = this.parseTimestamp(parsed?.cachedAt)
+        const sessions = Array.isArray(parsed?.sessions) ? parsed.sessions : []
+        if (!cachedAt || Date.now() - cachedAt > SESSION_CACHE_MAX_AGE) {
+          uni.removeStorageSync(this.getSessionStorageKey())
+          return []
+        }
+
+        return sessions
       } catch (err) {
         console.error('读取本地会话失败:', err)
         return []
@@ -306,7 +319,13 @@ export default {
     saveSessions(list = this.sessions) {
       try {
         const payload = this.sortSessions(list).slice(0, 100)
-        uni.setStorageSync(this.getSessionStorageKey(), JSON.stringify(payload))
+        uni.setStorageSync(
+          this.getSessionStorageKey(),
+          JSON.stringify({
+            cachedAt: Date.now(),
+            sessions: payload
+          })
+        )
       } catch (err) {
         console.error('保存本地会话失败:', err)
       }
@@ -410,8 +429,11 @@ export default {
 
       await Promise.all([this.loadSessions(), this.loadNotificationSummary()])
       const hasSuccess = results.some((item) => item.status === 'fulfilled')
+      const toastTitle = hasSuccess
+        ? '\u5df2\u6e05\u9664\u672a\u8bfb'
+        : '\u6e05\u9664\u672a\u8bfb\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5'
       uni.showToast({
-        title: hasSuccess ? '已清除未读' : '清除未读失败，请稍后重试',
+        title: toastTitle,
         icon: 'none'
       })
     },
