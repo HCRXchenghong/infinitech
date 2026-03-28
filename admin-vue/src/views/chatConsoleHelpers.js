@@ -50,17 +50,53 @@ export function resolveMessageTimestamp(rawValue, fallback = Date.now()) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+export function resolveConversationTimestamp(rawValue, fallback = 0) {
+  if (typeof rawValue === 'number' && Number.isFinite(rawValue) && rawValue > 0) {
+    return rawValue;
+  }
+  if (typeof rawValue === 'string') {
+    const trimmed = rawValue.trim();
+    if (!trimmed) return fallback;
+    if (/^\d+$/.test(trimmed)) {
+      const numeric = Number(trimmed);
+      if (Number.isFinite(numeric) && numeric > 0) return numeric;
+    }
+    const parsed = new Date(trimmed).getTime();
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  if (rawValue instanceof Date) {
+    const value = rawValue.getTime();
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  return fallback;
+}
+
+export function sortChats(list = []) {
+  return [...(list || [])].sort((a, b) => {
+    const diff = Number(b.updatedAt || 0) - Number(a.updatedAt || 0);
+    if (diff !== 0) return diff;
+    return String(a.id || '').localeCompare(String(b.id || ''));
+  });
+}
+
 export function mapLoadedChats(list) {
-  return (list || []).map((chat) => ({
-    id: normalizeChatId(chat.id),
-    name: chat.name || `聊天 #${chat.id}`,
-    phone: chat.phone || '',
-    role: chat.role || 'user',
-    avatar: chat.avatar || null,
-    lastMessage: chat.lastMessage || '',
-    time: chat.time || '',
-    unread: chat.unread || 0
-  }));
+  return (list || []).map((chat) => {
+    const updatedAt = resolveConversationTimestamp(
+      chat.updatedAt || chat.updated_at || chat.lastMessageAt || chat.last_message_at || chat.timestamp,
+      0
+    );
+    return {
+      id: normalizeChatId(chat.id),
+      name: chat.name || `聊天 #${chat.id}`,
+      phone: chat.phone || '',
+      role: chat.role || 'user',
+      avatar: chat.avatar || null,
+      lastMessage: chat.lastMessage || '',
+      time: chat.time || '',
+      unread: chat.unread || 0,
+      updatedAt
+    };
+  });
 }
 
 export function mapCachedMessages(list) {
@@ -185,6 +221,7 @@ export function upsertChatFromIncoming({
   adminMessage,
   defaultName = '聊天'
 }) {
+  const incomingUpdatedAt = resolveConversationTimestamp(data?.timestamp || data?.createdAt, 0);
   let chat = chats.find((item) => normalizeChatId(item.id) === incomingChatId);
   const preview = getMessagePreview(data);
 
@@ -196,15 +233,21 @@ export function upsertChatFromIncoming({
       avatar: data.avatar || null,
       lastMessage: preview,
       time: data.time,
-      unread: adminMessage ? 0 : 1
+      unread: adminMessage ? 0 : 1,
+      updatedAt: incomingUpdatedAt
     };
-    chats.unshift(chat);
+    chats.push(chat);
+    const reordered = sortChats(chats);
+    chats.splice(0, chats.length, ...reordered);
     return chat;
   }
 
   if (!adminMessage) chat.unread = (chat.unread || 0) + 1;
   chat.lastMessage = preview;
   chat.time = data.time;
+  chat.updatedAt = incomingUpdatedAt || chat.updatedAt || 0;
   if (data.avatar && data.senderRole !== 'admin') chat.avatar = data.avatar;
+  const reordered = sortChats(chats);
+  chats.splice(0, chats.length, ...reordered);
   return chat;
 }

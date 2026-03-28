@@ -14,6 +14,7 @@ import {
   mapLoadedChats,
   mapCachedMessages,
   mapLoadedMessages,
+  sortChats,
   createOutgoingTempMessage,
   createIncomingDisplayMessage,
   saveIncomingMessage,
@@ -77,7 +78,7 @@ export function useChatConsole(options = {}) {
 
   async function refreshChats() {
     try {
-      chats.value = mapLoadedChats(await fetchMessageConversations());
+      chats.value = sortChats(mapLoadedChats(await fetchMessageConversations()));
     } catch (error) {
       console.error('加载服务端会话列表失败:', error);
     }
@@ -169,14 +170,22 @@ export function useChatConsole(options = {}) {
     const socket = getSocket();
     if (!socket) return;
 
-    chat.id = normalizeChatId(chat.id);
-    selectedChat.value = chat;
-    chat.unread = 0;
-    messagesFromLocalFallback.value = false;
-    void loadMessages(chat.id);
+    const chatId = normalizeChatId(chat?.id);
+    if (!chatId) return;
 
-    socket.emit('join_chat', { chatId: chat.id, userId: 'admin', role: 'admin' });
-    socket.emit('mark_all_read', { chatId: chat.id });
+    selectedChat.value = {
+      ...chat,
+      id: chatId,
+      unread: 0
+    };
+    chats.value = chats.value.map((item) =>
+      normalizeChatId(item.id) === chatId ? { ...item, unread: 0 } : item
+    );
+    messagesFromLocalFallback.value = false;
+    void loadMessages(chatId);
+
+    socket.emit('join_chat', { chatId, userId: 'admin', role: 'admin' });
+    socket.emit('mark_all_read', { chatId });
     scheduleRefreshChats();
   }
 
@@ -404,7 +413,7 @@ export function useChatConsole(options = {}) {
 
     socket.on('all_chats_loaded', (data) => {
       if (!chats.value.length) {
-        chats.value = mapLoadedChats(data.chats || []);
+        chats.value = sortChats(mapLoadedChats(data.chats || []));
       }
     });
 
