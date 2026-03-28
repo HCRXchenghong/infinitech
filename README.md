@@ -207,6 +207,7 @@ npm run build
 - 本轮继续把用户端和 App 端客服页接上 `message_read / all_messages_read`，并避免迟到的 `message_sent` 回执把已读消息状态降回 `sent`。
 - 本轮继续把双端普通消息聊天页接上 `message_read / all_messages_read`，并避免迟到的 `message_sent` 回执把已读状态回退成 `success`。
 - 本轮继续把后台客服工作台的 `message_sent / all_messages_read` 状态收口成和其它端一致，避免已读状态被迟到回执降级，也避免失败消息被误标成已读。
+- 本轮继续把后台推送统计弹层补成可排障明细，直接展示 delivery 的 provider、环境、重试次数、最近时间和错误原因。
 
 ### 8.6 推送链路推进
 
@@ -331,3 +332,4 @@ npm run build
 - 2026-03-29: the user/app customer-service pages now react to `message_read / all_messages_read` in page state and preserve `read` if a delayed `message_sent` acknowledgement arrives afterward, reducing visible read-state regression during reconnects.
 - 2026-03-29: the user/app regular message-chat pages now react to `message_read / all_messages_read` as well, and keep self-message `read` status even if a delayed `message_sent` acknowledgement arrives later, reducing read-state rollback in local fallback histories.
 - 2026-03-29: the admin chat console now also preserves `read` if a delayed `message_sent` acknowledgement arrives later, and it no longer promotes `failed` self messages to `read` during `all_messages_read`, aligning the console with the tightened multi-end message status rules.
+- 2026-03-29: the admin push-message stats dialog now exposes per-delivery provider, app environment, retry count, last activity time, and dispatch error details, making queued/failed push troubleshooting easier before launch.

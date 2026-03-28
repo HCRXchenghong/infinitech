@@ -60,6 +60,56 @@ function extractErrorMessage(error, fallback) {
   return error?.response?.data?.error || error?.response?.data?.message || error?.message || fallback;
 }
 
+function getPushDeliveryStatusType(status) {
+  const normalized = String(status || '').trim().toLowerCase();
+  if (normalized === 'acknowledged') return 'success';
+  if (normalized === 'sent') return 'primary';
+  if (normalized === 'dispatching' || normalized === 'retry_pending') return 'warning';
+  if (normalized === 'failed') return 'danger';
+  return 'info';
+}
+
+function getPushDeliveryActionType(action) {
+  const normalized = String(action || '').trim().toLowerCase();
+  if (normalized === 'opened') return 'success';
+  if (normalized === 'received') return 'primary';
+  return 'info';
+}
+
+function getPushDeliveryActionLabel(action) {
+  const normalized = String(action || '').trim().toLowerCase();
+  if (normalized === 'opened') return '已打开';
+  if (normalized === 'received') return '已送达';
+  if (normalized === 'dismissed') return '已忽略';
+  if (!normalized) return '未回执';
+  return normalized;
+}
+
+function formatPushDeliveryTime(value) {
+  const text = String(value || '').trim();
+  if (!text) return '—';
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return text;
+  return parsed.toLocaleString('zh-CN', {
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+}
+
+function formatPushDeliveryError(row) {
+  const code = String(row?.error_code || '').trim();
+  const message = String(row?.error_message || '').trim();
+  if (code && message) return `${code}: ${message}`;
+  if (message) return message;
+  if (code) return code;
+  return '—';
+}
+
 onMounted(() => {
   loadAll();
   window.addEventListener('resize', handleResize);
