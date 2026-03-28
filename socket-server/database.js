@@ -156,6 +156,10 @@ export function saveMessage(chatType, chatId, messageData) {
 
   return {
     ...insertResult,
+    uid: messageUid,
+    tsid: messageTsid,
+    chatUid,
+    senderUid,
     createdAt,
     timestamp: persistedEventTimestamp
   };

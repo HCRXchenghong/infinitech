@@ -498,7 +498,10 @@ const httpServer = createServer(async (req, res) => {
       const timestamp = resolveMessageTimestamp(result?.timestamp ?? result?.createdAt, Date.now());
       const createdAt = String(result?.createdAt || '');
       const message = {
-        id: result.lastInsertRowid,
+        id: result.uid || result.lastInsertRowid,
+        legacyId: result.lastInsertRowid,
+        uid: result.uid || '',
+        tsid: result.tsid || '',
         chatId: data.chatId,
         ...messageData,
         timestamp,

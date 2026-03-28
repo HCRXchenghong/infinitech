@@ -69,7 +69,10 @@ function saveAndBuildRiderMessage(saveMessage, chatId, messageInput, socket) {
   const timestamp = resolveMessageTimestamp(result?.timestamp ?? result?.createdAt, Date.now());
   const createdAt = String(result?.createdAt || '');
   return {
-    id: result.lastInsertRowid,
+    id: result.uid || result.lastInsertRowid,
+    legacyId: result.lastInsertRowid,
+    uid: result.uid || '',
+    tsid: result.tsid || '',
     chatId,
     sender: messageData.sender,
     senderId: messageData.senderId,

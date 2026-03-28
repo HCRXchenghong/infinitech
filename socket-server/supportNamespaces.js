@@ -297,7 +297,10 @@ function createSupportMessageHandler({ saveMessage, supportNamespace, monitorNam
       const createdAt = String(result?.createdAt || '');
       const time = new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
       const localMessage = {
-        id: result.lastInsertRowid,
+        id: result.uid || result.lastInsertRowid,
+        legacyId: result.lastInsertRowid,
+        uid: result.uid || '',
+        tsid: result.tsid || '',
         chatId: normalizedChatId,
         sender: messageData.sender,
         senderId: messageData.senderId,
