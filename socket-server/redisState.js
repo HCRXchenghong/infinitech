@@ -66,6 +66,7 @@ let redisClient = null;
 let redisConnectPromise = null;
 let redisDisabledUntil = 0;
 let adapterClientsPromise = null;
+let socketIoAdapterEnabled = false;
 
 function cleanupLocalSessions() {
   const now = Date.now();
@@ -166,9 +167,13 @@ export function initRedisState() {
 
 export async function attachSocketIoRedisAdapter(io) {
   const adapterClients = await ensureAdapterClients();
-  if (!adapterClients) return false;
+  if (!adapterClients) {
+    socketIoAdapterEnabled = false;
+    return false;
+  }
 
   io.adapter(createAdapter(adapterClients.pubClient, adapterClients.subClient));
+  socketIoAdapterEnabled = true;
   logger.info('socket-server Redis adapter enabled for cross-instance broadcasting');
   return true;
 }
@@ -420,9 +425,12 @@ export function getRedisHealthSnapshot() {
     connected: Boolean(redisClient?.isOpen),
     connecting: Boolean(redisConnectPromise),
     adapterConnecting: Boolean(adapterClientsPromise),
+    adapterEnabled: socketIoAdapterEnabled,
     degradedUntil,
     mode: !redisEnabled
       ? 'disabled'
-      : (redisClient?.isOpen ? 'redis' : 'local-fallback')
+      : (redisClient?.isOpen
+          ? (socketIoAdapterEnabled ? 'redis' : 'redis-no-adapter')
+          : 'local-fallback')
   };
 }

@@ -339,6 +339,13 @@ const httpServer = createServer(async (req, res) => {
       });
       return;
     }
+    if (redis.enabled && redis.connected && !redis.adapterEnabled) {
+      writeSocketStatus(res, 503, 'degraded', {
+        error: 'socket adapter not ready',
+        redis
+      });
+      return;
+    }
 
     writeSocketStatus(res, 200, 'ready', { redis });
     return;
@@ -400,6 +407,7 @@ const httpServer = createServer(async (req, res) => {
     const stats = getServerStats();
     stats.onlineUsers = await getOnlineCount();
     stats.onlinePresenceSample = await getOnlineUsers(20);
+    stats.redis = getRedisHealthSnapshot();
     writeJson(res, 200, stats);
     return;
   }
@@ -508,6 +516,7 @@ setInterval(async () => {
     const stats = getServerStats();
     stats.onlineUsers = await getOnlineCount();
     stats.onlinePresenceSample = await getOnlineUsers(20);
+    stats.redis = getRedisHealthSnapshot();
     monitorNamespace.to('monitor_all').emit('server_stats', stats);
   } catch (err) {
     logger.warn('server stats broadcast failed:', err?.message || err);
