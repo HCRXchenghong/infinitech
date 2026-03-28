@@ -35,11 +35,14 @@ function resolveRiderMessageTimestamp(rawValue: any, fallback = Date.now()) {
 
 function normalizeRiderIncomingMessage(payload: any, senderRole: 'merchant' | 'user', fallbackName: string) {
   const timestamp = resolveRiderMessageTimestamp(payload?.timestamp || payload?.createdAt, Date.now())
+  const chatId = String(payload?.chatId || `${senderRole}_${payload?.senderId || payload?.targetId || ''}`)
+  const senderId = String(payload?.senderId || payload?.merchantId || payload?.userId || '')
+  const fallbackId = `incoming_${chatId || senderRole}_${senderId || 'unknown'}_${timestamp}_${payload?.messageType || 'text'}`
   return {
-    id: payload?.id || payload?.uid || payload?.tsid || `local_${timestamp}`,
-    chatId: String(payload?.chatId || `${senderRole}_${payload?.senderId || payload?.targetId || ''}`),
+    id: payload?.id || payload?.uid || payload?.tsid || fallbackId,
+    chatId,
     sender: payload?.sender || payload?.merchantName || payload?.userName || fallbackName,
-    senderId: String(payload?.senderId || payload?.merchantId || payload?.userId || ''),
+    senderId,
     senderRole,
     content: payload?.content || '',
     messageType: payload?.messageType || 'text',

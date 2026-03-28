@@ -244,12 +244,28 @@ export default {
       })
     },
 
+    resolveSessionId(item = {}, role = 'cs', roomId = '') {
+      const directId = item.id || item.chatId || roomId
+      if (directId) return String(directId)
+
+      const targetSeed =
+        item.targetId ||
+        item.orderId ||
+        item.userId ||
+        item.riderId ||
+        item.shopId ||
+        item.senderId ||
+        item.name ||
+        'unknown'
+      return `session_${role}_${String(targetSeed)}`
+    },
+
     normalizeSession(item = {}) {
       const role = this.normalizeRole(item.role)
       const roomId = String(item.roomId || item.chatId || item.id || '')
       const updatedAt = this.resolveSessionUpdatedAt(item)
       return {
-        id: String(item.id || item.chatId || roomId || `${role}_${Date.now()}`),
+        id: this.resolveSessionId(item, role, roomId),
         roomId,
         role,
         orderId: item.orderId ? String(item.orderId) : '',

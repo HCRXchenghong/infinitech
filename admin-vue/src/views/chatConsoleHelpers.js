@@ -5,6 +5,18 @@ export function normalizeChatId(value) {
   return String(value);
 }
 
+export function resolveMessageId(data, timestamp, fallbackPrefix = 'incoming') {
+  const directId = data?.id || data?.uid || data?.tsid;
+  if (directId !== undefined && directId !== null && directId !== '') {
+    return String(directId);
+  }
+
+  const chatId = normalizeChatId(data?.chatId || data?.roomId || data?.conversationId || data?.senderId || 'chat');
+  const senderRole = String(data?.senderRole || 'unknown');
+  const messageType = String(data?.messageType || data?.type || 'text');
+  return `${fallbackPrefix}_${chatId}_${senderRole}_${timestamp}_${messageType}`;
+}
+
 function messageKey(chatId, messageId) {
   if (messageId === undefined || messageId === null || messageId === '') return '';
   return `${normalizeChatId(chatId)}:${String(messageId)}`;
@@ -118,7 +130,7 @@ export function mapLoadedMessages(list) {
   return (list || []).map((item, index) => {
     const timestamp = resolveMessageTimestamp(item?.timestamp || item?.createdAt, Date.now() + index);
     return {
-      id: item.id,
+      id: resolveMessageId(item, timestamp, 'history'),
       sender: item.sender,
       senderId: item.senderId,
       senderRole: item.senderRole,
@@ -162,7 +174,7 @@ export function createOutgoingTempMessage({
 export function createIncomingDisplayMessage(data) {
   const timestamp = resolveMessageTimestamp(data?.timestamp || data?.createdAt, Date.now());
   return {
-    id: data.id || Date.now(),
+    id: resolveMessageId(data, timestamp),
     sender: data.sender,
     senderId: data.senderId,
     senderRole: data.senderRole,

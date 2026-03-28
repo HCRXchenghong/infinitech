@@ -50,8 +50,12 @@ export function resolveMessageTimestamp(rawValue, fallback = Date.now()) {
 export function normalizeIncomingMessage(payload, isSelf) {
   const type = payload && payload.messageType ? payload.messageType : (payload && payload.type ? payload.type : 'text');
   const timestamp = resolveMessageTimestamp(payload && (payload.timestamp || payload.createdAt), Date.now());
+  const chatId = payload && (payload.chatId || payload.roomId || payload.conversationId) ? String(payload.chatId || payload.roomId || payload.conversationId) : 'chat';
+  const senderRole = payload && payload.senderRole ? String(payload.senderRole) : (isSelf ? 'user' : 'admin');
+  const senderId = payload && payload.senderId ? String(payload.senderId) : '';
+  const fallbackId = `incoming_${chatId}_${senderRole}_${senderId || 'unknown'}_${timestamp}_${type}`;
   return {
-    id: payload && (payload.id || payload.uid || payload.tsid) ? (payload.id || payload.uid || payload.tsid) : `local_${timestamp}`,
+    id: payload && (payload.id || payload.uid || payload.tsid) ? (payload.id || payload.uid || payload.tsid) : fallbackId,
     content: payload ? payload.content : '',
     type,
     isSelf: !!isSelf,
