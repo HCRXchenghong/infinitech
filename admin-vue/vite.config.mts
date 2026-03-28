@@ -76,6 +76,38 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, 'src')
       }
     },
+    build: {
+      chunkSizeWarningLimit: 700,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) {
+              return;
+            }
+            if (id.includes('sql.js')) {
+              return 'vendor-sqljs';
+            }
+            if (id.includes('echarts')) {
+              return 'vendor-echarts';
+            }
+            if (id.includes('element-plus')) {
+              return 'vendor-element-plus';
+            }
+            if (id.includes('socket.io-client')) {
+              return 'vendor-socket';
+            }
+            if (
+              id.includes('/vue/') ||
+              id.includes('/vue-router/') ||
+              id.includes('@vue/')
+            ) {
+              return 'vendor-vue';
+            }
+            return 'vendor-misc';
+          }
+        }
+      }
+    },
     server: {
       host: '0.0.0.0',
       port: Number.isFinite(webPort) && webPort > 0 ? webPort : 8888,

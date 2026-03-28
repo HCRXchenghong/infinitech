@@ -40,6 +40,7 @@ const SOCKET_PING_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_PING_TIMEOUT_MS,
 const SOCKET_PING_INTERVAL_MS = toPositiveInt(process.env.SOCKET_PING_INTERVAL_MS, 25_000);
 const SOCKET_MAX_HTTP_BUFFER_BYTES = toPositiveInt(process.env.SOCKET_MAX_HTTP_BUFFER_BYTES, 4 * 1024 * 1024);
 const SOCKET_READY_MAX_FALLBACK_MESSAGES = toPositiveInt(process.env.SOCKET_READY_MAX_FALLBACK_MESSAGES, 5_000);
+const SOCKET_HTTP_SLOW_REQUEST_WARN_MS = toPositiveInt(process.env.SOCKET_HTTP_SLOW_REQUEST_WARN_MS, 1_500);
 
 let monitorNamespace;
 let supportNamespace;
@@ -172,9 +173,12 @@ function logHttpRequest(req, res, pathname, requestId) {
   res.on('finish', () => {
     const latencyMs = Date.now() - startedAt;
     const statusCode = Number(res.statusCode || 0);
-    const logLevel = statusCode >= 500 ? 'error' : (statusCode >= 400 ? 'warn' : 'info');
+    const slowRequest = latencyMs >= SOCKET_HTTP_SLOW_REQUEST_WARN_MS;
+    const logLevel = statusCode >= 500
+      ? 'error'
+      : (statusCode >= 400 || slowRequest ? 'warn' : 'info');
     logger[logLevel](
-      `HTTP ${req.method} ${pathname} ${statusCode} ${latencyMs}ms request_id=${requestId} ip=${getClientIp(req)}`
+      `HTTP ${req.method} ${pathname} ${statusCode} ${latencyMs}ms slow=${slowRequest} slow_threshold_ms=${SOCKET_HTTP_SLOW_REQUEST_WARN_MS} request_id=${requestId} ip=${getClientIp(req)}`
     );
   });
 }

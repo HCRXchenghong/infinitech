@@ -6,7 +6,17 @@ const {
   extractSubject,
 } = require("../utils/requestMeta");
 
-function createRequestAuditMiddleware({ logger, parseOperatorFromAuthHeader }) {
+function resolveLogMethod(logger, statusCode, slowRequest) {
+  if (statusCode >= 500 && typeof logger.error === "function") {
+    return "error";
+  }
+  if ((statusCode >= 400 || slowRequest) && typeof logger.warn === "function") {
+    return "warn";
+  }
+  return "info";
+}
+
+function createRequestAuditMiddleware({ logger, parseOperatorFromAuthHeader, slowRequestWarnMs = 1500 }) {
   return function requestAudit(req, res, next) {
     const startAt = Date.now();
     const logTsid = nextLogTsid();
@@ -21,7 +31,10 @@ function createRequestAuditMiddleware({ logger, parseOperatorFromAuthHeader }) {
     req.logTsid = logTsid;
 
     res.on("finish", () => {
-      logger.info(`${req.method} ${req.path}`, {
+      const latencyMs = Date.now() - startAt;
+      const slowRequest = latencyMs >= slowRequestWarnMs;
+      const logMethod = resolveLogMethod(logger, res.statusCode, slowRequest);
+      logger[logMethod](`${req.method} ${req.path}`, {
         requestId,
         logTsid,
         ip: clientIp,
@@ -29,7 +42,9 @@ function createRequestAuditMiddleware({ logger, parseOperatorFromAuthHeader }) {
         actionScene,
         actionSubject,
         status: res.statusCode,
-        latencyMs: Date.now() - startAt,
+        latencyMs,
+        slowRequest,
+        slowThresholdMs: slowRequestWarnMs,
         entityUid: "",
         entityTsid: "",
         legacyHit: false,

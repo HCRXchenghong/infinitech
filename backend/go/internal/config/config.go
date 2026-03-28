@@ -82,6 +82,7 @@ type HTTPConfig struct {
 	WriteTimeout       time.Duration
 	IdleTimeout        time.Duration
 	ShutdownTimeout    time.Duration
+	SlowRequestWarn    time.Duration
 	MaxBodyBytes       int64
 	MaxUploadBytes     int64
 	MaxMultipartMemory int64
@@ -157,6 +158,7 @@ func Load() *Config {
 			WriteTimeout:       time.Duration(getEnvInt("HTTP_WRITE_TIMEOUT_SECONDS", 30)) * time.Second,
 			IdleTimeout:        time.Duration(getEnvInt("HTTP_IDLE_TIMEOUT_SECONDS", 60)) * time.Second,
 			ShutdownTimeout:    time.Duration(getEnvInt("HTTP_SHUTDOWN_TIMEOUT_SECONDS", 15)) * time.Second,
+			SlowRequestWarn:    time.Duration(getEnvInt("HTTP_SLOW_REQUEST_WARN_MS", defaultHTTPSlowRequestWarnMS(env))) * time.Millisecond,
 			MaxBodyBytes:       int64(getEnvInt("HTTP_MAX_BODY_BYTES", 1024*1024)),
 			MaxUploadBytes:     int64(getEnvInt("HTTP_MAX_UPLOAD_BYTES", 12*1024*1024)),
 			MaxMultipartMemory: int64(getEnvInt("HTTP_MAX_MULTIPART_MEMORY_BYTES", 8*1024*1024)),
@@ -243,6 +245,9 @@ func (c *Config) Validate() error {
 	if c.HTTP.MaxBodyBytes <= 0 {
 		return fmt.Errorf("HTTP_MAX_BODY_BYTES must be greater than 0")
 	}
+	if c.HTTP.SlowRequestWarn <= 0 {
+		return fmt.Errorf("HTTP_SLOW_REQUEST_WARN_MS must be greater than 0")
+	}
 	if c.HTTP.MaxUploadBytes <= 0 {
 		return fmt.Errorf("HTTP_MAX_UPLOAD_BYTES must be greater than 0")
 	}
@@ -327,6 +332,13 @@ func defaultHTTPRateLimitMax(env string) int {
 		return 1200
 	}
 	return 6000
+}
+
+func defaultHTTPSlowRequestWarnMS(env string) int {
+	if isProductionLikeEnv(env) {
+		return 1200
+	}
+	return 2500
 }
 
 func isProductionLikeEnv(env string) bool {

@@ -111,7 +111,8 @@ module.exports = {
   http: {
     requestTimeoutMs: toPositiveInt(process.env.BFF_REQUEST_TIMEOUT_MS, 30000),
     headersTimeoutMs: toPositiveInt(process.env.BFF_HEADERS_TIMEOUT_MS, 35000),
-    keepAliveTimeoutMs: toPositiveInt(process.env.BFF_KEEP_ALIVE_TIMEOUT_MS, 5000)
+    keepAliveTimeoutMs: toPositiveInt(process.env.BFF_KEEP_ALIVE_TIMEOUT_MS, 5000),
+    slowRequestWarnMs: toPositiveInt(process.env.BFF_SLOW_REQUEST_WARN_MS, productionLike ? 1200 : 2500)
   },
 
   bodyLimits: {

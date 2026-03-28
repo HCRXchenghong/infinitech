@@ -1,10 +1,10 @@
 # Infinitech
 
-一套持续整治中的一站式本地生活服务平台主仓。
+一个持续整治中的一站式本地生活服务平台主仓。
 
-当前目标不是口头承诺“单机 10 万在线”，而是把现有系统逐步收敛成可水平扩展、可压测、可回滚、可观测的生产级架构，尽量消除单点设计、伪状态、假数据和脆弱默认配置带来的系统性风险。
+当前目标不是口头承诺“单机 10 万在线”，而是把现有系统持续收口成可水平扩展、可压测、可回滚、可观测、可上线交付的生产架构，尽量消除单点设计、伪状态、假数据、脆弱默认配置和历史遗留带来的系统性风险。
 
-## 1. 项目范围
+## 1. 仓库范围
 
 当前主整治范围：
 
@@ -16,13 +16,14 @@
 - `app-mobile`
 - `merchant-app`
 - `rider-app`
+- `shared/mobile-common`
 
-当前保留但不作为主整治范围：
+保留但暂不作为当前主整治范围：
 
 - `android-user-app`
 - `ios-user-app`
 - `admin-app`
-- 历史示例、原型和非主链路目录
+- 历史原型、示例和非主链路目录
 
 ## 2. 平台定位
 
@@ -38,323 +39,225 @@
 - 营销、活动、首页推广位
 - 地图、短信、微信登录等外部能力
 
-当前仓库已包含外卖、跑腿、医药、公益、会员、同频饭友、客服消息、后台运营等模块，但整体仍处于“持续整治、主链路收口、从可运行走向可生产”的阶段。
+仓库当前已经包含外卖、跑腿、医药、公益、会员、同频饭友、客服消息、后台运营等模块，但整体仍处于“持续整治、主链路收口、从可运行走向可生产”的阶段。
 
-## 3. 当前生产基线
+## 3. 当前技术与生产基线
 
-已明确的生产方向：
+明确的生产方向：
 
 - 生产数据库：`PostgreSQL`
 - 生产缓存与分布式状态：`Redis`
-- `SQLite` 仅允许本地开发、临时测试和历史兼容，不再作为生产主链路前提
-- 根目录作为唯一主仓
-- 每个整治批次都要求：代码改动、验证通过、README 更新、推送 GitHub
+- 唯一实时服务：`socket-server`
+- 业务事实源：`backend/go`
+- BFF 角色：统一代理、聚合与外层准入，不再承载第二套实时服务
 
-RTC 与首页推广边界：
+明确的边界：
 
-- `App / H5`：规划支持站内 `1v1` 音频通话
-- `小程序`：不做音频通话，直接显示系统电话
-- 首页推广第一阶段：只做“线下谈单 + 后台手工配置”
-- 首页推广同时支持“商户位 + 商品位”
-- 不做竞价
-- 不做按曝光或点击自动扣费
-- 不做商户自助投放
+- `SQLite` 只允许本地开发、临时测试和短期 fallback，不再作为生产主链路前提
+- 小程序不做 RTC 音频通话，直接走系统电话
+- `App / H5` 后续才承载站内 `1v1` 音频通话
+- 首页推广第一阶段不做竞价，不做自动扣费，不做商户自助投放
 
 ## 4. 目录说明
 
-- `backend/go`：Go 主 API，持续收口为业务事实源
+- `backend/go`：Go 主 API 与业务事实源
 - `backend/bff`：Node.js BFF 与统一代理层
-- `socket-server`：唯一实时网关与 Socket 事件桥接层
+- `socket-server`：唯一实时网关与 Socket 事件桥
 - `admin-vue`：管理后台 Web
 - `user-vue`：用户端 uni-app
 - `app-mobile`：用户 App 端 uni-app
 - `merchant-app`：商家端 uni-app
 - `rider-app`：骑手端 uni-app
-- `shared/mobile-common`：多端共享移动端逻辑
+- `shared/mobile-common`：多端共享逻辑
 - `backend/docker`：本地基础设施编排
-- `scripts`：仓库级脚本
-- `.github`：CI 与工作流
+- `scripts`：仓库级发布、压测、巡检脚本
+- `.github/workflows`：CI 工作流
 
-## 5. 技术栈
+## 5. 已完成的核心整治
 
-后端：
+### 5.1 架构与生产基线
 
-- Go
-- Gin
-- GORM
-- PostgreSQL
-- Redis
+- 根目录收口为唯一主仓。
+- 生产环境数据库基线已收紧为 `PostgreSQL + Redis`。
+- Go、BFF、`socket-server` 都已补齐基础 readiness / health 能力。
+- 只保留一个实时服务：`socket-server`。
+- OpenClaw 相关链路已经从主系统中清理。
 
-BFF 与网关：
+### 5.2 消息系统收口
 
-- Node.js
-- Express
-- Axios
+- Go 侧消息表持续作为权威消息事实源。
+- 用户端、App 端、商家端、骑手端、后台客服工作台都在往“服务端优先，本地只兜底”收口。
+- `socket-server` 已经把多条消息同步、已读同步、会话回写继续往 Go 权威源靠拢。
+- 多端 `message_sent / message_read / all_messages_read` 已经按 `chatId` 收口，减少串会话污染。
+- 多端消息时间字段、fallback ID、临时消息 ID 持续收紧为稳定规则。
 
-前端：
+### 5.3 主链路去假数据
 
-- Vue 3
-- Element Plus
-- uni-app
-- Vite
+- 地址簿已补成服务端真实能力，订单引用服务端地址。
+- 大量活跃页面的本地假数据、假成功提示、假状态和乱码已清理。
+- 商家、用户、骑手、后台多端活跃消息链路已持续去掉多余的本地双写。
 
-实时能力：
+### 5.4 推送链路
 
-- Socket.IO
-- WebSocket
+- 设备注册已接入多端启动/退出登录流程。
+- 推送记录、投递明细、统计接口、派发 worker 已具备。
+- 后台已能看到消息级和收件人级的投递统计与明细。
+- Go readiness 和 BFF 健康聚合已能看到 push worker 状态与队列积压。
 
-## 6. 本地启动
+### 5.5 首页推广位
 
-### 6.1 Go API
+- 后台已具备首页推广计划与位次管理能力。
+- 已支持商户位与商品位。
+- 已支持管理员手工锁位优先、推广计划优先于普通今日推荐的规则。
+
+### 5.6 运维与发布基线
+
+- Go、BFF、`socket-server` 已统一补入 `X-Request-ID` 透传能力。
+- 发布前巡检脚本 `scripts/release-preflight.mjs` 已落地。
+- `socket-server` 已纳入 CI smoke-check。
+- `admin-vue` 已做显式 vendor chunk 拆分，主包集中度明显下降。
+
+## 6. 当前仍未完成的重点
+
+下面这些是真正还没完成、上线前必须继续收的部分。
+
+### 6.1 消息系统尾巴
+
+- `socket-server/chat.db` 仍然保留短期 fallback 角色，还没有完全退出消息事实源链路。
+- 骑手端、后台工作台、商家端仍有少量本地辅助状态尚未完全去事实源化。
+- 会话摘要、未读汇总、fallback 行为还需要继续统一到服务端口径。
+
+### 6.2 推送闭环尾巴
+
+- 当前推送 provider 仍以 `log / webhook` 为主，距离完整生产级外部推送平台还有距离。
+- 外部供应商接入、失败重试策略细化、派发压测和更完整的运维面板仍需补齐。
+
+### 6.3 RTC / 电话联系
+
+- `App / H5` 的站内 `1v1` 音频通话还没有完整落地到服务端信令、录音保留、投诉冻结流程。
+- 小程序仍按既定边界只走系统电话。
+
+### 6.4 首页推广位尾巴
+
+- 后台规则已经具备，但前台首页编排仍需继续收口，减少本地拼装和历史兼容逻辑。
+- 城市 / 分类定向、运营面板和完整审核流仍需继续完善。
+
+### 6.5 平台治理
+
+- 压测基线、容量评估、降级策略、回滚剧本还没有完全收完。
+- 原生 Android / iOS 目前只是保留，不属于这一阶段的主整治范围。
+
+## 7. 上线前必须执行的验证
+
+### 7.1 后端与后台
+
+在仓库根目录执行：
 
 ```powershell
-cd backend/go
 go test ./...
 go build ./cmd
-go run ./cmd
 ```
 
-### 6.2 BFF
+在 `backend/bff` 执行：
 
 ```powershell
-cd backend/bff
-npm install
-npm test -- --runInBand
-npm run lint
-npm run dev
+cmd /c npm test -- --runInBand
+cmd /c npm run lint
 ```
 
-### 6.3 管理后台
+在 `admin-vue` 执行：
 
 ```powershell
-cd admin-vue
-npm install
-npm run build
-npm run dev
+cmd /c npm run build
 ```
 
-### 6.4 uni-app 多端
-
-`user-vue`、`app-mobile`、`merchant-app`、`rider-app` 当前仍以源码级整治为主，实际运行依赖 HBuilderX / uni 构建链路。
-
-## 7. 统一验证基线
-
-每个整治批次至少要求通过：
+在 `socket-server` 执行：
 
 ```powershell
-cd backend/go
-go test ./...
-go build ./cmd
-
-cd ../bff
-npm test -- --runInBand
-npm run lint
-
-cd ../../admin-vue
-npm run build
+cmd /c npm run check
 ```
 
-当前已知但非阻断的构建告警：
+### 7.2 发布前巡检
 
-- `admin-vue` 仍有 `sql.js` browser externalize 警告
-- `admin-vue` 仍有大 chunk 警告
+```powershell
+node scripts/release-preflight.mjs
+```
 
-## 8. 已完成的关键整治
+这个脚本当前会检查：
 
-### 8.1 安全与鉴权
+- `BFF /ready`
+- `Go /ready`
+- `socket-server /ready`
+- `socket-server /api/stats`
+- 可选认证态 `BFF /api/system-health`
+- socket fallback buffer 是否异常膨胀
+- push worker 是否运行、是否最近失败、是否积压过大
 
-- 收紧了 Socket 聊天身份伪造与越权访问问题。
-- 收紧了后台鉴权与默认密钥回退问题。
-- 收紧了高风险删除操作与二次校验链路。
+### 7.3 并发基线烟测
 
-### 8.2 配置治理
+```powershell
+node scripts/http-load-smoke.mjs
+```
 
-- 清理了大量开发机内网地址硬编码。
-- 真正会变化的运营数据和第三方服务参数持续回收到后台配置。
-- 地图能力已收敛为统一后端入口，后续可继续按配置切换到天地图。
+可通过环境变量调整：
 
-### 8.3 主链路补齐
+- `BFF_BASE_URL`
+- `GO_API_URL`
+- `SOCKET_SERVER_URL`
+- `LOAD_CONCURRENCY`
+- `LOAD_REQUESTS_PER_TARGET`
+- `LOAD_TIMEOUT_MS`
+- `LOAD_MAX_ERROR_RATE`
+- `LOAD_MAX_P95_MS`
 
-- 手机号改绑链路已打通。
-- 图形验证码链路已打通。
-- 邀请码注册与奖励链路已打通。
-- 用户资料编辑已接入服务端。
-- 骑手异常上报已打通。
-- 跑腿、医药等多批“假打通”页面已改成真实接口。
+这个脚本当前用于快速打基线，不等同于完整生产压测，但能在发布前尽快暴露 readiness、stats 和基础入口的吞吐或延迟异常。
 
-### 8.4 地址簿服务端化
-
-- 用户端与 App 端地址列表、地址编辑、默认地址、确认下单已接入真实服务端地址。
-- 订单创建优先引用服务端地址对象，不再只信本地字符串。
-
-### 8.5 消息与客服统一
-
-- Go 消息历史接口已返回权威 `timestamp / createdAt`。
-- `socket-server` 的实时消息、历史兜底和发送回执已统一透传 `timestamp / createdAt / time`。
-- 用户端、App 端、商家端、骑手端、后台客服工作台都已持续收口到服务端会话模型。
-- 多端消息首页已改成“服务端会话为准，本地缓存仅失败兜底”。
-- 多端聊天页已改成“服务端历史成功即覆盖，本地缓存只做失败回退”。
-- 骑手直聊消息已同步回 Go 权威消息服务。
-- 后台客服工作台和骑手客服页已移除一批本地伪状态与假数据。
-- 消息时间戳继续往服务端口径收紧，减少 `Date.now()` 伪造历史时间造成的排序漂移。
-- `socket-server` 本地 `chat.db` 已新增 `event_timestamp`，本地回退时也尽量按原始消息时间排序。
-- `socket-server /api/stats` 与后台首页已接入 Redis 在线样本展示。
-- 本轮继续统一了双端聊天页、商家聊天页、骑手实时消息桥和 `socket-server` 本地兜底层对 `createdAt` 字符串的解析，并把历史消息 fallback ID 改成稳定格式，继续减少排序抖动和重复渲染。
-- 本轮继续把骑手客服页、双端客服页和后台客服工作台里的临时消息 ID 改成稳定生成器，进一步降低 ack 匹配和本地重试阶段因裸时间戳冲突带来的误判风险。
-- 本轮继续把会话列表 fallback ID、骑手实时消息 fallback ID、后台客服接收消息 fallback ID、双端客服接收消息 fallback ID 统一成基于会话/发送方/时间的稳定生成规则，进一步减少重连、补历史和回执对齐时的错乱风险。
-- 本轮继续把商家聊天页的 `message_read / all_messages_read` 已读回执同步进本地兜底缓存，并把发送失败状态即时回写本地缓存，减少重连后已读/失败状态回退。
-- 本轮继续把骑手客服页接上 `all_messages_read` 全量已读事件，并避免 `message_sent` 回执把已经读掉的本地消息状态降回 `sent`。
-- 本轮继续把用户端和 App 端客服页接上 `message_read / all_messages_read`，并避免迟到的 `message_sent` 回执把已读消息状态降回 `sent`。
-- 本轮继续把双端普通消息聊天页接上 `message_read / all_messages_read`，并避免迟到的 `message_sent` 回执把已读状态回退成 `success`。
-- 本轮继续把后台客服工作台的 `message_sent / all_messages_read` 状态收口成和其它端一致，避免已读状态被迟到回执降级，也避免失败消息被误标成已读。
-- 本轮继续把后台推送统计弹层补成可排障明细，直接展示 delivery 的 provider、环境、重试次数、最近时间和错误原因。
-
-### 8.6 推送链路推进
-
-- 多端设备注册、反注册和本地注册状态管理已接入。
-- `received / opened` 回执链路已接入。
-- 后台推送统计与投递明细接口已补齐。
-- 推送 delivery 已可 materialize 为用户级投递明细。
-- Go 端已补后台 delivery 派发执行器，当前支持 `log` 和 `webhook` provider。
-
-### 8.7 首页推广位
-
-- 首页推广规则已固定为“管理员手工锁位优先，其次付费推广，再次普通今日推荐，最后自然排序”。
-- 后台推广管理页已可查看商户区、商品区当前生效位次、来源和前台标识。
-- 相关核心排序规则已有测试覆盖。
-
-### 8.8 生产基线硬化
-
-- 生产环境默认拒绝 `sqlite`。
-- 生产环境默认只接受 `PostgreSQL`。
-- 非 `postgres` 生产驱动必须显式开启 `ALLOW_LEGACY_PRODUCTION_DB_DRIVER=true`。
-- `.env.example` 已切换为本地 `PostgreSQL + Redis` 默认路径。
-
-### 8.9 并发与实时底座
-
-- BFF 已新增全局 API 限流。
-- BFF 已新增 JSON / urlencoded 请求体大小限制。
-- BFF 上传已新增字段、文件数量和大小限制。
-- BFF HTTP server 已显式配置 request、headers、keep-alive 超时。
-- BFF 已支持 Redis 优先的分布式限流，Redis 不可用时自动回退到本地限流。
-- Go API 已切换到 `gin.New()`，并补齐 trusted proxies、multipart memory 上限、全局请求体限制和全局限流中间件。
-- Go API 在 Redis 可用时优先使用 Redis 分布式限流，Redis 不可用时自动回退到单机限流。
-- `socket-server` 已新增敏感接口固定窗口限流。
-- `socket-server` 已新增 JSON 和 multipart 请求体上限。
-- `socket-server` 已新增 HTTP server 超时设置与更紧的 Socket.IO ping / buffer 限制。
-- `socket-server` 已支持 Redis 优先的共享 token 会话存储。
-- `socket-server` 的 HTTP 敏感接口限流已支持 Redis 优先的分布式固定窗口限流。
-- `socket-server` 已接入 Socket.IO Redis adapter。
-- `socket-server` 在线人数与 presence 样本已优先走 Redis 共享状态。
-- `socket-server` 客服订单房间鉴权缓存已优先走 Redis 共享缓存。
-- `socket-server` 骑手命名空间已移除无实际价值的本地 `onlineRiders` 单机状态。
-- OpenClaw / SuchPeople 相关 Go 服务、Socket 命名空间、配置和脚本入口已全部移除。
-- Go API 与 BFF 已统一补上 `X-Request-ID`。
-- BFF 转发到 Go 时会带上真实客户端 IP。
-- BFF 与 `socket-server` 已补齐 `/ready` 探针：BFF 会校验 Go API 就绪状态，`socket-server` 会显式暴露 Redis 就绪状态，便于发布探活、编排与巡检。
-- 后台系统日志里的服务状态面板已优先按 `/ready` 探针判断 BFF 与 Go API，就绪失败才回退 `/health`，运维看到的状态更接近真实可接流量状态。
-- 后台系统日志现已把 `socket-server` 纳入核心服务状态面板；`socket-server/.env.example` 里的历史内网地址示例也已清理回本机安全默认值。
-
-## 9. 当前仍未完成的大项
-
-### 9.1 生产架构硬化
-
-- Go、BFF 与 `socket-server` 虽已具备 Redis 优先的分布式限流或共享状态能力，但细粒度治理、压测和故障演练仍未完成。
-- 上传链路虽已限流和限体积，但仍偏本地磁盘模式，后续还需要流式存储 / 对象存储抽象。
-- 结构化日志、错误分级、readiness、依赖自检、关键埋点仍需继续补齐。
-
-### 9.2 消息系统彻底统一
-
-- `socket-server/chat.db` 还未完全退出业务事实源角色。
-- 骑手端、后台工作台剩余本地未读和零散辅助状态还需继续清理。
-- 会话列表、历史、已读、未读仍需进一步统一成单一服务端口径。
-
-### 9.3 推送闭环
-
-- 当前已完成设备登记、投递明细和派发执行器，但离完整生产级推送平台仍有距离。
-- 真正的外部供应商接入、失败重试策略细化、投递监控面板和压测仍需继续补齐。
-
-### 9.4 首页推广位
-
-- 后台规则和位次能力已具备，但首页编排结果仍需继续压缩前端本地拼装逻辑。
-- 城市 / 业务分类定向能力、推广计划审核流和投放运营面板仍需继续完善。
-
-### 9.5 RTC / 电话联系
-
-- `App / H5` 的站内 1v1 音频通话仍未落地到完整服务端信令、录音保留与投诉冻结流程。
-- 小程序侧仍按既定方案保留系统电话，不做 RTC。
-
-### 9.6 平台治理
-
-- 压测基线、容量评估、降级策略、回滚剧本仍未完成。
-- 原生 Android / iOS 端当前仅保留，不作为主整治范围，但后续若要进入生产交付仍需单独治理。
-
-## 10. 当前执行原则
+## 8. 当前运行规则
 
 - 只保留一个实时服务：`socket-server`
 - 只保留一个总文档：根目录 `README.md`
-- 继续删除活跃主链路中的假数据、假成功提示和可见乱码
-- 稳定标题和长期不会变化的固定文案不再继续配置化
-- 每个批次完成后必须：
-  - 更新代码
-  - 跑验证
-  - 更新 README
+- 活跃主链路继续删假数据、假状态、假成功提示
+- 稳定标题和长期不会变化的固定文案，不再继续泛化为后台配置
+- 真正会运营变更的数据才继续配置化：密钥、渠道、电话、链接、地图、短信、微信、活动文案、推广计划、运营数据
+- 每个整治批次都必须做到：
+  - 代码改动
+  - 验证通过
+  - 更新 `README.md`
   - 提交并推送 GitHub
 
-## 11. 当前下一步优先级
+## 9. 当前下一步优先级
 
-下一批继续按以下顺序推进：
+按当前上线优先级，后续继续按这个顺序推进：
 
-1. 继续收 `socket-server` 和多端消息里的本地 fallback 尾巴
-2. 把消息事实源继续往 Go 权威源收紧
-3. 继续补推送闭环与派发监控
-4. 继续完善首页推广位后台能力和前台编排
-5. 继续补平台级可观测性、压测和故障治理
+1. 继续压缩 `socket-server/chat.db` 的事实源角色
+2. 继续把消息会话摘要、未读汇总和本地 fallback 收回 Go 权威源
+3. 继续补齐推送链路的外部 provider、失败治理和观测能力
+4. 继续完善首页推广位前台编排和运营面板
+5. 继续补齐压测、降级、回滚和故障演练基线
+6. 最后再进入完整上线检查和灰度准备
 
-## 12. Recent Rollout Notes
+## 10. Recent Rollout Notes
 
-- 2026-03-28: `socket-server` now assigns and returns `X-Request-ID` on HTTP requests, propagates the same header to internal Go API calls, and starts correlating support/rider message sync plus order-room authorization with shared request ids for cross-service tracing.
-- 2026-03-28: the admin system log service-status panel now preserves `/ready` response details from BFF / Go API / socket-server so launch checks can see dependency failures like `go api not ready`, `database not ready`, or `redis not ready` instead of only generic up/down states.
-- 2026-03-28: Go `POST /api/messages/sync` now returns authoritative message timestamps and ids more completely, and `socket-server` uses that response to override support/rider realtime message acks and broadcasts, reducing reliance on local send-time facts.
-- 2026-03-28: `socket-server` message creation now uses stable local `uid` values as the primary realtime message id instead of SQLite row ids, so live sends, acks, local fallback history, and Go sync all align on the same message identity more often.
-- 2026-03-28: when `socket-server` successfully loads support message history from Go, it now rewrites the local `chat.db` fallback history with that authoritative result, so later fallback reads are less likely to drift behind the server-side message source.
-- 2026-03-28: after support/rider realtime sends receive the authoritative Go sync response, `socket-server` now reconciles the just-written local `chat.db` row in place as well, so fallback history picks up server-side timestamps and ids without waiting for a later history reload.
-- 2026-03-28: the user/app customer-service pages now stamp local sending placeholders with explicit `timestamp / createdAt / time` and also absorb authoritative `createdAt` from realtime acks, reducing visible ordering jitter before server history reloads.
-- 2026-03-28: the legacy `socket-server /api/messages` HTTP bridge has been removed; active message history and sync now go through the Go `/api/messages/*` contract plus the single `socket-server` realtime gateway, reducing parallel message entry points.
-- 2026-03-29: the user/app message home pages no longer clear unread counts optimistically before the server read APIs complete; local unread state is now updated only after `markConversationRead` succeeds, while bulk clear reloads the authoritative session and notification summaries after the server-side read calls settle.
-- 2026-03-29: the admin chat console now follows the same server-first unread rule when switching conversations: it joins and loads messages immediately, but only clears local unread counts and emits socket-side `mark_all_read` after the HTTP read-sync call succeeds.
-- 2026-03-29: the admin shared socket bridge no longer writes an extra local message-cache row during `emit('send_message')`; outgoing temp messages stay owned by the chat console state until the authoritative realtime ack or history reload arrives, reducing duplicate local facts.
-- 2026-03-29: the admin shared socket bridge also no longer auto-persists `new_message` events into the local message cache; the chat console keeps sole ownership of controlled incoming-message persistence, removing another duplicate local write path.
-- 2026-03-29: `socket-server` now clears local support fallback unread state only after the backend conversation-read sync succeeds or returns `404`, so local `chat.db` fallback lists stay closer to the Go unread source instead of showing stale red dots after a successful read sync.
-- 2026-03-29: the rider local SQLite fallback now stores `senderRole` and `status`, persists outbound `sending/failed/sent/read` transitions for text/image/order messages, and updates cached rows when resend/send/read acknowledgements arrive, reducing state drift after reconnects or local-history fallback.
-- 2026-03-29: the merchant chat page now persists `message_read / all_messages_read` acknowledgements into its local fallback cache and immediately writes `failed` status back to storage on send timeouts, reducing state regression after reconnects or fallback-history loads.
-- 2026-03-29: the rider support page now forwards `all_messages_read` from the global socket bridge, marks matching self messages as `read` in both page state and local SQLite fallback, and preserves `read` if a later `message_sent` ack arrives out of order.
-- 2026-03-29: the user/app customer-service pages now react to `message_read / all_messages_read` in page state and preserve `read` if a delayed `message_sent` acknowledgement arrives afterward, reducing visible read-state regression during reconnects.
-- 2026-03-29: the user/app regular message-chat pages now react to `message_read / all_messages_read` as well, and keep self-message `read` status even if a delayed `message_sent` acknowledgement arrives later, reducing read-state rollback in local fallback histories.
-- 2026-03-29: the admin chat console now also preserves `read` if a delayed `message_sent` acknowledgement arrives later, and it no longer promotes `failed` self messages to `read` during `all_messages_read`, aligning the console with the tightened multi-end message status rules.
-- 2026-03-29: the admin push-message stats dialog now exposes per-delivery provider, app environment, retry count, last activity time, and dispatch error details, making queued/failed push troubleshooting easier before launch.
-- 2026-03-29: the user/app message home pages no longer show a false-success toast when bulk unread clearing fails completely; they now reload authoritative session and notification summaries after the server calls settle and only report success if at least one backend clear operation actually succeeded.
-- 2026-03-29: the merchant chat page and admin chat console now ignore `all_messages_read` events that belong to other chat ids, preventing cross-conversation read-state pollution when multiple conversations are active across the same realtime connection.
-- 2026-03-29: `socket-server` now includes `chatId` in realtime `message_read` events, and the user/app/merchant/rider/admin chat surfaces now ignore read events from other conversations, reducing cross-chat read-state bleed when multiple sessions are active on the same account.
-- 2026-03-29: realtime `message_sent` acknowledgements now also carry `chatId`, and all active chat surfaces ignore send acks from other conversations, reducing temp-message reconciliation errors when the same account has multiple chats open.
-- 2026-03-29: fixed a support-namespace regression where `message_sent` acknowledgements referenced an undefined local `chatId` variable instead of the normalized chat id, which could break realtime send acknowledgements for support conversations at runtime.
-- 2026-03-29: `socket-server` readiness now distinguishes between Redis being merely connected and the Socket.IO Redis adapter actually being enabled; `/ready`, `/api/stats`, and realtime `server_stats` now expose adapter state so multi-instance rollout checks can detect accidental fallback to single-instance broadcasting.
-- 2026-03-29: the admin dashboard now surfaces the socket Redis/adapter broadcast mode directly in the IM operations area, including whether Redis is connected, whether the Socket.IO Redis adapter is enabled, and whether the server is running in shared-broadcast mode or local fallback mode, making rollout checks easier before launch.
-- 2026-03-29: Go readiness responses now expose mobile-push worker runtime state (`enabled/running/provider/last cycle/result/error`), and the BFF system-health aggregator now folds that detail into its service probe output so launch-time troubleshooting can immediately tell whether push dispatch is disabled, idle, healthy, or failing.
-- 2026-03-29: BFF `/ready` responses now preserve Go `/ready` probe type and summarized detail text as part of the `goApi` dependency payload, so operators checking only the BFF layer can still see whether Go degraded because of push-worker state, dependency errors, or readiness fallback.
-- 2026-03-29: `socket-server` local fallback storage now prunes each chat to the most recent 500 records whenever fallback history is rewritten or realtime messages are appended, reducing the chance that `chat.db` quietly grows into a second long-term message source before launch.
-- 2026-03-29: user/app message-home local session caches now expire after 12 hours; server conversation lists still win whenever available, while local storage only survives as a short-lived outage fallback instead of an open-ended second source.
-- 2026-03-29: `socket-server/chat.db` fallback retention now also drops per-chat message rows older than 30 days before enforcing the 500-row cap, keeping the local SQLite store closer to a short-term emergency buffer than a shadow archive.
-- 2026-03-29: `socket-server/chat.db` now starts in WAL mode with a busy timeout and normal sync level, then performs a startup-age prune before serving traffic, reducing fallback lock sensitivity and trimming stale emergency-buffer data earlier in the boot path.
-- 2026-03-29: Go push-worker readiness now includes a live queue snapshot (`total / queued / retryPending / dispatching / failed / sent / acknowledged`), and the BFF health aggregators surface the key backlog counts so launch checks can tell whether push is healthy but idle or silently piling up unsent work.
-- 2026-03-29: `socket-server/chat.db` startup cleanup now also enforces the per-chat 500-row cap across historical backlog, so old oversized fallback conversations are trimmed immediately at boot instead of waiting for a later write or history rewrite.
-- 2026-03-29: `socket-server` stats now expose fallback-buffer summary (`messageCount / chatCount / oldest/newest timestamps / startup prune counts`), and the admin dashboard surfaces those numbers so launch checks can see whether local SQLite fallback is staying a small emergency buffer or quietly growing under load.
-- 2026-03-29: the user/app regular chat pages and the merchant chat page now persist local fallback history as `{ cachedAt, messages }` envelopes with a 24-hour max age, so offline chat caches behave like short-lived outage buffers instead of indefinite shadow histories.
-- 2026-03-29: `socket-server /health` and `/ready` now also expose fallback-buffer summary, and the BFF system-health detail string includes those counts, so launch checks can spot emergency-buffer growth without opening the IM dashboard separately.
-- 2026-03-29: BFF now exposes a lightweight authenticated `/api/system-health` endpoint for the admin dashboard, and the dashboard surfaces readiness summary plus push-worker queue/cycle state on the首页 without loading the full system-log dataset.
-- 2026-03-29: added a repo-local `scripts/release-preflight.mjs` launch check plus a dedicated `socket-server` CI smoke-check job, so pre-release runs can verify `BFF /ready`, `Go /ready`, `socket-server /ready`, `socket-server /api/stats`, and optional authenticated `/api/system-health` before traffic cutover.
-- 2026-03-29: the release preflight script now also enforces key readiness assertions instead of checking only HTTP 200s: it fails on non-`ready` BFF/Go/socket states, on socket Redis-without-adapter fallback, on excessive local fallback-buffer growth, and on degraded authenticated system-health results unless explicitly relaxed by environment flags.
-- 2026-03-29: the release preflight script now also blocks launch when the Go mobile-push worker is enabled but not running, when its latest cycle reports a failure/error state, or when the live push queue exceeds the configurable `PREFLIGHT_MAX_PUSH_QUEUE` threshold.
-- 2026-03-29: `socket-server /ready` now also degrades when the local fallback buffer exceeds `SOCKET_READY_MAX_FALLBACK_MESSAGES`, so rollout probes can reject traffic if the emergency SQLite buffer starts behaving like a shadow message store under load.
-- 2026-03-29: Go `/ready` now also degrades when the mobile-push worker is enabled but not running, when its latest cycle reports a failure/error state, or when the live push queue exceeds `PUSH_READY_MAX_QUEUE`; the repo `.env.example` and config tests were updated with the new readiness gate.
-- 2026-03-29: BFF `/ready` now also probes `socket-server /ready` by default (configurable via `BFF_READY_REQUIRE_SOCKET`), so the outer API entrypoint no longer reports `ready` while the single realtime gateway is already degraded or has fallen back out of shared-broadcast mode.
+- 2026-03-29：`admin-vue` 构建加入显式 vendor chunk 拆分，继续压低后台主包集中度。
+- 2026-03-29：新增 `scripts/release-preflight.mjs`，发布前会校验 BFF / Go / `socket-server` 的 readiness、stats 和系统健康。
+- 2026-03-29：发布前巡检脚本继续加严，已经会阻断 socket fallback 过大、push worker 未运行、push 队列积压过高等风险。
+- 2026-03-29：Go `/ready` 现在会把 push worker 运行态和队列快照纳入 readiness 判定。
+- 2026-03-29：BFF `/ready` 默认也会检查 `socket-server /ready`，不再只看 Go。
+- 2026-03-29：`socket-server` 的 readiness、stats 和后台首页已经能看到 Redis adapter 是否真实启用，而不是只有 Redis 是否连上。
+- 2026-03-29：多端消息已继续按 `chatId` 过滤 `message_sent / message_read / all_messages_read`，减少串会话污染。
+- 2026-03-29：`socket-server/chat.db` 已继续收紧为短期 emergency buffer，加入启动裁剪、按会话上限裁剪、按时间淘汰和 fallback 统计暴露。
+- 2026-03-29：BFF、Go、`socket-server` 已继续补齐 request id 透传、健康聚合和运维面板信息。
+- 2026-03-29：新增 `scripts/http-load-smoke.mjs`，用于发布前快速做 readiness / stats 并发烟测。
+- 2026-03-29：Go、BFF、`socket-server` 已开始输出慢请求预警，方便在千人级流量上更早发现超时和退化。
+
+## 11. 诚实状态说明
+
+这个仓库已经从“很多链路是假打通、假状态、本地模拟”的阶段明显往前推进了很多，但现在还不能诚实地说“全部优化完成”。
+
+更准确的状态是：
+
+- 主链路已经比之前稳很多
+- 上线前基线已经越来越像正式平台
+- 但消息事实源最终收口、完整推送平台、RTC、完整压测与故障演练仍未全部完成
+
+所以当前策略不是停止，而是继续按本 README 的优先级往下收，直到真正达到可控上线标准。

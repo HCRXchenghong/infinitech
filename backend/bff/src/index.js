@@ -277,7 +277,11 @@ app.use(express.json({ limit: config.bodyLimits.jsonBytes }));
 app.use(express.urlencoded({ extended: true, limit: config.bodyLimits.urlencodedBytes }));
 
 app.use(createRequestIdMiddleware());
-app.use(createRequestAuditMiddleware({ logger, parseOperatorFromAuthHeader }));
+app.use(createRequestAuditMiddleware({
+  logger,
+  parseOperatorFromAuthHeader,
+  slowRequestWarnMs: config.http.slowRequestWarnMs
+}));
 app.use(createInviteRuntimeGuard({ logger }));
 
 app.get(["/health", "/api/health"], (req, res) => {

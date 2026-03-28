@@ -1,9 +1,9 @@
 /**
- * 日志工具
+ * Structured logger for the BFF layer.
  */
 
-const winston = require('winston');
-const config = require('../config');
+const winston = require("winston");
+const config = require("../config");
 
 const logger = winston.createLogger({
   level: config.logLevel,
@@ -12,15 +12,14 @@ const logger = winston.createLogger({
     winston.format.errors({ stack: true }),
     winston.format.json()
   ),
-  defaultMeta: { service: 'bff' },
+  defaultMeta: { service: "bff" },
   transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' })
+    new winston.transports.File({ filename: "logs/error.log", level: "error" }),
+    new winston.transports.File({ filename: "logs/combined.log" })
   ]
 });
 
-// 开发环境输出到控制台
-if (config.env !== 'production') {
+if (config.env !== "production") {
   logger.add(new winston.transports.Console({
     format: winston.format.combine(
       winston.format.colorize(),

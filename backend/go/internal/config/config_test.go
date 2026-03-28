@@ -43,6 +43,7 @@ func newValidConfigForTest() *Config {
 			WriteTimeout:       30 * time.Second,
 			IdleTimeout:        60 * time.Second,
 			ShutdownTimeout:    15 * time.Second,
+			SlowRequestWarn:    1500 * time.Millisecond,
 			MaxBodyBytes:       1024 * 1024,
 			MaxUploadBytes:     12 * 1024 * 1024,
 			MaxMultipartMemory: 8 * 1024 * 1024,
@@ -126,5 +127,14 @@ func TestValidateRejectsNegativePushReadyMaxQueue(t *testing.T) {
 
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("expected negative push ready max queue to be rejected")
+	}
+}
+
+func TestValidateRejectsNonPositiveSlowRequestWarn(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.HTTP.SlowRequestWarn = 0
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected non-positive slow request warn threshold to be rejected")
 	}
 }

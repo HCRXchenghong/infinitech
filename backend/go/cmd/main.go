@@ -284,7 +284,7 @@ func main() {
 	// 中间件
 	r.Use(middleware.CORS())
 	r.Use(middleware.RequestID())
-	r.Use(middleware.Logger())
+	r.Use(middleware.Logger(cfg.HTTP.SlowRequestWarn))
 	r.Use(middleware.Recovery())
 	r.Use(middleware.RequestBodyLimit(cfg.HTTP.MaxBodyBytes, cfg.HTTP.MaxUploadBytes))
 	if cfg.HTTP.RateLimitEnabled {
@@ -1486,11 +1486,12 @@ func main() {
 	go func() {
 		log.Printf("Go API Server listening on port %s", port)
 		log.Printf(
-			"HTTP timeouts read=%s read_header=%s write=%s idle=%s",
+			"HTTP timeouts read=%s read_header=%s write=%s idle=%s slow_warn=%s",
 			cfg.HTTP.ReadTimeout,
 			cfg.HTTP.ReadHeaderTimeout,
 			cfg.HTTP.WriteTimeout,
 			cfg.HTTP.IdleTimeout,
+			cfg.HTTP.SlowRequestWarn,
 		)
 		serverErrors <- server.ListenAndServe()
 	}()
