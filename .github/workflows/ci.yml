@@ -50,3 +50,18 @@ jobs:
           cache-dependency-path: admin-vue/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  socket-server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: socket-server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: socket-server/package-lock.json
+      - run: npm ci
+      - run: npm run check

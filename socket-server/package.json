@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "check": "node --check requestId.js && node --check redisState.js && node --check auth.js && node --check database.js && node --check monitor.js && node --check routes.js && node --check socketIdentity.js && node --check supportAccess.js && node --check supportNamespaces.js && node --check riderNamespace.js && node --check index.js",
     "start": "node index.js",
     "dev": "node index.js"
   },
