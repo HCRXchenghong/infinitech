@@ -1,6 +1,6 @@
 import { Server } from 'socket.io';
 import { createServer } from 'http';
-import { db, saveMessage, getMessages, clearMessages, replaceMessages, markAsRead, markAllRead, getUnreadCount } from './database.js';
+import { db, saveMessage, getMessages, clearMessages, replaceMessages, reconcileMessage, markAsRead, markAllRead, getUnreadCount } from './database.js';
 import { authMiddleware, generateToken } from './auth.js';
 import { getServerStats, addOnlineUser, removeOnlineUser, getOnlineCount, getOnlineUsers } from './monitor.js';
 import { writeFileSync, mkdirSync, existsSync, createReadStream } from 'fs';
@@ -552,6 +552,7 @@ await attachSocketIoRedisAdapter(io);
   db,
   getMessages,
   saveMessage,
+  reconcileMessage,
   clearMessages,
   replaceMessages,
   markAsRead,
@@ -564,7 +565,8 @@ setupRiderNamespace({
   authMiddleware,
   addOnlineUser,
   removeOnlineUser,
-  saveMessage
+  saveMessage,
+  reconcileMessage
 });
 
 setInterval(async () => {

@@ -295,5 +295,45 @@ export function replaceMessages(chatType, chatId, list = []) {
   return transaction(normalizedList);
 }
 
+export function reconcileMessage(chatType, chatId, localMessageId, localLegacyId, message) {
+  const normalizedLocalId = String(localMessageId || '').trim();
+  const numericLegacyId = Number(localLegacyId);
+  if (!normalizedLocalId && (!Number.isFinite(numericLegacyId) || numericLegacyId <= 0)) {
+    return { changes: 0 };
+  }
+
+  const ids = nextUnifiedIds(CHAT_BUCKET);
+  const timestamp = resolveEventTimestamp(message?.timestamp ?? message?.createdAt, Date.now());
+  const stmt = db.prepare(`
+    UPDATE messages
+    SET uid = ?, tsid = ?, chat_uid = ?, sender = ?, sender_id = ?, sender_uid = ?, sender_role = ?, content = ?, message_type = ?, coupon_data = ?, order_data = ?, image_url = ?, avatar = ?, status = ?, event_timestamp = ?, created_at = ?, read_at = ?
+    WHERE chat_type = ? AND chat_id = ? AND (uid = ? OR id = ?)
+  `);
+
+  return stmt.run(
+    String(message?.uid || message?.id || ids.uid),
+    String(message?.tsid || ids.tsid),
+    String(message?.chatUid || message?.chat_id || message?.chatId || chatId || ''),
+    message?.sender || '',
+    String(message?.senderId || ''),
+    String(message?.senderUid || message?.senderId || ''),
+    message?.senderRole || 'user',
+    message?.content || '',
+    message?.messageType || 'text',
+    message?.coupon ? JSON.stringify(message.coupon) : null,
+    message?.order ? JSON.stringify(message.order) : null,
+    message?.imageUrl || null,
+    message?.avatar || null,
+    message?.status || 'sent',
+    timestamp,
+    normalizeCreatedAtForStorage(message?.createdAt, timestamp),
+    String(message?.readAt || '').trim() || null,
+    chatType,
+    chatId,
+    normalizedLocalId,
+    Number.isFinite(numericLegacyId) && numericLegacyId > 0 ? numericLegacyId : -1
+  );
+}
+
 export { db };
 export default db;

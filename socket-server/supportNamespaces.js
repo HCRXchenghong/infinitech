@@ -291,7 +291,7 @@ function refreshFallbackHistory(replaceMessages, chatId, messages) {
   }
 }
 
-function createSupportMessageHandler({ saveMessage, supportNamespace, monitorNamespace }) {
+function createSupportMessageHandler({ saveMessage, reconcileMessage, supportNamespace, monitorNamespace }) {
   return async function handleSendMessage(data, socket, chatType = 'support') {
     try {
       const normalizedChatId = normalizeChatId(data?.chatId);
@@ -342,6 +342,9 @@ function createSupportMessageHandler({ saveMessage, supportNamespace, monitorNam
 
       const syncedMessage = await syncMessageToBackend(socket, normalizedChatId, data, localMessage);
       const message = syncedMessage || localMessage;
+      if (syncedMessage && typeof reconcileMessage === 'function') {
+        reconcileMessage(chatType, normalizedChatId, localMessage.id, localMessage.legacyId, syncedMessage);
+      }
 
       logger.info('Broadcasting message:', message);
       emitSupportMessage(supportNamespace, normalizedChatId, message);
@@ -373,6 +376,7 @@ export function setupSupportNamespaces({
   db,
   getMessages,
   saveMessage,
+  reconcileMessage,
   clearMessages,
   replaceMessages,
   markAsRead,
@@ -383,6 +387,7 @@ export function setupSupportNamespaces({
   const supportNamespace = io.of('/support');
   const handleSendMessage = createSupportMessageHandler({
     saveMessage,
+    reconcileMessage,
     supportNamespace,
     monitorNamespace
   });

@@ -140,6 +140,7 @@ async function relayMessageToRider({
   socket,
   riderNamespace,
   saveMessage,
+  reconcileMessage,
   data,
   fromType,
   senderDefault,
@@ -169,13 +170,16 @@ async function relayMessageToRider({
   });
 
   const message = syncedMessage || localMessage;
+  if (syncedMessage && typeof reconcileMessage === 'function') {
+    reconcileMessage('rider_chat', chatId, localMessage.id, localMessage.legacyId, syncedMessage);
+  }
   riderNamespace.to(`rider_${riderId}`).emit(eventName, message);
   emitMessageSentAck(socket, message, data?.tempId);
 
   logger.info(`Rider relay ${message.senderRole} ${message.senderId} -> rider ${riderId}, chatId: ${chatId}`);
 }
 
-async function relayRiderMessage({ socket, riderNamespace, saveMessage, data }) {
+async function relayRiderMessage({ socket, riderNamespace, saveMessage, reconcileMessage, data }) {
   const targetId = String(data?.targetId || '').trim();
   const targetType = String(data?.targetType || '').trim().toLowerCase();
   if (!targetId || !['merchant', 'user'].includes(targetType)) {
@@ -201,6 +205,9 @@ async function relayRiderMessage({ socket, riderNamespace, saveMessage, data }) 
   });
 
   const message = syncedMessage || localMessage;
+  if (syncedMessage && typeof reconcileMessage === 'function') {
+    reconcileMessage('rider_chat', chatId, localMessage.id, localMessage.legacyId, syncedMessage);
+  }
 
   if (targetType === 'merchant') {
     riderNamespace.to(`merchant_${targetId}`).emit('rider_message', message);
@@ -217,7 +224,8 @@ export function setupRiderNamespace({
   authMiddleware,
   addOnlineUser,
   removeOnlineUser,
-  saveMessage
+  saveMessage,
+  reconcileMessage
 }) {
   const riderNamespace = io.of('/rider');
   riderNamespace.use(authMiddleware);
@@ -245,6 +253,7 @@ export function setupRiderNamespace({
         socket,
         riderNamespace,
         saveMessage,
+        reconcileMessage,
         data,
         fromType: 'merchant',
         senderDefault: '商家',
@@ -261,6 +270,7 @@ export function setupRiderNamespace({
         socket,
         riderNamespace,
         saveMessage,
+        reconcileMessage,
         data,
         fromType: 'user',
         senderDefault: '用户',
@@ -277,6 +287,7 @@ export function setupRiderNamespace({
         socket,
         riderNamespace,
         saveMessage,
+        reconcileMessage,
         data
       });
     });
