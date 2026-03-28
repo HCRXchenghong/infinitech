@@ -9,6 +9,7 @@ import {
 
 const DEFAULT_TIMEOUT_MS = 5000;
 const DEFAULT_MAX_FALLBACK_MESSAGES = 5000;
+const DEFAULT_MAX_FALLBACK_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 const DEFAULT_MAX_PUSH_QUEUE = 5000;
 const DEFAULT_MAX_PUSH_QUEUE_AGE_MS = 30 * 60 * 1000;
 const DEFAULT_MAX_RECENT_SOCKET_FALLBACK_MS = 10 * 60 * 1000;
@@ -128,6 +129,7 @@ function collectSocketSummary(body) {
     redis && typeof redis.adapterEnabled === 'boolean' ? `adapter=${redis.adapterEnabled}` : '',
     fallback && fallback.messageCount !== undefined ? `fallbackMessages=${fallback.messageCount}` : '',
     fallback && fallback.chatCount !== undefined ? `fallbackChats=${fallback.chatCount}` : '',
+    fallback && fallback.oldestAgeMs !== undefined ? `fallbackOldestAge=${formatDurationMs(fallback.oldestAgeMs)}` : '',
     fallbackRuntime && fallbackRuntime.conversationListFallbackCount !== undefined ? `fallbackListHits=${fallbackRuntime.conversationListFallbackCount}` : '',
     fallbackRuntime && fallbackRuntime.messageHistoryFallbackCount !== undefined ? `fallbackHistoryHits=${fallbackRuntime.messageHistoryFallbackCount}` : '',
     fallbackRuntime && fallbackRuntime.historyRefreshWriteCount !== undefined ? `fallbackRefreshWrites=${fallbackRuntime.historyRefreshWriteCount}` : '',
@@ -271,7 +273,7 @@ function evaluateSocketReady(body, requiredRedisMode) {
   return failures;
 }
 
-function evaluateSocketStats(body, maxFallbackMessages, maxRecentSocketFallbackMs) {
+function evaluateSocketStats(body, maxFallbackMessages, maxRecentSocketFallbackMs, maxFallbackAgeMs) {
   const failures = [];
   if (!body || typeof body !== 'object') {
     failures.push('missing_socket_stats_body');
@@ -280,6 +282,9 @@ function evaluateSocketStats(body, maxFallbackMessages, maxRecentSocketFallbackM
   const fallback = body.fallbackBuffer && typeof body.fallbackBuffer === 'object' ? body.fallbackBuffer : null;
   if (fallback && Number.isFinite(Number(fallback.messageCount)) && Number(fallback.messageCount) > maxFallbackMessages) {
     failures.push(`fallback_messages=${fallback.messageCount}>${maxFallbackMessages}`);
+  }
+  if (fallback && Number.isFinite(Number(fallback.oldestAgeMs)) && Number(fallback.oldestAgeMs) > maxFallbackAgeMs) {
+    failures.push(`fallback_oldest_age=${formatDurationMs(fallback.oldestAgeMs)}>${formatDurationMs(maxFallbackAgeMs)}`);
   }
   const fallbackRuntime = body.fallbackRuntime && typeof body.fallbackRuntime === 'object' ? body.fallbackRuntime : null;
   const recentThreshold = Number(maxRecentSocketFallbackMs);
@@ -331,6 +336,7 @@ async function main() {
   const socketBaseUrl = normalizeBaseUrl(process.env.SOCKET_BASE_URL, 'http://127.0.0.1:9898');
   const adminToken = String(process.env.ADMIN_TOKEN || '').trim();
   const maxFallbackMessages = parseIntegerEnv(process.env.PREFLIGHT_MAX_FALLBACK_MESSAGES, DEFAULT_MAX_FALLBACK_MESSAGES);
+  const maxFallbackAgeMs = parseIntegerEnv(process.env.PREFLIGHT_MAX_FALLBACK_AGE_MS, DEFAULT_MAX_FALLBACK_AGE_MS);
   const maxPushQueue = parseIntegerEnv(process.env.PREFLIGHT_MAX_PUSH_QUEUE, DEFAULT_MAX_PUSH_QUEUE);
   const maxPushQueueAgeMs = parseIntegerEnv(process.env.PREFLIGHT_MAX_PUSH_QUEUE_AGE_MS, DEFAULT_MAX_PUSH_QUEUE_AGE_MS);
   const maxRecentSocketFallbackMs = parseIntegerEnv(
@@ -380,7 +386,7 @@ async function main() {
       label: 'Socket stats',
       url: `${socketBaseUrl}/api/stats`,
       summary: collectSocketSummary,
-      validate: (body) => evaluateSocketStats(body, maxFallbackMessages, maxRecentSocketFallbackMs)
+      validate: (body) => evaluateSocketStats(body, maxFallbackMessages, maxRecentSocketFallbackMs, maxFallbackAgeMs)
     }
   ];
 
@@ -398,7 +404,7 @@ async function main() {
   console.log(`Release preflight started at ${new Date().toISOString()}`);
   console.log(`Targets: BFF=${bffBaseUrl} GO=${goBaseUrl} SOCKET=${socketBaseUrl}`);
   console.log(
-    `Thresholds: maxFallbackMessages=${maxFallbackMessages} maxPushQueue=${maxPushQueue} `
+    `Thresholds: maxFallbackMessages=${maxFallbackMessages} maxFallbackAge=${formatDurationMs(maxFallbackAgeMs)} maxPushQueue=${maxPushQueue} `
     + `maxPushQueueAge=${formatDurationMs(maxPushQueueAgeMs)} `
     + `maxPushConsecutiveFailures=${maxPushConsecutiveFailures} `
     + `maxPushSuccessStale=${formatDurationMs(maxPushSuccessStaleMs)} `

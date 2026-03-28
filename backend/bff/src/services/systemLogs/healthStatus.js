@@ -137,6 +137,7 @@ function buildProbeDetail(result) {
     const fallbackDetail = [
       fallback.messageCount !== undefined ? `fallbackMessages=${fallback.messageCount}` : "",
       fallback.chatCount !== undefined ? `fallbackChats=${fallback.chatCount}` : "",
+      fallback.oldestAgeMs !== undefined ? `fallbackOldestAge=${fallback.oldestAgeMs}` : "",
       fallback.startupExpiredPruned !== undefined ? `fallbackExpiredPruned=${fallback.startupExpiredPruned}` : "",
       fallback.startupOverflowPruned !== undefined ? `fallbackOverflowPruned=${fallback.startupOverflowPruned}` : ""
     ].filter(Boolean).join(" ");

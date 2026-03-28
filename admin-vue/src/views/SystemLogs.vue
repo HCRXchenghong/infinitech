@@ -249,9 +249,7 @@
         </el-form-item>
       </el-form>
       <div class="delete-tip">
-        即将清空
-        <strong>{{ clearSourceLabel }}</strong>
-        日志，操作不可恢复。
+        即将清空 <strong>{{ clearSourceLabel }}</strong> 日志，操作不可恢复。
       </div>
       <template #footer>
         <el-button @click="clearDialogVisible = false">取消</el-button>
@@ -274,6 +272,7 @@ const SIGNAL_LABELS = {
   redisMode: "Redis 模式",
   fallbackMessages: "fallback 消息",
   fallbackChats: "fallback 会话",
+  fallbackOldestAge: "fallback 最老年龄",
   fallbackExpiredPruned: "过期裁剪",
   fallbackOverflowPruned: "溢出裁剪",
   fallbackListHits: "列表回退",
@@ -300,7 +299,7 @@ const SIGNAL_LABELS = {
   pushOldestQueuedAt: "最老排队时间",
   pushOldestQueuedAgeSeconds: "最老排队年龄",
   pushOldestDispatchingAt: "最老派发时间",
-  pushOldestDispatchingAgeSeconds: "最老派发年龄",
+  pushOldestDispatchingAgeSeconds: "最老派发年龄"
 };
 
 const loading = ref(false);
@@ -319,32 +318,32 @@ const summary = reactive({
   update: 0,
   read: 0,
   system: 0,
-  error: 0,
+  error: 0
 });
 const serviceStatus = reactive({
   checkedAt: "",
   overall: "unknown",
-  services: [],
+  services: []
 });
 
 const filters = reactive({
   source: "all",
   action: "all",
-  keyword: "",
+  keyword: ""
 });
 
 const pagination = reactive({
   page: 1,
   limit: 50,
-  total: 0,
+  total: 0
 });
 const deleteVerifyForm = reactive({
   verifyAccount: "",
-  verifyPassword: "",
+  verifyPassword: ""
 });
 const clearVerifyForm = reactive({
   verifyAccount: "",
-  verifyPassword: "",
+  verifyPassword: ""
 });
 
 const clearSourceLabel = computed(() => {
@@ -418,10 +417,34 @@ function toDisplayLabel(key) {
     .trim();
 }
 
-function normalizeSignalValue(value) {
+function formatAgeSeconds(seconds) {
+  const numeric = Number(seconds);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "0 秒";
+  if (numeric < 60) return `${numeric} 秒`;
+  const minutes = Math.floor(numeric / 60);
+  if (minutes < 60) return `${minutes} 分钟`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} 小时`;
+  const days = Math.floor(hours / 24);
+  return `${days} 天`;
+}
+
+function formatAgeMs(ms) {
+  const numeric = Number(ms);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "0 秒";
+  return formatAgeSeconds(Math.floor(numeric / 1000));
+}
+
+function normalizeSignalValue(key, value) {
   const text = String(value || "").trim();
   if (text === "true") return "正常";
   if (text === "false") return "异常";
+  if (key === "fallbackOldestAge" && /^\d+$/.test(text)) {
+    return formatAgeMs(text);
+  }
+  if (["pushOldestQueuedAgeSeconds", "pushOldestDispatchingAgeSeconds"].includes(key) && /^\d+$/.test(text)) {
+    return formatAgeSeconds(text);
+  }
   if (/^\d+$/.test(text)) return text;
   return text;
 }
@@ -445,6 +468,9 @@ function resolveSignalType(key, rawValue) {
     if (value === "dispatching") return "info";
     return "warning";
   }
+  if (key === "fallbackOldestAge") {
+    return "warning";
+  }
   if ([
     "fallbackMessages",
     "fallbackChats",
@@ -457,7 +483,7 @@ function resolveSignalType(key, rawValue) {
     "pushFailed",
     "pushConsecutiveFailures",
     "pushOldestQueuedAgeSeconds",
-    "pushOldestDispatchingAgeSeconds",
+    "pushOldestDispatchingAgeSeconds"
   ].includes(key)) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric) || numeric <= 0) {
@@ -486,7 +512,7 @@ function parseServiceDetail(detail) {
           key: part,
           label: part,
           value: "",
-          type: "info",
+          type: "info"
         };
       }
       const key = part.slice(0, separatorIndex).trim();
@@ -494,8 +520,8 @@ function parseServiceDetail(detail) {
       return {
         key,
         label: toDisplayLabel(key),
-        value: normalizeSignalValue(rawValue),
-        type: resolveSignalType(key, rawValue),
+        value: normalizeSignalValue(key, rawValue),
+        type: resolveSignalType(key, rawValue)
       };
     });
 }
@@ -512,7 +538,7 @@ async function loadLogs() {
       page: pagination.page,
       limit: pagination.limit,
       source: filters.source,
-      action: filters.action,
+      action: filters.action
     };
     if (filters.keyword.trim()) {
       params.keyword = filters.keyword.trim();
@@ -602,7 +628,7 @@ async function confirmDeleteLog() {
       source: pendingDeleteLog.value.source,
       raw: pendingDeleteLog.value.raw,
       verifyAccount: deleteVerifyForm.verifyAccount,
-      verifyPassword: deleteVerifyForm.verifyPassword,
+      verifyPassword: deleteVerifyForm.verifyPassword
     });
     ElMessage.success("日志已删除");
     deleteDialogVisible.value = false;
@@ -626,7 +652,7 @@ async function confirmClearLogs() {
     await request.post("/api/system-logs/clear", {
       source: filters.source,
       verifyAccount: clearVerifyForm.verifyAccount,
-      verifyPassword: clearVerifyForm.verifyPassword,
+      verifyPassword: clearVerifyForm.verifyPassword
     });
     ElMessage.success("系统日志已清空");
     clearDialogVisible.value = false;

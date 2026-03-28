@@ -223,6 +223,7 @@ node scripts/http-load-smoke.mjs
 - `PREFLIGHT_MAX_PUSH_CONSECUTIVE_FAILURES`
 - `PREFLIGHT_MAX_PUSH_SUCCESS_STALE_MS`
 - `PREFLIGHT_MAX_PUSH_QUEUE_AGE_MS`
+- `PREFLIGHT_MAX_FALLBACK_AGE_MS`
 
 这个脚本当前用于快速打基线，不等同于完整生产压测，但能在发布前尽快暴露 readiness、stats 和基础入口的吞吐或延迟异常。
 
@@ -235,6 +236,7 @@ node scripts/http-load-smoke.mjs
 - `LOAD_MAX_ERROR_RATE`
 - `LOAD_MAX_P95_MS`
 - `PREFLIGHT_MAX_PUSH_QUEUE_AGE_MS`
+- `PREFLIGHT_MAX_FALLBACK_AGE_MS`
 
 ## 8. 当前运行规则
 
@@ -274,6 +276,8 @@ node scripts/http-load-smoke.mjs
 - 2026-03-29：后台、用户端、商家端、骑手端的消息回执和已读链路已继续按服务端权威时间与会话上下文收紧。
 - 2026-03-29：后台客服工作台 `chatConsoleHelpers.js` 与 `useChatConsole.js` 已清理活跃乱码，会话摘要 fallback、时间解析和操作提示已恢复正常中文。
 - 2026-03-29：推送 worker 队列快照已补上最老排队时间 / 排队年龄 / 派发年龄，Go `/ready`、发布巡检与后台系统日志能更早识别“队列还活着但已经积压过久”的风险。
+- 2026-03-29：`socket-server` fallback buffer 已补上最老消息年龄，`/ready` 与发布巡检会同时拦截“buffer 条数过大”和“buffer 虽不大但已经堆得过久”的两类风险。
+- 2026-03-29：后台系统日志页与监控辅助文案继续清理，`fallback 最老年龄` 已能在健康聚合与系统日志页直接看到，方便上线前值班判断是否只是数量不大但已经积压过久。
 
 ## 11. 诚实状态说明
 

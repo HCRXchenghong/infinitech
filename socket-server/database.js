@@ -427,6 +427,8 @@ export function getFallbackBufferStats() {
     chatCount: Number(summary?.chat_count || 0),
     oldestTimestamp: Number(summary?.oldest_timestamp || 0),
     newestTimestamp: Number(summary?.newest_timestamp || 0),
+    oldestAgeMs: Number(summary?.oldest_timestamp || 0) > 0 ? Math.max(Date.now() - Number(summary.oldest_timestamp), 0) : 0,
+    newestAgeMs: Number(summary?.newest_timestamp || 0) > 0 ? Math.max(Date.now() - Number(summary.newest_timestamp), 0) : 0,
     retentionDays: Math.round(FALLBACK_CHAT_RETENTION_MS / (24 * 60 * 60 * 1000)),
     perChatLimit: FALLBACK_CHAT_HISTORY_LIMIT,
     startupExpiredPruned: startupMaintenanceStats.expiredPruned,

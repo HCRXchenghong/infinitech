@@ -318,6 +318,7 @@ import {
   formatUpdateTime,
   formatPresenceConnectedAt,
   formatBufferAge,
+  formatAgeFromMs,
   formatNumber,
   getRankName,
   getRankType,
@@ -379,7 +380,11 @@ const fallbackRuntime = computed(() => normalizeFallbackRuntime(imStats.value?.f
 const fallbackPrunedTotal = computed(
   () => fallbackBuffer.value.startupExpiredPruned + fallbackBuffer.value.startupOverflowPruned
 );
-const fallbackOldestAgeLabel = computed(() => formatBufferAge(fallbackBuffer.value.oldestTimestamp));
+const fallbackOldestAgeLabel = computed(() =>
+  fallbackBuffer.value.oldestAgeMs > 0
+    ? formatAgeFromMs(fallbackBuffer.value.oldestAgeMs)
+    : formatBufferAge(fallbackBuffer.value.oldestTimestamp)
+);
 const fallbackLastActivityLabel = computed(() =>
   formatBufferAge(
     Math.max(

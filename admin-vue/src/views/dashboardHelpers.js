@@ -8,6 +8,8 @@ export function createDefaultImStats() {
       chatCount: 0,
       oldestTimestamp: 0,
       newestTimestamp: 0,
+      oldestAgeMs: 0,
+      newestAgeMs: 0,
       retentionDays: 30,
       perChatLimit: 500,
       startupExpiredPruned: 0,
@@ -213,6 +215,8 @@ export function normalizeFallbackBuffer(raw) {
     chatCount: Math.max(0, Math.floor(toFiniteNumber(buffer.chatCount))),
     oldestTimestamp: Math.max(0, toFiniteNumber(buffer.oldestTimestamp)),
     newestTimestamp: Math.max(0, toFiniteNumber(buffer.newestTimestamp)),
+    oldestAgeMs: Math.max(0, toFiniteNumber(buffer.oldestAgeMs)),
+    newestAgeMs: Math.max(0, toFiniteNumber(buffer.newestAgeMs)),
     retentionDays: Math.max(1, Math.floor(toFiniteNumber(buffer.retentionDays, 30))),
     perChatLimit: Math.max(1, Math.floor(toFiniteNumber(buffer.perChatLimit, 500))),
     startupExpiredPruned: Math.max(0, Math.floor(toFiniteNumber(buffer.startupExpiredPruned))),
@@ -234,12 +238,11 @@ export function normalizeFallbackRuntime(raw) {
   }
 }
 
-export function formatBufferAge(timestamp) {
-  const numeric = toFiniteNumber(timestamp)
+export function formatAgeFromMs(diffMs) {
+  const numeric = toFiniteNumber(diffMs)
   if (!numeric || numeric <= 0) return '无记录'
 
-  const diffMs = Math.max(Date.now() - numeric, 0)
-  const diffMinutes = Math.floor(diffMs / 60000)
+  const diffMinutes = Math.floor(numeric / 60000)
   if (diffMinutes < 1) return '刚刚'
   if (diffMinutes < 60) return `${diffMinutes} 分钟前`
 
@@ -248,6 +251,12 @@ export function formatBufferAge(timestamp) {
 
   const diffDays = Math.floor(diffHours / 24)
   return `${diffDays} 天前`
+}
+
+export function formatBufferAge(timestamp) {
+  const numeric = toFiniteNumber(timestamp)
+  if (!numeric || numeric <= 0) return '无记录'
+  return formatAgeFromMs(Math.max(Date.now() - numeric, 0))
 }
 
 export function getRedisModeLabel(mode) {
