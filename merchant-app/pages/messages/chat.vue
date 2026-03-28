@@ -197,6 +197,8 @@ function displayText(msg: ViewMessage) {
   return msg.text
 }
 
+const MESSAGE_CACHE_MAX_AGE = 24 * 60 * 60 * 1000
+
 function localMessageKey() {
   return `merchant_chat_messages_${merchantId.value || 'guest'}_${chatId.value || 'default'}`
 }
@@ -204,7 +206,16 @@ function localMessageKey() {
 function restoreLocalMessages() {
   try {
     const raw = uni.getStorageSync(localMessageKey())
-    const list = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : []
+    const parsed = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : []
+    const payload = Array.isArray(parsed) ? { messages: parsed, cachedAt: 0 } : (parsed || {})
+    const cachedAt = Number(payload.cachedAt || 0)
+    const list = Array.isArray(payload.messages) ? payload.messages : []
+
+    if (!Array.isArray(parsed) && cachedAt > 0 && Date.now() - cachedAt > MESSAGE_CACHE_MAX_AGE) {
+      uni.removeStorageSync(localMessageKey())
+      return false
+    }
+
     if (Array.isArray(list)) {
       messages.value = list.map((item: any, index: number) => {
         const timestamp = resolveMessageTimestamp(item?.timestamp || item?.createdAt, Date.now() + index)
@@ -226,7 +237,10 @@ function restoreLocalMessages() {
 
 function persistLocalMessages() {
   try {
-    uni.setStorageSync(localMessageKey(), JSON.stringify(messages.value.slice(-300)))
+    uni.setStorageSync(localMessageKey(), JSON.stringify({
+      cachedAt: Date.now(),
+      messages: messages.value.slice(-300)
+    }))
   } catch (err) {
     // ignore
   }

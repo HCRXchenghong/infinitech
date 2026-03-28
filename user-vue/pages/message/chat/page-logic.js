@@ -10,6 +10,7 @@ import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/s
 
 const DEFAULT_SELF_AVATAR = '/static/images/my-avatar.svg'
 const DEFAULT_OTHER_AVATAR = '/static/images/default-avatar.svg'
+const MESSAGE_CACHE_MAX_AGE = 24 * 60 * 60 * 1000
 const DEFAULT_EMOJIS = ['😀', '😁', '😂', '🤣', '😊', '😍', '👍', '👏', '🎉', '❤️', '🔥', '🙏', '😎', '😄', '😭', '💪', '✨', '🍔', '🍜', '☕']
 
 const nowTime = () => {
@@ -399,8 +400,17 @@ export default {
       try {
         const raw = uni.getStorageSync(this.getMessageStorageKey())
         const parsed = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : []
-        if (Array.isArray(parsed)) {
-          this.messages = parsed.map((item, index) => {
+        const payload = Array.isArray(parsed) ? { messages: parsed, cachedAt: 0 } : (parsed || {})
+        const cachedAt = Number(payload.cachedAt || 0)
+        const list = Array.isArray(payload.messages) ? payload.messages : []
+
+        if (!Array.isArray(parsed) && cachedAt > 0 && Date.now() - cachedAt > MESSAGE_CACHE_MAX_AGE) {
+          uni.removeStorageSync(this.getMessageStorageKey())
+          return false
+        }
+
+        if (Array.isArray(list)) {
+          this.messages = list.map((item, index) => {
             const normalized = normalizeMessageContent(
               item.type || 'text',
               Object.prototype.hasOwnProperty.call(item || {}, 'rawContent')
@@ -441,7 +451,10 @@ export default {
       try {
         uni.setStorageSync(
           this.getMessageStorageKey(),
-          JSON.stringify(this.messages.slice(-200))
+          JSON.stringify({
+            cachedAt: Date.now(),
+            messages: this.messages.slice(-200)
+          })
         )
       } catch (err) {
         console.error('保存聊天缓存失败:', err)
