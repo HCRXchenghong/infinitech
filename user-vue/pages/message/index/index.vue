@@ -371,13 +371,12 @@ export default {
     },
 
     async openChat(item) {
-      this.sessions = this.sessions.map((session) =>
-        session.id === item.id ? { ...session, unread: 0 } : session
-      )
-      this.saveSessions()
-
       try {
         await markConversationRead(item.roomId || item.id)
+        this.sessions = this.sessions.map((session) =>
+          session.id === item.id ? { ...session, unread: 0 } : session
+        )
+        this.saveSessions()
       } catch (err) {
         console.error('同步会话已读失败:', err)
       }
@@ -404,9 +403,6 @@ export default {
     },
 
     async clearUnread() {
-      this.sessions = this.sessions.map((item) => ({ ...item, unread: 0 }))
-      this.saveSessions()
-
       await Promise.allSettled([
         markAllConversationsRead(),
         markAllNotificationsRead()
