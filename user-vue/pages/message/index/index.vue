@@ -196,10 +196,58 @@ export default {
       return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
     },
 
+    parseTimestamp(raw) {
+      if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) {
+        return raw
+      }
+      if (typeof raw === 'string') {
+        const trimmed = raw.trim()
+        if (!trimmed) return 0
+        if (/^\d+$/.test(trimmed)) {
+          const numeric = Number(trimmed)
+          if (Number.isFinite(numeric) && numeric > 0) return numeric
+        }
+        const parsed = new Date(trimmed).getTime()
+        if (Number.isFinite(parsed) && parsed > 0) return parsed
+      }
+      if (raw instanceof Date) {
+        const value = raw.getTime()
+        if (Number.isFinite(value) && value > 0) return value
+      }
+      return 0
+    },
+
+    resolveSessionUpdatedAt(item = {}) {
+      const candidates = [
+        item.updatedAt,
+        item.updated_at,
+        item.lastMessageAt,
+        item.last_message_at,
+        item.latestAt,
+        item.latest_at,
+        item.timestamp,
+        item.createdAt,
+        item.created_at
+      ]
+      for (const candidate of candidates) {
+        const value = this.parseTimestamp(candidate)
+        if (value > 0) return value
+      }
+      return 0
+    },
+
+    sortSessions(list = []) {
+      return list.slice().sort((a, b) => {
+        const diff = Number(b.updatedAt || 0) - Number(a.updatedAt || 0)
+        if (diff !== 0) return diff
+        return String(a.id || '').localeCompare(String(b.id || ''))
+      })
+    },
+
     normalizeSession(item = {}) {
       const role = this.normalizeRole(item.role)
       const roomId = String(item.roomId || item.chatId || item.id || '')
-      const updatedAt = Number(item.updatedAt || Date.now())
+      const updatedAt = this.resolveSessionUpdatedAt(item)
       return {
         id: String(item.id || item.chatId || roomId || `${role}_${Date.now()}`),
         roomId,
@@ -241,10 +289,7 @@ export default {
 
     saveSessions(list = this.sessions) {
       try {
-        const payload = list
-          .slice()
-          .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
-          .slice(0, 100)
+        const payload = this.sortSessions(list).slice(0, 100)
         uni.setStorageSync(this.getSessionStorageKey(), JSON.stringify(payload))
       } catch (err) {
         console.error('保存本地会话失败:', err)
@@ -255,16 +300,19 @@ export default {
       try {
         const response = await fetchConversations()
         const serverSessions = Array.isArray(response) ? response : []
-        this.sessions = serverSessions
-          .map((item) => this.normalizeSession(item))
-          .filter((item) => item.roomId)
-          .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
+        this.sessions = this.sortSessions(
+          serverSessions
+            .map((item) => this.normalizeSession(item))
+            .filter((item) => item.roomId)
+        )
         this.saveSessions()
       } catch (err) {
         console.error('加载服务端会话失败，回退本地缓存:', err)
-        this.sessions = this.readStoredSessions()
-          .map((item) => this.normalizeSession(item))
-          .filter((item) => item.roomId)
+        this.sessions = this.sortSessions(
+          this.readStoredSessions()
+            .map((item) => this.normalizeSession(item))
+            .filter((item) => item.roomId)
+        )
       }
     },
 
@@ -307,8 +355,9 @@ export default {
     },
 
     async openChat(item) {
-      item.unread = 0
-      item.updatedAt = Date.now()
+      this.sessions = this.sessions.map((session) =>
+        session.id === item.id ? { ...session, unread: 0 } : session
+      )
       this.saveSessions()
 
       try {
