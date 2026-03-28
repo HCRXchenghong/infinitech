@@ -499,7 +499,9 @@ export function useChatConsole(options = {}) {
         if (Number.isFinite(Number(data?.timestamp || data?.createdAt))) {
           msg.timestamp = Number(data.timestamp || data.createdAt);
         }
-        msg.status = 'sent';
+        if (msg.status !== 'read') {
+          msg.status = 'sent';
+        }
       }
       scheduleRefreshChats();
     });
@@ -512,7 +514,9 @@ export function useChatConsole(options = {}) {
 
     socket.on('all_messages_read', () => {
       messages.value.forEach((msg) => {
-        if (msg.isSelf && msg.status !== 'read') msg.status = 'read';
+        if (msg.isSelf && msg.status !== 'failed' && msg.status !== 'read') {
+          msg.status = 'read';
+        }
       });
       scheduleRefreshChats();
     });
