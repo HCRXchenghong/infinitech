@@ -41,6 +41,7 @@ const SOCKET_PING_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_PING_TIMEOUT_MS,
 const SOCKET_PING_INTERVAL_MS = toPositiveInt(process.env.SOCKET_PING_INTERVAL_MS, 25_000);
 const SOCKET_MAX_HTTP_BUFFER_BYTES = toPositiveInt(process.env.SOCKET_MAX_HTTP_BUFFER_BYTES, 4 * 1024 * 1024);
 const SOCKET_READY_MAX_FALLBACK_MESSAGES = toPositiveInt(process.env.SOCKET_READY_MAX_FALLBACK_MESSAGES, 5_000);
+const SOCKET_READY_MAX_FALLBACK_CHATS = toPositiveInt(process.env.SOCKET_READY_MAX_FALLBACK_CHATS, 200);
 const SOCKET_HTTP_SLOW_REQUEST_WARN_MS = toPositiveInt(process.env.SOCKET_HTTP_SLOW_REQUEST_WARN_MS, 1_500);
 
 let monitorNamespace;
@@ -426,6 +427,14 @@ const httpServer = createServer(async (req, res) => {
       writeSocketStatus(res, 503, 'degraded', {
         error: 'fallback buffer too large',
         maxFallbackMessages: SOCKET_READY_MAX_FALLBACK_MESSAGES,
+        ...readiness
+      });
+      return;
+    }
+    if (Number.isFinite(Number(fallbackBuffer.chatCount)) && Number(fallbackBuffer.chatCount) > SOCKET_READY_MAX_FALLBACK_CHATS) {
+      writeSocketStatus(res, 503, 'degraded', {
+        error: 'fallback chat count too large',
+        maxFallbackChats: SOCKET_READY_MAX_FALLBACK_CHATS,
         ...readiness
       });
       return;

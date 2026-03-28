@@ -5,11 +5,19 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+function toPositiveInt(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 const db = new Database(join(__dirname, 'chat.db'));
 const UNIFIED_PREFIX = '250724';
 const CHAT_BUCKET = '83';
-const FALLBACK_CHAT_HISTORY_LIMIT = 500;
-const FALLBACK_CHAT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const FALLBACK_CHAT_HISTORY_LIMIT = toPositiveInt(process.env.SOCKET_FALLBACK_CHAT_HISTORY_LIMIT, 500);
+const FALLBACK_CHAT_RETENTION_MS = toPositiveInt(
+  process.env.SOCKET_FALLBACK_CHAT_RETENTION_MS,
+  30 * 24 * 60 * 60 * 1000
+);
 const startupMaintenanceStats = {
   expiredPruned: 0,
   overflowPruned: 0,

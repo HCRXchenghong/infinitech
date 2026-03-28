@@ -259,6 +259,7 @@ node scripts/http-load-smoke.mjs
 ## 10. Recent Rollout Notes
 
 - 2026-03-29：后台 `Dashboard.vue` 已重写成干净 UTF-8，天气卡片、IM 状态、在线样本、排名面板和运行探针文案已恢复正常中文。
+- 2026-03-29：`socket-server` 的 fallback 缓冲策略已继续参数化，`SOCKET_FALLBACK_CHAT_HISTORY_LIMIT`、`SOCKET_FALLBACK_CHAT_RETENTION_MS`、`SOCKET_READY_MAX_FALLBACK_CHATS` 可直接用于上线前收紧 `chat.db` 兜底边界。
 - 2026-03-29：后台 `dashboardHelpers.js` 与 `SystemLogs.vue` 已清理活跃乱码，运维面板能直接展示 readiness、Redis、fallback 和 push worker 细节。
 - 2026-03-29：`scripts/release-preflight.mjs` 已继续加严，会阻断 socket fallback 异常膨胀、push worker 失效或积压失控的发布。
 - 2026-03-29：新增 `scripts/http-load-smoke.mjs`，用于发布前快速做 readiness / stats 的并发烟测。
