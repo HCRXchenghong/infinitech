@@ -100,12 +100,14 @@ export function useChatConsole(options = {}) {
 
   async function syncReadState(chatId) {
     const normalizedChatId = normalizeChatId(chatId);
-    if (!normalizedChatId) return;
+    if (!normalizedChatId) return false;
 
     try {
       await markMessageConversationRead(normalizedChatId);
+      return true;
     } catch (error) {
       console.error('同步服务端已读状态失败:', error);
+      return false;
     }
   }
 
@@ -181,18 +183,26 @@ export function useChatConsole(options = {}) {
 
     selectedChat.value = {
       ...chat,
-      id: chatId,
-      unread: 0
+      id: chatId
     };
-    chats.value = chats.value.map((item) =>
-      normalizeChatId(item.id) === chatId ? { ...item, unread: 0 } : item
-    );
     messagesFromLocalFallback.value = false;
     void loadMessages(chatId);
 
     socket.emit('join_chat', { chatId, userId: 'admin', role: 'admin' });
-    socket.emit('mark_all_read', { chatId });
-    scheduleRefreshChats();
+    void syncReadState(chatId).then((synced) => {
+      if (!synced) return;
+      if (normalizeChatId(selectedChat.value?.id) === chatId) {
+        selectedChat.value = {
+          ...selectedChat.value,
+          unread: 0
+        };
+      }
+      chats.value = chats.value.map((item) =>
+        normalizeChatId(item.id) === chatId ? { ...item, unread: 0 } : item
+      );
+      socket.emit('mark_all_read', { chatId });
+      scheduleRefreshChats();
+    });
   }
 
   function sendMessage() {
