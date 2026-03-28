@@ -83,6 +83,18 @@
   word-break: break-all;
 }
 
+.service-probe {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #f4f7ff;
+  color: #4c6ef5;
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .service-meta {
   margin-top: 6px;
   display: flex;
@@ -94,6 +106,17 @@
 
 .service-error {
   color: #f56c6c;
+}
+
+.service-signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.service-signal {
+  max-width: 100%;
 }
 
 .service-detail {
@@ -165,6 +188,10 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.muted-text {
+  color: #909399;
 }
 
 .empty-tip {

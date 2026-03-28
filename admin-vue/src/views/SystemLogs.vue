@@ -10,7 +10,7 @@
           :disabled="loading"
           @click="openClearDialog"
         >
-          一键清除
+          一键清空
         </el-button>
         <el-button size="small" :loading="loading" @click="loadLogs">刷新</el-button>
       </div>
@@ -35,13 +35,25 @@
             </el-tag>
           </div>
           <div class="service-target">
-            {{ item.target || '-' }}
-            <span v-if="item.probe" class="service-probe">· 探针 {{ formatProbeType(item.probe) }}</span>
+            {{ item.target || "-" }}
+            <span v-if="item.probe" class="service-probe">探针 {{ formatProbeType(item.probe) }}</span>
           </div>
           <div class="service-meta">
             <span v-if="item.httpStatus">HTTP {{ item.httpStatus }}</span>
-            <span v-if="item.latencyMs !== null && item.latencyMs !== undefined">耗时 {{ item.latencyMs }}ms</span>
+            <span v-if="item.latencyMs !== null && item.latencyMs !== undefined">延迟 {{ item.latencyMs }}ms</span>
             <span v-if="item.error" class="service-error">{{ item.error }}</span>
+          </div>
+          <div v-if="getServiceSignals(item).length > 0" class="service-signals">
+            <el-tag
+              v-for="signal in getServiceSignals(item)"
+              :key="`${item.key}-${signal.key}-${signal.value}`"
+              size="small"
+              :type="signal.type"
+              effect="plain"
+              class="service-signal"
+            >
+              {{ signal.label }}{{ signal.value ? ` ${signal.value}` : "" }}
+            </el-tag>
           </div>
           <div v-if="item.detail" class="service-detail">{{ item.detail }}</div>
         </div>
@@ -82,8 +94,8 @@
       <div class="toolbar">
         <el-select v-model="filters.source" size="small" style="width: 140px" @change="handleSearch">
           <el-option label="全部来源" value="all" />
-          <el-option label="仅 BFF" value="bff" />
-          <el-option label="仅 Go" value="go" />
+          <el-option label="来自 BFF" value="bff" />
+          <el-option label="来自 Go" value="go" />
         </el-select>
         <el-select v-model="filters.action" size="small" style="width: 140px" @change="handleSearch">
           <el-option label="全部操作" value="all" />
@@ -128,7 +140,7 @@
         <el-table-column label="类型" width="90">
           <template #default="{ row }">
             <el-tag size="small" :type="actionTagType(row.actionType)">
-              {{ row.actionLabel || '-' }}
+              {{ row.actionLabel || "-" }}
             </el-tag>
           </template>
         </el-table-column>
@@ -137,13 +149,13 @@
           <template #default="{ row }">
             <span v-if="row.operatorName">{{ row.operatorName }}</span>
             <span v-else-if="row.operatorId">{{ row.operatorId }}</span>
-            <span v-else style="color: #909399">-</span>
+            <span v-else class="muted-text">-</span>
           </template>
         </el-table-column>
         <el-table-column label="接口" min-width="210" show-overflow-tooltip>
           <template #default="{ row }">
             <span v-if="row.method && row.path">{{ row.method }} {{ row.path }}</span>
-            <span v-else style="color: #909399">{{ row.message || '-' }}</span>
+            <span v-else class="muted-text">{{ row.message || "-" }}</span>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="100">
@@ -159,7 +171,7 @@
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty :description="loadError ? '加载失败，暂无可显示数据' : '暂无日志数据'" :image-size="90" />
+          <el-empty :description="loadError ? '加载失败，暂时无可显示数据' : '暂无日志数据'" :image-size="90" />
         </template>
       </el-table>
 
@@ -179,26 +191,21 @@
     <el-dialog v-model="detailVisible" title="日志详情（原始格式）" width="760px">
       <el-descriptions :column="2" border size="small">
         <el-descriptions-item label="时间">{{ formatTime(detailLog?.timestamp) }}</el-descriptions-item>
-        <el-descriptions-item label="来源">{{ detailLog?.sourceLabel || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="操作类型">{{ detailLog?.actionLabel || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="等级">{{ detailLog?.level || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="来源">{{ detailLog?.sourceLabel || "-" }}</el-descriptions-item>
+        <el-descriptions-item label="操作类型">{{ detailLog?.actionLabel || "-" }}</el-descriptions-item>
+        <el-descriptions-item label="等级">{{ detailLog?.level || "-" }}</el-descriptions-item>
         <el-descriptions-item label="操作人">
-          {{ detailLog?.operatorName || detailLog?.operatorId || '-' }}
+          {{ detailLog?.operatorName || detailLog?.operatorId || "-" }}
         </el-descriptions-item>
-        <el-descriptions-item label="操作人ID">{{ detailLog?.operatorId || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="操作说明" :span="2">{{ detailLog?.operation || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="操作人 ID">{{ detailLog?.operatorId || "-" }}</el-descriptions-item>
+        <el-descriptions-item label="操作说明" :span="2">{{ detailLog?.operation || "-" }}</el-descriptions-item>
         <el-descriptions-item label="接口" :span="2">{{ formatMethodPath(detailLog) }}</el-descriptions-item>
-        <el-descriptions-item label="状态码">{{ detailLog?.status || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="IP">{{ detailLog?.ip || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="状态码">{{ detailLog?.status || "-" }}</el-descriptions-item>
+        <el-descriptions-item label="IP">{{ detailLog?.ip || "-" }}</el-descriptions-item>
       </el-descriptions>
 
       <div class="raw-title">原始日志</div>
-      <el-input
-        :model-value="detailLog?.raw || '-'"
-        type="textarea"
-        :rows="14"
-        readonly
-      />
+      <el-input :model-value="detailLog?.raw || '-'" type="textarea" :rows="14" readonly />
       <template #footer>
         <el-button @click="detailVisible = false">关闭</el-button>
       </template>
@@ -219,16 +226,14 @@
           />
         </el-form-item>
       </el-form>
-      <div class="delete-tip">
-        删除后无法恢复，且会记录“谁删除了哪条日志”。
-      </div>
+      <div class="delete-tip">删除后无法恢复，并且会留下“谁删除了哪条日志”的审计记录。</div>
       <template #footer>
         <el-button @click="deleteDialogVisible = false">取消</el-button>
         <el-button type="danger" :loading="deleting" @click="confirmDeleteLog">确认删除</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="clearDialogVisible" title="一键清除系统日志（二次验证）" width="460px">
+    <el-dialog v-model="clearDialogVisible" title="一键清空系统日志（二次验证）" width="460px">
       <el-form :model="clearVerifyForm" label-width="80px">
         <el-form-item label="账号">
           <el-input v-model="clearVerifyForm.verifyAccount" placeholder="请输入验证账号" />
@@ -245,25 +250,57 @@
       </el-form>
       <div class="delete-tip">
         即将清空
-        <strong>{{ filters.source === 'all' ? '全部来源' : (filters.source === 'bff' ? 'BFF 来源' : 'Go 来源') }}</strong>
+        <strong>{{ clearSourceLabel }}</strong>
         日志，操作不可恢复。
       </div>
       <template #footer>
         <el-button @click="clearDialogVisible = false">取消</el-button>
-        <el-button type="danger" :loading="clearing" @click="confirmClearLogs">确认清除</el-button>
+        <el-button type="danger" :loading="clearing" @click="confirmClearLogs">确认清空</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
-import { ElMessage } from 'element-plus';
-import request from '@/utils/request';
-import PageStateAlert from '@/components/PageStateAlert.vue';
+import { computed, onMounted, reactive, ref } from "vue";
+import { ElMessage } from "element-plus";
+import request from "@/utils/request";
+import PageStateAlert from "@/components/PageStateAlert.vue";
+
+const SIGNAL_LABELS = {
+  status: "状态",
+  error: "错误",
+  redisConnected: "Redis 连接",
+  redisMode: "Redis 模式",
+  fallbackMessages: "fallback 消息",
+  fallbackChats: "fallback 会话",
+  fallbackExpiredPruned: "过期裁剪",
+  fallbackOverflowPruned: "溢出裁剪",
+  fallbackListHits: "列表回退",
+  fallbackHistoryHits: "历史回退",
+  fallbackRefreshWrites: "历史回写",
+  fallbackRefreshMessages: "回写消息",
+  goApiOk: "Go 可用",
+  goApiProbe: "Go 探针",
+  goApiError: "Go 错误",
+  pushWorkerOk: "推送 Worker",
+  pushEnabled: "推送启用",
+  pushRunning: "推送运行",
+  pushProvider: "推送通道",
+  pushCycle: "推送周期",
+  pushLastSuccessAt: "最近成功",
+  pushConsecutiveFailures: "连续失败",
+  pushProcessed: "最近处理",
+  pushError: "推送错误",
+  pushQueue: "推送队列",
+  pushQueued: "待派发",
+  pushRetry: "待重试",
+  pushDispatching: "派发中",
+  pushFailed: "失败数",
+};
 
 const loading = ref(false);
-const loadError = ref('');
+const loadError = ref("");
 const logs = ref([]);
 const detailVisible = ref(false);
 const detailLog = ref(null);
@@ -278,81 +315,87 @@ const summary = reactive({
   update: 0,
   read: 0,
   system: 0,
-  error: 0
+  error: 0,
 });
 const serviceStatus = reactive({
-  checkedAt: '',
-  overall: 'unknown',
-  services: []
+  checkedAt: "",
+  overall: "unknown",
+  services: [],
 });
 
 const filters = reactive({
-  source: 'all',
-  action: 'all',
-  keyword: ''
+  source: "all",
+  action: "all",
+  keyword: "",
 });
 
 const pagination = reactive({
   page: 1,
   limit: 50,
-  total: 0
+  total: 0,
 });
 const deleteVerifyForm = reactive({
-  verifyAccount: '',
-  verifyPassword: ''
+  verifyAccount: "",
+  verifyPassword: "",
 });
 const clearVerifyForm = reactive({
-  verifyAccount: '',
-  verifyPassword: ''
+  verifyAccount: "",
+  verifyPassword: "",
+});
+
+const clearSourceLabel = computed(() => {
+  if (filters.source === "bff") return "BFF 来源";
+  if (filters.source === "go") return "Go 来源";
+  return "全部来源";
 });
 
 function actionTagType(actionType) {
-  if (actionType === 'create') return 'success';
-  if (actionType === 'delete') return 'danger';
-  if (actionType === 'update') return 'warning';
-  if (actionType === 'read') return 'info';
-  if (actionType === 'error') return 'danger';
-  return '';
+  if (actionType === "create") return "success";
+  if (actionType === "delete") return "danger";
+  if (actionType === "update") return "warning";
+  if (actionType === "read") return "info";
+  if (actionType === "error") return "danger";
+  return "";
 }
 
 function serviceTagType(status) {
-  if (status === 'up' || status === 'ok') return 'success';
-  if (status === 'degraded') return 'warning';
-  if (status === 'down' || status === 'error') return 'danger';
-  return 'info';
+  if (status === "up" || status === "ok") return "success";
+  if (status === "degraded") return "warning";
+  if (status === "down" || status === "error") return "danger";
+  return "info";
 }
 
 function serviceStatusText(status) {
-  if (status === 'up' || status === 'ok') return '在线';
-  if (status === 'degraded') return '降级';
-  if (status === 'down' || status === 'error') return '异常';
-  return '未知';
+  if (status === "up" || status === "ok") return "在线";
+  if (status === "degraded") return "降级";
+  if (status === "down" || status === "error") return "异常";
+  return "未知";
 }
 
 function formatProbeType(probe) {
-  if (probe === 'ready') return '/ready';
-  if (probe === 'health') return '/health';
-  if (probe === 'tcp') return 'TCP';
-  return String(probe || '-');
+  if (probe === "ready") return "/ready";
+  if (probe === "health") return "/health";
+  if (probe === "tcp") return "TCP";
+  return String(probe || "-");
 }
 
 function overallStatusText(status) {
-  if (status === 'ok') return '整体正常';
-  if (status === 'degraded') return '核心正常（缓存异常）';
-  if (status === 'down') return '核心异常';
-  return '状态未知';
+  if (status === "ok") return "整体正常";
+  if (status === "degraded") return "核心正常，存在降级";
+  if (status === "down") return "核心异常";
+  return "状态未知";
 }
 
 function formatTime(raw) {
-  if (!raw) return '-';
+  if (!raw) return "-";
   const d = new Date(raw);
   if (Number.isNaN(d.getTime())) return String(raw);
   const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const h = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  const sec = String(d.getSeconds()).padStart(2, '0');
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  const sec = String(d.getSeconds()).padStart(2, "0");
   return `${y}-${m}-${day} ${h}:${min}:${sec}`;
 }
 
@@ -360,24 +403,101 @@ function formatMethodPath(item) {
   if (item?.method && item?.path) {
     return `${item.method} ${item.path}`;
   }
-  return item?.message || '-';
+  return item?.message || "-";
+}
+
+function toDisplayLabel(key) {
+  if (SIGNAL_LABELS[key]) return SIGNAL_LABELS[key];
+  return String(key || "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .trim();
+}
+
+function normalizeSignalValue(value) {
+  const text = String(value || "").trim();
+  if (text === "true") return "正常";
+  if (text === "false") return "异常";
+  return text;
+}
+
+function resolveSignalType(key, rawValue) {
+  const value = String(rawValue || "").trim();
+  if (key === "status") {
+    return serviceTagType(value);
+  }
+  if (key.endsWith("Error") || key === "error" || key === "pushError" || key === "goApiError") {
+    return "danger";
+  }
+  if (["redisConnected", "goApiOk", "pushWorkerOk", "pushEnabled", "pushRunning"].includes(key)) {
+    return value === "true" ? "success" : "danger";
+  }
+  if (key === "redisMode") {
+    return value === "redis" ? "success" : "warning";
+  }
+  if (key === "pushCycle") {
+    if (value === "ok") return "success";
+    if (value === "dispatching") return "info";
+    return "warning";
+  }
+  if (["fallbackMessages", "fallbackChats", "fallbackListHits", "fallbackHistoryHits", "pushQueue", "pushQueued", "pushRetry", "pushDispatching", "pushFailed", "pushConsecutiveFailures"].includes(key)) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+      return "info";
+    }
+    if (key === "pushFailed" || key === "pushConsecutiveFailures") {
+      return numeric >= 3 ? "danger" : "warning";
+    }
+    return "warning";
+  }
+  return "info";
+}
+
+function parseServiceDetail(detail) {
+  return String(detail || "")
+    .split("|")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const separatorIndex = part.indexOf("=");
+      if (separatorIndex === -1) {
+        return {
+          key: part,
+          label: part,
+          value: "",
+          type: "info",
+        };
+      }
+      const key = part.slice(0, separatorIndex).trim();
+      const rawValue = part.slice(separatorIndex + 1).trim();
+      return {
+        key,
+        label: toDisplayLabel(key),
+        value: normalizeSignalValue(rawValue),
+        type: resolveSignalType(key, rawValue),
+      };
+    });
+}
+
+function getServiceSignals(item) {
+  return parseServiceDetail(item?.detail).slice(0, 8);
 }
 
 async function loadLogs() {
   loading.value = true;
-  loadError.value = '';
+  loadError.value = "";
   try {
     const params = {
       page: pagination.page,
       limit: pagination.limit,
       source: filters.source,
-      action: filters.action
+      action: filters.action,
     };
     if (filters.keyword.trim()) {
       params.keyword = filters.keyword.trim();
     }
 
-    const { data } = await request.get('/api/system-logs', { params });
+    const { data } = await request.get("/api/system-logs", { params });
     logs.value = Array.isArray(data?.items) ? data.items : [];
     pagination.total = Number(data?.pagination?.total || 0);
 
@@ -390,8 +510,8 @@ async function loadLogs() {
     summary.error = Number(nextSummary.error || 0);
 
     const nextServiceStatus = data?.serviceStatus || {};
-    serviceStatus.checkedAt = String(nextServiceStatus.checkedAt || '');
-    serviceStatus.overall = String(nextServiceStatus.overall || 'unknown');
+    serviceStatus.checkedAt = String(nextServiceStatus.checkedAt || "");
+    serviceStatus.overall = String(nextServiceStatus.overall || "unknown");
     serviceStatus.services = Array.isArray(nextServiceStatus.services) ? nextServiceStatus.services : [];
   } catch (error) {
     logs.value = [];
@@ -402,11 +522,11 @@ async function loadLogs() {
     summary.read = 0;
     summary.system = 0;
     summary.error = 0;
-    serviceStatus.checkedAt = '';
-    serviceStatus.overall = 'unknown';
+    serviceStatus.checkedAt = "";
+    serviceStatus.overall = "unknown";
     serviceStatus.services = [];
-    loadError.value = error?.response?.data?.error || error?.message || '加载系统日志失败，请稍后重试';
-    ElMessage.error('加载系统日志失败');
+    loadError.value = error?.response?.data?.error || error?.message || "加载系统日志失败，请稍后重试";
+    ElMessage.error("加载系统日志失败");
   } finally {
     loading.value = false;
   }
@@ -414,20 +534,20 @@ async function loadLogs() {
 
 function handleSearch() {
   pagination.page = 1;
-  loadLogs();
+  void loadLogs();
 }
 
 function handlePageSizeChange() {
   pagination.page = 1;
-  loadLogs();
+  void loadLogs();
 }
 
 function resetFilters() {
-  filters.source = 'all';
-  filters.action = 'all';
-  filters.keyword = '';
+  filters.source = "all";
+  filters.action = "all";
+  filters.keyword = "";
   pagination.page = 1;
-  loadLogs();
+  void loadLogs();
 }
 
 function openDetail(item) {
@@ -437,40 +557,38 @@ function openDetail(item) {
 
 function openDeleteDialog(item) {
   pendingDeleteLog.value = item;
-  deleteVerifyForm.verifyAccount = '';
-  deleteVerifyForm.verifyPassword = '';
+  deleteVerifyForm.verifyAccount = "";
+  deleteVerifyForm.verifyPassword = "";
   deleteDialogVisible.value = true;
 }
 
 function openClearDialog() {
-  clearVerifyForm.verifyAccount = '';
-  clearVerifyForm.verifyPassword = '';
+  clearVerifyForm.verifyAccount = "";
+  clearVerifyForm.verifyPassword = "";
   clearDialogVisible.value = true;
 }
 
 async function confirmDeleteLog() {
-  if (!pendingDeleteLog.value) {
-    return;
-  }
+  if (!pendingDeleteLog.value) return;
   if (!deleteVerifyForm.verifyAccount || !deleteVerifyForm.verifyPassword) {
-    ElMessage.warning('请输入验证账号和密码');
+    ElMessage.warning("请输入验证账号和密码");
     return;
   }
 
   deleting.value = true;
   try {
-    await request.post('/api/system-logs/delete', {
+    await request.post("/api/system-logs/delete", {
       source: pendingDeleteLog.value.source,
       raw: pendingDeleteLog.value.raw,
       verifyAccount: deleteVerifyForm.verifyAccount,
-      verifyPassword: deleteVerifyForm.verifyPassword
+      verifyPassword: deleteVerifyForm.verifyPassword,
     });
-    ElMessage.success('日志已删除');
+    ElMessage.success("日志已删除");
     deleteDialogVisible.value = false;
     pendingDeleteLog.value = null;
-    loadLogs();
+    await loadLogs();
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || '删除日志失败');
+    ElMessage.error(error?.response?.data?.error || "删除日志失败");
   } finally {
     deleting.value = false;
   }
@@ -478,30 +596,30 @@ async function confirmDeleteLog() {
 
 async function confirmClearLogs() {
   if (!clearVerifyForm.verifyAccount || !clearVerifyForm.verifyPassword) {
-    ElMessage.warning('请输入验证账号和密码');
+    ElMessage.warning("请输入验证账号和密码");
     return;
   }
 
   clearing.value = true;
   try {
-    await request.post('/api/system-logs/clear', {
+    await request.post("/api/system-logs/clear", {
       source: filters.source,
       verifyAccount: clearVerifyForm.verifyAccount,
-      verifyPassword: clearVerifyForm.verifyPassword
+      verifyPassword: clearVerifyForm.verifyPassword,
     });
-    ElMessage.success('系统日志已清空');
+    ElMessage.success("系统日志已清空");
     clearDialogVisible.value = false;
     pagination.page = 1;
-    loadLogs();
+    await loadLogs();
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || '清空日志失败');
+    ElMessage.error(error?.response?.data?.error || "清空日志失败");
   } finally {
     clearing.value = false;
   }
 }
 
 onMounted(() => {
-  loadLogs();
+  void loadLogs();
 });
 </script>
 

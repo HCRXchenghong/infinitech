@@ -11,6 +11,8 @@ const DEFAULT_TIMEOUT_MS = 5000;
 const DEFAULT_MAX_FALLBACK_MESSAGES = 5000;
 const DEFAULT_MAX_PUSH_QUEUE = 5000;
 const DEFAULT_MAX_RECENT_SOCKET_FALLBACK_MS = 10 * 60 * 1000;
+const DEFAULT_MAX_PUSH_CONSECUTIVE_FAILURES = 2;
+const DEFAULT_MAX_PUSH_SUCCESS_STALE_MS = 15 * 60 * 1000;
 
 function normalizeBaseUrl(value, fallback) {
   const text = String(value || fallback || '').trim();
@@ -43,6 +45,14 @@ function formatDurationMs(value) {
   const minutes = Math.floor(numeric / 60_000);
   const seconds = Math.round((numeric % 60_000) / 1000);
   return `${minutes}m${seconds}s`;
+}
+
+function parseTimestamp(value) {
+  if (value === null || value === undefined || value === "") return 0;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  const parsed = Date.parse(String(value).trim());
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
 function withTimeout(promise, timeoutMs) {
@@ -186,6 +196,38 @@ function evaluateGoReady(body, maxPushQueue) {
   return failures;
 }
 
+function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStaleMs) {
+  const failures = [];
+  const pushWorker = body && body.dependencies && body.dependencies.pushWorker;
+  const worker = pushWorker && pushWorker.worker && typeof pushWorker.worker === "object" ? pushWorker.worker : null;
+  const queue = worker && worker.queue && typeof worker.queue === "object" ? worker.queue : null;
+  if (!worker || worker.enabled !== true) {
+    return failures;
+  }
+
+  const consecutiveFailures = parseIntegerEnv(worker.consecutiveFailures, 0);
+  if (maxConsecutiveFailures >= 0 && consecutiveFailures > maxConsecutiveFailures) {
+    failures.push(`push_consecutive_failures=${consecutiveFailures}>${maxConsecutiveFailures}`);
+  }
+
+  const queueTotal = queue ? parseIntegerEnv(queue.total, 0) : 0;
+  if (queueTotal <= 0 || maxSuccessStaleMs <= 0) {
+    return failures;
+  }
+
+  const lastSuccessAt = parseTimestamp(worker.lastSuccessAt);
+  if (!lastSuccessAt) {
+    failures.push("push_last_success=missing_with_nonempty_queue");
+    return failures;
+  }
+
+  const staleMs = Math.max(Date.now() - lastSuccessAt, 0);
+  if (staleMs > maxSuccessStaleMs) {
+    failures.push(`push_last_success_age=${formatDurationMs(staleMs)}>${formatDurationMs(maxSuccessStaleMs)}`);
+  }
+  return failures;
+}
+
 function evaluateSocketReady(body, requiredRedisMode) {
   const failures = [];
   if (!body || typeof body !== 'object') {
@@ -282,6 +324,14 @@ async function main() {
   const requiredSocketRedisMode = String(process.env.PREFLIGHT_REQUIRE_SOCKET_REDIS_MODE || 'redis').trim();
   const allowDegradedSystemHealth = parseBooleanEnv(process.env.PREFLIGHT_ALLOW_DEGRADED_SYSTEM_HEALTH, false);
   const runHttpLoadSmoke = parseBooleanEnv(process.env.PREFLIGHT_RUN_HTTP_LOAD_SMOKE, false);
+  const maxPushConsecutiveFailures = parseIntegerEnv(
+    process.env.PREFLIGHT_MAX_PUSH_CONSECUTIVE_FAILURES,
+    DEFAULT_MAX_PUSH_CONSECUTIVE_FAILURES
+  );
+  const maxPushSuccessStaleMs = parseIntegerEnv(
+    process.env.PREFLIGHT_MAX_PUSH_SUCCESS_STALE_MS,
+    DEFAULT_MAX_PUSH_SUCCESS_STALE_MS
+  );
   const loadConcurrency = parseIntegerEnv(process.env.LOAD_CONCURRENCY, DEFAULT_CONCURRENCY);
   const loadRequestsPerTarget = parseIntegerEnv(
     process.env.LOAD_REQUESTS_PER_TARGET,
@@ -333,6 +383,8 @@ async function main() {
   console.log(`Targets: BFF=${bffBaseUrl} GO=${goBaseUrl} SOCKET=${socketBaseUrl}`);
   console.log(
     `Thresholds: maxFallbackMessages=${maxFallbackMessages} maxPushQueue=${maxPushQueue} `
+    + `maxPushConsecutiveFailures=${maxPushConsecutiveFailures} `
+    + `maxPushSuccessStale=${formatDurationMs(maxPushSuccessStaleMs)} `
     + `requiredSocketRedisMode=${requiredSocketRedisMode || 'none'} `
     + `maxRecentSocketFallback=${formatDurationMs(maxRecentSocketFallbackMs)} `
     + `allowDegradedSystemHealth=${allowDegradedSystemHealth}`
@@ -357,10 +409,14 @@ async function main() {
       console.log(`  ${summary}`);
     }
     const validationFailures = typeof probe.validate === 'function' ? probe.validate(result.body) : [];
-    if (Array.isArray(validationFailures) && validationFailures.length > 0) {
-      console.log(`  assertions: ${validationFailures.join(' | ')}`);
+    const extraFailures = probe.label === "Go ready"
+      ? evaluatePushWorkerSignals(result.body, maxPushConsecutiveFailures, maxPushSuccessStaleMs)
+      : [];
+    const allFailures = [...validationFailures, ...extraFailures];
+    if (allFailures.length > 0) {
+      console.log(`  assertions: ${allFailures.join(' | ')}`);
     }
-    if (!result.ok || (Array.isArray(validationFailures) && validationFailures.length > 0)) {
+    if (!result.ok || allFailures.length > 0) {
       hasFailure = true;
     }
   }

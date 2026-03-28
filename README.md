@@ -195,6 +195,7 @@ node scripts/release-preflight.mjs
 - 可选认证态 `BFF /api/system-health`
 - socket fallback buffer 是否异常膨胀
 - push worker 是否运行、是否最近失败、是否积压过大
+- push worker 连续失败次数是否超阈值、最近成功时间是否已经陈旧
 - 可选触发 HTTP 并发烟测，并把 error rate / p95 阈值纳入发布阻断
 
 ### 7.3 并发基线烟测
@@ -213,6 +214,8 @@ node scripts/http-load-smoke.mjs
 - `LOAD_TIMEOUT_MS`
 - `LOAD_MAX_ERROR_RATE`
 - `LOAD_MAX_P95_MS`
+- `PREFLIGHT_MAX_PUSH_CONSECUTIVE_FAILURES`
+- `PREFLIGHT_MAX_PUSH_SUCCESS_STALE_MS`
 
 这个脚本当前用于快速打基线，不等同于完整生产压测，但能在发布前尽快暴露 readiness、stats 和基础入口的吞吐或延迟异常。
 
@@ -268,7 +271,9 @@ node scripts/http-load-smoke.mjs
 - 2026-03-29：双端消息首页打开会话时，已读成功后会优先回拉服务端会话列表，再回退本地清零，继续压缩本地未读事实源。
 - 2026-03-29：后台客服工作台切会话后，已读同步成功会优先回拉服务端会话列表，只在刷新失败时才本地清零 unread。
 - 2026-03-29：push worker 现在会暴露最近成功时间和连续失败次数，后台健康聚合与首页运维面板都能直接看见。
+- 2026-03-29：发布前巡检现在也会校验 push worker 的连续失败次数和最近成功时间，避免“进程还活着但派发已持续异常”混过发布。
 - 2026-03-29：Go、BFF、`socket-server` 已开始输出慢请求预警，方便在千人级流量上更早发现超时和退化。
+- 2026-03-29：后台系统日志页已清理活跃乱码，并把 readiness / Redis / fallback / push worker 明细拆成可读信号标签，方便上线后排障。
 
 ## 11. 诚实状态说明
 
