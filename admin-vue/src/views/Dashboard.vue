@@ -7,53 +7,71 @@
           <div class="weather-icon-wrapper">
             <div class="weather-icon" :class="getWeatherIconClass(weatherData.weather_icon)">
               <svg v-if="weatherData.weather_icon === '00'" viewBox="0 0 64 64" class="icon-svg">
-                <circle cx="32" cy="32" r="16" fill="#FFD700" opacity="0.95"/>
-                <circle cx="32" cy="32" r="12" fill="#FFA500"/>
+                <circle cx="32" cy="32" r="16" fill="#FFD700" opacity="0.95" />
+                <circle cx="32" cy="32" r="12" fill="#FFA500" />
               </svg>
               <svg v-else-if="weatherData.weather_icon === '01'" viewBox="0 0 64 64" class="icon-svg">
-                <circle cx="28" cy="28" r="10" fill="#FFD700" opacity="0.6"/>
-                <ellipse cx="38" cy="30" rx="12" ry="8" fill="#C0C0C0" opacity="0.8"/>
-                <ellipse cx="45" cy="28" rx="10" ry="6" fill="#A0A0A0" opacity="0.7"/>
+                <circle cx="28" cy="28" r="10" fill="#FFD700" opacity="0.6" />
+                <ellipse cx="38" cy="30" rx="12" ry="8" fill="#C0C0C0" opacity="0.8" />
+                <ellipse cx="45" cy="28" rx="10" ry="6" fill="#A0A0A0" opacity="0.7" />
               </svg>
               <svg v-else-if="weatherData.weather_icon === '02'" viewBox="0 0 64 64" class="icon-svg">
-                <ellipse cx="25" cy="28" rx="14" ry="9" fill="#B0B0B0" opacity="0.8"/>
-                <ellipse cx="35" cy="26" rx="12" ry="7" fill="#909090" opacity="0.9"/>
-                <ellipse cx="45" cy="30" rx="10" ry="6" fill="#A0A0A0" opacity="0.7"/>
+                <ellipse cx="25" cy="28" rx="14" ry="9" fill="#B0B0B0" opacity="0.8" />
+                <ellipse cx="35" cy="26" rx="12" ry="7" fill="#909090" opacity="0.9" />
+                <ellipse cx="45" cy="30" rx="10" ry="6" fill="#A0A0A0" opacity="0.7" />
               </svg>
-              <svg v-else-if="weatherData.weather_icon === '03' || weatherData.weather_icon === '04'" viewBox="0 0 64 64" class="icon-svg">
-                <ellipse cx="30" cy="25" rx="12" ry="8" fill="#808080" opacity="0.8"/>
-                <path d="M22 42 L28 36 L32 40 L40 30 L40 50 L22 50 Z" fill="#4A90E2" opacity="0.7"/>
-                <line x1="25" y1="38" x2="25" y2="50" stroke="#4A90E2" stroke-width="2"/>
-                <line x1="30" y1="38" x2="30" y2="50" stroke="#4A90E2" stroke-width="2"/>
-                <line x1="35" y1="38" x2="35" y2="50" stroke="#4A90E2" stroke-width="2"/>
-                <path v-if="weatherData.weather_icon === '04'" d="M38 20 L42 18 L40 22 L44 24 L40 24 L42 28 L38 26 L36 30 L34 26 L30 28 L32 24 L28 24 L32 22 L30 18 L34 20 Z" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>
+              <svg
+                v-else-if="weatherData.weather_icon === '03' || weatherData.weather_icon === '04'"
+                viewBox="0 0 64 64"
+                class="icon-svg"
+              >
+                <ellipse cx="30" cy="25" rx="12" ry="8" fill="#808080" opacity="0.8" />
+                <path d="M22 42 L28 36 L32 40 L40 30 L40 50 L22 50 Z" fill="#4A90E2" opacity="0.7" />
+                <line x1="25" y1="38" x2="25" y2="50" stroke="#4A90E2" stroke-width="2" />
+                <line x1="30" y1="38" x2="30" y2="50" stroke="#4A90E2" stroke-width="2" />
+                <line x1="35" y1="38" x2="35" y2="50" stroke="#4A90E2" stroke-width="2" />
+                <path
+                  v-if="weatherData.weather_icon === '04'"
+                  d="M38 20 L42 18 L40 22 L44 24 L40 24 L42 28 L38 26 L36 30 L34 26 L30 28 L32 24 L28 24 L32 22 L30 18 L34 20 Z"
+                  fill="#FFD700"
+                  stroke="#FFA500"
+                  stroke-width="1"
+                />
               </svg>
-              <svg v-else-if="['07', '08', '09', '10', '11', '12'].includes(weatherData.weather_icon)" viewBox="0 0 64 64" class="icon-svg">
-                <ellipse cx="32" cy="24" rx="14" ry="9" fill="#808080" opacity="0.8"/>
-                <path d="M18 45 L26 38 L30 42 L42 30 L42 52 L18 52 Z" fill="#4A90E2" opacity="0.7"/>
-                <line x1="22" y1="40" x2="22" y2="52" stroke="#4A90E2" stroke-width="2"/>
-                <line x1="28" y1="40" x2="28" y2="52" stroke="#4A90E2" stroke-width="2"/>
-                <line x1="34" y1="40" x2="34" y2="52" stroke="#4A90E2" stroke-width="2"/>
-                <line x1="38" y1="40" x2="38" y2="52" stroke="#4A90E2" stroke-width="2"/>
+              <svg
+                v-else-if="['07', '08', '09', '10', '11', '12'].includes(weatherData.weather_icon)"
+                viewBox="0 0 64 64"
+                class="icon-svg"
+              >
+                <ellipse cx="32" cy="24" rx="14" ry="9" fill="#808080" opacity="0.8" />
+                <path d="M18 45 L26 38 L30 42 L42 30 L42 52 L18 52 Z" fill="#4A90E2" opacity="0.7" />
+                <line x1="22" y1="40" x2="22" y2="52" stroke="#4A90E2" stroke-width="2" />
+                <line x1="28" y1="40" x2="28" y2="52" stroke="#4A90E2" stroke-width="2" />
+                <line x1="34" y1="40" x2="34" y2="52" stroke="#4A90E2" stroke-width="2" />
+                <line x1="38" y1="40" x2="38" y2="52" stroke="#4A90E2" stroke-width="2" />
               </svg>
-              <svg v-else-if="['13', '14', '15', '16', '17'].includes(weatherData.weather_icon)" viewBox="0 0 64 64" class="icon-svg">
-                <ellipse cx="32" cy="24" rx="14" ry="9" fill="#C0C0C0" opacity="0.8"/>
-                <circle cx="24" cy="42" r="3" fill="#E0E0E0" opacity="0.9"/>
-                <circle cx="32" cy="40" r="4" fill="#E0E0E0" opacity="0.9"/>
-                <circle cx="40" cy="44" r="3" fill="#E0E0E0" opacity="0.9"/>
-                <circle cx="28" cy="48" r="2.5" fill="#E0E0E0" opacity="0.9"/>
-                <circle cx="36" cy="50" r="3" fill="#E0E0E0" opacity="0.9"/>
+              <svg
+                v-else-if="['13', '14', '15', '16', '17'].includes(weatherData.weather_icon)"
+                viewBox="0 0 64 64"
+                class="icon-svg"
+              >
+                <ellipse cx="32" cy="24" rx="14" ry="9" fill="#C0C0C0" opacity="0.8" />
+                <circle cx="24" cy="42" r="3" fill="#E0E0E0" opacity="0.9" />
+                <circle cx="32" cy="40" r="4" fill="#E0E0E0" opacity="0.9" />
+                <circle cx="40" cy="44" r="3" fill="#E0E0E0" opacity="0.9" />
+                <circle cx="28" cy="48" r="2.5" fill="#E0E0E0" opacity="0.9" />
+                <circle cx="36" cy="50" r="3" fill="#E0E0E0" opacity="0.9" />
               </svg>
               <svg v-else-if="weatherData.weather_icon === '18'" viewBox="0 0 64 64" class="icon-svg">
-                <ellipse cx="32" cy="28" rx="14" ry="9" fill="#D0D0D0" opacity="0.6"/>
-                <ellipse cx="25" cy="38" rx="10" ry="4" fill="#E0E0E0" opacity="0.7"/>
-                <ellipse cx="40" cy="40" rx="8" ry="3" fill="#E0E0E0" opacity="0.7"/>
-                <ellipse cx="30" cy="46" rx="12" ry="4" fill="#E0E0E0" opacity="0.6"/>
+                <ellipse cx="32" cy="28" rx="14" ry="9" fill="#D0D0D0" opacity="0.6" />
+                <ellipse cx="25" cy="38" rx="10" ry="4" fill="#E0E0E0" opacity="0.7" />
+                <ellipse cx="40" cy="40" rx="8" ry="3" fill="#E0E0E0" opacity="0.7" />
+                <ellipse cx="30" cy="46" rx="12" ry="4" fill="#E0E0E0" opacity="0.6" />
               </svg>
               <svg v-else viewBox="0 0 64 64" class="icon-svg">
-                <ellipse cx="25" cy="28" rx="14" ry="9" fill="#B0B0B0" opacity="0.8"/>
-                <ellipse cx="35" cy="26" rx="12" ry="7" fill="#909090" opacity="0.9"/>
-                <ellipse cx="45" cy="30" rx="10" ry="6" fill="#A0A0A0" opacity="0.7"/>
+                <ellipse cx="25" cy="28" rx="14" ry="9" fill="#B0B0B0" opacity="0.8" />
+                <ellipse cx="35" cy="26" rx="12" ry="7" fill="#909090" opacity="0.9" />
+                <ellipse cx="45" cy="30" rx="10" ry="6" fill="#A0A0A0" opacity="0.7" />
               </svg>
             </div>
           </div>
@@ -78,7 +96,9 @@
           </div>
           <div class="weather-detail-item" v-if="weatherData.wind_direct || weatherData.wind_speed">
             <span class="detail-label">风力</span>
-            <span class="detail-value">{{ weatherData.wind_direct || '' }}{{ weatherData.wind_speed ? weatherData.wind_speed + '级' : '' }}</span>
+            <span class="detail-value">
+              {{ weatherData.wind_direct || '' }}{{ weatherData.wind_speed ? weatherData.wind_speed + '级' : '' }}
+            </span>
           </div>
           <div class="weather-detail-item" v-if="weatherData.aqi">
             <span class="detail-label">空气质量</span>
@@ -104,7 +124,7 @@
       </div>
 
       <div class="stats-row">
-        <div class="holo-card" v-for="card in statsCards" :key="card.label">
+        <div v-for="card in statsCards" :key="card.label" class="holo-card">
           <div class="card-top">
             <div class="label">{{ card.label }}</div>
             <div class="tag">{{ card.tag }}</div>
@@ -130,7 +150,10 @@
           <div class="im-label">服务器负载</div>
           <div class="im-value">CPU {{ imStats.cpuUsage }}%</div>
           <div class="im-progress">
-            <div class="im-progress-bar" :style="{ width: imStats.cpuUsage + '%', background: imStats.cpuUsage > 80 ? '#ff4d4f' : '#0097ff' }"></div>
+            <div
+              class="im-progress-bar"
+              :style="{ width: imStats.cpuUsage + '%', background: imStats.cpuUsage > 80 ? '#ff4d4f' : '#0097ff' }"
+            />
           </div>
         </div>
       </div>
@@ -139,7 +162,10 @@
           <div class="im-label">内存占用</div>
           <div class="im-value">{{ imStats.memoryUsage }}%</div>
           <div class="im-progress">
-            <div class="im-progress-bar" :style="{ width: imStats.memoryUsage + '%', background: imStats.memoryUsage > 80 ? '#ff4d4f' : '#52c41a' }"></div>
+            <div
+              class="im-progress-bar"
+              :style="{ width: imStats.memoryUsage + '%', background: imStats.memoryUsage > 80 ? '#ff4d4f' : '#52c41a' }"
+            />
           </div>
         </div>
       </div>
@@ -148,8 +174,14 @@
           <div class="im-label">数据库</div>
           <div class="im-value">{{ imStats.dbSizeMB }} MB</div>
           <div class="im-detail">兜底会话 {{ fallbackBuffer.chatCount }} · 消息 {{ fallbackBuffer.messageCount }}</div>
-          <div class="im-detail">列表回退 {{ fallbackRuntime.conversationListFallbackCount }} · 历史回退 {{ fallbackRuntime.messageHistoryFallbackCount }}</div>
-          <div class="im-detail">历史回写 {{ fallbackRuntime.historyRefreshWriteCount }} 次 · 回写消息 {{ fallbackRuntime.historyRefreshMessageCount }} 条</div>
+          <div class="im-detail">
+            列表回退 {{ fallbackRuntime.conversationListFallbackCount }} · 历史回退
+            {{ fallbackRuntime.messageHistoryFallbackCount }}
+          </div>
+          <div class="im-detail">
+            历史回写 {{ fallbackRuntime.historyRefreshWriteCount }} 次 · 回写消息
+            {{ fallbackRuntime.historyRefreshMessageCount }} 条
+          </div>
           <div class="im-detail">最近回退 {{ fallbackLastActivityLabel }} · 最近回写 {{ fallbackLastRefreshLabel }}</div>
           <div class="im-detail">启动裁剪 {{ fallbackPrunedTotal }} 条 · 最老 {{ fallbackOldestAgeLabel }}</div>
           <div class="im-detail">运行 {{ formatUptime(imStats.uptime) }}</div>
@@ -213,13 +245,18 @@
               <el-radio-button value="week">周榜</el-radio-button>
               <el-radio-button value="month">月榜</el-radio-button>
             </el-radio-group>
-            <el-button size="small" @click="refreshData" :loading="loading">刷新</el-button>
+            <el-button size="small" :loading="loading" @click="refreshData">刷新</el-button>
           </div>
         </div>
         <el-table :data="userRanks[userTab]" size="small" stripe>
           <el-table-column type="index" label="排名" width="70" />
           <el-table-column prop="name" label="用户" />
-          <el-table-column prop="value" :label="userRankType === 'amount' ? '消费金额' : '下单次数'" width="120" align="right">
+          <el-table-column
+            prop="value"
+            :label="userRankType === 'amount' ? '消费金额' : '下单次数'"
+            width="120"
+            align="right"
+          >
             <template #default="{ row }">
               <span v-if="userRankType === 'amount'">¥{{ row.value }}</span>
               <span v-else>{{ row.value }}</span>
@@ -239,7 +276,7 @@
               <el-radio-button value="week">周榜</el-radio-button>
               <el-radio-button value="month">月榜</el-radio-button>
             </el-radio-group>
-            <el-button size="small" @click="refreshData" :loading="loading">刷新</el-button>
+            <el-button size="small" :loading="loading" @click="refreshData">刷新</el-button>
           </div>
         </div>
         <el-table :data="displayedRiderRanks" size="small" stripe>
@@ -256,11 +293,10 @@
           </template>
         </el-table>
         <div v-if="allRiderRanks[riderTab] && allRiderRanks[riderTab].length > 10" class="panel-footer">
-          <el-button type="primary" link @click="viewAllRiders">查看全部（{{ allRiderRanks[riderTab].length }}）</el-button>
+          <el-button link type="primary" @click="viewAllRiders">查看全部（{{ allRiderRanks[riderTab].length }}）</el-button>
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
@@ -329,21 +365,31 @@ const displayedRiderRanks = computed(() => {
   return ranks.slice(0, 10);
 });
 const lifeIndexEntries = computed(() => Object.entries(weatherData.value?.life_indices || {}));
-const forecastList = computed(() => Array.isArray(weatherData.value?.forecast) ? weatherData.value.forecast : []);
-const hourlyList = computed(() => Array.isArray(weatherData.value?.hourly_forecast) ? weatherData.value.hourly_forecast : []);
-const minutelyList = computed(() => Array.isArray(weatherData.value?.minutely_precip?.data) ? weatherData.value.minutely_precip.data : []);
+const forecastList = computed(() => (Array.isArray(weatherData.value?.forecast) ? weatherData.value.forecast : []));
+const hourlyList = computed(() =>
+  Array.isArray(weatherData.value?.hourly_forecast) ? weatherData.value.hourly_forecast : []
+);
+const minutelyList = computed(() =>
+  Array.isArray(weatherData.value?.minutely_precip?.data) ? weatherData.value.minutely_precip.data : []
+);
 const onlinePresenceSample = computed(() => normalizeOnlinePresenceSample(imStats.value?.onlinePresenceSample).slice(0, 8));
 const imRedis = computed(() => normalizeRedisHealth(imStats.value?.redis));
 const fallbackBuffer = computed(() => normalizeFallbackBuffer(imStats.value?.fallbackBuffer));
 const fallbackRuntime = computed(() => normalizeFallbackRuntime(imStats.value?.fallbackRuntime));
-const fallbackPrunedTotal = computed(() => fallbackBuffer.value.startupExpiredPruned + fallbackBuffer.value.startupOverflowPruned);
+const fallbackPrunedTotal = computed(
+  () => fallbackBuffer.value.startupExpiredPruned + fallbackBuffer.value.startupOverflowPruned
+);
 const fallbackOldestAgeLabel = computed(() => formatBufferAge(fallbackBuffer.value.oldestTimestamp));
-const fallbackLastActivityLabel = computed(() => formatBufferAge(Math.max(
-  fallbackRuntime.value.lastConversationListFallbackAt,
-  fallbackRuntime.value.lastMessageHistoryFallbackAt
-)));
+const fallbackLastActivityLabel = computed(() =>
+  formatBufferAge(
+    Math.max(
+      fallbackRuntime.value.lastConversationListFallbackAt,
+      fallbackRuntime.value.lastMessageHistoryFallbackAt
+    )
+  )
+);
 const fallbackLastRefreshLabel = computed(() => formatBufferAge(fallbackRuntime.value.lastHistoryRefreshWriteAt));
-const runtimeHealthServices = computed(() => Array.isArray(runtimeHealth.value?.services) ? runtimeHealth.value.services : []);
+const runtimeHealthServices = computed(() => (Array.isArray(runtimeHealth.value?.services) ? runtimeHealth.value.services : []));
 const runtimeGoHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'go') || null);
 const runtimeSocketHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'socket') || null);
 const runtimeRedisHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'redis') || null);
@@ -355,9 +401,9 @@ const runtimeHealthStatusLabel = computed(() => {
 });
 const runtimeHealthSummary = computed(() => {
   const segments = [
-    runtimeGoHealth.value ? `Go ${runtimeGoHealth.value.status === 'up' ? 'up' : 'down'}` : '',
-    runtimeSocketHealth.value ? `Socket ${runtimeSocketHealth.value.status === 'up' ? 'up' : 'down'}` : '',
-    runtimeRedisHealth.value ? `Redis ${runtimeRedisHealth.value.status === 'up' ? 'up' : 'down'}` : ''
+    runtimeGoHealth.value ? `Go ${runtimeGoHealth.value.status === 'up' ? '已就绪' : '异常'}` : '',
+    runtimeSocketHealth.value ? `Socket ${runtimeSocketHealth.value.status === 'up' ? '已就绪' : '异常'}` : '',
+    runtimeRedisHealth.value ? `Redis ${runtimeRedisHealth.value.status === 'up' ? '已就绪' : '异常'}` : ''
   ].filter(Boolean);
   return segments.join(' · ') || '探针数据未加载';
 });
@@ -370,14 +416,14 @@ const pushWorkerSummary = computed(() => {
   const consecutiveFailures = extractHealthDetail(detail, 'pushConsecutiveFailures');
   const lastSuccessAt = extractHealthDetail(detail, 'pushLastSuccessAt');
   const segments = [
-    running ? `worker ${running === 'true' ? 'running' : 'stopped'}` : '',
-    cycle ? `cycle ${cycle}` : '',
-    queue ? `queue ${queue}` : '',
-    failed ? `failed ${failed}` : '',
-    consecutiveFailures ? `consecutive ${consecutiveFailures}` : '',
-    lastSuccessAt ? `last success ${formatUpdateTime(lastSuccessAt)}` : ''
+    running ? `Worker ${running === 'true' ? '运行中' : '已停止'}` : '',
+    cycle ? `周期 ${cycle}` : '',
+    queue ? `队列 ${queue}` : '',
+    failed ? `失败 ${failed}` : '',
+    consecutiveFailures ? `连续失败 ${consecutiveFailures}` : '',
+    lastSuccessAt ? `最近成功 ${formatUpdateTime(lastSuccessAt)}` : ''
   ].filter(Boolean);
-  return segments.join(' · ') || 'push 状态未暴露';
+  return segments.join(' · ') || 'Push 状态未暴露';
 });
 const presenceEmptyDescription = computed(() => {
   if (imRedis.value.mode === 'redis' || imRedis.value.mode === 'redis-no-adapter') {
@@ -427,7 +473,7 @@ async function loadWeatherConfig() {
     weatherConfig.value = { ...(data || {}), refresh_interval_minutes: refreshMinutes };
     weatherCacheDurationMs.value = refreshMinutes * 60 * 1000;
     resetWeatherTimer();
-  } catch (e) {
+  } catch (_error) {
     weatherConfig.value.refresh_interval_minutes = 10;
     weatherCacheDurationMs.value = 10 * 60 * 1000;
     resetWeatherTimer();
@@ -464,11 +510,12 @@ async function connectImStats() {
     imSocket.on('server_stats', (data) => {
       applyImStatsPatch(data);
     });
-    // 初始加载一次
+
+    // 初始化加载一次
     const res = await fetch(`${SOCKET_HTTP_BASE}/api/stats`);
     const data = await res.json();
     applyImStatsPatch(data);
-  } catch (e) {
+  } catch (_error) {
     imStats.value.online = false;
   }
 }
@@ -503,7 +550,7 @@ async function refreshData() {
 
 async function loadWeather(forceRefresh = false) {
   const now = Date.now();
-  if (!forceRefresh && weatherCache.value && (now - cacheTimestamp.value.weather) < weatherCacheDurationMs.value) {
+  if (!forceRefresh && weatherCache.value && now - cacheTimestamp.value.weather < weatherCacheDurationMs.value) {
     weatherError.value = '';
     weatherData.value = weatherCache.value;
     return;
@@ -515,15 +562,15 @@ async function loadWeather(forceRefresh = false) {
     weatherData.value = data || { available: false };
     weatherCache.value = weatherData.value;
     cacheTimestamp.value.weather = now;
-  } catch (e) {
-    weatherError.value = extractErrorMessage(e, '加载天气数据失败，请稍后重试');
+  } catch (error) {
+    weatherError.value = extractErrorMessage(error, '加载天气数据失败，请稍后重试');
     weatherData.value = { available: false };
   }
 }
 
 async function loadStats(forceRefresh = false) {
   const now = Date.now();
-  if (!forceRefresh && statsCache.value && (now - cacheTimestamp.value.stats) < STATS_CACHE_DURATION) {
+  if (!forceRefresh && statsCache.value && now - cacheTimestamp.value.stats < STATS_CACHE_DURATION) {
     statsError.value = '';
     statsCards.value = statsCache.value;
     return;
@@ -534,12 +581,12 @@ async function loadStats(forceRefresh = false) {
     const { data: stats } = await request.get('/api/stats');
     if (stats) {
       const cards = [...statsCards.value];
-      const customerCard = cards.find(c => c.label === '注册客户');
-      const totalOrdersCard = cards.find(c => c.label === '总订单数');
-      const todayOrdersCard = cards.find(c => c.label === '今日订单');
-      const riderCard = cards.find(c => c.label === '员工总数');
-      const onlineRiderCard = cards.find(c => c.label === '在线骑手');
-      const pendingCard = cards.find(c => c.label === '待接单');
+      const customerCard = cards.find((card) => card.label === '注册客户');
+      const totalOrdersCard = cards.find((card) => card.label === '总订单数');
+      const todayOrdersCard = cards.find((card) => card.label === '今日订单');
+      const riderCard = cards.find((card) => card.label === '员工总数');
+      const onlineRiderCard = cards.find((card) => card.label === '在线骑手');
+      const pendingCard = cards.find((card) => card.label === '待接单');
 
       if (customerCard) customerCard.value = formatNumber(stats.customerCount || 0);
       if (totalOrdersCard) totalOrdersCard.value = formatNumber(stats.totalOrders || 0);
@@ -552,8 +599,8 @@ async function loadStats(forceRefresh = false) {
       statsCache.value = cards;
       cacheTimestamp.value.stats = now;
     }
-  } catch (e) {
-    statsError.value = extractErrorMessage(e, '加载统计数据失败，请稍后重试');
+  } catch (error) {
+    statsError.value = extractErrorMessage(error, '加载统计数据失败，请稍后重试');
   }
 }
 
@@ -578,18 +625,23 @@ async function loadOrders(forceRefresh = false) {
       request.get('/api/rider-ranks?period=month')
     ]);
 
-    const hasFailure = [weekUserRes, monthUserRes, weekRiderRes, monthRiderRes].some((item) => item.status === 'rejected');
+    const hasFailure = [weekUserRes, monthUserRes, weekRiderRes, monthRiderRes].some(
+      (item) => item.status === 'rejected'
+    );
     if (hasFailure) {
       rankError.value = '部分排名数据加载失败，请稍后重试';
     }
 
     userRanks.value = {
       week: weekUserRes.status === 'fulfilled' && Array.isArray(weekUserRes.value?.data) ? weekUserRes.value.data : [],
-      month: monthUserRes.status === 'fulfilled' && Array.isArray(monthUserRes.value?.data) ? monthUserRes.value.data : []
+      month:
+        monthUserRes.status === 'fulfilled' && Array.isArray(monthUserRes.value?.data) ? monthUserRes.value.data : []
     };
     allRiderRanks.value = {
-      week: weekRiderRes.status === 'fulfilled' && Array.isArray(weekRiderRes.value?.data) ? weekRiderRes.value.data : [],
-      month: monthRiderRes.status === 'fulfilled' && Array.isArray(monthRiderRes.value?.data) ? monthRiderRes.value.data : []
+      week:
+        weekRiderRes.status === 'fulfilled' && Array.isArray(weekRiderRes.value?.data) ? weekRiderRes.value.data : [],
+      month:
+        monthRiderRes.status === 'fulfilled' && Array.isArray(monthRiderRes.value?.data) ? monthRiderRes.value.data : []
     };
 
     ranksCache.value.set(cacheKey, {
@@ -601,13 +653,12 @@ async function loadOrders(forceRefresh = false) {
       const firstKey = ranksCache.value.keys().next().value;
       ranksCache.value.delete(firstKey);
     }
-  } catch (e) {
-    rankError.value = extractErrorMessage(e, '加载排名数据失败，请稍后重试');
+  } catch (error) {
+    rankError.value = extractErrorMessage(error, '加载排名数据失败，请稍后重试');
   } finally {
     loading.value = false;
   }
 }
-
 </script>
 
 <style scoped lang="css" src="./Dashboard.css"></style>
