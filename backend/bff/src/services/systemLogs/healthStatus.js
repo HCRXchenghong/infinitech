@@ -143,13 +143,18 @@ async function collectServiceStatus() {
   const goReadyUrl = goBaseUrl ? `${goBaseUrl}/ready` : "";
   const goHealthUrl = goBaseUrl ? `${goBaseUrl}/health` : "";
   const goAddress = parseUrlHostPort(goBaseUrl);
+  const socketBaseUrl = normalizeUrl(config.socketServerUrl);
+  const socketReadyUrl = socketBaseUrl ? `${socketBaseUrl}/ready` : "";
+  const socketHealthUrl = socketBaseUrl ? `${socketBaseUrl}/health` : "";
+  const socketAddress = parseUrlHostPort(socketBaseUrl);
 
   const redisHost = String(config.redis?.host || "").trim();
   const redisPort = toPositiveInt(config.redis?.port, 2550);
 
-  const [bffCheck, goCheck, redisCheck] = await Promise.all([
+  const [bffCheck, goCheck, socketCheck, redisCheck] = await Promise.all([
     probeHttpWithFallback([bffReadyUrl, bffHealthUrl], timeoutMs),
     probeHttpWithFallback([goReadyUrl, goHealthUrl], timeoutMs),
+    probeHttpWithFallback([socketReadyUrl, socketHealthUrl], timeoutMs),
     probeTcp(redisHost, redisPort, timeoutMs)
   ]);
 
@@ -183,6 +188,20 @@ async function collectServiceStatus() {
       error: goCheck.error
     },
     {
+      key: "socket",
+      label: "Socket Server",
+      type: "http",
+      target: socketCheck.target || socketReadyUrl || socketHealthUrl || "-",
+      probe: socketCheck.probe || "ready",
+      host: socketAddress.host,
+      port: socketAddress.port,
+      status: socketCheck.ok ? "up" : "down",
+      healthy: socketCheck.ok,
+      latencyMs: socketCheck.latencyMs,
+      httpStatus: socketCheck.httpStatus,
+      error: socketCheck.error
+    },
+    {
       key: "redis",
       label: "Redis",
       type: "tcp",
@@ -200,12 +219,13 @@ async function collectServiceStatus() {
 
   const bffUp = services[0].healthy;
   const goUp = services[1].healthy;
-  const redisUp = services[2].healthy;
+  const socketUp = services[2].healthy;
+  const redisUp = services[3].healthy;
 
   let overall = "ok";
   if (!bffUp || !goUp) {
     overall = "down";
-  } else if (!redisUp) {
+  } else if (!socketUp || !redisUp) {
     overall = "degraded";
   }
 

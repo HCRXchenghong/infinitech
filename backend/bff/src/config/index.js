@@ -78,6 +78,7 @@ const productionLike = ["production", "prod", "staging"].includes(String(env).tr
 module.exports = {
   port: process.env.BFF_PORT || 25500,
   goApiUrl: process.env.GO_API_URL || "http://127.0.0.1:1029",
+  socketServerUrl: process.env.SOCKET_SERVER_URL || "http://127.0.0.1:9898",
 
   db: {
     host: process.env.DB_HOST || "127.0.0.1",
