@@ -462,7 +462,11 @@ export function setupSupportNamespaces({
         return;
       }
       markAsRead(data.messageId);
-      socket.to(`chat_${chatId}`).emit('message_read', { messageId: data.messageId, readBy: socket.userId });
+      socket.to(`chat_${chatId}`).emit('message_read', {
+        chatId,
+        messageId: data.messageId,
+        readBy: socket.userId
+      });
     });
 
     socket.on('mark_all_read', async (data) => {
@@ -564,7 +568,11 @@ export function setupSupportNamespaces({
       }
 
       markAsRead(data.messageId);
-      socket.to(`chat_${access.chatId}`).emit('message_read', { messageId: data.messageId, readBy: socket.userId });
+      socket.to(`chat_${access.chatId}`).emit('message_read', {
+        chatId: access.chatId,
+        messageId: data.messageId,
+        readBy: socket.userId
+      });
     });
 
     socket.on('mark_all_read', async (data) => {

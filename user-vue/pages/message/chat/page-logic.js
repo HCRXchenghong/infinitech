@@ -624,6 +624,7 @@ export default {
       })
 
       sock.on('message_read', (data) => {
+        if (data?.chatId && String(data.chatId) !== String(this.roomId)) return
         const msg = this.messages.find((item) => item.mid === data?.messageId)
         if (msg && msg.status !== 'read') {
           msg.status = 'read'

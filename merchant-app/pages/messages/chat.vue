@@ -417,6 +417,7 @@ function connectSocket(token: string) {
   })
 
   sock.on('message_read', (payload: any) => {
+    if (payload?.chatId && String(payload.chatId) !== String(chatId.value)) return
     updateLocalMessageStatus(payload?.messageId, 'read')
   })
 

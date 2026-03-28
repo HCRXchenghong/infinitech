@@ -507,6 +507,8 @@ export function useChatConsole(options = {}) {
     });
 
     socket.on('message_read', (data) => {
+      const selectedId = normalizeChatId(selectedChat.value?.id);
+      if (data?.chatId && normalizeChatId(data.chatId) !== selectedId) return;
       const msg = messages.value.find((item) => item.id === data.messageId);
       if (msg) msg.status = 'read';
       scheduleRefreshChats();
