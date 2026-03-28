@@ -154,7 +154,7 @@ async function syncMessageToBackend(socket, chatId, rawData, message) {
   }
 }
 
-async function markConversationReadOnBackend(socket, chatId) {
+async function markConversationReadOnBackend(socket, chatId, markAllReadFn = null) {
   const authHeader = String(socket?.authToken || '').trim();
   const normalizedChatId = normalizeChatId(chatId);
   if (!authHeader || !normalizedChatId) return;
@@ -171,6 +171,10 @@ async function markConversationReadOnBackend(socket, chatId) {
     );
     if (!response.ok && response.status !== 404) {
       logger.warn(`会话已读状态同步失败 request_id=${requestId}:`, response.status, data?.error || '');
+      return;
+    }
+    if (typeof markAllReadFn === 'function') {
+      markAllReadFn('support', normalizedChatId, socket.userId);
     }
   } catch (err) {
     logger.warn(`会话已读状态同步失败 request_id=${requestId}:`, err?.message || err);
@@ -423,7 +427,7 @@ export function setupSupportNamespaces({
         return;
       }
       socket.join(`chat_${chatId}`);
-      await markConversationReadOnBackend(socket, chatId);
+      await markConversationReadOnBackend(socket, chatId, markAllRead);
       logger.info(`Monitor admin joined chat_${chatId}`);
     });
 
@@ -439,7 +443,7 @@ export function setupSupportNamespaces({
         refreshFallbackHistory(replaceMessages, chatId, messages);
       }
       socket.emit('messages_loaded', { chatId, messages });
-      await markConversationReadOnBackend(socket, chatId);
+      await markConversationReadOnBackend(socket, chatId, markAllRead);
     });
 
     socket.on('send_message', async (data) => {
@@ -469,7 +473,7 @@ export function setupSupportNamespaces({
       }
       markAllRead('support', chatId, socket.userId);
       socket.to(`chat_${chatId}`).emit('all_messages_read', { chatId, readBy: socket.userId });
-      await markConversationReadOnBackend(socket, chatId);
+      await markConversationReadOnBackend(socket, chatId, markAllRead);
     });
 
     socket.on('clear_messages', (data) => {
@@ -506,7 +510,7 @@ export function setupSupportNamespaces({
       }
 
       socket.join(`chat_${access.chatId}`);
-      await markConversationReadOnBackend(socket, access.chatId);
+      await markConversationReadOnBackend(socket, access.chatId, markAllRead);
       logger.info(`${socket.userRole} ${socket.userId} (${socket.id}) joined chat_${access.chatId}`);
     });
 
@@ -539,7 +543,7 @@ export function setupSupportNamespaces({
         refreshFallbackHistory(replaceMessages, access.chatId, messages);
       }
       socket.emit('messages_loaded', { chatId: access.chatId, messages });
-      await markConversationReadOnBackend(socket, access.chatId);
+      await markConversationReadOnBackend(socket, access.chatId, markAllRead);
     });
 
     socket.on('send_message', async (data) => {
@@ -572,7 +576,7 @@ export function setupSupportNamespaces({
 
       markAllRead('support', access.chatId, socket.userId);
       socket.to(`chat_${access.chatId}`).emit('all_messages_read', { chatId: access.chatId, readBy: socket.userId });
-      await markConversationReadOnBackend(socket, access.chatId);
+      await markConversationReadOnBackend(socket, access.chatId, markAllRead);
     });
 
     socket.on('clear_messages', (data) => {
