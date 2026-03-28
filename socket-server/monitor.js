@@ -1,5 +1,5 @@
 import os from 'os';
-import { db, getFallbackBufferStats } from './database.js';
+import { db, getFallbackBufferStats, getFallbackRuntimeStats } from './database.js';
 import { logger } from './logger.js';
 import {
   getOnlinePresenceCount,
@@ -32,6 +32,7 @@ export function getServerStats() {
   const dbSize = db.prepare('SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()').get();
   const dbSizeMB = (dbSize.size / 1024 / 1024).toFixed(2);
   const fallbackBuffer = getFallbackBufferStats();
+  const fallbackRuntime = getFallbackRuntimeStats();
 
   return {
     online: true,
@@ -40,6 +41,7 @@ export function getServerStats() {
     dbSizeMB: parseFloat(dbSizeMB),
     messageCount: fallbackBuffer.messageCount,
     fallbackBuffer,
+    fallbackRuntime,
     uptime: process.uptime(),
     timestamp: Date.now()
   };

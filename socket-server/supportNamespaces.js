@@ -3,6 +3,11 @@ import { normalizeMessageData } from './messagePayload.js';
 import { authorizeSupportChatAccess, normalizeChatId } from './supportAccess.js';
 import { requestBackend } from './socketIdentity.js';
 import { buildSocketRequestId } from './requestId.js';
+import {
+  recordConversationListFallback,
+  recordHistoryRefreshWrite,
+  recordMessageHistoryFallback
+} from './database.js';
 
 function emitSupportMessage(supportNamespace, chatId, message) {
   const roomName = `chat_${chatId}`;
@@ -245,8 +250,10 @@ async function fetchConversationListFromBackend(socket, fallbackChats = []) {
     if (response.ok && Array.isArray(data)) {
       return data;
     }
+    recordConversationListFallback();
     logger.warn(`会话列表从 Go 加载失败 request_id=${requestId}，回退本地列表:`, response.status, data?.error || '');
   } catch (err) {
+    recordConversationListFallback();
     logger.warn(`会话列表从 Go 加载失败 request_id=${requestId}，回退本地列表:`, err?.message || err);
   }
 
@@ -267,8 +274,10 @@ async function fetchMessagesFromBackend(socket, chatId, fallbackMessages = []) {
     if (response.ok && Array.isArray(data)) {
       return data;
     }
+    recordMessageHistoryFallback();
     logger.warn(`消息历史从 Go 加载失败 request_id=${requestId}，回退本地历史:`, response.status, data?.error || '');
   } catch (err) {
+    recordMessageHistoryFallback();
     logger.warn(`消息历史从 Go 加载失败 request_id=${requestId}，回退本地历史:`, err?.message || err);
   }
 
@@ -290,6 +299,7 @@ function refreshFallbackHistory(replaceMessages, chatId, messages) {
       ...message,
       chatId: normalizedChatId
     })));
+    recordHistoryRefreshWrite(messages.length);
   } catch (err) {
     logger.warn(`客服历史回写本地兜底库失败 chatId=${normalizedChatId}:`, err?.message || err);
   }

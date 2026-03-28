@@ -148,6 +148,9 @@
           <div class="im-label">数据库</div>
           <div class="im-value">{{ imStats.dbSizeMB }} MB</div>
           <div class="im-detail">兜底会话 {{ fallbackBuffer.chatCount }} · 消息 {{ fallbackBuffer.messageCount }}</div>
+          <div class="im-detail">列表回退 {{ fallbackRuntime.conversationListFallbackCount }} · 历史回退 {{ fallbackRuntime.messageHistoryFallbackCount }}</div>
+          <div class="im-detail">历史回写 {{ fallbackRuntime.historyRefreshWriteCount }} 次 · 回写消息 {{ fallbackRuntime.historyRefreshMessageCount }} 条</div>
+          <div class="im-detail">最近回退 {{ fallbackLastActivityLabel }} · 最近回写 {{ fallbackLastRefreshLabel }}</div>
           <div class="im-detail">启动裁剪 {{ fallbackPrunedTotal }} 条 · 最老 {{ fallbackOldestAgeLabel }}</div>
           <div class="im-detail">运行 {{ formatUptime(imStats.uptime) }}</div>
         </div>
@@ -285,6 +288,7 @@ import {
   normalizeOnlinePresenceSample,
   normalizeRedisHealth,
   normalizeFallbackBuffer,
+  normalizeFallbackRuntime,
   getRedisModeLabel,
   getRedisModeTagType,
   getRedisModeHint
@@ -331,8 +335,14 @@ const minutelyList = computed(() => Array.isArray(weatherData.value?.minutely_pr
 const onlinePresenceSample = computed(() => normalizeOnlinePresenceSample(imStats.value?.onlinePresenceSample).slice(0, 8));
 const imRedis = computed(() => normalizeRedisHealth(imStats.value?.redis));
 const fallbackBuffer = computed(() => normalizeFallbackBuffer(imStats.value?.fallbackBuffer));
+const fallbackRuntime = computed(() => normalizeFallbackRuntime(imStats.value?.fallbackRuntime));
 const fallbackPrunedTotal = computed(() => fallbackBuffer.value.startupExpiredPruned + fallbackBuffer.value.startupOverflowPruned);
 const fallbackOldestAgeLabel = computed(() => formatBufferAge(fallbackBuffer.value.oldestTimestamp));
+const fallbackLastActivityLabel = computed(() => formatBufferAge(Math.max(
+  fallbackRuntime.value.lastConversationListFallbackAt,
+  fallbackRuntime.value.lastMessageHistoryFallbackAt
+)));
+const fallbackLastRefreshLabel = computed(() => formatBufferAge(fallbackRuntime.value.lastHistoryRefreshWriteAt));
 const runtimeHealthServices = computed(() => Array.isArray(runtimeHealth.value?.services) ? runtimeHealth.value.services : []);
 const runtimeGoHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'go') || null);
 const runtimeSocketHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'socket') || null);
@@ -383,6 +393,9 @@ function applyImStatsPatch(data) {
   merged.redis = normalizeRedisHealth(data?.redis !== undefined ? data.redis : merged.redis);
   merged.fallbackBuffer = normalizeFallbackBuffer(
     data?.fallbackBuffer !== undefined ? data.fallbackBuffer : merged.fallbackBuffer
+  );
+  merged.fallbackRuntime = normalizeFallbackRuntime(
+    data?.fallbackRuntime !== undefined ? data.fallbackRuntime : merged.fallbackRuntime
   );
   imStats.value = merged;
 }
