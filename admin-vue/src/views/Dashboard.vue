@@ -152,6 +152,27 @@
       </div>
     </div>
 
+    <div class="panel presence-panel">
+      <div class="panel-title">
+        <div class="presence-title-block">
+          <span>在线连接样本</span>
+          <div class="presence-caption">Redis 共享在线态，用于排查多实例实时服务在线连接</div>
+        </div>
+      </div>
+      <div v-if="onlinePresenceSample.length" class="presence-list">
+        <div v-for="entry in onlinePresenceSample" :key="entry.key" class="presence-item">
+          <div class="presence-main">
+            <div class="presence-user">{{ entry.userLabel }}</div>
+            <div class="presence-meta">{{ entry.roleLabel }} · {{ entry.socketLabel }}</div>
+          </div>
+          <div class="presence-side">
+            <div class="presence-time">{{ formatPresenceConnectedAt(entry.connectedAt) }}</div>
+          </div>
+        </div>
+      </div>
+      <el-empty v-else description="暂无在线连接样本" :image-size="90" />
+    </div>
+
     <div class="rank-row">
       <div class="panel rank-panel">
         <div class="panel-title">
@@ -228,9 +249,11 @@ import {
   getAqiClass,
   getAqiText,
   formatUpdateTime,
+  formatPresenceConnectedAt,
   formatNumber,
   getRankName,
-  getRankType
+  getRankType,
+  normalizeOnlinePresenceSample
 } from './dashboardHelpers';
 
 const router = useRouter();
@@ -270,6 +293,15 @@ const lifeIndexEntries = computed(() => Object.entries(weatherData.value?.life_i
 const forecastList = computed(() => Array.isArray(weatherData.value?.forecast) ? weatherData.value.forecast : []);
 const hourlyList = computed(() => Array.isArray(weatherData.value?.hourly_forecast) ? weatherData.value.hourly_forecast : []);
 const minutelyList = computed(() => Array.isArray(weatherData.value?.minutely_precip?.data) ? weatherData.value.minutely_precip.data : []);
+const onlinePresenceSample = computed(() => normalizeOnlinePresenceSample(imStats.value?.onlinePresenceSample).slice(0, 8));
+
+function applyImStatsPatch(data) {
+  const merged = { ...imStats.value, ...(data || {}) };
+  merged.onlinePresenceSample = normalizeOnlinePresenceSample(
+    data?.onlinePresenceSample !== undefined ? data.onlinePresenceSample : merged.onlinePresenceSample
+  );
+  imStats.value = merged;
+}
 
 function resetWeatherTimer() {
   if (weatherTimer) {
@@ -307,12 +339,12 @@ async function connectImStats() {
     imSocket = await socketService.connect('/monitor');
     imSocket.emit('join_monitor', { userId: 'admin' });
     imSocket.on('server_stats', (data) => {
-      imStats.value = { ...imStats.value, ...data };
+      applyImStatsPatch(data);
     });
     // 初始加载一次
     const res = await fetch(`${SOCKET_HTTP_BASE}/api/stats`);
     const data = await res.json();
-    imStats.value = { ...imStats.value, ...data };
+    applyImStatsPatch(data);
   } catch (e) {
     imStats.value.online = false;
   }

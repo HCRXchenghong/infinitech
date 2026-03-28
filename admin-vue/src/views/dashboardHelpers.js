@@ -2,6 +2,7 @@ export function createDefaultImStats() {
   return {
     online: false,
     onlineUsers: 0,
+    onlinePresenceSample: [],
     memoryUsage: 0,
     cpuUsage: 0,
     dbSizeMB: 0,
@@ -125,4 +126,68 @@ export function getRankType(level) {
   if (level >= 4) return 'success';
   if (level >= 3) return 'primary';
   return 'info';
+}
+
+function parsePresenceTimestamp(value) {
+  if (value === null || value === undefined || value === '') return 0;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function normalizeOnlinePresenceSample(sample) {
+  if (!Array.isArray(sample)) return [];
+
+  return sample
+    .map((entry, index) => {
+      const socketId = String(entry?.socketId || '').trim();
+      const userId = String(entry?.userId || '').trim();
+      const role = String(entry?.role || '').trim().toLowerCase();
+      const connectedAt = parsePresenceTimestamp(entry?.connectedAt);
+
+      return {
+        key: socketId || `${role || 'unknown'}-${userId || 'anonymous'}-${index}`,
+        socketId,
+        socketLabel: socketId ? `${socketId.slice(0, 6)}...${socketId.slice(-4)}` : '未知连接',
+        userId,
+        userLabel: userId || '匿名连接',
+        role,
+        roleLabel: formatPresenceRole(role),
+        connectedAt
+      };
+    })
+    .sort((a, b) => b.connectedAt - a.connectedAt);
+}
+
+export function formatPresenceRole(role) {
+  const roleMap = {
+    admin: '管理员',
+    support: '客服',
+    merchant: '商家',
+    rider: '骑手',
+    user: '用户',
+    customer: '用户'
+  };
+  return roleMap[String(role || '').trim().toLowerCase()] || '未知角色';
+}
+
+export function formatPresenceConnectedAt(value) {
+  const timestamp = parsePresenceTimestamp(value);
+  if (!timestamp) return '连接时间未知';
+
+  const diffMs = Date.now() - timestamp;
+  const diffMinutes = Math.floor(diffMs / 60000);
+  if (diffMinutes <= 0) return '刚刚连接';
+  if (diffMinutes < 60) return `${diffMinutes} 分钟前连接`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} 小时前连接`;
+
+  const date = new Date(timestamp);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${month}-${day} ${hours}:${minutes}`;
 }

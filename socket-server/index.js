@@ -502,6 +502,7 @@ setInterval(async () => {
   try {
     const stats = getServerStats();
     stats.onlineUsers = await getOnlineCount();
+    stats.onlinePresenceSample = await getOnlineUsers(20);
     monitorNamespace.to('monitor_all').emit('server_stats', stats);
   } catch (err) {
     logger.warn('server stats broadcast failed:', err?.message || err);
