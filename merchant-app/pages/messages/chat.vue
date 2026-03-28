@@ -73,7 +73,7 @@ interface ViewMessage {
   type: string
   timestamp: number
   time: string
-  status: 'sending' | 'sent' | 'failed'
+  status: 'sending' | 'sent' | 'read' | 'failed'
   officialIntervention: boolean
   interventionLabel: string
 }
@@ -294,7 +294,7 @@ function appendLocalMessage(
   self: boolean,
   content: string,
   type: string,
-  status: 'sending' | 'sent' | 'failed' = 'sending'
+  status: 'sending' | 'sent' | 'read' | 'failed' = 'sending'
 ) {
   const timestamp = Date.now()
   const mid = createLocalMessageId('local', timestamp)
@@ -312,6 +312,17 @@ function appendLocalMessage(
   persistLocalMessages()
   scrollToBottom()
   return mid
+}
+
+function updateLocalMessageStatus(messageId: any, status: 'sent' | 'read' | 'failed') {
+  const normalizedId = String(messageId || '').trim()
+  if (!normalizedId) return false
+  const target = messages.value.find((item) => item.mid === normalizedId)
+  if (!target) return false
+  if (target.status === status) return false
+  target.status = status
+  persistLocalMessages()
+  return true
 }
 
 function buildSocketAuthHeader() {
@@ -399,8 +410,25 @@ function connectSocket(token: string) {
     messages.value[index].time = String(
       payload?.time || formatClockByTimestamp(messages.value[index].timestamp)
     )
-    messages.value[index].status = 'sent'
+    if (messages.value[index].status !== 'read') {
+      messages.value[index].status = 'sent'
+    }
     persistLocalMessages()
+  })
+
+  sock.on('message_read', (payload: any) => {
+    updateLocalMessageStatus(payload?.messageId, 'read')
+  })
+
+  sock.on('all_messages_read', () => {
+    let changed = false
+    messages.value.forEach((item) => {
+      if (item.self && item.status !== 'failed' && item.status !== 'read') {
+        item.status = 'read'
+        changed = true
+      }
+    })
+    if (changed) persistLocalMessages()
   })
 
   sock.on('clear_messages_denied', () => {
@@ -473,7 +501,10 @@ function sendText() {
 
   setTimeout(() => {
     const target = messages.value.find((item) => item.mid === mid)
-    if (target && target.status === 'sending') target.status = 'failed'
+    if (target && target.status === 'sending') {
+      target.status = 'failed'
+      persistLocalMessages()
+    }
   }, 5000)
 
   draft.value = ''
@@ -523,7 +554,10 @@ function chooseImage() {
 
             setTimeout(() => {
               const target = messages.value.find((item) => item.mid === mid)
-              if (target && target.status === 'sending') target.status = 'failed'
+              if (target && target.status === 'sending') {
+                target.status = 'failed'
+                persistLocalMessages()
+              }
             }, 5000)
           } catch (err) {
             uni.showToast({ title: '图片发送失败', icon: 'none' })
