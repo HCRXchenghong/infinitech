@@ -31,7 +31,7 @@ export function useChatConsole(options = {}) {
     namespace,
     beforeInitLoad,
     defaultChatName = '聊天',
-    disabledActionMessage = '按平台规则，仅平台监控页可彻底删除聊天记录',
+    disabledActionMessage = '按平台规则，仅监控页可彻底删除聊天记录',
     coupons: couponSeed = [],
     orders: orderSeed = [],
     awaitIncomingSave = false,
@@ -279,7 +279,7 @@ export function useChatConsole(options = {}) {
       });
 
       nextTick(() => scrollToBottom());
-    } catch (error) {
+    } catch (_error) {
       ElMessage.error('图片上传失败');
     } finally {
       uploadingImage.value = false;

@@ -22,6 +22,11 @@ function messageKey(chatId, messageId) {
   return `${normalizeChatId(chatId)}:${String(messageId)}`;
 }
 
+function normalizeUnreadCount(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? Math.floor(numeric) : 0;
+}
+
 export function createSeenMessageTracker(limit = 6000) {
   const seenMessageKeys = new Set();
 
@@ -50,7 +55,7 @@ export function getMessagePreview(data) {
   if (data?.messageType === 'image') return '[图片]';
   if (data?.messageType === 'coupon') return '[优惠券]';
   if (data?.messageType === 'order') return '[订单]';
-  return data?.content || '';
+  return String(data?.content || '').trim() || '[暂无消息]';
 }
 
 export function formatMessageTime(timestamp) {
@@ -59,7 +64,21 @@ export function formatMessageTime(timestamp) {
 
 export function resolveMessageTimestamp(rawValue, fallback = Date.now()) {
   const value = Number(rawValue);
-  return Number.isFinite(value) && value > 0 ? value : fallback;
+  if (Number.isFinite(value) && value > 0) return value;
+
+  if (typeof rawValue === 'string') {
+    const trimmed = rawValue.trim();
+    if (!trimmed) return fallback;
+    const parsed = Date.parse(trimmed.replace(' ', 'T'));
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+
+  if (rawValue instanceof Date) {
+    const parsed = rawValue.getTime();
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+
+  return fallback;
 }
 
 export function resolveConversationTimestamp(rawValue, fallback = 0) {
@@ -73,7 +92,7 @@ export function resolveConversationTimestamp(rawValue, fallback = 0) {
       const numeric = Number(trimmed);
       if (Number.isFinite(numeric) && numeric > 0) return numeric;
     }
-    const parsed = new Date(trimmed).getTime();
+    const parsed = new Date(trimmed.replace(' ', 'T')).getTime();
     if (Number.isFinite(parsed) && parsed > 0) return parsed;
   }
   if (rawValue instanceof Date) {
@@ -97,33 +116,38 @@ export function mapLoadedChats(list) {
       chat.updatedAt || chat.updated_at || chat.lastMessageAt || chat.last_message_at || chat.timestamp,
       0
     );
+    const chatId = normalizeChatId(chat.id || chat.chatId || chat.roomId);
     return {
-      id: normalizeChatId(chat.id),
-      name: chat.name || `聊天 #${chat.id}`,
+      id: chatId,
+      name: String(chat.name || '').trim() || `聊天 #${chatId || 'unknown'}`,
       phone: chat.phone || '',
       role: chat.role || 'user',
       avatar: chat.avatar || null,
-      lastMessage: chat.lastMessage || '',
-      time: chat.time || '',
-      unread: chat.unread || 0,
+      lastMessage: String(chat.lastMessage || chat.msg || '').trim() || '[暂无消息]',
+      time: String(chat.time || '').trim() || (updatedAt ? formatMessageTime(updatedAt) : ''),
+      unread: normalizeUnreadCount(chat.unread),
       updatedAt
     };
   });
 }
 
 export function mapCachedMessages(list) {
-  return (list || []).map((item) => ({
-    timestamp: resolveMessageTimestamp(item.timestamp, Date.now()),
-    id: item.id,
-    sender: item.sender,
-    content: item.content,
-    time: formatMessageTime(resolveMessageTimestamp(item.timestamp, Date.now())),
-    isSelf: item.senderRole === 'admin',
-    type: item.messageType,
-    coupon: item.coupon,
-    order: item.order,
-    avatar: item.avatar
-  }));
+  return (list || []).map((item) => {
+    const timestamp = resolveMessageTimestamp(item.timestamp, Date.now());
+    return {
+      timestamp,
+      id: item.id,
+      sender: item.sender,
+      content: item.content,
+      time: formatMessageTime(timestamp),
+      isSelf: item.senderRole === 'admin',
+      type: item.messageType,
+      coupon: item.coupon,
+      order: item.order,
+      avatar: item.avatar,
+      status: item.status || 'sent'
+    };
+  });
 }
 
 export function mapLoadedMessages(list) {
@@ -236,15 +260,16 @@ export function upsertChatFromIncoming({
   const incomingUpdatedAt = resolveConversationTimestamp(data?.timestamp || data?.createdAt, 0);
   let chat = chats.find((item) => normalizeChatId(item.id) === incomingChatId);
   const preview = getMessagePreview(data);
+  const displayTime = String(data?.time || '').trim() || (incomingUpdatedAt ? formatMessageTime(incomingUpdatedAt) : '');
 
   if (!chat) {
     chat = {
       id: incomingChatId,
-      name: data.sender || defaultName,
+      name: String(data.sender || '').trim() || defaultName,
       phone: data.senderId || '',
       avatar: data.avatar || null,
       lastMessage: preview,
-      time: data.time,
+      time: displayTime,
       unread: adminMessage ? 0 : 1,
       updatedAt: incomingUpdatedAt
     };
@@ -254,9 +279,9 @@ export function upsertChatFromIncoming({
     return chat;
   }
 
-  if (!adminMessage) chat.unread = (chat.unread || 0) + 1;
+  if (!adminMessage) chat.unread = normalizeUnreadCount(chat.unread) + 1;
   chat.lastMessage = preview;
-  chat.time = data.time;
+  chat.time = displayTime;
   chat.updatedAt = incomingUpdatedAt || chat.updatedAt || 0;
   if (data.avatar && data.senderRole !== 'admin') chat.avatar = data.avatar;
   const reordered = sortChats(chats);

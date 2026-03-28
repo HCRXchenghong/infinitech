@@ -77,52 +77,54 @@
 
 ### 5.1 架构与运行基线
 
-- 根目录已收口为唯一主仓。
-- 生产数据库基线已收紧为 `PostgreSQL + Redis`。
-- Go、BFF、`socket-server` 已具备基础 `/health` 与 `/ready`。
-- 只保留一个实时服务：`socket-server`。
-- OpenClaw 相关链路已从主系统中清理。
-- Go、BFF、`socket-server` 已补齐 `X-Request-ID` 透传。
-- BFF、Go、`socket-server` 已补基础请求大小限制、超时和限流。
+- 根目录已收口为唯一主仓
+- 生产数据库基线已收紧为 `PostgreSQL + Redis`
+- Go、BFF、`socket-server` 已具备基础 `/health` 与 `/ready`
+- 只保留一个实时服务：`socket-server`
+- OpenClaw 相关链路已从主系统中清理
+- Go、BFF、`socket-server` 已补齐 `X-Request-ID` 透传
+- BFF、Go、`socket-server` 已补基础请求大小限制、超时和限流
+- 仓库已补发布巡检脚本与 HTTP 并发烟测脚本
 
 ### 5.2 消息系统收口
 
-- Go 消息表持续作为权威消息事实源。
-- 用户端、App 端、商家端、骑手端、后台客服工作台持续往“服务端优先、本地只兜底”收口。
-- `socket-server` 已把多条消息同步、已读同步、会话回写继续往 Go 权威源靠拢。
-- 多端 `message_sent / message_read / all_messages_read` 已按 `chatId` 收口，减少串会话污染。
-- 多端消息时间字段、fallback ID、临时消息 ID 持续统一到稳定规则。
-- `socket-server` 旧的 `/api/messages` HTTP 桥已移除，HTTP 消息契约只认 Go `/api/messages/*`。
+- Go 消息表持续作为权威消息事实源
+- 用户端、App 端、商家端、骑手端、后台客服工作台持续往“服务端优先、本地只兜底”收口
+- `socket-server` 已把多条消息同步、已读同步、会话回写继续往 Go 权威源靠拢
+- 多端 `message_sent / message_read / all_messages_read` 已按 `chatId` 收口，减少串会话污染
+- 多端消息时间字段、fallback ID、临时消息 ID 持续统一到稳定规则
+- `socket-server` 旧的 `/api/messages` HTTP 桥已移除，HTTP 消息契约只认 Go `/api/messages/*`
+- 后台客服工作台的 `chatConsoleHelpers.js` 与 `useChatConsole.js` 已重写成干净 UTF-8，会话摘要 fallback、时间解析、上传/发券/发单提示和免打扰提示已恢复正常中文，并继续保持服务端会话优先
 
 ### 5.3 主链路去假数据
 
-- 地址簿已补成服务端能力，订单引用服务端地址。
-- 大量活跃页面中的本地假数据、假成功提示、假状态和乱码已清理。
-- 商家、用户、骑手、后台多端活跃消息链路已持续去掉多余本地双写。
-- 首页、客服、会员、公益、医药等多块运营型页面已收成可维护状态。
+- 地址簿已补成服务端能力，订单引用服务端地址
+- 大量活跃页面中的本地假数据、假成功提示、假状态和乱码已清理
+- 商家、用户、骑手、后台多端活跃消息链路已持续去掉多余本地双写
+- 首页、客服、会员、公益、医药等多块运营型页面已收成可维护状态
 
 ### 5.4 推送链路
 
-- 设备注册已接入多端启动与退出登录流程。
-- 推送记录、投递明细、统计接口、派发 worker 已具备基础能力。
-- 后台能查看消息级和收件人级投递统计与明细。
-- Go readiness 与 BFF 健康聚合已能反映 push worker 运行状态、最近成功时间、连续失败次数与队列积压。
+- 设备注册已接入多端启动与退出登录流程
+- 推送记录、投递明细、统计接口、派发 worker 已具备基础能力
+- 后台能查看消息级和收件人级投递统计与明细
+- Go readiness 与 BFF 健康聚合已能反映 push worker 运行状态、最近成功时间、连续失败次数与队列积压
 
 ### 5.5 首页推广位
 
-- 后台已具备首页推广计划与位次管理能力。
-- 已支持商户位与商品位。
-- 已支持管理员手工锁位优先、推广计划优先于普通今日推荐的规则。
+- 后台已具备首页推广计划与位次管理能力
+- 已支持商户位与商品位
+- 已支持管理员手工锁位优先、推广计划优先于普通今日推荐的规则
 
 ### 5.6 运维与发布基线
 
-- 发布巡检脚本 `scripts/release-preflight.mjs` 已落地。
-- `socket-server` 已纳入 CI smoke-check。
-- 发布前巡检可串行触发 `scripts/http-load-smoke.mjs`。
-- `admin-vue` 已做稳定的 vendor chunk 分包。
-- 后台首页已能直观看到 `socket-server` fallback 命中、历史回写次数、Redis adapter 模式与在线样本。
-- `socket-server` 上传链路已改为流式 multipart 解析，不再整包读入内存。
-- Go、BFF、`socket-server` 已补慢请求预警基线。
+- 发布巡检脚本 `scripts/release-preflight.mjs` 已落地
+- `socket-server` 已纳入 CI smoke-check
+- 发布前巡检可串行触发 `scripts/http-load-smoke.mjs`
+- `admin-vue` 已做稳定的 vendor chunk 分包
+- 后台首页已能直观看到 `socket-server` fallback 命中、历史回写次数、Redis adapter 模式与在线样本
+- `socket-server` 上传链路已改为流式 multipart 解析，不再整包读入内存
+- Go、BFF、`socket-server` 已补慢请求预警基线
 
 ## 6. 当前仍未完成的重点
 
@@ -130,29 +132,29 @@
 
 ### 6.1 消息系统尾巴
 
-- `socket-server/chat.db` 仍保留短期 fallback 角色，还没有彻底退出消息事实源链路。
-- 骑手端、后台工作台、商家端仍有少量本地辅助状态尚未完全去事实源化。
-- 会话摘要、未读汇总、fallback 行为还需要继续统一到服务端口径。
+- `socket-server/chat.db` 仍保留短期 fallback 角色，还没有彻底退出消息事实源链路
+- 骑手端、后台工作台、商家端仍有少量本地辅助状态尚未完全去事实源化
+- 会话摘要、未读汇总、fallback 行为还需要继续统一到服务端口径
 
 ### 6.2 推送闭环尾巴
 
-- 当前推送 provider 仍以 `log / webhook` 为主，距离完整生产级外部推送平台还有距离。
-- 外部供应商接入、失败重试策略细化、派发压测和更完整的运维面板仍需补齐。
+- 当前推送 provider 仍以 `log / webhook` 为主，距离完整生产级外部推送平台还有距离
+- 外部供应商接入、失败重试策略细化、派发压测和更完整的运维面板仍需补齐
 
 ### 6.3 RTC / 电话联系
 
-- `App / H5` 的站内 `1v1` 音频通话还没有完整落地到服务端信令、录音保留、投诉冻结流程。
-- 小程序仍按既定边界只走系统电话。
+- `App / H5` 的站内 `1v1` 音频通话还没有完整落地到服务端信令、录音保留、投诉冻结流程
+- 小程序仍按既定边界只走系统电话
 
 ### 6.4 首页推广位尾巴
 
-- 后台规则已具备，但前台首页编排仍需继续收口，减少本地拼装和历史兼容逻辑。
-- 城市 / 分类定向、运营面板和完整审核流仍需继续完善。
+- 后台规则已具备，但前台首页编排仍需继续收口，减少本地拼装和历史兼容逻辑
+- 城市 / 分类定向、运营面板和完整审核流仍需继续完善
 
 ### 6.5 平台治理
 
-- 压测基线、容量评估、降级策略、回滚剧本还没有全部收完。
-- 原生 Android / iOS 当前只是保留，不属于这一阶段的主整治范围。
+- 压测基线、容量评估、降级策略、回滚剧本还没有全部收完
+- 原生 Android / iOS 当前只是保留，不属于这一阶段的主整治范围
 
 ## 7. 上线前必须执行的验证
 
@@ -268,6 +270,7 @@ node scripts/http-load-smoke.mjs
 - 2026-03-29：多端消息已继续按 `chatId` 过滤 `message_sent / message_read / all_messages_read`，减少串会话污染。
 - 2026-03-29：双端消息首页和聊天页继续保持“服务端优先，本地只兜底”的上线口径。
 - 2026-03-29：后台、用户端、商家端、骑手端的消息回执和已读链路已继续按服务端权威时间与会话上下文收紧。
+- 2026-03-29：后台客服工作台 `chatConsoleHelpers.js` 与 `useChatConsole.js` 已清理活跃乱码，会话摘要 fallback、时间解析和操作提示已恢复正常中文。
 
 ## 11. 诚实状态说明
 
