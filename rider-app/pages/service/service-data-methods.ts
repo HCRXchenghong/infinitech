@@ -1,13 +1,24 @@
 import { fetchRiderOrders, request as apiRequest } from '@/shared-ui/api'
 
 export const serviceDataMethods = {
+  resolveMessageTimestamp(rawValue: any, fallback = Date.now()) {
+    const directValue = Number(rawValue)
+    if (Number.isFinite(directValue) && directValue > 0) {
+      return directValue
+    }
+
+    const text = String(rawValue || '').trim()
+    if (!text) return fallback
+
+    const parsedValue = Date.parse(text)
+    return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : fallback
+  },
+
   normalizeIncomingMessage(payload: any, isSelf: boolean) {
     const type = payload?.messageType || payload?.type || 'text'
-    const timestamp = Number.isFinite(Number(payload?.timestamp || payload?.createdAt))
-      ? Number(payload.timestamp || payload.createdAt)
-      : Date.now()
+    const timestamp = this.resolveMessageTimestamp(payload?.timestamp || payload?.createdAt, Date.now())
     return {
-      id: payload?.id || Date.now(),
+      id: payload?.id || payload?.uid || payload?.tsid || `local_${timestamp}`,
       content: payload?.content || '',
       type,
       isSelf,

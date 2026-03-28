@@ -34,13 +34,24 @@ export function normalizeOrder(order) {
   };
 }
 
+export function resolveMessageTimestamp(rawValue, fallback = Date.now()) {
+  const directValue = Number(rawValue)
+  if (Number.isFinite(directValue) && directValue > 0) {
+    return directValue
+  }
+
+  const text = String(rawValue || '').trim()
+  if (!text) return fallback
+
+  const parsedValue = Date.parse(text)
+  return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : fallback
+}
+
 export function normalizeIncomingMessage(payload, isSelf) {
   const type = payload && payload.messageType ? payload.messageType : (payload && payload.type ? payload.type : 'text');
-  const timestamp = Number.isFinite(Number(payload && (payload.timestamp || payload.createdAt)))
-    ? Number(payload.timestamp || payload.createdAt)
-    : Date.now();
+  const timestamp = resolveMessageTimestamp(payload && (payload.timestamp || payload.createdAt), Date.now());
   return {
-    id: payload && payload.id ? payload.id : Date.now(),
+    id: payload && (payload.id || payload.uid || payload.tsid) ? (payload.id || payload.uid || payload.tsid) : `local_${timestamp}`,
     content: payload ? payload.content : '',
     type,
     isSelf: !!isSelf,

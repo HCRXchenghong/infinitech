@@ -189,9 +189,7 @@ export default Vue.extend({
           senderRole: item.senderRole,
           content: item.content,
           messageType: item.messageType || 'text',
-          timestamp: Number.isFinite(Number(item?.timestamp))
-            ? Number(item.timestamp)
-            : baseTimestamp + index,
+          timestamp: this.resolveMessageTimestamp(item?.timestamp || item?.createdAt, baseTimestamp + index),
           isSelf: item.senderRole === 'rider' && senderId === String(this.riderId) ? 1 : 0,
           avatar: item.avatar || ''
         })
@@ -394,9 +392,7 @@ export default Vue.extend({
           senderRole: payload.senderRole,
           content: payload.content,
           messageType: payload.messageType || 'text',
-          timestamp: Number.isFinite(Number(payload?.timestamp || payload?.createdAt))
-            ? Number(payload.timestamp || payload.createdAt)
-            : Date.now(),
+          timestamp: this.resolveMessageTimestamp(payload?.timestamp || payload?.createdAt, Date.now()),
           isSelf: 0,
           avatar: payload.avatar || ''
         })
@@ -412,9 +408,7 @@ export default Vue.extend({
         if (data.time) {
           msg.time = data.time
         }
-        if (Number.isFinite(Number(data?.timestamp || data?.createdAt))) {
-          msg.timestamp = Number(data.timestamp || data.createdAt)
-        }
+        msg.timestamp = this.resolveMessageTimestamp(data?.timestamp || data?.createdAt, msg.timestamp || Date.now())
         msg.status = 'sent'
       }
     },

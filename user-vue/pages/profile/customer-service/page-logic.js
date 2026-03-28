@@ -3,7 +3,7 @@ import config from '@/shared-ui/config'
 import { request } from '@/shared-ui/api.js'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/shared-ui/support-runtime.js'
 import OrderDetailPopup from '@/components/OrderDetailPopup.vue'
-import { normalizeIncomingMessage as normalizeIncomingMessagePayload, normalizeOrder as normalizeOrderPayload, formatOrderNo as formatOrderNoValue, formatOrderAmount as formatOrderAmountValue, getOrderStatusText as getOrderStatusTextValue } from './chat-utils'
+import { normalizeIncomingMessage as normalizeIncomingMessagePayload, normalizeOrder as normalizeOrderPayload, formatOrderNo as formatOrderNoValue, formatOrderAmount as formatOrderAmountValue, getOrderStatusText as getOrderStatusTextValue, resolveMessageTimestamp as resolveIncomingMessageTimestamp } from './chat-utils'
 
 export default {
   components: {
@@ -206,9 +206,7 @@ export default {
           if (data.time) {
             msg.time = data.time
           }
-          if (Number.isFinite(Number(data.timestamp || data.createdAt))) {
-            msg.timestamp = Number(data.timestamp || data.createdAt)
-          }
+          msg.timestamp = resolveIncomingMessageTimestamp(data.timestamp || data.createdAt, msg.timestamp || Date.now())
           msg.status = 'sent'
         }
       })
