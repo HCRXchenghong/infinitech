@@ -211,8 +211,26 @@ export default {
             msg.createdAt = data.createdAt
           }
           msg.timestamp = resolveIncomingMessageTimestamp(data.timestamp || data.createdAt, msg.timestamp || Date.now())
-          msg.status = 'sent'
+          if (msg.status !== 'read') {
+            msg.status = 'sent'
+          }
         }
+      })
+
+      sock.on('message_read', (data) => {
+        const msg = this.messages.find((item) => item.id === data?.messageId)
+        if (msg) {
+          msg.status = 'read'
+        }
+      })
+
+      sock.on('all_messages_read', (data) => {
+        if (data?.chatId && String(data.chatId) !== String(this.chatId)) return
+        this.messages.forEach((item) => {
+          if (item.isSelf && item.status !== 'failed' && item.status !== 'read') {
+            item.status = 'read'
+          }
+        })
       })
 
       sock.on('disconnect', () => {
