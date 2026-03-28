@@ -271,6 +271,10 @@ export default Vue.extend({
         uni.$emit('socket:message_read', data)
       })
 
+      sock.on('all_messages_read', (data: any) => {
+        uni.$emit('socket:all_messages_read', data)
+      })
+
       sock.on('disconnect', () => {
         this.isConnected = false
         uni.$emit('socket:disconnected', { namespace: 'support' })

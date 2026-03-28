@@ -238,6 +238,7 @@ export default Vue.extend({
       uni.$on('socket:messages_loaded', this.onMessagesLoaded)
       uni.$on('socket:message_sent', this.onMessageSent)
       uni.$on('socket:message_read', this.onMessageRead)
+      uni.$on('socket:all_messages_read', this.onAllMessagesRead)
       uni.$on('socket:connected', this.onSocketConnected)
       uni.$on('socket:disconnected', this.onSocketDisconnected)
     },
@@ -247,6 +248,7 @@ export default Vue.extend({
       uni.$off('socket:messages_loaded', this.onMessagesLoaded)
       uni.$off('socket:message_sent', this.onMessageSent)
       uni.$off('socket:message_read', this.onMessageRead)
+      uni.$off('socket:all_messages_read', this.onAllMessagesRead)
       uni.$off('socket:connected', this.onSocketConnected)
       uni.$off('socket:disconnected', this.onSocketDisconnected)
     },
@@ -408,18 +410,19 @@ export default Vue.extend({
 
     onMessageSent(data: any) {
       const msg = this.messages.find((m: any) => m.id === data.tempId)
+      const nextStatus = msg?.status === 'read' ? 'read' : 'sent'
       if (msg) {
         msg.id = data.messageId
         if (data.time) {
           msg.time = data.time
         }
         msg.timestamp = this.resolveMessageTimestamp(data?.timestamp || data?.createdAt, msg.timestamp || Date.now())
-        msg.status = 'sent'
+        msg.status = nextStatus
       }
       void db.updateMessage(this.chatId, data.tempId, {
         id: data.messageId || data.tempId,
         timestamp: data?.timestamp || data?.createdAt,
-        status: 'sent'
+        status: nextStatus
       }).catch((err) => {
         console.error('[RiderService] 更新本地消息发送状态失败:', err)
       })
@@ -433,6 +436,26 @@ export default Vue.extend({
       }).catch((err) => {
         console.error('[RiderService] 更新本地消息已读状态失败:', err)
       })
+    },
+
+    onAllMessagesRead(data: any) {
+      if (!data || String(data.chatId) !== String(this.chatId)) return
+
+      const pendingUpdates: Promise<void>[] = []
+      this.messages.forEach((msg: any) => {
+        if (!msg?.self || msg.status === 'failed' || msg.status === 'read') return
+        msg.status = 'read'
+        const messageId = String(msg.id || '').trim()
+        if (!messageId) return
+        pendingUpdates.push(
+          db.updateMessage(this.chatId, messageId, { status: 'read' }).catch((err) => {
+            console.error('[RiderService] 批量更新本地消息已读状态失败:', err)
+          })
+        )
+      })
+
+      if (!pendingUpdates.length) return
+      void Promise.allSettled(pendingUpdates)
     },
 
     buildOutgoingSocketPayload(messageType: string, content: any, tempId: number) {

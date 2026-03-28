@@ -203,6 +203,7 @@ npm run build
 - 本轮继续把骑手客服页、双端客服页和后台客服工作台里的临时消息 ID 改成稳定生成器，进一步降低 ack 匹配和本地重试阶段因裸时间戳冲突带来的误判风险。
 - 本轮继续把会话列表 fallback ID、骑手实时消息 fallback ID、后台客服接收消息 fallback ID、双端客服接收消息 fallback ID 统一成基于会话/发送方/时间的稳定生成规则，进一步减少重连、补历史和回执对齐时的错乱风险。
 - 本轮继续把商家聊天页的 `message_read / all_messages_read` 已读回执同步进本地兜底缓存，并把发送失败状态即时回写本地缓存，减少重连后已读/失败状态回退。
+- 本轮继续把骑手客服页接上 `all_messages_read` 全量已读事件，并避免 `message_sent` 回执把已经读掉的本地消息状态降回 `sent`。
 
 ### 8.6 推送链路推进
 
@@ -323,3 +324,4 @@ npm run build
 - 2026-03-29: `socket-server` now clears local support fallback unread state only after the backend conversation-read sync succeeds or returns `404`, so local `chat.db` fallback lists stay closer to the Go unread source instead of showing stale red dots after a successful read sync.
 - 2026-03-29: the rider local SQLite fallback now stores `senderRole` and `status`, persists outbound `sending/failed/sent/read` transitions for text/image/order messages, and updates cached rows when resend/send/read acknowledgements arrive, reducing state drift after reconnects or local-history fallback.
 - 2026-03-29: the merchant chat page now persists `message_read / all_messages_read` acknowledgements into its local fallback cache and immediately writes `failed` status back to storage on send timeouts, reducing state regression after reconnects or fallback-history loads.
+- 2026-03-29: the rider support page now forwards `all_messages_read` from the global socket bridge, marks matching self messages as `read` in both page state and local SQLite fallback, and preserves `read` if a later `message_sent` ack arrives out of order.
