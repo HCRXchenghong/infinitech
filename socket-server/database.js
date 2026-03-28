@@ -34,6 +34,7 @@ db.exec(`
     coupon_data TEXT,
     order_data TEXT,
     image_url TEXT,
+    event_timestamp INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -49,11 +50,13 @@ try { db.exec('ALTER TABLE messages ADD COLUMN uid TEXT'); } catch(e) {}
 try { db.exec('ALTER TABLE messages ADD COLUMN tsid TEXT'); } catch(e) {}
 try { db.exec('ALTER TABLE messages ADD COLUMN chat_uid TEXT'); } catch(e) {}
 try { db.exec('ALTER TABLE messages ADD COLUMN sender_uid TEXT'); } catch(e) {}
+try { db.exec('ALTER TABLE messages ADD COLUMN event_timestamp INTEGER'); } catch(e) {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_status ON messages(status)'); } catch(e) {}
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_uid ON messages(uid)'); } catch(e) {}
 try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_tsid ON messages(tsid)'); } catch(e) {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_messages_chat_uid ON messages(chat_uid)'); } catch(e) {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_messages_sender_uid ON messages(sender_uid)'); } catch(e) {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_messages_chat_event_ts ON messages(chat_type, chat_id, event_timestamp DESC, id DESC)'); } catch(e) {}
 
 function nowShanghaiMinute() {
   const now = new Date();
@@ -105,16 +108,26 @@ function parseCreatedAtTimestamp(value) {
   return Number.isFinite(timestamp) ? timestamp : Date.now();
 }
 
+function resolveEventTimestamp(value, fallback = Date.now()) {
+  const directValue = Number(value);
+  if (Number.isFinite(directValue) && directValue > 0) {
+    return directValue;
+  }
+  const fallbackTimestamp = parseCreatedAtTimestamp(value);
+  return Number.isFinite(fallbackTimestamp) ? fallbackTimestamp : fallback;
+}
+
 export function saveMessage(chatType, chatId, messageData) {
   const ids = nextUnifiedIds(CHAT_BUCKET);
   const messageUid = String(messageData.uid || ids.uid);
   const messageTsid = String(messageData.tsid || ids.tsid);
   const chatUid = String(messageData.chatUid || messageData.chat_uid || chatId || '');
   const senderUid = String(messageData.senderUid || messageData.sender_uid || messageData.senderId || '');
+  const eventTimestamp = resolveEventTimestamp(messageData.timestamp ?? messageData.createdAt, Date.now());
 
   const stmt = db.prepare(`
-    INSERT INTO messages (uid, tsid, chat_type, chat_id, chat_uid, sender, sender_id, sender_uid, sender_role, content, message_type, coupon_data, order_data, image_url, avatar, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO messages (uid, tsid, chat_type, chat_id, chat_uid, sender, sender_id, sender_uid, sender_role, content, message_type, coupon_data, order_data, image_url, avatar, status, event_timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertResult = stmt.run(
@@ -133,24 +146,28 @@ export function saveMessage(chatType, chatId, messageData) {
     messageData.order ? JSON.stringify(messageData.order) : null,
     messageData.imageUrl || null,
     messageData.avatar || null,
-    messageData.status || 'sent'
+    messageData.status || 'sent',
+    eventTimestamp
   );
 
-  const insertedRow = db.prepare('SELECT created_at FROM messages WHERE id = ?').get(insertResult.lastInsertRowid);
+  const insertedRow = db.prepare('SELECT created_at, event_timestamp FROM messages WHERE id = ?').get(insertResult.lastInsertRowid);
   const createdAt = insertedRow?.created_at || '';
+  const persistedEventTimestamp = resolveEventTimestamp(insertedRow?.event_timestamp, eventTimestamp);
 
   return {
     ...insertResult,
     createdAt,
-    timestamp: parseCreatedAtTimestamp(createdAt)
+    timestamp: persistedEventTimestamp
   };
 }
 
 export function getMessages(chatType, chatId, limit = 100) {
   const stmt = db.prepare(`
-    SELECT * FROM messages
+    SELECT *,
+      COALESCE(event_timestamp, CAST(strftime('%s', created_at) AS INTEGER) * 1000) AS resolved_event_timestamp
+    FROM messages
     WHERE chat_type = ? AND chat_id = ?
-    ORDER BY created_at DESC
+    ORDER BY resolved_event_timestamp DESC, id DESC
     LIMIT ?
   `);
 
@@ -158,7 +175,7 @@ export function getMessages(chatType, chatId, limit = 100) {
 
   return rows.reverse().map(row => {
     const createdAt = row.created_at || '';
-    const timestamp = parseCreatedAtTimestamp(createdAt);
+    const timestamp = resolveEventTimestamp(row.event_timestamp ?? row.resolved_event_timestamp, parseCreatedAtTimestamp(createdAt));
     const officialIntervention = row.sender_role === 'admin' && String(row.content || '').startsWith('[官方介入]');
     return {
       id: row.uid || row.id,

@@ -127,23 +127,37 @@ function buildSupportChatList(db, getUnreadCount, userId, options = {}) {
   const defaultRole = options.defaultRole || 'user';
   const fallbackRoleFromRow = Boolean(options.fallbackRoleFromRow);
   const chats = db.prepare(`
-    SELECT m.chat_id, m.sender, m.sender_id, m.sender_role, m.content, m.message_type, m.created_at
+    SELECT
+      m.chat_id,
+      m.sender,
+      m.sender_id,
+      m.sender_role,
+      m.content,
+      m.message_type,
+      m.created_at,
+      COALESCE(m.event_timestamp, CAST(strftime('%s', m.created_at) AS INTEGER) * 1000) AS message_timestamp
     FROM messages m
-    INNER JOIN (
-      SELECT chat_id, MAX(id) as max_id
-      FROM messages
-      WHERE chat_type = 'support'
-      GROUP BY chat_id
-    ) latest ON m.id = latest.max_id
-    ORDER BY m.created_at DESC
+    WHERE m.chat_type = 'support'
+      AND m.id = (
+        SELECT m2.id
+        FROM messages m2
+        WHERE m2.chat_type = 'support' AND m2.chat_id = m.chat_id
+        ORDER BY COALESCE(m2.event_timestamp, CAST(strftime('%s', m2.created_at) AS INTEGER) * 1000) DESC, m2.id DESC
+        LIMIT 1
+      )
+    ORDER BY message_timestamp DESC, m.id DESC
   `).all();
 
   return chats.map((row) => {
     const nameRow = db.prepare(`
       SELECT sender, sender_id, sender_role, avatar FROM messages
       WHERE chat_type = 'support' AND chat_id = ? AND sender_role != 'admin'
-      ORDER BY id DESC LIMIT 1
+      ORDER BY COALESCE(event_timestamp, CAST(strftime('%s', created_at) AS INTEGER) * 1000) DESC, id DESC LIMIT 1
     `).get(row.chat_id);
+
+    const fallbackTimestamp = Number.isFinite(Number(row.message_timestamp))
+      ? Number(row.message_timestamp)
+      : Date.parse(String(row.created_at || '').replace(' ', 'T')) || Date.now();
 
     return {
       id: row.chat_id,
@@ -154,7 +168,7 @@ function buildSupportChatList(db, getUnreadCount, userId, options = {}) {
         : (fallbackRoleFromRow ? (row.sender_role || defaultRole) : defaultRole),
       avatar: nameRow ? nameRow.avatar : null,
       lastMessage: resolveSupportPreview(row.message_type, row.content),
-      time: new Date(row.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+      time: new Date(fallbackTimestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
       unread: getUnreadCount('support', row.chat_id, userId)
     };
   });
