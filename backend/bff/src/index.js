@@ -8,6 +8,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
 const { createServer } = require("http");
+const axios = require("axios");
 const os = require("os");
 require("dotenv").config();
 
@@ -37,9 +38,57 @@ const apiRateLimiter = createRedisRateLimiter({
   redisConfig: config.redis,
   logger,
   skip(req) {
-    return req.path === "/health" || req.path === "/api/health";
+    return req.path === "/health" || req.path === "/api/health" || req.path === "/ready" || req.path === "/api/ready";
   },
 });
+
+function normalizeBaseUrl(rawUrl) {
+  return String(rawUrl || "").trim().replace(/\/+$/, "");
+}
+
+async function probeGoApiReadiness() {
+  const baseUrl = normalizeBaseUrl(config.goApiUrl);
+  if (!baseUrl) {
+    return {
+      ok: false,
+      target: "",
+      httpStatus: null,
+      error: "go_api_url_missing"
+    };
+  }
+
+  const targets = [`${baseUrl}/ready`, `${baseUrl}/health`];
+  for (const target of targets) {
+    try {
+      const response = await axios.get(target, {
+        timeout: Math.min(config.http.requestTimeoutMs, 2000),
+        validateStatus: () => true
+      });
+      if (response.status >= 200 && response.status < 300) {
+        return {
+          ok: true,
+          target,
+          httpStatus: response.status,
+          error: ""
+        };
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        target,
+        httpStatus: null,
+        error: error && error.code ? String(error.code) : String(error && error.message ? error.message : "go_probe_failed")
+      };
+    }
+  }
+
+  return {
+    ok: false,
+    target: `${baseUrl}/ready`,
+    httpStatus: null,
+    error: "go_api_not_ready"
+  };
+}
 
 function resolveLanIPv4() {
   const interfaces = os.networkInterfaces() || {};
@@ -85,8 +134,29 @@ app.use(createRequestIdMiddleware());
 app.use(createRequestAuditMiddleware({ logger, parseOperatorFromAuthHeader }));
 app.use(createInviteRuntimeGuard({ logger }));
 
-app.get("/health", (req, res) => {
+app.get(["/health", "/api/health"], (req, res) => {
   res.json({ status: "ok", service: "bff", timestamp: new Date().toISOString() });
+});
+
+app.get(["/ready", "/api/ready"], async (req, res) => {
+  const goApi = await probeGoApiReadiness();
+  if (!goApi.ok) {
+    res.status(503).json({
+      status: "degraded",
+      service: "bff",
+      timestamp: new Date().toISOString(),
+      dependencies: { goApi },
+      error: "go api not ready"
+    });
+    return;
+  }
+
+  res.json({
+    status: "ready",
+    service: "bff",
+    timestamp: new Date().toISOString(),
+    dependencies: { goApi }
+  });
 });
 
 app.use("/uploads", createUploadsProxy({ goApiUrl: config.goApiUrl, logger }));

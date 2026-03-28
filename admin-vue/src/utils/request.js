@@ -36,7 +36,9 @@ function isInviteAllowedAPI(url) {
     path === '/api/upload' ||
     path.startsWith('/api/upload?') ||
     path === '/api/health' ||
-    path === '/health';
+    path === '/health' ||
+    path === '/api/ready' ||
+    path === '/ready';
 }
 
 const hasValidId = hasValidPrimaryKey;

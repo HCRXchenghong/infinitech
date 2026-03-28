@@ -8,7 +8,8 @@ const INVITE_RUNTIME_ALLOWED_API_RULES = [
   { method: "POST", pattern: /^\/api\/coupons\/link\/[^/]+\/claim$/ },
   { method: "POST", pattern: /^\/api\/upload$/ },
   { method: "GET", pattern: /^\/api\/public\/app-download-config$/ },
-  { method: "GET", pattern: /^\/api\/health$/ }
+  { method: "GET", pattern: /^\/api\/health$/ },
+  { method: "GET", pattern: /^\/api\/ready$/ }
 ];
 
 let bffLogMinute = "";

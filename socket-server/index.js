@@ -12,7 +12,12 @@ import { normalizeMessageData } from './messagePayload.js';
 import { setupSupportNamespaces } from './supportNamespaces.js';
 import { setupRiderNamespace } from './riderNamespace.js';
 import { validateSocketIdentity } from './socketIdentity.js';
-import { allowFixedWindowRateLimit, attachSocketIoRedisAdapter, initRedisState } from './redisState.js';
+import {
+  allowFixedWindowRateLimit,
+  attachSocketIoRedisAdapter,
+  getRedisHealthSnapshot,
+  initRedisState
+} from './redisState.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -278,6 +283,15 @@ function buildRequestUrl(req) {
   return new URL(req.url || '/', `http://${req.headers.host || `127.0.0.1:${PORT}`}`);
 }
 
+function writeSocketStatus(res, statusCode, status, extra = {}) {
+  writeJson(res, statusCode, {
+    status,
+    service: 'socket-server',
+    timestamp: new Date().toISOString(),
+    ...extra
+  });
+}
+
 const httpServer = createServer(async (req, res) => {
   const origin = req.headers.origin || '';
   const requestUrl = buildRequestUrl(req);
@@ -303,6 +317,27 @@ const httpServer = createServer(async (req, res) => {
   }
 
   if (!(await enforceHttpRateLimit(req, res, pathname))) {
+    return;
+  }
+
+  if ((pathname === '/health' || pathname === '/api/health') && req.method === 'GET') {
+    writeSocketStatus(res, 200, 'ok', {
+      redis: getRedisHealthSnapshot()
+    });
+    return;
+  }
+
+  if ((pathname === '/ready' || pathname === '/api/ready') && req.method === 'GET') {
+    const redis = getRedisHealthSnapshot();
+    if (redis.enabled && !redis.connected) {
+      writeSocketStatus(res, 503, 'degraded', {
+        error: 'redis not ready',
+        redis
+      });
+      return;
+    }
+
+    writeSocketStatus(res, 200, 'ready', { redis });
     return;
   }
 

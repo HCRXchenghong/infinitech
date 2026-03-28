@@ -245,6 +245,7 @@ npm run build
 - OpenClaw / SuchPeople 相关 Go 服务、Socket 命名空间、配置和脚本入口已全部移除。
 - Go API 与 BFF 已统一补上 `X-Request-ID`。
 - BFF 转发到 Go 时会带上真实客户端 IP。
+- BFF 与 `socket-server` 已补齐 `/ready` 探针：BFF 会校验 Go API 就绪状态，`socket-server` 会显式暴露 Redis 就绪状态，便于发布探活、编排与巡检。
 
 ## 9. 当前仍未完成的大项
 

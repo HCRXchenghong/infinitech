@@ -408,3 +408,21 @@ export async function getOnlinePresenceEntries(localEntries = [], limit = 50) {
     .sort((a, b) => Number(b?.connectedAt || 0) - Number(a?.connectedAt || 0))
     .slice(0, safeLimit);
 }
+
+export function getRedisHealthSnapshot() {
+  const now = Date.now();
+  const degradedUntil = redisDisabledUntil > now ? redisDisabledUntil : 0;
+  return {
+    enabled: redisEnabled,
+    host: redisConfig.host,
+    port: redisConfig.port,
+    database: redisConfig.database,
+    connected: Boolean(redisClient?.isOpen),
+    connecting: Boolean(redisConnectPromise),
+    adapterConnecting: Boolean(adapterClientsPromise),
+    degradedUntil,
+    mode: !redisEnabled
+      ? 'disabled'
+      : (redisClient?.isOpen ? 'redis' : 'local-fallback')
+  };
+}
