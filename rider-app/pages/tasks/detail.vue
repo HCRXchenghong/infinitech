@@ -2,7 +2,7 @@
   <view class="container">
     <view v-if="task" class="detail-wrapper">
       <view class="map-area" @click="navigate(task)">
-        <text class="map-placeholder">地图服务待配置，当前支持系统导航</text>
+        <text class="map-placeholder">点击使用系统导航前往目的地</text>
         <view class="map-info">
           <text class="distance">距离目的地 {{ formatTaskDistance(task) }}</text>
         </view>

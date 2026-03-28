@@ -24,7 +24,7 @@
             <text class="coverage-amount">{{ coverage.amount || '以平台投保方案为准' }}</text>
           </view>
         </view>
-        <text v-else class="empty-inline">当前未配置保障项目，请联系平台管理员完善承保方案。</text>
+        <text v-else class="empty-inline">当前保障项目以平台发布方案为准，如有疑问请联系平台管理员。</text>
       </view>
 
       <view class="policy-card">
@@ -64,7 +64,7 @@
             <text class="step-text">{{ step }}</text>
           </view>
         </view>
-        <text v-else class="empty-inline">当前未配置理赔步骤，请联系平台管理员完善保障信息。</text>
+        <text v-else class="empty-inline">当前理赔流程以平台发布说明为准，如有疑问请联系平台管理员。</text>
       </view>
 
       <view class="actions">
@@ -83,8 +83,8 @@ declare const uni: any
 declare const plus: any
 
 const DEFAULT_INSURANCE_SETTINGS = {
-  statusTitle: '骑手保障信息待配置',
-  statusDesc: '请联系平台管理员完善承保信息与理赔入口',
+  statusTitle: '骑手保障信息',
+  statusDesc: '保障内容、承保信息和理赔入口以平台发布为准',
   policyNumber: '',
   provider: '',
   effectiveDate: '',
@@ -174,7 +174,7 @@ export default Vue.extend({
       }
     },
     displayValue(value: string) {
-      return String(value || '').trim() || '未配置'
+      return String(value || '').trim() || '以平台发布为准'
     },
     openExternalLink(url: string, emptyMessage: string) {
       const link = String(url || '').trim()
@@ -203,10 +203,10 @@ export default Vue.extend({
       })
     },
     openClaim() {
-      this.openExternalLink(this.settings.claimUrl, '理赔入口暂未配置')
+      this.openExternalLink(this.settings.claimUrl, '理赔入口暂未开放')
     },
     openDetail() {
-      this.openExternalLink(this.settings.detailUrl, '保单详情暂未配置')
+      this.openExternalLink(this.settings.detailUrl, '保障详情暂未发布')
     }
   }
 })
