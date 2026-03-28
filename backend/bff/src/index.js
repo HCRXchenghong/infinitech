@@ -70,6 +70,12 @@ function buildGoProbeDetail(body) {
     if (pushWorker.running !== undefined) {
       details.push(`pushRunning=${pushWorker.running === true}`);
     }
+    if (pushWorker.lastSuccessAt) {
+      details.push(`pushLastSuccessAt=${pushWorker.lastSuccessAt}`);
+    }
+    if (pushWorker.consecutiveFailures !== undefined) {
+      details.push(`pushConsecutiveFailures=${pushWorker.consecutiveFailures}`);
+    }
     if (pushWorker.lastError) {
       details.push(`pushError=${pushWorker.lastError}`);
     }

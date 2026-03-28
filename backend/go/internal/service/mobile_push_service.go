@@ -25,8 +25,10 @@ type MobilePushService struct {
 	statusMu           sync.RWMutex
 	workerRunning      bool
 	lastCycleAt        time.Time
+	lastSuccessAt      time.Time
 	lastCycleStatus    string
 	lastProcessedCount int
+	consecutiveFailure int
 	lastError          string
 }
 
@@ -39,6 +41,8 @@ type MobilePushWorkerStatus struct {
 	LastCycleStatus     string                  `json:"lastCycleStatus"`
 	LastProcessedCount  int                     `json:"lastProcessedCount"`
 	LastCycleAt         string                  `json:"lastCycleAt,omitempty"`
+	LastSuccessAt       string                  `json:"lastSuccessAt,omitempty"`
+	ConsecutiveFailures int                     `json:"consecutiveFailures"`
 	LastError           string                  `json:"lastError,omitempty"`
 	Queue               MobilePushQueueSnapshot `json:"queue"`
 }
@@ -128,12 +132,18 @@ func (s *MobilePushService) recordDispatchCycle(status string, processed int, er
 	}
 	s.statusMu.Lock()
 	defer s.statusMu.Unlock()
-	s.lastCycleAt = time.Now()
+	cycleAt := time.Now()
+	s.lastCycleAt = cycleAt
 	s.lastCycleStatus = strings.TrimSpace(status)
 	s.lastProcessedCount = processed
 	if err != nil {
+		s.consecutiveFailure++
 		s.lastError = strings.TrimSpace(err.Error())
 	} else {
+		if strings.EqualFold(strings.TrimSpace(status), "ok") {
+			s.lastSuccessAt = cycleAt
+		}
+		s.consecutiveFailure = 0
 		s.lastError = ""
 	}
 }
@@ -202,8 +212,10 @@ func (s *MobilePushService) WorkerStatusSnapshot(ctx context.Context) MobilePush
 	s.statusMu.RLock()
 	running := s.workerRunning
 	lastCycleAt := s.lastCycleAt
+	lastSuccessAt := s.lastSuccessAt
 	lastCycleStatus := strings.TrimSpace(s.lastCycleStatus)
 	lastProcessedCount := s.lastProcessedCount
+	consecutiveFailure := s.consecutiveFailure
 	lastError := s.lastError
 	s.statusMu.RUnlock()
 
@@ -227,10 +239,14 @@ func (s *MobilePushService) WorkerStatusSnapshot(ctx context.Context) MobilePush
 		BatchSize:           s.dispatchBatchSize,
 		LastCycleStatus:     lastCycleStatus,
 		LastProcessedCount:  lastProcessedCount,
+		ConsecutiveFailures: consecutiveFailure,
 		LastError:           strings.TrimSpace(lastError),
 	}
 	if !lastCycleAt.IsZero() {
 		snapshot.LastCycleAt = lastCycleAt.Format(time.RFC3339)
+	}
+	if !lastSuccessAt.IsZero() {
+		snapshot.LastSuccessAt = lastSuccessAt.Format(time.RFC3339)
 	}
 	snapshot.Queue = s.QueueSnapshot(ctx)
 	return snapshot

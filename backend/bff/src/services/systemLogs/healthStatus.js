@@ -177,6 +177,8 @@ function buildProbeDetail(result) {
       worker.running !== undefined ? `pushRunning=${worker.running === true}` : "",
       worker.provider ? `pushProvider=${worker.provider}` : "",
       worker.lastCycleStatus ? `pushCycle=${worker.lastCycleStatus}` : "",
+      worker.lastSuccessAt ? `pushLastSuccessAt=${worker.lastSuccessAt}` : "",
+      worker.consecutiveFailures !== undefined ? `pushConsecutiveFailures=${worker.consecutiveFailures}` : "",
       worker.lastProcessedCount !== undefined ? `pushProcessed=${worker.lastProcessedCount}` : "",
       worker.lastError ? `pushError=${worker.lastError}` : "",
       queue.total !== undefined ? `pushQueue=${queue.total}` : "",

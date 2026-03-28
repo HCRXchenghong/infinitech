@@ -367,11 +367,15 @@ const pushWorkerSummary = computed(() => {
   const running = extractHealthDetail(detail, 'pushRunning');
   const queue = extractHealthDetail(detail, 'pushQueue');
   const failed = extractHealthDetail(detail, 'pushFailed');
+  const consecutiveFailures = extractHealthDetail(detail, 'pushConsecutiveFailures');
+  const lastSuccessAt = extractHealthDetail(detail, 'pushLastSuccessAt');
   const segments = [
     running ? `worker ${running === 'true' ? 'running' : 'stopped'}` : '',
     cycle ? `cycle ${cycle}` : '',
     queue ? `queue ${queue}` : '',
-    failed ? `failed ${failed}` : ''
+    failed ? `failed ${failed}` : '',
+    consecutiveFailures ? `consecutive ${consecutiveFailures}` : '',
+    lastSuccessAt ? `last success ${formatUpdateTime(lastSuccessAt)}` : ''
   ].filter(Boolean);
   return segments.join(' · ') || 'push 状态未暴露';
 });
