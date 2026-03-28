@@ -512,7 +512,9 @@ export function useChatConsole(options = {}) {
       scheduleRefreshChats();
     });
 
-    socket.on('all_messages_read', () => {
+    socket.on('all_messages_read', (data) => {
+      const selectedId = normalizeChatId(selectedChat.value?.id);
+      if (data?.chatId && normalizeChatId(data.chatId) !== selectedId) return;
       messages.value.forEach((msg) => {
         if (msg.isSelf && msg.status !== 'failed' && msg.status !== 'read') {
           msg.status = 'read';

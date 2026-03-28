@@ -420,7 +420,8 @@ function connectSocket(token: string) {
     updateLocalMessageStatus(payload?.messageId, 'read')
   })
 
-  sock.on('all_messages_read', () => {
+  sock.on('all_messages_read', (payload: any) => {
+    if (payload?.chatId && String(payload.chatId) !== String(chatId.value)) return
     let changed = false
     messages.value.forEach((item) => {
       if (item.self && item.status !== 'failed' && item.status !== 'read') {
