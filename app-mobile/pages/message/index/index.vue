@@ -47,7 +47,7 @@
             </view>
           </view>
           <view v-if="notificationUnread > 0" class="unread-badge">
-            <text>{{ notificationUnread > 99 ? '99+' : notificationUnread }}</text>
+            <text>{{ notificationUnread > 99 ? "99+" : notificationUnread }}</text>
           </view>
         </view>
       </view>
@@ -79,7 +79,7 @@
             </view>
           </view>
           <view v-if="item.unread > 0" class="unread-badge">
-            <text>{{ item.unread > 99 ? '99+' : item.unread }}</text>
+            <text>{{ item.unread > 99 ? "99+" : item.unread }}</text>
           </view>
         </view>
       </view>
@@ -92,7 +92,7 @@
           <image src="/static/icons/empty-message.svg" mode="aspectFit" class="empty-icon-img" />
         </view>
         <text class="empty-text">暂无消息</text>
-        <text class="empty-hint">你的消息会显示在这里</text>
+        <text class="empty-hint">你的会话会显示在这里</text>
       </view>
 
       <view
@@ -438,11 +438,10 @@ export default {
 
       await Promise.all([this.loadSessions(), this.loadNotificationSummary()])
       const hasSuccess = results.some((item) => item.status === 'fulfilled')
-      const toastTitle = hasSuccess
-        ? '\u5df2\u6e05\u9664\u672a\u8bfb'
-        : '\u6e05\u9664\u672a\u8bfb\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5'
       uni.showToast({
-        title: toastTitle,
+        title: hasSuccess
+          ? '\u5df2\u6e05\u9664\u672a\u8bfb'
+          : '\u6e05\u9664\u672a\u8bfb\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5',
         icon: 'none'
       })
     },
