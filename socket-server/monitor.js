@@ -3,6 +3,7 @@ import { db } from './database.js';
 import { logger } from './logger.js';
 import {
   getOnlinePresenceCount,
+  getOnlinePresenceEntries,
   refreshOnlinePresence,
   removeOnlinePresence,
   upsertOnlinePresence
@@ -63,8 +64,12 @@ export function removeOnlineUser(socketId) {
   void removeOnlinePresence(socketId);
 }
 
-export function getOnlineUsers() {
-  return Array.from(onlineUsers.values());
+function buildLocalPresenceEntries() {
+  return Array.from(onlineUsers.entries()).map(([socketId, record]) => buildPresencePayload(socketId, record));
+}
+
+export async function getOnlineUsers(limit = 50) {
+  return getOnlinePresenceEntries(buildLocalPresenceEntries(), limit);
 }
 
 export async function getOnlineCount() {
@@ -72,7 +77,7 @@ export async function getOnlineCount() {
 }
 
 const refreshTimer = setInterval(() => {
-  const entries = Array.from(onlineUsers.entries()).map(([socketId, record]) => buildPresencePayload(socketId, record));
+  const entries = buildLocalPresenceEntries();
   void refreshOnlinePresence(entries).catch((err) => {
     logger.warn('socket-server online presence refresh failed:', err?.message || err);
   });

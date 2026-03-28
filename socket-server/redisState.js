@@ -369,7 +369,42 @@ export async function getOnlinePresenceCount(localCount = 0) {
   const client = await ensureRedisClient();
   if (!client) return Number(localCount || 0);
 
+  await cleanupExpiredOnlinePresence(client);
+  return client.zCard('socket:online:index');
+}
+
+async function cleanupExpiredOnlinePresence(client) {
   const now = Date.now();
   await client.zRemRangeByScore('socket:online:index', '-inf', now);
-  return client.zCard('socket:online:index');
+}
+
+export async function getOnlinePresenceEntries(localEntries = [], limit = 50) {
+  const safeLimit = Math.max(1, Math.min(200, Number(limit || 50)));
+  const client = await ensureRedisClient();
+  if (!client) {
+    return (Array.isArray(localEntries) ? localEntries : [])
+      .slice()
+      .sort((a, b) => Number(b?.connectedAt || 0) - Number(a?.connectedAt || 0))
+      .slice(0, safeLimit);
+  }
+
+  await cleanupExpiredOnlinePresence(client);
+  const socketIds = await client.zRange('socket:online:index', 0, safeLimit - 1);
+  if (!Array.isArray(socketIds) || socketIds.length === 0) {
+    return [];
+  }
+
+  const payloads = await client.mGet(socketIds.map((socketId) => `socket:online:${socketId}`));
+  return payloads
+    .map((payload) => {
+      if (!payload) return null;
+      try {
+        return JSON.parse(payload);
+      } catch (_err) {
+        return null;
+      }
+    })
+    .filter((item) => item && item.socketId)
+    .sort((a, b) => Number(b?.connectedAt || 0) - Number(a?.connectedAt || 0))
+    .slice(0, safeLimit);
 }

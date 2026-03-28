@@ -2,7 +2,7 @@ import { Server } from 'socket.io';
 import { createServer } from 'http';
 import { db, saveMessage, getMessages, clearMessages, markAsRead, markAllRead, getUnreadCount } from './database.js';
 import { authMiddleware, generateToken } from './auth.js';
-import { getServerStats, addOnlineUser, removeOnlineUser, getOnlineCount } from './monitor.js';
+import { getServerStats, addOnlineUser, removeOnlineUser, getOnlineCount, getOnlineUsers } from './monitor.js';
 import { writeFileSync, mkdirSync, existsSync, createReadStream } from 'fs';
 import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
@@ -348,6 +348,7 @@ const httpServer = createServer(async (req, res) => {
   if (pathname === '/api/stats' && req.method === 'GET') {
     const stats = getServerStats();
     stats.onlineUsers = await getOnlineCount();
+    stats.onlinePresenceSample = await getOnlineUsers(20);
     writeJson(res, 200, stats);
     return;
   }
