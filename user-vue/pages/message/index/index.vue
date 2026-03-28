@@ -403,13 +403,17 @@ export default {
     },
 
     async clearUnread() {
-      await Promise.allSettled([
+      const results = await Promise.allSettled([
         markAllConversationsRead(),
         markAllNotificationsRead()
       ])
 
       await Promise.all([this.loadSessions(), this.loadNotificationSummary()])
-      uni.showToast({ title: '已清除未读', icon: 'none' })
+      const hasSuccess = results.some((item) => item.status === 'fulfilled')
+      uni.showToast({
+        title: hasSuccess ? '已清除未读' : '清除未读失败，请稍后重试',
+        icon: 'none'
+      })
     },
 
     goSettings() {
