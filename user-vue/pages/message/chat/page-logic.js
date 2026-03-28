@@ -616,7 +616,31 @@ export default {
             msg.timestamp || Date.now()
           )
           msg.time = data.time || formatClockByTimestamp(msg.timestamp)
-          msg.status = 'success'
+          if (msg.status !== 'read') {
+            msg.status = 'success'
+          }
+          this.persistLocalMessages()
+        }
+      })
+
+      sock.on('message_read', (data) => {
+        const msg = this.messages.find((item) => item.mid === data?.messageId)
+        if (msg && msg.status !== 'read') {
+          msg.status = 'read'
+          this.persistLocalMessages()
+        }
+      })
+
+      sock.on('all_messages_read', (data) => {
+        if (data?.chatId && String(data.chatId) !== String(this.roomId)) return
+        let changed = false
+        this.messages.forEach((item) => {
+          if (item.from === 'me' && item.status !== 'failed' && item.status !== 'read') {
+            item.status = 'read'
+            changed = true
+          }
+        })
+        if (changed) {
           this.persistLocalMessages()
         }
       })
