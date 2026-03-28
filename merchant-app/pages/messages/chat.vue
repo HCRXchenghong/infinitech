@@ -124,6 +124,15 @@ function resolveMessageTimestamp(rawValue: any, fallback = Date.now()) {
   return Number.isFinite(value) && value > 0 ? value : fallback
 }
 
+function formatClockByTimestamp(timestamp: number) {
+  const safeTimestamp = resolveMessageTimestamp(timestamp, 0)
+  if (!safeTimestamp) return nowClock()
+  const d = new Date(safeTimestamp)
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${hh}:${mm}`
+}
+
 function normalizeRole(raw: any): ChatRole {
   const role = String(raw || '').toLowerCase()
   if (role === 'rider') return 'rider'
@@ -177,10 +186,14 @@ function restoreLocalMessages() {
     const raw = uni.getStorageSync(localMessageKey())
     const list = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : []
     if (Array.isArray(list)) {
-      messages.value = list.map((item: any, index: number) => ({
-        ...item,
-        timestamp: resolveMessageTimestamp(item?.timestamp || item?.createdAt, Date.now() + index)
-      }))
+      messages.value = list.map((item: any, index: number) => {
+        const timestamp = resolveMessageTimestamp(item?.timestamp || item?.createdAt, Date.now() + index)
+        return {
+          ...item,
+          timestamp,
+          time: String(item?.time || formatClockByTimestamp(timestamp))
+        }
+      })
       scrollToBottom()
       return messages.value.length > 0
     }
@@ -213,7 +226,7 @@ function toViewMessage(raw: any): ViewMessage {
     text: String(raw?.content || ''),
     type: String(raw?.messageType || 'text'),
     timestamp,
-    time: String(raw?.time || nowClock()),
+    time: String(raw?.time || formatClockByTimestamp(timestamp)),
     status: 'sent',
     officialIntervention: !!raw?.officialIntervention,
     interventionLabel: String(raw?.interventionLabel || '官方介入')
@@ -362,9 +375,9 @@ function connectSocket(token: string) {
       payload?.timestamp || payload?.createdAt,
       messages.value[index].timestamp || Date.now()
     )
-    if (payload?.time) {
-      messages.value[index].time = String(payload.time)
-    }
+    messages.value[index].time = String(
+      payload?.time || formatClockByTimestamp(messages.value[index].timestamp)
+    )
     messages.value[index].status = 'sent'
     persistLocalMessages()
   })
