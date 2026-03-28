@@ -1,3 +1,12 @@
+import {
+  DEFAULT_CONCURRENCY,
+  DEFAULT_MAX_ERROR_RATE,
+  DEFAULT_REQUESTS_PER_TARGET,
+  DEFAULT_TIMEOUT_MS as DEFAULT_LOAD_TIMEOUT_MS,
+  createDefaultTargets,
+  runLoadSmoke
+} from './http-load-smoke.mjs';
+
 const DEFAULT_TIMEOUT_MS = 5000;
 const DEFAULT_MAX_FALLBACK_MESSAGES = 5000;
 const DEFAULT_MAX_PUSH_QUEUE = 5000;
@@ -18,6 +27,11 @@ function parseBooleanEnv(value, fallback = false) {
 
 function parseIntegerEnv(value, fallback) {
   const parsed = Number.parseInt(String(value || '').trim(), 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseFloatEnv(value, fallback) {
+  const parsed = Number.parseFloat(String(value || '').trim());
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
@@ -267,6 +281,15 @@ async function main() {
   );
   const requiredSocketRedisMode = String(process.env.PREFLIGHT_REQUIRE_SOCKET_REDIS_MODE || 'redis').trim();
   const allowDegradedSystemHealth = parseBooleanEnv(process.env.PREFLIGHT_ALLOW_DEGRADED_SYSTEM_HEALTH, false);
+  const runHttpLoadSmoke = parseBooleanEnv(process.env.PREFLIGHT_RUN_HTTP_LOAD_SMOKE, false);
+  const loadConcurrency = parseIntegerEnv(process.env.LOAD_CONCURRENCY, DEFAULT_CONCURRENCY);
+  const loadRequestsPerTarget = parseIntegerEnv(
+    process.env.LOAD_REQUESTS_PER_TARGET,
+    DEFAULT_REQUESTS_PER_TARGET
+  );
+  const loadTimeoutMs = parseIntegerEnv(process.env.LOAD_TIMEOUT_MS, DEFAULT_LOAD_TIMEOUT_MS);
+  const loadMaxErrorRate = parseFloatEnv(process.env.LOAD_MAX_ERROR_RATE, DEFAULT_MAX_ERROR_RATE);
+  const loadMaxP95Ms = parseIntegerEnv(process.env.LOAD_MAX_P95_MS, 0);
 
   const probes = [
     {
@@ -314,6 +337,14 @@ async function main() {
     + `maxRecentSocketFallback=${formatDurationMs(maxRecentSocketFallbackMs)} `
     + `allowDegradedSystemHealth=${allowDegradedSystemHealth}`
   );
+  if (runHttpLoadSmoke) {
+    console.log(
+      `HTTP smoke: enabled concurrency=${loadConcurrency} requestsPerTarget=${loadRequestsPerTarget} `
+      + `timeoutMs=${loadTimeoutMs} maxErrorRate=${loadMaxErrorRate} maxP95Ms=${loadMaxP95Ms || 'disabled'}`
+    );
+  } else {
+    console.log('HTTP smoke: skipped (set PREFLIGHT_RUN_HTTP_LOAD_SMOKE=true to enable)');
+  }
   if (!adminToken) {
     console.log('Admin system health probe skipped: ADMIN_TOKEN not provided');
   }
@@ -338,6 +369,27 @@ async function main() {
     console.error('Release preflight failed.');
     process.exitCode = 1;
     return;
+  }
+
+  if (runHttpLoadSmoke) {
+    const smokeResult = await runLoadSmoke({
+      targets: createDefaultTargets({
+        bffBaseUrl,
+        goBaseUrl,
+        socketBaseUrl
+      }),
+      concurrency: loadConcurrency,
+      requestsPerTarget: loadRequestsPerTarget,
+      timeoutMs: loadTimeoutMs,
+      maxErrorRate: loadMaxErrorRate,
+      maxP95Ms: loadMaxP95Ms,
+      logger: console
+    });
+    if (!smokeResult.ok) {
+      console.error('Release preflight failed: HTTP load smoke did not pass.');
+      process.exitCode = 1;
+      return;
+    }
   }
 
   console.log('Release preflight passed.');

@@ -390,14 +390,23 @@ export default {
     },
 
     async openChat(item) {
+      let readSynced = false
       try {
         await markConversationRead(item.roomId || item.id)
-        this.sessions = this.sessions.map((session) =>
-          session.id === item.id ? { ...session, unread: 0 } : session
-        )
-        this.saveSessions()
+        readSynced = true
       } catch (err) {
         console.error('同步会话已读失败:', err)
+      }
+
+      if (readSynced) {
+        try {
+          await this.loadSessions()
+        } catch (_error) {
+          this.sessions = this.sessions.map((session) =>
+            session.id === item.id ? { ...session, unread: 0 } : session
+          )
+          this.saveSessions()
+        }
       }
 
       const chatType = this.normalizeRole(item.role) === 'cs' ? 'support' : 'direct'

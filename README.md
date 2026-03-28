@@ -115,6 +115,7 @@
 - Go、BFF、`socket-server` 已统一补入 `X-Request-ID` 透传能力。
 - 发布前巡检脚本 `scripts/release-preflight.mjs` 已落地。
 - `socket-server` 已纳入 CI smoke-check。
+- 发布前巡检现在可选串行触发 `scripts/http-load-smoke.mjs`，不再只盯 readiness。
 - `admin-vue` 已做显式 vendor chunk 拆分，主包集中度明显下降。
 - 后台首页现在能直接看到 `socket-server` fallback 命中、历史回写次数和最近回退时间。
 - `socket-server` 上传入口已改成流式 multipart 解析，不再把整包文件一次性读入内存。
@@ -194,6 +195,7 @@ node scripts/release-preflight.mjs
 - 可选认证态 `BFF /api/system-health`
 - socket fallback buffer 是否异常膨胀
 - push worker 是否运行、是否最近失败、是否积压过大
+- 可选触发 HTTP 并发烟测，并把 error rate / p95 阈值纳入发布阻断
 
 ### 7.3 并发基线烟测
 
@@ -213,6 +215,15 @@ node scripts/http-load-smoke.mjs
 - `LOAD_MAX_P95_MS`
 
 这个脚本当前用于快速打基线，不等同于完整生产压测，但能在发布前尽快暴露 readiness、stats 和基础入口的吞吐或延迟异常。
+
+如需把并发烟测直接并入发布巡检，可额外设置：
+
+- `PREFLIGHT_RUN_HTTP_LOAD_SMOKE=true`
+- `LOAD_CONCURRENCY`
+- `LOAD_REQUESTS_PER_TARGET`
+- `LOAD_TIMEOUT_MS`
+- `LOAD_MAX_ERROR_RATE`
+- `LOAD_MAX_P95_MS`
 
 ## 8. 当前运行规则
 
@@ -253,6 +264,8 @@ node scripts/http-load-smoke.mjs
 - 2026-03-29：`socket-server/chat.db` 已继续收紧为短期 emergency buffer，加入启动裁剪、按会话上限裁剪、按时间淘汰和 fallback 统计暴露。
 - 2026-03-29：BFF、Go、`socket-server` 已继续补齐 request id 透传、健康聚合和运维面板信息。
 - 2026-03-29：新增 `scripts/http-load-smoke.mjs`，用于发布前快速做 readiness / stats 并发烟测。
+- 2026-03-29：`scripts/release-preflight.mjs` 现在可选串行触发 `scripts/http-load-smoke.mjs`，把 readiness 巡检和并发烟测收进同一条发布门禁。
+- 2026-03-29：双端消息首页打开会话时，已读成功后会优先回拉服务端会话列表，再回退本地清零，继续压缩本地未读事实源。
 - 2026-03-29：Go、BFF、`socket-server` 已开始输出慢请求预警，方便在千人级流量上更早发现超时和退化。
 
 ## 11. 诚实状态说明

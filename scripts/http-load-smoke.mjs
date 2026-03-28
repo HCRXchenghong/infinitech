@@ -1,7 +1,7 @@
-const DEFAULT_TIMEOUT_MS = 5000;
-const DEFAULT_CONCURRENCY = 16;
-const DEFAULT_REQUESTS_PER_TARGET = 120;
-const DEFAULT_MAX_ERROR_RATE = 0.02;
+export const DEFAULT_TIMEOUT_MS = 5000;
+export const DEFAULT_CONCURRENCY = 16;
+export const DEFAULT_REQUESTS_PER_TARGET = 120;
+export const DEFAULT_MAX_ERROR_RATE = 0.02;
 
 function normalizeBaseUrl(value, fallback) {
   const text = String(value || fallback || '').trim().replace(/\/+$/, '');
@@ -102,36 +102,42 @@ function summarize(target, results) {
   };
 }
 
-async function main() {
-  const bffBaseUrl = normalizeBaseUrl(process.env.BFF_BASE_URL, 'http://127.0.0.1:25500');
-  const goBaseUrl = normalizeBaseUrl(process.env.GO_API_URL, 'http://127.0.0.1:1029');
-  const socketBaseUrl = normalizeBaseUrl(process.env.SOCKET_SERVER_URL, 'http://127.0.0.1:9898');
-  const concurrency = toPositiveInt(process.env.LOAD_CONCURRENCY, DEFAULT_CONCURRENCY);
-  const requestsPerTarget = toPositiveInt(process.env.LOAD_REQUESTS_PER_TARGET, DEFAULT_REQUESTS_PER_TARGET);
-  const timeoutMs = toPositiveInt(process.env.LOAD_TIMEOUT_MS, DEFAULT_TIMEOUT_MS);
-  const maxErrorRate = toPositiveFloat(process.env.LOAD_MAX_ERROR_RATE, DEFAULT_MAX_ERROR_RATE);
-  const maxP95Ms = toPositiveInt(process.env.LOAD_MAX_P95_MS, 0);
-
-  const targets = [
-    { name: 'bff_ready', url: `${bffBaseUrl}/ready` },
-    { name: 'go_ready', url: `${goBaseUrl}/ready` },
-    { name: 'socket_ready', url: `${socketBaseUrl}/ready` },
-    { name: 'socket_stats', url: `${socketBaseUrl}/api/stats` }
+export function createDefaultTargets({
+  bffBaseUrl = 'http://127.0.0.1:25500',
+  goBaseUrl = 'http://127.0.0.1:1029',
+  socketBaseUrl = 'http://127.0.0.1:9898'
+} = {}) {
+  return [
+    { name: 'bff_ready', url: `${normalizeBaseUrl(bffBaseUrl, 'http://127.0.0.1:25500')}/ready` },
+    { name: 'go_ready', url: `${normalizeBaseUrl(goBaseUrl, 'http://127.0.0.1:1029')}/ready` },
+    { name: 'socket_ready', url: `${normalizeBaseUrl(socketBaseUrl, 'http://127.0.0.1:9898')}/ready` },
+    { name: 'socket_stats', url: `${normalizeBaseUrl(socketBaseUrl, 'http://127.0.0.1:9898')}/api/stats` }
   ];
+}
 
-  console.log(`Starting HTTP load smoke: concurrency=${concurrency} requestsPerTarget=${requestsPerTarget} timeoutMs=${timeoutMs}`);
-
+export async function runLoadSmoke({
+  targets = createDefaultTargets(),
+  concurrency = DEFAULT_CONCURRENCY,
+  requestsPerTarget = DEFAULT_REQUESTS_PER_TARGET,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+  maxErrorRate = DEFAULT_MAX_ERROR_RATE,
+  maxP95Ms = 0,
+  logger = console
+} = {}) {
+  logger.log(
+    `Starting HTTP load smoke: concurrency=${concurrency} requestsPerTarget=${requestsPerTarget} timeoutMs=${timeoutMs}`
+  );
   const summaries = [];
   for (const target of targets) {
-    console.log(`Running target ${target.name} -> ${target.url}`);
+    logger.log(`Running target ${target.name} -> ${target.url}`);
     const results = await runTarget(target, concurrency, requestsPerTarget, timeoutMs);
     const summary = summarize(target, results);
     summaries.push(summary);
-    console.log(
+    logger.log(
       `${summary.name}: total=${summary.total} success=${summary.success} errors=${summary.errors} errorRate=${summary.errorRate.toFixed(4)} p50=${summary.p50}ms p95=${summary.p95}ms p99=${summary.p99}ms max=${summary.max}ms`
     );
     if (summary.errorSamples.length) {
-      console.log(`  errorSamples=${summary.errorSamples.join(', ')}`);
+      logger.log(`  errorSamples=${summary.errorSamples.join(', ')}`);
     }
   }
 
@@ -146,15 +152,44 @@ async function main() {
   }
 
   if (failures.length) {
-    console.error('HTTP load smoke failed:');
+    logger.error('HTTP load smoke failed:');
     for (const failure of failures) {
-      console.error(`- ${failure}`);
+      logger.error(`- ${failure}`);
     }
-    process.exitCode = 1;
-    return;
+    return {
+      ok: false,
+      summaries,
+      failures
+    };
   }
 
-  console.log('HTTP load smoke passed.');
+  logger.log('HTTP load smoke passed.');
+  return {
+    ok: true,
+    summaries,
+    failures: []
+  };
+}
+
+function readCliOptions() {
+  const bffBaseUrl = normalizeBaseUrl(process.env.BFF_BASE_URL, 'http://127.0.0.1:25500');
+  const goBaseUrl = normalizeBaseUrl(process.env.GO_API_URL, 'http://127.0.0.1:1029');
+  const socketBaseUrl = normalizeBaseUrl(process.env.SOCKET_SERVER_URL, 'http://127.0.0.1:9898');
+  return {
+    targets: createDefaultTargets({ bffBaseUrl, goBaseUrl, socketBaseUrl }),
+    concurrency: toPositiveInt(process.env.LOAD_CONCURRENCY, DEFAULT_CONCURRENCY),
+    requestsPerTarget: toPositiveInt(process.env.LOAD_REQUESTS_PER_TARGET, DEFAULT_REQUESTS_PER_TARGET),
+    timeoutMs: toPositiveInt(process.env.LOAD_TIMEOUT_MS, DEFAULT_TIMEOUT_MS),
+    maxErrorRate: toPositiveFloat(process.env.LOAD_MAX_ERROR_RATE, DEFAULT_MAX_ERROR_RATE),
+    maxP95Ms: toPositiveInt(process.env.LOAD_MAX_P95_MS, 0)
+  };
+}
+
+async function main() {
+  const result = await runLoadSmoke(readCliOptions());
+  if (!result.ok) {
+    process.exitCode = 1;
+  }
 }
 
 main().catch((error) => {
