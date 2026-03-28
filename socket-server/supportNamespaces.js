@@ -271,6 +271,26 @@ async function fetchMessagesFromBackend(socket, chatId, fallbackMessages = []) {
   return fallbackMessages;
 }
 
+function refreshFallbackHistory(replaceMessages, chatId, messages) {
+  if (typeof replaceMessages !== 'function') {
+    return;
+  }
+
+  const normalizedChatId = normalizeChatId(chatId);
+  if (!normalizedChatId || !Array.isArray(messages)) {
+    return;
+  }
+
+  try {
+    replaceMessages('support', normalizedChatId, messages.map((message) => ({
+      ...message,
+      chatId: normalizedChatId
+    })));
+  } catch (err) {
+    logger.warn(`客服历史回写本地兜底库失败 chatId=${normalizedChatId}:`, err?.message || err);
+  }
+}
+
 function createSupportMessageHandler({ saveMessage, supportNamespace, monitorNamespace }) {
   return async function handleSendMessage(data, socket, chatType = 'support') {
     try {
@@ -354,6 +374,7 @@ export function setupSupportNamespaces({
   getMessages,
   saveMessage,
   clearMessages,
+  replaceMessages,
   markAsRead,
   markAllRead,
   getUnreadCount
@@ -409,6 +430,9 @@ export function setupSupportNamespaces({
       }
       const fallbackMessages = getMessages('support', chatId);
       const messages = await fetchMessagesFromBackend(socket, chatId, fallbackMessages);
+      if (messages !== fallbackMessages) {
+        refreshFallbackHistory(replaceMessages, chatId, messages);
+      }
       socket.emit('messages_loaded', { chatId, messages });
       await markConversationReadOnBackend(socket, chatId);
     });
@@ -506,6 +530,9 @@ export function setupSupportNamespaces({
 
       const fallbackMessages = getMessages('support', access.chatId);
       const messages = await fetchMessagesFromBackend(socket, access.chatId, fallbackMessages);
+      if (messages !== fallbackMessages) {
+        refreshFallbackHistory(replaceMessages, access.chatId, messages);
+      }
       socket.emit('messages_loaded', { chatId: access.chatId, messages });
       await markConversationReadOnBackend(socket, access.chatId);
     });
