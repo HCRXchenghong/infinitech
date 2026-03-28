@@ -46,14 +46,48 @@ function normalizeBaseUrl(rawUrl) {
   return String(rawUrl || "").trim().replace(/\/+$/, "");
 }
 
+function buildGoProbeDetail(body) {
+  if (!body || typeof body !== "object") {
+    return "";
+  }
+
+  const details = [];
+  if (body.status) {
+    details.push(`status=${body.status}`);
+  }
+  if (body.error) {
+    details.push(`error=${body.error}`);
+  }
+
+  const pushWorker = body.dependencies && body.dependencies.pushWorker && body.dependencies.pushWorker.worker;
+  if (pushWorker && typeof pushWorker === "object") {
+    if (pushWorker.provider) {
+      details.push(`pushProvider=${pushWorker.provider}`);
+    }
+    if (pushWorker.lastCycleStatus) {
+      details.push(`pushCycle=${pushWorker.lastCycleStatus}`);
+    }
+    if (pushWorker.running !== undefined) {
+      details.push(`pushRunning=${pushWorker.running === true}`);
+    }
+    if (pushWorker.lastError) {
+      details.push(`pushError=${pushWorker.lastError}`);
+    }
+  }
+
+  return details.join(" | ");
+}
+
 async function probeGoApiReadiness() {
   const baseUrl = normalizeBaseUrl(config.goApiUrl);
   if (!baseUrl) {
     return {
       ok: false,
       target: "",
+      probe: "",
       httpStatus: null,
-      error: "go_api_url_missing"
+      error: "go_api_url_missing",
+      detail: ""
     };
   }
 
@@ -68,16 +102,20 @@ async function probeGoApiReadiness() {
         return {
           ok: true,
           target,
+          probe: /\/ready(?:\?|$)/.test(target) ? "ready" : "health",
           httpStatus: response.status,
-          error: ""
+          error: "",
+          detail: buildGoProbeDetail(response.data)
         };
       }
     } catch (error) {
       return {
         ok: false,
         target,
+        probe: /\/ready(?:\?|$)/.test(target) ? "ready" : "health",
         httpStatus: null,
-        error: error && error.code ? String(error.code) : String(error && error.message ? error.message : "go_probe_failed")
+        error: error && error.code ? String(error.code) : String(error && error.message ? error.message : "go_probe_failed"),
+        detail: ""
       };
     }
   }
@@ -85,8 +123,10 @@ async function probeGoApiReadiness() {
   return {
     ok: false,
     target: `${baseUrl}/ready`,
+    probe: "ready",
     httpStatus: null,
-    error: "go_api_not_ready"
+    error: "go_api_not_ready",
+    detail: ""
   };
 }
 
