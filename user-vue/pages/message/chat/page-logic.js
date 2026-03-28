@@ -222,6 +222,7 @@ export default {
       socket: null,
       isConnected: false,
       reconnectTimer: null,
+      localMessageSeed: 0,
       audioPlayer: null,
       playingAudioId: '',
       recorderManager: null,
@@ -371,7 +372,27 @@ export default {
 
     resolveMessageTimestamp(rawValue, fallback = Date.now()) {
       const value = Number(rawValue)
-      return Number.isFinite(value) && value > 0 ? value : fallback
+      if (Number.isFinite(value) && value > 0) return value
+
+      const text = String(rawValue || '').trim()
+      if (!text) return fallback
+
+      const parsed = Date.parse(text.replace(' ', 'T'))
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+    },
+
+    createLocalMessageId(prefix = 'local', timestamp = Date.now()) {
+      this.localMessageSeed = Number(this.localMessageSeed || 0) + 1
+      return `${prefix}_${this.roomId || 'chat'}_${timestamp}_${this.localMessageSeed}`
+    },
+
+    resolveMessageId(payload, fallback) {
+      const explicitId =
+        payload && (payload.id ?? payload.uid ?? payload.tsid ?? payload.messageId ?? payload.mid)
+      if (explicitId !== undefined && explicitId !== null && String(explicitId).trim()) {
+        return String(explicitId)
+      }
+      return fallback
     },
 
     restoreLocalMessages() {
@@ -393,6 +414,10 @@ export default {
 
             return {
               ...item,
+              mid: this.resolveMessageId(
+                item,
+                `cached_${this.roomId || 'chat'}_${timestamp}_${index}`
+              ),
               timestamp,
               time: item.time || formatClockByTimestamp(timestamp),
               type: normalized.type,
@@ -446,7 +471,10 @@ export default {
           : (previousItem.time || formatClockByTimestamp(previousTimestamp))
 
         return {
-          mid: item.id || `${Date.now()}_${index}`,
+          mid: this.resolveMessageId(
+            item,
+            `history_${this.roomId || 'chat'}_${timestamp}_${index}`
+          ),
           from: isSelf ? 'me' : 'other',
           text: normalized.text,
           type: normalized.type,
@@ -645,9 +673,9 @@ export default {
     },
 
     addMessage(from, text, type = 'text', showTime = false, extra = {}) {
-      const mid = `${Date.now()}_${Math.floor(Math.random() * 1000)}`
       const normalized = normalizeMessageContent(type, text)
       const timestamp = this.resolveMessageTimestamp(extra.timestamp, Date.now())
+      const mid = this.createLocalMessageId('local', timestamp)
       const time = extra.time || nowTime()
       this.messages.push({
         mid,

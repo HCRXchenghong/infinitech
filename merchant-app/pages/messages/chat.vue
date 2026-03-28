@@ -97,6 +97,7 @@ const reconnectTimer = ref<any>(null)
 const messages = ref<ViewMessage[]>([])
 const scrollIntoView = ref('')
 const historyFromLocalFallback = ref(false)
+const localMessageSeed = ref(0)
 
 const navSubtitle = computed(() => {
   if (chatRole.value === 'admin') return `${supportTitle.value}会话`
@@ -121,7 +122,26 @@ function nowClock() {
 
 function resolveMessageTimestamp(rawValue: any, fallback = Date.now()) {
   const value = Number(rawValue)
-  return Number.isFinite(value) && value > 0 ? value : fallback
+  if (Number.isFinite(value) && value > 0) return value
+
+  const text = String(rawValue || '').trim()
+  if (!text) return fallback
+
+  const parsed = Date.parse(text.replace(' ', 'T'))
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function createLocalMessageId(prefix = 'local', timestamp = Date.now()) {
+  localMessageSeed.value += 1
+  return `${prefix}_${chatId.value || 'chat'}_${timestamp}_${localMessageSeed.value}`
+}
+
+function resolveMessageId(raw: any, fallback: string) {
+  const explicitId = raw?.id ?? raw?.uid ?? raw?.tsid ?? raw?.messageId ?? raw?.mid
+  if (explicitId !== undefined && explicitId !== null && String(explicitId).trim()) {
+    return String(explicitId)
+  }
+  return fallback
 }
 
 function formatClockByTimestamp(timestamp: number) {
@@ -190,6 +210,7 @@ function restoreLocalMessages() {
         const timestamp = resolveMessageTimestamp(item?.timestamp || item?.createdAt, Date.now() + index)
         return {
           ...item,
+          mid: resolveMessageId(item, `cached_${chatId.value || 'chat'}_${timestamp}_${index}`),
           timestamp,
           time: String(item?.time || formatClockByTimestamp(timestamp))
         }
@@ -221,7 +242,7 @@ function toViewMessage(raw: any): ViewMessage {
   const self = raw?.senderRole === 'merchant' && senderId === String(merchantId.value)
   const timestamp = resolveMessageTimestamp(raw?.timestamp || raw?.createdAt, Date.now())
   return {
-    mid: String(raw?.id || `${Date.now()}_${Math.random()}`),
+    mid: resolveMessageId(raw, `history_${chatId.value || 'chat'}_${timestamp}`),
     self,
     text: String(raw?.content || ''),
     type: String(raw?.messageType || 'text'),
@@ -275,8 +296,8 @@ function appendLocalMessage(
   type: string,
   status: 'sending' | 'sent' | 'failed' = 'sending'
 ) {
-  const mid = `${Date.now()}_${Math.floor(Math.random() * 1000)}`
   const timestamp = Date.now()
+  const mid = createLocalMessageId('local', timestamp)
   messages.value.push({
     mid,
     self,

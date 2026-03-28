@@ -24,6 +24,19 @@ function toPositiveInt(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function resolveMessageTimestamp(rawValue, fallback = Date.now()) {
+  const numericValue = Number(rawValue);
+  if (Number.isFinite(numericValue) && numericValue > 0) {
+    return numericValue;
+  }
+
+  const stringValue = String(rawValue || '').trim();
+  if (!stringValue) return fallback;
+
+  const parsed = Date.parse(stringValue.replace(' ', 'T'));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 const SOCKET_HTTP_REQUEST_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_HTTP_REQUEST_TIMEOUT_MS, 30_000);
 const SOCKET_HTTP_HEADERS_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_HTTP_HEADERS_TIMEOUT_MS, 35_000);
 const SOCKET_HTTP_KEEP_ALIVE_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_HTTP_KEEP_ALIVE_TIMEOUT_MS, 5_000);
@@ -428,9 +441,7 @@ const httpServer = createServer(async (req, res) => {
       const data = await readJsonBody(req, SOCKET_JSON_BODY_LIMIT_BYTES);
       const messageData = normalizeMessageData(data);
       const result = saveMessage('support', data.chatId, messageData);
-      const timestamp = Number.isFinite(Number(result?.timestamp))
-        ? Number(result.timestamp)
-        : Date.now();
+      const timestamp = resolveMessageTimestamp(result?.timestamp ?? result?.createdAt, Date.now());
       const createdAt = String(result?.createdAt || '');
       const message = {
         id: result.lastInsertRowid,

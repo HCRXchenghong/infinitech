@@ -2,6 +2,19 @@ import { logger } from './logger.js';
 import { normalizeMessageData } from './messagePayload.js';
 import { requestBackend } from './socketIdentity.js';
 
+function resolveMessageTimestamp(rawValue, fallback = Date.now()) {
+  const numericValue = Number(rawValue);
+  if (Number.isFinite(numericValue) && numericValue > 0) {
+    return numericValue;
+  }
+
+  const stringValue = String(rawValue || '').trim();
+  if (!stringValue) return fallback;
+
+  const parsed = Date.parse(stringValue.replace(' ', 'T'));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 function generateRiderChatId(riderId, otherId, type) {
   const str = `${type}_${riderId}_${otherId}`;
   let hash = 0;
@@ -27,9 +40,7 @@ function ensureSocketRole(socket, expectedRole, eventName) {
 function saveAndBuildRiderMessage(saveMessage, chatId, messageInput, socket) {
   const messageData = normalizeMessageData(messageInput, socket);
   const result = saveMessage('rider_chat', chatId, messageData);
-  const timestamp = Number.isFinite(Number(result?.timestamp))
-    ? Number(result.timestamp)
-    : Date.now();
+  const timestamp = resolveMessageTimestamp(result?.timestamp ?? result?.createdAt, Date.now());
   const createdAt = String(result?.createdAt || '');
   return {
     id: result.lastInsertRowid,
