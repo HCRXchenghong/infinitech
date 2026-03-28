@@ -104,22 +104,6 @@ class SocketService {
     const socket = namespace ? this.sockets.get(namespace) : this.currentSocket;
     if (socket && socket.connected) {
       socket.emit(event, data);
-      if (event === 'send_message' && data.chatId) {
-        messageDB.saveMessage({
-          chatId: data.chatId,
-          sender: data.sender || '客服',
-          senderId: data.senderId,
-          senderRole: data.senderRole,
-          content: data.content,
-          messageType: data.messageType,
-          coupon: data.coupon,
-          order: data.order,
-          imageUrl: data.imageUrl,
-          timestamp: Number.isFinite(Number(data?.timestamp || data?.createdAt))
-            ? Number(data.timestamp || data.createdAt)
-            : Date.now()
-        }).catch(() => {});
-      }
     }
   }
 
