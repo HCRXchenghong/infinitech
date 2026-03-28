@@ -11,6 +11,10 @@ const CHAT_BUCKET = '83';
 const FALLBACK_CHAT_HISTORY_LIMIT = 500;
 const FALLBACK_CHAT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
+db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
+db.pragma('busy_timeout = 5000');
+
 // 创建表
 db.exec(`
   CREATE TABLE IF NOT EXISTS id_sequences (
@@ -136,6 +140,13 @@ function normalizeCreatedAtForStorage(value, fallbackTimestamp = Date.now()) {
   return new Date(fallbackTimestamp).toISOString();
 }
 
+function pruneExpiredMessages(retentionCutoff = Date.now() - FALLBACK_CHAT_RETENTION_MS) {
+  return db.prepare(`
+    DELETE FROM messages
+    WHERE COALESCE(event_timestamp, CAST(strftime('%s', created_at) AS INTEGER) * 1000) < ?
+  `).run(retentionCutoff);
+}
+
 function pruneMessages(chatType, chatId, keepCount = FALLBACK_CHAT_HISTORY_LIMIT) {
   const limit = Number.isFinite(Number(keepCount)) && Number(keepCount) > 0
     ? Math.max(1, Math.floor(Number(keepCount)))
@@ -162,6 +173,8 @@ function pruneMessages(chatType, chatId, keepCount = FALLBACK_CHAT_HISTORY_LIMIT
 
   stmt.run(chatType, chatId, chatType, chatId, limit);
 }
+
+pruneExpiredMessages();
 
 export function saveMessage(chatType, chatId, messageData) {
   const ids = nextUnifiedIds(CHAT_BUCKET);
