@@ -2,6 +2,7 @@ import { logger } from './logger.js';
 import { normalizeMessageData } from './messagePayload.js';
 import { authorizeSupportChatAccess, normalizeChatId } from './supportAccess.js';
 import { requestBackend } from './socketIdentity.js';
+import { buildSocketRequestId } from './requestId.js';
 
 function emitSupportMessage(supportNamespace, chatId, message) {
   const roomName = `chat_${chatId}`;
@@ -68,6 +69,7 @@ function normalizeBackendTargetRole(value, socketUserRole = '') {
 async function syncMessageToBackend(socket, chatId, rawData, message) {
   const authHeader = String(socket?.authToken || '').trim();
   if (!authHeader || !chatId || !message) return;
+  const requestId = buildSocketRequestId(socket, 'sync-message', chatId);
 
   const payload = {
     chatId,
@@ -92,13 +94,14 @@ async function syncMessageToBackend(socket, chatId, rawData, message) {
     const { response, data } = await requestBackend('/api/messages/sync', {
       method: 'POST',
       headers: { Authorization: authHeader },
-      body: payload
+      body: payload,
+      requestId
     });
     if (!response.ok) {
-      logger.warn('消息同步到 Go 失败:', response.status, data?.error || '');
+      logger.warn(`消息同步到 Go 失败 request_id=${requestId}:`, response.status, data?.error || '');
     }
   } catch (err) {
-    logger.warn('消息同步到 Go 失败:', err?.message || err);
+    logger.warn(`消息同步到 Go 失败 request_id=${requestId}:`, err?.message || err);
   }
 }
 
@@ -106,20 +109,22 @@ async function markConversationReadOnBackend(socket, chatId) {
   const authHeader = String(socket?.authToken || '').trim();
   const normalizedChatId = normalizeChatId(chatId);
   if (!authHeader || !normalizedChatId) return;
+  const requestId = buildSocketRequestId(socket, 'mark-read', normalizedChatId);
 
   try {
     const { response, data } = await requestBackend(
       `/api/messages/conversations/${encodeURIComponent(normalizedChatId)}/read`,
       {
         method: 'POST',
-        headers: { Authorization: authHeader }
+        headers: { Authorization: authHeader },
+        requestId
       }
     );
     if (!response.ok && response.status !== 404) {
-      logger.warn('会话已读状态同步失败:', response.status, data?.error || '');
+      logger.warn(`会话已读状态同步失败 request_id=${requestId}:`, response.status, data?.error || '');
     }
   } catch (err) {
-    logger.warn('会话已读状态同步失败:', err?.message || err);
+    logger.warn(`会话已读状态同步失败 request_id=${requestId}:`, err?.message || err);
   }
 }
 
@@ -177,17 +182,19 @@ function buildSupportChatList(db, getUnreadCount, userId, options = {}) {
 async function fetchConversationListFromBackend(socket, fallbackChats = []) {
   const authHeader = String(socket?.authToken || '').trim();
   if (!authHeader) return fallbackChats;
+  const requestId = buildSocketRequestId(socket, 'list-conversations');
 
   try {
     const { response, data } = await requestBackend('/api/messages/conversations', {
-      headers: { Authorization: authHeader }
+      headers: { Authorization: authHeader },
+      requestId
     });
     if (response.ok && Array.isArray(data)) {
       return data;
     }
-    logger.warn('会话列表从 Go 加载失败，回退本地列表:', response.status, data?.error || '');
+    logger.warn(`会话列表从 Go 加载失败 request_id=${requestId}，回退本地列表:`, response.status, data?.error || '');
   } catch (err) {
-    logger.warn('会话列表从 Go 加载失败，回退本地列表:', err?.message || err);
+    logger.warn(`会话列表从 Go 加载失败 request_id=${requestId}，回退本地列表:`, err?.message || err);
   }
 
   return fallbackChats;
@@ -197,17 +204,19 @@ async function fetchMessagesFromBackend(socket, chatId, fallbackMessages = []) {
   const authHeader = String(socket?.authToken || '').trim();
   const normalizedChatId = normalizeChatId(chatId);
   if (!authHeader || !normalizedChatId) return fallbackMessages;
+  const requestId = buildSocketRequestId(socket, 'load-messages', normalizedChatId);
 
   try {
     const { response, data } = await requestBackend(`/api/messages/${encodeURIComponent(normalizedChatId)}`, {
-      headers: { Authorization: authHeader }
+      headers: { Authorization: authHeader },
+      requestId
     });
     if (response.ok && Array.isArray(data)) {
       return data;
     }
-    logger.warn('消息历史从 Go 加载失败，回退本地历史:', response.status, data?.error || '');
+    logger.warn(`消息历史从 Go 加载失败 request_id=${requestId}，回退本地历史:`, response.status, data?.error || '');
   } catch (err) {
-    logger.warn('消息历史从 Go 加载失败，回退本地历史:', err?.message || err);
+    logger.warn(`消息历史从 Go 加载失败 request_id=${requestId}，回退本地历史:`, err?.message || err);
   }
 
   return fallbackMessages;

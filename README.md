@@ -304,3 +304,7 @@ npm run build
 3. 继续补推送闭环与派发监控
 4. 继续完善首页推广位后台能力和前台编排
 5. 继续补平台级可观测性、压测和故障治理
+
+## 12. Recent Rollout Notes
+
+- 2026-03-28: `socket-server` now assigns and returns `X-Request-ID` on HTTP requests, propagates the same header to internal Go API calls, and starts correlating support/rider message sync plus order-room authorization with shared request ids for cross-service tracing.

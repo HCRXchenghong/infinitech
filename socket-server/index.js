@@ -12,6 +12,7 @@ import { normalizeMessageData } from './messagePayload.js';
 import { setupSupportNamespaces } from './supportNamespaces.js';
 import { setupRiderNamespace } from './riderNamespace.js';
 import { validateSocketIdentity } from './socketIdentity.js';
+import { REQUEST_ID_HEADER, attachRequestId, resolveRequestId } from './requestId.js';
 import {
   allowFixedWindowRateLimit,
   attachSocketIoRedisAdapter,
@@ -179,6 +180,18 @@ function writeJson(res, statusCode, payload) {
   res.end(JSON.stringify(payload));
 }
 
+function logHttpRequest(req, res, pathname, requestId) {
+  const startedAt = Date.now();
+  res.on('finish', () => {
+    const latencyMs = Date.now() - startedAt;
+    const statusCode = Number(res.statusCode || 0);
+    const logLevel = statusCode >= 500 ? 'error' : (statusCode >= 400 ? 'warn' : 'info');
+    logger[logLevel](
+      `HTTP ${req.method} ${pathname} ${statusCode} ${latencyMs}ms request_id=${requestId} ip=${getClientIp(req)}`
+    );
+  });
+}
+
 function readJsonBody(req, maxBytes) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -296,6 +309,11 @@ const httpServer = createServer(async (req, res) => {
   const origin = req.headers.origin || '';
   const requestUrl = buildRequestUrl(req);
   const pathname = requestUrl.pathname;
+  const requestId = resolveRequestId(req.headers[REQUEST_ID_HEADER] || req.headers[REQUEST_ID_HEADER.toLowerCase()], 'sc-http');
+
+  req.requestId = requestId;
+  attachRequestId(res, requestId);
+  logHttpRequest(req, res, pathname, requestId);
 
   const corsOrigin = getCorsOrigin(origin);
   if (corsOrigin) {
@@ -425,7 +443,8 @@ const httpServer = createServer(async (req, res) => {
         identity = await validateSocketIdentity({
           role: body?.role,
           claimedUserId: body?.userId,
-          authHeader: req.headers.authorization || ''
+          authHeader: req.headers.authorization || '',
+          requestId
         });
       }
 

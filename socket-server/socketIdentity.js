@@ -1,5 +1,8 @@
+import { REQUEST_ID_HEADER, resolveRequestId } from './requestId.js';
+
 const DEFAULT_GO_API_URL = 'http://127.0.0.1:1029';
 const REQUEST_TIMEOUT_MS = Number(process.env.SOCKET_AUTH_TIMEOUT_MS || 8000);
+const SOURCE_SERVICE_HEADER = 'X-Source-Service';
 
 function stripBearerToken(value) {
   const raw = String(value || '').trim();
@@ -29,6 +32,15 @@ function buildBackendUrl(pathname) {
 
 export async function requestBackend(pathname, options = {}) {
   const headers = Object.assign({}, options.headers || {});
+  const requestIdHeader = headers[REQUEST_ID_HEADER] || headers[REQUEST_ID_HEADER.toLowerCase()];
+  const requestId = resolveRequestId(
+    options.requestId || requestIdHeader,
+    'sc-backend'
+  );
+  headers[REQUEST_ID_HEADER] = requestId;
+  if (!headers[SOURCE_SERVICE_HEADER] && !headers[SOURCE_SERVICE_HEADER.toLowerCase()]) {
+    headers[SOURCE_SERVICE_HEADER] = 'socket-server';
+  }
   const requestInit = {
     method: options.method || 'GET',
     headers
@@ -51,7 +63,8 @@ export async function requestBackend(pathname, options = {}) {
   } catch (err) {
     throw createHttpError(503, `Socket auth backend unavailable: ${err.message}`, {
       cause: err,
-      pathname
+      pathname,
+      requestId
     });
   }
 
@@ -67,17 +80,18 @@ export async function requestBackend(pathname, options = {}) {
 
   return {
     response,
-    data
+    data,
+    requestId
   };
 }
 
 export async function expectBackendOk(pathname, options = {}) {
-  const { response, data } = await requestBackend(pathname, options);
+  const { response, data, requestId } = await requestBackend(pathname, options);
   if (!response.ok) {
     throw createHttpError(
       response.status,
       data?.error || data?.message || `Socket auth check failed: ${response.status}`,
-      { pathname, data }
+      { pathname, data, requestId }
     );
   }
   return data;
@@ -117,7 +131,7 @@ export function parseTokenPayload(token) {
   }
 }
 
-export async function validateSocketIdentity({ role, claimedUserId, authHeader }) {
+export async function validateSocketIdentity({ role, claimedUserId, authHeader, requestId }) {
   const normalizedRole = String(role || '').trim().toLowerCase();
   const normalizedAuthHeader = normalizeAuthHeader(authHeader);
   const parsedPayload = parseTokenPayload(normalizedAuthHeader);
@@ -129,7 +143,8 @@ export async function validateSocketIdentity({ role, claimedUserId, authHeader }
   switch (normalizedRole) {
     case 'admin': {
       await expectBackendOk('/api/stats', {
-        headers: { Authorization: normalizedAuthHeader }
+        headers: { Authorization: normalizedAuthHeader },
+        requestId
       });
 
       return {
@@ -144,7 +159,8 @@ export async function validateSocketIdentity({ role, claimedUserId, authHeader }
     case 'user': {
       const verifyData = await expectBackendOk('/api/auth/verify', {
         method: 'POST',
-        headers: { Authorization: normalizedAuthHeader }
+        headers: { Authorization: normalizedAuthHeader },
+        requestId
       });
 
       const resolvedUserId = normalizeUserId(
@@ -170,7 +186,8 @@ export async function validateSocketIdentity({ role, claimedUserId, authHeader }
       }
 
       await expectBackendOk(`/api/riders/${encodeURIComponent(riderId)}/profile`, {
-        headers: { Authorization: normalizedAuthHeader }
+        headers: { Authorization: normalizedAuthHeader },
+        requestId
       });
 
       return {
@@ -189,7 +206,8 @@ export async function validateSocketIdentity({ role, claimedUserId, authHeader }
       }
 
       await expectBackendOk(`/api/merchants/${encodeURIComponent(merchantId)}/shops`, {
-        headers: { Authorization: normalizedAuthHeader }
+        headers: { Authorization: normalizedAuthHeader },
+        requestId
       });
 
       return {
@@ -206,7 +224,7 @@ export async function validateSocketIdentity({ role, claimedUserId, authHeader }
   }
 }
 
-export async function fetchOrderDetailWithAuth(orderId, authToken) {
+export async function fetchOrderDetailWithAuth(orderId, authToken, requestId) {
   const normalizedOrderId = normalizeUserId(orderId);
   const normalizedAuthHeader = normalizeAuthHeader(authToken);
 
@@ -218,6 +236,7 @@ export async function fetchOrderDetailWithAuth(orderId, authToken) {
   }
 
   return expectBackendOk(`/api/orders/${encodeURIComponent(normalizedOrderId)}`, {
-    headers: { Authorization: normalizedAuthHeader }
+    headers: { Authorization: normalizedAuthHeader },
+    requestId
   });
 }

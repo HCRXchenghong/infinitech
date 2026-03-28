@@ -1,5 +1,6 @@
 import { fetchOrderDetailWithAuth } from './socketIdentity.js';
 import { getCachedJsonValue, setCachedJsonValue } from './redisState.js';
+import { buildSocketRequestId } from './requestId.js';
 
 const ORDER_ACCESS_TTL_MS = 30 * 1000;
 const ORDER_ACCESS_CACHE_PREFIX = 'socket:access:order';
@@ -81,7 +82,11 @@ async function canAccessOrderRoom(socket, orderRoom) {
   }
 
   try {
-    await fetchOrderDetailWithAuth(orderRoom.orderId, socket.authToken);
+    await fetchOrderDetailWithAuth(
+      orderRoom.orderId,
+      socket.authToken,
+      buildSocketRequestId(socket, 'authorize-order-room', `${orderRoom.type}-${orderRoom.orderId}`)
+    );
     await setCachedJsonValue({
       prefix: ORDER_ACCESS_CACHE_PREFIX,
       key: cacheKey,

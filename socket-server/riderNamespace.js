@@ -1,6 +1,7 @@
 import { logger } from './logger.js';
 import { normalizeMessageData } from './messagePayload.js';
 import { requestBackend } from './socketIdentity.js';
+import { buildSocketRequestId } from './requestId.js';
 
 function resolveMessageTimestamp(rawValue, fallback = Date.now()) {
   const numericValue = Number(rawValue);
@@ -71,6 +72,7 @@ function emitMessageSentAck(socket, message, tempId) {
 async function syncRiderMessageToBackend(socket, message, target = {}) {
   const authHeader = String(socket?.authToken || '').trim();
   if (!authHeader || !message?.chatId) return;
+  const requestId = buildSocketRequestId(socket, 'sync-rider-message', message.chatId);
 
   const payload = {
     chatId: String(message.chatId),
@@ -92,13 +94,14 @@ async function syncRiderMessageToBackend(socket, message, target = {}) {
     const { response, data } = await requestBackend('/api/messages/sync', {
       method: 'POST',
       headers: { Authorization: authHeader },
-      body: payload
+      body: payload,
+      requestId
     });
     if (!response.ok) {
-      logger.warn('Rider message sync to Go failed:', response.status, data?.error || '');
+      logger.warn(`Rider message sync to Go failed request_id=${requestId}:`, response.status, data?.error || '');
     }
   } catch (err) {
-    logger.warn('Rider message sync to Go failed:', err?.message || err);
+    logger.warn(`Rider message sync to Go failed request_id=${requestId}:`, err?.message || err);
   }
 }
 
