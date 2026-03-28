@@ -53,14 +53,20 @@ class Database {
         chatId TEXT,
         sender TEXT,
         senderId TEXT,
+        senderRole TEXT,
         content TEXT,
         messageType TEXT,
         timestamp INTEGER,
         isSelf INTEGER DEFAULT 0,
-        avatar TEXT
+        avatar TEXT,
+        status TEXT
       )
     `).then(() => {
-      return this.executeSql('ALTER TABLE messages ADD COLUMN avatar TEXT').catch(() => {});
+      return Promise.all([
+        this.executeSql('ALTER TABLE messages ADD COLUMN avatar TEXT').catch(() => {}),
+        this.executeSql('ALTER TABLE messages ADD COLUMN senderRole TEXT').catch(() => {}),
+        this.executeSql('ALTER TABLE messages ADD COLUMN status TEXT').catch(() => {})
+      ]).then(() => {});
     });
   }
 
@@ -99,19 +105,66 @@ class Database {
     const avatar = this.escapeSqlText(message.avatar)
     const sender = this.escapeSqlText(message.sender)
     const senderId = this.escapeSqlText(message.senderId)
+    const senderRole = this.escapeSqlText(message.senderRole)
     const content = this.escapeSqlText(message.content)
     const timestamp = this.resolveMessageTimestamp(message.timestamp ?? message.createdAt, Date.now())
     const messageId = this.escapeSqlText(this.resolveMessageId(message, chatId, timestamp))
     const messageType = this.escapeSqlText(message.messageType || 'text')
     const isSelf = Number(message.isSelf || 0)
+    const status = this.escapeSqlText(message.status || '')
     // @ts-ignore
     plus.sqlite.executeSql({
       name: DB_NAME,
       // @ts-ignore
-      sql: `INSERT OR REPLACE INTO messages (id, chatId, sender, senderId, content, messageType, timestamp, isSelf, avatar) VALUES ('${messageId}', '${chatIdText}', '${sender}', '${senderId}', '${content}', '${messageType}', ${timestamp}, ${isSelf}, '${avatar}')`,
+      sql: `INSERT OR REPLACE INTO messages (id, chatId, sender, senderId, senderRole, content, messageType, timestamp, isSelf, avatar, status) VALUES ('${messageId}', '${chatIdText}', '${sender}', '${senderId}', '${senderRole}', '${content}', '${messageType}', ${timestamp}, ${isSelf}, '${avatar}', '${status}')`,
       success: () => {},
       fail: (err: any) => console.error('❌ 保存失败:', err)
     });
+  }
+
+  updateMessage(chatId: string | number, messageId: string | number, updates: Record<string, any> = {}): Promise<void> {
+    const chatIdText = this.escapeSqlText(chatId)
+    const messageIdText = this.escapeSqlText(messageId)
+    const assignments: string[] = []
+
+    if (updates.id !== undefined && updates.id !== null && String(updates.id).trim()) {
+      assignments.push(`id = '${this.escapeSqlText(updates.id)}'`)
+    }
+    if (updates.sender !== undefined) {
+      assignments.push(`sender = '${this.escapeSqlText(updates.sender)}'`)
+    }
+    if (updates.senderId !== undefined) {
+      assignments.push(`senderId = '${this.escapeSqlText(updates.senderId)}'`)
+    }
+    if (updates.senderRole !== undefined) {
+      assignments.push(`senderRole = '${this.escapeSqlText(updates.senderRole)}'`)
+    }
+    if (updates.content !== undefined) {
+      assignments.push(`content = '${this.escapeSqlText(updates.content)}'`)
+    }
+    if (updates.messageType !== undefined) {
+      assignments.push(`messageType = '${this.escapeSqlText(updates.messageType)}'`)
+    }
+    if (updates.timestamp !== undefined) {
+      assignments.push(`timestamp = ${this.resolveMessageTimestamp(updates.timestamp, Date.now())}`)
+    }
+    if (updates.isSelf !== undefined) {
+      assignments.push(`isSelf = ${Number(updates.isSelf || 0)}`)
+    }
+    if (updates.avatar !== undefined) {
+      assignments.push(`avatar = '${this.escapeSqlText(updates.avatar)}'`)
+    }
+    if (updates.status !== undefined) {
+      assignments.push(`status = '${this.escapeSqlText(updates.status)}'`)
+    }
+
+    if (assignments.length === 0) {
+      return Promise.resolve()
+    }
+
+    return this.executeSql(
+      `UPDATE messages SET ${assignments.join(', ')} WHERE chatId = '${chatIdText}' AND id = '${messageIdText}'`
+    )
   }
 
   getMessages(chatId: string | number): Promise<any[]> {

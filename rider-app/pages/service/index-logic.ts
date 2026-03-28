@@ -138,7 +138,7 @@ export default Vue.extend({
           const isSelf = Number(item?.isSelf || 0) === 1 || (senderId === String(this.riderId) && item?.senderRole === 'rider')
           return {
             ...this.normalizeIncomingMessage(item, isSelf),
-            status: isSelf ? 'sent' : undefined
+            status: isSelf ? (item?.status || 'sent') : undefined
           }
         })
         this.$nextTick(() => { this.scrollToBottom() })
@@ -193,7 +193,8 @@ export default Vue.extend({
           messageType: item.messageType || 'text',
           timestamp: messageTimestamp,
           isSelf: item.senderRole === 'rider' && senderId === String(this.riderId) ? 1 : 0,
-          avatar: item.avatar || ''
+          avatar: item.avatar || '',
+          status: item.senderRole === 'rider' && senderId === String(this.riderId) ? (item.status || 'sent') : ''
         })
       })
     },
@@ -397,7 +398,8 @@ export default Vue.extend({
           messageType: payload.messageType || 'text',
           timestamp: messageTimestamp,
           isSelf: 0,
-          avatar: payload.avatar || ''
+          avatar: payload.avatar || '',
+          status: payload.status || ''
         })
         this.$nextTick(() => { this.scrollToBottom() })
       }
@@ -414,11 +416,23 @@ export default Vue.extend({
         msg.timestamp = this.resolveMessageTimestamp(data?.timestamp || data?.createdAt, msg.timestamp || Date.now())
         msg.status = 'sent'
       }
+      void db.updateMessage(this.chatId, data.tempId, {
+        id: data.messageId || data.tempId,
+        timestamp: data?.timestamp || data?.createdAt,
+        status: 'sent'
+      }).catch((err) => {
+        console.error('[RiderService] 更新本地消息发送状态失败:', err)
+      })
     },
 
     onMessageRead(data: any) {
       const msg = this.messages.find((m: any) => m.id === data.messageId)
       if (msg) msg.status = 'read'
+      void db.updateMessage(this.chatId, data.messageId, {
+        status: 'read'
+      }).catch((err) => {
+        console.error('[RiderService] 更新本地消息已读状态失败:', err)
+      })
     },
 
     buildOutgoingSocketPayload(messageType: string, content: any, tempId: number) {
@@ -440,9 +454,17 @@ export default Vue.extend({
     },
 
     resendMessage(msg: any) {
+      const previousId = msg.id
+      const resendTimestamp = Date.now()
       msg.status = 'sending'
-      const tempId = this.createLocalMessageId('resend')
+      msg.timestamp = resendTimestamp
+      const tempId = this.createLocalMessageId('resend', resendTimestamp)
       msg.id = tempId
+      void db.updateMessage(this.chatId, previousId, {
+        id: tempId,
+        timestamp: resendTimestamp,
+        status: 'sending'
+      }).catch(() => {})
       const emitted = this.socketEmit(
         'send_message',
         this.buildOutgoingSocketPayload(
@@ -455,11 +477,15 @@ export default Vue.extend({
       )
       if (!emitted) {
         msg.status = 'failed'
+        void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
         uni.showToast({ title: '客服连接中，请稍后重试', icon: 'none' })
         return
       }
       setTimeout(() => {
-        if (msg.status === 'sending') msg.status = 'failed'
+        if (msg.status === 'sending') {
+          msg.status = 'failed'
+          void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
+        }
       }, 5000)
     },
 
@@ -485,11 +511,15 @@ export default Vue.extend({
       if (!emitted) {
         const msg = this.messages.find((m: any) => m.id === tempId)
         if (msg) msg.status = 'failed'
+        void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
         uni.showToast({ title: '客服连接中，请稍后重试', icon: 'none' })
       } else {
         setTimeout(() => {
           const msg = this.messages.find((m: any) => m.id === tempId && m.status === 'sending')
-          if (msg) msg.status = 'failed'
+          if (msg) {
+            msg.status = 'failed'
+            void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
+          }
         }, 5000)
       }
 
@@ -498,11 +528,13 @@ export default Vue.extend({
         chatId: this.chatId,
         sender: this.riderName,
         senderId: this.riderId,
+        senderRole: 'rider',
         content: this.inputText,
         messageType: 'text',
         timestamp: tempTimestamp,
         isSelf: 1,
-        avatar: this.avatarUrl || ''
+        avatar: this.avatarUrl || '',
+        status: 'sending'
       })
 
       this.inputText = ''
@@ -536,11 +568,15 @@ export default Vue.extend({
                   if (!emitted) {
                     const msg = this.messages.find((m: any) => m.id === tempId)
                     if (msg) msg.status = 'failed'
+                    void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
                     uni.showToast({ title: '客服连接中，请稍后重试', icon: 'none' })
                   } else {
                     setTimeout(() => {
                       const msg = this.messages.find((m: any) => m.id === tempId && m.status === 'sending')
-                      if (msg) msg.status = 'failed'
+                      if (msg) {
+                        msg.status = 'failed'
+                        void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
+                      }
                     }, 5000)
                   }
                   db.saveMessage(this.chatId, {
@@ -548,11 +584,13 @@ export default Vue.extend({
                     chatId: this.chatId,
                     sender: this.riderName,
                     senderId: this.riderId,
+                    senderRole: 'rider',
                     content: data.url,
                     messageType: 'image',
                     timestamp: messageTimestamp,
                     isSelf: 1,
-                    avatar: this.avatarUrl || ''
+                    avatar: this.avatarUrl || '',
+                    status: 'sending'
                   })
                   this.$nextTick(() => { this.scrollToBottom() })
                 }
@@ -586,13 +624,30 @@ export default Vue.extend({
       if (!emitted) {
         const msg = this.messages.find((m: any) => m.id === tempId)
         if (msg) msg.status = 'failed'
+        void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
         uni.showToast({ title: '客服连接中，请稍后重试', icon: 'none' })
       } else {
         setTimeout(() => {
           const msg = this.messages.find((m: any) => m.id === tempId && m.status === 'sending')
-          if (msg) msg.status = 'failed'
+          if (msg) {
+            msg.status = 'failed'
+            void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
+          }
         }, 5000)
       }
+      db.saveMessage(this.chatId, {
+        id: String(newMsg.id),
+        chatId: this.chatId,
+        sender: this.riderName,
+        senderId: this.riderId,
+        senderRole: 'rider',
+        content: JSON.stringify(normalizedOrder),
+        messageType: 'order',
+        timestamp: tempTimestamp,
+        isSelf: 1,
+        avatar: this.avatarUrl || '',
+        status: 'sending'
+      })
       this.showOrderPicker = false
       this.$nextTick(() => { this.scrollToBottom() })
     },
