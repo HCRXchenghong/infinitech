@@ -290,6 +290,14 @@ function writeSocketStatus(res, statusCode, status, extra = {}) {
   });
 }
 
+function getSocketOperationalStatus() {
+  const stats = getServerStats();
+  return {
+    redis: getRedisHealthSnapshot(),
+    fallbackBuffer: stats.fallbackBuffer || null
+  };
+}
+
 const httpServer = createServer(async (req, res) => {
   const origin = req.headers.origin || '';
   const requestUrl = buildRequestUrl(req);
@@ -324,30 +332,29 @@ const httpServer = createServer(async (req, res) => {
   }
 
   if ((pathname === '/health' || pathname === '/api/health') && req.method === 'GET') {
-    writeSocketStatus(res, 200, 'ok', {
-      redis: getRedisHealthSnapshot()
-    });
+    writeSocketStatus(res, 200, 'ok', getSocketOperationalStatus());
     return;
   }
 
   if ((pathname === '/ready' || pathname === '/api/ready') && req.method === 'GET') {
-    const redis = getRedisHealthSnapshot();
+    const readiness = getSocketOperationalStatus();
+    const redis = readiness.redis;
     if (redis.enabled && !redis.connected) {
       writeSocketStatus(res, 503, 'degraded', {
         error: 'redis not ready',
-        redis
+        ...readiness
       });
       return;
     }
     if (redis.enabled && redis.connected && !redis.adapterEnabled) {
       writeSocketStatus(res, 503, 'degraded', {
         error: 'socket adapter not ready',
-        redis
+        ...readiness
       });
       return;
     }
 
-    writeSocketStatus(res, 200, 'ready', { redis });
+    writeSocketStatus(res, 200, 'ready', readiness);
     return;
   }
 
