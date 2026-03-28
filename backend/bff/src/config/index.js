@@ -133,6 +133,10 @@ module.exports = {
     redisConnectTimeoutMs: toPositiveInt(process.env.BFF_REDIS_RATE_LIMIT_CONNECT_TIMEOUT_MS, 1000)
   },
 
+  readiness: {
+    requireSocket: toBoolean(process.env.BFF_READY_REQUIRE_SOCKET, true)
+  },
+
   logLevel: process.env.LOG_LEVEL || "info",
   env
 };

@@ -148,6 +148,94 @@ async function probeGoApiReadiness() {
   };
 }
 
+function buildSocketProbeDetail(body) {
+  if (!body || typeof body !== "object") {
+    return "";
+  }
+
+  const details = [];
+  if (body.status) {
+    details.push(`status=${body.status}`);
+  }
+  if (body.error) {
+    details.push(`error=${body.error}`);
+  }
+  const redis = body.redis && typeof body.redis === "object" ? body.redis : null;
+  if (redis) {
+    if (typeof redis.connected === "boolean") {
+      details.push(`redisConnected=${redis.connected}`);
+    }
+    if (typeof redis.adapterEnabled === "boolean") {
+      details.push(`adapterEnabled=${redis.adapterEnabled}`);
+    }
+    if (redis.mode) {
+      details.push(`redisMode=${redis.mode}`);
+    }
+  }
+  const fallback = body.fallbackBuffer && typeof body.fallbackBuffer === "object" ? body.fallbackBuffer : null;
+  if (fallback) {
+    if (fallback.messageCount !== undefined) {
+      details.push(`fallbackMessages=${fallback.messageCount}`);
+    }
+    if (fallback.chatCount !== undefined) {
+      details.push(`fallbackChats=${fallback.chatCount}`);
+    }
+  }
+  return details.join(" | ");
+}
+
+async function probeSocketServerReadiness() {
+  const baseUrl = normalizeBaseUrl(config.socketServerUrl);
+  if (!baseUrl) {
+    return {
+      ok: false,
+      target: "",
+      probe: "",
+      httpStatus: null,
+      error: "socket_server_url_missing",
+      detail: ""
+    };
+  }
+
+  const targets = [`${baseUrl}/ready`, `${baseUrl}/health`];
+  for (const target of targets) {
+    try {
+      const response = await axios.get(target, {
+        timeout: Math.min(config.http.requestTimeoutMs, 2000),
+        validateStatus: () => true
+      });
+      if (response.status >= 200 && response.status < 300) {
+        return {
+          ok: true,
+          target,
+          probe: /\/ready(?:\?|$)/.test(target) ? "ready" : "health",
+          httpStatus: response.status,
+          error: "",
+          detail: buildSocketProbeDetail(response.data)
+        };
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        target,
+        probe: /\/ready(?:\?|$)/.test(target) ? "ready" : "health",
+        httpStatus: null,
+        error: error && error.code ? String(error.code) : String(error && error.message ? error.message : "socket_probe_failed"),
+        detail: ""
+      };
+    }
+  }
+
+  return {
+    ok: false,
+    target: `${baseUrl}/ready`,
+    probe: "ready",
+    httpStatus: null,
+    error: "socket_server_not_ready",
+    detail: ""
+  };
+}
+
 function resolveLanIPv4() {
   const interfaces = os.networkInterfaces() || {};
   for (const iface of Object.values(interfaces)) {
@@ -197,14 +285,27 @@ app.get(["/health", "/api/health"], (req, res) => {
 });
 
 app.get(["/ready", "/api/ready"], async (req, res) => {
-  const goApi = await probeGoApiReadiness();
+  const [goApi, socketServer] = await Promise.all([
+    probeGoApiReadiness(),
+    config.readiness.requireSocket ? probeSocketServerReadiness() : Promise.resolve(null)
+  ]);
   if (!goApi.ok) {
     res.status(503).json({
       status: "degraded",
       service: "bff",
       timestamp: new Date().toISOString(),
-      dependencies: { goApi },
+      dependencies: { goApi, ...(socketServer ? { socketServer } : {}) },
       error: "go api not ready"
+    });
+    return;
+  }
+  if (socketServer && !socketServer.ok) {
+    res.status(503).json({
+      status: "degraded",
+      service: "bff",
+      timestamp: new Date().toISOString(),
+      dependencies: { goApi, socketServer },
+      error: "socket server not ready"
     });
     return;
   }
@@ -213,7 +314,7 @@ app.get(["/ready", "/api/ready"], async (req, res) => {
     status: "ready",
     service: "bff",
     timestamp: new Date().toISOString(),
-    dependencies: { goApi }
+    dependencies: { goApi, ...(socketServer ? { socketServer } : {}) }
   });
 });
 
