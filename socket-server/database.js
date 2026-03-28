@@ -147,6 +147,29 @@ function pruneExpiredMessages(retentionCutoff = Date.now() - FALLBACK_CHAT_RETEN
   `).run(retentionCutoff);
 }
 
+function pruneOverflowMessages(keepCount = FALLBACK_CHAT_HISTORY_LIMIT) {
+  const limit = Number.isFinite(Number(keepCount)) && Number(keepCount) > 0
+    ? Math.max(1, Math.floor(Number(keepCount)))
+    : FALLBACK_CHAT_HISTORY_LIMIT;
+
+  return db.prepare(`
+    DELETE FROM messages
+    WHERE id IN (
+      SELECT id
+      FROM (
+        SELECT
+          id,
+          ROW_NUMBER() OVER (
+            PARTITION BY chat_type, chat_id
+            ORDER BY COALESCE(event_timestamp, CAST(strftime('%s', created_at) AS INTEGER) * 1000) DESC, id DESC
+          ) AS row_num
+        FROM messages
+      ) ranked
+      WHERE row_num > ?
+    )
+  `).run(limit);
+}
+
 function pruneMessages(chatType, chatId, keepCount = FALLBACK_CHAT_HISTORY_LIMIT) {
   const limit = Number.isFinite(Number(keepCount)) && Number(keepCount) > 0
     ? Math.max(1, Math.floor(Number(keepCount)))
@@ -175,6 +198,7 @@ function pruneMessages(chatType, chatId, keepCount = FALLBACK_CHAT_HISTORY_LIMIT
 }
 
 pruneExpiredMessages();
+pruneOverflowMessages();
 
 export function saveMessage(chatType, chatId, messageData) {
   const ids = nextUnifiedIds(CHAT_BUCKET);
