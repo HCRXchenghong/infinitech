@@ -1,6 +1,5 @@
 import { io } from 'socket.io-client';
 import { ElMessage } from 'element-plus';
-import messageDB from './messageDB';
 import { getToken as getAdminToken } from './runtime';
 
 const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
@@ -122,22 +121,6 @@ class SocketService {
       }
 
       const wrappedCallback = (data) => {
-        if (event === 'new_message' && data.chatId) {
-          messageDB.saveMessage({
-            chatId: data.chatId,
-            sender: data.sender,
-            senderId: data.senderId,
-            senderRole: data.senderRole,
-            content: data.content,
-            messageType: data.messageType,
-            coupon: data.coupon,
-            order: data.order,
-            imageUrl: data.imageUrl,
-            timestamp: Number.isFinite(Number(data?.timestamp || data?.createdAt))
-              ? Number(data.timestamp || data.createdAt)
-              : Date.now()
-          }).catch((err) => console.error('Failed to cache message:', err));
-        }
         callback(data);
       };
       listenerBucket.set(callback, wrappedCallback);
