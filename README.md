@@ -266,6 +266,7 @@ node scripts/http-load-smoke.mjs
 - 2026-03-29：新增 `scripts/http-load-smoke.mjs`，用于发布前快速做 readiness / stats 并发烟测。
 - 2026-03-29：`scripts/release-preflight.mjs` 现在可选串行触发 `scripts/http-load-smoke.mjs`，把 readiness 巡检和并发烟测收进同一条发布门禁。
 - 2026-03-29：双端消息首页打开会话时，已读成功后会优先回拉服务端会话列表，再回退本地清零，继续压缩本地未读事实源。
+- 2026-03-29：后台客服工作台切会话后，已读同步成功会优先回拉服务端会话列表，只在刷新失败时才本地清零 unread。
 - 2026-03-29：Go、BFF、`socket-server` 已开始输出慢请求预警，方便在千人级流量上更早发现超时和退化。
 
 ## 11. 诚实状态说明

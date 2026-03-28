@@ -84,9 +84,24 @@ export function useChatConsole(options = {}) {
 
   async function refreshChats() {
     try {
-      chats.value = sortChats(mapLoadedChats(await fetchMessageConversations()));
+      const nextChats = sortChats(mapLoadedChats(await fetchMessageConversations()));
+      chats.value = nextChats;
+
+      const selectedId = normalizeChatId(selectedChat.value?.id);
+      if (selectedId) {
+        const matchedChat = nextChats.find((item) => normalizeChatId(item.id) === selectedId);
+        if (matchedChat) {
+          selectedChat.value = {
+            ...(selectedChat.value || {}),
+            ...matchedChat,
+            id: selectedId
+          };
+        }
+      }
+      return true;
     } catch (error) {
       console.error('加载服务端会话列表失败:', error);
+      return false;
     }
   }
 
@@ -197,11 +212,13 @@ export function useChatConsole(options = {}) {
           unread: 0
         };
       }
-      chats.value = chats.value.map((item) =>
-        normalizeChatId(item.id) === chatId ? { ...item, unread: 0 } : item
-      );
       socket.emit('mark_all_read', { chatId });
-      scheduleRefreshChats();
+      void refreshChats().then((refreshed) => {
+        if (refreshed) return;
+        chats.value = chats.value.map((item) =>
+          normalizeChatId(item.id) === chatId ? { ...item, unread: 0 } : item
+        );
+      });
     });
   }
 
