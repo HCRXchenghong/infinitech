@@ -309,3 +309,4 @@ npm run build
 
 - 2026-03-28: `socket-server` now assigns and returns `X-Request-ID` on HTTP requests, propagates the same header to internal Go API calls, and starts correlating support/rider message sync plus order-room authorization with shared request ids for cross-service tracing.
 - 2026-03-28: the admin system log service-status panel now preserves `/ready` response details from BFF / Go API / socket-server so launch checks can see dependency failures like `go api not ready`, `database not ready`, or `redis not ready` instead of only generic up/down states.
+- 2026-03-28: Go `POST /api/messages/sync` now returns authoritative message timestamps and ids more completely, and `socket-server` uses that response to override support/rider realtime message acks and broadcasts, reducing reliance on local send-time facts.

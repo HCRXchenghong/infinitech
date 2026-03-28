@@ -46,6 +46,52 @@ function resolveSupportPreview(messageType, content) {
   }
 }
 
+function resolveBackendMessageTimestamp(rawMessage, fallback = Date.now()) {
+  const candidates = [
+    rawMessage?.timestamp,
+    rawMessage?.createdAt,
+    rawMessage?.updatedAt
+  ];
+
+  for (const candidate of candidates) {
+    const numericValue = Number(candidate);
+    if (Number.isFinite(numericValue) && numericValue > 0) {
+      return numericValue;
+    }
+
+    const stringValue = String(candidate || '').trim();
+    if (!stringValue) continue;
+
+    const parsed = Date.parse(stringValue.replace(' ', 'T'));
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return fallback;
+}
+
+function mergeBackendMessage(localMessage, backendMessage) {
+  if (!backendMessage || typeof backendMessage !== 'object') {
+    return localMessage;
+  }
+
+  const timestamp = resolveBackendMessageTimestamp(backendMessage, Number(localMessage?.timestamp) || Date.now());
+  return {
+    ...localMessage,
+    ...backendMessage,
+    id: backendMessage.id || localMessage.id,
+    legacyId: backendMessage.legacyId || localMessage.legacyId || localMessage.id,
+    externalMessageId: backendMessage.externalMessageId || localMessage.externalMessageId || String(localMessage.id || ''),
+    timestamp,
+    createdAt: backendMessage.createdAt ?? backendMessage.timestamp ?? localMessage.createdAt,
+    updatedAt: backendMessage.updatedAt ?? localMessage.updatedAt,
+    time: String(backendMessage.time || '').trim()
+      || new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+    status: backendMessage.status || localMessage.status || 'sent'
+  };
+}
+
 function normalizeBackendTargetRole(value, socketUserRole = '') {
   const normalized = String(value || '').trim().toLowerCase();
   switch (normalized) {
@@ -99,9 +145,12 @@ async function syncMessageToBackend(socket, chatId, rawData, message) {
     });
     if (!response.ok) {
       logger.warn(`消息同步到 Go 失败 request_id=${requestId}:`, response.status, data?.error || '');
+      return null;
     }
+    return mergeBackendMessage(message, data);
   } catch (err) {
     logger.warn(`消息同步到 Go 失败 request_id=${requestId}:`, err?.message || err);
+    return null;
   }
 }
 
@@ -247,7 +296,7 @@ function createSupportMessageHandler({ saveMessage, supportNamespace, monitorNam
         : Date.now();
       const createdAt = String(result?.createdAt || '');
       const time = new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-      const message = {
+      const localMessage = {
         id: result.lastInsertRowid,
         chatId: normalizedChatId,
         sender: messageData.sender,
@@ -268,8 +317,10 @@ function createSupportMessageHandler({ saveMessage, supportNamespace, monitorNam
         interventionLabel: isMonitorIntervention ? '官方介入' : ''
       };
 
+      const syncedMessage = await syncMessageToBackend(socket, normalizedChatId, data, localMessage);
+      const message = syncedMessage || localMessage;
+
       logger.info('Broadcasting message:', message);
-      await syncMessageToBackend(socket, normalizedChatId, data, message);
       emitSupportMessage(supportNamespace, normalizedChatId, message);
       emitMonitorMessage(monitorNamespace, message);
 
@@ -278,9 +329,9 @@ function createSupportMessageHandler({ saveMessage, supportNamespace, monitorNam
         messageId: message.id,
         status: 'sent',
         officialIntervention: isMonitorIntervention,
-        timestamp,
-        createdAt,
-        time
+        timestamp: message.timestamp,
+        createdAt: message.createdAt,
+        time: message.time
       });
 
       return message;

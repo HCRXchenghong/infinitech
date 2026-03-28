@@ -16,6 +16,31 @@ function resolveMessageTimestamp(rawValue, fallback = Date.now()) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function mergeBackendMessage(localMessage, backendMessage) {
+  if (!backendMessage || typeof backendMessage !== 'object') {
+    return localMessage;
+  }
+
+  const timestamp = resolveMessageTimestamp(
+    backendMessage?.timestamp ?? backendMessage?.createdAt ?? backendMessage?.updatedAt,
+    Number(localMessage?.timestamp) || Date.now()
+  );
+
+  return {
+    ...localMessage,
+    ...backendMessage,
+    id: backendMessage.id || localMessage.id,
+    legacyId: backendMessage.legacyId || localMessage.legacyId || localMessage.id,
+    externalMessageId: backendMessage.externalMessageId || localMessage.externalMessageId || String(localMessage.id || ''),
+    timestamp,
+    createdAt: backendMessage.createdAt ?? backendMessage.timestamp ?? localMessage.createdAt,
+    updatedAt: backendMessage.updatedAt ?? localMessage.updatedAt,
+    time: String(backendMessage.time || '').trim()
+      || new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+    status: backendMessage.status || localMessage.status || 'sent'
+  };
+}
+
 function generateRiderChatId(riderId, otherId, type) {
   const str = `${type}_${riderId}_${otherId}`;
   let hash = 0;
@@ -99,9 +124,12 @@ async function syncRiderMessageToBackend(socket, message, target = {}) {
     });
     if (!response.ok) {
       logger.warn(`Rider message sync to Go failed request_id=${requestId}:`, response.status, data?.error || '');
+      return null;
     }
+    return mergeBackendMessage(message, data);
   } catch (err) {
     logger.warn(`Rider message sync to Go failed request_id=${requestId}:`, err?.message || err);
+    return null;
   }
 }
 
@@ -121,7 +149,7 @@ async function relayMessageToRider({
   }
 
   const chatId = generateRiderChatId(riderId, socket.userId, fromType);
-  const message = saveAndBuildRiderMessage(saveMessage, chatId, {
+  const localMessage = saveAndBuildRiderMessage(saveMessage, chatId, {
     chatId,
     content: data?.content,
     sender: data?.sender || senderDefault,
@@ -129,7 +157,7 @@ async function relayMessageToRider({
     avatar: data?.avatar || ''
   }, socket);
 
-  await syncRiderMessageToBackend(socket, message, {
+  const syncedMessage = await syncRiderMessageToBackend(socket, localMessage, {
     type: 'rider',
     id: riderId,
     phone: data?.riderPhone,
@@ -137,6 +165,7 @@ async function relayMessageToRider({
     avatar: data?.riderAvatar
   });
 
+  const message = syncedMessage || localMessage;
   riderNamespace.to(`rider_${riderId}`).emit(eventName, message);
   emitMessageSentAck(socket, message, data?.tempId);
 
@@ -152,7 +181,7 @@ async function relayRiderMessage({ socket, riderNamespace, saveMessage, data }) 
   }
 
   const chatId = generateRiderChatId(socket.userId, targetId, targetType);
-  const message = saveAndBuildRiderMessage(saveMessage, chatId, {
+  const localMessage = saveAndBuildRiderMessage(saveMessage, chatId, {
     chatId,
     content: data?.content,
     sender: data?.sender || '骑手',
@@ -160,13 +189,15 @@ async function relayRiderMessage({ socket, riderNamespace, saveMessage, data }) 
     avatar: data?.avatar || ''
   }, socket);
 
-  await syncRiderMessageToBackend(socket, message, {
+  const syncedMessage = await syncRiderMessageToBackend(socket, localMessage, {
     type: targetType,
     id: targetId,
     phone: data?.targetPhone,
     name: data?.targetName,
     avatar: data?.targetAvatar
   });
+
+  const message = syncedMessage || localMessage;
 
   if (targetType === 'merchant') {
     riderNamespace.to(`merchant_${targetId}`).emit('rider_message', message);

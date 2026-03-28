@@ -158,14 +158,20 @@ func (h *MessageHandler) SyncMessage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":          responseID,
-		"chatId":      message.ChatID,
-		"senderId":    message.SenderID,
-		"senderRole":  message.SenderRole,
-		"sender":      message.SenderName,
-		"content":     message.Content,
-		"messageType": message.MessageType,
-		"time":        message.CreatedAt.Format("15:04"),
-		"avatar":      message.Avatar,
+		"id":                responseID,
+		"legacyId":          message.ID,
+		"externalMessageId": strings.TrimSpace(message.ExternalMessageID),
+		"chatId":            message.ChatID,
+		"senderId":          message.SenderID,
+		"senderRole":        message.SenderRole,
+		"sender":            message.SenderName,
+		"content":           message.Content,
+		"messageType":       message.MessageType,
+		"time":              message.CreatedAt.Format("15:04"),
+		"timestamp":         message.CreatedAt.UnixMilli(),
+		"createdAt":         message.CreatedAt.UnixMilli(),
+		"updatedAt":         message.UpdatedAt.UnixMilli(),
+		"avatar":            message.Avatar,
+		"status":            "sent",
 	})
 }
