@@ -10,21 +10,27 @@
 
     <scroll-view scroll-y class="content">
       <view class="banner-card">
-        <text class="banner-title">邀请码已生成</text>
+        <text class="banner-title">邀请关系由服务端统一记录</text>
         <text class="banner-sub">
-          好友注册时填写你的邀请码，系统会自动记录邀请关系并按配置发放奖励。
+          好友注册时填写你的邀请码，系统会自动绑定邀请关系，并按后台配置发放奖励。
         </text>
       </view>
 
       <view class="invite-code-card">
         <view class="code-title">我的邀请码</view>
-        <view class="code-value">{{ inviteCode }}</view>
+        <view class="code-value" :class="{ muted: !hasInviteCode }">
+          {{ inviteCodeDisplay }}
+        </view>
         <view class="code-actions">
-          <button class="ghost-btn" @tap="copyCode">复制邀请码</button>
-          <button class="primary-btn" @tap="shareInvite">复制邀请文案</button>
+          <button class="ghost-btn" :disabled="!hasInviteCode" @tap="copyCode">复制邀请码</button>
+          <button class="primary-btn" :disabled="!hasInviteCode" @tap="shareInvite">复制邀请文案</button>
         </view>
         <view class="code-tip">
-          邀请文案会自动带上邀请码；如果后台已配置邀请落地页，还会附带可直接打开的注册链接。
+          <text v-if="codeStatus === 'loading'">正在获取服务端邀请码，请稍候。</text>
+          <text v-else-if="codeStatus === 'error'">{{ codeErrorMessage }}</text>
+          <text v-else>
+            仅展示服务端下发或已缓存的真实邀请码，不再本地伪造临时邀请码。
+          </text>
         </view>
       </view>
 
@@ -40,16 +46,16 @@
         <view class="section-title">邀请文案</view>
         <view class="message-card">
           <text class="message-body">{{ inviteMessage }}</text>
-          <button class="ghost-btn full" @tap="copyInviteText">复制邀请文案</button>
+          <button class="ghost-btn full" :disabled="!hasInviteCode" @tap="copyInviteText">复制邀请文案</button>
         </view>
       </view>
 
       <view class="section">
         <view class="section-title">说明</view>
         <view class="rule-card">
-          <view class="rule-item">邀请码优先从服务端获取，失败时才会回退到本地缓存。</view>
-          <view class="rule-item">点击复制邀请文案前，会先写入一条邀请分享记录，方便后台审计。</view>
-          <view class="rule-item">好友注册时填写邀请码，奖励结算由服务端统一处理，避免前端伪造。</view>
+          <view class="rule-item">邀请码优先从服务端获取，失败时仅回退到已缓存的真实邀请码。</view>
+          <view class="rule-item">复制邀请文案前会先写入一条邀请分享记录，方便后台审计。</view>
+          <view class="rule-item">如后台配置了邀请落地页，会自动附带可直接打开的注册链接。</view>
         </view>
       </view>
 
@@ -66,42 +72,56 @@ import {
 } from '@/shared-ui/api.js'
 
 const DEFAULT_INVITER_NAME = '悦享e食用户'
+const DEFAULT_CODE_ERROR_MESSAGE = '暂时无法获取邀请码，请稍后再试。'
 
 export default {
   data() {
     return {
-      inviteCode: 'YX888888',
+      inviteCode: '',
       inviteLandingURL: '',
-      inviterName: DEFAULT_INVITER_NAME
+      inviterName: DEFAULT_INVITER_NAME,
+      codeStatus: 'loading',
+      codeErrorMessage: DEFAULT_CODE_ERROR_MESSAGE
     }
   },
   computed: {
+    hasInviteCode() {
+      return String(this.inviteCode || '').trim().length > 0
+    },
+    inviteCodeDisplay() {
+      return this.hasInviteCode ? this.inviteCode : '暂未获取'
+    },
     inviteLink() {
+      if (!this.hasInviteCode) return ''
       const base = String(this.inviteLandingURL || '').trim()
-      const code = String(this.inviteCode || '').trim()
-      if (!base || !code) {
-        return ''
-      }
+      if (!base) return ''
       const connector = base.includes('?') ? '&' : '?'
-      return `${base}${connector}inviteCode=${encodeURIComponent(code)}`
+      return `${base}${connector}inviteCode=${encodeURIComponent(this.inviteCode)}`
     },
     inviteMessage() {
-      const code = String(this.inviteCode || '').trim()
-      const name = String(this.inviterName || DEFAULT_INVITER_NAME).trim() || DEFAULT_INVITER_NAME
+      if (!this.hasInviteCode) {
+        return '邀请码尚未获取成功，请稍后刷新页面后重试。'
+      }
+
+      const inviterName = String(this.inviterName || DEFAULT_INVITER_NAME).trim() || DEFAULT_INVITER_NAME
       const link = this.inviteLink
       if (link) {
-        return `${name}邀请你体验悦享e食，邀请码：${code}。注册时填写邀请码即可绑定邀请关系，注册链接：${link}`
+        return `${inviterName}邀请你体验悦享e食，邀请码：${this.inviteCode}。注册时填写邀请码即可绑定邀请关系，注册链接：${link}`
       }
-      return `${name}邀请你体验悦享e食，邀请码：${code}。打开应用后，在注册页填写邀请码即可完成绑定。`
+      return `${inviterName}邀请你体验悦享e食，邀请码：${this.inviteCode}。打开应用后，在注册页填写邀请码即可完成绑定。`
     }
   },
   onLoad() {
-    this.initializePage()
+    void this.initializePage()
   },
   onShareAppMessage() {
+    const path = this.hasInviteCode
+      ? `/pages/auth/register/index?inviteCode=${encodeURIComponent(this.inviteCode)}`
+      : '/pages/auth/register/index'
+
     return {
       title: '邀请你加入悦享e食',
-      path: `/pages/auth/register/index?inviteCode=${encodeURIComponent(this.inviteCode)}`,
+      path,
       desc: this.inviteMessage
     }
   },
@@ -110,8 +130,8 @@ export default {
       const profile = this.resolveProfile()
       this.inviterName = profile.name
       await Promise.allSettled([
-        this.loadInviteCode(profile),
-        this.loadRuntimeSettings()
+        this.loadRuntimeSettings(),
+        this.loadInviteCode(profile)
       ])
     },
     resolveProfile() {
@@ -130,26 +150,35 @@ export default {
       }
     },
     async loadInviteCode(profile = this.resolveProfile()) {
+      this.codeStatus = 'loading'
+      this.codeErrorMessage = DEFAULT_CODE_ERROR_MESSAGE
+
       try {
-        const res = await fetchInviteCode({ userId: profile.userId, phone: profile.phone })
-        if (res && res.code) {
-          this.inviteCode = res.code
-          uni.setStorageSync('inviteCode', res.code)
+        const res = await fetchInviteCode({
+          userId: profile.userId,
+          phone: profile.phone
+        })
+        const nextCode = String(res?.code || '').trim()
+        if (nextCode) {
+          this.inviteCode = nextCode
+          this.codeStatus = 'ready'
+          uni.setStorageSync('inviteCode', nextCode)
           return
         }
       } catch (error) {
-        // ignore and fallback to local cache
+        // Fall back only to a previously cached real code.
       }
 
-      const stored = uni.getStorageSync('inviteCode')
-      if (stored) {
-        this.inviteCode = stored
+      const storedCode = String(uni.getStorageSync('inviteCode') || '').trim()
+      if (storedCode) {
+        this.inviteCode = storedCode
+        this.codeStatus = 'ready'
         return
       }
 
-      const suffix = String(profile.phone || '').slice(-4) || '8888'
-      this.inviteCode = `YX${suffix}${Math.floor(Math.random() * 90 + 10)}`
-      uni.setStorageSync('inviteCode', this.inviteCode)
+      this.inviteCode = ''
+      this.codeStatus = 'error'
+      this.codeErrorMessage = DEFAULT_CODE_ERROR_MESSAGE
     },
     goBack() {
       uni.navigateBack()
@@ -158,14 +187,15 @@ export default {
       uni.setClipboardData({
         data: text,
         success: () => {
-          uni.showToast({
-            title,
-            icon: 'success'
-          })
+          uni.showToast({ title, icon: 'success' })
         }
       })
     },
     copyCode() {
+      if (!this.hasInviteCode) {
+        uni.showToast({ title: this.codeErrorMessage, icon: 'none' })
+        return
+      }
       this.copyText(this.inviteCode, '邀请码已复制')
     },
     copyInviteLink() {
@@ -176,9 +206,16 @@ export default {
       this.copyText(this.inviteLink, '注册链接已复制')
     },
     copyInviteText() {
+      if (!this.hasInviteCode) {
+        uni.showToast({ title: this.codeErrorMessage, icon: 'none' })
+        return
+      }
       this.copyText(this.inviteMessage, '邀请文案已复制')
     },
     recordShareAction() {
+      if (!this.hasInviteCode) {
+        return Promise.resolve()
+      }
       const profile = this.resolveProfile()
       return recordInviteShare({
         userId: profile.userId,
@@ -187,6 +224,10 @@ export default {
       }).catch(() => null)
     },
     shareInvite() {
+      if (!this.hasInviteCode) {
+        uni.showToast({ title: this.codeErrorMessage, icon: 'none' })
+        return
+      }
       this.recordShareAction().finally(() => {
         this.copyInviteText()
       })
@@ -261,49 +302,81 @@ export default {
 
 .banner-sub {
   display: block;
-  margin-top: 8px;
-  font-size: 13px;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.92);
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .invite-code-card,
 .message-card,
 .rule-card {
+  padding: 20px;
+  border-radius: 18px;
   background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
 }
 
 .invite-code-card {
   margin-bottom: 20px;
-  padding: 20px;
-  text-align: center;
 }
 
-.code-title {
-  font-size: 13px;
-  color: #6b7280;
+.code-title,
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
 }
 
 .code-value {
-  margin: 12px 0;
-  font-size: 30px;
-  font-weight: 700;
-  color: #111827;
-  letter-spacing: 2px;
+  margin-top: 12px;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: #ea580c;
+}
+
+.code-value.muted {
+  color: #9ca3af;
+  letter-spacing: 1px;
 }
 
 .code-actions {
   display: flex;
-  justify-content: center;
   gap: 12px;
+  margin-top: 18px;
+}
+
+.ghost-btn,
+.primary-btn {
+  flex: 1;
+  height: 42px;
+  line-height: 42px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ghost-btn {
+  color: #ea580c;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+}
+
+.primary-btn {
+  color: #fff;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+.ghost-btn[disabled],
+.primary-btn[disabled] {
+  opacity: 0.55;
 }
 
 .code-tip {
-  margin-top: 12px;
-  font-size: 12px;
-  line-height: 1.6;
+  margin-top: 14px;
+  font-size: 13px;
+  line-height: 1.7;
   color: #6b7280;
 }
 
@@ -311,70 +384,16 @@ export default {
   margin-bottom: 20px;
 }
 
-.section-title {
-  margin-bottom: 10px;
-  padding-left: 4px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
-}
-
-.message-card,
-.rule-card {
-  padding: 16px;
+.message-card {
+  margin-top: 12px;
 }
 
 .message-body {
   display: block;
   font-size: 14px;
   line-height: 1.8;
-  color: #111827;
+  color: #1f2937;
   word-break: break-all;
-}
-
-.rule-item {
-  position: relative;
-  padding-left: 14px;
-  margin-bottom: 10px;
-  font-size: 13px;
-  line-height: 1.7;
-  color: #4b5563;
-}
-
-.rule-item:last-child {
-  margin-bottom: 0;
-}
-
-.rule-item::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 9px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #f97316;
-}
-
-.ghost-btn,
-.primary-btn {
-  padding: 0 16px;
-  height: 38px;
-  line-height: 38px;
-  border-radius: 12px;
-  font-size: 13px;
-}
-
-.ghost-btn {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  color: #111827;
-}
-
-.primary-btn {
-  background: #f97316;
-  color: #fff;
-  border: 0;
 }
 
 .full {
@@ -382,7 +401,34 @@ export default {
   margin-top: 14px;
 }
 
+.rule-card {
+  margin-top: 12px;
+}
+
+.rule-item {
+  position: relative;
+  padding-left: 16px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #4b5563;
+}
+
+.rule-item + .rule-item {
+  margin-top: 10px;
+}
+
+.rule-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f97316;
+}
+
 .bottom-space {
-  height: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  height: 24px;
 }
 </style>

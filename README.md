@@ -96,6 +96,8 @@ Important boundaries:
 
 - address books are service-backed
 - order confirmation reads real addresses instead of demo contact data
+- shared sync layers across consumer, merchant, and rider clients have been rewritten into a cleaner server-first shape with more bounded local fallback behavior
+- invite pages now only use server-issued invite codes or previously cached real invite codes and no longer fabricate temporary invite codes on the client
 - many active fake success prompts, mock placeholders, and visible mojibake strings were removed
 - invite, medicine, charity, VIP, rider insurance, support naming, and portal runtime settings were pushed into controlled service-side settings where operationally justified
 - system phone contact clicks are now not only recorded but also queryable from the admin console, so hotline usage can be audited without direct database access
