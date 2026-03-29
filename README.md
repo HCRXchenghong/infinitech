@@ -92,6 +92,7 @@
 - Go 消息表持续作为权威消息事实源
 - 用户端、App 端、商家端、骑手端、后台客服工作台持续向“服务端优先，本地只兜底”收口
 - 用户端与 App 端客服页已改成先建服务端会话、拉服务端历史、同步已读，不再进页注入假欢迎语
+- 用户端与 App 端主聊天页、客服页的“清空聊天记录”假删除动作已收口为真实留存提示
 - `message_sent / message_read / all_messages_read` 已按 `chatId` 收口，减少串会话污染
 - 消息时间字段、fallback ID、临时消息 ID 持续统一到稳定规则
 - `socket-server` 旧的 `/api/messages` HTTP 桥已移除，HTTP 消息契约只认 Go `/api/messages/*`

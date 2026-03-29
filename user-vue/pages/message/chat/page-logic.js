@@ -720,8 +720,7 @@ export default {
         itemList: ['查看订单', '投诉', '清空聊天记录'],
         success: (res) => {
           if (res.tapIndex === 2) {
-            this.messages = []
-            this.persistLocalMessages()
+            uni.showToast({ title: '聊天记录按平台规则留存', icon: 'none' })
           }
         }
       })
