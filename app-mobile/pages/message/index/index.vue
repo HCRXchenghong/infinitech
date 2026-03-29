@@ -428,14 +428,7 @@ export default {
       }
 
       if (readSynced) {
-        try {
-          await this.loadSessions()
-        } catch (_error) {
-          this.sessions = this.sessions.map((session) =>
-            session.id === item.id ? { ...session, unread: 0 } : session
-          )
-          this.saveSessions()
-        }
+        await this.loadSessions()
       }
 
       const chatType = this.normalizeRole(item.role) === 'cs' ? 'support' : 'direct'
