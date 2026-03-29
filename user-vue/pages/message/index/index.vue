@@ -120,9 +120,9 @@ import {
   loadSupportRuntimeSettings
 } from '@/shared-ui/support-runtime.js'
 
-const SESSION_CACHE_MAX_AGE = 6 * 60 * 60 * 1000
+const SESSION_CACHE_MAX_AGE = 2 * 60 * 60 * 1000
 const SESSION_VISIBLE_MAX_AGE = 30 * 24 * 60 * 60 * 1000
-const SESSION_CACHE_MAX_ITEMS = 50
+const SESSION_CACHE_MAX_ITEMS = 30
 
 export default {
   data() {
