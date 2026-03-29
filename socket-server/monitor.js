@@ -1,5 +1,4 @@
 import os from 'os';
-import { db, getFallbackBufferStats, getFallbackRuntimeStats, isFallbackHistoryEnabled } from './database.js';
 import { logger } from './logger.js';
 import {
   getOnlinePresenceCount,
@@ -11,6 +10,24 @@ import {
 
 const onlineUsers = new Map();
 const ONLINE_REFRESH_MS = 30_000;
+
+function createDisabledFallbackStats() {
+  return {
+    enabled: false,
+    messageCount: 0,
+    chatCount: 0,
+    oldestTimestamp: 0,
+    newestTimestamp: 0,
+    oldestAgeMs: 0,
+    newestAgeMs: 0,
+    retentionDays: 0,
+    perChatLimit: 0,
+    startupDisabledPurged: 0,
+    startupExpiredPruned: 0,
+    startupOverflowPruned: 0,
+    lastMaintenanceAt: 0
+  };
+}
 
 export function getServerStats() {
   const totalMem = os.totalmem();
@@ -29,12 +46,8 @@ export function getServerStats() {
   });
   const cpuUsagePercent = (100 - (totalIdle / totalTick) * 100).toFixed(2);
 
-  const dbSize = isFallbackHistoryEnabled()
-    ? db.prepare('SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()').get()
-    : { size: 0 };
-  const dbSizeMB = (Number(dbSize?.size || 0) / 1024 / 1024).toFixed(2);
-  const fallbackBuffer = getFallbackBufferStats();
-  const fallbackRuntime = getFallbackRuntimeStats();
+  const dbSizeMB = '0.00';
+  const fallbackBuffer = createDisabledFallbackStats();
 
   return {
     online: true,
@@ -43,7 +56,6 @@ export function getServerStats() {
     dbSizeMB: parseFloat(dbSizeMB),
     messageCount: fallbackBuffer.messageCount,
     fallbackBuffer,
-    fallbackRuntime,
     uptime: process.uptime(),
     timestamp: Date.now()
   };

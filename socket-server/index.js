@@ -1,6 +1,5 @@
 import { Server } from 'socket.io';
 import { createServer } from 'http';
-import { saveMessage, clearMessages, reconcileMessage, markAsRead, markAllRead } from './database.js';
 import { authMiddleware, generateToken } from './auth.js';
 import { getServerStats, addOnlineUser, removeOnlineUser, getOnlineCount, getOnlineUsers } from './monitor.js';
 import Busboy from 'busboy';
@@ -364,8 +363,7 @@ function getSocketOperationalStatus() {
   return {
     redis: getRedisHealthSnapshot(),
     supportHistoryFallback: getSupportHistoryFallbackConfig(),
-    fallbackBuffer: stats.fallbackBuffer || null,
-    fallbackRuntime: stats.fallbackRuntime || null
+    fallbackBuffer: stats.fallbackBuffer || null
   };
 }
 
@@ -594,12 +592,7 @@ await attachSocketIoRedisAdapter(io);
   io,
   authMiddleware,
   addOnlineUser,
-  removeOnlineUser,
-  saveMessage,
-  reconcileMessage,
-  clearMessages,
-  markAsRead,
-  markAllRead
+  removeOnlineUser
 }));
 
 setupRiderNamespace({

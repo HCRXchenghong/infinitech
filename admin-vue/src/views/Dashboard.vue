@@ -317,7 +317,6 @@ import {
   normalizeOnlinePresenceSample,
   normalizeRedisHealth,
   normalizeFallbackBuffer,
-  normalizeFallbackRuntime,
   getRedisModeLabel,
   getRedisModeTagType,
   getRedisModeHint
@@ -436,9 +435,6 @@ function applyImStatsPatch(data) {
   merged.redis = normalizeRedisHealth(data?.redis !== undefined ? data.redis : merged.redis);
   merged.fallbackBuffer = normalizeFallbackBuffer(
     data?.fallbackBuffer !== undefined ? data.fallbackBuffer : merged.fallbackBuffer
-  );
-  merged.fallbackRuntime = normalizeFallbackRuntime(
-    data?.fallbackRuntime !== undefined ? data.fallbackRuntime : merged.fallbackRuntime
   );
   imStats.value = merged;
 }

@@ -3,19 +3,10 @@ import { normalizeMessageData } from './messagePayload.js';
 import { authorizeSupportChatAccess, normalizeChatId } from './supportAccess.js';
 import { requestBackend } from './socketIdentity.js';
 import { buildSocketRequestId } from './requestId.js';
-function toBoolean(value, fallback) {
-  const normalized = String(value || '').trim().toLowerCase();
-  if (!normalized) return fallback;
-  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
-  return fallback;
-}
-
-const SUPPORT_HISTORY_FALLBACK_ENABLED = toBoolean(process.env.SOCKET_ENABLE_HISTORY_FALLBACK, false);
 
 export function getSupportHistoryFallbackConfig() {
   return {
-    enabled: SUPPORT_HISTORY_FALLBACK_ENABLED
+    enabled: false
   };
 }
 
@@ -42,23 +33,6 @@ function emitAccessDenied(socket, eventName, chatId) {
     chatId: normalizeChatId(chatId),
     message: 'chat access denied'
   });
-}
-
-function resolveSupportPreview(messageType, content) {
-  switch (String(messageType || 'text')) {
-    case 'image':
-      return '[图片]';
-    case 'coupon':
-      return '[优惠券]';
-    case 'order':
-      return '[订单]';
-    case 'audio':
-      return '[语音]';
-    case 'location':
-      return '[位置]';
-    default:
-      return String(content || '').trim() || '[消息]';
-  }
 }
 
 function resolveBackendMessageTimestamp(rawMessage, fallback = Date.now()) {
@@ -91,18 +65,29 @@ function mergeBackendMessage(localMessage, backendMessage) {
     return localMessage;
   }
 
-  const timestamp = resolveBackendMessageTimestamp(backendMessage, Number(localMessage?.timestamp) || Date.now());
+  const timestamp = resolveBackendMessageTimestamp(
+    backendMessage,
+    Number(localMessage?.timestamp) || Date.now()
+  );
+
   return {
     ...localMessage,
     ...backendMessage,
     id: backendMessage.id || localMessage.id,
     legacyId: backendMessage.legacyId || localMessage.legacyId || localMessage.id,
-    externalMessageId: backendMessage.externalMessageId || localMessage.externalMessageId || String(localMessage.id || ''),
+    externalMessageId:
+      backendMessage.externalMessageId
+      || localMessage.externalMessageId
+      || String(localMessage.id || ''),
     timestamp,
     createdAt: backendMessage.createdAt ?? backendMessage.timestamp ?? localMessage.createdAt,
     updatedAt: backendMessage.updatedAt ?? localMessage.updatedAt,
-    time: String(backendMessage.time || '').trim()
-      || new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+    time:
+      String(backendMessage.time || '').trim()
+      || new Date(timestamp).toLocaleTimeString('zh-CN', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
     status: backendMessage.status || localMessage.status || 'sent'
   };
 }
@@ -129,7 +114,7 @@ function normalizeBackendTargetRole(value, socketUserRole = '') {
 
 async function syncMessageToBackend(socket, chatId, rawData, message) {
   const authHeader = String(socket?.authToken || '').trim();
-  if (!authHeader || !chatId || !message) return;
+  if (!authHeader || !chatId || !message) return null;
   const requestId = buildSocketRequestId(socket, 'sync-message', chatId);
 
   const payload = {
@@ -159,17 +144,21 @@ async function syncMessageToBackend(socket, chatId, rawData, message) {
       requestId
     });
     if (!response.ok) {
-      logger.warn(`消息同步到 Go 失败 request_id=${requestId}:`, response.status, data?.error || '');
+      logger.warn(
+        `message sync to Go failed request_id=${requestId}:`,
+        response.status,
+        data?.error || ''
+      );
       return null;
     }
     return mergeBackendMessage(message, data);
   } catch (err) {
-    logger.warn(`消息同步到 Go 失败 request_id=${requestId}:`, err?.message || err);
+    logger.warn(`message sync to Go failed request_id=${requestId}:`, err?.message || err);
     return null;
   }
 }
 
-async function markConversationReadOnBackend(socket, chatId, markAllReadFn = null) {
+async function markConversationReadOnBackend(socket, chatId) {
   const authHeader = String(socket?.authToken || '').trim();
   const normalizedChatId = normalizeChatId(chatId);
   if (!authHeader || !normalizedChatId) return;
@@ -185,14 +174,14 @@ async function markConversationReadOnBackend(socket, chatId, markAllReadFn = nul
       }
     );
     if (!response.ok && response.status !== 404) {
-      logger.warn(`会话已读状态同步失败 request_id=${requestId}:`, response.status, data?.error || '');
-      return;
-    }
-    if (SUPPORT_HISTORY_FALLBACK_ENABLED && typeof markAllReadFn === 'function') {
-      markAllReadFn('support', normalizedChatId, socket.userId);
+      logger.warn(
+        `conversation read sync failed request_id=${requestId}:`,
+        response.status,
+        data?.error || ''
+      );
     }
   } catch (err) {
-    logger.warn(`会话已读状态同步失败 request_id=${requestId}:`, err?.message || err);
+    logger.warn(`conversation read sync failed request_id=${requestId}:`, err?.message || err);
   }
 }
 
@@ -241,7 +230,7 @@ function buildTransientSupportMessage(chatId, data, messageData, chatType, isMon
   };
 }
 
-function createSupportMessageHandler({ saveMessage, reconcileMessage, supportNamespace, monitorNamespace }) {
+function createSupportMessageHandler({ supportNamespace, monitorNamespace }) {
   return async function handleSendMessage(data, socket, chatType = 'support') {
     try {
       const normalizedChatId = normalizeChatId(data?.chatId);
@@ -260,70 +249,15 @@ function createSupportMessageHandler({ saveMessage, reconcileMessage, supportNam
         }
       }
 
-      if (!SUPPORT_HISTORY_FALLBACK_ENABLED) {
-        const localMessage = buildTransientSupportMessage(
-          normalizedChatId,
-          data,
-          messageData,
-          chatType,
-          isMonitorIntervention
-        );
-        const syncedMessage = await syncMessageToBackend(socket, normalizedChatId, data, localMessage);
-        const message = syncedMessage || localMessage;
-
-        logger.info('Broadcasting message:', message);
-        emitSupportMessage(supportNamespace, normalizedChatId, message);
-        emitMonitorMessage(monitorNamespace, message);
-
-        socket.emit('message_sent', {
-          chatId: normalizedChatId,
-          tempId: data.tempId,
-          messageId: message.id,
-          status: 'sent',
-          officialIntervention: isMonitorIntervention,
-          timestamp: message.timestamp,
-          createdAt: message.createdAt,
-          time: message.time
-        });
-
-        return message;
-      }
-
-      const result = saveMessage(chatType, normalizedChatId, messageData);
-      const timestamp = Number.isFinite(Number(result?.timestamp))
-        ? Number(result.timestamp)
-        : Date.now();
-      const createdAt = String(result?.createdAt || '');
-      const time = new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-      const localMessage = {
-        id: result.uid || result.lastInsertRowid,
-        legacyId: result.lastInsertRowid,
-        uid: result.uid || '',
-        tsid: result.tsid || '',
-        chatId: normalizedChatId,
-        sender: messageData.sender,
-        senderId: messageData.senderId,
-        senderRole: messageData.senderRole,
-        content: messageData.content,
-        timestamp,
-        createdAt,
-        time,
-        messageType: messageData.messageType,
-        coupon: messageData.coupon,
-        order: messageData.order,
-        imageUrl: messageData.imageUrl,
-        avatar: messageData.avatar,
-        status: 'sent',
+      const localMessage = buildTransientSupportMessage(
+        normalizedChatId,
+        data,
+        messageData,
         chatType,
-        officialIntervention: isMonitorIntervention,
-        interventionLabel: isMonitorIntervention ? '官方介入' : ''
-      };
-
+        isMonitorIntervention
+      );
       const syncedMessage = await syncMessageToBackend(socket, normalizedChatId, data, localMessage);
       const message = syncedMessage || localMessage;
-      if (syncedMessage && typeof reconcileMessage === 'function') {
-        reconcileMessage(chatType, normalizedChatId, localMessage.id, localMessage.legacyId, syncedMessage);
-      }
 
       logger.info('Broadcasting message:', message);
       emitSupportMessage(supportNamespace, normalizedChatId, message);
@@ -352,18 +286,11 @@ export function setupSupportNamespaces({
   io,
   authMiddleware,
   addOnlineUser,
-  removeOnlineUser,
-  saveMessage,
-  reconcileMessage,
-  clearMessages,
-  markAsRead,
-  markAllRead
+  removeOnlineUser
 }) {
   const monitorNamespace = io.of('/monitor');
   const supportNamespace = io.of('/support');
   const handleSendMessage = createSupportMessageHandler({
-    saveMessage,
-    reconcileMessage,
     supportNamespace,
     monitorNamespace
   });
@@ -391,7 +318,7 @@ export function setupSupportNamespaces({
         return;
       }
       socket.join(`chat_${chatId}`);
-      await markConversationReadOnBackend(socket, chatId, markAllRead);
+      await markConversationReadOnBackend(socket, chatId);
       logger.info(`Monitor admin joined chat_${chatId}`);
     });
 
@@ -410,9 +337,6 @@ export function setupSupportNamespaces({
         emitAccessDenied(socket, 'mark_read_denied', data?.chatId);
         return;
       }
-      if (SUPPORT_HISTORY_FALLBACK_ENABLED) {
-        markAsRead(data.messageId);
-      }
       socket.to(`chat_${chatId}`).emit('message_read', {
         chatId,
         messageId: data.messageId,
@@ -426,11 +350,8 @@ export function setupSupportNamespaces({
         emitAccessDenied(socket, 'mark_all_read_denied', data?.chatId);
         return;
       }
-      if (SUPPORT_HISTORY_FALLBACK_ENABLED) {
-        markAllRead('support', chatId, socket.userId);
-      }
       socket.to(`chat_${chatId}`).emit('all_messages_read', { chatId, readBy: socket.userId });
-      await markConversationReadOnBackend(socket, chatId, markAllRead);
+      await markConversationReadOnBackend(socket, chatId);
     });
 
     socket.on('clear_messages', (data) => {
@@ -438,9 +359,6 @@ export function setupSupportNamespaces({
       if (!chatId) {
         emitAccessDenied(socket, 'clear_messages_denied', data?.chatId);
         return;
-      }
-      if (SUPPORT_HISTORY_FALLBACK_ENABLED) {
-        clearMessages('support', chatId);
       }
       supportNamespace.to(`chat_${chatId}`).emit('messages_cleared', { chatId });
       monitorNamespace.to(`chat_${chatId}`).emit('messages_cleared', { chatId });
@@ -469,7 +387,7 @@ export function setupSupportNamespaces({
       }
 
       socket.join(`chat_${access.chatId}`);
-      await markConversationReadOnBackend(socket, access.chatId, markAllRead);
+      await markConversationReadOnBackend(socket, access.chatId);
       logger.info(`${socket.userRole} ${socket.userId} (${socket.id}) joined chat_${access.chatId}`);
     });
 
@@ -490,9 +408,6 @@ export function setupSupportNamespaces({
         return;
       }
 
-      if (SUPPORT_HISTORY_FALLBACK_ENABLED) {
-        markAsRead(data.messageId);
-      }
       socket.to(`chat_${access.chatId}`).emit('message_read', {
         chatId: access.chatId,
         messageId: data.messageId,
@@ -507,11 +422,11 @@ export function setupSupportNamespaces({
         return;
       }
 
-      if (SUPPORT_HISTORY_FALLBACK_ENABLED) {
-        markAllRead('support', access.chatId, socket.userId);
-      }
-      socket.to(`chat_${access.chatId}`).emit('all_messages_read', { chatId: access.chatId, readBy: socket.userId });
-      await markConversationReadOnBackend(socket, access.chatId, markAllRead);
+      socket.to(`chat_${access.chatId}`).emit('all_messages_read', {
+        chatId: access.chatId,
+        readBy: socket.userId
+      });
+      await markConversationReadOnBackend(socket, access.chatId);
     });
 
     socket.on('clear_messages', (data) => {

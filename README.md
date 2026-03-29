@@ -106,10 +106,9 @@
 - 骑手端本地 SQLite fallback ID 已补强为包含发送方、类型和时间戳的稳定组合，降低高频消息碰撞风险
 - 商家端与用户双端聊天页的 fallback ID 也已补齐到同一档稳定规则，减少无显式消息 ID 时的本地碰撞
 - `socket-server` 旧的 `/api/messages` HTTP 桥已移除，HTTP 消息契约只认 Go `/api/messages/*`
-- `chat.db` 已继续降级为短期 emergency buffer，并进一步收紧为默认每会话 200 条、默认保留 14 天；客服会话列表已不再从本地 fallback 生成
-- `socket-server` 在缺少认证信息时已不再回退读取本地客服历史，避免未鉴权状态继续消费旧 fallback 数据
-- `socket-server` 默认关闭客服历史 fallback 时，客服发送、历史回写、已读同步和清空会话也不再维护本地 SQLite 状态，进一步把 `chat.db` 收成显式开关下的应急缓冲
-- `socket-server` 的骑手直聊转发也不再先把消息落进服务端本地 SQLite 再同步 Go，而是直接以瞬时消息体同步权威消息服务后广播，继续削弱 `chat.db` 的事实源角色
+- `socket-server` 已移除默认运行态里的 SQLite 客服历史链路，客服与监控会话列表/历史现在只认 Go 权威消息接口
+- `socket-server` 已移除 `better-sqlite3` 依赖，服务端不再维护 `chat.db` 作为运行时消息 fallback
+- 骑手端、商家端、双端和后台仍保留各自受控的本地短窗口缓存，但这些缓存只作为客户端展示兜底，不再反向充当服务端事实源
 - 双端主聊天页、双端客服页、商家聊天页、骑手客服页和后台客服工作台已经停止依赖 `load_messages / messages_loaded` 这条旧 socket 历史拉取路径，默认历史只认 HTTP 服务端消息接口，socket 只保留实时增量和回执
 - 双端消息首页读取旧格式本地会话缓存时也会先归一化并清零未读，避免历史缓存把服务端摘要、排序和红点口径再次带偏
 
@@ -168,7 +167,6 @@
 
 ### 6.1 消息系统尾巴
 
-- `socket-server/chat.db` 仍保留短期 fallback 角色，但当前已主要退到“消息历史应急缓冲”，还没彻底退出消息事实源链路
 - 骑手端、后台工作台、商家端仍有少量本地辅助状态尚未完全去事实源化
 - 会话摘要、未读汇总和 fallback 行为还需要继续统一到服务端口径
 
@@ -282,12 +280,11 @@ node scripts/http-load-smoke.mjs
 
 按当前上线优先级，后续继续按这个顺序推进：
 
-1. 继续压缩 `socket-server/chat.db` 的事实源角色
-2. 继续把消息会话摘要、未读汇总和本地 fallback 收回 Go 权威源
-3. 继续补齐推送链路的外部 provider、失败治理和观测能力
-4. 继续完善首页推广位前台编排和运营面板
-5. 继续补齐压测、降级、回滚和故障演练基线
-6. 最后再进入完整上线检查和灰度准备
+1. 继续把消息会话摘要、未读汇总和本地 fallback 收回 Go 权威源
+2. 继续补齐推送链路的外部 provider、失败治理和观测能力
+3. 继续完善首页推广位前台编排和运营面板
+4. 继续补齐压测、降级、回滚和故障演练基线
+5. 最后再进入完整上线检查和灰度准备
 
 ## 10. 真实状态说明
 
@@ -303,5 +300,5 @@ node scripts/http-load-smoke.mjs
 
 ## 11. Latest Update
 
-- `socket-server` now purges server-local fallback history on startup whenever `SOCKET_ENABLE_HISTORY_FALLBACK=false`.
 - Dashboard, system-health aggregation, and release preflight now expose that disabled cleanup explicitly, instead of relying on stale fallback runtime counters.
+- `socket-server` no longer ships the old SQLite support-history path in default runtime, and the `better-sqlite3` dependency has been removed from the realtime service.

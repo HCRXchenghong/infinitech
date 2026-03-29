@@ -18,7 +18,6 @@ export function createDefaultImStats() {
       startupOverflowPruned: 0,
       lastMaintenanceAt: 0
     },
-    fallbackRuntime: {},
     redis: {
       enabled: false,
       connected: false,
@@ -219,11 +218,6 @@ export function normalizeFallbackBuffer(raw) {
     startupOverflowPruned: Math.max(0, Math.floor(toFiniteNumber(buffer.startupOverflowPruned))),
     lastMaintenanceAt: Math.max(0, toFiniteNumber(buffer.lastMaintenanceAt))
   }
-}
-
-export function normalizeFallbackRuntime(raw) {
-  const runtime = raw && typeof raw === 'object' ? raw : {}
-  return { ...runtime }
 }
 
 export function formatAgeFromMs(diffMs) {
