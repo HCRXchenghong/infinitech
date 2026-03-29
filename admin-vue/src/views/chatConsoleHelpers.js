@@ -55,10 +55,10 @@ export function isAdminSender(data) {
 }
 
 export function getMessagePreview(data) {
-  if (data?.messageType === 'image') return '[鍥剧墖]';
-  if (data?.messageType === 'coupon') return '[浼樻儬鍒竇';
-  if (data?.messageType === 'order') return '[璁㈠崟]';
-  return String(data?.content || '').trim() || '[鏆傛棤娑堟伅]';
+  if (data?.messageType === 'image') return '[图片]';
+  if (data?.messageType === 'coupon') return '[优惠券]';
+  if (data?.messageType === 'order') return '[订单]';
+  return String(data?.content || '').trim() || '[暂无消息]';
 }
 
 export function formatMessageTime(timestamp) {
@@ -122,11 +122,11 @@ export function mapLoadedChats(list) {
     const chatId = normalizeChatId(chat.id || chat.chatId || chat.roomId);
     return {
       id: chatId,
-      name: String(chat.name || '').trim() || `鑱婂ぉ #${chatId || 'unknown'}`,
+      name: String(chat.name || '').trim() || `聊天 #${chatId || 'unknown'}`,
       phone: chat.phone || '',
       role: chat.role || 'user',
       avatar: chat.avatar || null,
-      lastMessage: String(chat.lastMessage || chat.msg || '').trim() || '[鏆傛棤娑堟伅]',
+      lastMessage: String(chat.lastMessage || chat.msg || '').trim() || '[暂无消息]',
       time: String(chat.time || '').trim() || (updatedAt ? formatMessageTime(updatedAt) : ''),
       unread: normalizeUnreadCount(chat.unread),
       updatedAt
@@ -178,7 +178,7 @@ export function createOutgoingTempMessage({
   id,
   content,
   type = 'text',
-  sender = '瀹㈡湇',
+  sender = '客服',
   coupon,
   order,
   status

@@ -56,7 +56,7 @@ export default {
     },
     statusText() {
       if (this.safeOrder.statusText) return this.safeOrder.statusText
-      const status = this.safeOrder.status || ''
+      const status = String(this.safeOrder.status || '').trim()
       const statusMap = {
         pending: '待接单',
         accepted: '已接单',
@@ -65,7 +65,7 @@ export default {
         completed: '已完成',
         cancelled: '已取消'
       }
-      return statusMap[status] || (status || '订单')
+      return statusMap[status] || status || '订单'
     },
     shopName() {
       return this.safeOrder.shopName ||

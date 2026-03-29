@@ -149,7 +149,7 @@ class Database {
       success: () => {
         if (options.skipPrune) return
         void this.pruneMessagesByChatId(chatId).catch((err) => {
-          console.error('鏁版嵁搴撴秷鎭鍓け璐?', err)
+          console.error('裁剪消息缓存失败:', err)
         })
       },
       fail: (err: any) => console.error('❌ 保存失败:', err)
