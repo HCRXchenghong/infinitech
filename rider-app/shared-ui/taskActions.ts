@@ -147,7 +147,7 @@ export function callTaskPhone(task: any) {
 
   if (isPending) {
     const preferred = pickString(merchantPhone, customerPhone)
-    callPhoneNumber(
+    void callPhoneNumber(
       preferred,
       merchantPhone ? '暂无完整手机号，请稍后重试' : '暂无商家电话，请使用在线消息',
       buildTaskPhoneAuditPayload(task, preferred, 'merchant')
@@ -155,7 +155,7 @@ export function callTaskPhone(task: any) {
     return
   }
 
-  callPhoneNumber(
+  void callPhoneNumber(
     customerPhone,
     '暂无完整手机号，请使用在线消息',
     buildTaskPhoneAuditPayload(task, customerPhone, 'user')
@@ -172,11 +172,49 @@ export function navigateTask(task: any) {
     : pickString(task?.customerAddress, task?.address, task?.deliveryAddress)
 
   const latitude = isPending
-    ? pickLatitude(task?.shopLatitude, task?.pickupLatitude, task?.shopLat, task?.pickupLat, task?.shop_latitude, task?.pickup_latitude, task?.shop_lat)
-    : pickLatitude(task?.customerLatitude, task?.deliveryLatitude, task?.addressLatitude, task?.customerLat, task?.deliveryLat, task?.customer_latitude, task?.delivery_latitude, task?.address_latitude, task?.latitude, task?.lat)
+    ? pickLatitude(
+        task?.shopLatitude,
+        task?.pickupLatitude,
+        task?.shopLat,
+        task?.pickupLat,
+        task?.shop_latitude,
+        task?.pickup_latitude,
+        task?.shop_lat
+      )
+    : pickLatitude(
+        task?.customerLatitude,
+        task?.deliveryLatitude,
+        task?.addressLatitude,
+        task?.customerLat,
+        task?.deliveryLat,
+        task?.customer_latitude,
+        task?.delivery_latitude,
+        task?.address_latitude,
+        task?.latitude,
+        task?.lat
+      )
   const longitude = isPending
-    ? pickLongitude(task?.shopLongitude, task?.pickupLongitude, task?.shopLng, task?.pickupLng, task?.shop_longitude, task?.pickup_longitude, task?.shop_lng)
-    : pickLongitude(task?.customerLongitude, task?.deliveryLongitude, task?.addressLongitude, task?.customerLng, task?.deliveryLng, task?.customer_longitude, task?.delivery_longitude, task?.address_longitude, task?.longitude, task?.lng)
+    ? pickLongitude(
+        task?.shopLongitude,
+        task?.pickupLongitude,
+        task?.shopLng,
+        task?.pickupLng,
+        task?.shop_longitude,
+        task?.pickup_longitude,
+        task?.shop_lng
+      )
+    : pickLongitude(
+        task?.customerLongitude,
+        task?.deliveryLongitude,
+        task?.addressLongitude,
+        task?.customerLng,
+        task?.deliveryLng,
+        task?.customer_longitude,
+        task?.delivery_longitude,
+        task?.address_longitude,
+        task?.longitude,
+        task?.lng
+      )
 
   if (latitude === null || longitude === null) {
     fallbackCopyAddress(address, name)

@@ -190,7 +190,7 @@ function buildConversationPayload() {
     targetId: targetId.value || (chatRole.value === 'admin' ? 'support' : ''),
     targetPhone: '',
     targetName: chatTitle.value || inferTitleByRole(chatRole.value),
-    targetAvatar: ''
+    targetAvatar: '',
   }
 }
 
@@ -230,7 +230,7 @@ function normalizeCachedMessages(list: any[] = []): ViewMessage[] {
         time: String(item?.time || formatClockByTimestamp(timestamp)),
         status: item?.status === 'read' || item?.status === 'failed' ? item.status : 'sent',
         officialIntervention: !!item?.officialIntervention,
-        interventionLabel: String(item?.interventionLabel || '')
+        interventionLabel: String(item?.interventionLabel || ''),
       }
     })
     .filter((item) => item.timestamp >= cutoff)
@@ -275,13 +275,13 @@ function persistLocalMessages() {
       timestamp: item.timestamp,
       status: item.status,
       officialIntervention: item.officialIntervention,
-      interventionLabel: item.interventionLabel
+      interventionLabel: item.interventionLabel,
     }))
     uni.setStorageSync(
       localMessageKey(),
       JSON.stringify({
         cachedAt: Date.now(),
-        messages: snapshot
+        messages: snapshot,
       })
     )
   } catch (_err) {
@@ -307,7 +307,7 @@ function toViewMessage(raw: any): ViewMessage {
     time: String(raw?.time || formatClockByTimestamp(timestamp)),
     status: 'sent',
     officialIntervention: !!raw?.officialIntervention,
-    interventionLabel: String(raw?.interventionLabel || '官方介入')
+    interventionLabel: String(raw?.interventionLabel || '官方介入'),
   }
 }
 
@@ -366,7 +366,7 @@ function appendLocalMessage(
     time: nowClock(),
     status,
     officialIntervention: false,
-    interventionLabel: ''
+    interventionLabel: '',
   })
   persistLocalMessages()
   scrollToBottom()
@@ -388,7 +388,7 @@ function buildSocketAuthHeader() {
   const token = String(uni.getStorageSync('token') || '').trim()
   if (!token) return {}
   return {
-    Authorization: /^bearer\s+/i.test(token) ? token : `Bearer ${token}`
+    Authorization: /^bearer\s+/i.test(token) ? token : `Bearer ${token}`,
   }
 }
 
@@ -408,7 +408,7 @@ async function fetchSocketToken() {
       header: Object.assign({ 'Content-Type': 'application/json' }, authHeader),
       data: { userId: merchantId.value, role: 'merchant' },
       success: resolve,
-      fail: reject
+      fail: reject,
     })
   })
 
@@ -429,7 +429,7 @@ function connectSocket(token: string) {
     sock.emit('join_chat', {
       chatId: chatId.value,
       userId: merchantId.value,
-      role: 'merchant'
+      role: 'merchant',
     })
   })
 
@@ -487,7 +487,7 @@ function connectSocket(token: string) {
 
   sock.on('connect_error', (err: any) => {
     isConnected.value = false
-    if (/\u8ba4\u8bc1\u5931\u8d25/.test(String(err?.message || ''))) {
+    if (/认证失败/.test(String(err?.message || ''))) {
       uni.removeStorageSync('socket_token')
     }
     scheduleReconnect()
@@ -542,7 +542,7 @@ function sendText() {
     targetPhone: '',
     targetName: chatTitle.value || inferTitleByRole(chatRole.value),
     targetAvatar: '',
-    tempId: mid
+    tempId: mid,
   })
 
   setTimeout(() => {
@@ -595,7 +595,7 @@ function chooseImage() {
               targetPhone: '',
               targetName: chatTitle.value || inferTitleByRole(chatRole.value),
               targetAvatar: '',
-              tempId: mid
+              tempId: mid,
             })
 
             setTimeout(() => {
@@ -612,9 +612,9 @@ function chooseImage() {
         fail: () => {
           uni.hideLoading()
           uni.showToast({ title: '图片发送失败', icon: 'none' })
-        }
+        },
       })
-    }
+    },
   })
 }
 

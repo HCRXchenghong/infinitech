@@ -8,13 +8,13 @@ export default Vue.extend({
     return {
       taskId: '',
       showReport: false,
-      reportReasons: [...DEFAULT_REPORT_REASONS]
+      reportReasons: [...DEFAULT_REPORT_REASONS],
     }
   },
   computed: {
     task() {
       return riderOrderStore.myOrders.find((o: any) => o.id === this.taskId)
-    }
+    },
   },
   onLoad(options: any) {
     this.taskId = String((options && options.id) || '').trim()
@@ -32,7 +32,12 @@ export default Vue.extend({
         }
         return `${task.shopDistance}m`
       }
-      if (task.customerDistance === '' || task.customerDistance === '--' || task.customerDistance === null || task.customerDistance === undefined) {
+      if (
+        task.customerDistance === '' ||
+        task.customerDistance === '--' ||
+        task.customerDistance === null ||
+        task.customerDistance === undefined
+      ) {
         return '--'
       }
       return `${task.customerDistance}km`
@@ -64,10 +69,10 @@ export default Vue.extend({
 
     completeTask() {
       if (!this.task) return
-      
+
       const previousStatus = this.task.status
       const actionText = previousStatus === 'pending' ? '已到店' : '送达'
-      
+
       uni.showModal({
         title: '确认操作',
         content: `确认${actionText}吗？`,
@@ -75,11 +80,11 @@ export default Vue.extend({
           if (res.confirm) {
             try {
               await advanceTask(this.taskId)
-            
+
               if (previousStatus === 'delivering') {
                 uni.showToast({
                   title: '订单已完成！',
-                  icon: 'success'
+                  icon: 'success',
                 })
                 setTimeout(() => {
                   uni.navigateBack()
@@ -87,17 +92,17 @@ export default Vue.extend({
               } else {
                 uni.showToast({
                   title: '开始配送！',
-                  icon: 'success'
+                  icon: 'success',
                 })
               }
-            } catch (err) {
+            } catch (_err) {
               uni.showToast({
                 title: '操作失败',
-                icon: 'none'
+                icon: 'none',
               })
             }
           }
-        }
+        },
       })
     },
 
@@ -114,16 +119,16 @@ export default Vue.extend({
         this.showReport = false
         uni.showToast({
           title: '上报成功',
-          icon: 'success'
+          icon: 'success',
         })
       } catch (err: any) {
         uni.showToast({
           title: err?.error || err?.message || '上报失败',
-          icon: 'none'
+          icon: 'none',
         })
       } finally {
         uni.hideLoading()
       }
-    }
-  }
+    },
+  },
 })
