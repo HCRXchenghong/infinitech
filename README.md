@@ -300,3 +300,8 @@ node scripts/http-load-smoke.mjs
 - 但消息事实源最终收口、完整推送平台、RTC、完整压测与故障演练仍未全部完成
 
 所以当前策略不是停止，而是继续按本 README 的优先级往下收，直到真正达到可控上线标准。
+
+## 11. Latest Update
+
+- `socket-server` now purges server-local fallback history on startup whenever `SOCKET_ENABLE_HISTORY_FALLBACK=false`.
+- Dashboard, system-health aggregation, and release preflight now expose that disabled cleanup explicitly, instead of relying on stale fallback runtime counters.

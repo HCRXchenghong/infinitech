@@ -135,9 +135,11 @@ function buildProbeDetail(result) {
   if (body.fallbackBuffer && typeof body.fallbackBuffer === "object") {
     const fallback = body.fallbackBuffer;
     const fallbackDetail = [
+      fallback.enabled !== undefined ? `fallbackEnabled=${fallback.enabled}` : "",
       fallback.messageCount !== undefined ? `fallbackMessages=${fallback.messageCount}` : "",
       fallback.chatCount !== undefined ? `fallbackChats=${fallback.chatCount}` : "",
       fallback.oldestAgeMs !== undefined ? `fallbackOldestAge=${fallback.oldestAgeMs}` : "",
+      fallback.startupDisabledPurged !== undefined ? `fallbackDisabledPurged=${fallback.startupDisabledPurged}` : "",
       fallback.startupExpiredPruned !== undefined ? `fallbackExpiredPruned=${fallback.startupExpiredPruned}` : "",
       fallback.startupOverflowPruned !== undefined ? `fallbackOverflowPruned=${fallback.startupOverflowPruned}` : ""
     ].filter(Boolean).join(" ");

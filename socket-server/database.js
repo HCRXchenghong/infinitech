@@ -10,15 +10,25 @@ function toPositiveInt(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function toBoolean(value, fallback) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) return fallback;
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
+}
+
 const db = new Database(join(__dirname, 'chat.db'));
 const UNIFIED_PREFIX = '250724';
 const CHAT_BUCKET = '83';
+const FALLBACK_HISTORY_ENABLED = toBoolean(process.env.SOCKET_ENABLE_HISTORY_FALLBACK, false);
 const FALLBACK_CHAT_HISTORY_LIMIT = toPositiveInt(process.env.SOCKET_FALLBACK_CHAT_HISTORY_LIMIT, 200);
 const FALLBACK_CHAT_RETENTION_MS = toPositiveInt(
   process.env.SOCKET_FALLBACK_CHAT_RETENTION_MS,
   14 * 24 * 60 * 60 * 1000
 );
 const startupMaintenanceStats = {
+  disabledPurged: 0,
   expiredPruned: 0,
   overflowPruned: 0,
   lastMaintenanceAt: 0
@@ -228,7 +238,27 @@ startupMaintenanceStats.expiredPruned = Number(startupExpiredPruneResult?.change
 startupMaintenanceStats.overflowPruned = Number(startupOverflowPruneResult?.changes || 0);
 startupMaintenanceStats.lastMaintenanceAt = Date.now();
 
+if (!FALLBACK_HISTORY_ENABLED) {
+  const disabledPurgeResult = db.prepare('DELETE FROM messages').run();
+  startupMaintenanceStats.disabledPurged = Number(disabledPurgeResult?.changes || 0);
+}
+
 export function saveMessage(chatType, chatId, messageData) {
+  if (!FALLBACK_HISTORY_ENABLED) {
+    const ids = nextUnifiedIds(CHAT_BUCKET);
+    const eventTimestamp = resolveEventTimestamp(messageData.timestamp ?? messageData.createdAt, Date.now());
+    return {
+      changes: 0,
+      lastInsertRowid: 0,
+      uid: String(messageData.uid || ids.uid),
+      tsid: String(messageData.tsid || ids.tsid),
+      chatUid: String(messageData.chatUid || messageData.chat_uid || chatId || ''),
+      senderUid: String(messageData.senderUid || messageData.sender_uid || messageData.senderId || ''),
+      createdAt: normalizeCreatedAtForStorage(messageData.createdAt, eventTimestamp),
+      timestamp: eventTimestamp
+    };
+  }
+
   const ids = nextUnifiedIds(CHAT_BUCKET);
   const messageUid = String(messageData.uid || ids.uid);
   const messageTsid = String(messageData.tsid || ids.tsid);
@@ -278,21 +308,48 @@ export function saveMessage(chatType, chatId, messageData) {
 }
 
 export function markAsRead(messageId) {
+  if (!FALLBACK_HISTORY_ENABLED) {
+    return { changes: 0 };
+  }
   const stmt = db.prepare("UPDATE messages SET status = 'read', read_at = CURRENT_TIMESTAMP WHERE id = ? OR uid = ?");
   return stmt.run(messageId, String(messageId || ''));
 }
 
 export function markAllRead(chatType, chatId, readerId) {
+  if (!FALLBACK_HISTORY_ENABLED) {
+    return { changes: 0 };
+  }
   const stmt = db.prepare("UPDATE messages SET status = 'read', read_at = CURRENT_TIMESTAMP WHERE chat_type = ? AND chat_id = ? AND sender_id != ? AND status != 'read'");
   return stmt.run(chatType, chatId, readerId);
 }
 
 export function clearMessages(chatType, chatId) {
+  if (!FALLBACK_HISTORY_ENABLED) {
+    return { changes: 0 };
+  }
   const stmt = db.prepare('DELETE FROM messages WHERE chat_type = ? AND chat_id = ?');
   return stmt.run(chatType, chatId);
 }
 
 export function getFallbackBufferStats() {
+  if (!FALLBACK_HISTORY_ENABLED) {
+    return {
+      enabled: false,
+      messageCount: 0,
+      chatCount: 0,
+      oldestTimestamp: 0,
+      newestTimestamp: 0,
+      oldestAgeMs: 0,
+      newestAgeMs: 0,
+      retentionDays: Math.round(FALLBACK_CHAT_RETENTION_MS / (24 * 60 * 60 * 1000)),
+      perChatLimit: FALLBACK_CHAT_HISTORY_LIMIT,
+      startupDisabledPurged: startupMaintenanceStats.disabledPurged,
+      startupExpiredPruned: 0,
+      startupOverflowPruned: 0,
+      lastMaintenanceAt: startupMaintenanceStats.lastMaintenanceAt
+    };
+  }
+
   const summary = db.prepare(`
     SELECT
       COUNT(*) AS message_count,
@@ -303,6 +360,7 @@ export function getFallbackBufferStats() {
   `).get();
 
   return {
+    enabled: true,
     messageCount: Number(summary?.message_count || 0),
     chatCount: Number(summary?.chat_count || 0),
     oldestTimestamp: Number(summary?.oldest_timestamp || 0),
@@ -311,6 +369,7 @@ export function getFallbackBufferStats() {
     newestAgeMs: Number(summary?.newest_timestamp || 0) > 0 ? Math.max(Date.now() - Number(summary.newest_timestamp), 0) : 0,
     retentionDays: Math.round(FALLBACK_CHAT_RETENTION_MS / (24 * 60 * 60 * 1000)),
     perChatLimit: FALLBACK_CHAT_HISTORY_LIMIT,
+    startupDisabledPurged: startupMaintenanceStats.disabledPurged,
     startupExpiredPruned: startupMaintenanceStats.expiredPruned,
     startupOverflowPruned: startupMaintenanceStats.overflowPruned,
     lastMaintenanceAt: startupMaintenanceStats.lastMaintenanceAt
@@ -322,6 +381,9 @@ export function getFallbackRuntimeStats() {
 }
 
 export function reconcileMessage(chatType, chatId, localMessageId, localLegacyId, message) {
+  if (!FALLBACK_HISTORY_ENABLED) {
+    return { changes: 0 };
+  }
   const normalizedLocalId = String(localMessageId || '').trim();
   const numericLegacyId = Number(localLegacyId);
   if (!normalizedLocalId && (!Number.isFinite(numericLegacyId) || numericLegacyId <= 0)) {
@@ -359,6 +421,10 @@ export function reconcileMessage(chatType, chatId, localMessageId, localLegacyId
     normalizedLocalId,
     Number.isFinite(numericLegacyId) && numericLegacyId > 0 ? numericLegacyId : -1
   );
+}
+
+export function isFallbackHistoryEnabled() {
+  return FALLBACK_HISTORY_ENABLED;
 }
 
 export { db };

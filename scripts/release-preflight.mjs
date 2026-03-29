@@ -12,7 +12,6 @@ const DEFAULT_MAX_FALLBACK_MESSAGES = 5000;
 const DEFAULT_MAX_FALLBACK_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 const DEFAULT_MAX_PUSH_QUEUE = 5000;
 const DEFAULT_MAX_PUSH_QUEUE_AGE_MS = 30 * 60 * 1000;
-const DEFAULT_MAX_RECENT_SOCKET_FALLBACK_MS = 10 * 60 * 1000;
 const DEFAULT_MAX_PUSH_CONSECUTIVE_FAILURES = 2;
 const DEFAULT_MAX_PUSH_SUCCESS_STALE_MS = 15 * 60 * 1000;
 const DEFAULT_ALLOW_SOCKET_HISTORY_FALLBACK = false;
@@ -119,26 +118,16 @@ function collectSocketSummary(body) {
     ? body.supportHistoryFallback
     : null;
   const fallback = body.fallbackBuffer && typeof body.fallbackBuffer === 'object' ? body.fallbackBuffer : null;
-  const fallbackRuntime = body.fallbackRuntime && typeof body.fallbackRuntime === 'object' ? body.fallbackRuntime : null;
-  const lastFallbackAt = fallbackRuntime
-    ? Math.max(
-      Number(fallbackRuntime.lastConversationListFallbackAt || 0),
-      Number(fallbackRuntime.lastMessageHistoryFallbackAt || 0)
-    )
-    : 0;
-  const lastFallbackAgeMs = lastFallbackAt > 0 ? Math.max(Date.now() - lastFallbackAt, 0) : 0;
   return [
     redis ? `redisMode=${redis.mode || 'unknown'}` : '',
     redis && typeof redis.connected === 'boolean' ? `redisConnected=${redis.connected}` : '',
     redis && typeof redis.adapterEnabled === 'boolean' ? `adapter=${redis.adapterEnabled}` : '',
     historyFallback && typeof historyFallback.enabled === 'boolean' ? `historyFallback=${historyFallback.enabled}` : '',
+    fallback && typeof fallback.enabled === 'boolean' ? `fallbackBufferEnabled=${fallback.enabled}` : '',
     fallback && fallback.messageCount !== undefined ? `fallbackMessages=${fallback.messageCount}` : '',
     fallback && fallback.chatCount !== undefined ? `fallbackChats=${fallback.chatCount}` : '',
     fallback && fallback.oldestAgeMs !== undefined ? `fallbackOldestAge=${formatDurationMs(fallback.oldestAgeMs)}` : '',
-    fallbackRuntime && fallbackRuntime.conversationListFallbackCount !== undefined ? `fallbackListHits=${fallbackRuntime.conversationListFallbackCount}` : '',
-    fallbackRuntime && fallbackRuntime.messageHistoryFallbackCount !== undefined ? `fallbackHistoryHits=${fallbackRuntime.messageHistoryFallbackCount}` : '',
-    fallbackRuntime && fallbackRuntime.historyRefreshWriteCount !== undefined ? `fallbackRefreshWrites=${fallbackRuntime.historyRefreshWriteCount}` : '',
-    lastFallbackAgeMs > 0 ? `lastFallbackAgo=${formatDurationMs(lastFallbackAgeMs)}` : ''
+    fallback && fallback.startupDisabledPurged !== undefined ? `fallbackDisabledPurged=${fallback.startupDisabledPurged}` : ''
   ].filter(Boolean).join(' ');
 }
 
@@ -289,7 +278,7 @@ function evaluateSocketReady(body, requiredRedisMode, allowHistoryFallback) {
   return failures;
 }
 
-function evaluateSocketStats(body, maxFallbackMessages, maxRecentSocketFallbackMs, maxFallbackAgeMs) {
+function evaluateSocketStats(body, maxFallbackMessages, maxFallbackAgeMs) {
   const failures = [];
   if (!body || typeof body !== 'object') {
     failures.push('missing_socket_stats_body');
@@ -301,20 +290,6 @@ function evaluateSocketStats(body, maxFallbackMessages, maxRecentSocketFallbackM
   }
   if (fallback && Number.isFinite(Number(fallback.oldestAgeMs)) && Number(fallback.oldestAgeMs) > maxFallbackAgeMs) {
     failures.push(`fallback_oldest_age=${formatDurationMs(fallback.oldestAgeMs)}>${formatDurationMs(maxFallbackAgeMs)}`);
-  }
-  const fallbackRuntime = body.fallbackRuntime && typeof body.fallbackRuntime === 'object' ? body.fallbackRuntime : null;
-  const recentThreshold = Number(maxRecentSocketFallbackMs);
-  if (fallbackRuntime && Number.isFinite(recentThreshold) && recentThreshold > 0) {
-    const lastFallbackAt = Math.max(
-      Number(fallbackRuntime.lastConversationListFallbackAt || 0),
-      Number(fallbackRuntime.lastMessageHistoryFallbackAt || 0)
-    );
-    if (lastFallbackAt > 0) {
-      const ageMs = Math.max(Date.now() - lastFallbackAt, 0);
-      if (ageMs <= recentThreshold) {
-        failures.push(`recent_socket_fallback=${formatDurationMs(ageMs)}<=${formatDurationMs(recentThreshold)}`);
-      }
-    }
   }
   return failures;
 }
@@ -355,10 +330,6 @@ async function main() {
   const maxFallbackAgeMs = parseIntegerEnv(process.env.PREFLIGHT_MAX_FALLBACK_AGE_MS, DEFAULT_MAX_FALLBACK_AGE_MS);
   const maxPushQueue = parseIntegerEnv(process.env.PREFLIGHT_MAX_PUSH_QUEUE, DEFAULT_MAX_PUSH_QUEUE);
   const maxPushQueueAgeMs = parseIntegerEnv(process.env.PREFLIGHT_MAX_PUSH_QUEUE_AGE_MS, DEFAULT_MAX_PUSH_QUEUE_AGE_MS);
-  const maxRecentSocketFallbackMs = parseIntegerEnv(
-    process.env.PREFLIGHT_MAX_RECENT_SOCKET_FALLBACK_MS,
-    DEFAULT_MAX_RECENT_SOCKET_FALLBACK_MS
-  );
   const requiredSocketRedisMode = String(process.env.PREFLIGHT_REQUIRE_SOCKET_REDIS_MODE || 'redis').trim();
   const allowSocketHistoryFallback = parseBooleanEnv(
     process.env.PREFLIGHT_ALLOW_SOCKET_HISTORY_FALLBACK,
@@ -406,7 +377,7 @@ async function main() {
       label: 'Socket stats',
       url: `${socketBaseUrl}/api/stats`,
       summary: collectSocketSummary,
-      validate: (body) => evaluateSocketStats(body, maxFallbackMessages, maxRecentSocketFallbackMs, maxFallbackAgeMs)
+      validate: (body) => evaluateSocketStats(body, maxFallbackMessages, maxFallbackAgeMs)
     }
   ];
 
@@ -430,7 +401,6 @@ async function main() {
     + `maxPushSuccessStale=${formatDurationMs(maxPushSuccessStaleMs)} `
     + `requiredSocketRedisMode=${requiredSocketRedisMode || 'none'} `
     + `allowSocketHistoryFallback=${allowSocketHistoryFallback} `
-    + `maxRecentSocketFallback=${formatDurationMs(maxRecentSocketFallbackMs)} `
     + `allowDegradedSystemHealth=${allowDegradedSystemHealth}`
   );
   if (runHttpLoadSmoke) {

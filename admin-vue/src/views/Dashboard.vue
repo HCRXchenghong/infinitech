@@ -174,6 +174,7 @@
           <div class="im-label">数据库</div>
           <div class="im-value">{{ imStats.dbSizeMB }} MB</div>
           <div class="im-detail">兜底会话 {{ fallbackBuffer.chatCount }} · 消息 {{ fallbackBuffer.messageCount }}</div>
+          <div class="im-detail">{{ fallbackStorageSummary }}</div>
           <div class="im-detail">启动裁剪 {{ fallbackPrunedTotal }} 条 · 最老 {{ fallbackOldestAgeLabel }}</div>
           <div class="im-detail">运行 {{ formatUptime(imStats.uptime) }}</div>
         </div>
@@ -370,6 +371,12 @@ const fallbackBuffer = computed(() => normalizeFallbackBuffer(imStats.value?.fal
 const fallbackPrunedTotal = computed(
   () => fallbackBuffer.value.startupExpiredPruned + fallbackBuffer.value.startupOverflowPruned
 );
+const fallbackStorageSummary = computed(() => {
+  if (!fallbackBuffer.value.enabled) {
+    return `Fallback 已禁用 · 启动清理 ${fallbackBuffer.value.startupDisabledPurged} 条`;
+  }
+  return `Fallback 保留 ${fallbackBuffer.value.perChatLimit} 条 · ${fallbackBuffer.value.retentionDays} 天`;
+});
 const fallbackOldestAgeLabel = computed(() =>
   fallbackBuffer.value.oldestAgeMs > 0
     ? formatAgeFromMs(fallbackBuffer.value.oldestAgeMs)

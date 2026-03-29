@@ -1,5 +1,5 @@
 import os from 'os';
-import { db, getFallbackBufferStats, getFallbackRuntimeStats } from './database.js';
+import { db, getFallbackBufferStats, getFallbackRuntimeStats, isFallbackHistoryEnabled } from './database.js';
 import { logger } from './logger.js';
 import {
   getOnlinePresenceCount,
@@ -29,8 +29,10 @@ export function getServerStats() {
   });
   const cpuUsagePercent = (100 - (totalIdle / totalTick) * 100).toFixed(2);
 
-  const dbSize = db.prepare('SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()').get();
-  const dbSizeMB = (dbSize.size / 1024 / 1024).toFixed(2);
+  const dbSize = isFallbackHistoryEnabled()
+    ? db.prepare('SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()').get()
+    : { size: 0 };
+  const dbSizeMB = (Number(dbSize?.size || 0) / 1024 / 1024).toFixed(2);
   const fallbackBuffer = getFallbackBufferStats();
   const fallbackRuntime = getFallbackRuntimeStats();
 

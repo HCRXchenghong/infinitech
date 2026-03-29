@@ -4,6 +4,7 @@ export function createDefaultImStats() {
     onlineUsers: 0,
     onlinePresenceSample: [],
     fallbackBuffer: {
+      enabled: false,
       messageCount: 0,
       chatCount: 0,
       oldestTimestamp: 0,
@@ -12,6 +13,7 @@ export function createDefaultImStats() {
       newestAgeMs: 0,
       retentionDays: 30,
       perChatLimit: 500,
+      startupDisabledPurged: 0,
       startupExpiredPruned: 0,
       startupOverflowPruned: 0,
       lastMaintenanceAt: 0
@@ -203,6 +205,7 @@ function toFiniteNumber(value, fallback = 0) {
 export function normalizeFallbackBuffer(raw) {
   const buffer = raw && typeof raw === 'object' ? raw : {}
   return {
+    enabled: buffer.enabled === true,
     messageCount: Math.max(0, Math.floor(toFiniteNumber(buffer.messageCount))),
     chatCount: Math.max(0, Math.floor(toFiniteNumber(buffer.chatCount))),
     oldestTimestamp: Math.max(0, toFiniteNumber(buffer.oldestTimestamp)),
@@ -211,6 +214,7 @@ export function normalizeFallbackBuffer(raw) {
     newestAgeMs: Math.max(0, toFiniteNumber(buffer.newestAgeMs)),
     retentionDays: Math.max(1, Math.floor(toFiniteNumber(buffer.retentionDays, 30))),
     perChatLimit: Math.max(1, Math.floor(toFiniteNumber(buffer.perChatLimit, 500))),
+    startupDisabledPurged: Math.max(0, Math.floor(toFiniteNumber(buffer.startupDisabledPurged))),
     startupExpiredPruned: Math.max(0, Math.floor(toFiniteNumber(buffer.startupExpiredPruned))),
     startupOverflowPruned: Math.max(0, Math.floor(toFiniteNumber(buffer.startupOverflowPruned))),
     lastMaintenanceAt: Math.max(0, toFiniteNumber(buffer.lastMaintenanceAt))
