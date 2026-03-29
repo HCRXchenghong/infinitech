@@ -395,7 +395,16 @@ export default {
       if (explicitId !== undefined && explicitId !== null && String(explicitId).trim()) {
         return String(explicitId)
       }
-      return fallback
+      const timestamp = this.resolveMessageTimestamp(payload?.timestamp || payload?.createdAt, Date.now())
+      const senderRole = String(payload?.senderRole || 'unknown').trim() || 'unknown'
+      const senderId = String(payload?.senderId || 'unknown').trim() || 'unknown'
+      const messageType = String(payload?.messageType || payload?.type || 'text').trim() || 'text'
+      const contentSeed = String(payload?.content || payload?.text || '')
+        .trim()
+        .slice(0, 24)
+        .replace(/\s+/g, '_')
+        .replace(/[^a-zA-Z0-9_\u4e00-\u9fa5-]/g, '')
+      return `${fallback}_${senderRole}_${senderId}_${messageType}_${timestamp}_${contentSeed || 'empty'}`
     },
 
     normalizeCachedMessages(list = []) {
