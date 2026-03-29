@@ -99,6 +99,7 @@ Important boundaries:
 - order confirmation reads real addresses instead of demo contact data
 - consumer web and app order-confirm pages now prefer fresh server address lists whenever the user is signed in, with local address cache only serving as a failure fallback
 - shared sync layers across consumer, merchant, and rider clients have been rewritten into a cleaner server-first shape with more bounded local fallback behavior
+- stale client-side `menus` sync and cache tails have been removed from active shared sync contracts so current clients no longer treat menu data as a separate dataset
 - consumer web and app home pages have been rewritten into clean UTF-8 copies so active location, weather, category routing, and homepage feed copy no longer depend on mojibake-tainted strings
 - invite pages now only use server-issued invite codes or previously cached real invite codes and no longer fabricate temporary invite codes on the client
 - many active fake success prompts, mock placeholders, and visible mojibake strings were removed

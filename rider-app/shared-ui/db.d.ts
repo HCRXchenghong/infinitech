@@ -1,5 +1,5 @@
 /**
- * 本地数据库类型声明
+ * Local database typing.
  */
 
 export interface LocalDB {
@@ -8,7 +8,6 @@ export interface LocalDB {
   getLocalSyncState(): Promise<{
     shops: number
     products: number
-    menus: number
     orders: number
   }>
   saveSyncData(dataset: string, data: {

@@ -22,7 +22,6 @@ interface SyncData {
 interface SyncState {
   shops?: number
   products?: number
-  menus?: number
   orders?: number
 }
 
@@ -111,7 +110,7 @@ class SyncService {
         method: 'GET'
       })
 
-      const datasets = ['shops', 'products', 'menus', 'orders']
+      const datasets = ['shops', 'products', 'orders']
       for (const dataset of datasets) {
         const localVersion = Number(localState[dataset as keyof SyncState] || 0)
         const serverVersion = Number(serverState[dataset as keyof SyncState] || 0)
@@ -199,7 +198,6 @@ class SyncService {
           : conditions.id
             ? `/api/products/${conditions.id}`
             : '/api/products',
-      menus: `/api/shops/${conditions.shop_id}/menu`,
       orders: conditions.id
         ? `/api/orders/${conditions.id}`
         : conditions.user_id

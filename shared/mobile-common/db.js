@@ -124,7 +124,7 @@ class LocalDB {
    */
   async createTables() {
     // bump schema to rebuild stale local tables and avoid sync SQL mismatches
-    const SCHEMA_VERSION = 7
+    const SCHEMA_VERSION = 8
 
     // #ifdef APP-PLUS
     if (!this.db || !this.db.name) return Promise.reject(new Error('数据库对象无效'))
@@ -186,10 +186,6 @@ class LocalDB {
                     shopName TEXT, shop_name TEXT, tag TEXT, created_at TEXT,
                     version INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
                   )`,
-                  `CREATE TABLE menus (
-                    id TEXT PRIMARY KEY, shop_id TEXT, category TEXT, items TEXT,
-                    version INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
-                  )`,
                   `CREATE TABLE orders (
                     id TEXT PRIMARY KEY, user_id TEXT, shop_id TEXT, status TEXT,
                     total_price REAL, items TEXT, address TEXT, created_at INTEGER,
@@ -236,10 +232,6 @@ class LocalDB {
                   shopName TEXT, shop_name TEXT, tag TEXT, created_at TEXT,
                   version INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
                 )`,
-                `CREATE TABLE IF NOT EXISTS menus (
-                  id TEXT PRIMARY KEY, shop_id TEXT, category TEXT, items TEXT,
-                  version INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
-                )`,
                 `CREATE TABLE IF NOT EXISTS orders (
                   id TEXT PRIMARY KEY, user_id TEXT, shop_id TEXT, status TEXT,
                   total_price REAL, items TEXT, address TEXT, created_at INTEGER,
@@ -280,14 +272,13 @@ class LocalDB {
       return Promise.resolve({
         shops: 0,
         products: 0,
-        menus: 0,
         orders: 0
       })
     }
     
     return new Promise((resolve) => {
       const state = {}
-      const datasets = ['shops', 'products', 'menus', 'orders']
+      const datasets = ['shops', 'products', 'orders']
       let completed = 0
       
       const checkComplete = () => {
@@ -330,7 +321,6 @@ class LocalDB {
     return Promise.resolve({
       shops: state.shops || 0,
       products: state.products || 0,
-      menus: state.menus || 0,
       orders: state.orders || 0
     })
     // #endif
@@ -361,7 +351,6 @@ class LocalDB {
       const tableColumns = {
         shops: ['id','merchantId','merchant_id','name','category','coverImage','cover_image','avatar','logo','rating','monthlySales','monthly_sales','sales','perCapita','per_capita','announcement','address','phone','businessHours','business_hours','tags','discounts','isBrand','is_brand','isTodayRecommended','is_today_recommended','todayRecommendPosition','today_recommend_position','isActive','is_active','minPrice','min_price','deliveryPrice','delivery_price','deliveryTime','delivery_time','distance','created_at','version','updated_at'],
         products: ['id','shopId','shop_id','categoryId','category_id','category','name','description','image','images','price','originalPrice','original_price','monthlySales','monthly_sales','rating','goodReviews','good_reviews','stock','unit','nutrition','tags','isRecommend','is_recommend','isFeatured','featured','is_featured','isActive','is_active','sortOrder','sort_order','shopName','shop_name','tag','created_at','version','updated_at'],
-        menus: ['id','shop_id','category','items','version','updated_at'],
         orders: ['id','user_id','shop_id','status','total_price','items','address','created_at','version','updated_at']
       }
       const allowedColumns = tableColumns[tableName] || null
@@ -639,7 +628,6 @@ class LocalDB {
     const mapping = {
       shops: 'shops',
       products: 'products',
-      menus: 'menus',
       orders: 'orders'
     }
     return mapping[dataset] || dataset
@@ -653,7 +641,7 @@ class LocalDB {
     
     // #ifdef APP-PLUS
     if (this.db && this.db.name) {
-      const tables = ['shops', 'products', 'menus', 'orders', 'sync_versions']
+      const tables = ['shops', 'products', 'orders', 'sync_versions']
       tables.forEach((table) => {
         plus.sqlite.executeSql({
           name: this.db.name,
@@ -674,7 +662,6 @@ class LocalDB {
     // 小程序环境：清空本地存储
     uni.removeStorageSync('shops')
     uni.removeStorageSync('products')
-    uni.removeStorageSync('menus')
     uni.removeStorageSync('orders')
     uni.removeStorageSync('sync_versions')
     // #endif

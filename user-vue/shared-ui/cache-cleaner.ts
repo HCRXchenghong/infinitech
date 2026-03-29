@@ -1,13 +1,13 @@
 /**
- * 清除所有本地缓存数据
- * 用于强制刷新数据，确保显示最新的服务器数据
+ * Clears cached local data.
+ * Use this when the app must force a fresh server-backed reload.
  */
 
 declare const plus: any
 
 const DB_NAME = 'yuexiang_cache'
 const DB_PATH = '_doc/yuexiang_cache.db'
-const CACHE_TABLES = ['shops', 'products', 'menus', 'orders', 'sync_versions']
+const CACHE_TABLES = ['shops', 'products', 'orders', 'sync_versions']
 
 function isNoSuchTableError(err: unknown): boolean {
   if (!err || typeof err !== 'object') return false
@@ -31,12 +31,11 @@ function clearTables(tables: string[]) {
   }
 
   tables.forEach((table) => {
-    const sql = `DELETE FROM ${table}`
     plus.sqlite.executeSql({
       name: DB_NAME,
       path: DB_PATH,
-      // plus.sqlite 类型声明要求 sql: string[]，但运行时接受 string
-      sql: sql as unknown as string[],
+      // The runtime accepts a single SQL string even though the typing expects string[].
+      sql: `DELETE FROM ${table}` as unknown as string[],
       success: () => {
         // table cleared
       },
@@ -44,7 +43,7 @@ function clearTables(tables: string[]) {
         if (isNoSuchTableError(e)) {
           return
         }
-        console.error(`❌ 清除表 ${table} 失败:`, e)
+        console.error(`Failed to clear table ${table}:`, e)
       }
     })
   })
@@ -60,19 +59,19 @@ function clearTablesFromOpenDatabase() {
       const targetTables = CACHE_TABLES.filter((table) => existing.has(table))
       clearTables(targetTables)
     },
-    fail: (e: unknown) => {
+    fail: () => {
       clearTables(CACHE_TABLES)
     }
   })
 }
 
 /**
- * 清除SQLite数据库中的所有数据
+ * Clears all SQLite-backed cached data.
  */
 export function clearSQLiteCache() {
   // #ifdef APP-PLUS
   try {
-    if (typeof plus !== 'undefined' && plus && plus.sqlite) {
+    if (typeof plus !== 'undefined' && plus?.sqlite) {
       const isOpen =
         typeof plus.sqlite.isOpenDatabase === 'function' &&
         plus.sqlite.isOpenDatabase({ name: DB_NAME, path: DB_PATH })
@@ -93,37 +92,33 @@ export function clearSQLiteCache() {
             clearTablesFromOpenDatabase()
             return
           }
-          console.error('❌ 打开数据库失败:', e)
+          console.error('Failed to open cache database:', e)
         }
       })
     }
   } catch (err) {
-    console.error('❌ 清除SQLite缓存失败:', err)
+    console.error('Failed to clear SQLite cache:', err)
   }
   // #endif
 }
 
 /**
- * 清除Storage中的缓存数据
+ * Clears Storage-backed cached data.
  */
 export function clearStorageCache() {
   try {
-    // 清除数据缓存
     uni.removeStorageSync('shops')
     uni.removeStorageSync('products')
-    uni.removeStorageSync('menus')
     uni.removeStorageSync('orders')
     uni.removeStorageSync('sync_versions')
-
-    // 清除同步状态
     uni.removeStorageSync('lastSyncTime')
   } catch (err) {
-    console.error('❌ 清除Storage缓存失败:', err)
+    console.error('Failed to clear Storage cache:', err)
   }
 }
 
 /**
- * 清除所有缓存（SQLite + Storage）
+ * Clears all local caches.
  */
 export function clearAllCache() {
   clearSQLiteCache()
@@ -131,11 +126,10 @@ export function clearAllCache() {
 }
 
 /**
- * 检查是否需要清除缓存
- * 如果app版本更新，自动清除缓存
+ * Clears cache automatically after a cache schema bump.
  */
 export function checkAndClearCacheIfNeeded() {
-  const currentVersion = '3.0.1' // 当前app版本（用于触发一次缓存迁移）
+  const currentVersion = '3.0.1'
   const lastVersion = uni.getStorageSync('appVersion')
 
   if (lastVersion !== currentVersion) {

@@ -35,7 +35,7 @@ func (h *SyncHandler) GetSyncState(c *gin.Context) {
 // @Summary 获取增量同步数据
 // @Tags 同步
 // @Produce json
-// @Param dataset path string true "数据集名称" Enums(shops, products, menus, orders)
+// @Param dataset path string true "数据集名称" Enums(shops, products, orders)
 // @Param since query string false "版本号"
 // @Success 200 {object} map[string]interface{}
 // @Router /sync/{dataset} [get]

@@ -44,7 +44,7 @@ func (s *SyncService) GetSyncState(ctx context.Context) (map[string]interface{},
 	// 版本号直接基于数据库实时计算，避免 Redis 长缓存导致新增数据不同步。
 	state := make(map[string]interface{})
 
-	datasets := []string{"shops", "products", "menus", "orders", "users"}
+	datasets := []string{"shops", "products", "orders", "users"}
 
 	for _, dataset := range datasets {
 		version := s.getVersionFromDB(dataset)
