@@ -129,6 +129,7 @@ Important boundaries:
 ### Operational visibility
 
 - admin dashboard and system logs now expose real readiness and Redis adapter state
+- the active admin dashboard and rider ranking page have been rewritten into clean UTF-8 implementations so weather, online presence, ranking tables, and readiness copy no longer depend on mojibake-tainted legacy strings
 - admin-side health aggregation and system-log signals have been trimmed to current live fallback metrics instead of obsolete historical fallback counters
 - the admin console now includes a dedicated phone contact audit page for filtering actor/target roles, results, and related order or room references
 - the active system logs page has been rewritten into a clean UTF-8 implementation so readiness, Redis, push worker, and audit signals are readable without mojibake-tainted labels

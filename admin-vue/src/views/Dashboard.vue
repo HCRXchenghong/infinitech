@@ -1,118 +1,53 @@
 <template>
   <div class="page">
     <div class="grid">
-      <!-- 天气卡片 -->
       <div v-if="weatherData.available" class="weather-card">
         <div class="weather-header">
           <div class="weather-icon-wrapper">
             <div class="weather-icon" :class="getWeatherIconClass(weatherData.weather_icon)">
-              <svg v-if="weatherData.weather_icon === '00'" viewBox="0 0 64 64" class="icon-svg">
-                <circle cx="32" cy="32" r="16" fill="#FFD700" opacity="0.95" />
-                <circle cx="32" cy="32" r="12" fill="#FFA500" />
-              </svg>
-              <svg v-else-if="weatherData.weather_icon === '01'" viewBox="0 0 64 64" class="icon-svg">
-                <circle cx="28" cy="28" r="10" fill="#FFD700" opacity="0.6" />
-                <ellipse cx="38" cy="30" rx="12" ry="8" fill="#C0C0C0" opacity="0.8" />
-                <ellipse cx="45" cy="28" rx="10" ry="6" fill="#A0A0A0" opacity="0.7" />
-              </svg>
-              <svg v-else-if="weatherData.weather_icon === '02'" viewBox="0 0 64 64" class="icon-svg">
-                <ellipse cx="25" cy="28" rx="14" ry="9" fill="#B0B0B0" opacity="0.8" />
-                <ellipse cx="35" cy="26" rx="12" ry="7" fill="#909090" opacity="0.9" />
-                <ellipse cx="45" cy="30" rx="10" ry="6" fill="#A0A0A0" opacity="0.7" />
-              </svg>
-              <svg
-                v-else-if="weatherData.weather_icon === '03' || weatherData.weather_icon === '04'"
-                viewBox="0 0 64 64"
-                class="icon-svg"
-              >
-                <ellipse cx="30" cy="25" rx="12" ry="8" fill="#808080" opacity="0.8" />
-                <path d="M22 42 L28 36 L32 40 L40 30 L40 50 L22 50 Z" fill="#4A90E2" opacity="0.7" />
-                <line x1="25" y1="38" x2="25" y2="50" stroke="#4A90E2" stroke-width="2" />
-                <line x1="30" y1="38" x2="30" y2="50" stroke="#4A90E2" stroke-width="2" />
-                <line x1="35" y1="38" x2="35" y2="50" stroke="#4A90E2" stroke-width="2" />
-                <path
-                  v-if="weatherData.weather_icon === '04'"
-                  d="M38 20 L42 18 L40 22 L44 24 L40 24 L42 28 L38 26 L36 30 L34 26 L30 28 L32 24 L28 24 L32 22 L30 18 L34 20 Z"
-                  fill="#FFD700"
-                  stroke="#FFA500"
-                  stroke-width="1"
-                />
-              </svg>
-              <svg
-                v-else-if="['07', '08', '09', '10', '11', '12'].includes(weatherData.weather_icon)"
-                viewBox="0 0 64 64"
-                class="icon-svg"
-              >
-                <ellipse cx="32" cy="24" rx="14" ry="9" fill="#808080" opacity="0.8" />
-                <path d="M18 45 L26 38 L30 42 L42 30 L42 52 L18 52 Z" fill="#4A90E2" opacity="0.7" />
-                <line x1="22" y1="40" x2="22" y2="52" stroke="#4A90E2" stroke-width="2" />
-                <line x1="28" y1="40" x2="28" y2="52" stroke="#4A90E2" stroke-width="2" />
-                <line x1="34" y1="40" x2="34" y2="52" stroke="#4A90E2" stroke-width="2" />
-                <line x1="38" y1="40" x2="38" y2="52" stroke="#4A90E2" stroke-width="2" />
-              </svg>
-              <svg
-                v-else-if="['13', '14', '15', '16', '17'].includes(weatherData.weather_icon)"
-                viewBox="0 0 64 64"
-                class="icon-svg"
-              >
-                <ellipse cx="32" cy="24" rx="14" ry="9" fill="#C0C0C0" opacity="0.8" />
-                <circle cx="24" cy="42" r="3" fill="#E0E0E0" opacity="0.9" />
-                <circle cx="32" cy="40" r="4" fill="#E0E0E0" opacity="0.9" />
-                <circle cx="40" cy="44" r="3" fill="#E0E0E0" opacity="0.9" />
-                <circle cx="28" cy="48" r="2.5" fill="#E0E0E0" opacity="0.9" />
-                <circle cx="36" cy="50" r="3" fill="#E0E0E0" opacity="0.9" />
-              </svg>
-              <svg v-else-if="weatherData.weather_icon === '18'" viewBox="0 0 64 64" class="icon-svg">
-                <ellipse cx="32" cy="28" rx="14" ry="9" fill="#D0D0D0" opacity="0.6" />
-                <ellipse cx="25" cy="38" rx="10" ry="4" fill="#E0E0E0" opacity="0.7" />
-                <ellipse cx="40" cy="40" rx="8" ry="3" fill="#E0E0E0" opacity="0.7" />
-                <ellipse cx="30" cy="46" rx="12" ry="4" fill="#E0E0E0" opacity="0.6" />
-              </svg>
-              <svg v-else viewBox="0 0 64 64" class="icon-svg">
-                <ellipse cx="25" cy="28" rx="14" ry="9" fill="#B0B0B0" opacity="0.8" />
-                <ellipse cx="35" cy="26" rx="12" ry="7" fill="#909090" opacity="0.9" />
-                <ellipse cx="45" cy="30" rx="10" ry="6" fill="#A0A0A0" opacity="0.7" />
-              </svg>
+              <span class="weather-temp" style="font-size: 24px; margin: 0;">{{ weatherIconText }}</span>
             </div>
           </div>
           <div class="weather-info">
-            <div class="weather-city">{{ weatherData.city_name }}</div>
-            <div class="weather-temp">{{ weatherData.temperature }}°C</div>
-            <div class="weather-desc">{{ weatherData.weather_main }}</div>
+            <div class="weather-city">{{ weatherData.city_name || '当前城市' }}</div>
+            <div class="weather-temp">{{ weatherTemperatureText }}</div>
+            <div class="weather-desc">{{ weatherData.weather_main || '天气数据已同步' }}</div>
           </div>
         </div>
+
         <div class="weather-details">
           <div class="weather-detail-item">
             <span class="detail-label">湿度</span>
-            <span class="detail-value">{{ weatherData.humidity }}%</span>
+            <span class="detail-value">{{ weatherHumidityText }}</span>
           </div>
-          <div class="weather-detail-item" v-if="weatherData.feels_like !== undefined">
+          <div v-if="weatherData.feels_like !== undefined" class="weather-detail-item">
             <span class="detail-label">体感温度</span>
-            <span class="detail-value">{{ weatherData.feels_like }}°C</span>
+            <span class="detail-value">{{ weatherData.feels_like }} °C</span>
           </div>
-          <div class="weather-detail-item" v-if="weatherData.visibility !== undefined">
+          <div v-if="weatherData.visibility !== undefined" class="weather-detail-item">
             <span class="detail-label">能见度</span>
-            <span class="detail-value">{{ weatherData.visibility }}km</span>
+            <span class="detail-value">{{ weatherData.visibility }} km</span>
           </div>
-          <div class="weather-detail-item" v-if="weatherData.wind_direct || weatherData.wind_speed">
+          <div v-if="weatherData.wind_direct || weatherData.wind_speed" class="weather-detail-item">
             <span class="detail-label">风力</span>
-            <span class="detail-value">
-              {{ weatherData.wind_direct || '' }}{{ weatherData.wind_speed ? weatherData.wind_speed + '级' : '' }}
+            <span class="detail-value">{{ weatherWindText }}</span>
+          </div>
+          <div v-if="weatherData.aqi" class="weather-detail-item">
+            <span class="detail-label">空气质量</span>
+            <span class="detail-value" :class="getAqiClass(weatherData.aqi)">
+              {{ getAqiText(weatherData.aqi) }}
             </span>
           </div>
-          <div class="weather-detail-item" v-if="weatherData.aqi">
-            <span class="detail-label">空气质量</span>
-            <span class="detail-value" :class="getAqiClass(weatherData.aqi)">{{ getAqiText(weatherData.aqi) }}</span>
+          <div class="weather-detail-item">
+            <span class="detail-label">刷新周期</span>
+            <span class="detail-value">{{ weatherConfig.refresh_interval_minutes || 10 }} 分钟</span>
           </div>
         </div>
+
         <div class="weather-meta">
-          <div class="weather-update-time" v-if="weatherData.updated_at">
-            <span class="update-label">更新时间</span>
-            <span class="update-value">{{ formatUpdateTime(weatherData.updated_at) }}</span>
-          </div>
           <div class="weather-update-time">
-            <span class="update-label">刷新周期</span>
-            <span class="update-value">{{ weatherConfig.refresh_interval_minutes || 10 }} 分钟</span>
+            <span class="update-label">更新时间</span>
+            <span class="update-value">{{ weatherData.updated_at ? formatUpdateTime(weatherData.updated_at) : '暂无' }}</span>
           </div>
           <div class="weather-extended">
             <div class="weather-extended-item">预报天数：{{ forecastList.length }}</div>
@@ -124,7 +59,7 @@
       </div>
 
       <div class="stats-row">
-        <div v-for="card in statsCards" :key="card.label" class="holo-card">
+        <div v-for="card in statsCards" :key="card.key" class="holo-card">
           <div class="card-top">
             <div class="label">{{ card.label }}</div>
             <div class="tag">{{ card.tag }}</div>
@@ -134,29 +69,32 @@
         </div>
       </div>
     </div>
+
     <PageStateAlert :message="loadError" />
 
-    <!-- 即时通讯状态 -->
     <div class="im-status-row">
       <div class="im-card" :class="{ 'im-online': imStats.online, 'im-offline': !imStats.online }">
         <div class="im-info">
           <div class="im-label">即时通讯服务</div>
           <div class="im-value">{{ imStats.online ? '在线运行' : '离线' }}</div>
-          <div class="im-detail">在线用户 {{ imStats.onlineUsers }} 人 · 消息 {{ imStats.messageCount }} 条</div>
+          <div class="im-detail">在线连接 {{ imStats.onlineUsers }} · 消息计数 {{ imStats.messageCount }}</div>
+          <div class="im-detail">运行时长 {{ formatUptime(imStats.uptime) }}</div>
         </div>
       </div>
+
       <div class="im-card">
         <div class="im-info">
-          <div class="im-label">服务器负载</div>
-          <div class="im-value">CPU {{ imStats.cpuUsage }}%</div>
+          <div class="im-label">CPU 负载</div>
+          <div class="im-value">{{ imStats.cpuUsage }}%</div>
           <div class="im-progress">
             <div
               class="im-progress-bar"
-              :style="{ width: imStats.cpuUsage + '%', background: imStats.cpuUsage > 80 ? '#ff4d4f' : '#0097ff' }"
+              :style="{ width: `${Math.min(100, Math.max(0, imStats.cpuUsage))}%`, background: imStats.cpuUsage > 80 ? '#ff4d4f' : '#0097ff' }"
             />
           </div>
         </div>
       </div>
+
       <div class="im-card">
         <div class="im-info">
           <div class="im-label">内存占用</div>
@@ -164,35 +102,36 @@
           <div class="im-progress">
             <div
               class="im-progress-bar"
-              :style="{ width: imStats.memoryUsage + '%', background: imStats.memoryUsage > 80 ? '#ff4d4f' : '#52c41a' }"
+              :style="{ width: `${Math.min(100, Math.max(0, imStats.memoryUsage))}%`, background: imStats.memoryUsage > 80 ? '#ff4d4f' : '#52c41a' }"
             />
           </div>
         </div>
       </div>
+
       <div class="im-card">
         <div class="im-info">
-          <div class="im-label">数据库</div>
+          <div class="im-label">服务存储</div>
           <div class="im-value">{{ imStats.dbSizeMB }} MB</div>
-          <div class="im-detail">兜底会话 {{ fallbackBuffer.chatCount }} · 消息 {{ fallbackBuffer.messageCount }}</div>
-          <div class="im-detail">{{ fallbackStorageSummary }}</div>
-          <div class="im-detail">启动裁剪 {{ fallbackPrunedTotal }} 条 · 最老 {{ fallbackOldestAgeLabel }}</div>
-          <div class="im-detail">运行 {{ formatUptime(imStats.uptime) }}</div>
+          <div class="im-detail">监控时间 {{ statsTimestampLabel }}</div>
+          <div class="im-detail">消息事实源默认以 Go 服务为准</div>
         </div>
       </div>
+
       <div class="im-card">
         <div class="im-info">
           <div class="im-label">广播模式</div>
           <div class="im-value">{{ getRedisModeLabel(imRedis.mode) }}</div>
           <div class="im-detail">
-            Redis {{ imRedis.connected ? '已连接' : '未连接' }}
-            · Adapter {{ imRedis.adapterEnabled ? '已启用' : '未启用' }}
+            Redis {{ imRedis.connected ? '已连接' : '未连接' }} · Adapter {{ imRedis.adapterEnabled ? '已启用' : '未启用' }}
           </div>
+          <div class="im-detail">{{ getRedisModeHint(imRedis) }}</div>
         </div>
         <div class="im-mode-tags">
           <el-tag size="small" :type="getRedisModeTagType(imRedis.mode)">{{ getRedisModeLabel(imRedis.mode) }}</el-tag>
           <el-tag size="small" effect="plain">{{ imRedis.enabled ? `DB ${imRedis.database}` : '本地模式' }}</el-tag>
         </div>
       </div>
+
       <div class="im-card">
         <div class="im-info">
           <div class="im-label">发布探针</div>
@@ -214,6 +153,7 @@
           <el-tag size="small" effect="plain">在线 {{ imStats.onlineUsers }}</el-tag>
         </div>
       </div>
+
       <div v-if="onlinePresenceSample.length" class="presence-list">
         <div v-for="entry in onlinePresenceSample" :key="entry.key" class="presence-item">
           <div class="presence-main">
@@ -240,18 +180,13 @@
             <el-button size="small" :loading="loading" @click="refreshData">刷新</el-button>
           </div>
         </div>
+
         <el-table :data="userRanks[userTab]" size="small" stripe>
           <el-table-column type="index" label="排名" width="70" />
           <el-table-column prop="name" label="用户" />
-          <el-table-column
-            prop="value"
-            :label="userRankType === 'amount' ? '消费金额' : '下单次数'"
-            width="120"
-            align="right"
-          >
+          <el-table-column prop="value" label="消费金额" width="120" align="right">
             <template #default="{ row }">
-              <span v-if="userRankType === 'amount'">¥{{ row.value }}</span>
-              <span v-else>{{ row.value }}</span>
+              <span>￥{{ row.value }}</span>
             </template>
           </el-table-column>
           <template #empty>
@@ -262,7 +197,7 @@
 
       <div class="panel rank-panel">
         <div class="panel-title">
-          <span>骑手送单排名</span>
+          <span>骑手配送排名</span>
           <div class="panel-actions">
             <el-radio-group v-model="riderTab" size="small" @change="loadOrders">
               <el-radio-button value="week">周榜</el-radio-button>
@@ -271,6 +206,7 @@
             <el-button size="small" :loading="loading" @click="refreshData">刷新</el-button>
           </div>
         </div>
+
         <el-table :data="displayedRiderRanks" size="small" stripe>
           <el-table-column type="index" label="排名" width="70" />
           <el-table-column prop="name" label="骑手" />
@@ -279,13 +215,16 @@
               <el-tag :type="getRankType(row.level)" size="small">{{ getRankName(row.level) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="value" label="送单次数" width="120" />
+          <el-table-column prop="value" label="配送次数" width="120" align="right" />
           <template #empty>
             <el-empty :description="rankError ? '加载失败，暂无可显示数据' : '暂无骑手排名数据'" :image-size="90" />
           </template>
         </el-table>
+
         <div v-if="allRiderRanks[riderTab] && allRiderRanks[riderTab].length > 10" class="panel-footer">
-          <el-button link type="primary" @click="viewAllRiders">查看全部（{{ allRiderRanks[riderTab].length }}）</el-button>
+          <el-button link type="primary" @click="viewAllRiders">
+            查看全部（{{ allRiderRanks[riderTab].length }}）
+          </el-button>
         </div>
       </div>
     </div>
@@ -293,11 +232,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
-import request from '@/utils/request';
-import socketService, { SOCKET_HTTP_BASE } from '@/utils/socket';
-import PageStateAlert from '@/components/PageStateAlert.vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import request from '@/utils/request'
+import socketService, { SOCKET_HTTP_BASE } from '@/utils/socket'
+import PageStateAlert from '@/components/PageStateAlert.vue'
 import {
   createDefaultImStats,
   createDefaultStatsCards,
@@ -309,179 +248,180 @@ import {
   getAqiText,
   formatUpdateTime,
   formatPresenceConnectedAt,
-  formatBufferAge,
-  formatAgeFromMs,
   formatNumber,
   getRankName,
   getRankType,
   normalizeOnlinePresenceSample,
   normalizeRedisHealth,
-  normalizeFallbackBuffer,
   getRedisModeLabel,
   getRedisModeTagType,
   getRedisModeHint
-} from './dashboardHelpers';
+} from './dashboardHelpers'
 
-const router = useRouter();
+const router = useRouter()
 
-const imStats = ref(createDefaultImStats());
+const imStats = ref(createDefaultImStats())
+const statsCards = ref(createDefaultStatsCards())
+const runtimeHealth = ref({ overall: 'unknown', services: [] })
 
-let imSocket = null;
+const userTab = ref('week')
+const riderTab = ref('week')
+const userRanks = ref({ week: [], month: [] })
+const allRiderRanks = ref({ week: [], month: [] })
+const loading = ref(false)
 
-const statsCards = ref(createDefaultStatsCards());
-const runtimeHealth = ref({ overall: 'unknown', services: [] });
+const weatherData = ref({ available: false })
+const weatherConfig = ref({ refresh_interval_minutes: 10 })
+const weatherError = ref('')
+const statsError = ref('')
+const rankError = ref('')
+const loadError = computed(() => rankError.value || statsError.value || weatherError.value || '')
 
-const userTab = ref('week');
-const riderTab = ref('week');
-const userRankType = ref('amount');
-const userRanks = ref({ week: [], month: [] });
-const allRiderRanks = ref({ week: [], month: [] });
-const loading = ref(false);
-const weatherData = ref({ available: false });
-const weatherConfig = ref({ refresh_interval_minutes: 10 });
-const weatherError = ref('');
-const statsError = ref('');
-const rankError = ref('');
-const loadError = computed(() => rankError.value || statsError.value || weatherError.value || '');
+const statsCache = ref(null)
+const ranksCache = ref(new Map())
+const weatherCache = ref(null)
+const cacheTimestamp = ref({ stats: 0, weather: 0 })
 
-const statsCache = ref(null);
-const ranksCache = ref(new Map());
-const weatherCache = ref(null);
-const cacheTimestamp = ref({ stats: 0, weather: 0 });
-const STATS_CACHE_DURATION = 30000;
-const weatherCacheDurationMs = ref(10 * 60 * 1000);
-let weatherTimer = null;
+const STATS_CACHE_DURATION = 30000
+const weatherCacheDurationMs = ref(10 * 60 * 1000)
 
-const displayedRiderRanks = computed(() => {
-  const ranks = allRiderRanks.value[riderTab.value] || [];
-  return ranks.slice(0, 10);
-});
-const lifeIndexEntries = computed(() => Object.entries(weatherData.value?.life_indices || {}));
-const forecastList = computed(() => (Array.isArray(weatherData.value?.forecast) ? weatherData.value.forecast : []));
+let weatherTimer = null
+let monitorSocket = null
+
+const displayedRiderRanks = computed(() => (allRiderRanks.value[riderTab.value] || []).slice(0, 10))
+const lifeIndexEntries = computed(() => Object.entries(weatherData.value?.life_indices || {}))
+const forecastList = computed(() => (Array.isArray(weatherData.value?.forecast) ? weatherData.value.forecast : []))
 const hourlyList = computed(() =>
   Array.isArray(weatherData.value?.hourly_forecast) ? weatherData.value.hourly_forecast : []
-);
+)
 const minutelyList = computed(() =>
   Array.isArray(weatherData.value?.minutely_precip?.data) ? weatherData.value.minutely_precip.data : []
-);
-const onlinePresenceSample = computed(() => normalizeOnlinePresenceSample(imStats.value?.onlinePresenceSample).slice(0, 8));
-const imRedis = computed(() => normalizeRedisHealth(imStats.value?.redis));
-const fallbackBuffer = computed(() => normalizeFallbackBuffer(imStats.value?.fallbackBuffer));
-const fallbackPrunedTotal = computed(
-  () => fallbackBuffer.value.startupExpiredPruned + fallbackBuffer.value.startupOverflowPruned
-);
-const fallbackStorageSummary = computed(() => {
-  if (!fallbackBuffer.value.enabled) {
-    return `Fallback 已禁用 · 启动清理 ${fallbackBuffer.value.startupDisabledPurged} 条`;
-  }
-  return `Fallback 保留 ${fallbackBuffer.value.perChatLimit} 条 · ${fallbackBuffer.value.retentionDays} 天`;
-});
-const fallbackOldestAgeLabel = computed(() =>
-  fallbackBuffer.value.oldestAgeMs > 0
-    ? formatAgeFromMs(fallbackBuffer.value.oldestAgeMs)
-    : formatBufferAge(fallbackBuffer.value.oldestTimestamp)
-);
-const runtimeHealthServices = computed(() => (Array.isArray(runtimeHealth.value?.services) ? runtimeHealth.value.services : []));
-const runtimeGoHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'go') || null);
-const runtimeSocketHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'socket') || null);
-const runtimeRedisHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'redis') || null);
+)
+const onlinePresenceSample = computed(() => normalizeOnlinePresenceSample(imStats.value?.onlinePresenceSample).slice(0, 8))
+const imRedis = computed(() => normalizeRedisHealth(imStats.value?.redis))
+const runtimeHealthServices = computed(() =>
+  Array.isArray(runtimeHealth.value?.services) ? runtimeHealth.value.services : []
+)
+const runtimeGoHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'go') || null)
+const runtimeSocketHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'socket') || null)
+const runtimeRedisHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'redis') || null)
+const weatherIconText = computed(() => String(weatherData.value?.weather_main || '晴').trim().slice(0, 1) || '晴')
+const weatherTemperatureText = computed(() =>
+  weatherData.value?.temperature !== undefined ? `${weatherData.value.temperature} °C` : '--'
+)
+const weatherHumidityText = computed(() =>
+  weatherData.value?.humidity !== undefined ? `${weatherData.value.humidity}%` : '--'
+)
+const weatherWindText = computed(() => {
+  const segments = []
+  if (weatherData.value?.wind_direct) segments.push(weatherData.value.wind_direct)
+  if (weatherData.value?.wind_speed) segments.push(`${weatherData.value.wind_speed} 级`)
+  return segments.join(' ') || '--'
+})
+const statsTimestampLabel = computed(() =>
+  imStats.value?.timestamp ? formatUpdateTime(imStats.value.timestamp) : '等待服务上报'
+)
+
 const runtimeHealthStatusLabel = computed(() => {
-  if (runtimeHealth.value?.overall === 'ok') return '已就绪';
-  if (runtimeHealth.value?.overall === 'degraded') return '部分降级';
-  if (runtimeHealth.value?.overall === 'down') return '未就绪';
-  return '未知';
-});
+  if (runtimeHealth.value?.overall === 'ok') return '已就绪'
+  if (runtimeHealth.value?.overall === 'degraded') return '部分降级'
+  if (runtimeHealth.value?.overall === 'down') return '未就绪'
+  return '未知'
+})
+
 const runtimeHealthSummary = computed(() => {
   const segments = [
     runtimeGoHealth.value ? `Go ${runtimeGoHealth.value.status === 'up' ? '已就绪' : '异常'}` : '',
     runtimeSocketHealth.value ? `Socket ${runtimeSocketHealth.value.status === 'up' ? '已就绪' : '异常'}` : '',
     runtimeRedisHealth.value ? `Redis ${runtimeRedisHealth.value.status === 'up' ? '已就绪' : '异常'}` : ''
-  ].filter(Boolean);
-  return segments.join(' · ') || '探针数据未加载';
-});
+  ].filter(Boolean)
+  return segments.join(' · ') || '系统探针暂未返回详情'
+})
+
 const pushWorkerSummary = computed(() => {
-  const detail = String(runtimeGoHealth.value?.detail || '');
-  const cycle = extractHealthDetail(detail, 'pushCycle');
-  const running = extractHealthDetail(detail, 'pushRunning');
-  const queue = extractHealthDetail(detail, 'pushQueue');
-  const failed = extractHealthDetail(detail, 'pushFailed');
-  const consecutiveFailures = extractHealthDetail(detail, 'pushConsecutiveFailures');
-  const lastSuccessAt = extractHealthDetail(detail, 'pushLastSuccessAt');
+  const detail = String(runtimeGoHealth.value?.detail || '')
+  const provider = extractHealthDetail(detail, 'pushProvider')
+  const running = extractHealthDetail(detail, 'pushRunning')
+  const cycle = extractHealthDetail(detail, 'pushCycle')
+  const queue = extractHealthDetail(detail, 'pushQueue')
+  const retry = extractHealthDetail(detail, 'pushRetry')
+  const failed = extractHealthDetail(detail, 'pushFailed')
+  const lastSuccessAt = extractHealthDetail(detail, 'pushLastSuccessAt')
   const segments = [
+    provider ? `Provider ${provider}` : '',
     running ? `Worker ${running === 'true' ? '运行中' : '已停止'}` : '',
     cycle ? `周期 ${cycle}` : '',
     queue ? `队列 ${queue}` : '',
+    retry ? `重试 ${retry}` : '',
     failed ? `失败 ${failed}` : '',
-    consecutiveFailures ? `连续失败 ${consecutiveFailures}` : '',
     lastSuccessAt ? `最近成功 ${formatUpdateTime(lastSuccessAt)}` : ''
-  ].filter(Boolean);
-  return segments.join(' · ') || 'Push 状态未暴露';
-});
+  ].filter(Boolean)
+  return segments.join(' · ') || 'Push Worker 状态未暴露'
+})
+
 const presenceEmptyDescription = computed(() => {
   if (imRedis.value.mode === 'redis' || imRedis.value.mode === 'redis-no-adapter') {
-    return '暂无在线连接样本';
+    return '暂无在线连接样本'
   }
   if (imRedis.value.mode === 'local-fallback') {
-    return '当前处于单机回退模式，暂无共享在线样本';
+    return '当前处于单机回退模式，暂无共享在线样本'
   }
-  return 'Redis 未启用，暂无共享在线样本';
-});
-
-function applyImStatsPatch(data) {
-  const merged = { ...imStats.value, ...(data || {}) };
-  merged.onlinePresenceSample = normalizeOnlinePresenceSample(
-    data?.onlinePresenceSample !== undefined ? data.onlinePresenceSample : merged.onlinePresenceSample
-  );
-  merged.redis = normalizeRedisHealth(data?.redis !== undefined ? data.redis : merged.redis);
-  merged.fallbackBuffer = normalizeFallbackBuffer(
-    data?.fallbackBuffer !== undefined ? data.fallbackBuffer : merged.fallbackBuffer
-  );
-  imStats.value = merged;
-}
+  return 'Redis 未启用，暂无共享在线样本'
+})
 
 function extractHealthDetail(detail, key) {
-  const source = String(detail || '');
-  const match = source.match(new RegExp(`${key}=([^\\s|]+)`));
-  return match ? String(match[1] || '').trim() : '';
+  const source = String(detail || '')
+  const match = source.match(new RegExp(`${key}=([^\\s|]+)`))
+  return match ? String(match[1] || '').trim() : ''
+}
+
+function applyImStatsPatch(data) {
+  const patch = data && typeof data === 'object' ? data : {}
+  const nextStats = {
+    ...imStats.value,
+    ...patch
+  }
+  nextStats.onlinePresenceSample = normalizeOnlinePresenceSample(
+    patch.onlinePresenceSample !== undefined ? patch.onlinePresenceSample : nextStats.onlinePresenceSample
+  )
+  nextStats.redis = normalizeRedisHealth(patch.redis !== undefined ? patch.redis : nextStats.redis)
+  imStats.value = nextStats
 }
 
 function resetWeatherTimer() {
   if (weatherTimer) {
-    clearInterval(weatherTimer);
-    weatherTimer = null;
+    clearInterval(weatherTimer)
+    weatherTimer = null
   }
   weatherTimer = setInterval(() => {
-    loadWeather(true);
-  }, weatherCacheDurationMs.value);
+    void loadWeather(true)
+  }, weatherCacheDurationMs.value)
 }
 
 async function loadWeatherConfig() {
   try {
-    const { data } = await request.get('/api/weather-config');
-    const refreshMinutes = normalizeRefreshMinutes(data?.refresh_interval_minutes);
-    weatherConfig.value = { ...(data || {}), refresh_interval_minutes: refreshMinutes };
-    weatherCacheDurationMs.value = refreshMinutes * 60 * 1000;
-    resetWeatherTimer();
+    const { data } = await request.get('/api/weather-config')
+    const refreshMinutes = normalizeRefreshMinutes(data?.refresh_interval_minutes)
+    weatherConfig.value = { ...(data || {}), refresh_interval_minutes: refreshMinutes }
+    weatherCacheDurationMs.value = refreshMinutes * 60 * 1000
   } catch (_error) {
-    weatherConfig.value.refresh_interval_minutes = 10;
-    weatherCacheDurationMs.value = 10 * 60 * 1000;
-    resetWeatherTimer();
+    weatherConfig.value = { refresh_interval_minutes: 10 }
+    weatherCacheDurationMs.value = 10 * 60 * 1000
+  } finally {
+    resetWeatherTimer()
   }
 }
 
 async function loadSystemHealth() {
   try {
-    const { data } = await request.get('/api/system-health');
-    const nextStatus = data?.serviceStatus || {};
+    const { data } = await request.get('/api/system-health')
+    const serviceStatus = data?.serviceStatus || {}
     runtimeHealth.value = {
-      overall: String(nextStatus.overall || 'unknown'),
-      services: Array.isArray(nextStatus.services) ? nextStatus.services : []
-    };
+      overall: String(serviceStatus.overall || 'unknown'),
+      services: Array.isArray(serviceStatus.services) ? serviceStatus.services : []
+    }
   } catch (_error) {
-    runtimeHealth.value = {
-      overall: 'unknown',
-      services: []
-    };
+    runtimeHealth.value = { overall: 'unknown', services: [] }
   }
 }
 
@@ -489,165 +429,160 @@ function viewAllRiders() {
   router.push({
     path: '/rider-ranks',
     query: { period: riderTab.value }
-  });
+  })
+}
+
+function handleServerStats(data) {
+  applyImStatsPatch(data)
 }
 
 async function connectImStats() {
   try {
-    imSocket = await socketService.connect('/monitor');
-    imSocket.emit('join_monitor', { userId: 'admin' });
-    imSocket.on('server_stats', (data) => {
-      applyImStatsPatch(data);
-    });
+    monitorSocket = await socketService.connect('/monitor')
+    monitorSocket.emit('join_monitor', { userId: 'admin' })
+    socketService.on('server_stats', handleServerStats, '/monitor')
 
-    // 初始化加载一次
-    const res = await fetch(`${SOCKET_HTTP_BASE}/api/stats`);
-    const data = await res.json();
-    applyImStatsPatch(data);
+    const response = await fetch(`${SOCKET_HTTP_BASE}/api/stats`)
+    const data = await response.json()
+    applyImStatsPatch(data)
   } catch (_error) {
-    imStats.value.online = false;
+    imStats.value.online = false
   }
 }
 
-onMounted(async () => {
-  await loadWeatherConfig();
-  await refreshData();
-  connectImStats();
-});
-
-onUnmounted(() => {
-  if (imSocket) {
-    imSocket.off('server_stats');
-  }
-  if (weatherTimer) {
-    clearInterval(weatherTimer);
-    weatherTimer = null;
-  }
-});
-
 async function refreshData() {
-  await loadWeatherConfig();
-  weatherError.value = '';
-  statsError.value = '';
-  rankError.value = '';
-  statsCache.value = null;
-  weatherCache.value = null;
-  ranksCache.value.clear();
-  cacheTimestamp.value = { stats: 0, weather: 0 };
-  await Promise.all([loadStats(true), loadOrders(true), loadWeather(true), loadSystemHealth()]);
+  await loadWeatherConfig()
+  weatherError.value = ''
+  statsError.value = ''
+  rankError.value = ''
+  statsCache.value = null
+  weatherCache.value = null
+  ranksCache.value.clear()
+  cacheTimestamp.value = { stats: 0, weather: 0 }
+  await Promise.all([loadStats(true), loadOrders(true), loadWeather(true), loadSystemHealth()])
 }
 
 async function loadWeather(forceRefresh = false) {
-  const now = Date.now();
+  const now = Date.now()
   if (!forceRefresh && weatherCache.value && now - cacheTimestamp.value.weather < weatherCacheDurationMs.value) {
-    weatherError.value = '';
-    weatherData.value = weatherCache.value;
-    return;
+    weatherError.value = ''
+    weatherData.value = weatherCache.value
+    return
   }
 
   try {
-    weatherError.value = '';
-    const { data } = await request.get('/api/weather');
-    weatherData.value = data || { available: false };
-    weatherCache.value = weatherData.value;
-    cacheTimestamp.value.weather = now;
+    weatherError.value = ''
+    const { data } = await request.get('/api/weather')
+    weatherData.value = data || { available: false }
+    weatherCache.value = weatherData.value
+    cacheTimestamp.value.weather = now
   } catch (error) {
-    weatherError.value = extractErrorMessage(error, '加载天气数据失败，请稍后重试');
-    weatherData.value = { available: false };
+    weatherError.value = extractErrorMessage(error, '加载天气数据失败，请稍后重试')
+    weatherData.value = { available: false }
   }
 }
 
 async function loadStats(forceRefresh = false) {
-  const now = Date.now();
+  const now = Date.now()
   if (!forceRefresh && statsCache.value && now - cacheTimestamp.value.stats < STATS_CACHE_DURATION) {
-    statsError.value = '';
-    statsCards.value = statsCache.value;
-    return;
+    statsError.value = ''
+    statsCards.value = statsCache.value.map((item) => ({ ...item }))
+    return
   }
 
   try {
-    statsError.value = '';
-    const { data: stats } = await request.get('/api/stats');
-    if (stats) {
-      const cards = [...statsCards.value];
-      const customerCard = cards.find((card) => card.label === '注册客户');
-      const totalOrdersCard = cards.find((card) => card.label === '总订单数');
-      const todayOrdersCard = cards.find((card) => card.label === '今日订单');
-      const riderCard = cards.find((card) => card.label === '员工总数');
-      const onlineRiderCard = cards.find((card) => card.label === '在线骑手');
-      const pendingCard = cards.find((card) => card.label === '待接单');
-
-      if (customerCard) customerCard.value = formatNumber(stats.customerCount || 0);
-      if (totalOrdersCard) totalOrdersCard.value = formatNumber(stats.totalOrders || 0);
-      if (todayOrdersCard) todayOrdersCard.value = formatNumber(stats.todayOrders || 0);
-      if (riderCard) riderCard.value = formatNumber(stats.riderCount || 0);
-      if (onlineRiderCard) onlineRiderCard.value = formatNumber(stats.onlineRiderCount || 0);
-      if (pendingCard) pendingCard.value = formatNumber(stats.pendingOrdersCount || 0);
-
-      statsCards.value = cards;
-      statsCache.value = cards;
-      cacheTimestamp.value.stats = now;
-    }
+    statsError.value = ''
+    const { data } = await request.get('/api/stats')
+    const source = data && typeof data === 'object' ? data : {}
+    const nextCards = createDefaultStatsCards().map((card) => ({
+      ...card,
+      value: formatNumber(source[card.key] || 0)
+    }))
+    statsCards.value = nextCards
+    statsCache.value = nextCards.map((item) => ({ ...item }))
+    cacheTimestamp.value.stats = now
   } catch (error) {
-    statsError.value = extractErrorMessage(error, '加载统计数据失败，请稍后重试');
+    statsError.value = extractErrorMessage(error, '加载统计数据失败，请稍后重试')
   }
 }
 
 async function loadOrders(forceRefresh = false) {
-  const cacheKey = `${userTab.value}-${riderTab.value}`;
-
+  const cacheKey = `${userTab.value}-${riderTab.value}`
   if (!forceRefresh && ranksCache.value.has(cacheKey)) {
-    rankError.value = '';
-    const cached = ranksCache.value.get(cacheKey);
-    userRanks.value = cached.userRanks;
-    allRiderRanks.value = cached.allRiderRanks;
-    return;
+    rankError.value = ''
+    const cached = ranksCache.value.get(cacheKey)
+    userRanks.value = cached.userRanks
+    allRiderRanks.value = cached.allRiderRanks
+    return
   }
 
-  rankError.value = '';
-  loading.value = true;
+  loading.value = true
+  rankError.value = ''
   try {
     const [weekUserRes, monthUserRes, weekRiderRes, monthRiderRes] = await Promise.allSettled([
       request.get('/api/user-ranks?period=week&type=amount'),
       request.get('/api/user-ranks?period=month&type=amount'),
       request.get('/api/rider-ranks?period=week'),
       request.get('/api/rider-ranks?period=month')
-    ]);
+    ])
 
     const hasFailure = [weekUserRes, monthUserRes, weekRiderRes, monthRiderRes].some(
       (item) => item.status === 'rejected'
-    );
+    )
     if (hasFailure) {
-      rankError.value = '部分排名数据加载失败，请稍后重试';
+      rankError.value = '部分排名数据加载失败，请稍后重试'
     }
 
     userRanks.value = {
       week: weekUserRes.status === 'fulfilled' && Array.isArray(weekUserRes.value?.data) ? weekUserRes.value.data : [],
       month:
         monthUserRes.status === 'fulfilled' && Array.isArray(monthUserRes.value?.data) ? monthUserRes.value.data : []
-    };
+    }
+
     allRiderRanks.value = {
       week:
         weekRiderRes.status === 'fulfilled' && Array.isArray(weekRiderRes.value?.data) ? weekRiderRes.value.data : [],
       month:
         monthRiderRes.status === 'fulfilled' && Array.isArray(monthRiderRes.value?.data) ? monthRiderRes.value.data : []
-    };
+    }
 
     ranksCache.value.set(cacheKey, {
-      userRanks: { ...userRanks.value },
-      allRiderRanks: { ...allRiderRanks.value }
-    });
+      userRanks: {
+        week: [...userRanks.value.week],
+        month: [...userRanks.value.month]
+      },
+      allRiderRanks: {
+        week: [...allRiderRanks.value.week],
+        month: [...allRiderRanks.value.month]
+      }
+    })
 
     if (ranksCache.value.size > 10) {
-      const firstKey = ranksCache.value.keys().next().value;
-      ranksCache.value.delete(firstKey);
+      const firstKey = ranksCache.value.keys().next().value
+      ranksCache.value.delete(firstKey)
     }
   } catch (error) {
-    rankError.value = extractErrorMessage(error, '加载排名数据失败，请稍后重试');
+    rankError.value = extractErrorMessage(error, '加载排名数据失败，请稍后重试')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
+
+onMounted(async () => {
+  await loadWeatherConfig()
+  await refreshData()
+  await connectImStats()
+})
+
+onUnmounted(() => {
+  if (weatherTimer) {
+    clearInterval(weatherTimer)
+    weatherTimer = null
+  }
+  socketService.off('server_stats', handleServerStats, '/monitor')
+  socketService.disconnect('/monitor')
+  monitorSocket = null
+})
 </script>
 
 <style scoped lang="css" src="./Dashboard.css"></style>

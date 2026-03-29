@@ -36,10 +36,7 @@ export default Vue.extend({
       showOrderDetailPopup: false,
       currentOrderDetail: null as any,
       historyFromLocalFallback: false,
-      localMessageSeed: 0,
-      loadRetryTimer: null as any,
-      loadRetryCount: 0,
-      maxLoadRetry: 20
+      localMessageSeed: 0
     }
   },
   onLoad(options: any = {}) {
@@ -97,14 +94,13 @@ export default Vue.extend({
         await this.initDatabase()
         await this.ensureConversationExists()
         await this.loadServerHistory()
-        this.requestLoadMessagesWithRetry()
+        this.ensureJoinChat()
       })
 
     messageManager.setCurrentChatId(this.chatId)
   },
   onUnload() {
     messageManager.setCurrentChatId(null)
-    this.stopLoadRetry()
     this.unbindSocketEvents()
   },
   onShow() {
@@ -260,9 +256,6 @@ export default Vue.extend({
       uni.$off('socket:disconnected', this.onSocketDisconnected)
     },
 
-    /**
-     * 通过 App.vue 的全局 socket 发送 emit
-     */
     socketEmit(event: string, data: any) {
       const app = getApp()
       const vm = app && app.$vm
@@ -275,10 +268,6 @@ export default Vue.extend({
         vm.tryConnectSocket()
       }
       return false
-    },
-
-    requestLoadMessages() {
-      return this.ensureJoinChat()
     },
 
     ensureJoinChat() {
@@ -301,7 +290,6 @@ export default Vue.extend({
       const normalizedChatId = String(nextChatId || '').trim()
       if (!normalizedChatId) return
 
-      this.stopLoadRetry()
       this.chatId = normalizedChatId
       this.chatRole = payload.role ? String(payload.role).toLowerCase() : this.inferRoleByChatId(this.chatId)
       this.targetId = payload.targetId ? String(payload.targetId).trim() : ''
@@ -327,45 +315,17 @@ export default Vue.extend({
       await this.initDatabase()
       await this.ensureConversationExists()
       await this.loadServerHistory()
-      this.requestLoadMessagesWithRetry()
-    },
-
-    requestLoadMessagesWithRetry() {
-      const loaded = this.requestLoadMessages()
-      if (!loaded) {
-        this.startLoadRetry()
-      }
-    },
-
-    startLoadRetry() {
-      if (this.loadRetryTimer) return
-      this.loadRetryCount = 0
-      this.loadRetryTimer = setInterval(() => {
-        this.loadRetryCount += 1
-        const loaded = this.requestLoadMessages()
-        if (loaded || this.loadRetryCount >= this.maxLoadRetry) {
-          this.stopLoadRetry()
-        }
-      }, 800)
-    },
-
-    stopLoadRetry() {
-      if (!this.loadRetryTimer) return
-      clearInterval(this.loadRetryTimer)
-      this.loadRetryTimer = null
-      this.loadRetryCount = 0
+      this.ensureJoinChat()
     },
 
     onSocketConnected(payload: any) {
       if (payload && payload.namespace && payload.namespace !== 'support') return
       this.ensureJoinChat()
       void this.loadServerHistory()
-      this.stopLoadRetry()
     },
 
     onSocketDisconnected(payload: any) {
       if (payload && payload.namespace && payload.namespace !== 'support') return
-      this.startLoadRetry()
     },
     ...serviceDataMethods,
 
