@@ -58,7 +58,25 @@
 
 <script>
 import HomeShopCard from '@/components/HomeShopCard.vue'
-import { fetchFeaturedProducts, fetchTodayRecommendedShops } from '@/shared-ui/api.js'
+import { fetchHomeFeed } from '@/shared-ui/api.js'
+
+function normalizeFeaturedProduct(item = {}) {
+  return {
+    id: item.id || item.productId,
+    legacyId: item.legacyId || item.productId || '',
+    name: item.name || item.productName || item.title || '',
+    shopId: item.shopId || item.shop_id || '',
+    shopName: item.shopName || item.shop_name || '',
+    price: item.price || 0,
+    originalPrice: item.originalPrice || item.original_price || 0,
+    image: item.image || item.productImage || item.imageUrl || item.image_url || '/static/images/default-food.svg',
+    tag: item.promoteLabel || item.tag || item.label || '',
+    detail: item.detail || item.description || '',
+    isPromoted: Boolean(item.isPromoted),
+    promoteLabel: item.promoteLabel || '',
+    positionSource: item.positionSource || 'featured'
+  }
+}
 
 export default {
   components: {
@@ -72,44 +90,24 @@ export default {
     }
   },
   onLoad() {
-    this.loadProducts()
-    this.loadShops()
+    this.loadHomeFeed()
   },
   methods: {
-    async loadProducts() {
+    async loadHomeFeed() {
       this.loading = true
       try {
-        const data = await fetchFeaturedProducts()
-        if (Array.isArray(data) && data.length > 0) {
-          this.products = data.map(item => ({
-            id: item.productId || item.id,
-            name: item.productName || item.name || item.title,
-            shopId: item.shopId || item.shop_id,
-            shopName: item.shopName || item.shop_name || '',
-            price: item.price || 0,
-            originalPrice: item.originalPrice || item.original_price,
-            image: item.productImage || item.image || item.imageUrl || item.image_url || '/static/images/default-food.svg',
-            tag: item.tag || item.label,
-            detail: item.detail || item.description || ''
-          }))
-        } else {
-          this.products = []
-        }
+        const data = await fetchHomeFeed()
+        this.products = Array.isArray(data.products)
+          ? data.products.map((item) => normalizeFeaturedProduct(item))
+          : []
+        this.shops = Array.isArray(data.shops) ? data.shops : []
       } catch (error) {
-        console.error('加载今日推荐失败:', error)
+        console.error('加载首页推荐编排失败:', error)
         uni.showToast({ title: '加载失败', icon: 'none' })
         this.products = []
+        this.shops = []
       } finally {
         this.loading = false
-      }
-    },
-    async loadShops() {
-      try {
-        const data = await fetchTodayRecommendedShops()
-        this.shops = Array.isArray(data) ? data : []
-      } catch (error) {
-        console.error('加载推荐商户失败:', error)
-        this.shops = []
       }
     },
     goBack() {
