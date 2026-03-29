@@ -278,12 +278,6 @@ const SIGNAL_LABELS = {
   redisConnected: "Redis 连接",
   redisMode: "Redis 模式",
   adapterEnabled: "Adapter 已启用",
-  fallbackMessages: "Fallback 消息数",
-  fallbackChats: "Fallback 会话数",
-  fallbackOldestAge: "Fallback 最老年龄",
-  fallbackDisabledPurged: "禁用后清理",
-  fallbackExpiredPruned: "过期裁剪",
-  fallbackOverflowPruned: "溢出裁剪",
   goApiOk: "Go 可用",
   goApiProbe: "Go 探针",
   goApiError: "Go 错误",
@@ -323,7 +317,6 @@ const TIME_SIGNAL_KEYS = new Set([
 ]);
 
 const AGE_SIGNAL_KEYS = new Set([
-  "fallbackOldestAge",
   "pushOldestQueuedAgeSeconds",
   "pushOldestRetryPendingAgeSeconds",
   "pushOldestDispatchingAgeSeconds"
@@ -478,10 +471,6 @@ function normalizeSignalValue(key, value) {
   if (text === "true") return "正常";
   if (text === "false") return "异常";
 
-  if (key === "fallbackOldestAge" && /^\d+$/.test(text)) {
-    return formatAgeMs(text);
-  }
-
   if (AGE_SIGNAL_KEYS.has(key) && /^\d+$/.test(text)) {
     return formatAgeSeconds(text);
   }
@@ -520,15 +509,8 @@ function resolveSignalType(key, rawValue) {
     return "warning";
   }
 
-  if (key === "fallbackOldestAge") {
-    return "warning";
-  }
-
   if (
     [
-      "fallbackMessages",
-      "fallbackChats",
-      "fallbackDisabledPurged",
       "pushQueue",
       "pushQueued",
       "pushRetry",
