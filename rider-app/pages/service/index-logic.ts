@@ -709,7 +709,7 @@ export default Vue.extend({
       this.showMenu = false
       uni.showModal({
         title: '举报客服',
-        content: '在线举报能力建设中，请联系平台运营处理。',
+        content: '当前请联系平台运营处理客服问题。',
         showCancel: false
       })
     },
