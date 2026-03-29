@@ -140,6 +140,31 @@ func TestValidateRejectsNegativePushReadyMaxQueueAge(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsProductionLogPushProviderWhenDispatchEnabled(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.Env = "production"
+	cfg.Redis.Required = true
+	cfg.Push.DispatchEnabled = true
+	cfg.Push.DispatchProvider = "log"
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected production log push provider to be rejected")
+	}
+}
+
+func TestValidateAllowsProductionWebhookPushProviderWhenConfigured(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.Env = "production"
+	cfg.Redis.Required = true
+	cfg.Push.DispatchEnabled = true
+	cfg.Push.DispatchProvider = "webhook"
+	cfg.Push.WebhookURL = "https://push-gateway.example.com/dispatch"
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("expected production webhook push provider to pass, got %v", err)
+	}
+}
+
 func TestValidateRejectsNonPositiveSlowRequestWarn(t *testing.T) {
 	cfg := newValidConfigForTest()
 	cfg.HTTP.SlowRequestWarn = 0

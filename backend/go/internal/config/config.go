@@ -221,6 +221,9 @@ func (c *Config) Validate() error {
 		default:
 			return fmt.Errorf("unsupported PUSH_DISPATCH_PROVIDER %q", c.Push.DispatchProvider)
 		}
+		if isProductionLikeEnv(c.Env) && c.Push.DispatchProvider == "log" {
+			return fmt.Errorf("PUSH_DISPATCH_PROVIDER=log is not allowed in %s environment", c.Env)
+		}
 		if c.Push.DispatchProvider == "webhook" && strings.TrimSpace(c.Push.WebhookURL) == "" {
 			return fmt.Errorf("PUSH_DISPATCH_WEBHOOK_URL is required when PUSH_DISPATCH_PROVIDER=webhook")
 		}

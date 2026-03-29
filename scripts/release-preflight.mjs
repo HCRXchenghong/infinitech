@@ -202,6 +202,11 @@ function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStale
     return failures;
   }
 
+  const provider = String(worker.provider || '').trim().toLowerCase();
+  if (provider === 'log') {
+    failures.push('push_provider=log_not_allowed');
+  }
+
   const consecutiveFailures = parseIntegerEnv(worker.consecutiveFailures, 0);
   if (maxConsecutiveFailures >= 0 && consecutiveFailures > maxConsecutiveFailures) {
     failures.push(`push_consecutive_failures=${consecutiveFailures}>${maxConsecutiveFailures}`);
