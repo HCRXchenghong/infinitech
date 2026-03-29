@@ -106,6 +106,7 @@ var routeGuardRules = []routeGuardRule{
 	{path: "/api/admin/onboarding/invites", prefix: true, guard: guardAdminOnly},
 	{path: "/api/admin/coupons", prefix: true, guard: guardAdminOnly},
 	{path: "/api/admin/financial", prefix: true, guard: guardAdminOnly},
+	{path: "/api/admin/contact-phone-audits", prefix: true, guard: guardAdminOnly},
 	{path: "/api/admin/wallet", prefix: true, guard: guardAdminOnly},
 	{path: "/api/admin/clear-all-data", methods: methods("POST"), guard: guardAdminOnly},
 	{path: "/api/after-sales/clear", methods: methods("POST"), guard: guardAdminOnly},

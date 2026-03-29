@@ -98,6 +98,7 @@ Important boundaries:
 - order confirmation reads real addresses instead of demo contact data
 - many active fake success prompts, mock placeholders, and visible mojibake strings were removed
 - invite, medicine, charity, VIP, rider insurance, support naming, and portal runtime settings were pushed into controlled service-side settings where operationally justified
+- system phone contact clicks are now not only recorded but also queryable from the admin console, so hotline usage can be audited without direct database access
 
 ### Push foundations
 
@@ -118,6 +119,7 @@ Important boundaries:
 ### Operational visibility
 
 - admin dashboard and system logs now expose real readiness and Redis adapter state
+- the admin console now includes a dedicated phone contact audit page for filtering actor/target roles, results, and related order or room references
 - release preflight checks BFF ready, Go ready, socket ready, system health, queue age, fallback state, and other launch blockers
 
 ## Current Release Gates

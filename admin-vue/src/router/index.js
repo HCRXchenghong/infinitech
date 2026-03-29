@@ -11,13 +11,14 @@ const protectedRoutes = [
   { path: '/orders', name: 'orders', title: '订单管理' },
   { path: '/users', name: 'users', title: '用户管理' },
   { path: '/riders', name: 'riders', title: '骑手管理' },
-  { path: '/rider-ranks', name: 'rider-ranks', title: '骑手段位' },
+  { path: '/rider-ranks', name: 'rider-ranks', title: '骑手等级' },
   { path: '/merchants', name: 'merchants', title: '商户管理' },
   { path: '/support-chat', name: 'support-chat', title: '客服工作台' },
   { path: '/monitor-chat', name: 'monitor-chat', title: '平台监控' },
   { path: '/blank-page', name: 'blank-page', title: '空白页' },
   { path: '/featured-products', name: 'featured-products', title: '今日推荐' },
   { path: '/home-campaigns', name: 'home-campaigns', title: '首页推广' },
+  { path: '/contact-phone-audits', name: 'contact-phone-audits', title: '电话联系审计' },
   { path: '/after-sales', name: 'after-sales', title: '售后服务' },
   { path: '/operations-center', name: 'operations-center', title: '运营管理' },
   { path: '/finance-center', name: 'finance-center', title: '财务中心' },
@@ -27,9 +28,9 @@ const protectedRoutes = [
   { path: '/settings', name: 'settings', title: '系统设置' },
   { path: '/system-logs', name: 'system-logs', title: '系统日志' },
   { path: '/content-settings', name: 'content-settings', title: '内容设置' },
-  { path: '/api-management', name: 'api-management', title: 'API管理' },
-  { path: '/api-permissions', name: 'api-permissions', title: 'API权限管理' },
-  { path: '/api-documentation', name: 'api-documentation', title: 'API文档' }
+  { path: '/api-management', name: 'api-management', title: 'API 管理' },
+  { path: '/api-permissions', name: 'api-permissions', title: 'API 权限管理' },
+  { path: '/api-documentation', name: 'api-documentation', title: 'API 文档' },
 ];
 
 const protectedViewMap = {
@@ -44,6 +45,7 @@ const protectedViewMap = {
   'blank-page': () => import('@/views/BlankPage.vue'),
   'featured-products': () => import('@/views/FeaturedProducts.vue'),
   'home-campaigns': () => import('@/views/HomeCampaigns.vue'),
+  'contact-phone-audits': () => import('@/views/ContactPhoneAudits.vue'),
   'after-sales': () => import('@/views/AfterSales.vue'),
   'operations-center': () => import('@/views/OperationsCenter.vue'),
   'finance-center': () => import('@/views/FinanceCenter.vue'),
@@ -55,87 +57,87 @@ const protectedViewMap = {
   'content-settings': () => import('@/views/ContentSettings.vue'),
   'api-management': () => import('@/views/ApiManagement.vue'),
   'api-permissions': () => import('@/views/ApiPermissions.vue'),
-  'api-documentation': () => import('@/views/ApiDocumentation.vue')
+  'api-documentation': () => import('@/views/ApiDocumentation.vue'),
 };
 
 const routes = [
   { path: '/login', name: 'login', component: Login, meta: { title: '登录' } },
   { path: '/invite/:token', name: 'invite-landing', component: InviteLanding, meta: { title: '邀请入驻' } },
   { path: '/coupon/:token', name: 'coupon-landing', component: CouponLanding, meta: { title: '优惠券领取' } },
-  { path: '/download', name: 'download-landing', component: AppDownloadLanding, meta: { title: 'APP下载' } },
+  { path: '/download', name: 'download-landing', component: AppDownloadLanding, meta: { title: 'APP 下载' } },
   { path: '/access-denied', name: 'access-denied', component: AccessDenied, meta: { title: '访问受限' } },
   {
     path: '/',
     name: 'home',
     component: () => import('@/views/BlankPage.vue'),
-    meta: { requiresAuth: true, title: '首页' }
+    meta: { requiresAuth: true, title: '首页' },
   },
   {
     path: '/merchants/:merchantId/shops/:shopId/menu',
     name: 'shop-menu-manage',
     component: () => import('@/views/ShopMenuManage.vue'),
-    meta: { requiresAuth: true, title: '菜单管理', menuRoot: '/merchants' }
+    meta: { requiresAuth: true, title: '菜单管理', menuRoot: '/merchants' },
   },
   {
     path: '/merchants/:merchantId/shops/:shopId',
     name: 'shop-manage-detail',
     component: () => import('@/views/ShopManageDetail.vue'),
-    meta: { requiresAuth: true, title: '店铺详情', menuRoot: '/merchants' }
+    meta: { requiresAuth: true, title: '店铺详情', menuRoot: '/merchants' },
   },
   {
     path: '/merchants/:id',
     name: 'merchant-profile',
     component: () => import('@/views/MerchantProfile.vue'),
-    meta: { requiresAuth: true, title: '商户详情', menuRoot: '/merchants' }
+    meta: { requiresAuth: true, title: '商户详情', menuRoot: '/merchants' },
   },
   {
     path: '/notifications',
     name: 'official-notifications',
     component: () => import('@/views/OfficialNotificationsPage.vue'),
-    meta: { requiresAuth: true, title: '官方通知' }
+    meta: { requiresAuth: true, title: '官方通知' },
   },
   {
     path: '/notifications/edit',
     name: 'notification-create',
     component: () => import('@/views/NotificationEditorPage.vue'),
-    meta: { requiresAuth: true, title: '新建通知' }
+    meta: { requiresAuth: true, title: '新建通知' },
   },
   {
     path: '/notifications/edit/:id',
     name: 'notification-edit',
     component: () => import('@/views/NotificationEditorPage.vue'),
-    meta: { requiresAuth: true, title: '编辑通知' }
+    meta: { requiresAuth: true, title: '编辑通知' },
   },
   {
     path: '/notifications/preview/:id',
     name: 'notification-preview',
     component: () => import('@/views/NotificationPreviewPage.vue'),
-    meta: { requiresAuth: true, title: '通知预览' }
+    meta: { requiresAuth: true, title: '通知预览' },
   },
   {
     path: '/data-management',
     name: 'data-management',
     component: () => import('@/views/DataManagement.vue'),
-    meta: { requiresAuth: true, title: '数据管理' }
+    meta: { requiresAuth: true, title: '数据管理' },
   },
   {
     path: '/payment-info',
     name: 'payment-info',
     component: () => import('@/views/PaymentInfo.vue'),
-    meta: { requiresAuth: true, title: '付款说明管理' }
+    meta: { requiresAuth: true, title: '付款说明管理' },
   },
   ...protectedRoutes.map((item) => ({
     path: item.path,
     name: item.name,
     component: protectedViewMap[item.name] || (() => import('@/views/BlankPage.vue')),
-    meta: { requiresAuth: true, title: item.title }
+    meta: { requiresAuth: true, title: item.title },
   })),
-  { path: '/system-settings', redirect: '/settings' }
+  { path: '/system-settings', redirect: '/settings' },
 ];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
 });
 
 function isInvitePath(path) {
@@ -162,7 +164,7 @@ function resolveDocumentTitle(route) {
   if (routeTitle) {
     return `悦享e食管理后台 - ${routeTitle}`;
   }
-  return '悦享e食 - 管理后台';
+  return '悦享e食管理后台';
 }
 
 router.beforeEach((to, from, next) => {

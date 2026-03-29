@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/glebarez/sqlite"
 	"github.com/yuexiang/go-api/internal/repository"
@@ -111,5 +112,107 @@ func TestPhoneContactAuditServiceRecordPhoneClickRequiresTargetRole(t *testing.T
 	})
 	if err == nil || err.Error() != "targetRole is required" {
 		t.Fatalf("expected targetRole validation error, got %v", err)
+	}
+}
+
+func TestPhoneContactAuditServiceListForAdmin(t *testing.T) {
+	svc, db := newPhoneContactAuditServiceForTest(t)
+
+	records := []repository.PhoneContactAudit{
+		{
+			ActorRole:      "user",
+			ActorID:        "26032900000001",
+			ActorPhone:     "13800000001",
+			TargetRole:     "merchant",
+			TargetID:       "26032900000088",
+			TargetPhone:    "13800000002",
+			ContactChannel: "system_phone",
+			EntryPoint:     "order_detail",
+			Scene:          "takeout_order",
+			OrderID:        "26032999000001",
+			PagePath:       "/pages/order/detail/index",
+			ClientPlatform: "app-plus",
+			ClientResult:   "clicked",
+			Metadata:       `{"status":"delivering"}`,
+			CreatedAt:      time.Now().Add(-3 * time.Minute),
+		},
+		{
+			ActorRole:      "user",
+			ActorID:        "26032900000001",
+			ActorPhone:     "13800000001",
+			TargetRole:     "rider",
+			TargetID:       "26032900000066",
+			TargetPhone:    "13800000003",
+			ContactChannel: "system_phone",
+			EntryPoint:     "order_detail",
+			Scene:          "takeout_order",
+			OrderID:        "26032999000001",
+			PagePath:       "/pages/order/detail/index",
+			ClientPlatform: "app-plus",
+			ClientResult:   "opened",
+			CreatedAt:      time.Now().Add(-2 * time.Minute),
+		},
+		{
+			ActorRole:      "merchant",
+			ActorID:        "26032900000088",
+			ActorPhone:     "13800000002",
+			TargetRole:     "user",
+			TargetID:       "26032900000001",
+			TargetPhone:    "13800000001",
+			ContactChannel: "system_phone",
+			EntryPoint:     "support_chat",
+			Scene:          "after_sales",
+			OrderID:        "26032999000009",
+			PagePath:       "/pages/profile/customer-service/index",
+			ClientPlatform: "mp-weixin",
+			ClientResult:   "failed",
+			CreatedAt:      time.Now().Add(-1 * time.Minute),
+		},
+	}
+	if err := db.Create(&records).Error; err != nil {
+		t.Fatalf("seed phone contact audits failed: %v", err)
+	}
+
+	result, err := svc.ListForAdmin(context.Background(), PhoneContactAuditAdminQuery{
+		ActorRole:    "user",
+		Keyword:      "26032999000001",
+		ClientResult: "clicked",
+		Page:         1,
+		Limit:        10,
+	})
+	if err != nil {
+		t.Fatalf("ListForAdmin failed: %v", err)
+	}
+	if result.Pagination.Total != 1 {
+		t.Fatalf("expected total 1, got %d", result.Pagination.Total)
+	}
+	if len(result.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(result.Items))
+	}
+	if result.Items[0].TargetRole != "merchant" {
+		t.Fatalf("expected merchant target role, got %q", result.Items[0].TargetRole)
+	}
+	if result.Summary.Total != 1 || result.Summary.Clicked != 1 || result.Summary.Opened != 0 || result.Summary.Failed != 0 {
+		t.Fatalf("unexpected summary: %+v", result.Summary)
+	}
+
+	allResults, err := svc.ListForAdmin(context.Background(), PhoneContactAuditAdminQuery{
+		Page:  1,
+		Limit: 2,
+	})
+	if err != nil {
+		t.Fatalf("ListForAdmin all results failed: %v", err)
+	}
+	if allResults.Pagination.Total != 3 {
+		t.Fatalf("expected total 3, got %d", allResults.Pagination.Total)
+	}
+	if allResults.Pagination.Limit != 2 {
+		t.Fatalf("expected limit 2, got %d", allResults.Pagination.Limit)
+	}
+	if len(allResults.Items) != 2 {
+		t.Fatalf("expected paged item length 2, got %d", len(allResults.Items))
+	}
+	if allResults.Summary.Clicked != 1 || allResults.Summary.Opened != 1 || allResults.Summary.Failed != 1 {
+		t.Fatalf("unexpected unfiltered summary: %+v", allResults.Summary)
 	}
 }

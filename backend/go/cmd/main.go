@@ -1295,6 +1295,12 @@ func main() {
 			onboardingAdmin.GET("/submissions", handlers.OnboardingInvite.AdminListSubmissions)
 		}
 
+		adminContactAudits := api.Group("/admin/contact-phone-audits")
+		adminContactAudits.Use(middleware.RequireAdmin(services.Admin))
+		{
+			adminContactAudits.GET("", handlers.PhoneContactAudit.AdminList)
+		}
+
 		// 用户侧收藏与评价
 		api.GET("/user/:id/favorites", handlers.Shop.GetUserFavorites)
 		api.POST("/user/:id/favorites", handlers.Shop.AddUserFavorite)
