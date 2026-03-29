@@ -285,6 +285,7 @@ node scripts/http-load-smoke.mjs
 - 2026-03-29：双端聊天页与商家聊天页的删除提示继续收口成正式平台口径，用户看到的是“平台留存 / 当前设备记录”，不再暴露内部监管式措辞。
 
 - 2026-03-29: chat local fallback was tightened again. Consumer/app chat caches now keep only a smaller recent window, merchant chat keeps a smaller bounded local snapshot, and rider SQLite now prunes per-chat history automatically.
+- 2026-03-29: message session fallback was tightened again. Consumer/app message index cache now keeps a shorter lifetime and no longer carries local unread or online state as a pseudo source of truth.
 
 ## 11. 诚实状态说明
 

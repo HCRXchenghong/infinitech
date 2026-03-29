@@ -120,7 +120,7 @@ import {
   loadSupportRuntimeSettings
 } from '@/shared-ui/support-runtime.js'
 
-const SESSION_CACHE_MAX_AGE = 12 * 60 * 60 * 1000
+const SESSION_CACHE_MAX_AGE = 6 * 60 * 60 * 1000
 const SESSION_VISIBLE_MAX_AGE = 30 * 24 * 60 * 60 * 1000
 const SESSION_CACHE_MAX_ITEMS = 50
 
@@ -255,11 +255,7 @@ export default {
         targetId: item.targetId ? String(item.targetId) : '',
         name: String(item.name || ''),
         avatarUrl: String(item.avatarUrl || ''),
-        tag: String(item.tag || ''),
-        tagClass: String(item.tagClass || ''),
         time: String(item.time || ''),
-        unread: Number(item.unread || 0),
-        online: item.online !== false,
         updatedAt: Number(item.updatedAt || 0)
       }
     },
@@ -314,7 +310,7 @@ export default {
         tagClass: this.getTagClass(role),
         time: String(item.time || this.formatClock(updatedAt)),
         unread: Number(item.unread || 0),
-        online: item.online !== false,
+        online: item.online === true,
         updatedAt
       }
     },
@@ -336,7 +332,11 @@ export default {
         }
 
         return sessions
-          .map((item) => this.normalizeSession(item))
+          .map((item) => ({
+            ...this.normalizeSession(item),
+            unread: 0,
+            online: false
+          }))
           .filter((item) => item.roomId && this.isSessionRecent(item))
       } catch (err) {
         console.error('读取本地会话失败:', err)
