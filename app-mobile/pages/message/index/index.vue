@@ -255,7 +255,6 @@ export default {
         targetId: item.targetId ? String(item.targetId) : '',
         name: String(item.name || ''),
         avatarUrl: String(item.avatarUrl || ''),
-        time: String(item.time || ''),
         updatedAt: Number(item.updatedAt || 0)
       }
     },
