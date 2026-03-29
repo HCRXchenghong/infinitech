@@ -1,4 +1,23 @@
-import { request, addUserFavorite, deleteUserFavorite, fetchUserFavoriteStatus } from '@/shared-ui/api.js'
+import { request, addUserFavorite, deleteUserFavorite, fetchUserFavoriteStatus, recordPhoneContactClick } from '@/shared-ui/api.js'
+import { createPhoneContactHelper } from '../../../../shared/mobile-common/phone-contact.js'
+
+const phoneContactHelper = createPhoneContactHelper({ recordPhoneContactClick })
+
+function buildShopPhoneAuditPayload(shop = {}) {
+  return {
+    targetRole: 'merchant',
+    targetId: String(shop.id || ''),
+    targetPhone: String(shop.phone || ''),
+    entryPoint: 'shop_detail',
+    scene: 'shop_contact',
+    pagePath: '/pages/shop/detail/index',
+    metadata: {
+      shopId: String(shop.id || ''),
+      shopName: String(shop.name || ''),
+      bizType: String(shop.bizType || shop.biz_type || ''),
+    }
+  }
+}
 
 export function createShopDetailState() {
   return {
@@ -308,8 +327,8 @@ export const shopDetailMethods = {
   },
   callPhone() {
     if (this.shop.phone) {
-      uni.makePhoneCall({
-        phoneNumber: this.shop.phone
+      phoneContactHelper.makePhoneCall(buildShopPhoneAuditPayload(this.shop)).catch(() => {
+        uni.showToast({ title: '无法拨打电话，请稍后重试', icon: 'none' })
       })
     }
   },
