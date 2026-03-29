@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -50,9 +51,15 @@ func newMobilePushServiceForDispatchTest(t *testing.T, options MobilePushOptions
 func TestMobilePushServiceDispatchDueDeliveriesWebhookSuccess(t *testing.T) {
 	ctx := context.Background()
 	requests := make([]PushDispatchRequest, 0, 1)
+	var signatureHeader string
+	var authHeader string
+	var timestampHeader string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
+		signatureHeader = r.Header.Get("X-Push-Signature")
+		authHeader = r.Header.Get("Authorization")
+		timestampHeader = r.Header.Get("X-Push-Timestamp")
 		var payload PushDispatchRequest
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			t.Fatalf("decode webhook request failed: %v", err)
@@ -64,13 +71,16 @@ func TestMobilePushServiceDispatchDueDeliveriesWebhookSuccess(t *testing.T) {
 	defer server.Close()
 
 	svc, db := newMobilePushServiceForDispatchTest(t, MobilePushOptions{
-		DispatchEnabled: true,
-		ProviderName:    "webhook",
-		WebhookURL:      server.URL,
-		RequestTimeout:  2 * time.Second,
-		BatchSize:       10,
-		MaxRetries:      2,
-		RetryBackoff:    time.Minute,
+		DispatchEnabled:   true,
+		ProviderName:      "webhook",
+		WebhookURL:        server.URL,
+		WebhookSecret:     "test-secret",
+		WebhookAuthHeader: "Authorization",
+		WebhookAuthValue:  "Bearer push-token",
+		RequestTimeout:    2 * time.Second,
+		BatchSize:         10,
+		MaxRetries:        2,
+		RetryBackoff:      time.Minute,
 	})
 
 	delivery := repository.PushDelivery{
@@ -100,6 +110,15 @@ func TestMobilePushServiceDispatchDueDeliveriesWebhookSuccess(t *testing.T) {
 	if requests[0].MessageID != delivery.MessageID {
 		t.Fatalf("expected webhook message id %q, got %q", delivery.MessageID, requests[0].MessageID)
 	}
+	if !strings.HasPrefix(signatureHeader, "sha256=") {
+		t.Fatalf("expected signature header to be set, got %q", signatureHeader)
+	}
+	if authHeader != "Bearer push-token" {
+		t.Fatalf("expected auth header to be propagated, got %q", authHeader)
+	}
+	if timestampHeader == "" {
+		t.Fatal("expected push timestamp header to be set")
+	}
 
 	var stored repository.PushDelivery
 	if err := db.Where("id = ?", delivery.ID).Take(&stored).Error; err != nil {
@@ -119,6 +138,61 @@ func TestMobilePushServiceDispatchDueDeliveriesWebhookSuccess(t *testing.T) {
 	}
 	if stored.ErrorCode != "" || stored.ErrorMessage != "" {
 		t.Fatalf("expected no dispatch error, got code=%q message=%q", stored.ErrorCode, stored.ErrorMessage)
+	}
+}
+
+func TestMobilePushServiceDispatchDueDeliveriesWebhookRejectsLogicalFailure(t *testing.T) {
+	ctx := context.Background()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":false,"code":"invalid_token","message":"token rejected"}`))
+	}))
+	defer server.Close()
+
+	svc, db := newMobilePushServiceForDispatchTest(t, MobilePushOptions{
+		DispatchEnabled: true,
+		ProviderName:    "webhook",
+		WebhookURL:      server.URL,
+		RequestTimeout:  2 * time.Second,
+		BatchSize:       10,
+		MaxRetries:      0,
+		RetryBackoff:    time.Minute,
+	})
+
+	delivery := repository.PushDelivery{
+		MessageID:   "26032700000003",
+		UserID:      "3001",
+		UserType:    "merchant",
+		DeviceToken: "token-3",
+		AppEnv:      "prod",
+		EventType:   "admin_push_message",
+		Status:      "queued",
+		Payload:     `{"messageId":"26032700000003","title":"Reject","content":"Body"}`,
+	}
+	if err := db.Create(&delivery).Error; err != nil {
+		t.Fatalf("create delivery failed: %v", err)
+	}
+
+	processed, err := svc.dispatchDueDeliveries(ctx, 10)
+	if err != nil {
+		t.Fatalf("dispatchDueDeliveries failed: %v", err)
+	}
+	if processed != 1 {
+		t.Fatalf("expected processed count 1, got %d", processed)
+	}
+
+	var stored repository.PushDelivery
+	if err := db.Where("id = ?", delivery.ID).Take(&stored).Error; err != nil {
+		t.Fatalf("query stored delivery failed: %v", err)
+	}
+	if stored.Status != "failed" {
+		t.Fatalf("expected failed status, got %q", stored.Status)
+	}
+	if stored.ErrorCode != "invalid_token" {
+		t.Fatalf("expected invalid_token error code, got %q", stored.ErrorCode)
+	}
+	if stored.ErrorMessage != "token rejected" {
+		t.Fatalf("expected provider rejection message, got %q", stored.ErrorMessage)
 	}
 }
 

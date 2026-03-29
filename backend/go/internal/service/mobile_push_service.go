@@ -68,28 +68,34 @@ type MobilePushQueueSnapshot struct {
 }
 
 type MobilePushOptions struct {
-	DispatchEnabled bool
-	ProviderName    string
-	WebhookURL      string
-	RequestTimeout  time.Duration
-	PollInterval    time.Duration
-	BatchSize       int
-	MaxRetries      int
-	RetryBackoff    time.Duration
+	DispatchEnabled   bool
+	ProviderName      string
+	WebhookURL        string
+	WebhookSecret     string
+	WebhookAuthHeader string
+	WebhookAuthValue  string
+	RequestTimeout    time.Duration
+	PollInterval      time.Duration
+	BatchSize         int
+	MaxRetries        int
+	RetryBackoff      time.Duration
 }
 
 func NewMobilePushService(db *gorm.DB, cfg *config.Config, admin *AdminService) *MobilePushService {
 	options := MobilePushOptions{}
 	if cfg != nil {
 		options = MobilePushOptions{
-			DispatchEnabled: cfg.Push.DispatchEnabled,
-			ProviderName:    cfg.Push.DispatchProvider,
-			WebhookURL:      cfg.Push.WebhookURL,
-			RequestTimeout:  cfg.Push.RequestTimeout,
-			PollInterval:    cfg.Push.PollInterval,
-			BatchSize:       cfg.Push.BatchSize,
-			MaxRetries:      cfg.Push.MaxRetries,
-			RetryBackoff:    cfg.Push.RetryBackoff,
+			DispatchEnabled:   cfg.Push.DispatchEnabled,
+			ProviderName:      cfg.Push.DispatchProvider,
+			WebhookURL:        cfg.Push.WebhookURL,
+			WebhookSecret:     cfg.Push.WebhookSecret,
+			WebhookAuthHeader: cfg.Push.WebhookAuthHeader,
+			WebhookAuthValue:  cfg.Push.WebhookAuthValue,
+			RequestTimeout:    cfg.Push.RequestTimeout,
+			PollInterval:      cfg.Push.PollInterval,
+			BatchSize:         cfg.Push.BatchSize,
+			MaxRetries:        cfg.Push.MaxRetries,
+			RetryBackoff:      cfg.Push.RetryBackoff,
 		}
 	}
 	return newMobilePushServiceWithOptions(db, admin, options)

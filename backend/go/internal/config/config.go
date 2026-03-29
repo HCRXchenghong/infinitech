@@ -65,16 +65,19 @@ type MapConfig struct {
 }
 
 type PushConfig struct {
-	DispatchEnabled  bool
-	DispatchProvider string
-	WebhookURL       string
-	RequestTimeout   time.Duration
-	PollInterval     time.Duration
-	BatchSize        int
-	MaxRetries       int
-	RetryBackoff     time.Duration
-	ReadyMaxQueue    int64
-	ReadyMaxQueueAge time.Duration
+	DispatchEnabled   bool
+	DispatchProvider  string
+	WebhookURL        string
+	WebhookSecret     string
+	WebhookAuthHeader string
+	WebhookAuthValue  string
+	RequestTimeout    time.Duration
+	PollInterval      time.Duration
+	BatchSize         int
+	MaxRetries        int
+	RetryBackoff      time.Duration
+	ReadyMaxQueue     int64
+	ReadyMaxQueueAge  time.Duration
 }
 
 type HTTPConfig struct {
@@ -143,16 +146,19 @@ func Load() *Config {
 			Timeout:    time.Duration(getEnvInt("MAP_TIMEOUT_SECONDS", getEnvInt("OSM_GEOCODER_TIMEOUT_SECONDS", 5))) * time.Second,
 		},
 		Push: PushConfig{
-			DispatchEnabled:  strings.EqualFold(getEnv("PUSH_DISPATCH_ENABLED", "false"), "true"),
-			DispatchProvider: strings.ToLower(strings.TrimSpace(getEnv("PUSH_DISPATCH_PROVIDER", "log"))),
-			WebhookURL:       strings.TrimSpace(os.Getenv("PUSH_DISPATCH_WEBHOOK_URL")),
-			RequestTimeout:   time.Duration(getEnvInt("PUSH_DISPATCH_TIMEOUT_SECONDS", 5)) * time.Second,
-			PollInterval:     time.Duration(getEnvInt("PUSH_DISPATCH_POLL_SECONDS", 15)) * time.Second,
-			BatchSize:        getEnvInt("PUSH_DISPATCH_BATCH_SIZE", 100),
-			MaxRetries:       getEnvInt("PUSH_DISPATCH_MAX_RETRIES", 5),
-			RetryBackoff:     time.Duration(getEnvInt("PUSH_DISPATCH_RETRY_BACKOFF_SECONDS", 60)) * time.Second,
-			ReadyMaxQueue:    int64(getEnvInt("PUSH_READY_MAX_QUEUE", 5000)),
-			ReadyMaxQueueAge: time.Duration(getEnvInt("PUSH_READY_MAX_QUEUE_AGE_SECONDS", 1800)) * time.Second,
+			DispatchEnabled:   strings.EqualFold(getEnv("PUSH_DISPATCH_ENABLED", "false"), "true"),
+			DispatchProvider:  strings.ToLower(strings.TrimSpace(getEnv("PUSH_DISPATCH_PROVIDER", "log"))),
+			WebhookURL:        strings.TrimSpace(os.Getenv("PUSH_DISPATCH_WEBHOOK_URL")),
+			WebhookSecret:     strings.TrimSpace(os.Getenv("PUSH_DISPATCH_WEBHOOK_SECRET")),
+			WebhookAuthHeader: strings.TrimSpace(os.Getenv("PUSH_DISPATCH_WEBHOOK_AUTH_HEADER")),
+			WebhookAuthValue:  strings.TrimSpace(os.Getenv("PUSH_DISPATCH_WEBHOOK_AUTH_VALUE")),
+			RequestTimeout:    time.Duration(getEnvInt("PUSH_DISPATCH_TIMEOUT_SECONDS", 5)) * time.Second,
+			PollInterval:      time.Duration(getEnvInt("PUSH_DISPATCH_POLL_SECONDS", 15)) * time.Second,
+			BatchSize:         getEnvInt("PUSH_DISPATCH_BATCH_SIZE", 100),
+			MaxRetries:        getEnvInt("PUSH_DISPATCH_MAX_RETRIES", 5),
+			RetryBackoff:      time.Duration(getEnvInt("PUSH_DISPATCH_RETRY_BACKOFF_SECONDS", 60)) * time.Second,
+			ReadyMaxQueue:     int64(getEnvInt("PUSH_READY_MAX_QUEUE", 5000)),
+			ReadyMaxQueueAge:  time.Duration(getEnvInt("PUSH_READY_MAX_QUEUE_AGE_SECONDS", 1800)) * time.Second,
 		},
 		HTTP: HTTPConfig{
 			ReadTimeout:        time.Duration(getEnvInt("HTTP_READ_TIMEOUT_SECONDS", 15)) * time.Second,
@@ -226,6 +232,9 @@ func (c *Config) Validate() error {
 		}
 		if c.Push.DispatchProvider == "webhook" && strings.TrimSpace(c.Push.WebhookURL) == "" {
 			return fmt.Errorf("PUSH_DISPATCH_WEBHOOK_URL is required when PUSH_DISPATCH_PROVIDER=webhook")
+		}
+		if (c.Push.WebhookAuthHeader == "") != (c.Push.WebhookAuthValue == "") {
+			return fmt.Errorf("PUSH_DISPATCH_WEBHOOK_AUTH_HEADER and PUSH_DISPATCH_WEBHOOK_AUTH_VALUE must be configured together")
 		}
 	}
 	if c.Push.RequestTimeout <= 0 {

@@ -3,11 +3,15 @@ package service
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,9 +55,28 @@ func (e *pushDispatchHTTPError) Error() string {
 	return fmt.Sprintf("push dispatcher returned status %d: %s", e.statusCode, strings.TrimSpace(e.body))
 }
 
+type pushDispatchRejectedError struct {
+	code    string
+	message string
+}
+
+func (e *pushDispatchRejectedError) Error() string {
+	message := strings.TrimSpace(e.message)
+	if message == "" {
+		message = "provider rejected dispatch request"
+	}
+	if strings.TrimSpace(e.code) == "" {
+		return message
+	}
+	return fmt.Sprintf("%s: %s", strings.TrimSpace(e.code), message)
+}
+
 type pushWebhookDispatcher struct {
-	url    string
-	client *http.Client
+	url        string
+	secret     string
+	authHeader string
+	authValue  string
+	client     *http.Client
 }
 
 func (d *pushWebhookDispatcher) Name() string {
@@ -71,6 +94,17 @@ func (d *pushWebhookDispatcher) Send(ctx context.Context, req PushDispatchReques
 		return nil, err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-Push-Delivery-Id", req.DeliveryID)
+	httpReq.Header.Set("X-Push-Message-Id", req.MessageID)
+
+	if d.authHeader != "" && d.authValue != "" {
+		httpReq.Header.Set(d.authHeader, d.authValue)
+	}
+	if d.secret != "" {
+		timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+		httpReq.Header.Set("X-Push-Timestamp", timestamp)
+		httpReq.Header.Set("X-Push-Signature", signPushWebhookPayload(d.secret, timestamp, body))
+	}
 
 	resp, err := d.client.Do(httpReq)
 	if err != nil {
@@ -93,6 +127,12 @@ func (d *pushWebhookDispatcher) Send(ctx context.Context, req PushDispatchReques
 
 	var payload map[string]interface{}
 	if err := json.Unmarshal(respBody, &payload); err == nil {
+		if rejected, rejectionCode, rejectionMessage := detectPushWebhookRejection(payload); rejected {
+			return nil, &pushDispatchRejectedError{
+				code:    rejectionCode,
+				message: rejectionMessage,
+			}
+		}
 		result.ProviderMessageID = strings.TrimSpace(parseString(
 			firstNonNil(
 				payload["providerMessageId"],
@@ -141,7 +181,10 @@ func newPushDispatchProvider(options MobilePushOptions) PushDispatchProvider {
 			timeout = 5 * time.Second
 		}
 		return &pushWebhookDispatcher{
-			url: strings.TrimSpace(options.WebhookURL),
+			url:        strings.TrimSpace(options.WebhookURL),
+			secret:     strings.TrimSpace(options.WebhookSecret),
+			authHeader: strings.TrimSpace(options.WebhookAuthHeader),
+			authValue:  strings.TrimSpace(options.WebhookAuthValue),
 			client: &http.Client{
 				Timeout: timeout,
 			},
@@ -394,6 +437,13 @@ func classifyPushDispatchError(err error) (string, string) {
 	if httpErr, ok := err.(*pushDispatchHTTPError); ok {
 		return fmt.Sprintf("http_%d", httpErr.statusCode), strings.TrimSpace(httpErr.body)
 	}
+	if rejectedErr, ok := err.(*pushDispatchRejectedError); ok {
+		code := strings.TrimSpace(rejectedErr.code)
+		if code == "" {
+			code = "provider_rejected"
+		}
+		return code, strings.TrimSpace(rejectedErr.message)
+	}
 	return "dispatch_error", strings.TrimSpace(err.Error())
 }
 
@@ -405,4 +455,77 @@ func firstNonNil(values ...interface{}) interface{} {
 		return value
 	}
 	return nil
+}
+
+func signPushWebhookPayload(secret, timestamp string, body []byte) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write([]byte(timestamp))
+	_, _ = mac.Write([]byte("."))
+	_, _ = mac.Write(body)
+	return "sha256=" + hex.EncodeToString(mac.Sum(nil))
+}
+
+func detectPushWebhookRejection(payload map[string]interface{}) (bool, string, string) {
+	if payload == nil {
+		return false, "", ""
+	}
+
+	if value, exists := payload["success"]; exists {
+		if success, ok := parseBoolish(value); ok && !success {
+			return true, extractPushWebhookCode(payload), extractPushWebhookMessage(payload)
+		}
+	}
+	if value, exists := payload["ok"]; exists {
+		if success, ok := parseBoolish(value); ok && !success {
+			return true, extractPushWebhookCode(payload), extractPushWebhookMessage(payload)
+		}
+	}
+	return false, "", ""
+}
+
+func parseBoolish(value interface{}) (bool, bool) {
+	switch typed := value.(type) {
+	case bool:
+		return typed, true
+	case string:
+		normalized := strings.TrimSpace(strings.ToLower(typed))
+		switch normalized {
+		case "true", "1", "yes", "ok":
+			return true, true
+		case "false", "0", "no":
+			return false, true
+		}
+	case float64:
+		if typed == 1 {
+			return true, true
+		}
+		if typed == 0 {
+			return false, true
+		}
+	case int:
+		if typed == 1 {
+			return true, true
+		}
+		if typed == 0 {
+			return false, true
+		}
+	}
+	return false, false
+}
+
+func extractPushWebhookCode(payload map[string]interface{}) string {
+	return strings.TrimSpace(parseString(firstNonNil(
+		payload["code"],
+		payload["errorCode"],
+		payload["error_code"],
+	)))
+}
+
+func extractPushWebhookMessage(payload map[string]interface{}) string {
+	return strings.TrimSpace(parseString(firstNonNil(
+		payload["message"],
+		payload["error"],
+		payload["errorMessage"],
+		payload["error_message"],
+	)))
 }

@@ -165,6 +165,19 @@ func TestValidateAllowsProductionWebhookPushProviderWhenConfigured(t *testing.T)
 	}
 }
 
+func TestValidateRejectsIncompleteWebhookAuthConfig(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.Push.DispatchEnabled = true
+	cfg.Push.DispatchProvider = "webhook"
+	cfg.Push.WebhookURL = "https://push-gateway.example.com/dispatch"
+	cfg.Push.WebhookAuthHeader = "Authorization"
+	cfg.Push.WebhookAuthValue = ""
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected incomplete webhook auth config to be rejected")
+	}
+}
+
 func TestValidateRejectsNonPositiveSlowRequestWarn(t *testing.T) {
 	cfg := newValidConfigForTest()
 	cfg.HTTP.SlowRequestWarn = 0
