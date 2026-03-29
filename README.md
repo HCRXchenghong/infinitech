@@ -173,7 +173,7 @@ These items are still open and should not be misrepresented as complete:
 - final messaging fact-source closure
   - conversation summaries and unread counts are much tighter now, but not every active surface is fully free from local assistance logic
 - production-grade push provider integration
-  - the worker framework exists, but the platform still needs a real production provider path beyond `log / webhook`
+  - the platform now has secure webhook and FCM HTTP v1 dispatch paths, but real production rollout still needs live provider cutover, delivery verification, and drill coverage
 - App / H5 RTC audio implementation
   - service-side signaling, recording-retention policy flow, and complaint freeze flow are not complete
 - full load, rollback, and failure-drill validation

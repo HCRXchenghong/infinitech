@@ -223,6 +223,30 @@ function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStale
   ) {
     failures.push('push_fcm=missing_required_credentials');
   }
+  if (
+    provider === 'fcm'
+    && worker.fcmTokenSecureTransport !== true
+  ) {
+    failures.push('push_fcm_token=insecure_transport');
+  }
+  if (
+    provider === 'fcm'
+    && worker.fcmTokenPrivateTarget === true
+  ) {
+    failures.push('push_fcm_token=private_target_not_allowed');
+  }
+  if (
+    provider === 'fcm'
+    && worker.fcmApiBaseSecureTransport !== true
+  ) {
+    failures.push('push_fcm_api=insecure_transport');
+  }
+  if (
+    provider === 'fcm'
+    && worker.fcmApiBasePrivateTarget === true
+  ) {
+    failures.push('push_fcm_api=private_target_not_allowed');
+  }
 
   const consecutiveFailures = parseIntegerEnv(worker.consecutiveFailures, 0);
   if (maxConsecutiveFailures >= 0 && consecutiveFailures > maxConsecutiveFailures) {

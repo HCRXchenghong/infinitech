@@ -34,25 +34,31 @@ type MobilePushService struct {
 }
 
 type MobilePushWorkerStatus struct {
-	Enabled                 bool                    `json:"enabled"`
-	Running                 bool                    `json:"running"`
-	Provider                string                  `json:"provider"`
-	WebhookTarget           string                  `json:"webhookTarget,omitempty"`
-	WebhookSecureTransport  bool                    `json:"webhookSecureTransport"`
-	WebhookPrivateTarget    bool                    `json:"webhookPrivateTarget"`
-	WebhookAuthConfigured   bool                    `json:"webhookAuthConfigured"`
-	WebhookSignatureEnabled bool                    `json:"webhookSignatureEnabled"`
-	FCMProjectID            string                  `json:"fcmProjectId,omitempty"`
-	FCMConfigured           bool                    `json:"fcmConfigured"`
-	PollIntervalSeconds     int                     `json:"pollIntervalSeconds"`
-	BatchSize               int                     `json:"batchSize"`
-	LastCycleStatus         string                  `json:"lastCycleStatus"`
-	LastProcessedCount      int                     `json:"lastProcessedCount"`
-	LastCycleAt             string                  `json:"lastCycleAt,omitempty"`
-	LastSuccessAt           string                  `json:"lastSuccessAt,omitempty"`
-	ConsecutiveFailures     int                     `json:"consecutiveFailures"`
-	LastError               string                  `json:"lastError,omitempty"`
-	Queue                   MobilePushQueueSnapshot `json:"queue"`
+	Enabled                   bool                    `json:"enabled"`
+	Running                   bool                    `json:"running"`
+	Provider                  string                  `json:"provider"`
+	WebhookTarget             string                  `json:"webhookTarget,omitempty"`
+	WebhookSecureTransport    bool                    `json:"webhookSecureTransport"`
+	WebhookPrivateTarget      bool                    `json:"webhookPrivateTarget"`
+	WebhookAuthConfigured     bool                    `json:"webhookAuthConfigured"`
+	WebhookSignatureEnabled   bool                    `json:"webhookSignatureEnabled"`
+	FCMProjectID              string                  `json:"fcmProjectId,omitempty"`
+	FCMConfigured             bool                    `json:"fcmConfigured"`
+	FCMTokenTarget            string                  `json:"fcmTokenTarget,omitempty"`
+	FCMTokenSecureTransport   bool                    `json:"fcmTokenSecureTransport"`
+	FCMTokenPrivateTarget     bool                    `json:"fcmTokenPrivateTarget"`
+	FCMAPIBaseTarget          string                  `json:"fcmApiBaseTarget,omitempty"`
+	FCMAPIBaseSecureTransport bool                    `json:"fcmApiBaseSecureTransport"`
+	FCMAPIBasePrivateTarget   bool                    `json:"fcmApiBasePrivateTarget"`
+	PollIntervalSeconds       int                     `json:"pollIntervalSeconds"`
+	BatchSize                 int                     `json:"batchSize"`
+	LastCycleStatus           string                  `json:"lastCycleStatus"`
+	LastProcessedCount        int                     `json:"lastProcessedCount"`
+	LastCycleAt               string                  `json:"lastCycleAt,omitempty"`
+	LastSuccessAt             string                  `json:"lastSuccessAt,omitempty"`
+	ConsecutiveFailures       int                     `json:"consecutiveFailures"`
+	LastError                 string                  `json:"lastError,omitempty"`
+	Queue                     MobilePushQueueSnapshot `json:"queue"`
 }
 
 type MobilePushQueueSnapshot struct {
@@ -407,6 +413,12 @@ func (s *MobilePushService) WorkerStatusSnapshot(ctx context.Context) MobilePush
 		snapshot.FCMConfigured = snapshot.FCMProjectID != "" &&
 			strings.TrimSpace(fcmProvider.clientEmail) != "" &&
 			strings.TrimSpace(fcmProvider.privateKey) != ""
+		snapshot.FCMTokenTarget = summarizePushWebhookTarget(fcmProvider.tokenURL)
+		snapshot.FCMTokenSecureTransport = pushWebhookUsesSecureTransport(fcmProvider.tokenURL)
+		snapshot.FCMTokenPrivateTarget = config.PushWebhookTargetsPrivateHost(fcmProvider.tokenURL)
+		snapshot.FCMAPIBaseTarget = summarizePushWebhookTarget(fcmProvider.apiBaseURL)
+		snapshot.FCMAPIBaseSecureTransport = pushWebhookUsesSecureTransport(fcmProvider.apiBaseURL)
+		snapshot.FCMAPIBasePrivateTarget = config.PushWebhookTargetsPrivateHost(fcmProvider.apiBaseURL)
 	}
 	if !lastCycleAt.IsZero() {
 		snapshot.LastCycleAt = lastCycleAt.Format(time.RFC3339)
