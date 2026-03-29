@@ -37,6 +37,10 @@ interface DataConditions {
   featured?: boolean
 }
 
+interface GetDataOptions {
+  preferFresh?: boolean
+}
+
 // 直接使用 uni.request 避免循环依赖
 function request(options: RequestOptions): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -119,9 +123,19 @@ class SyncService {
       for (const dataset of datasets) {
         const localVersion = localState[dataset as keyof SyncState] || 0
         const serverVersion = serverState[dataset as keyof SyncState] || 0
-        
-        if (serverVersion > localVersion) {
-          await this.syncDataset(dataset, localVersion)
+        let sinceVersion = localVersion
+
+        if (localVersion > serverVersion) {
+          await this.localDB.saveSyncData(dataset, {
+            changed: [],
+            deleted: [],
+            newVersion: serverVersion
+          })
+          sinceVersion = serverVersion
+        }
+
+        if (serverVersion > sinceVersion) {
+          await this.syncDataset(dataset, sinceVersion)
         }
       }
     } catch (error: any) {
@@ -179,38 +193,30 @@ class SyncService {
   /**
    * 获取数据（优先本地，失败则请求服务器）
    */
-  async getData(dataset: string, conditions: DataConditions = {}): Promise<any> {
+  async getData(dataset: string, conditions: DataConditions = {}, options: GetDataOptions = {}): Promise<any> {
+    const localData = await this.localDB.getLocalData(dataset, conditions)
+    const shouldUseFreshData = Boolean(options.preferFresh)
+
     try {
-      // 1. 先尝试从本地读取
-      const localData = await this.localDB.getLocalData(dataset, conditions)
-      
-      if (localData && localData.length > 0) {
+      // 1. 优先本地（支持秒开）
+      if (!shouldUseFreshData && localData && localData.length > 0) {
         return localData
       }
 
-      // 2. 本地没有，请求服务器
+      // 2. 请求服务器拿最新数据（空本地或调用方要求新鲜数据）
       const serverData = await request({
         url: this.getApiUrl(dataset, conditions),
         method: 'GET'
       })
       
       // 3. 保存到本地（临时缓存）
-      // 处理数组和对象两种情况
-      if (serverData) {
-        if (Array.isArray(serverData)) {
-          await this.localDB.saveSyncData(dataset, {
-            changed: serverData,
-            deleted: [],
-            newVersion: Date.now()
-          })
-        } else if (typeof serverData === 'object') {
-          // 单个对象，转换为数组
-          await this.localDB.saveSyncData(dataset, {
-            changed: [serverData],
-            deleted: [],
-            newVersion: Date.now()
-          })
-        }
+      const recordsToCache = this.normalizeRecords(dataset, conditions, serverData)
+      if (recordsToCache.length > 0) {
+        await this.localDB.saveSyncData(dataset, {
+          changed: recordsToCache,
+          deleted: [],
+          newVersion: Date.now()
+        })
       }
       
       return serverData
@@ -229,7 +235,7 @@ class SyncService {
       }
       
       // 如果在线请求失败，返回本地数据（即使为空）
-      return await this.localDB.getLocalData(dataset, conditions)
+      return localData
     }
   }
 
@@ -247,6 +253,49 @@ class SyncService {
               conditions.user_id ? `/api/orders/user/${conditions.user_id}` : '/api/orders'
     }
     return mapping[dataset] || `/api/${dataset}`
+  }
+
+  /**
+   * 归一化服务端响应，提取可落库的数据列表
+   */
+  normalizeRecords(dataset: string, conditions: DataConditions, serverData: any): any[] {
+    if (!serverData) return []
+    if (Array.isArray(serverData)) return serverData
+
+    if (typeof serverData !== 'object') {
+      return []
+    }
+
+    if (Object.prototype.hasOwnProperty.call(serverData, 'error')) {
+      return []
+    }
+
+    if (Array.isArray(serverData.products)) {
+      return serverData.products
+    }
+
+    if (serverData.data && typeof serverData.data === 'object') {
+      if (Array.isArray(serverData.data.products)) {
+        return serverData.data.products
+      }
+      if (Array.isArray(serverData.data)) {
+        return serverData.data
+      }
+    }
+
+    if (serverData.id !== undefined && serverData.id !== null) {
+      return [serverData]
+    }
+
+    if (config.isDev) {
+      console.warn(`⚠️ 跳过异常 ${dataset} 响应结构`, {
+        dataset,
+        featured: Boolean(conditions.featured),
+        keys: Object.keys(serverData)
+      })
+    }
+
+    return []
   }
 
   /**
