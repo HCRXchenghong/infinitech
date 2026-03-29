@@ -286,6 +286,7 @@ node scripts/http-load-smoke.mjs
 
 - 2026-03-29: chat local fallback was tightened again. Consumer/app chat caches now keep only a smaller recent window, merchant chat keeps a smaller bounded local snapshot, and rider SQLite now prunes per-chat history automatically.
 - 2026-03-29: message session fallback was tightened again. Consumer/app message index cache now keeps a shorter lifetime and no longer carries local unread or online state as a pseudo source of truth.
+- 2026-03-29: socket fallback conversation summaries were tightened again. `socket-server` now caps fallback conversation list size and no longer exports local unread counts from `chat.db` as a pseudo source of truth.
 
 ## 11. 诚实状态说明
 

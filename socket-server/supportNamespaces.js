@@ -9,6 +9,13 @@ import {
   recordMessageHistoryFallback
 } from './database.js';
 
+function toPositiveInt(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const FALLBACK_CHAT_LIST_LIMIT = toPositiveInt(process.env.SOCKET_FALLBACK_CHAT_LIST_LIMIT, 100);
+
 function emitSupportMessage(supportNamespace, chatId, message) {
   const roomName = `chat_${chatId}`;
   const room = supportNamespace.adapter.rooms.get(roomName);
@@ -186,7 +193,7 @@ async function markConversationReadOnBackend(socket, chatId, markAllReadFn = nul
   }
 }
 
-function buildSupportChatList(db, getUnreadCount, userId, options = {}) {
+function buildSupportChatList(db, options = {}) {
   const defaultRole = options.defaultRole || 'user';
   const fallbackRoleFromRow = Boolean(options.fallbackRoleFromRow);
   const chats = db.prepare(`
@@ -209,7 +216,8 @@ function buildSupportChatList(db, getUnreadCount, userId, options = {}) {
         LIMIT 1
       )
     ORDER BY message_timestamp DESC, m.id DESC
-  `).all();
+    LIMIT ?
+  `).all(FALLBACK_CHAT_LIST_LIMIT);
 
   return chats.map((row) => {
     const nameRow = db.prepare(`
@@ -232,7 +240,9 @@ function buildSupportChatList(db, getUnreadCount, userId, options = {}) {
       avatar: nameRow ? nameRow.avatar : null,
       lastMessage: resolveSupportPreview(row.message_type, row.content),
       time: new Date(fallbackTimestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-      unread: getUnreadCount('support', row.chat_id, userId)
+      unread: 0,
+      online: false,
+      source: 'fallback'
     };
   });
 }
@@ -425,7 +435,7 @@ export function setupSupportNamespaces({
 
     socket.on('load_all_chats', () => {
       void (async () => {
-        const fallbackChats = buildSupportChatList(db, getUnreadCount, socket.userId, { defaultRole: 'user' });
+        const fallbackChats = buildSupportChatList(db, { defaultRole: 'user' });
         const chatList = await fetchConversationListFromBackend(socket, fallbackChats);
         socket.emit('all_chats_loaded', { chats: chatList });
       })();
@@ -536,7 +546,7 @@ export function setupSupportNamespaces({
       }
 
       void (async () => {
-        const fallbackChats = buildSupportChatList(db, getUnreadCount, socket.userId, {
+        const fallbackChats = buildSupportChatList(db, {
           defaultRole: 'user',
           fallbackRoleFromRow: true
         });
