@@ -661,7 +661,7 @@ export default {
       })
 
       sock.on('clear_messages_denied', () => {
-        uni.showToast({ title: '仅平台监管可彻底删除', icon: 'none' })
+        uni.showToast({ title: '聊天记录需按平台规则留存', icon: 'none' })
       })
 
       sock.on('disconnect', () => {

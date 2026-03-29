@@ -449,7 +449,7 @@ function connectSocket(token: string) {
   })
 
   sock.on('clear_messages_denied', () => {
-    uni.showToast({ title: '仅平台监管可彻底删除', icon: 'none' })
+    uni.showToast({ title: '聊天记录需按平台规则留存', icon: 'none' })
   })
 
   sock.on('disconnect', () => {
@@ -596,7 +596,7 @@ function previewImage(url: string) {
 function clearLocalMessages() {
   messages.value = []
   persistLocalMessages()
-  uni.showToast({ title: '仅清除本地记录', icon: 'none' })
+  uni.showToast({ title: '已清除当前设备记录', icon: 'none' })
 }
 
 function goBack() {
