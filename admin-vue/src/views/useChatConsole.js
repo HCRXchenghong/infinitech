@@ -208,12 +208,6 @@ export function useChatConsole(options = {}) {
     socket.emit('join_chat', { chatId, userId: 'admin', role: 'admin' });
     void syncReadState(chatId).then((synced) => {
       if (!synced) return;
-      if (normalizeChatId(selectedChat.value?.id) === chatId) {
-        selectedChat.value = {
-          ...selectedChat.value,
-          unread: 0
-        };
-      }
       socket.emit('mark_all_read', { chatId });
       void refreshChats();
     });
