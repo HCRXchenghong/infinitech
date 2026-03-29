@@ -8,8 +8,6 @@ import { db } from '@/utils/database'
 import messageManager from '@/utils/message-manager'
 import OrderDetailPopup from '../../components/OrderDetailPopup.vue'
 
-const LOCAL_HISTORY_CACHE_LIMIT = 60
-
 export default Vue.extend({
   components: {
     OrderDetailPopup
@@ -35,7 +33,6 @@ export default Vue.extend({
       recentOrders: [] as any[],
       showOrderDetailPopup: false,
       currentOrderDetail: null as any,
-      historyFromLocalFallback: false,
       localMessageSeed: 0
     }
   },
@@ -216,13 +213,11 @@ export default Vue.extend({
     },
 
     async loadServerHistory() {
-      const hadServerHistory = this.messages.length > 0 && !this.historyFromLocalFallback
+      const hadServerHistory = this.messages.length > 0
       try {
         const response: any = await fetchHistory(this.chatId)
         const list = Array.isArray(response) ? response : []
         this.messages = this.normalizeHistoryMessages(list)
-        this.historyFromLocalFallback = false
-        await this.replaceCachedHistory(list)
         this.$nextTick(() => { this.scrollToBottom() })
         await this.syncReadState()
       } catch (err) {
@@ -230,7 +225,6 @@ export default Vue.extend({
           console.error('[RiderService] 加载服务端消息历史失败，保留当前服务端消息:', err)
           return
         }
-        this.historyFromLocalFallback = await this.loadCachedMessages()
         console.error('[RiderService] 加载服务端消息历史失败:', err)
       }
     },
@@ -303,7 +297,6 @@ export default Vue.extend({
         ? this.safeDecode(payload.avatar)
         : this.defaultAvatarByRole(this.chatRole)
       this.messages = []
-      this.historyFromLocalFallback = false
 
       if (typeof uni.setNavigationBarTitle === 'function') {
         uni.setNavigationBarTitle({

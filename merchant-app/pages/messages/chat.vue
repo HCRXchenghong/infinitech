@@ -96,7 +96,6 @@ const reconnectTimer = ref<any>(null)
 
 const messages = ref<ViewMessage[]>([])
 const scrollIntoView = ref('')
-const historyFromLocalFallback = ref(false)
 const localMessageSeed = ref(0)
 
 const navSubtitle = computed(() => {
@@ -208,87 +207,6 @@ function displayText(msg: ViewMessage) {
   return msg.text
 }
 
-const MESSAGE_CACHE_MAX_AGE = 24 * 60 * 60 * 1000
-const MESSAGE_CACHE_MAX_ITEMS = 60
-const MESSAGE_VISIBLE_MAX_AGE = 3 * 24 * 60 * 60 * 1000
-
-function localMessageKey() {
-  return `merchant_chat_messages_${merchantId.value || 'guest'}_${chatId.value || 'default'}`
-}
-
-function normalizeCachedMessages(list: any[] = []): ViewMessage[] {
-  const cutoff = Date.now() - MESSAGE_VISIBLE_MAX_AGE
-  return (Array.isArray(list) ? list : [])
-    .map((item: any, index: number) => {
-      const timestamp = resolveMessageTimestamp(item?.timestamp || item?.createdAt, Date.now() + index)
-      return {
-        mid: resolveMessageId(item, `cached_${chatId.value || 'chat'}_${timestamp}_${index}`),
-        self: !!item?.self,
-        text: String(item?.text || ''),
-        type: String(item?.type || 'text'),
-        timestamp,
-        time: String(item?.time || formatClockByTimestamp(timestamp)),
-        status: item?.status === 'read' || item?.status === 'failed' ? item.status : 'sent',
-        officialIntervention: !!item?.officialIntervention,
-        interventionLabel: String(item?.interventionLabel || ''),
-      }
-    })
-    .filter((item) => item.timestamp >= cutoff)
-    .slice(-MESSAGE_CACHE_MAX_ITEMS)
-}
-
-function restoreLocalMessages() {
-  try {
-    const raw = uni.getStorageSync(localMessageKey())
-    const parsed = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : []
-    const payload = Array.isArray(parsed) ? { messages: parsed, cachedAt: 0 } : parsed || {}
-    const cachedAt = Number(payload.cachedAt || 0)
-    const list = Array.isArray(payload.messages) ? payload.messages : []
-
-    if (!Array.isArray(parsed) && cachedAt > 0 && Date.now() - cachedAt > MESSAGE_CACHE_MAX_AGE) {
-      uni.removeStorageSync(localMessageKey())
-      return false
-    }
-
-    if (Array.isArray(list)) {
-      messages.value = normalizeCachedMessages(list)
-      if (!messages.value.length) {
-        uni.removeStorageSync(localMessageKey())
-        return false
-      }
-      scrollToBottom()
-      return messages.value.length > 0
-    }
-  } catch (_err) {
-    messages.value = []
-  }
-  return false
-}
-
-function persistLocalMessages() {
-  try {
-    const snapshot = normalizeCachedMessages(messages.value).map((item) => ({
-      mid: item.mid,
-      self: item.self,
-      text: item.text,
-      type: item.type,
-      timestamp: item.timestamp,
-      status: item.status,
-      officialIntervention: item.officialIntervention,
-      interventionLabel: item.interventionLabel,
-    }))
-    uni.setStorageSync(
-      localMessageKey(),
-      JSON.stringify({
-        cachedAt: Date.now(),
-        messages: snapshot,
-      })
-    )
-  } catch (_err) {
-    // ignore
-  }
-}
-
 function scrollToBottom() {
   if (!messages.value.length) return
   scrollIntoView.value = `msg-${messages.value[messages.value.length - 1].mid}`
@@ -332,20 +250,14 @@ async function syncReadState() {
 }
 
 async function loadServerHistory() {
-  const hadServerHistory = messages.value.length > 0 && !historyFromLocalFallback.value
   try {
     const response: any = await fetchHistory(chatId.value)
     const list = Array.isArray(response) ? response : []
     messages.value = normalizeHistoryMessages(list)
-    historyFromLocalFallback.value = false
-    persistLocalMessages()
     scrollToBottom()
     await syncReadState()
   } catch (err) {
     console.error('加载服务端聊天记录失败:', err)
-    if (hadServerHistory) return
-    historyFromLocalFallback.value = restoreLocalMessages()
-    scrollToBottom()
   }
 }
 
@@ -368,7 +280,6 @@ function appendLocalMessage(
     officialIntervention: false,
     interventionLabel: '',
   })
-  persistLocalMessages()
   scrollToBottom()
   return mid
 }
@@ -380,7 +291,6 @@ function updateLocalMessageStatus(messageId: any, status: 'sent' | 'read' | 'fai
   if (!target) return false
   if (target.status === status) return false
   target.status = status
-  persistLocalMessages()
   return true
 }
 
@@ -438,7 +348,6 @@ function connectSocket(token: string) {
     const normalized = toViewMessage(payload)
     if (!normalized.self) {
       messages.value.push(normalized)
-      persistLocalMessages()
       scrollToBottom()
       void syncReadState()
     }
@@ -457,7 +366,6 @@ function connectSocket(token: string) {
     if (messages.value[index].status !== 'read') {
       messages.value[index].status = 'sent'
     }
-    persistLocalMessages()
   })
 
   sock.on('message_read', (payload: any) => {
@@ -474,7 +382,6 @@ function connectSocket(token: string) {
         changed = true
       }
     })
-    if (changed) persistLocalMessages()
   })
 
   sock.on('clear_messages_denied', () => {
@@ -549,7 +456,6 @@ function sendText() {
     const target = messages.value.find((item) => item.mid === mid)
     if (target && target.status === 'sending') {
       target.status = 'failed'
-      persistLocalMessages()
     }
   }, 5000)
 
@@ -602,7 +508,6 @@ function chooseImage() {
               const target = messages.value.find((item) => item.mid === mid)
               if (target && target.status === 'sending') {
                 target.status = 'failed'
-                persistLocalMessages()
               }
             }, 5000)
           } catch (_err) {
@@ -624,7 +529,6 @@ function previewImage(url: string) {
 
 function clearLocalMessages() {
   messages.value = []
-  persistLocalMessages()
   uni.showToast({ title: '已清除当前设备记录', icon: 'none' })
 }
 

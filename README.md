@@ -94,6 +94,7 @@ Important boundaries:
 - active merchant and rider messaging entry points have been rewritten into clean UTF-8 copies so live chat, popup routing, and merchant support entry text no longer depend on mojibake-tainted legacy strings
 - the rider global message manager has been rewritten into a clean, stable implementation so popup routing and notification text no longer depend on mojibake-tainted legacy strings
 - the active merchant chat page plus rider task contact and task-detail flows have been cleaned into stable UTF-8 copies so send-state text, contact prompts, navigation fallbacks, and exception reporting no longer rely on mojibake-tainted strings
+- merchant chat and rider support chat now default to service-side history only; the old local history snapshot and SQLite history fallback paths are no longer part of the default runtime flow
 
 ### Main flow cleanup
 
