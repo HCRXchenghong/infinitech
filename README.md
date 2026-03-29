@@ -102,6 +102,7 @@
 - 消息时间字段、fallback ID、临时消息 ID 持续统一到稳定规则
 - `socket-server` 旧的 `/api/messages` HTTP 桥已移除，HTTP 消息契约只认 Go `/api/messages/*`
 - `chat.db` 已继续降级为短期 emergency buffer，并进一步收紧为默认每会话 200 条、默认保留 14 天；客服会话列表已不再从本地 fallback 生成
+- `socket-server` 在缺少认证信息时已不再回退读取本地客服历史，避免未鉴权状态继续消费旧 fallback 数据
 
 ### 5.3 主链路去假数据
 

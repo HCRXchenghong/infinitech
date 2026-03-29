@@ -214,7 +214,7 @@ async function fetchConversationListFromBackend(socket) {
 async function fetchMessagesFromBackend(socket, chatId, fallbackMessages = []) {
   const authHeader = String(socket?.authToken || '').trim();
   const normalizedChatId = normalizeChatId(chatId);
-  if (!authHeader || !normalizedChatId) return fallbackMessages;
+  if (!authHeader || !normalizedChatId) return [];
   const requestId = buildSocketRequestId(socket, 'load-messages', normalizedChatId);
 
   try {
