@@ -1,5 +1,5 @@
 ﻿const TIME_OPTIONS = { hour: '2-digit', minute: '2-digit' };
-const LOCAL_HISTORY_CACHE_LIMIT = 200;
+const LOCAL_HISTORY_CACHE_LIMIT = 100;
 
 export function normalizeChatId(value) {
   if (value === undefined || value === null) return '';

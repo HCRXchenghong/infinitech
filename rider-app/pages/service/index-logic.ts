@@ -8,7 +8,7 @@ import { db } from '@/utils/database'
 import messageManager from '@/utils/message-manager'
 import OrderDetailPopup from '../../components/OrderDetailPopup.vue'
 
-const LOCAL_HISTORY_CACHE_LIMIT = 200
+const LOCAL_HISTORY_CACHE_LIMIT = 100
 
 export default Vue.extend({
   components: {

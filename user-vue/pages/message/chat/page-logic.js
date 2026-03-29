@@ -10,9 +10,9 @@ import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/s
 
 const DEFAULT_SELF_AVATAR = '/static/images/my-avatar.svg'
 const DEFAULT_OTHER_AVATAR = '/static/images/default-avatar.svg'
-const MESSAGE_CACHE_MAX_AGE = 24 * 60 * 60 * 1000
-const MESSAGE_CACHE_MAX_ITEMS = 120
-const MESSAGE_VISIBLE_MAX_AGE = 7 * 24 * 60 * 60 * 1000
+const MESSAGE_CACHE_MAX_AGE = 12 * 60 * 60 * 1000
+const MESSAGE_CACHE_MAX_ITEMS = 80
+const MESSAGE_VISIBLE_MAX_AGE = 3 * 24 * 60 * 60 * 1000
 const DEFAULT_EMOJIS = ['😀', '😁', '😂', '🤣', '😊', '😍', '👍', '👏', '🎉', '❤️', '🔥', '🙏', '😎', '😄', '😭', '💪', '✨', '🍔', '🍜', '☕']
 
 const nowTime = () => {

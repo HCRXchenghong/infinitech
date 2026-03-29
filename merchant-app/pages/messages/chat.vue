@@ -207,8 +207,8 @@ function displayText(msg: ViewMessage) {
 }
 
 const MESSAGE_CACHE_MAX_AGE = 24 * 60 * 60 * 1000
-const MESSAGE_CACHE_MAX_ITEMS = 120
-const MESSAGE_VISIBLE_MAX_AGE = 7 * 24 * 60 * 60 * 1000
+const MESSAGE_CACHE_MAX_ITEMS = 80
+const MESSAGE_VISIBLE_MAX_AGE = 3 * 24 * 60 * 60 * 1000
 
 function localMessageKey() {
   return `merchant_chat_messages_${merchantId.value || 'guest'}_${chatId.value || 'default'}`
