@@ -27,7 +27,6 @@ var (
 var supportedSyncDatasets = map[string]struct{}{
 	"shops":    {},
 	"products": {},
-	"menus":    {},
 	"orders":   {},
 	"users":    {},
 }
@@ -102,9 +101,6 @@ func (s *SyncService) getVersionFromDB(dataset string) int64 {
 		return s.getMaxUpdatedUnix(&repository.Shop{})
 	case "products":
 		return s.getMaxUpdatedUnix(&repository.Product{})
-	case "menus":
-		// 当前无独立 menus 表，先返回 0，避免客户端无意义轮询。
-		return 0
 	case "orders":
 		return s.getMaxUpdatedUnix(&repository.Order{})
 	case "users":
@@ -129,9 +125,6 @@ func (s *SyncService) getChanges(ctx context.Context, dataset string, sinceVersi
 		return s.getShopChanges(ctx, sinceVersion)
 	case "products":
 		return s.getProductChanges(ctx, sinceVersion)
-	case "menus":
-		// 当前无独立 menus 数据集，返回空增量。
-		return []map[string]interface{}{}, []string{}, nil
 	case "orders":
 		return s.getOrderChanges(ctx, sinceVersion)
 	case "users":
