@@ -21,7 +21,7 @@
       </view>
 
       <view v-if="!settings.enabled" class="section-card empty-card">
-        <text class="section-title">公益入口暂未开放</text>
+        <text class="section-title">公益参与方式</text>
         <text class="empty-text">{{ settings.participation_notice }}</text>
       </view>
 

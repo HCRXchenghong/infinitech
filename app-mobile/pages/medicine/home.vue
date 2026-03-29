@@ -102,7 +102,7 @@ export default {
     },
     supportModalCopy() {
       if (!this.hotlinePhone) {
-        return '当前未配置医药热线，请联系管理员在系统配置中完善。'
+        return '当前医药热线以平台发布为准，如需帮助请联系在线客服。'
       }
       return `即将拨打 ${this.hotlinePhone}\n${this.runtimeSettings.medicine_support_subtitle}`
     }
@@ -129,7 +129,7 @@ export default {
       if (!this.hotlinePhone) {
         this.showCallModal = false
         uni.showToast({
-          title: '暂未配置医药热线',
+          title: '医药热线暂未开放',
           icon: 'none'
         })
         return

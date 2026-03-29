@@ -8,8 +8,8 @@
     <view class="nav-placeholder"></view>
 
     <view v-if="!vipConfig.enabled" class="section-card" style="margin:24rpx;">
-      <view class="section-title"><text class="title-text">会员中心暂未开放</text></view>
-      <text class="header-tip">当前会员中心未开放，请留意后续通知。</text>
+      <view class="section-title"><text class="title-text">会员中心</text></view>
+      <text class="header-tip">会员权益与成长规则以平台发布为准，请留意后续通知。</text>
     </view>
 
     <template v-else>
@@ -47,7 +47,7 @@
       <view class="benefits-header"><view class="header-left"><text class="header-title">{{ vipConfig.benefit_section_title }}</text><view class="vip-tag">{{ vipConfig.benefit_section_tag }}</view></view><text class="header-tip">{{ vipConfig.benefit_section_tip }}</text></view>
       <view class="benefits-grid"><view v-for="(benefit, idx) in currentLevel.benefits" :key="`${benefit.title}-${idx}`" class="benefit-card" @tap="openBenefitDetail(benefit)"><view class="benefit-icon" :class="{ 'gold-icon': currentLevel.is_black_gold }"><image :src="benefit.icon" mode="aspectFit" class="icon-img" /></view><view class="benefit-info"><text class="benefit-title">{{ benefit.title }}</text><text class="benefit-desc">{{ benefit.desc }}</text></view><text class="benefit-arrow">&#x203A;</text></view></view>
 
-      <view class="tasks-section"><view class="section-card"><view class="section-header"><view class="section-title"><text class="title-icon">★</text><text class="title-text">{{ vipConfig.tasks_section_title }}</text></view><text class="section-tip">{{ vipConfig.tasks_section_tip }}</text></view><view v-if="vipTasks.length" class="tasks-list"><view v-for="(task, index) in vipTasks" :key="`${task.title}-${index}`" class="task-item"><view class="task-info"><text class="task-title">{{ task.title }}</text><view class="task-meta"><view class="task-reward">{{ task.reward_text }}</view><text class="task-progress">{{ task.description }}</text></view></view><view class="task-btn" @tap="handleTaskAction()"><text>{{ task.action_label || '去完成' }}</text></view></view></view><view v-else class="form-tip">当前暂未配置成长任务。</view></view></view>
+      <view class="tasks-section"><view class="section-card"><view class="section-header"><view class="section-title"><text class="title-icon">★</text><text class="title-text">{{ vipConfig.tasks_section_title }}</text></view><text class="section-tip">{{ vipConfig.tasks_section_tip }}</text></view><view v-if="vipTasks.length" class="tasks-list"><view v-for="(task, index) in vipTasks" :key="`${task.title}-${index}`" class="task-item"><view class="task-info"><text class="task-title">{{ task.title }}</text><view class="task-meta"><view class="task-reward">{{ task.reward_text }}</view><text class="task-progress">{{ task.description }}</text></view></view><view class="task-btn" @tap="handleTaskAction()"><text>{{ task.action_label || '去完成' }}</text></view></view></view><view v-else class="form-tip">成长任务将按平台发布规则展示。</view></view></view>
 
       <view class="points-section">
         <view class="points-header"><view class="points-title"><text class="title-icon">★</text><text class="title-text">{{ vipConfig.points_section_title }}</text></view><view class="points-more" @tap="goPointsMall"><text>更多</text><text class="arrow-small">&#x203A;</text></view></view>
