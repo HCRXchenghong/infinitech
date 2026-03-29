@@ -107,6 +107,7 @@
 - `socket-server` 旧的 `/api/messages` HTTP 桥已移除，HTTP 消息契约只认 Go `/api/messages/*`
 - `chat.db` 已继续降级为短期 emergency buffer，并进一步收紧为默认每会话 200 条、默认保留 14 天；客服会话列表已不再从本地 fallback 生成
 - `socket-server` 在缺少认证信息时已不再回退读取本地客服历史，避免未鉴权状态继续消费旧 fallback 数据
+- `socket-server` 默认关闭客服历史 fallback 时，客服发送、历史回写、已读同步和清空会话也不再维护本地 SQLite 状态，进一步把 `chat.db` 收成显式开关下的应急缓冲
 
 ### 5.3 主链路去假数据
 

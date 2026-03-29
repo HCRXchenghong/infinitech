@@ -205,7 +205,7 @@ async function markConversationReadOnBackend(socket, chatId, markAllReadFn = nul
       logger.warn(`会话已读状态同步失败 request_id=${requestId}:`, response.status, data?.error || '');
       return;
     }
-    if (typeof markAllReadFn === 'function') {
+    if (SUPPORT_HISTORY_FALLBACK_ENABLED && typeof markAllReadFn === 'function') {
       markAllReadFn('support', normalizedChatId, socket.userId);
     }
   } catch (err) {
@@ -266,6 +266,10 @@ async function fetchMessagesFromBackend(socket, chatId, fallbackMessages = []) {
 }
 
 function refreshFallbackHistory(replaceMessages, chatId, messages) {
+  if (!SUPPORT_HISTORY_FALLBACK_ENABLED) {
+    return;
+  }
+
   if (typeof replaceMessages !== 'function') {
     return;
   }
@@ -286,6 +290,51 @@ function refreshFallbackHistory(replaceMessages, chatId, messages) {
   }
 }
 
+function createTransientSupportMessageId(chatId, data, messageData, timestamp) {
+  const normalizedChatId = normalizeChatId(chatId);
+  const tempId = String(data?.tempId || '').trim();
+  if (tempId) {
+    return `transient:${normalizedChatId}:${tempId}`;
+  }
+
+  const senderId = String(messageData?.senderId || 'anonymous').trim() || 'anonymous';
+  const messageType = String(messageData?.messageType || 'text').trim() || 'text';
+  return `transient:${normalizedChatId}:${senderId}:${messageType}:${timestamp}`;
+}
+
+function buildTransientSupportMessage(chatId, data, messageData, chatType, isMonitorIntervention) {
+  const normalizedChatId = normalizeChatId(chatId);
+  const timestamp = Date.now();
+  const createdAt = new Date(timestamp).toISOString();
+  const transientId = createTransientSupportMessageId(normalizedChatId, data, messageData, timestamp);
+
+  return {
+    id: transientId,
+    legacyId: '',
+    uid: '',
+    tsid: '',
+    externalMessageId: transientId,
+    chatId: normalizedChatId,
+    sender: messageData.sender,
+    senderId: messageData.senderId,
+    senderRole: messageData.senderRole,
+    content: messageData.content,
+    timestamp,
+    createdAt,
+    updatedAt: createdAt,
+    time: new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+    messageType: messageData.messageType,
+    coupon: messageData.coupon,
+    order: messageData.order,
+    imageUrl: messageData.imageUrl,
+    avatar: messageData.avatar,
+    status: 'sent',
+    chatType,
+    officialIntervention: isMonitorIntervention,
+    interventionLabel: isMonitorIntervention ? '官方介入' : ''
+  };
+}
+
 function createSupportMessageHandler({ saveMessage, reconcileMessage, supportNamespace, monitorNamespace }) {
   return async function handleSendMessage(data, socket, chatType = 'support') {
     try {
@@ -303,6 +352,35 @@ function createSupportMessageHandler({ saveMessage, reconcileMessage, supportNam
           const raw = String(messageData.content || '');
           messageData.content = raw.startsWith('[官方介入]') ? raw : `[官方介入] ${raw}`;
         }
+      }
+
+      if (!SUPPORT_HISTORY_FALLBACK_ENABLED) {
+        const localMessage = buildTransientSupportMessage(
+          normalizedChatId,
+          data,
+          messageData,
+          chatType,
+          isMonitorIntervention
+        );
+        const syncedMessage = await syncMessageToBackend(socket, normalizedChatId, data, localMessage);
+        const message = syncedMessage || localMessage;
+
+        logger.info('Broadcasting message:', message);
+        emitSupportMessage(supportNamespace, normalizedChatId, message);
+        emitMonitorMessage(monitorNamespace, message);
+
+        socket.emit('message_sent', {
+          chatId: normalizedChatId,
+          tempId: data.tempId,
+          messageId: message.id,
+          status: 'sent',
+          officialIntervention: isMonitorIntervention,
+          timestamp: message.timestamp,
+          createdAt: message.createdAt,
+          time: message.time
+        });
+
+        return message;
       }
 
       const result = saveMessage(chatType, normalizedChatId, messageData);
@@ -451,7 +529,9 @@ export function setupSupportNamespaces({
         emitAccessDenied(socket, 'mark_read_denied', data?.chatId);
         return;
       }
-      markAsRead(data.messageId);
+      if (SUPPORT_HISTORY_FALLBACK_ENABLED) {
+        markAsRead(data.messageId);
+      }
       socket.to(`chat_${chatId}`).emit('message_read', {
         chatId,
         messageId: data.messageId,
@@ -465,7 +545,9 @@ export function setupSupportNamespaces({
         emitAccessDenied(socket, 'mark_all_read_denied', data?.chatId);
         return;
       }
-      markAllRead('support', chatId, socket.userId);
+      if (SUPPORT_HISTORY_FALLBACK_ENABLED) {
+        markAllRead('support', chatId, socket.userId);
+      }
       socket.to(`chat_${chatId}`).emit('all_messages_read', { chatId, readBy: socket.userId });
       await markConversationReadOnBackend(socket, chatId, markAllRead);
     });
@@ -476,7 +558,9 @@ export function setupSupportNamespaces({
         emitAccessDenied(socket, 'clear_messages_denied', data?.chatId);
         return;
       }
-      clearMessages('support', chatId);
+      if (SUPPORT_HISTORY_FALLBACK_ENABLED) {
+        clearMessages('support', chatId);
+      }
       supportNamespace.to(`chat_${chatId}`).emit('messages_cleared', { chatId });
       monitorNamespace.to(`chat_${chatId}`).emit('messages_cleared', { chatId });
     });
@@ -553,7 +637,9 @@ export function setupSupportNamespaces({
         return;
       }
 
-      markAsRead(data.messageId);
+      if (SUPPORT_HISTORY_FALLBACK_ENABLED) {
+        markAsRead(data.messageId);
+      }
       socket.to(`chat_${access.chatId}`).emit('message_read', {
         chatId: access.chatId,
         messageId: data.messageId,
@@ -568,7 +654,9 @@ export function setupSupportNamespaces({
         return;
       }
 
-      markAllRead('support', access.chatId, socket.userId);
+      if (SUPPORT_HISTORY_FALLBACK_ENABLED) {
+        markAllRead('support', access.chatId, socket.userId);
+      }
       socket.to(`chat_${access.chatId}`).emit('all_messages_read', { chatId: access.chatId, readBy: socket.userId });
       await markConversationReadOnBackend(socket, access.chatId, markAllRead);
     });
