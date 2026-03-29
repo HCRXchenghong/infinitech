@@ -122,6 +122,7 @@ Important boundaries:
 ### Operational visibility
 
 - admin dashboard and system logs now expose real readiness and Redis adapter state
+- admin-side health aggregation and system-log signals have been trimmed to current live fallback metrics instead of obsolete historical fallback counters
 - the admin console now includes a dedicated phone contact audit page for filtering actor/target roles, results, and related order or room references
 - release preflight checks BFF ready, Go ready, socket ready, system health, queue age, fallback state, and other launch blockers
 

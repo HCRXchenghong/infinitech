@@ -201,6 +201,18 @@ function buildSocketProbeDetail(body) {
     if (fallback.chatCount !== undefined) {
       details.push(`fallbackChats=${fallback.chatCount}`);
     }
+    if (fallback.oldestAgeMs !== undefined) {
+      details.push(`fallbackOldestAge=${fallback.oldestAgeMs}`);
+    }
+    if (fallback.startupDisabledPurged !== undefined) {
+      details.push(`fallbackDisabledPurged=${fallback.startupDisabledPurged}`);
+    }
+    if (fallback.startupExpiredPruned !== undefined) {
+      details.push(`fallbackExpiredPruned=${fallback.startupExpiredPruned}`);
+    }
+    if (fallback.startupOverflowPruned !== undefined) {
+      details.push(`fallbackOverflowPruned=${fallback.startupOverflowPruned}`);
+    }
   }
   return details.join(" | ");
 }
