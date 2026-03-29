@@ -2,7 +2,11 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -15,6 +19,20 @@ import (
 	"github.com/yuexiang/go-api/internal/repository"
 	"gorm.io/gorm"
 )
+
+func newTestFCMPrivateKeyPEM(t *testing.T) string {
+	t.Helper()
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		t.Fatalf("generate rsa key failed: %v", err)
+	}
+
+	return string(pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	}))
+}
 
 func newMobilePushServiceForDispatchTest(t *testing.T, options MobilePushOptions) (*MobilePushService, *gorm.DB) {
 	t.Helper()
@@ -281,5 +299,95 @@ func TestMobilePushServiceDispatchDueDeliveriesRetryAndFail(t *testing.T) {
 	}
 	if secondAttempt.DispatchProvider != "webhook" {
 		t.Fatalf("expected dispatch provider webhook, got %q", secondAttempt.DispatchProvider)
+	}
+}
+
+func TestMobilePushServiceDispatchDueDeliveriesFCMSuccess(t *testing.T) {
+	ctx := context.Background()
+	privateKeyPEM := newTestFCMPrivateKeyPEM(t)
+	var tokenAuthHeader string
+	var fcmAuthHeader string
+	var fcmBody map[string]interface{}
+
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenAuthHeader = r.Header.Get("Content-Type")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"fcm-test-access-token","token_type":"Bearer","expires_in":3600}`))
+	}))
+	defer tokenServer.Close()
+
+	fcmServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		fcmAuthHeader = r.Header.Get("Authorization")
+		if err := json.NewDecoder(r.Body).Decode(&fcmBody); err != nil {
+			t.Fatalf("decode fcm request failed: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"name":"projects/demo-project/messages/42"}`))
+	}))
+	defer fcmServer.Close()
+
+	svc, db := newMobilePushServiceForDispatchTest(t, MobilePushOptions{
+		DispatchEnabled: true,
+		ProviderName:    "fcm",
+		FCMProjectID:    "demo-project",
+		FCMClientEmail:  "firebase-adminsdk@example.iam.gserviceaccount.com",
+		FCMPrivateKey:   privateKeyPEM,
+		FCMTokenURL:     tokenServer.URL,
+		FCMAPIBaseURL:   fcmServer.URL,
+		RequestTimeout:  2 * time.Second,
+		BatchSize:       10,
+		MaxRetries:      1,
+		RetryBackoff:    time.Minute,
+	})
+
+	delivery := repository.PushDelivery{
+		MessageID:   "26032700000088",
+		UserID:      "8801",
+		UserType:    "customer",
+		DeviceToken: "fcm-device-token",
+		AppEnv:      "prod",
+		EventType:   "admin_push_message",
+		Status:      "queued",
+		Payload:     `{"messageId":"26032700000088","title":"Hello","content":"FCM world","route":"/pages/message/index/index"}`,
+	}
+	if err := db.Create(&delivery).Error; err != nil {
+		t.Fatalf("create delivery failed: %v", err)
+	}
+
+	processed, err := svc.dispatchDueDeliveries(ctx, 10)
+	if err != nil {
+		t.Fatalf("dispatchDueDeliveries failed: %v", err)
+	}
+	if processed != 1 {
+		t.Fatalf("expected processed count 1, got %d", processed)
+	}
+	if tokenAuthHeader != "application/x-www-form-urlencoded" {
+		t.Fatalf("expected token content-type header, got %q", tokenAuthHeader)
+	}
+	if fcmAuthHeader != "Bearer fcm-test-access-token" {
+		t.Fatalf("expected bearer auth header, got %q", fcmAuthHeader)
+	}
+
+	message, ok := fcmBody["message"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected FCM message payload, got %#v", fcmBody)
+	}
+	if token := message["token"]; token != "fcm-device-token" {
+		t.Fatalf("expected device token in FCM payload, got %#v", token)
+	}
+
+	var stored repository.PushDelivery
+	if err := db.Where("id = ?", delivery.ID).Take(&stored).Error; err != nil {
+		t.Fatalf("query stored delivery failed: %v", err)
+	}
+	if stored.Status != "sent" {
+		t.Fatalf("expected sent status, got %q", stored.Status)
+	}
+	if stored.DispatchProvider != "fcm" {
+		t.Fatalf("expected dispatch provider fcm, got %q", stored.DispatchProvider)
+	}
+	if stored.ProviderMessageID != "projects/demo-project/messages/42" {
+		t.Fatalf("expected FCM provider message id, got %q", stored.ProviderMessageID)
 	}
 }

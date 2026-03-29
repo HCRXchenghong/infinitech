@@ -225,6 +225,12 @@ function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStale
   ) {
     failures.push('push_webhook=unsigned_and_unauthenticated');
   }
+  if (
+    provider === 'fcm'
+    && worker.fcmConfigured !== true
+  ) {
+    failures.push('push_fcm=missing_required_credentials');
+  }
 
   const consecutiveFailures = parseIntegerEnv(worker.consecutiveFailures, 0);
   if (maxConsecutiveFailures >= 0 && consecutiveFailures > maxConsecutiveFailures) {

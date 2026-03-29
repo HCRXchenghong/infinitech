@@ -73,6 +73,11 @@ type PushConfig struct {
 	WebhookSecret     string
 	WebhookAuthHeader string
 	WebhookAuthValue  string
+	FCMProjectID      string
+	FCMClientEmail    string
+	FCMPrivateKey     string
+	FCMTokenURL       string
+	FCMAPIBaseURL     string
 	RequestTimeout    time.Duration
 	PollInterval      time.Duration
 	BatchSize         int
@@ -154,6 +159,11 @@ func Load() *Config {
 			WebhookSecret:     strings.TrimSpace(os.Getenv("PUSH_DISPATCH_WEBHOOK_SECRET")),
 			WebhookAuthHeader: strings.TrimSpace(os.Getenv("PUSH_DISPATCH_WEBHOOK_AUTH_HEADER")),
 			WebhookAuthValue:  strings.TrimSpace(os.Getenv("PUSH_DISPATCH_WEBHOOK_AUTH_VALUE")),
+			FCMProjectID:      strings.TrimSpace(os.Getenv("PUSH_DISPATCH_FCM_PROJECT_ID")),
+			FCMClientEmail:    strings.TrimSpace(os.Getenv("PUSH_DISPATCH_FCM_CLIENT_EMAIL")),
+			FCMPrivateKey:     strings.TrimSpace(strings.ReplaceAll(os.Getenv("PUSH_DISPATCH_FCM_PRIVATE_KEY"), `\n`, "\n")),
+			FCMTokenURL:       strings.TrimSpace(getEnv("PUSH_DISPATCH_FCM_TOKEN_URL", "https://oauth2.googleapis.com/token")),
+			FCMAPIBaseURL:     strings.TrimSpace(getEnv("PUSH_DISPATCH_FCM_API_BASE_URL", "https://fcm.googleapis.com")),
 			RequestTimeout:    time.Duration(getEnvInt("PUSH_DISPATCH_TIMEOUT_SECONDS", 5)) * time.Second,
 			PollInterval:      time.Duration(getEnvInt("PUSH_DISPATCH_POLL_SECONDS", 15)) * time.Second,
 			BatchSize:         getEnvInt("PUSH_DISPATCH_BATCH_SIZE", 100),
@@ -225,7 +235,7 @@ func (c *Config) Validate() error {
 
 	if c.Push.DispatchEnabled {
 		switch c.Push.DispatchProvider {
-		case "log", "webhook":
+		case "log", "webhook", "fcm":
 		default:
 			return fmt.Errorf("unsupported PUSH_DISPATCH_PROVIDER %q", c.Push.DispatchProvider)
 		}
@@ -235,17 +245,42 @@ func (c *Config) Validate() error {
 		if c.Push.DispatchProvider == "webhook" && strings.TrimSpace(c.Push.WebhookURL) == "" {
 			return fmt.Errorf("PUSH_DISPATCH_WEBHOOK_URL is required when PUSH_DISPATCH_PROVIDER=webhook")
 		}
-		if (c.Push.WebhookAuthHeader == "") != (c.Push.WebhookAuthValue == "") {
-			return fmt.Errorf("PUSH_DISPATCH_WEBHOOK_AUTH_HEADER and PUSH_DISPATCH_WEBHOOK_AUTH_VALUE must be configured together")
+		if c.Push.DispatchProvider == "webhook" {
+			if (c.Push.WebhookAuthHeader == "") != (c.Push.WebhookAuthValue == "") {
+				return fmt.Errorf("PUSH_DISPATCH_WEBHOOK_AUTH_HEADER and PUSH_DISPATCH_WEBHOOK_AUTH_VALUE must be configured together")
+			}
+			if isProductionLikeEnv(c.Env) && !pushWebhookURLIsSecure(c.Push.WebhookURL) {
+				return fmt.Errorf("production webhook push dispatch requires an https PUSH_DISPATCH_WEBHOOK_URL")
+			}
+			if isProductionLikeEnv(c.Env) && PushWebhookTargetsPrivateHost(c.Push.WebhookURL) {
+				return fmt.Errorf("production webhook push dispatch cannot target localhost, private IPs, or internal-only hostnames")
+			}
+			if isProductionLikeEnv(c.Env) && c.Push.WebhookSecret == "" && c.Push.WebhookAuthValue == "" {
+				return fmt.Errorf("production webhook push dispatch requires PUSH_DISPATCH_WEBHOOK_SECRET or PUSH_DISPATCH_WEBHOOK_AUTH_HEADER/PUSH_DISPATCH_WEBHOOK_AUTH_VALUE")
+			}
 		}
-		if isProductionLikeEnv(c.Env) && c.Push.DispatchProvider == "webhook" && !pushWebhookURLIsSecure(c.Push.WebhookURL) {
-			return fmt.Errorf("production webhook push dispatch requires an https PUSH_DISPATCH_WEBHOOK_URL")
-		}
-		if isProductionLikeEnv(c.Env) && PushWebhookTargetsPrivateHost(c.Push.WebhookURL) {
-			return fmt.Errorf("production webhook push dispatch cannot target localhost, private IPs, or internal-only hostnames")
-		}
-		if isProductionLikeEnv(c.Env) && c.Push.WebhookSecret == "" && c.Push.WebhookAuthValue == "" {
-			return fmt.Errorf("production webhook push dispatch requires PUSH_DISPATCH_WEBHOOK_SECRET or PUSH_DISPATCH_WEBHOOK_AUTH_HEADER/PUSH_DISPATCH_WEBHOOK_AUTH_VALUE")
+		if c.Push.DispatchProvider == "fcm" {
+			if strings.TrimSpace(c.Push.FCMProjectID) == "" {
+				return fmt.Errorf("PUSH_DISPATCH_FCM_PROJECT_ID is required when PUSH_DISPATCH_PROVIDER=fcm")
+			}
+			if strings.TrimSpace(c.Push.FCMClientEmail) == "" {
+				return fmt.Errorf("PUSH_DISPATCH_FCM_CLIENT_EMAIL is required when PUSH_DISPATCH_PROVIDER=fcm")
+			}
+			if strings.TrimSpace(c.Push.FCMPrivateKey) == "" {
+				return fmt.Errorf("PUSH_DISPATCH_FCM_PRIVATE_KEY is required when PUSH_DISPATCH_PROVIDER=fcm")
+			}
+			if isProductionLikeEnv(c.Env) && !pushWebhookURLIsSecure(c.Push.FCMTokenURL) {
+				return fmt.Errorf("production FCM push dispatch requires an https PUSH_DISPATCH_FCM_TOKEN_URL")
+			}
+			if isProductionLikeEnv(c.Env) && !pushWebhookURLIsSecure(c.Push.FCMAPIBaseURL) {
+				return fmt.Errorf("production FCM push dispatch requires an https PUSH_DISPATCH_FCM_API_BASE_URL")
+			}
+			if isProductionLikeEnv(c.Env) && PushWebhookTargetsPrivateHost(c.Push.FCMTokenURL) {
+				return fmt.Errorf("production FCM token endpoint cannot target localhost, private IPs, or internal-only hostnames")
+			}
+			if isProductionLikeEnv(c.Env) && PushWebhookTargetsPrivateHost(c.Push.FCMAPIBaseURL) {
+				return fmt.Errorf("production FCM API endpoint cannot target localhost, private IPs, or internal-only hostnames")
+			}
 		}
 	}
 	if c.Push.RequestTimeout <= 0 {

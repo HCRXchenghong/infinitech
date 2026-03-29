@@ -172,6 +172,8 @@ function buildProbeDetail(result) {
       worker.webhookPrivateTarget !== undefined ? `pushWebhookPrivate=${worker.webhookPrivateTarget === true}` : "",
       worker.webhookAuthConfigured !== undefined ? `pushWebhookAuth=${worker.webhookAuthConfigured === true}` : "",
       worker.webhookSignatureEnabled !== undefined ? `pushWebhookSignature=${worker.webhookSignatureEnabled === true}` : "",
+      worker.fcmProjectId ? `pushFcmProject=${worker.fcmProjectId}` : "",
+      worker.fcmConfigured !== undefined ? `pushFcmConfigured=${worker.fcmConfigured === true}` : "",
       worker.lastCycleStatus ? `pushCycle=${worker.lastCycleStatus}` : "",
       worker.lastSuccessAt ? `pushLastSuccessAt=${worker.lastSuccessAt}` : "",
       worker.consecutiveFailures !== undefined ? `pushConsecutiveFailures=${worker.consecutiveFailures}` : "",

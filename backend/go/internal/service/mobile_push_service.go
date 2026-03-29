@@ -42,6 +42,8 @@ type MobilePushWorkerStatus struct {
 	WebhookPrivateTarget    bool                    `json:"webhookPrivateTarget"`
 	WebhookAuthConfigured   bool                    `json:"webhookAuthConfigured"`
 	WebhookSignatureEnabled bool                    `json:"webhookSignatureEnabled"`
+	FCMProjectID            string                  `json:"fcmProjectId,omitempty"`
+	FCMConfigured           bool                    `json:"fcmConfigured"`
 	PollIntervalSeconds     int                     `json:"pollIntervalSeconds"`
 	BatchSize               int                     `json:"batchSize"`
 	LastCycleStatus         string                  `json:"lastCycleStatus"`
@@ -80,6 +82,11 @@ type MobilePushOptions struct {
 	WebhookSecret     string
 	WebhookAuthHeader string
 	WebhookAuthValue  string
+	FCMProjectID      string
+	FCMClientEmail    string
+	FCMPrivateKey     string
+	FCMTokenURL       string
+	FCMAPIBaseURL     string
 	RequestTimeout    time.Duration
 	PollInterval      time.Duration
 	BatchSize         int
@@ -97,6 +104,11 @@ func NewMobilePushService(db *gorm.DB, cfg *config.Config, admin *AdminService) 
 			WebhookSecret:     cfg.Push.WebhookSecret,
 			WebhookAuthHeader: cfg.Push.WebhookAuthHeader,
 			WebhookAuthValue:  cfg.Push.WebhookAuthValue,
+			FCMProjectID:      cfg.Push.FCMProjectID,
+			FCMClientEmail:    cfg.Push.FCMClientEmail,
+			FCMPrivateKey:     cfg.Push.FCMPrivateKey,
+			FCMTokenURL:       cfg.Push.FCMTokenURL,
+			FCMAPIBaseURL:     cfg.Push.FCMAPIBaseURL,
 			RequestTimeout:    cfg.Push.RequestTimeout,
 			PollInterval:      cfg.Push.PollInterval,
 			BatchSize:         cfg.Push.BatchSize,
@@ -375,6 +387,7 @@ func (s *MobilePushService) WorkerStatusSnapshot(ctx context.Context) MobilePush
 		WebhookAuthConfigured:   false,
 		WebhookPrivateTarget:    false,
 		WebhookSignatureEnabled: false,
+		FCMConfigured:           false,
 		PollIntervalSeconds:     int(s.pollInterval / time.Second),
 		BatchSize:               s.dispatchBatchSize,
 		LastCycleStatus:         lastCycleStatus,
@@ -388,6 +401,12 @@ func (s *MobilePushService) WorkerStatusSnapshot(ctx context.Context) MobilePush
 		snapshot.WebhookPrivateTarget = config.PushWebhookTargetsPrivateHost(webhookProvider.url)
 		snapshot.WebhookAuthConfigured = strings.TrimSpace(webhookProvider.authHeader) != "" && strings.TrimSpace(webhookProvider.authValue) != ""
 		snapshot.WebhookSignatureEnabled = strings.TrimSpace(webhookProvider.secret) != ""
+	}
+	if fcmProvider, ok := s.dispatchProvider.(*pushFCMDispatcher); ok {
+		snapshot.FCMProjectID = strings.TrimSpace(fcmProvider.projectID)
+		snapshot.FCMConfigured = snapshot.FCMProjectID != "" &&
+			strings.TrimSpace(fcmProvider.clientEmail) != "" &&
+			strings.TrimSpace(fcmProvider.privateKey) != ""
 	}
 	if !lastCycleAt.IsZero() {
 		snapshot.LastCycleAt = lastCycleAt.Format(time.RFC3339)

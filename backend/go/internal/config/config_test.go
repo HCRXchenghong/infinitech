@@ -30,6 +30,8 @@ func newValidConfigForTest() *Config {
 		Push: PushConfig{
 			DispatchEnabled:  false,
 			DispatchProvider: "log",
+			FCMTokenURL:      "https://oauth2.googleapis.com/token",
+			FCMAPIBaseURL:    "https://fcm.googleapis.com",
 			RequestTimeout:   5 * time.Second,
 			PollInterval:     15 * time.Second,
 			BatchSize:        100,
@@ -231,6 +233,52 @@ func TestValidateRejectsIncompleteWebhookAuthConfig(t *testing.T) {
 
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("expected incomplete webhook auth config to be rejected")
+	}
+}
+
+func TestValidateAllowsProductionFCMWhenConfigured(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.Env = "production"
+	cfg.Redis.Required = true
+	cfg.Push.DispatchEnabled = true
+	cfg.Push.DispatchProvider = "fcm"
+	cfg.Push.FCMProjectID = "demo-project"
+	cfg.Push.FCMClientEmail = "firebase-adminsdk@example.iam.gserviceaccount.com"
+	cfg.Push.FCMPrivateKey = "-----BEGIN PRIVATE KEY-----\nMIIBVwIBADANBgkqhkiG9w0BAQEFAASCAT8wggE7AgEAAkEAx\n-----END PRIVATE KEY-----"
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("expected production fcm push provider to pass, got %v", err)
+	}
+}
+
+func TestValidateRejectsProductionFCMWithoutCredentials(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.Env = "production"
+	cfg.Redis.Required = true
+	cfg.Push.DispatchEnabled = true
+	cfg.Push.DispatchProvider = "fcm"
+	cfg.Push.FCMProjectID = ""
+	cfg.Push.FCMClientEmail = ""
+	cfg.Push.FCMPrivateKey = ""
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected incomplete production fcm push provider to be rejected")
+	}
+}
+
+func TestValidateRejectsProductionFCMPrivateTokenEndpoint(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.Env = "production"
+	cfg.Redis.Required = true
+	cfg.Push.DispatchEnabled = true
+	cfg.Push.DispatchProvider = "fcm"
+	cfg.Push.FCMProjectID = "demo-project"
+	cfg.Push.FCMClientEmail = "firebase-adminsdk@example.iam.gserviceaccount.com"
+	cfg.Push.FCMPrivateKey = "-----BEGIN PRIVATE KEY-----\nMIIBVwIBADANBgkqhkiG9w0BAQEFAASCAT8wggE7AgEAAkEAx\n-----END PRIVATE KEY-----"
+	cfg.Push.FCMTokenURL = "https://127.0.0.1/token"
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected private production fcm token endpoint to be rejected")
 	}
 }
 

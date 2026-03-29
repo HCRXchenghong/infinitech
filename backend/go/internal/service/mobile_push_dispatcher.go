@@ -3,16 +3,24 @@ package service
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/yuexiang/go-api/internal/repository"
@@ -146,6 +154,145 @@ func (d *pushWebhookDispatcher) Send(ctx context.Context, req PushDispatchReques
 	return result, nil
 }
 
+type pushFCMDispatcher struct {
+	projectID   string
+	clientEmail string
+	privateKey  string
+	tokenURL    string
+	apiBaseURL  string
+	client      *http.Client
+
+	tokenMu       sync.Mutex
+	accessToken   string
+	accessTokenAt time.Time
+}
+
+type pushFCMTokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
+}
+
+func (d *pushFCMDispatcher) Name() string {
+	return "fcm"
+}
+
+func (d *pushFCMDispatcher) Send(ctx context.Context, req PushDispatchRequest) (*PushDispatchResult, error) {
+	accessToken, err := d.getAccessToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := json.Marshal(buildFCMDispatchPayload(req))
+	if err != nil {
+		return nil, err
+	}
+
+	endpoint := strings.TrimRight(d.apiBaseURL, "/") + "/v1/projects/" + url.PathEscape(d.projectID) + "/messages:send"
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Authorization", "Bearer "+accessToken)
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-Push-Delivery-Id", req.DeliveryID)
+	httpReq.Header.Set("X-Push-Message-Id", req.MessageID)
+
+	resp, err := d.client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, &pushDispatchHTTPError{
+			statusCode: resp.StatusCode,
+			body:       string(respBody),
+		}
+	}
+
+	result := &PushDispatchResult{Provider: d.Name()}
+	if len(respBody) == 0 {
+		return result, nil
+	}
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal(respBody, &payload); err == nil {
+		result.ProviderMessageID = strings.TrimSpace(parseString(firstNonNil(
+			payload["name"],
+			payload["messageId"],
+			payload["message_id"],
+			payload["id"],
+		)))
+	}
+	return result, nil
+}
+
+func (d *pushFCMDispatcher) getAccessToken(ctx context.Context) (string, error) {
+	d.tokenMu.Lock()
+	defer d.tokenMu.Unlock()
+
+	if strings.TrimSpace(d.accessToken) != "" && time.Until(d.accessTokenAt) > time.Minute {
+		return d.accessToken, nil
+	}
+
+	privateKey, err := parseFCMPrivateKey(d.privateKey)
+	if err != nil {
+		return "", err
+	}
+
+	assertion, err := buildFCMServiceAccountJWT(d.clientEmail, d.tokenURL, privateKey, time.Now())
+	if err != nil {
+		return "", err
+	}
+
+	form := url.Values{}
+	form.Set("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
+	form.Set("assertion", assertion)
+
+	httpReq, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		d.tokenURL,
+		strings.NewReader(form.Encode()),
+	)
+	if err != nil {
+		return "", err
+	}
+	httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := d.client.Do(httpReq)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", &pushDispatchHTTPError{
+			statusCode: resp.StatusCode,
+			body:       string(respBody),
+		}
+	}
+
+	var payload pushFCMTokenResponse
+	if err := json.Unmarshal(respBody, &payload); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(payload.AccessToken) == "" {
+		return "", fmt.Errorf("fcm token response missing access token")
+	}
+
+	expiresIn := payload.ExpiresIn
+	if expiresIn <= 0 {
+		expiresIn = 3600
+	}
+	d.accessToken = strings.TrimSpace(payload.AccessToken)
+	d.accessTokenAt = time.Now().Add(time.Duration(expiresIn) * time.Second)
+	return d.accessToken, nil
+}
+
 type pushLogDispatcher struct{}
 
 func (d *pushLogDispatcher) Name() string {
@@ -185,6 +332,21 @@ func newPushDispatchProvider(options MobilePushOptions) PushDispatchProvider {
 			secret:     strings.TrimSpace(options.WebhookSecret),
 			authHeader: strings.TrimSpace(options.WebhookAuthHeader),
 			authValue:  strings.TrimSpace(options.WebhookAuthValue),
+			client: &http.Client{
+				Timeout: timeout,
+			},
+		}
+	case "fcm":
+		timeout := options.RequestTimeout
+		if timeout <= 0 {
+			timeout = 5 * time.Second
+		}
+		return &pushFCMDispatcher{
+			projectID:   strings.TrimSpace(options.FCMProjectID),
+			clientEmail: strings.TrimSpace(options.FCMClientEmail),
+			privateKey:  strings.TrimSpace(options.FCMPrivateKey),
+			tokenURL:    strings.TrimSpace(options.FCMTokenURL),
+			apiBaseURL:  strings.TrimSpace(options.FCMAPIBaseURL),
 			client: &http.Client{
 				Timeout: timeout,
 			},
@@ -481,6 +643,130 @@ func detectPushWebhookRejection(payload map[string]interface{}) (bool, string, s
 		}
 	}
 	return false, "", ""
+}
+
+func buildFCMDispatchPayload(req PushDispatchRequest) map[string]interface{} {
+	message := map[string]interface{}{
+		"token": req.DeviceToken,
+		"data":  buildFCMDataPayload(req),
+		"android": map[string]interface{}{
+			"priority": "HIGH",
+		},
+		"apns": map[string]interface{}{
+			"headers": map[string]string{
+				"apns-priority": "10",
+			},
+			"payload": map[string]interface{}{
+				"aps": map[string]interface{}{
+					"sound": "default",
+				},
+			},
+		},
+	}
+
+	if strings.TrimSpace(req.Title) != "" || strings.TrimSpace(req.Content) != "" {
+		message["notification"] = map[string]string{
+			"title": strings.TrimSpace(req.Title),
+			"body":  strings.TrimSpace(req.Content),
+		}
+	}
+
+	if imageURL := strings.TrimSpace(req.ImageURL); imageURL != "" {
+		message["android"] = map[string]interface{}{
+			"priority": "HIGH",
+			"notification": map[string]string{
+				"image": imageURL,
+			},
+		}
+		message["apns"] = map[string]interface{}{
+			"headers": map[string]string{
+				"apns-priority": "10",
+			},
+			"payload": map[string]interface{}{
+				"aps": map[string]interface{}{
+					"sound": "default",
+				},
+			},
+			"fcm_options": map[string]string{
+				"image": imageURL,
+			},
+		}
+	}
+
+	return map[string]interface{}{
+		"message": message,
+	}
+}
+
+func buildFCMDataPayload(req PushDispatchRequest) map[string]string {
+	data := map[string]string{
+		"deliveryId": req.DeliveryID,
+		"messageId":  req.MessageID,
+		"userId":     req.UserID,
+		"userType":   req.UserType,
+		"eventType":  req.EventType,
+		"appEnv":     req.AppEnv,
+	}
+	if route := strings.TrimSpace(req.Route); route != "" {
+		data["route"] = route
+	}
+	if payload := strings.TrimSpace(req.RawPayload); payload != "" {
+		data["payload"] = payload
+	}
+	return data
+}
+
+func parseFCMPrivateKey(raw string) (*rsa.PrivateKey, error) {
+	block, _ := pem.Decode([]byte(strings.TrimSpace(raw)))
+	if block == nil {
+		return nil, fmt.Errorf("invalid FCM private key PEM")
+	}
+
+	if key, err := x509.ParsePKCS8PrivateKey(block.Bytes); err == nil {
+		privateKey, ok := key.(*rsa.PrivateKey)
+		if !ok {
+			return nil, fmt.Errorf("FCM private key is not RSA")
+		}
+		return privateKey, nil
+	}
+
+	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("parse FCM private key failed: %w", err)
+	}
+	return privateKey, nil
+}
+
+func buildFCMServiceAccountJWT(clientEmail, tokenURL string, privateKey *rsa.PrivateKey, now time.Time) (string, error) {
+	header := map[string]string{
+		"alg": "RS256",
+		"typ": "JWT",
+	}
+	claims := map[string]interface{}{
+		"iss":   strings.TrimSpace(clientEmail),
+		"scope": "https://www.googleapis.com/auth/firebase.messaging",
+		"aud":   strings.TrimSpace(tokenURL),
+		"iat":   now.Unix(),
+		"exp":   now.Add(time.Hour).Unix(),
+	}
+
+	headerJSON, err := json.Marshal(header)
+	if err != nil {
+		return "", err
+	}
+	claimsJSON, err := json.Marshal(claims)
+	if err != nil {
+		return "", err
+	}
+
+	encoder := base64.RawURLEncoding
+	signingInput := encoder.EncodeToString(headerJSON) + "." + encoder.EncodeToString(claimsJSON)
+	hash := sha256.Sum256([]byte(signingInput))
+	signature, err := rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA256, hash[:])
+	if err != nil {
+		return "", err
+	}
+	return signingInput + "." + encoder.EncodeToString(signature), nil
 }
 
 func parseBoolish(value interface{}) (bool, bool) {
