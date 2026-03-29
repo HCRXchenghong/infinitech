@@ -1,4 +1,4 @@
-const TIME_OPTIONS = { hour: '2-digit', minute: '2-digit' };
+﻿const TIME_OPTIONS = { hour: '2-digit', minute: '2-digit' };
 const LOCAL_HISTORY_CACHE_LIMIT = 200;
 
 export function normalizeChatId(value) {
@@ -55,10 +55,10 @@ export function isAdminSender(data) {
 }
 
 export function getMessagePreview(data) {
-  if (data?.messageType === 'image') return '[图片]';
-  if (data?.messageType === 'coupon') return '[优惠券]';
-  if (data?.messageType === 'order') return '[订单]';
-  return String(data?.content || '').trim() || '[暂无消息]';
+  if (data?.messageType === 'image') return '[鍥剧墖]';
+  if (data?.messageType === 'coupon') return '[浼樻儬鍒竇';
+  if (data?.messageType === 'order') return '[璁㈠崟]';
+  return String(data?.content || '').trim() || '[鏆傛棤娑堟伅]';
 }
 
 export function formatMessageTime(timestamp) {
@@ -122,11 +122,11 @@ export function mapLoadedChats(list) {
     const chatId = normalizeChatId(chat.id || chat.chatId || chat.roomId);
     return {
       id: chatId,
-      name: String(chat.name || '').trim() || `聊天 #${chatId || 'unknown'}`,
+      name: String(chat.name || '').trim() || `鑱婂ぉ #${chatId || 'unknown'}`,
       phone: chat.phone || '',
       role: chat.role || 'user',
       avatar: chat.avatar || null,
-      lastMessage: String(chat.lastMessage || chat.msg || '').trim() || '[暂无消息]',
+      lastMessage: String(chat.lastMessage || chat.msg || '').trim() || '[鏆傛棤娑堟伅]',
       time: String(chat.time || '').trim() || (updatedAt ? formatMessageTime(updatedAt) : ''),
       unread: normalizeUnreadCount(chat.unread),
       updatedAt
@@ -178,7 +178,7 @@ export function createOutgoingTempMessage({
   id,
   content,
   type = 'text',
-  sender = '客服',
+  sender = '瀹㈡湇',
   coupon,
   order,
   status
@@ -259,7 +259,7 @@ export function upsertChatFromIncoming({
   incomingChatId,
   data,
   adminMessage,
-  defaultName = '聊天'
+  defaultName = '鑱婂ぉ'
 }) {
   const incomingUpdatedAt = resolveConversationTimestamp(data?.timestamp || data?.createdAt, 0);
   let chat = chats.find((item) => normalizeChatId(item.id) === incomingChatId);
@@ -274,7 +274,7 @@ export function upsertChatFromIncoming({
       avatar: data.avatar || null,
       lastMessage: preview,
       time: displayTime,
-      unread: adminMessage ? 0 : 1,
+      unread: 0,
       updatedAt: incomingUpdatedAt
     };
     chats.push(chat);
@@ -283,10 +283,6 @@ export function upsertChatFromIncoming({
     return chat;
   }
 
-  if (!adminMessage) {
-    // 未读数以服务端回拉为准，这里只保留“有未读”的临时提示，避免本地自增漂移。
-    chat.unread = Math.max(normalizeUnreadCount(chat.unread), 1);
-  }
   chat.lastMessage = preview;
   chat.time = displayTime;
   chat.updatedAt = incomingUpdatedAt || chat.updatedAt || 0;

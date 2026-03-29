@@ -213,12 +213,7 @@ export function useChatConsole(options = {}) {
         };
       }
       socket.emit('mark_all_read', { chatId });
-      void refreshChats().then((refreshed) => {
-        if (refreshed) return;
-        chats.value = chats.value.map((item) =>
-          normalizeChatId(item.id) === chatId ? { ...item, unread: 0 } : item
-        );
-      });
+      void refreshChats();
     });
   }
 
