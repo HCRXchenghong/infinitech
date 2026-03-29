@@ -18,7 +18,6 @@ import {
   createOutgoingTempMessage,
   createIncomingDisplayMessage,
   saveIncomingMessage,
-  saveLoadedMessages
 } from './chatConsoleHelpers';
 
 export function useChatConsole(options = {}) {
@@ -55,7 +54,6 @@ export function useChatConsole(options = {}) {
 
   const chats = ref([]);
   const messages = ref([]);
-  const messagesFromLocalFallback = ref(false);
   const { hasSeenMessage } = createSeenMessageTracker();
 
   const contextMenu = ref({ show: false, x: 0, y: 0, chat: null });
@@ -161,28 +159,25 @@ export function useChatConsole(options = {}) {
   async function loadMessages(chatId) {
     const normalizedChatId = normalizeChatId(chatId);
     if (!normalizedChatId) return;
-    const hadServerHistory = messages.value.length > 0 && !messagesFromLocalFallback.value;
+    const hadServerHistory = messages.value.length > 0;
 
     try {
       const serverMessages = await fetchMessageHistory(normalizedChatId);
       messages.value = mapLoadedMessages(serverMessages);
-      messagesFromLocalFallback.value = false;
       serverMessages.forEach((msg) => {
         hasSeenMessage(normalizedChatId, msg.id);
-      });
 
-      try {
-        await saveLoadedMessages(messageDB, normalizedChatId, serverMessages);
-      } catch (error) {
+      });
+        await Promise.resolve();
+      /* local cache mirror removed
         console.error('保存服务端消息缓存失败:', error);
-      }
+      */
 
       await syncReadState(normalizedChatId);
       nextTick(() => scrollToBottom());
     } catch (error) {
       console.error('加载服务端消息失败:', error);
       if (hadServerHistory) return;
-      messagesFromLocalFallback.value = await loadCachedMessages(normalizedChatId);
     }
   }
 
@@ -197,7 +192,6 @@ export function useChatConsole(options = {}) {
       ...chat,
       id: chatId
     };
-    messagesFromLocalFallback.value = false;
     void loadMessages(chatId);
 
     socket.emit('join_chat', { chatId, userId: 'admin', role: 'admin' });
