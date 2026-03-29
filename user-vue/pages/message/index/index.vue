@@ -121,6 +121,8 @@ import {
 } from '@/shared-ui/support-runtime.js'
 
 const SESSION_CACHE_MAX_AGE = 12 * 60 * 60 * 1000
+const SESSION_VISIBLE_MAX_AGE = 30 * 24 * 60 * 60 * 1000
+const SESSION_CACHE_MAX_ITEMS = 50
 
 export default {
   data() {
@@ -238,6 +240,30 @@ export default {
       return 0
     },
 
+    isSessionRecent(item = {}) {
+      const updatedAt = Number(item.updatedAt || 0)
+      if (!Number.isFinite(updatedAt) || updatedAt <= 0) return true
+      return Date.now() - updatedAt <= SESSION_VISIBLE_MAX_AGE
+    },
+
+    serializeSession(item = {}) {
+      return {
+        id: String(item.id || ''),
+        roomId: String(item.roomId || ''),
+        role: this.normalizeRole(item.role),
+        orderId: item.orderId ? String(item.orderId) : '',
+        targetId: item.targetId ? String(item.targetId) : '',
+        name: String(item.name || ''),
+        avatarUrl: String(item.avatarUrl || ''),
+        tag: String(item.tag || ''),
+        tagClass: String(item.tagClass || ''),
+        time: String(item.time || ''),
+        unread: Number(item.unread || 0),
+        online: item.online !== false,
+        updatedAt: Number(item.updatedAt || 0)
+      }
+    },
+
     sortSessions(list = []) {
       return list.slice().sort((a, b) => {
         const diff = Number(b.updatedAt || 0) - Number(a.updatedAt || 0)
@@ -310,6 +336,8 @@ export default {
         }
 
         return sessions
+          .map((item) => this.normalizeSession(item))
+          .filter((item) => item.roomId && this.isSessionRecent(item))
       } catch (err) {
         console.error('读取本地会话失败:', err)
         return []
@@ -318,7 +346,10 @@ export default {
 
     saveSessions(list = this.sessions) {
       try {
-        const payload = this.sortSessions(list).slice(0, 100)
+        const payload = this.sortSessions(list)
+          .filter((item) => item.roomId && this.isSessionRecent(item))
+          .slice(0, SESSION_CACHE_MAX_ITEMS)
+          .map((item) => this.serializeSession(item))
         uni.setStorageSync(
           this.getSessionStorageKey(),
           JSON.stringify({
@@ -338,15 +369,14 @@ export default {
         this.sessions = this.sortSessions(
           serverSessions
             .map((item) => this.normalizeSession(item))
-            .filter((item) => item.roomId)
+            .filter((item) => item.roomId && this.isSessionRecent(item))
         )
         this.saveSessions()
       } catch (err) {
         console.error('加载服务端会话失败，回退本地缓存:', err)
         this.sessions = this.sortSessions(
           this.readStoredSessions()
-            .map((item) => this.normalizeSession(item))
-            .filter((item) => item.roomId)
+            .filter((item) => item.roomId && this.isSessionRecent(item))
         )
       }
     },
