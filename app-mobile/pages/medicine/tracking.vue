@@ -1,10 +1,10 @@
 <template>
   <view class="page med-tracking">
     <view class="top">
-      <view class="back" @tap="back">‹</view>
+      <view class="back" @tap="back"><</view>
       <view class="track-card">
         <view class="row">
-          <view class="moped">🛵</view>
+          <view class="moped">DEL</view>
           <view class="texts">
             <text class="title">{{ trackingState.title }}</text>
             <text class="sub">{{ trackingState.subtitle }}</text>
@@ -21,58 +21,116 @@
     <view class="bottom">
       <view class="rider-row">
         <view>
-          <text class="mini-label">配送骑手</text>
+          <text class="mini-label">{{ texts.riderLabel }}</text>
           <view class="rider-name">
             <text>{{ riderDisplayName }}</text>
-            <text v-if="order.status === 'delivering'" class="badge">配送中</text>
+            <text v-if="order.status === 'delivering'" class="badge">{{ texts.deliveringBadge }}</text>
           </view>
         </view>
-        <view class="call-btn" @tap="callRider">📞</view>
+        <view class="call-btn" @tap="callRider">TEL</view>
       </view>
 
       <view class="list-card">
         <view class="list-head">
-          <text class="list-title">药品清单</text>
-          <text class="list-count">共 {{ itemCount }} 件</text>
+          <text class="list-title">{{ texts.itemListTitle }}</text>
+          <text class="list-count">{{ itemCountLabel }}</text>
         </view>
-        <text class="list-text">{{ order.item || '未获取到订单内容' }}</text>
+        <text class="list-text">{{ order.item || texts.emptyItem }}</text>
       </view>
 
       <view class="list-card">
         <view class="list-head">
-          <text class="list-title">送药地址</text>
+          <text class="list-title">{{ texts.addressTitle }}</text>
         </view>
-        <text class="list-text">{{ order.dropoff || '未填写地址' }}</text>
+        <text class="list-text">{{ order.dropoff || texts.emptyAddress }}</text>
       </view>
 
       <view class="price-card">
         <view class="price-row">
-          <text>药品预估</text>
+          <text>{{ texts.amountLabel }}</text>
           <text>¥{{ amountText }}</text>
         </view>
         <view class="price-row">
-          <text>跑腿费</text>
+          <text>{{ texts.deliveryFeeLabel }}</text>
           <text>¥{{ deliveryFeeText }}</text>
         </view>
         <view class="price-row total">
-          <text>订单合计</text>
+          <text>{{ texts.totalLabel }}</text>
           <text>¥{{ totalPriceText }}</text>
         </view>
       </view>
 
-      <view v-if="order.status === 'completed'" class="confirm" @tap="finish">返回首页</view>
-      <text v-else class="hint">真实订单跟踪已接入后端，状态会随骑手履约实时更新。</text>
+      <view v-if="order.status === 'completed'" class="confirm" @tap="finish">{{ texts.backHome }}</view>
+      <text v-else class="hint">{{ texts.trackingHint }}</text>
     </view>
   </view>
 </template>
 
 <script>
-import { fetchOrderDetail } from '@/shared-ui/api.js'
+import { fetchOrderDetail, recordPhoneContactClick } from '@/shared-ui/api.js'
 import { mapErrandOrderDetail } from '@/shared-ui/errand.js'
+import { createPhoneContactHelper } from '../../../shared/mobile-common/phone-contact.js'
+
+const phoneContactHelper = createPhoneContactHelper({ recordPhoneContactClick })
+
+const TEXTS = {
+  riderLabel: '\u914d\u9001\u9a91\u624b',
+  deliveringBadge: '\u914d\u9001\u4e2d',
+  itemListTitle: '\u836f\u54c1\u6e05\u5355',
+  emptyItem: '\u672a\u83b7\u53d6\u5230\u8ba2\u5355\u5185\u5bb9',
+  addressTitle: '\u9001\u836f\u5730\u5740',
+  emptyAddress: '\u672a\u586b\u5199\u5730\u5740',
+  amountLabel: '\u836f\u54c1\u9884\u8ba1',
+  deliveryFeeLabel: '\u8dd1\u817f\u8d39',
+  totalLabel: '\u8ba2\u5355\u5408\u8ba1',
+  backHome: '\u8fd4\u56de\u9996\u9875',
+  trackingHint:
+    '\u771f\u5b9e\u8ba2\u5355\u8f68\u8ff9\u5df2\u63a5\u5165\u540e\u7aef\uff0c\u72b6\u6001\u4f1a\u968f\u9a91\u624b\u5c65\u7ea6\u5b9e\u65f6\u66f4\u65b0\u3002',
+  pendingStatus: '\u5f85\u63a5\u5355',
+  missingOrderId: '\u7f3a\u5c11\u8ba2\u5355ID',
+  loading: '\u52a0\u8f7d\u4e2d...',
+  loadFailed: '\u8ba2\u5355\u52a0\u8f7d\u5931\u8d25',
+  riderUnavailable: '\u9a91\u624b\u6682\u672a\u63a5\u5355',
+  callFailed: '\u65e0\u6cd5\u62e8\u6253\u7535\u8bdd\uff0c\u8bf7\u68c0\u67e5\u6743\u9650',
+  riderUnassigned: '\u5f85\u7cfb\u7edf\u5206\u914d',
+  progressStates: {
+    pending: {
+      title: '\u6b63\u5728\u6307\u6d3e\u6700\u8fd1\u9a91\u624b',
+      subtitle: '\u7cfb\u7edf\u6b63\u5728\u4e3a\u60a8\u5339\u914d\u9644\u8fd1\u836f\u623f\u4e0e\u9a91\u624b',
+      progress: 20
+    },
+    accepted: {
+      title: '\u9a91\u624b\u5df2\u63a5\u5355\uff0c\u6b63\u5728\u524d\u5f80\u836f\u623f',
+      subtitle: '\u8bf7\u4fdd\u6301\u7535\u8bdd\u7545\u901a\uff0c\u65b9\u4fbf\u9a91\u624b\u4e0e\u60a8\u8054\u7cfb',
+      progress: 45
+    },
+    delivering: {
+      title: '\u9a91\u624b\u6b63\u5728\u914d\u9001\u9014\u4e2d',
+      subtitle: '\u836f\u54c1\u5df2\u5907\u9f50\uff0c\u6b63\u5728\u9001\u5f80\u60a8\u7684\u4f4d\u7f6e',
+      progress: 80
+    },
+    completed: {
+      title: '\u836f\u54c1\u5df2\u9001\u8fbe\uff0c\u8bf7\u53ca\u65f6\u67e5\u6536',
+      subtitle: '\u8ba2\u5355\u5df2\u5b8c\u6210\uff0c\u5982\u6709\u95ee\u9898\u8bf7\u8054\u7cfb\u5e73\u53f0\u5ba2\u670d',
+      progress: 100
+    },
+    cancelled: {
+      title: '\u8ba2\u5355\u5df2\u53d6\u6d88',
+      subtitle: '\u5982\u6709\u7591\u95ee\uff0c\u8bf7\u8054\u7cfb\u5e73\u53f0\u5ba2\u670d\u5904\u7406',
+      progress: 0
+    },
+    fallback: {
+      title: '\u8ba2\u5355\u5904\u7406\u4e2d',
+      subtitle: '\u8bf7\u7a0d\u540e\u67e5\u770b\u6700\u65b0\u72b6\u6001',
+      progress: 30
+    }
+  }
+}
 
 export default {
   data() {
     return {
+      texts: TEXTS,
       order: {
         id: '',
         item: '',
@@ -81,54 +139,31 @@ export default {
         deliveryFee: 0,
         totalPrice: 0,
         status: 'pending',
-        statusText: '待接单',
+        statusText: TEXTS.pendingStatus,
         riderName: '',
-        riderPhone: ''
+        riderPhone: '',
+        serviceType: ''
       }
     }
   },
   computed: {
     trackingState() {
-      const stateMap = {
-        pending: {
-          title: '正在指派最近骑手...',
-          subtitle: '系统正在为您匹配附近药房与骑手',
-          progress: 20
-        },
-        accepted: {
-          title: '骑手已接单，正在前往药房',
-          subtitle: '请保持电话畅通，方便骑手与您联系',
-          progress: 45
-        },
-        delivering: {
-          title: '骑手正火速送往您的位置',
-          subtitle: '药品已购齐，正在配送途中',
-          progress: 80
-        },
-        completed: {
-          title: '药品已送达，请查收',
-          subtitle: '订单已完成，如有问题请联系客服',
-          progress: 100
-        },
-        cancelled: {
-          title: '订单已取消',
-          subtitle: '如有疑问，请联系客服处理',
-          progress: 0
-        }
-      }
-      return stateMap[this.order.status] || {
-        title: this.order.statusText || '订单处理中',
-        subtitle: '请稍候查看最新状态',
-        progress: 30
+      return this.texts.progressStates[this.order.status] || {
+        title: this.order.statusText || this.texts.progressStates.fallback.title,
+        subtitle: this.texts.progressStates.fallback.subtitle,
+        progress: this.texts.progressStates.fallback.progress
       }
     },
     itemCount() {
-      const text = (this.order.item || '').trim()
+      const text = String(this.order.item || '').trim()
       if (!text) return 0
       return text.split(/[,，\n ]+/).filter(Boolean).length
     },
+    itemCountLabel() {
+      return `\u5171 ${this.itemCount} \u4ef6`
+    },
     riderDisplayName() {
-      return this.order.riderName || '待系统分配'
+      return this.order.riderName || this.texts.riderUnassigned
     },
     amountText() {
       return (Number(this.order.amount) || 0).toFixed(2)
@@ -143,19 +178,19 @@ export default {
   onLoad(query) {
     const id = query && query.id ? decodeURIComponent(query.id) : ''
     if (!id) {
-      uni.showToast({ title: '缺少订单ID', icon: 'none' })
+      uni.showToast({ title: this.texts.missingOrderId, icon: 'none' })
       return
     }
-    this.loadOrder(id)
+    void this.loadOrder(id)
   },
   methods: {
     async loadOrder(id) {
-      uni.showLoading({ title: '加载中...' })
+      uni.showLoading({ title: this.texts.loading })
       try {
         const data = await fetchOrderDetail(id)
         this.order = mapErrandOrderDetail(data || {})
       } catch (error) {
-        const message = (error && error.data && error.data.error) || error.error || '订单加载失败'
+        const message = (error && error.data && error.data.error) || error.error || this.texts.loadFailed
         uni.showToast({ title: message, icon: 'none' })
         this.order.id = id
       } finally {
@@ -170,14 +205,31 @@ export default {
     },
     callRider() {
       if (!this.order.riderPhone) {
-        uni.showToast({ title: '骑手暂未接单', icon: 'none' })
+        uni.showToast({ title: this.texts.riderUnavailable, icon: 'none' })
         return
       }
-      uni.makePhoneCall({
-        phoneNumber: this.order.riderPhone
-      }).catch(() => {
-        uni.showToast({ title: '无法拨打电话，请检查权限', icon: 'none' })
-      })
+
+      phoneContactHelper
+        .makePhoneCall({
+          targetRole: 'rider',
+          targetPhone: this.order.riderPhone,
+          entryPoint: 'medicine_tracking',
+          scene: 'medicine_order_contact',
+          orderId: String(this.order.id || ''),
+          roomId: this.order.id ? `rider_${this.order.id}` : '',
+          pagePath: '/pages/medicine/tracking',
+          metadata: {
+            status: this.order.status || '',
+            serviceType: this.order.serviceType || '',
+            riderName: this.order.riderName || ''
+          }
+        })
+        .catch(() => {
+          uni.showToast({
+            title: this.texts.callFailed,
+            icon: 'none'
+          })
+        })
     }
   }
 }
@@ -230,7 +282,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .texts {
@@ -323,6 +376,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .list-card,
