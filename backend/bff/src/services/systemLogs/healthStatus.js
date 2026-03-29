@@ -167,6 +167,8 @@ function buildProbeDetail(result) {
       worker.enabled !== undefined ? `pushEnabled=${worker.enabled === true}` : "",
       worker.running !== undefined ? `pushRunning=${worker.running === true}` : "",
       worker.provider ? `pushProvider=${worker.provider}` : "",
+      worker.webhookTarget ? `pushWebhookTarget=${worker.webhookTarget}` : "",
+      worker.webhookSecureTransport !== undefined ? `pushWebhookSecure=${worker.webhookSecureTransport === true}` : "",
       worker.webhookAuthConfigured !== undefined ? `pushWebhookAuth=${worker.webhookAuthConfigured === true}` : "",
       worker.webhookSignatureEnabled !== undefined ? `pushWebhookSignature=${worker.webhookSignatureEnabled === true}` : "",
       worker.lastCycleStatus ? `pushCycle=${worker.lastCycleStatus}` : "",

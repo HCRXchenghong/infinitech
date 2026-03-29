@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -36,6 +37,8 @@ type MobilePushWorkerStatus struct {
 	Enabled                 bool                    `json:"enabled"`
 	Running                 bool                    `json:"running"`
 	Provider                string                  `json:"provider"`
+	WebhookTarget           string                  `json:"webhookTarget,omitempty"`
+	WebhookSecureTransport  bool                    `json:"webhookSecureTransport"`
 	WebhookAuthConfigured   bool                    `json:"webhookAuthConfigured"`
 	WebhookSignatureEnabled bool                    `json:"webhookSignatureEnabled"`
 	PollIntervalSeconds     int                     `json:"pollIntervalSeconds"`
@@ -378,6 +381,8 @@ func (s *MobilePushService) WorkerStatusSnapshot(ctx context.Context) MobilePush
 		LastError:               strings.TrimSpace(lastError),
 	}
 	if webhookProvider, ok := s.dispatchProvider.(*pushWebhookDispatcher); ok {
+		snapshot.WebhookTarget = summarizePushWebhookTarget(webhookProvider.url)
+		snapshot.WebhookSecureTransport = pushWebhookUsesSecureTransport(webhookProvider.url)
 		snapshot.WebhookAuthConfigured = strings.TrimSpace(webhookProvider.authHeader) != "" && strings.TrimSpace(webhookProvider.authValue) != ""
 		snapshot.WebhookSignatureEnabled = strings.TrimSpace(webhookProvider.secret) != ""
 	}
@@ -389,6 +394,25 @@ func (s *MobilePushService) WorkerStatusSnapshot(ctx context.Context) MobilePush
 	}
 	snapshot.Queue = s.QueueSnapshot(ctx)
 	return snapshot
+}
+
+func pushWebhookUsesSecureTransport(raw string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(parsed.Scheme, "https")
+}
+
+func summarizePushWebhookTarget(raw string) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return ""
+	}
+	if parsed.Scheme == "" || parsed.Host == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
 }
 
 type PushRegistrationInput struct {

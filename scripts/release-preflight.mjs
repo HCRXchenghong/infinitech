@@ -208,6 +208,12 @@ function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStale
   }
   if (
     provider === 'webhook'
+    && worker.webhookSecureTransport !== true
+  ) {
+    failures.push('push_webhook=insecure_transport');
+  }
+  if (
+    provider === 'webhook'
     && worker.webhookAuthConfigured !== true
     && worker.webhookSignatureEnabled !== true
   ) {

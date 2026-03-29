@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -236,6 +237,9 @@ func (c *Config) Validate() error {
 		if (c.Push.WebhookAuthHeader == "") != (c.Push.WebhookAuthValue == "") {
 			return fmt.Errorf("PUSH_DISPATCH_WEBHOOK_AUTH_HEADER and PUSH_DISPATCH_WEBHOOK_AUTH_VALUE must be configured together")
 		}
+		if isProductionLikeEnv(c.Env) && c.Push.DispatchProvider == "webhook" && !pushWebhookURLIsSecure(c.Push.WebhookURL) {
+			return fmt.Errorf("production webhook push dispatch requires an https PUSH_DISPATCH_WEBHOOK_URL")
+		}
 		if isProductionLikeEnv(c.Env) && c.Push.WebhookSecret == "" && c.Push.WebhookAuthValue == "" {
 			return fmt.Errorf("production webhook push dispatch requires PUSH_DISPATCH_WEBHOOK_SECRET or PUSH_DISPATCH_WEBHOOK_AUTH_HEADER/PUSH_DISPATCH_WEBHOOK_AUTH_VALUE")
 		}
@@ -359,6 +363,18 @@ func defaultHTTPSlowRequestWarnMS(env string) int {
 		return 1200
 	}
 	return 2500
+}
+
+func pushWebhookURLIsSecure(raw string) bool {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return false
+	}
+	parsed, err := url.Parse(value)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(parsed.Scheme, "https")
 }
 
 func isProductionLikeEnv(env string) bool {

@@ -166,6 +166,20 @@ func TestValidateAllowsProductionWebhookPushProviderWhenConfigured(t *testing.T)
 	}
 }
 
+func TestValidateRejectsProductionWebhookWithoutHTTPS(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.Env = "production"
+	cfg.Redis.Required = true
+	cfg.Push.DispatchEnabled = true
+	cfg.Push.DispatchProvider = "webhook"
+	cfg.Push.WebhookURL = "http://push-gateway.example.com/dispatch"
+	cfg.Push.WebhookSecret = "test-secret"
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected non-https production webhook push provider to be rejected")
+	}
+}
+
 func TestValidateRejectsProductionWebhookWithoutAuthOrSigning(t *testing.T) {
 	cfg := newValidConfigForTest()
 	cfg.Env = "production"
