@@ -12,7 +12,9 @@ export function resolveMessageId(data, timestamp, fallbackPrefix = 'incoming') {
     return String(directId);
   }
 
-  const chatId = normalizeChatId(data?.chatId || data?.roomId || data?.conversationId || data?.senderId || 'chat');
+  const chatId = normalizeChatId(
+    data?.chatId || data?.roomId || data?.conversationId || data?.senderId || 'chat'
+  );
   const senderRole = String(data?.senderRole || 'unknown');
   const messageType = String(data?.messageType || data?.type || 'text');
   return `${fallbackPrefix}_${chatId}_${senderRole}_${timestamp}_${messageType}`;
@@ -281,7 +283,10 @@ export function upsertChatFromIncoming({
     return chat;
   }
 
-  if (!adminMessage) chat.unread = normalizeUnreadCount(chat.unread) + 1;
+  if (!adminMessage) {
+    // 未读数以服务端回拉为准，这里只保留“有未读”的临时提示，避免本地自增漂移。
+    chat.unread = Math.max(normalizeUnreadCount(chat.unread), 1);
+  }
   chat.lastMessage = preview;
   chat.time = displayTime;
   chat.updatedAt = incomingUpdatedAt || chat.updatedAt || 0;

@@ -31,7 +31,7 @@ export function useChatConsole(options = {}) {
     namespace,
     beforeInitLoad,
     defaultChatName = '聊天',
-    disabledActionMessage = '按平台规则，仅监控页可彻底删除聊天记录',
+    disabledActionMessage = '按平台规则，仅监控页可彻底删除聊天记录。',
     coupons: couponSeed = [],
     orders: orderSeed = [],
     awaitIncomingSave = false,
