@@ -34,6 +34,7 @@ type Services struct {
 	MobilePush       *MobilePushService
 	MobileMap        *MobileMapService
 	HomeFeed         *HomeFeedService
+	PhoneContactAudit *PhoneContactAuditService
 }
 
 func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
@@ -51,6 +52,7 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 	mobilePushService := NewMobilePushService(repos.DB, cfg, adminService)
 	mobileMapService := NewMobileMapService(cfg, adminService)
 	captchaService := NewCaptchaService(repos.DB)
+	phoneContactAuditService := NewPhoneContactAuditService(repos.DB)
 
 	return &Services{
 		Shop:             NewShopService(repos.Shop, repos.Redis),
@@ -81,5 +83,6 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 		MobilePush:       mobilePushService,
 		MobileMap:        mobileMapService,
 		HomeFeed:         NewHomeFeedService(repos.DB, repos.Shop, repos.FeaturedProduct),
+		PhoneContactAudit: phoneContactAuditService,
 	}
 }

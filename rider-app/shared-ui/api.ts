@@ -31,6 +31,12 @@ export const ackPushMessage = (payload: Record<string, any>) => request({
   data: payload
 })
 
+export const recordPhoneContactClick = (payload: Record<string, any>) => request({
+  url: '/api/contact/phone-clicks',
+  method: 'POST',
+  data: payload
+})
+
 function readAuthToken(): string {
   const raw = String(uni.getStorageSync('token') || uni.getStorageSync('access_token') || '').trim()
   if (!raw) return ''

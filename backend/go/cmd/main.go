@@ -147,6 +147,7 @@ func main() {
 		&repository.MessageConversation{},
 		&repository.SupportConversation{},
 		&repository.SupportMessage{},
+		&repository.PhoneContactAudit{},
 		&repository.DiningBuddyParty{},
 		&repository.DiningBuddyPartyMember{},
 		&repository.DiningBuddyMessage{},
@@ -1311,6 +1312,7 @@ func main() {
 		api.PUT("/user/:id/addresses/:addressId", handlers.User.UpdateAddress)
 		api.DELETE("/user/:id/addresses/:addressId", handlers.User.DeleteAddress)
 		api.POST("/user/:id/addresses/:addressId/default", handlers.User.SetDefaultAddress)
+		api.POST("/contact/phone-clicks", handlers.PhoneContactAudit.RecordPhoneClick)
 
 		// 消息相关（注意：更具体的路由必须放在更通用的路由之前）
 		messages := api.Group("/messages")
@@ -1472,6 +1474,7 @@ func main() {
 	log.Println("  POST /api/messages/sync")
 	log.Println("  GET  /api/messages/conversations")
 	log.Println("  GET  /api/messages/:roomId")
+	log.Println("  POST /api/contact/phone-clicks")
 	log.Println("  GET  /api/dining-buddy/parties")
 	log.Println("  POST /api/dining-buddy/parties")
 	log.Println("  POST /api/dining-buddy/parties/:id/join")

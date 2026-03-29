@@ -378,6 +378,12 @@ export const ackPushMessage = (payload) => request({
   data: payload
 })
 
+export const recordPhoneContactClick = (payload) => request({
+  url: '/api/contact/phone-clicks',
+  method: 'POST',
+  data: payload
+})
+
 export const createUserAddress = (userId, payload) => request({
   url: `/api/user/${encodeURIComponent(userId)}/addresses`,
   method: 'POST',

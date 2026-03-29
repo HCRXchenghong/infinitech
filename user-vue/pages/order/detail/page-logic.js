@@ -1,6 +1,38 @@
-import { fetchGroupbuyVouchers, fetchOrderDetail, fetchVoucherQRCode } from '@/shared-ui/api.js'
+import { fetchGroupbuyVouchers, fetchOrderDetail, fetchVoucherQRCode, recordPhoneContactClick } from '@/shared-ui/api.js'
 import ContactModal from '@/components/ContactModal.vue'
 import PhoneWarningModal from '@/components/PhoneWarningModal.vue'
+
+import { createPhoneContactHelper } from '../../../../shared/mobile-common/phone-contact.js'
+
+const phoneContactHelper = createPhoneContactHelper({ recordPhoneContactClick })
+
+function normalizePhoneNumber(value) {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  const parts = text.match(/\d+/g)
+  return parts ? parts.join('') : text
+}
+
+function buildOrderPhoneAuditPayload(order, contactType, phoneNumber) {
+  const targetRole = contactType === 'rider' ? 'rider' : 'merchant'
+  return {
+    targetRole,
+    targetId: String(contactType === 'rider' ? (order?.riderId || '') : (order?.shopId || '')),
+    targetPhone: normalizePhoneNumber(phoneNumber),
+    entryPoint: 'order_detail',
+    scene: 'order_contact',
+    orderId: String(order?.id || ''),
+    roomId: contactType === 'rider' ? `rider_${order?.id || ''}` : `shop_${order?.id || ''}`,
+    pagePath: '/pages/order/detail/index',
+    metadata: {
+      bizType: order?.bizType || '',
+      status: order?.status || '',
+      shopId: String(order?.shopId || ''),
+      riderId: String(order?.riderId || ''),
+      contactType,
+    }
+  }
+}
 
 export default {
   components: {
@@ -413,9 +445,9 @@ export default {
         phoneNumber = order.shopPhone || '10086'
       }
 
-      uni.makePhoneCall({
-        phoneNumber: phoneNumber
-      }).catch((err) => {
+      phoneContactHelper.makePhoneCall(
+        buildOrderPhoneAuditPayload(order, this.contactType, phoneNumber)
+      ).catch((err) => {
         console.error('拨打电话失败:', err)
         uni.showToast({
           title: '无法拨打电话，请检查设备权限',

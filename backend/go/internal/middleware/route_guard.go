@@ -194,6 +194,7 @@ var routeGuardRules = []routeGuardRule{
 	{path: "/api/invite/codes", methods: methods("GET"), guard: guardAdminOnly},
 	{path: "/api/invite/records", methods: methods("GET"), guard: guardAdminOnly},
 	{path: "/api/messages", prefix: true, guard: guardAnyAuth},
+	{path: "/api/contact/phone-clicks", methods: methods("POST"), guard: guardAnyAuth},
 	{path: "/api/mobile/push", prefix: true, guard: guardAnyAuth},
 	{path: "/api/wallet", prefix: true, guard: guardAnyAuth},
 

@@ -37,6 +37,7 @@ type Handlers struct {
 	MobilePush       *MobilePushHandler
 	MobileMap        *MobileMapHandler
 	HomeFeed         *HomeFeedHandler
+	PhoneContactAudit *PhoneContactAuditHandler
 }
 
 func NewHandlers(services *service.Services) *Handlers {
@@ -71,5 +72,6 @@ func NewHandlers(services *service.Services) *Handlers {
 		MobilePush:       NewMobilePushHandler(services.MobilePush),
 		MobileMap:        NewMobileMapHandler(services.MobileMap),
 		HomeFeed:         NewHomeFeedHandler(services.HomeFeed),
+		PhoneContactAudit: NewPhoneContactAuditHandler(services.PhoneContactAudit),
 	}
 }

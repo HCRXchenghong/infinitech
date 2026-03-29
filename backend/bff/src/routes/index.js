@@ -24,6 +24,7 @@ const uploadRoutes = require('./upload');
 const reviewRoutes = require('./review');
 const riderReviewRoutes = require('./riderReview');
 const mobileRoutes = require('./mobile');
+const contactController = require('../controllers/contactController');
 
 const authController = require('../controllers/authController');
 const shopController = require('../controllers/shopController');
@@ -59,6 +60,7 @@ router.use('/upload', uploadRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/rider-reviews', riderReviewRoutes);
 router.use('/mobile', mobileRoutes);
+router.post('/contact/phone-clicks', contactController.recordPhoneContactClick);
 
 router.post('/merchant/groupbuy/vouchers/redeem-by-scan', groupbuyController.redeemByScan);
 router.post('/merchant/groupbuy/refunds', afterSalesController.createMerchantGroupbuyRefund);
