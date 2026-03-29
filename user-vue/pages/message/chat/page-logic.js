@@ -530,6 +530,7 @@ export default {
     },
 
     async loadServerHistory() {
+      const hadServerHistory = this.messages.length > 0 && !this.historyFromLocalFallback
       try {
         const response = await fetchHistory(this.roomId)
         const list = Array.isArray(response) ? response : []
@@ -539,6 +540,7 @@ export default {
         await this.syncReadState()
       } catch (err) {
         console.error('加载服务端消息历史失败:', err)
+        if (hadServerHistory) return
         this.historyFromLocalFallback = this.restoreLocalMessages()
         this.$nextTick(() => this.scrollToBottom())
       }

@@ -362,6 +362,7 @@ export default {
     },
 
     async loadSessions() {
+      const hadServerSessions = Array.isArray(this.sessions) && this.sessions.length > 0
       try {
         const response = await fetchConversations()
         const serverSessions = Array.isArray(response) ? response : []
@@ -373,6 +374,7 @@ export default {
         this.saveSessions()
       } catch (err) {
         console.error('加载服务端会话失败，回退本地缓存:', err)
+        if (hadServerSessions) return
         this.sessions = this.sortSessions(
           this.readStoredSessions()
             .filter((item) => item.roomId && this.isSessionRecent(item))

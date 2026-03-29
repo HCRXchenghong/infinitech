@@ -330,6 +330,7 @@ async function syncReadState() {
 }
 
 async function loadServerHistory() {
+  const hadServerHistory = messages.value.length > 0 && !historyFromLocalFallback.value
   try {
     const response: any = await fetchHistory(chatId.value)
     const list = Array.isArray(response) ? response : []
@@ -340,6 +341,7 @@ async function loadServerHistory() {
     await syncReadState()
   } catch (err) {
     console.error('加载服务端聊天记录失败:', err)
+    if (hadServerHistory) return
     historyFromLocalFallback.value = restoreLocalMessages()
     scrollToBottom()
   }

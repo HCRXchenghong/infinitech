@@ -166,6 +166,7 @@ export function useChatConsole(options = {}) {
   async function loadMessages(chatId) {
     const normalizedChatId = normalizeChatId(chatId);
     if (!normalizedChatId) return;
+    const hadServerHistory = messages.value.length > 0 && !messagesFromLocalFallback.value;
 
     try {
       const serverMessages = await fetchMessageHistory(normalizedChatId);
@@ -185,6 +186,7 @@ export function useChatConsole(options = {}) {
       nextTick(() => scrollToBottom());
     } catch (error) {
       console.error('加载服务端消息失败:', error);
+      if (hadServerHistory) return;
       messagesFromLocalFallback.value = await loadCachedMessages(normalizedChatId);
     }
   }

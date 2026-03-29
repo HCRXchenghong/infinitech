@@ -220,6 +220,7 @@ export default Vue.extend({
     },
 
     async loadServerHistory() {
+      const hadServerHistory = this.messages.length > 0 && !this.historyFromLocalFallback
       try {
         const response: any = await fetchHistory(this.chatId)
         const list = Array.isArray(response) ? response : []
@@ -229,6 +230,10 @@ export default Vue.extend({
         this.$nextTick(() => { this.scrollToBottom() })
         await this.syncReadState()
       } catch (err) {
+        if (hadServerHistory) {
+          console.error('[RiderService] 加载服务端消息历史失败，保留当前服务端消息:', err)
+          return
+        }
         this.historyFromLocalFallback = await this.loadCachedMessages()
         console.error('[RiderService] 加载服务端消息历史失败:', err)
       }
