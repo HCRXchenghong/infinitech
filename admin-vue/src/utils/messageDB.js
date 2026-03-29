@@ -1,4 +1,5 @@
 import initSqlJs from 'sql.js';
+import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 
 let SQL = null;
 let db = null;
@@ -8,7 +9,7 @@ async function initDB() {
 
   if (!SQL) {
     SQL = await initSqlJs({
-      locateFile: file => `https://sql.js.org/dist/${file}`
+      locateFile: () => sqlWasmUrl
     });
   }
 

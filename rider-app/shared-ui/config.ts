@@ -1,4 +1,3 @@
-// @ts-ignore
 import manifest from '../manifest.json'
 import { setManifest } from '../../shared/mobile-common/config'
 setManifest(manifest)
