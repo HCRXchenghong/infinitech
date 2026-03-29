@@ -21,12 +21,19 @@ function toBoolean(value, fallback) {
   return fallback;
 }
 
-const SUPPORT_HISTORY_FALLBACK_ENABLED = toBoolean(process.env.SOCKET_ENABLE_HISTORY_FALLBACK, true);
+const SUPPORT_HISTORY_FALLBACK_ENABLED = toBoolean(process.env.SOCKET_ENABLE_HISTORY_FALLBACK, false);
 
 export function getSupportHistoryFallbackConfig() {
   return {
     enabled: SUPPORT_HISTORY_FALLBACK_ENABLED
   };
+}
+
+function getSupportFallbackMessages(getMessages, chatId) {
+  if (!SUPPORT_HISTORY_FALLBACK_ENABLED || typeof getMessages !== 'function') {
+    return [];
+  }
+  return getMessages('support', chatId);
 }
 
 function emitSupportMessage(supportNamespace, chatId, message) {
@@ -420,7 +427,7 @@ export function setupSupportNamespaces({
         emitAccessDenied(socket, 'load_messages_denied', data?.chatId);
         return;
       }
-      const fallbackMessages = getMessages('support', chatId);
+      const fallbackMessages = getSupportFallbackMessages(getMessages, chatId);
       const messages = await fetchMessagesFromBackend(socket, chatId, fallbackMessages);
       if (messages !== fallbackMessages) {
         refreshFallbackHistory(replaceMessages, chatId, messages);
@@ -520,7 +527,7 @@ export function setupSupportNamespaces({
         return;
       }
 
-      const fallbackMessages = getMessages('support', access.chatId);
+      const fallbackMessages = getSupportFallbackMessages(getMessages, access.chatId);
       const messages = await fetchMessagesFromBackend(socket, access.chatId, fallbackMessages);
       if (messages !== fallbackMessages) {
         refreshFallbackHistory(replaceMessages, access.chatId, messages);
