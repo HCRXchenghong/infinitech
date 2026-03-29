@@ -4,7 +4,6 @@ import { authorizeSupportChatAccess, normalizeChatId } from './supportAccess.js'
 import { requestBackend } from './socketIdentity.js';
 import { buildSocketRequestId } from './requestId.js';
 import {
-  recordConversationListFallback,
   recordHistoryRefreshWrite,
   recordMessageHistoryFallback
 } from './database.js';
@@ -247,9 +246,9 @@ function buildSupportChatList(db, options = {}) {
   });
 }
 
-async function fetchConversationListFromBackend(socket, fallbackChats = []) {
+async function fetchConversationListFromBackend(socket) {
   const authHeader = String(socket?.authToken || '').trim();
-  if (!authHeader) return fallbackChats;
+  if (!authHeader) return [];
   const requestId = buildSocketRequestId(socket, 'list-conversations');
 
   try {
@@ -260,14 +259,12 @@ async function fetchConversationListFromBackend(socket, fallbackChats = []) {
     if (response.ok && Array.isArray(data)) {
       return data;
     }
-    recordConversationListFallback();
     logger.warn(`会话列表从 Go 加载失败 request_id=${requestId}，回退本地列表:`, response.status, data?.error || '');
   } catch (err) {
-    recordConversationListFallback();
     logger.warn(`会话列表从 Go 加载失败 request_id=${requestId}，回退本地列表:`, err?.message || err);
   }
 
-  return fallbackChats;
+  return [];
 }
 
 async function fetchMessagesFromBackend(socket, chatId, fallbackMessages = []) {
@@ -435,8 +432,7 @@ export function setupSupportNamespaces({
 
     socket.on('load_all_chats', () => {
       void (async () => {
-        const fallbackChats = buildSupportChatList(db, { defaultRole: 'user' });
-        const chatList = await fetchConversationListFromBackend(socket, fallbackChats);
+        const chatList = await fetchConversationListFromBackend(socket);
         socket.emit('all_chats_loaded', { chats: chatList });
       })();
     });
@@ -546,11 +542,7 @@ export function setupSupportNamespaces({
       }
 
       void (async () => {
-        const fallbackChats = buildSupportChatList(db, {
-          defaultRole: 'user',
-          fallbackRoleFromRow: true
-        });
-        const chatList = await fetchConversationListFromBackend(socket, fallbackChats);
+        const chatList = await fetchConversationListFromBackend(socket);
         socket.emit('all_chats_loaded', { chats: chatList });
       })();
     });

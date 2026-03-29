@@ -99,7 +99,7 @@
 - `message_sent / message_read / all_messages_read` 已按 `chatId` 收口，减少串会话污染
 - 消息时间字段、fallback ID、临时消息 ID 持续统一到稳定规则
 - `socket-server` 旧的 `/api/messages` HTTP 桥已移除，HTTP 消息契约只认 Go `/api/messages/*`
-- `chat.db` 已继续降级为短期 emergency buffer，并进一步收紧为默认每会话 200 条、默认保留 14 天
+- `chat.db` 已继续降级为短期 emergency buffer，并进一步收紧为默认每会话 200 条、默认保留 14 天；客服会话列表已不再从本地 fallback 生成
 
 ### 5.3 主链路去假数据
 
@@ -154,7 +154,7 @@
 
 ### 6.1 消息系统尾巴
 
-- `socket-server/chat.db` 仍保留短期 fallback 角色，还没彻底退出消息事实源链路
+- `socket-server/chat.db` 仍保留短期 fallback 角色，但当前已主要退到“消息历史应急缓冲”，还没彻底退出消息事实源链路
 - 骑手端、后台工作台、商家端仍有少量本地辅助状态尚未完全去事实源化
 - 会话摘要、未读汇总和 fallback 行为还需要继续统一到服务端口径
 
