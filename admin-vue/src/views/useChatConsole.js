@@ -441,12 +441,6 @@ export function useChatConsole(options = {}) {
       initLoad();
     }
 
-    socket.on('all_chats_loaded', (data) => {
-      if (!chats.value.length) {
-        chats.value = sortChats(mapLoadedChats(data.chats || []));
-      }
-    });
-
     socket.on('new_message', async (data) => {
       const incomingChatId = normalizeChatId(data.chatId);
       if (!incomingChatId) return;
@@ -529,7 +523,6 @@ export function useChatConsole(options = {}) {
     if (!socketRef) return;
 
     socketRef.off('connect');
-    socketRef.off('all_chats_loaded');
     socketRef.off('new_message');
     socketRef.off('message_sent');
     socketRef.off('message_read');
