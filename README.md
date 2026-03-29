@@ -302,3 +302,4 @@ node scripts/http-load-smoke.mjs
 
 - Dashboard, system-health aggregation, and release preflight now expose that disabled cleanup explicitly, instead of relying on stale fallback runtime counters.
 - `socket-server` no longer ships the old SQLite support-history path in default runtime, and the `better-sqlite3` dependency has been removed from the realtime service.
+- user-vue / app-mobile message home pages now read conversation summaries directly from the service only, and no longer persist local session summary snapshots.

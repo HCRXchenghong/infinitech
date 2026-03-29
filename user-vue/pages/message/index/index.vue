@@ -1,10 +1,10 @@
 <template>
   <view class="page message-page">
     <view class="page-header">
-      <text class="page-title">消息</text>
+      <text class="page-title">{{ ui.title }}</text>
       <view class="header-actions">
         <view class="clear-btn" @tap="clearUnread">
-          <text>清除未读</text>
+          <text>{{ ui.clearUnread }}</text>
         </view>
         <view class="settings-btn" @tap="goSettings">
           <image src="/static/icons/settings.svg" mode="aspectFit" class="settings-icon" />
@@ -20,12 +20,12 @@
         :class="{ active: currentTab === tab.id }"
         @tap="switchTab(tab.id)"
       >
-        <text>{{ tab.name }}</text>
+        <text>{{ ui.tabs[tab.id] }}</text>
         <view v-if="currentTab === tab.id" class="tab-indicator"></view>
       </view>
     </view>
 
-    <scroll-view scroll-y class="message-list" :refresher-enabled="false" @scroll="onScroll">
+    <scroll-view scroll-y class="message-list" :refresher-enabled="false">
       <view
         v-if="currentTab === 'all' || currentTab === 'notification'"
         class="message-card"
@@ -38,16 +38,16 @@
             </view>
             <view class="info-detail">
               <view class="name-row">
-                <text class="info-name">官方通知</text>
+                <text class="info-name">{{ ui.notificationName }}</text>
                 <view class="info-tag tag-system">
-                  <text>系统</text>
+                  <text>{{ ui.notificationTag }}</text>
                 </view>
               </view>
               <text class="info-time">{{ notificationTime }}</text>
             </view>
           </view>
           <view v-if="notificationUnread > 0" class="unread-badge">
-            <text>{{ notificationUnread > 99 ? "99+" : notificationUnread }}</text>
+            <text>{{ notificationUnread > 99 ? '99+' : notificationUnread }}</text>
           </view>
         </view>
       </view>
@@ -79,28 +79,22 @@
             </view>
           </view>
           <view v-if="item.unread > 0" class="unread-badge">
-            <text>{{ item.unread > 99 ? "99+" : item.unread }}</text>
+            <text>{{ item.unread > 99 ? '99+' : item.unread }}</text>
           </view>
         </view>
       </view>
 
-      <view
-        v-if="filteredSessions.length === 0 && currentTab !== 'all' && currentTab !== 'notification'"
-        class="empty-state"
-      >
+      <view v-if="showEmptyState" class="empty-state">
         <view class="empty-icon-wrapper">
           <image src="/static/icons/empty-message.svg" mode="aspectFit" class="empty-icon-img" />
         </view>
-        <text class="empty-text">暂无消息</text>
-        <text class="empty-hint">你的会话会显示在这里</text>
+        <text class="empty-text">{{ ui.emptyTitle }}</text>
+        <text class="empty-hint">{{ ui.emptyHint }}</text>
       </view>
 
-      <view
-        v-if="filteredSessions.length > 0 || currentTab === 'all' || currentTab === 'notification'"
-        class="list-footer"
-      >
+      <view v-if="showFooter" class="list-footer">
         <view class="footer-line"></view>
-        <text class="footer-text">仅显示最近一个月的消息</text>
+        <text class="footer-text">{{ ui.footer }}</text>
         <view class="footer-line"></view>
       </view>
     </scroll-view>
@@ -120,28 +114,48 @@ import {
   loadSupportRuntimeSettings
 } from '@/shared-ui/support-runtime.js'
 
-const SESSION_CACHE_MAX_AGE = 2 * 60 * 60 * 1000
 const SESSION_VISIBLE_MAX_AGE = 30 * 24 * 60 * 60 * 1000
-const SESSION_CACHE_MAX_ITEMS = 30
+
+const UI_TEXT = {
+  title: '\u6d88\u606f',
+  clearUnread: '\u6e05\u9664\u672a\u8bfb',
+  notificationName: '\u5b98\u65b9\u901a\u77e5',
+  notificationTag: '\u7cfb\u7edf',
+  noNotification: '\u6682\u65e0\u901a\u77e5',
+  emptyTitle: '\u6682\u65e0\u6d88\u606f',
+  emptyHint: '\u4f60\u7684\u4f1a\u8bdd\u4f1a\u663e\u793a\u5728\u8fd9\u91cc',
+  footer: '\u4ec5\u663e\u793a\u6700\u8fd1\u4e00\u4e2a\u6708\u7684\u6d88\u606f',
+  clearUnreadSuccess: '\u5df2\u6e05\u9664\u672a\u8bfb',
+  clearUnreadFailure: '\u6e05\u9664\u672a\u8bfb\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5',
+  roleRider: '\u9a91\u624b',
+  roleShop: '\u5546\u5bb6',
+  roleSupport: '\u5ba2\u670d',
+  emptyTime: '--:--',
+  tabs: {
+    all: '\u5168\u90e8',
+    rider: '\u9a91\u624b',
+    shop: '\u5546\u5bb6',
+    notification: '\u901a\u77e5'
+  }
+}
 
 export default {
   data() {
     const supportRuntime = getCachedSupportRuntimeSettings()
     return {
+      ui: UI_TEXT,
       currentTab: 'all',
-      scrollTop: 0,
-      userId: '',
       tabs: [
-        { id: 'all', name: '全部' },
-        { id: 'rider', name: '骑手' },
-        { id: 'shop', name: '商家' },
-        { id: 'notification', name: '通知' }
+        { id: 'all' },
+        { id: 'rider' },
+        { id: 'shop' },
+        { id: 'notification' }
       ],
-      notificationTime: '暂无通知',
-      notificationPreview: '',
+      notificationTime: UI_TEXT.noNotification,
       notificationUnread: 0,
       sessions: [],
-      supportTitle: supportRuntime.title
+      supportTitle: supportRuntime.title || UI_TEXT.roleSupport,
+      hasLoadedServerSessions: false
     }
   },
   computed: {
@@ -151,6 +165,20 @@ export default {
       if (this.currentTab === 'shop') return this.sessions.filter((item) => item.role === 'shop')
       if (this.currentTab === 'notification') return []
       return this.sessions
+    },
+    showEmptyState() {
+      return (
+        this.filteredSessions.length === 0 &&
+        this.currentTab !== 'all' &&
+        this.currentTab !== 'notification'
+      )
+    },
+    showFooter() {
+      return (
+        this.filteredSessions.length > 0 ||
+        this.currentTab === 'all' ||
+        this.currentTab === 'notification'
+      )
     }
   },
   onShow() {
@@ -158,29 +186,13 @@ export default {
   },
   methods: {
     async initializePage() {
-      this.userId = this.resolveUserId()
       await this.loadSupportRuntimeConfig()
       await Promise.all([this.loadSessions(), this.loadNotificationSummary()])
     },
 
     async loadSupportRuntimeConfig() {
       const supportRuntime = await loadSupportRuntimeSettings()
-      this.supportTitle = supportRuntime.title
-    },
-
-    resolveUserId() {
-      const profile = uni.getStorageSync('userProfile') || {}
-      const uid =
-        profile.id ||
-        profile.userId ||
-        profile.phone ||
-        uni.getStorageSync('userId') ||
-        uni.getStorageSync('phone')
-      return uid ? String(uid) : ''
-    },
-
-    getSessionStorageKey() {
-      return `user_message_sessions_${this.userId || 'guest'}`
+      this.supportTitle = supportRuntime.title || this.ui.roleSupport
     },
 
     normalizeRole(role) {
@@ -188,16 +200,6 @@ export default {
       if (value === 'rider') return 'rider'
       if (value === 'shop' || value === 'merchant') return 'shop'
       return 'cs'
-    },
-
-    formatClock(raw) {
-      if (typeof raw === 'string') {
-        const match = raw.trim().match(/(\d{2}:\d{2})$/)
-        if (match) return match[1]
-      }
-      const date = raw ? new Date(raw) : null
-      if (!date || Number.isNaN(date.getTime())) return '暂无通知'
-      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
     },
 
     parseTimestamp(raw) {
@@ -221,6 +223,19 @@ export default {
       return 0
     },
 
+    formatClock(raw) {
+      if (typeof raw === 'string') {
+        const match = raw.trim().match(/(\d{2}:\d{2})$/)
+        if (match) return match[1]
+      }
+
+      const timestamp = this.parseTimestamp(raw)
+      if (!timestamp) return this.ui.emptyTime
+
+      const date = new Date(timestamp)
+      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+    },
+
     resolveSessionUpdatedAt(item = {}) {
       const candidates = [
         item.updatedAt,
@@ -233,6 +248,7 @@ export default {
         item.createdAt,
         item.created_at
       ]
+
       for (const candidate of candidates) {
         const value = this.parseTimestamp(candidate)
         if (value > 0) return value
@@ -244,19 +260,6 @@ export default {
       const updatedAt = Number(item.updatedAt || 0)
       if (!Number.isFinite(updatedAt) || updatedAt <= 0) return true
       return Date.now() - updatedAt <= SESSION_VISIBLE_MAX_AGE
-    },
-
-    serializeSession(item = {}) {
-      return {
-        id: String(item.id || ''),
-        roomId: String(item.roomId || ''),
-        role: this.normalizeRole(item.role),
-        orderId: item.orderId ? String(item.orderId) : '',
-        targetId: item.targetId ? String(item.targetId) : '',
-        name: String(item.name || ''),
-        avatarUrl: String(item.avatarUrl || ''),
-        updatedAt: Number(item.updatedAt || 0)
-      }
     },
 
     sortSessions(list = []) {
@@ -280,22 +283,46 @@ export default {
         item.senderId ||
         item.name ||
         'unknown'
+
       return `session_${role}_${String(targetSeed)}`
+    },
+
+    resolveDefaultName(role) {
+      if (role === 'rider') return this.ui.roleRider
+      if (role === 'shop') return this.ui.roleShop
+      return this.supportTitle
+    },
+
+    getRoleTag(role) {
+      const tags = {
+        rider: this.ui.roleRider,
+        shop: this.ui.roleShop,
+        cs: this.ui.roleSupport
+      }
+      return tags[role] || ''
+    },
+
+    getTagClass(role) {
+      const classes = {
+        rider: 'tag-rider',
+        shop: 'tag-shop',
+        cs: 'tag-cs'
+      }
+      return classes[role] || ''
     },
 
     normalizeSession(item = {}) {
       const role = this.normalizeRole(item.role)
       const roomId = String(item.roomId || item.chatId || item.id || '')
       const updatedAt = this.resolveSessionUpdatedAt(item)
+
       return {
         id: this.resolveSessionId(item, role, roomId),
         roomId,
         role,
         orderId: item.orderId ? String(item.orderId) : '',
         targetId: item.targetId ? String(item.targetId) : '',
-        name: String(
-          item.name || (role === 'rider' ? '骑手' : role === 'shop' ? '商家' : this.supportTitle)
-        ),
+        name: String(item.name || this.resolveDefaultName(role)),
         avatarUrl: String(
           item.avatarUrl ||
             item.avatar ||
@@ -314,61 +341,7 @@ export default {
       }
     },
 
-    readStoredSessions() {
-      try {
-        const raw = uni.getStorageSync(this.getSessionStorageKey())
-        if (!raw) return []
-        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
-        if (Array.isArray(parsed)) {
-          return parsed
-            .map((item) => ({
-              ...this.normalizeSession(item),
-              unread: 0,
-              online: false
-            }))
-            .filter((item) => item.roomId && this.isSessionRecent(item))
-        }
-
-        const cachedAt = this.parseTimestamp(parsed?.cachedAt)
-        const sessions = Array.isArray(parsed?.sessions) ? parsed.sessions : []
-        if (!cachedAt || Date.now() - cachedAt > SESSION_CACHE_MAX_AGE) {
-          uni.removeStorageSync(this.getSessionStorageKey())
-          return []
-        }
-
-        return sessions
-          .map((item) => ({
-            ...this.normalizeSession(item),
-            unread: 0,
-            online: false
-          }))
-          .filter((item) => item.roomId && this.isSessionRecent(item))
-      } catch (err) {
-        console.error('读取本地会话失败:', err)
-        return []
-      }
-    },
-
-    saveSessions(list = this.sessions) {
-      try {
-        const payload = this.sortSessions(list)
-          .filter((item) => item.roomId && this.isSessionRecent(item))
-          .slice(0, SESSION_CACHE_MAX_ITEMS)
-          .map((item) => this.serializeSession(item))
-        uni.setStorageSync(
-          this.getSessionStorageKey(),
-          JSON.stringify({
-            cachedAt: Date.now(),
-            sessions: payload
-          })
-        )
-      } catch (err) {
-        console.error('保存本地会话失败:', err)
-      }
-    },
-
     async loadSessions() {
-      const hadServerSessions = Array.isArray(this.sessions) && this.sessions.length > 0
       try {
         const response = await fetchConversations()
         const serverSessions = Array.isArray(response) ? response : []
@@ -377,14 +350,12 @@ export default {
             .map((item) => this.normalizeSession(item))
             .filter((item) => item.roomId && this.isSessionRecent(item))
         )
-        this.saveSessions()
+        this.hasLoadedServerSessions = true
       } catch (err) {
-        console.error('加载服务端会话失败，回退本地缓存:', err)
-        if (hadServerSessions) return
-        this.sessions = this.sortSessions(
-          this.readStoredSessions()
-            .filter((item) => item.roomId && this.isSessionRecent(item))
-        )
+        console.error('Failed to load server conversations:', err)
+        if (!this.hasLoadedServerSessions) {
+          this.sessions = []
+        }
       }
     },
 
@@ -393,37 +364,17 @@ export default {
         const res = await fetchNotificationList({ page: 1, pageSize: 1 })
         if (!res.success) return
         this.notificationUnread = Number(res.unreadCount || res.unread_count || 0)
-        this.notificationTime = this.formatClock(res.latestAt || res.latest_at || '')
-        this.notificationPreview = String(res.latestSummary || res.latest_summary || '')
+        const latestTime = res.latestAt || res.latest_at || ''
+        this.notificationTime = latestTime
+          ? this.formatClock(latestTime)
+          : this.ui.noNotification
       } catch (err) {
-        console.error('加载通知摘要失败:', err)
+        console.error('Failed to load notification summary:', err)
       }
-    },
-
-    onScroll(e) {
-      this.scrollTop = e.detail.scrollTop
     },
 
     switchTab(tabId) {
       this.currentTab = tabId
-    },
-
-    getRoleTag(role) {
-      const tags = {
-        rider: '骑手',
-        shop: '商家',
-        cs: '客服'
-      }
-      return tags[role] || ''
-    },
-
-    getTagClass(role) {
-      const classes = {
-        rider: 'tag-rider',
-        shop: 'tag-shop',
-        cs: 'tag-cs'
-      }
-      return classes[role] || ''
     },
 
     async openChat(item) {
@@ -432,7 +383,7 @@ export default {
         await markConversationRead(item.roomId || item.id)
         readSynced = true
       } catch (err) {
-        console.error('同步会话已读失败:', err)
+        console.error('Failed to sync conversation read state:', err)
       }
 
       if (readSynced) {
@@ -469,9 +420,7 @@ export default {
       await Promise.all([this.loadSessions(), this.loadNotificationSummary()])
       const hasSuccess = results.some((item) => item.status === 'fulfilled')
       uni.showToast({
-        title: hasSuccess
-          ? '\u5df2\u6e05\u9664\u672a\u8bfb'
-          : '\u6e05\u9664\u672a\u8bfb\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5',
+        title: hasSuccess ? this.ui.clearUnreadSuccess : this.ui.clearUnreadFailure,
         icon: 'none'
       })
     },
