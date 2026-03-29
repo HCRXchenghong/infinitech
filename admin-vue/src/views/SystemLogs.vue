@@ -49,7 +49,7 @@
           <div v-if="getServiceSignals(item).length > 0" class="service-signals">
             <el-tag
               v-for="signal in getServiceSignals(item)"
-              :key="`${item.key}-${signal.key}-${signal.value}`"
+              :key="`${item.key}-${signal.key}-${signal.rawValue}`"
               size="small"
               :type="signal.type"
               effect="plain"
@@ -177,7 +177,7 @@
         </el-table-column>
         <template #empty>
           <el-empty
-            :description="loadError ? '加载失败，暂时没有可显示数据' : '暂无日志数据'"
+            :description="loadError ? '加载失败，暂无可显示数据' : '暂无日志数据'"
             :image-size="90"
           />
         </template>
@@ -285,6 +285,19 @@ const SIGNAL_LABELS = {
   pushEnabled: "推送已启用",
   pushRunning: "推送运行中",
   pushProvider: "推送通道",
+  pushWebhookTarget: "Webhook 目标",
+  pushWebhookSecure: "Webhook 安全传输",
+  pushWebhookPrivate: "Webhook 私有目标",
+  pushWebhookAuth: "Webhook 鉴权",
+  pushWebhookSignature: "Webhook 签名",
+  pushFcmProject: "FCM 项目",
+  pushFcmConfigured: "FCM 已配置",
+  pushFcmTokenTarget: "FCM Token 目标",
+  pushFcmTokenSecure: "FCM Token 安全传输",
+  pushFcmTokenPrivate: "FCM Token 私有目标",
+  pushFcmApiTarget: "FCM API 目标",
+  pushFcmApiSecure: "FCM API 安全传输",
+  pushFcmApiPrivate: "FCM API 私有目标",
   pushCycle: "最近周期",
   pushLastSuccessAt: "最近成功",
   pushConsecutiveFailures: "连续失败",
@@ -490,8 +503,27 @@ function resolveSignalType(key, rawValue) {
     return "danger";
   }
 
-  if (["redisConnected", "adapterEnabled", "goApiOk", "pushWorkerOk", "pushEnabled", "pushRunning"].includes(key)) {
+  if (
+    [
+      "redisConnected",
+      "adapterEnabled",
+      "goApiOk",
+      "pushWorkerOk",
+      "pushEnabled",
+      "pushRunning",
+      "pushWebhookSecure",
+      "pushWebhookAuth",
+      "pushWebhookSignature",
+      "pushFcmConfigured",
+      "pushFcmTokenSecure",
+      "pushFcmApiSecure"
+    ].includes(key)
+  ) {
     return value === "true" ? "success" : "danger";
+  }
+
+  if (["pushWebhookPrivate", "pushFcmTokenPrivate", "pushFcmApiPrivate"].includes(key)) {
+    return value === "true" ? "danger" : "success";
   }
 
   if (key === "redisMode") {
@@ -579,7 +611,7 @@ function resolveServiceSummary(item) {
   return signals
     .slice(0, 4)
     .map((signal) => `${signal.label}${signal.value ? `：${signal.value}` : ""}`)
-    .join("；");
+    .join("，");
 }
 
 async function loadLogs() {

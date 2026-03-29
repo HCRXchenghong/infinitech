@@ -112,6 +112,7 @@ Important boundaries:
 - device registration is connected across active clients
 - push worker queue, stats, delivery materialization, and readiness signals exist
 - admin pages can inspect push-related readiness and queue signals
+- push worker readiness now surfaces FCM token/API target and transport-safety signals through Go, BFF health aggregation, and release preflight
 - release preflight blocks obviously unsafe push worker states
 - production-like environments now reject `PUSH_DISPATCH_PROVIDER=log` when dispatch is enabled
 - the webhook push path now supports optional auth headers, signed payloads, and logical rejection handling instead of treating every HTTP 200 as success
