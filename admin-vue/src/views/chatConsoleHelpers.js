@@ -1,4 +1,5 @@
 const TIME_OPTIONS = { hour: '2-digit', minute: '2-digit' };
+const LOCAL_HISTORY_CACHE_LIMIT = 200;
 
 export function normalizeChatId(value) {
   if (value === undefined || value === null) return '';
@@ -239,8 +240,9 @@ export function saveIncomingMessage(messageDB, chatId, message) {
 export async function saveLoadedMessages(messageDB, chatId, list) {
   await messageDB.clearMessages(chatId);
 
+  const historyWindow = Array.isArray(list) ? list.slice(-LOCAL_HISTORY_CACHE_LIMIT) : [];
   const baseTimestamp = Date.now();
-  for (const [index, message] of (list || []).entries()) {
+  for (const [index, message] of historyWindow.entries()) {
     await messageDB.saveMessage({
       ...toDbRecord(chatId, message),
       timestamp: Number.isFinite(Number(message?.timestamp))

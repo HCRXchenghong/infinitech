@@ -8,6 +8,8 @@ import { db } from '@/utils/database'
 import messageManager from '@/utils/message-manager'
 import OrderDetailPopup from '../../components/OrderDetailPopup.vue'
 
+const LOCAL_HISTORY_CACHE_LIMIT = 200
+
 export default Vue.extend({
   components: {
     OrderDetailPopup
@@ -178,9 +180,10 @@ export default Vue.extend({
     },
 
     async replaceCachedHistory(list: any[] = []) {
+      const historyWindow = Array.isArray(list) ? list.slice(-LOCAL_HISTORY_CACHE_LIMIT) : []
       const baseTimestamp = Date.now()
       await db.deleteMessagesByChatId(this.chatId)
-      list.forEach((item: any, index: number) => {
+      historyWindow.forEach((item: any, index: number) => {
         const senderId = item?.senderId != null ? String(item.senderId) : ''
         const messageTimestamp = this.resolveMessageTimestamp(item?.timestamp || item?.createdAt, baseTimestamp + index)
         db.saveMessage(this.chatId, {

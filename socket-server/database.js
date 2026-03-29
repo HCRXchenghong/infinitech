@@ -33,6 +33,17 @@ const fallbackRuntimeStats = {
   lastHistoryRefreshWriteAt: 0
 };
 
+function selectFallbackHistoryWindow(list, keepCount = FALLBACK_CHAT_HISTORY_LIMIT) {
+  const items = Array.isArray(list) ? list : [];
+  const limit = Number.isFinite(Number(keepCount)) && Number(keepCount) > 0
+    ? Math.max(1, Math.floor(Number(keepCount)))
+    : FALLBACK_CHAT_HISTORY_LIMIT;
+  if (items.length <= limit) {
+    return items;
+  }
+  return items.slice(-limit);
+}
+
 db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
 db.pragma('busy_timeout = 5000');
@@ -347,7 +358,7 @@ export function clearMessages(chatType, chatId) {
 }
 
 export function replaceMessages(chatType, chatId, list = []) {
-  const normalizedList = Array.isArray(list) ? list : [];
+  const normalizedList = selectFallbackHistoryWindow(list);
   const insertStmt = db.prepare(`
     INSERT INTO messages (uid, tsid, chat_type, chat_id, chat_uid, sender, sender_id, sender_uid, sender_role, content, message_type, coupon_data, order_data, image_url, avatar, status, event_timestamp, created_at, read_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
