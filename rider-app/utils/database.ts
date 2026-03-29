@@ -23,7 +23,15 @@ class Database {
     if (rawId !== undefined && rawId !== null && String(rawId).trim()) {
       return String(rawId)
     }
-    return `${String(chatId || 'chat')}_${fallbackTimestamp}`
+    const senderRole = String(message?.senderRole || 'unknown').trim() || 'unknown'
+    const senderId = String(message?.senderId || 'unknown').trim() || 'unknown'
+    const messageType = String(message?.messageType || message?.type || 'text').trim() || 'text'
+    const contentSeed = String(message?.content || '')
+      .trim()
+      .slice(0, 24)
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9_\u4e00-\u9fa5-]/g, '')
+    return `${String(chatId || 'chat')}_${senderRole}_${senderId}_${messageType}_${fallbackTimestamp}_${contentSeed || 'empty'}`
   }
 
   open(): Promise<void> {

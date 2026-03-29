@@ -100,6 +100,7 @@
 - 商家聊天页本地消息缓存已继续缩成最小快照，只保留必要字段，不再缓存展示态时间
 - `message_sent / message_read / all_messages_read` 已按 `chatId` 收口，减少串会话污染
 - 消息时间字段、fallback ID、临时消息 ID 持续统一到稳定规则
+- 骑手端本地 SQLite fallback ID 已补强为包含发送方、类型和时间戳的稳定组合，降低高频消息碰撞风险
 - `socket-server` 旧的 `/api/messages` HTTP 桥已移除，HTTP 消息契约只认 Go `/api/messages/*`
 - `chat.db` 已继续降级为短期 emergency buffer，并进一步收紧为默认每会话 200 条、默认保留 14 天；客服会话列表已不再从本地 fallback 生成
 - `socket-server` 在缺少认证信息时已不再回退读取本地客服历史，避免未鉴权状态继续消费旧 fallback 数据
