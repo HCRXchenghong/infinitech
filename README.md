@@ -89,6 +89,7 @@ Important boundaries:
 - local message caches on active clients have been reduced to tightly bounded emergency display fallbacks
 - unread sync now depends much more strictly on service-side read confirmation instead of local optimistic mutation
 - chat time, temporary ids, and read receipts have been normalized across active clients
+- the admin chat console no longer rewrites conversation summaries locally on incoming messages and now waits for the service conversation list refresh
 
 ### Main flow cleanup
 

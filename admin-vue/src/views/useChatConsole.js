@@ -18,8 +18,7 @@ import {
   createOutgoingTempMessage,
   createIncomingDisplayMessage,
   saveIncomingMessage,
-  saveLoadedMessages,
-  upsertChatFromIncoming
+  saveLoadedMessages
 } from './chatConsoleHelpers';
 
 function resolveDefaultChatName(defaultChatName, data) {
@@ -453,14 +452,6 @@ export function useChatConsole(options = {}) {
         scheduleRefreshChats();
         return;
       }
-
-      upsertChatFromIncoming({
-        chats: chats.value,
-        incomingChatId,
-        data,
-        adminMessage: isAdminSender(data),
-        defaultName: resolveDefaultChatName(defaultChatName, data)
-      });
 
       if (upsertBeforeSelectedCheck) {
         if (pushIncomingToSelectedChat(data, incomingChatId)) {
