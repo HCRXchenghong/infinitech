@@ -13,6 +13,22 @@ function toPositiveInt(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function toBoolean(value, fallback) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) return fallback;
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
+}
+
+const SUPPORT_HISTORY_FALLBACK_ENABLED = toBoolean(process.env.SOCKET_ENABLE_HISTORY_FALLBACK, true);
+
+export function getSupportHistoryFallbackConfig() {
+  return {
+    enabled: SUPPORT_HISTORY_FALLBACK_ENABLED
+  };
+}
+
 function emitSupportMessage(supportNamespace, chatId, message) {
   const roomName = `chat_${chatId}`;
   const room = supportNamespace.adapter.rooms.get(roomName);
@@ -216,6 +232,9 @@ async function fetchMessagesFromBackend(socket, chatId, fallbackMessages = []) {
   const normalizedChatId = normalizeChatId(chatId);
   if (!authHeader || !normalizedChatId) return [];
   const requestId = buildSocketRequestId(socket, 'load-messages', normalizedChatId);
+  const canUseFallback = SUPPORT_HISTORY_FALLBACK_ENABLED
+    && Array.isArray(fallbackMessages)
+    && fallbackMessages.length > 0;
 
   try {
     const { response, data } = await requestBackend(`/api/messages/${encodeURIComponent(normalizedChatId)}`, {
@@ -225,14 +244,18 @@ async function fetchMessagesFromBackend(socket, chatId, fallbackMessages = []) {
     if (response.ok && Array.isArray(data)) {
       return data;
     }
-    recordMessageHistoryFallback();
+    if (canUseFallback) {
+      recordMessageHistoryFallback();
+    }
     logger.warn(`消息历史从 Go 加载失败 request_id=${requestId}，回退本地历史:`, response.status, data?.error || '');
   } catch (err) {
-    recordMessageHistoryFallback();
+    if (canUseFallback) {
+      recordMessageHistoryFallback();
+    }
     logger.warn(`消息历史从 Go 加载失败 request_id=${requestId}，回退本地历史:`, err?.message || err);
   }
 
-  return fallbackMessages;
+  return canUseFallback ? fallbackMessages : [];
 }
 
 function refreshFallbackHistory(replaceMessages, chatId, messages) {

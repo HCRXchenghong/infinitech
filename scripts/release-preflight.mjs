@@ -15,6 +15,7 @@ const DEFAULT_MAX_PUSH_QUEUE_AGE_MS = 30 * 60 * 1000;
 const DEFAULT_MAX_RECENT_SOCKET_FALLBACK_MS = 10 * 60 * 1000;
 const DEFAULT_MAX_PUSH_CONSECUTIVE_FAILURES = 2;
 const DEFAULT_MAX_PUSH_SUCCESS_STALE_MS = 15 * 60 * 1000;
+const DEFAULT_ALLOW_SOCKET_HISTORY_FALLBACK = false;
 
 function normalizeBaseUrl(value, fallback) {
   const text = String(value || fallback || '').trim();
@@ -114,6 +115,9 @@ function collectBffSummary(body) {
 function collectSocketSummary(body) {
   if (!body || typeof body !== 'object') return '';
   const redis = body.redis && typeof body.redis === 'object' ? body.redis : null;
+  const historyFallback = body.supportHistoryFallback && typeof body.supportHistoryFallback === 'object'
+    ? body.supportHistoryFallback
+    : null;
   const fallback = body.fallbackBuffer && typeof body.fallbackBuffer === 'object' ? body.fallbackBuffer : null;
   const fallbackRuntime = body.fallbackRuntime && typeof body.fallbackRuntime === 'object' ? body.fallbackRuntime : null;
   const lastFallbackAt = fallbackRuntime
@@ -127,6 +131,7 @@ function collectSocketSummary(body) {
     redis ? `redisMode=${redis.mode || 'unknown'}` : '',
     redis && typeof redis.connected === 'boolean' ? `redisConnected=${redis.connected}` : '',
     redis && typeof redis.adapterEnabled === 'boolean' ? `adapter=${redis.adapterEnabled}` : '',
+    historyFallback && typeof historyFallback.enabled === 'boolean' ? `historyFallback=${historyFallback.enabled}` : '',
     fallback && fallback.messageCount !== undefined ? `fallbackMessages=${fallback.messageCount}` : '',
     fallback && fallback.chatCount !== undefined ? `fallbackChats=${fallback.chatCount}` : '',
     fallback && fallback.oldestAgeMs !== undefined ? `fallbackOldestAge=${formatDurationMs(fallback.oldestAgeMs)}` : '',
@@ -252,7 +257,7 @@ function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStale
   return failures;
 }
 
-function evaluateSocketReady(body, requiredRedisMode) {
+function evaluateSocketReady(body, requiredRedisMode, allowHistoryFallback) {
   const failures = [];
   if (!body || typeof body !== 'object') {
     failures.push('missing_socket_ready_body');
@@ -276,6 +281,10 @@ function evaluateSocketReady(body, requiredRedisMode) {
     if (actualMode !== normalizedRequiredMode) {
       failures.push(`socket_redis_mode=${actualMode || 'unknown'}!=${normalizedRequiredMode}`);
     }
+  }
+  const historyFallback = body.supportHistoryFallback;
+  if (!allowHistoryFallback && historyFallback && historyFallback.enabled === true) {
+    failures.push('socket_history_fallback_enabled');
   }
   return failures;
 }
@@ -351,6 +360,10 @@ async function main() {
     DEFAULT_MAX_RECENT_SOCKET_FALLBACK_MS
   );
   const requiredSocketRedisMode = String(process.env.PREFLIGHT_REQUIRE_SOCKET_REDIS_MODE || 'redis').trim();
+  const allowSocketHistoryFallback = parseBooleanEnv(
+    process.env.PREFLIGHT_ALLOW_SOCKET_HISTORY_FALLBACK,
+    DEFAULT_ALLOW_SOCKET_HISTORY_FALLBACK
+  );
   const allowDegradedSystemHealth = parseBooleanEnv(process.env.PREFLIGHT_ALLOW_DEGRADED_SYSTEM_HEALTH, false);
   const runHttpLoadSmoke = parseBooleanEnv(process.env.PREFLIGHT_RUN_HTTP_LOAD_SMOKE, false);
   const maxPushConsecutiveFailures = parseIntegerEnv(
@@ -387,7 +400,7 @@ async function main() {
       label: 'Socket ready',
       url: `${socketBaseUrl}/ready`,
       summary: collectSocketSummary,
-      validate: (body) => evaluateSocketReady(body, requiredSocketRedisMode)
+      validate: (body) => evaluateSocketReady(body, requiredSocketRedisMode, allowSocketHistoryFallback)
     },
     {
       label: 'Socket stats',
@@ -416,6 +429,7 @@ async function main() {
     + `maxPushConsecutiveFailures=${maxPushConsecutiveFailures} `
     + `maxPushSuccessStale=${formatDurationMs(maxPushSuccessStaleMs)} `
     + `requiredSocketRedisMode=${requiredSocketRedisMode || 'none'} `
+    + `allowSocketHistoryFallback=${allowSocketHistoryFallback} `
     + `maxRecentSocketFallback=${formatDurationMs(maxRecentSocketFallbackMs)} `
     + `allowDegradedSystemHealth=${allowDegradedSystemHealth}`
   );

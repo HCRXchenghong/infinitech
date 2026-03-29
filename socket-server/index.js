@@ -9,7 +9,7 @@ import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import { logger } from './logger.js';
-import { setupSupportNamespaces } from './supportNamespaces.js';
+import { getSupportHistoryFallbackConfig, setupSupportNamespaces } from './supportNamespaces.js';
 import { setupRiderNamespace } from './riderNamespace.js';
 import { validateSocketIdentity } from './socketIdentity.js';
 import { REQUEST_ID_HEADER, attachRequestId, resolveRequestId } from './requestId.js';
@@ -363,6 +363,7 @@ function getSocketOperationalStatus() {
   const stats = getServerStats();
   return {
     redis: getRedisHealthSnapshot(),
+    supportHistoryFallback: getSupportHistoryFallbackConfig(),
     fallbackBuffer: stats.fallbackBuffer || null,
     fallbackRuntime: stats.fallbackRuntime || null
   };
@@ -510,6 +511,7 @@ const httpServer = createServer(async (req, res) => {
     stats.onlineUsers = await getOnlineCount();
     stats.onlinePresenceSample = await getOnlineUsers(20);
     stats.redis = getRedisHealthSnapshot();
+    stats.supportHistoryFallback = getSupportHistoryFallbackConfig();
     writeJson(res, 200, stats);
     return;
   }
@@ -618,6 +620,7 @@ setInterval(async () => {
     stats.onlineUsers = await getOnlineCount();
     stats.onlinePresenceSample = await getOnlineUsers(20);
     stats.redis = getRedisHealthSnapshot();
+    stats.supportHistoryFallback = getSupportHistoryFallbackConfig();
     monitorNamespace.to('monitor_all').emit('server_stats', stats);
   } catch (err) {
     logger.warn('server stats broadcast failed:', err?.message || err);
