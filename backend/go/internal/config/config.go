@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -240,6 +241,9 @@ func (c *Config) Validate() error {
 		if isProductionLikeEnv(c.Env) && c.Push.DispatchProvider == "webhook" && !pushWebhookURLIsSecure(c.Push.WebhookURL) {
 			return fmt.Errorf("production webhook push dispatch requires an https PUSH_DISPATCH_WEBHOOK_URL")
 		}
+		if isProductionLikeEnv(c.Env) && PushWebhookTargetsPrivateHost(c.Push.WebhookURL) {
+			return fmt.Errorf("production webhook push dispatch cannot target localhost, private IPs, or internal-only hostnames")
+		}
 		if isProductionLikeEnv(c.Env) && c.Push.WebhookSecret == "" && c.Push.WebhookAuthValue == "" {
 			return fmt.Errorf("production webhook push dispatch requires PUSH_DISPATCH_WEBHOOK_SECRET or PUSH_DISPATCH_WEBHOOK_AUTH_HEADER/PUSH_DISPATCH_WEBHOOK_AUTH_VALUE")
 		}
@@ -375,6 +379,38 @@ func pushWebhookURLIsSecure(raw string) bool {
 		return false
 	}
 	return strings.EqualFold(parsed.Scheme, "https")
+}
+
+func PushWebhookTargetsPrivateHost(raw string) bool {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return false
+	}
+
+	parsed, err := url.Parse(value)
+	if err != nil {
+		return false
+	}
+
+	host := strings.ToLower(strings.TrimSpace(parsed.Hostname()))
+	if host == "" {
+		return false
+	}
+	if host == "localhost" || host == "0.0.0.0" || host == "::1" {
+		return true
+	}
+	if strings.HasSuffix(host, ".local") || strings.HasSuffix(host, ".lan") || strings.HasSuffix(host, ".internal") {
+		return true
+	}
+
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return true
+	}
+	return false
 }
 
 func isProductionLikeEnv(env string) bool {

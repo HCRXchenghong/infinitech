@@ -39,6 +39,7 @@ type MobilePushWorkerStatus struct {
 	Provider                string                  `json:"provider"`
 	WebhookTarget           string                  `json:"webhookTarget,omitempty"`
 	WebhookSecureTransport  bool                    `json:"webhookSecureTransport"`
+	WebhookPrivateTarget    bool                    `json:"webhookPrivateTarget"`
 	WebhookAuthConfigured   bool                    `json:"webhookAuthConfigured"`
 	WebhookSignatureEnabled bool                    `json:"webhookSignatureEnabled"`
 	PollIntervalSeconds     int                     `json:"pollIntervalSeconds"`
@@ -372,6 +373,7 @@ func (s *MobilePushService) WorkerStatusSnapshot(ctx context.Context) MobilePush
 		Running:                 running,
 		Provider:                provider,
 		WebhookAuthConfigured:   false,
+		WebhookPrivateTarget:    false,
 		WebhookSignatureEnabled: false,
 		PollIntervalSeconds:     int(s.pollInterval / time.Second),
 		BatchSize:               s.dispatchBatchSize,
@@ -383,6 +385,7 @@ func (s *MobilePushService) WorkerStatusSnapshot(ctx context.Context) MobilePush
 	if webhookProvider, ok := s.dispatchProvider.(*pushWebhookDispatcher); ok {
 		snapshot.WebhookTarget = summarizePushWebhookTarget(webhookProvider.url)
 		snapshot.WebhookSecureTransport = pushWebhookUsesSecureTransport(webhookProvider.url)
+		snapshot.WebhookPrivateTarget = config.PushWebhookTargetsPrivateHost(webhookProvider.url)
 		snapshot.WebhookAuthConfigured = strings.TrimSpace(webhookProvider.authHeader) != "" && strings.TrimSpace(webhookProvider.authValue) != ""
 		snapshot.WebhookSignatureEnabled = strings.TrimSpace(webhookProvider.secret) != ""
 	}

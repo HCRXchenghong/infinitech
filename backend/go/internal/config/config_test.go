@@ -180,6 +180,34 @@ func TestValidateRejectsProductionWebhookWithoutHTTPS(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsProductionWebhookToLocalhost(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.Env = "production"
+	cfg.Redis.Required = true
+	cfg.Push.DispatchEnabled = true
+	cfg.Push.DispatchProvider = "webhook"
+	cfg.Push.WebhookURL = "https://localhost:9443/dispatch"
+	cfg.Push.WebhookSecret = "test-secret"
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected localhost production webhook push provider to be rejected")
+	}
+}
+
+func TestValidateRejectsProductionWebhookToPrivateIP(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.Env = "production"
+	cfg.Redis.Required = true
+	cfg.Push.DispatchEnabled = true
+	cfg.Push.DispatchProvider = "webhook"
+	cfg.Push.WebhookURL = "https://10.20.30.40/dispatch"
+	cfg.Push.WebhookSecret = "test-secret"
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected private-ip production webhook push provider to be rejected")
+	}
+}
+
 func TestValidateRejectsProductionWebhookWithoutAuthOrSigning(t *testing.T) {
 	cfg := newValidConfigForTest()
 	cfg.Env = "production"

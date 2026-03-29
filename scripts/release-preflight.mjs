@@ -214,6 +214,12 @@ function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStale
   }
   if (
     provider === 'webhook'
+    && worker.webhookPrivateTarget === true
+  ) {
+    failures.push('push_webhook=private_target_not_allowed');
+  }
+  if (
+    provider === 'webhook'
     && worker.webhookAuthConfigured !== true
     && worker.webhookSignatureEnabled !== true
   ) {
