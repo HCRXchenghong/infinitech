@@ -198,7 +198,7 @@ function displayText(msg: ViewMessage) {
 }
 
 const MESSAGE_CACHE_MAX_AGE = 24 * 60 * 60 * 1000
-const MESSAGE_CACHE_MAX_ITEMS = 150
+const MESSAGE_CACHE_MAX_ITEMS = 120
 const MESSAGE_VISIBLE_MAX_AGE = 7 * 24 * 60 * 60 * 1000
 
 function localMessageKey() {
@@ -259,9 +259,19 @@ function restoreLocalMessages() {
 
 function persistLocalMessages() {
   try {
+    const snapshot = normalizeCachedMessages(messages.value).map((item) => ({
+      mid: item.mid,
+      self: item.self,
+      text: item.text,
+      type: item.type,
+      timestamp: item.timestamp,
+      status: item.status,
+      officialIntervention: item.officialIntervention,
+      interventionLabel: item.interventionLabel
+    }))
     uni.setStorageSync(localMessageKey(), JSON.stringify({
       cachedAt: Date.now(),
-      messages: normalizeCachedMessages(messages.value)
+      messages: snapshot
     }))
   } catch (err) {
     // ignore

@@ -95,10 +95,11 @@
 - 用户端与 App 端主聊天页、客服页的“清空聊天记录”假删除动作已收口为真实留存提示
 - 后台客服工作台本地 unread 已收紧成“仅临时提示，权威数量等服务端回拉”，减少本地自增漂移
 - 用户端与 App 端消息首页本地会话缓存已继续去字段化，只保留必要标识和 `updatedAt`
+- 商家聊天页本地消息缓存已继续缩成最小快照，只保留必要字段，不再缓存展示态时间
 - `message_sent / message_read / all_messages_read` 已按 `chatId` 收口，减少串会话污染
 - 消息时间字段、fallback ID、临时消息 ID 持续统一到稳定规则
 - `socket-server` 旧的 `/api/messages` HTTP 桥已移除，HTTP 消息契约只认 Go `/api/messages/*`
-- `chat.db` 已继续降级为短期 emergency buffer，并增加保留时长、按会话上限和 readiness 阈值
+- `chat.db` 已继续降级为短期 emergency buffer，并进一步收紧为默认每会话 200 条、默认保留 14 天
 
 ### 5.3 主链路去假数据
 
