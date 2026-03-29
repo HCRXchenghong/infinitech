@@ -26,6 +26,7 @@
         </div>
         <span class="status-time">检查时间：{{ formatTime(serviceStatus.checkedAt) }}</span>
       </div>
+
       <div v-if="serviceStatus.services.length > 0" class="status-grid">
         <div v-for="item in serviceStatus.services" :key="item.key" class="status-item">
           <div class="status-item-top">
@@ -55,7 +56,9 @@
               {{ signal.label }}{{ signal.value ? ` ${signal.value}` : "" }}
             </el-tag>
           </div>
-          <div v-if="item.detail" class="service-detail">{{ item.detail }}</div>
+          <div v-if="resolveServiceSummary(item)" class="service-detail">
+            {{ resolveServiceSummary(item) }}
+          </div>
         </div>
       </div>
       <el-empty v-else description="暂无服务状态数据" :image-size="56" />
@@ -171,7 +174,10 @@
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty :description="loadError ? '加载失败，暂时无可显示数据' : '暂无日志数据'" :image-size="90" />
+          <el-empty
+            :description="loadError ? '加载失败，暂时没有可显示数据' : '暂无日志数据'"
+            :image-size="90"
+          />
         </template>
       </el-table>
 
@@ -193,7 +199,7 @@
         <el-descriptions-item label="时间">{{ formatTime(detailLog?.timestamp) }}</el-descriptions-item>
         <el-descriptions-item label="来源">{{ detailLog?.sourceLabel || "-" }}</el-descriptions-item>
         <el-descriptions-item label="操作类型">{{ detailLog?.actionLabel || "-" }}</el-descriptions-item>
-        <el-descriptions-item label="等级">{{ detailLog?.level || "-" }}</el-descriptions-item>
+        <el-descriptions-item label="级别">{{ detailLog?.level || "-" }}</el-descriptions-item>
         <el-descriptions-item label="操作人">
           {{ detailLog?.operatorName || detailLog?.operatorId || "-" }}
         </el-descriptions-item>
@@ -226,7 +232,7 @@
           />
         </el-form-item>
       </el-form>
-      <div class="delete-tip">删除后无法恢复，并且会留下“谁删除了哪条日志”的审计记录。</div>
+      <div class="delete-tip">删除后无法恢复，并且会留下完整审计记录。</div>
       <template #footer>
         <el-button @click="deleteDialogVisible = false">取消</el-button>
         <el-button type="danger" :loading="deleting" @click="confirmDeleteLog">确认删除</el-button>
@@ -249,7 +255,7 @@
         </el-form-item>
       </el-form>
       <div class="delete-tip">
-        即将清空 <strong>{{ clearSourceLabel }}</strong> 日志，操作不可恢复。
+        即将清空 <strong>{{ clearSourceLabel }}</strong> 的日志数据，操作不可恢复。
       </div>
       <template #footer>
         <el-button @click="clearDialogVisible = false">取消</el-button>
@@ -266,30 +272,30 @@ import request from "@/utils/request";
 import PageStateAlert from "@/components/PageStateAlert.vue";
 
 const SIGNAL_LABELS = {
-  status: "状态",
   error: "错误",
   redisConnected: "Redis 连接",
   redisMode: "Redis 模式",
-  fallbackMessages: "fallback 消息",
-  fallbackChats: "fallback 会话",
-  fallbackOldestAge: "fallback 最老年龄",
+  adapterEnabled: "Adapter 已启用",
+  fallbackMessages: "Fallback 消息数",
+  fallbackChats: "Fallback 会话数",
+  fallbackOldestAge: "Fallback 最老年龄",
   fallbackExpiredPruned: "过期裁剪",
   fallbackOverflowPruned: "溢出裁剪",
-  fallbackListHits: "列表回退",
-  fallbackHistoryHits: "历史回退",
-  fallbackRefreshWrites: "历史回写",
-  fallbackRefreshMessages: "回写消息",
+  fallbackListHits: "列表回退次数",
+  fallbackHistoryHits: "历史回退次数",
+  fallbackRefreshWrites: "历史回写次数",
+  fallbackRefreshMessages: "回写消息数",
   goApiOk: "Go 可用",
   goApiProbe: "Go 探针",
   goApiError: "Go 错误",
   pushWorkerOk: "推送 Worker",
-  pushEnabled: "推送启用",
-  pushRunning: "推送运行",
+  pushEnabled: "推送已启用",
+  pushRunning: "推送运行中",
   pushProvider: "推送通道",
-  pushCycle: "推送周期",
+  pushCycle: "最近周期",
   pushLastSuccessAt: "最近成功",
   pushConsecutiveFailures: "连续失败",
-  pushProcessed: "最近处理",
+  pushProcessed: "最近处理数",
   pushError: "推送错误",
   pushQueue: "推送队列",
   pushQueued: "待派发",
@@ -298,15 +304,31 @@ const SIGNAL_LABELS = {
   pushFailed: "失败数",
   pushOldestQueuedAt: "最老排队时间",
   pushOldestQueuedAgeSeconds: "最老排队年龄",
+  pushOldestRetryPendingAt: "最老重试时间",
+  pushOldestRetryPendingAgeSeconds: "最老重试年龄",
   pushOldestDispatchingAt: "最老派发时间",
-  pushOldestDispatchingAgeSeconds: "最老派发年龄"
+  pushOldestDispatchingAgeSeconds: "最老派发年龄",
+  pushLatestSentAt: "最近派发",
+  pushLatestFailedAt: "最近失败",
+  pushLatestAcknowledgedAt: "最近确认"
 };
 
-SIGNAL_LABELS.pushOldestRetryPendingAt = "最老重试时间";
-SIGNAL_LABELS.pushOldestRetryPendingAgeSeconds = "最老重试年龄";
-SIGNAL_LABELS.pushLatestSentAt = "最近派发";
-SIGNAL_LABELS.pushLatestFailedAt = "最近失败";
-SIGNAL_LABELS.pushLatestAcknowledgedAt = "最近确认";
+const TIME_SIGNAL_KEYS = new Set([
+  "pushLastSuccessAt",
+  "pushOldestQueuedAt",
+  "pushOldestRetryPendingAt",
+  "pushOldestDispatchingAt",
+  "pushLatestSentAt",
+  "pushLatestFailedAt",
+  "pushLatestAcknowledgedAt"
+]);
+
+const AGE_SIGNAL_KEYS = new Set([
+  "fallbackOldestAge",
+  "pushOldestQueuedAgeSeconds",
+  "pushOldestRetryPendingAgeSeconds",
+  "pushOldestDispatchingAgeSeconds"
+]);
 
 const loading = ref(false);
 const loadError = ref("");
@@ -318,6 +340,7 @@ const deleting = ref(false);
 const pendingDeleteLog = ref(null);
 const clearDialogVisible = ref(false);
 const clearing = ref(false);
+
 const summary = reactive({
   create: 0,
   delete: 0,
@@ -326,6 +349,7 @@ const summary = reactive({
   system: 0,
   error: 0
 });
+
 const serviceStatus = reactive({
   checkedAt: "",
   overall: "unknown",
@@ -343,10 +367,12 @@ const pagination = reactive({
   limit: 50,
   total: 0
 });
+
 const deleteVerifyForm = reactive({
   verifyAccount: "",
   verifyPassword: ""
 });
+
 const clearVerifyForm = reactive({
   verifyAccount: "",
   verifyPassword: ""
@@ -368,14 +394,14 @@ function actionTagType(actionType) {
 }
 
 function serviceTagType(status) {
-  if (status === "up" || status === "ok") return "success";
+  if (status === "up" || status === "ok" || status === "ready") return "success";
   if (status === "degraded") return "warning";
   if (status === "down" || status === "error") return "danger";
   return "info";
 }
 
 function serviceStatusText(status) {
-  if (status === "up" || status === "ok") return "在线";
+  if (status === "up" || status === "ok" || status === "ready") return "在线";
   if (status === "degraded") return "降级";
   if (status === "down" || status === "error") return "异常";
   return "未知";
@@ -389,7 +415,7 @@ function formatProbeType(probe) {
 }
 
 function overallStatusText(status) {
-  if (status === "ok") return "整体正常";
+  if (status === "ok" || status === "ready") return "整体正常";
   if (status === "degraded") return "核心正常，存在降级";
   if (status === "down") return "核心异常";
   return "状态未知";
@@ -397,15 +423,18 @@ function overallStatusText(status) {
 
 function formatTime(raw) {
   if (!raw) return "-";
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return String(raw);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const h = String(d.getHours()).padStart(2, "0");
-  const min = String(d.getMinutes()).padStart(2, "0");
-  const sec = String(d.getSeconds()).padStart(2, "0");
-  return `${y}-${m}-${day} ${h}:${min}:${sec}`;
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) {
+    return String(raw);
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  const second = String(date.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 }
 
 function formatMethodPath(item) {
@@ -416,7 +445,9 @@ function formatMethodPath(item) {
 }
 
 function toDisplayLabel(key) {
-  if (SIGNAL_LABELS[key]) return SIGNAL_LABELS[key];
+  if (SIGNAL_LABELS[key]) {
+    return SIGNAL_LABELS[key];
+  }
   return String(key || "")
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/_/g, " ")
@@ -442,46 +473,65 @@ function formatAgeMs(ms) {
 }
 
 function normalizeSignalValue(key, value) {
-  const text = String(value || "").trim();
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+
   if (text === "true") return "正常";
   if (text === "false") return "异常";
+
   if (key === "fallbackOldestAge" && /^\d+$/.test(text)) {
     return formatAgeMs(text);
   }
-  if (["pushOldestQueuedAgeSeconds", "pushOldestRetryPendingAgeSeconds", "pushOldestDispatchingAgeSeconds"].includes(key) && /^\d+$/.test(text)) {
+
+  if (AGE_SIGNAL_KEYS.has(key) && /^\d+$/.test(text)) {
     return formatAgeSeconds(text);
   }
-  if (/^\d+$/.test(text)) return text;
+
+  if (TIME_SIGNAL_KEYS.has(key)) {
+    return formatTime(text);
+  }
+
   return text;
 }
 
 function resolveSignalType(key, rawValue) {
-  const value = String(rawValue || "").trim();
-  if (key === "status") {
-    return serviceTagType(value);
-  }
+  const value = String(rawValue ?? "").trim();
+  const numeric = Number(value);
+
   if (key.endsWith("Error") || key === "error" || key === "pushError" || key === "goApiError") {
     return "danger";
   }
-  if (["redisConnected", "goApiOk", "pushWorkerOk", "pushEnabled", "pushRunning"].includes(key)) {
+
+  if (["redisConnected", "adapterEnabled", "goApiOk", "pushWorkerOk", "pushEnabled", "pushRunning"].includes(key)) {
     return value === "true" ? "success" : "danger";
   }
+
   if (key === "redisMode") {
-    return value === "redis" ? "success" : "warning";
+    if (value === "redis") return "success";
+    if (value) return "warning";
   }
+
+  if (key === "goApiProbe") {
+    return "info";
+  }
+
   if (key === "pushCycle") {
     if (value === "ok") return "success";
     if (value === "dispatching") return "info";
     return "warning";
   }
+
   if (key === "fallbackOldestAge") {
     return "warning";
   }
+
   if ([
     "fallbackMessages",
     "fallbackChats",
     "fallbackListHits",
     "fallbackHistoryHits",
+    "fallbackRefreshWrites",
+    "fallbackRefreshMessages",
     "pushQueue",
     "pushQueued",
     "pushRetry",
@@ -492,18 +542,18 @@ function resolveSignalType(key, rawValue) {
     "pushOldestRetryPendingAgeSeconds",
     "pushOldestDispatchingAgeSeconds"
   ].includes(key)) {
-    const numeric = Number(value);
     if (!Number.isFinite(numeric) || numeric <= 0) {
       return "info";
     }
-    if (key === "pushFailed" || key === "pushConsecutiveFailures") {
+    if (["pushFailed", "pushConsecutiveFailures"].includes(key)) {
       return numeric >= 3 ? "danger" : "warning";
     }
-    if (key === "pushOldestQueuedAgeSeconds" || key === "pushOldestRetryPendingAgeSeconds" || key === "pushOldestDispatchingAgeSeconds") {
+    if (AGE_SIGNAL_KEYS.has(key)) {
       return numeric >= 900 ? "danger" : "warning";
     }
     return "warning";
   }
+
   return "info";
 }
 
@@ -519,27 +569,43 @@ function parseServiceDetail(detail) {
           key: part,
           label: part,
           value: "",
+          rawValue: "",
           type: "info"
         };
       }
+
       const key = part.slice(0, separatorIndex).trim();
       const rawValue = part.slice(separatorIndex + 1).trim();
       return {
         key,
         label: toDisplayLabel(key),
         value: normalizeSignalValue(key, rawValue),
+        rawValue,
         type: resolveSignalType(key, rawValue)
       };
     });
 }
 
 function getServiceSignals(item) {
-  return parseServiceDetail(item?.detail).slice(0, 12);
+  return parseServiceDetail(item?.detail)
+    .filter((signal) => signal.key !== "status")
+    .slice(0, 14);
+}
+
+function resolveServiceSummary(item) {
+  if (!item?.detail) return "";
+  const signals = parseServiceDetail(item.detail);
+  if (signals.length === 0) return "";
+  return signals
+    .slice(0, 4)
+    .map((signal) => `${signal.label}${signal.value ? `：${signal.value}` : ""}`)
+    .join("，");
 }
 
 async function loadLogs() {
   loading.value = true;
   loadError.value = "";
+
   try {
     const params = {
       page: pagination.page,
