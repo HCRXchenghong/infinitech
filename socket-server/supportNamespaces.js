@@ -3,16 +3,6 @@ import { normalizeMessageData } from './messagePayload.js';
 import { authorizeSupportChatAccess, normalizeChatId } from './supportAccess.js';
 import { requestBackend } from './socketIdentity.js';
 import { buildSocketRequestId } from './requestId.js';
-import {
-  recordHistoryRefreshWrite,
-  recordMessageHistoryFallback
-} from './database.js';
-
-function toPositiveInt(value, fallback) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
 function toBoolean(value, fallback) {
   const normalized = String(value || '').trim().toLowerCase();
   if (!normalized) return fallback;
@@ -27,13 +17,6 @@ export function getSupportHistoryFallbackConfig() {
   return {
     enabled: SUPPORT_HISTORY_FALLBACK_ENABLED
   };
-}
-
-function getSupportFallbackMessages(getMessages, chatId) {
-  if (!SUPPORT_HISTORY_FALLBACK_ENABLED || typeof getMessages !== 'function') {
-    return [];
-  }
-  return getMessages('support', chatId);
 }
 
 function emitSupportMessage(supportNamespace, chatId, message) {
@@ -213,83 +196,6 @@ async function markConversationReadOnBackend(socket, chatId, markAllReadFn = nul
   }
 }
 
-async function fetchConversationListFromBackend(socket) {
-  const authHeader = String(socket?.authToken || '').trim();
-  if (!authHeader) return [];
-  const requestId = buildSocketRequestId(socket, 'list-conversations');
-
-  try {
-    const { response, data } = await requestBackend('/api/messages/conversations', {
-      headers: { Authorization: authHeader },
-      requestId
-    });
-    if (response.ok && Array.isArray(data)) {
-      return data;
-    }
-    logger.warn(`会话列表从 Go 加载失败 request_id=${requestId}，回退本地列表:`, response.status, data?.error || '');
-  } catch (err) {
-    logger.warn(`会话列表从 Go 加载失败 request_id=${requestId}，回退本地列表:`, err?.message || err);
-  }
-
-  return [];
-}
-
-async function fetchMessagesFromBackend(socket, chatId, fallbackMessages = []) {
-  const authHeader = String(socket?.authToken || '').trim();
-  const normalizedChatId = normalizeChatId(chatId);
-  if (!authHeader || !normalizedChatId) return [];
-  const requestId = buildSocketRequestId(socket, 'load-messages', normalizedChatId);
-  const canUseFallback = SUPPORT_HISTORY_FALLBACK_ENABLED
-    && Array.isArray(fallbackMessages)
-    && fallbackMessages.length > 0;
-
-  try {
-    const { response, data } = await requestBackend(`/api/messages/${encodeURIComponent(normalizedChatId)}`, {
-      headers: { Authorization: authHeader },
-      requestId
-    });
-    if (response.ok && Array.isArray(data)) {
-      return data;
-    }
-    if (canUseFallback) {
-      recordMessageHistoryFallback();
-    }
-    logger.warn(`消息历史从 Go 加载失败 request_id=${requestId}，回退本地历史:`, response.status, data?.error || '');
-  } catch (err) {
-    if (canUseFallback) {
-      recordMessageHistoryFallback();
-    }
-    logger.warn(`消息历史从 Go 加载失败 request_id=${requestId}，回退本地历史:`, err?.message || err);
-  }
-
-  return canUseFallback ? fallbackMessages : [];
-}
-
-function refreshFallbackHistory(replaceMessages, chatId, messages) {
-  if (!SUPPORT_HISTORY_FALLBACK_ENABLED) {
-    return;
-  }
-
-  if (typeof replaceMessages !== 'function') {
-    return;
-  }
-
-  const normalizedChatId = normalizeChatId(chatId);
-  if (!normalizedChatId || !Array.isArray(messages)) {
-    return;
-  }
-
-  try {
-    replaceMessages('support', normalizedChatId, messages.map((message) => ({
-      ...message,
-      chatId: normalizedChatId
-    })));
-    recordHistoryRefreshWrite(messages.length);
-  } catch (err) {
-    logger.warn(`客服历史回写本地兜底库失败 chatId=${normalizedChatId}:`, err?.message || err);
-  }
-}
-
 function createTransientSupportMessageId(chatId, data, messageData, timestamp) {
   const normalizedChatId = normalizeChatId(chatId);
   const tempId = String(data?.tempId || '').trim();
@@ -447,14 +353,11 @@ export function setupSupportNamespaces({
   authMiddleware,
   addOnlineUser,
   removeOnlineUser,
-  getMessages,
   saveMessage,
   reconcileMessage,
   clearMessages,
-  replaceMessages,
   markAsRead,
-  markAllRead,
-  getUnreadCount
+  markAllRead
 }) {
   const monitorNamespace = io.of('/monitor');
   const supportNamespace = io.of('/support');
@@ -481,13 +384,6 @@ export function setupSupportNamespaces({
       logger.info(`Admin ${socket.userId} (${socket.id}) joined monitor`);
     });
 
-    socket.on('load_all_chats', () => {
-      void (async () => {
-        const chatList = await fetchConversationListFromBackend(socket);
-        socket.emit('all_chats_loaded', { chats: chatList });
-      })();
-    });
-
     socket.on('join_chat', async (data) => {
       const chatId = normalizeChatId(data?.chatId);
       if (!chatId) {
@@ -497,21 +393,6 @@ export function setupSupportNamespaces({
       socket.join(`chat_${chatId}`);
       await markConversationReadOnBackend(socket, chatId, markAllRead);
       logger.info(`Monitor admin joined chat_${chatId}`);
-    });
-
-    socket.on('load_messages', async (data) => {
-      const chatId = normalizeChatId(data?.chatId);
-      if (!chatId) {
-        emitAccessDenied(socket, 'load_messages_denied', data?.chatId);
-        return;
-      }
-      const fallbackMessages = getSupportFallbackMessages(getMessages, chatId);
-      const messages = await fetchMessagesFromBackend(socket, chatId, fallbackMessages);
-      if (messages !== fallbackMessages) {
-        refreshFallbackHistory(replaceMessages, chatId, messages);
-      }
-      socket.emit('messages_loaded', { chatId, messages });
-      await markConversationReadOnBackend(socket, chatId, markAllRead);
     });
 
     socket.on('send_message', async (data) => {
@@ -590,34 +471,6 @@ export function setupSupportNamespaces({
       socket.join(`chat_${access.chatId}`);
       await markConversationReadOnBackend(socket, access.chatId, markAllRead);
       logger.info(`${socket.userRole} ${socket.userId} (${socket.id}) joined chat_${access.chatId}`);
-    });
-
-    socket.on('load_all_chats', () => {
-      if (socket.userRole !== 'admin') {
-        socket.emit('all_chats_loaded', { chats: [] });
-        return;
-      }
-
-      void (async () => {
-        const chatList = await fetchConversationListFromBackend(socket);
-        socket.emit('all_chats_loaded', { chats: chatList });
-      })();
-    });
-
-    socket.on('load_messages', async (data) => {
-      const access = await authorizeSupportChatAccess(socket, data?.chatId);
-      if (!access.allowed) {
-        emitAccessDenied(socket, 'load_messages_denied', data?.chatId);
-        return;
-      }
-
-      const fallbackMessages = getSupportFallbackMessages(getMessages, access.chatId);
-      const messages = await fetchMessagesFromBackend(socket, access.chatId, fallbackMessages);
-      if (messages !== fallbackMessages) {
-        refreshFallbackHistory(replaceMessages, access.chatId, messages);
-      }
-      socket.emit('messages_loaded', { chatId: access.chatId, messages });
-      await markConversationReadOnBackend(socket, access.chatId, markAllRead);
     });
 
     socket.on('send_message', async (data) => {

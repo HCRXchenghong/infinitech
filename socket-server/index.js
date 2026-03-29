@@ -1,6 +1,6 @@
 import { Server } from 'socket.io';
 import { createServer } from 'http';
-import { saveMessage, getMessages, clearMessages, replaceMessages, reconcileMessage, markAsRead, markAllRead, getUnreadCount } from './database.js';
+import { saveMessage, clearMessages, reconcileMessage, markAsRead, markAllRead } from './database.js';
 import { authMiddleware, generateToken } from './auth.js';
 import { getServerStats, addOnlineUser, removeOnlineUser, getOnlineCount, getOnlineUsers } from './monitor.js';
 import Busboy from 'busboy';
@@ -595,14 +595,11 @@ await attachSocketIoRedisAdapter(io);
   authMiddleware,
   addOnlineUser,
   removeOnlineUser,
-  getMessages,
   saveMessage,
   reconcileMessage,
   clearMessages,
-  replaceMessages,
   markAsRead,
-  markAllRead,
-  getUnreadCount
+  markAllRead
 }));
 
 setupRiderNamespace({

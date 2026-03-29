@@ -293,50 +293,6 @@ export function saveMessage(chatType, chatId, messageData) {
   };
 }
 
-export function getMessages(chatType, chatId, limit = 100) {
-  const stmt = db.prepare(`
-    SELECT *,
-      COALESCE(event_timestamp, CAST(strftime('%s', created_at) AS INTEGER) * 1000) AS resolved_event_timestamp
-    FROM messages
-    WHERE chat_type = ? AND chat_id = ?
-    ORDER BY resolved_event_timestamp DESC, id DESC
-    LIMIT ?
-  `);
-
-  const rows = stmt.all(chatType, chatId, limit);
-
-  return rows.reverse().map(row => {
-    const createdAt = row.created_at || '';
-    const timestamp = resolveEventTimestamp(row.event_timestamp ?? row.resolved_event_timestamp, parseCreatedAtTimestamp(createdAt));
-    const officialIntervention = row.sender_role === 'admin' && String(row.content || '').startsWith('[官方介入]');
-    return {
-      id: row.uid || row.id,
-      legacyId: row.id,
-      uid: row.uid || '',
-      tsid: row.tsid || '',
-      chatId: row.chat_id,
-      chatUid: row.chat_uid || '',
-      sender: row.sender,
-      senderId: row.sender_id,
-      senderUid: row.sender_uid || '',
-      senderRole: row.sender_role,
-      content: row.content,
-      timestamp,
-      createdAt,
-      time: new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-      messageType: row.message_type,
-      coupon: row.coupon_data ? JSON.parse(row.coupon_data) : null,
-      order: row.order_data ? JSON.parse(row.order_data) : null,
-      imageUrl: row.image_url,
-      avatar: row.avatar || null,
-      status: row.status || 'sent',
-      readAt: row.read_at,
-      officialIntervention,
-      interventionLabel: officialIntervention ? '官方介入' : ''
-    };
-  });
-}
-
 export function markAsRead(messageId) {
   const stmt = db.prepare("UPDATE messages SET status = 'read', read_at = CURRENT_TIMESTAMP WHERE id = ? OR uid = ?");
   return stmt.run(messageId, String(messageId || ''));
@@ -347,68 +303,9 @@ export function markAllRead(chatType, chatId, readerId) {
   return stmt.run(chatType, chatId, readerId);
 }
 
-export function getUnreadCount(chatType, chatId, userId) {
-  const stmt = db.prepare("SELECT COUNT(*) as count FROM messages WHERE chat_type = ? AND chat_id = ? AND sender_id != ? AND status != 'read'");
-  return stmt.get(chatType, chatId, userId).count;
-}
-
 export function clearMessages(chatType, chatId) {
   const stmt = db.prepare('DELETE FROM messages WHERE chat_type = ? AND chat_id = ?');
   return stmt.run(chatType, chatId);
-}
-
-export function replaceMessages(chatType, chatId, list = []) {
-  const normalizedList = selectFallbackHistoryWindow(list);
-  const insertStmt = db.prepare(`
-    INSERT INTO messages (uid, tsid, chat_type, chat_id, chat_uid, sender, sender_id, sender_uid, sender_role, content, message_type, coupon_data, order_data, image_url, avatar, status, event_timestamp, created_at, read_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  const transaction = db.transaction((items) => {
-    clearMessages(chatType, chatId);
-    const seenIds = new Set();
-
-    items.forEach((message) => {
-      const ids = nextUnifiedIds(CHAT_BUCKET);
-      const timestamp = resolveEventTimestamp(message?.timestamp ?? message?.createdAt, Date.now());
-      const uid = String(message?.uid || message?.id || ids.uid);
-      if (seenIds.has(uid)) {
-        return;
-      }
-      seenIds.add(uid);
-
-      const tsid = String(message?.tsid || ids.tsid);
-      const senderId = String(message?.senderId || '');
-      insertStmt.run(
-        uid,
-        tsid,
-        chatType,
-        chatId,
-        String(message?.chatUid || message?.chat_id || message?.chatId || chatId || ''),
-        message?.sender || '',
-        senderId,
-        String(message?.senderUid || senderId),
-        message?.senderRole || 'user',
-        message?.content || '',
-        message?.messageType || 'text',
-        message?.coupon ? JSON.stringify(message.coupon) : null,
-        message?.order ? JSON.stringify(message.order) : null,
-        message?.imageUrl || null,
-        message?.avatar || null,
-        message?.status || 'sent',
-        timestamp,
-        normalizeCreatedAtForStorage(message?.createdAt, timestamp),
-        String(message?.readAt || '').trim() || null
-      );
-    });
-    pruneMessages(chatType, chatId);
-  });
-
-  return transaction(normalizedList);
-}
-
-export function recordConversationListFallback() {
-  bumpFallbackRuntimeStats('conversationListFallbackCount', 'lastConversationListFallbackAt');
 }
 
 export function recordMessageHistoryFallback() {
