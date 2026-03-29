@@ -90,6 +90,7 @@ Important boundaries:
 - unread sync now depends much more strictly on service-side read confirmation instead of local optimistic mutation
 - chat time, temporary ids, and read receipts have been normalized across active clients
 - the admin chat console no longer rewrites conversation summaries locally on incoming messages and now waits for the service conversation list refresh
+- the admin local message fallback store now uses text chat/message ids, preserves real timestamps and statuses, and prunes aggressively instead of behaving like a long-lived second fact source
 - active merchant and rider messaging entry points have been rewritten into clean UTF-8 copies so live chat, popup routing, and merchant support entry text no longer depend on mojibake-tainted legacy strings
 - the rider global message manager has been rewritten into a clean, stable implementation so popup routing and notification text no longer depend on mojibake-tainted legacy strings
 
