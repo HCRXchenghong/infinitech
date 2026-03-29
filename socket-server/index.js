@@ -1,6 +1,6 @@
 import { Server } from 'socket.io';
 import { createServer } from 'http';
-import { db, saveMessage, getMessages, clearMessages, replaceMessages, reconcileMessage, markAsRead, markAllRead, getUnreadCount } from './database.js';
+import { saveMessage, getMessages, clearMessages, replaceMessages, reconcileMessage, markAsRead, markAllRead, getUnreadCount } from './database.js';
 import { authMiddleware, generateToken } from './auth.js';
 import { getServerStats, addOnlineUser, removeOnlineUser, getOnlineCount, getOnlineUsers } from './monitor.js';
 import Busboy from 'busboy';
@@ -593,7 +593,6 @@ await attachSocketIoRedisAdapter(io);
   authMiddleware,
   addOnlineUser,
   removeOnlineUser,
-  db,
   getMessages,
   saveMessage,
   reconcileMessage,

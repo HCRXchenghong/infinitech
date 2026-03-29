@@ -13,8 +13,6 @@ function toPositiveInt(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-const FALLBACK_CHAT_LIST_LIMIT = toPositiveInt(process.env.SOCKET_FALLBACK_CHAT_LIST_LIMIT, 100);
-
 function emitSupportMessage(supportNamespace, chatId, message) {
   const roomName = `chat_${chatId}`;
   const room = supportNamespace.adapter.rooms.get(roomName);
@@ -192,60 +190,6 @@ async function markConversationReadOnBackend(socket, chatId, markAllReadFn = nul
   }
 }
 
-function buildSupportChatList(db, options = {}) {
-  const defaultRole = options.defaultRole || 'user';
-  const fallbackRoleFromRow = Boolean(options.fallbackRoleFromRow);
-  const chats = db.prepare(`
-    SELECT
-      m.chat_id,
-      m.sender,
-      m.sender_id,
-      m.sender_role,
-      m.content,
-      m.message_type,
-      m.created_at,
-      COALESCE(m.event_timestamp, CAST(strftime('%s', m.created_at) AS INTEGER) * 1000) AS message_timestamp
-    FROM messages m
-    WHERE m.chat_type = 'support'
-      AND m.id = (
-        SELECT m2.id
-        FROM messages m2
-        WHERE m2.chat_type = 'support' AND m2.chat_id = m.chat_id
-        ORDER BY COALESCE(m2.event_timestamp, CAST(strftime('%s', m2.created_at) AS INTEGER) * 1000) DESC, m2.id DESC
-        LIMIT 1
-      )
-    ORDER BY message_timestamp DESC, m.id DESC
-    LIMIT ?
-  `).all(FALLBACK_CHAT_LIST_LIMIT);
-
-  return chats.map((row) => {
-    const nameRow = db.prepare(`
-      SELECT sender, sender_id, sender_role, avatar FROM messages
-      WHERE chat_type = 'support' AND chat_id = ? AND sender_role != 'admin'
-      ORDER BY COALESCE(event_timestamp, CAST(strftime('%s', created_at) AS INTEGER) * 1000) DESC, id DESC LIMIT 1
-    `).get(row.chat_id);
-
-    const fallbackTimestamp = Number.isFinite(Number(row.message_timestamp))
-      ? Number(row.message_timestamp)
-      : Date.parse(String(row.created_at || '').replace(' ', 'T')) || Date.now();
-
-    return {
-      id: row.chat_id,
-      name: nameRow ? nameRow.sender : row.sender,
-      phone: nameRow ? nameRow.sender_id : (row.sender_id || ''),
-      role: nameRow
-        ? nameRow.sender_role
-        : (fallbackRoleFromRow ? (row.sender_role || defaultRole) : defaultRole),
-      avatar: nameRow ? nameRow.avatar : null,
-      lastMessage: resolveSupportPreview(row.message_type, row.content),
-      time: new Date(fallbackTimestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-      unread: 0,
-      online: false,
-      source: 'fallback'
-    };
-  });
-}
-
 async function fetchConversationListFromBackend(socket) {
   const authHeader = String(socket?.authToken || '').trim();
   if (!authHeader) return [];
@@ -395,7 +339,6 @@ export function setupSupportNamespaces({
   authMiddleware,
   addOnlineUser,
   removeOnlineUser,
-  db,
   getMessages,
   saveMessage,
   reconcileMessage,
