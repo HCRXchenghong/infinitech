@@ -107,6 +107,7 @@ Important boundaries:
 - release preflight blocks obviously unsafe push worker states
 - production-like environments now reject `PUSH_DISPATCH_PROVIDER=log` when dispatch is enabled
 - the webhook push path now supports optional auth headers, signed payloads, and logical rejection handling instead of treating every HTTP 200 as success
+- production-like webhook dispatch must now be signed or authenticated; unsigned and unauthenticated webhook delivery is blocked at config validation and release preflight
 
 ### Homepage operations
 

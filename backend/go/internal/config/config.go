@@ -236,6 +236,9 @@ func (c *Config) Validate() error {
 		if (c.Push.WebhookAuthHeader == "") != (c.Push.WebhookAuthValue == "") {
 			return fmt.Errorf("PUSH_DISPATCH_WEBHOOK_AUTH_HEADER and PUSH_DISPATCH_WEBHOOK_AUTH_VALUE must be configured together")
 		}
+		if isProductionLikeEnv(c.Env) && c.Push.WebhookSecret == "" && c.Push.WebhookAuthValue == "" {
+			return fmt.Errorf("production webhook push dispatch requires PUSH_DISPATCH_WEBHOOK_SECRET or PUSH_DISPATCH_WEBHOOK_AUTH_HEADER/PUSH_DISPATCH_WEBHOOK_AUTH_VALUE")
+		}
 	}
 	if c.Push.RequestTimeout <= 0 {
 		return fmt.Errorf("PUSH_DISPATCH_TIMEOUT_SECONDS must be greater than 0")

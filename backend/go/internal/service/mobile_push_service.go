@@ -33,18 +33,20 @@ type MobilePushService struct {
 }
 
 type MobilePushWorkerStatus struct {
-	Enabled             bool                    `json:"enabled"`
-	Running             bool                    `json:"running"`
-	Provider            string                  `json:"provider"`
-	PollIntervalSeconds int                     `json:"pollIntervalSeconds"`
-	BatchSize           int                     `json:"batchSize"`
-	LastCycleStatus     string                  `json:"lastCycleStatus"`
-	LastProcessedCount  int                     `json:"lastProcessedCount"`
-	LastCycleAt         string                  `json:"lastCycleAt,omitempty"`
-	LastSuccessAt       string                  `json:"lastSuccessAt,omitempty"`
-	ConsecutiveFailures int                     `json:"consecutiveFailures"`
-	LastError           string                  `json:"lastError,omitempty"`
-	Queue               MobilePushQueueSnapshot `json:"queue"`
+	Enabled                 bool                    `json:"enabled"`
+	Running                 bool                    `json:"running"`
+	Provider                string                  `json:"provider"`
+	WebhookAuthConfigured   bool                    `json:"webhookAuthConfigured"`
+	WebhookSignatureEnabled bool                    `json:"webhookSignatureEnabled"`
+	PollIntervalSeconds     int                     `json:"pollIntervalSeconds"`
+	BatchSize               int                     `json:"batchSize"`
+	LastCycleStatus         string                  `json:"lastCycleStatus"`
+	LastProcessedCount      int                     `json:"lastProcessedCount"`
+	LastCycleAt             string                  `json:"lastCycleAt,omitempty"`
+	LastSuccessAt           string                  `json:"lastSuccessAt,omitempty"`
+	ConsecutiveFailures     int                     `json:"consecutiveFailures"`
+	LastError               string                  `json:"lastError,omitempty"`
+	Queue                   MobilePushQueueSnapshot `json:"queue"`
 }
 
 type MobilePushQueueSnapshot struct {
@@ -363,15 +365,21 @@ func (s *MobilePushService) WorkerStatusSnapshot(ctx context.Context) MobilePush
 	}
 
 	snapshot := MobilePushWorkerStatus{
-		Enabled:             s.dispatchEnabled,
-		Running:             running,
-		Provider:            provider,
-		PollIntervalSeconds: int(s.pollInterval / time.Second),
-		BatchSize:           s.dispatchBatchSize,
-		LastCycleStatus:     lastCycleStatus,
-		LastProcessedCount:  lastProcessedCount,
-		ConsecutiveFailures: consecutiveFailure,
-		LastError:           strings.TrimSpace(lastError),
+		Enabled:                 s.dispatchEnabled,
+		Running:                 running,
+		Provider:                provider,
+		WebhookAuthConfigured:   false,
+		WebhookSignatureEnabled: false,
+		PollIntervalSeconds:     int(s.pollInterval / time.Second),
+		BatchSize:               s.dispatchBatchSize,
+		LastCycleStatus:         lastCycleStatus,
+		LastProcessedCount:      lastProcessedCount,
+		ConsecutiveFailures:     consecutiveFailure,
+		LastError:               strings.TrimSpace(lastError),
+	}
+	if webhookProvider, ok := s.dispatchProvider.(*pushWebhookDispatcher); ok {
+		snapshot.WebhookAuthConfigured = strings.TrimSpace(webhookProvider.authHeader) != "" && strings.TrimSpace(webhookProvider.authValue) != ""
+		snapshot.WebhookSignatureEnabled = strings.TrimSpace(webhookProvider.secret) != ""
 	}
 	if !lastCycleAt.IsZero() {
 		snapshot.LastCycleAt = lastCycleAt.Format(time.RFC3339)

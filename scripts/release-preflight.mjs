@@ -206,6 +206,13 @@ function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStale
   if (provider === 'log') {
     failures.push('push_provider=log_not_allowed');
   }
+  if (
+    provider === 'webhook'
+    && worker.webhookAuthConfigured !== true
+    && worker.webhookSignatureEnabled !== true
+  ) {
+    failures.push('push_webhook=unsigned_and_unauthenticated');
+  }
 
   const consecutiveFailures = parseIntegerEnv(worker.consecutiveFailures, 0);
   if (maxConsecutiveFailures >= 0 && consecutiveFailures > maxConsecutiveFailures) {

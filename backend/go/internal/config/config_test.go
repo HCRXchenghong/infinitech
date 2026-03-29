@@ -159,9 +159,23 @@ func TestValidateAllowsProductionWebhookPushProviderWhenConfigured(t *testing.T)
 	cfg.Push.DispatchEnabled = true
 	cfg.Push.DispatchProvider = "webhook"
 	cfg.Push.WebhookURL = "https://push-gateway.example.com/dispatch"
+	cfg.Push.WebhookSecret = "test-secret"
 
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("expected production webhook push provider to pass, got %v", err)
+	}
+}
+
+func TestValidateRejectsProductionWebhookWithoutAuthOrSigning(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.Env = "production"
+	cfg.Redis.Required = true
+	cfg.Push.DispatchEnabled = true
+	cfg.Push.DispatchProvider = "webhook"
+	cfg.Push.WebhookURL = "https://push-gateway.example.com/dispatch"
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected unsigned and unauthenticated production webhook push provider to be rejected")
 	}
 }
 
