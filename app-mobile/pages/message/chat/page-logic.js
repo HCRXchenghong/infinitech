@@ -217,9 +217,6 @@ export default {
       panelType: '',
       emojis: DEFAULT_EMOJIS,
       supportTitle: supportRuntime.title,
-      supportWelcomeMessage: supportRuntime.welcomeMessage,
-      merchantWelcomeMessage: supportRuntime.merchantWelcomeMessage,
-      riderWelcomeMessage: supportRuntime.riderWelcomeMessage,
       hasExplicitTitle: false,
       historyFromLocalFallback: false,
       socket: null,
@@ -256,7 +253,6 @@ export default {
         await this.ensureConversationExists()
         await this.loadServerHistory()
         this.initSocket()
-        this.seedWelcomeMessage()
         this.$nextTick(() => this.scrollToBottom())
       })
   },
@@ -288,9 +284,6 @@ export default {
     async loadSupportRuntimeConfig() {
       const supportRuntime = await loadSupportRuntimeSettings()
       this.supportTitle = supportRuntime.title
-      this.supportWelcomeMessage = supportRuntime.welcomeMessage
-      this.merchantWelcomeMessage = supportRuntime.merchantWelcomeMessage
-      this.riderWelcomeMessage = supportRuntime.riderWelcomeMessage
 
       if (!this.hasExplicitTitle && this.isSupportConversation()) {
         this.title = this.supportTitle
@@ -353,20 +346,6 @@ export default {
         targetName: this.title || this.getConversationTitle(),
         targetAvatar: this.otherAvatar || ''
       }
-    },
-
-    seedWelcomeMessage() {
-      if (this.messages.length > 0) return
-
-      if (this.role === 'rider') {
-        this.addMessage('other', this.riderWelcomeMessage, 'text', true)
-        return
-      }
-      if (this.role === 'shop') {
-        this.addMessage('other', this.merchantWelcomeMessage, 'text', true)
-        return
-      }
-      this.addMessage('other', this.supportWelcomeMessage, 'text', true)
     },
 
     getMessageStorageKey() {
