@@ -482,27 +482,6 @@ export function useChatConsole(options = {}) {
       scheduleRefreshChats();
     });
 
-    socket.on('messages_loaded', async (data) => {
-      const loadedChatId = normalizeChatId(data.chatId);
-      if (!selectedChat.value || loadedChatId !== normalizeChatId(selectedChat.value.id)) return;
-      if (messages.value.length > 0 && !messagesFromLocalFallback.value) return;
-
-      messages.value = mapLoadedMessages(data.messages || []);
-      messagesFromLocalFallback.value = false;
-      (data.messages || []).forEach((msg) => {
-        hasSeenMessage(loadedChatId, msg.id);
-      });
-
-      try {
-        await saveLoadedMessages(messageDB, loadedChatId, data.messages || []);
-      } catch (error) {
-        console.error('保存消息失败:', error);
-      }
-
-      await syncReadState(loadedChatId);
-      nextTick(() => scrollToBottom());
-    });
-
     socket.on('message_sent', (data) => {
       const selectedId = normalizeChatId(selectedChat.value?.id);
       if (data?.chatId && normalizeChatId(data.chatId) !== selectedId) return;
@@ -552,7 +531,6 @@ export function useChatConsole(options = {}) {
     socketRef.off('connect');
     socketRef.off('all_chats_loaded');
     socketRef.off('new_message');
-    socketRef.off('messages_loaded');
     socketRef.off('message_sent');
     socketRef.off('message_read');
     socketRef.off('all_messages_read');

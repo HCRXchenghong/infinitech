@@ -434,17 +434,6 @@ function connectSocket(token: string) {
     })
   })
 
-  sock.on('messages_loaded', (payload: any) => {
-    if (!payload || String(payload.chatId) !== String(chatId.value)) return
-    if (messages.value.length > 0 && !historyFromLocalFallback.value) return
-    const list = Array.isArray(payload.messages) ? payload.messages : []
-    messages.value = normalizeHistoryMessages(list)
-    historyFromLocalFallback.value = false
-    persistLocalMessages()
-    syncReadState()
-    scrollToBottom()
-  })
-
   sock.on('new_message', (payload: any) => {
     if (!payload || String(payload.chatId) !== String(chatId.value)) return
     const normalized = toViewMessage(payload)

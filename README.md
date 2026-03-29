@@ -109,6 +109,8 @@
 - `chat.db` 已继续降级为短期 emergency buffer，并进一步收紧为默认每会话 200 条、默认保留 14 天；客服会话列表已不再从本地 fallback 生成
 - `socket-server` 在缺少认证信息时已不再回退读取本地客服历史，避免未鉴权状态继续消费旧 fallback 数据
 - `socket-server` 默认关闭客服历史 fallback 时，客服发送、历史回写、已读同步和清空会话也不再维护本地 SQLite 状态，进一步把 `chat.db` 收成显式开关下的应急缓冲
+- `socket-server` 的骑手直聊转发也不再先把消息落进服务端本地 SQLite 再同步 Go，而是直接以瞬时消息体同步权威消息服务后广播，继续削弱 `chat.db` 的事实源角色
+- 双端主聊天页、双端客服页、商家聊天页、骑手客服页和后台客服工作台已经停止依赖 `load_messages / messages_loaded` 这条旧 socket 历史拉取路径，默认历史只认 HTTP 服务端消息接口，socket 只保留实时增量和回执
 
 ### 5.3 主链路去假数据
 

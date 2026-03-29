@@ -200,9 +200,6 @@ export default {
           userId: this.userId,
           role: 'user'
         })
-        sock.emit('load_messages', {
-          chatId: this.chatId
-        })
       })
 
       sock.on('new_message', (payload) => {
@@ -220,18 +217,6 @@ export default {
             this.scrollToBottom()
           })
           this.syncReadState()
-        }
-      })
-
-      sock.on('messages_loaded', (payload) => {
-        if (payload && String(payload.chatId || '') === String(this.chatId) && payload.messages) {
-          this.messages = payload.messages.map((m) =>
-            this.normalizeIncomingMessage(m, m.senderRole === 'user')
-          )
-          this.syncReadState()
-          this.$nextTick(() => {
-            this.scrollToBottom()
-          })
         }
       })
 

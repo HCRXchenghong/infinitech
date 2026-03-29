@@ -595,18 +595,6 @@ export default {
         })
       })
 
-      sock.on('messages_loaded', (payload) => {
-        if (!payload || String(payload.chatId) !== String(this.roomId)) return
-        if (this.messages.length > 0 && !this.historyFromLocalFallback) return
-
-        const list = Array.isArray(payload.messages) ? payload.messages : []
-        this.messages = this.normalizeHistoryMessages(list)
-        this.historyFromLocalFallback = false
-        this.persistLocalMessages()
-        this.syncReadState()
-        this.$nextTick(() => this.scrollToBottom())
-      })
-
       sock.on('new_message', (payload) => {
         if (!payload || String(payload.chatId) !== String(this.roomId)) return
 

@@ -259,10 +259,6 @@ export default Vue.extend({
         uni.$emit('socket:new_message', payload)
       })
 
-      sock.on('messages_loaded', (payload: any) => {
-        uni.$emit('socket:messages_loaded', payload)
-      })
-
       sock.on('message_sent', (data: any) => {
         uni.$emit('socket:message_sent', data)
       })

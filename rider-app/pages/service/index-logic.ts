@@ -244,7 +244,6 @@ export default Vue.extend({
      */
     bindSocketEvents() {
       uni.$on('socket:new_message', this.onNewMessage)
-      uni.$on('socket:messages_loaded', this.onMessagesLoaded)
       uni.$on('socket:message_sent', this.onMessageSent)
       uni.$on('socket:message_read', this.onMessageRead)
       uni.$on('socket:all_messages_read', this.onAllMessagesRead)
@@ -254,7 +253,6 @@ export default Vue.extend({
 
     unbindSocketEvents() {
       uni.$off('socket:new_message', this.onNewMessage)
-      uni.$off('socket:messages_loaded', this.onMessagesLoaded)
       uni.$off('socket:message_sent', this.onMessageSent)
       uni.$off('socket:message_read', this.onMessageRead)
       uni.$off('socket:all_messages_read', this.onAllMessagesRead)
@@ -280,11 +278,7 @@ export default Vue.extend({
     },
 
     requestLoadMessages() {
-      const joined = this.ensureJoinChat()
-      if (joined && this.messages.length === 0) {
-        return this.socketEmit('load_messages', { chatId: this.chatId })
-      }
-      return joined
+      return this.ensureJoinChat()
     },
 
     ensureJoinChat() {
@@ -366,7 +360,6 @@ export default Vue.extend({
       if (payload && payload.namespace && payload.namespace !== 'support') return
       this.ensureJoinChat()
       void this.loadServerHistory()
-      this.requestLoadMessages()
       this.stopLoadRetry()
     },
 
@@ -375,23 +368,6 @@ export default Vue.extend({
       this.startLoadRetry()
     },
     ...serviceDataMethods,
-
-    onMessagesLoaded(payload: any) {
-      if (!payload || String(payload.chatId) !== String(this.chatId)) return
-      if (!Array.isArray(payload.messages)) return
-      if (this.messages.length > 0 && !this.historyFromLocalFallback) {
-        void this.syncReadState()
-        return
-      }
-      this.messages = this.normalizeHistoryMessages(payload.messages)
-      this.historyFromLocalFallback = false
-      void this.replaceCachedHistory(payload.messages)
-        .catch((error: any) => {
-          console.error('[RiderService] 保存服务端消息缓存失败:', error)
-        })
-      this.$nextTick(() => { this.scrollToBottom() })
-      void this.syncReadState()
-    },
 
     onNewMessage(payload: any) {
       if (!payload || String(payload.chatId) !== String(this.chatId)) return

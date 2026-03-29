@@ -609,9 +609,7 @@ setupRiderNamespace({
   io,
   authMiddleware,
   addOnlineUser,
-  removeOnlineUser,
-  saveMessage,
-  reconcileMessage
+  removeOnlineUser
 });
 
 setInterval(async () => {

@@ -63,16 +63,29 @@ function ensureSocketRole(socket, expectedRole, eventName) {
   return false;
 }
 
-function saveAndBuildRiderMessage(saveMessage, chatId, messageInput, socket) {
+function createTransientRiderMessageId(chatId, messageInput, socket, timestamp) {
+  const explicitTempId = String(messageInput?.tempId || '').trim();
+  if (explicitTempId) {
+    return `transient:${chatId}:${explicitTempId}`;
+  }
+
+  const senderRole = String(socket?.userRole || messageInput?.senderRole || 'unknown').trim() || 'unknown';
+  const senderId = String(socket?.userId || messageInput?.senderId || 'anonymous').trim() || 'anonymous';
+  const messageType = String(messageInput?.messageType || 'text').trim() || 'text';
+  return `transient:${chatId}:${senderRole}:${senderId}:${messageType}:${timestamp}`;
+}
+
+function buildTransientRiderMessage(chatId, messageInput, socket) {
   const messageData = normalizeMessageData(messageInput, socket);
-  const result = saveMessage('rider_chat', chatId, messageData);
-  const timestamp = resolveMessageTimestamp(result?.timestamp ?? result?.createdAt, Date.now());
-  const createdAt = String(result?.createdAt || '');
+  const timestamp = Date.now();
+  const createdAt = new Date(timestamp).toISOString();
+  const transientId = createTransientRiderMessageId(chatId, messageInput, socket, timestamp);
   return {
-    id: result.uid || result.lastInsertRowid,
-    legacyId: result.lastInsertRowid,
-    uid: result.uid || '',
-    tsid: result.tsid || '',
+    id: transientId,
+    legacyId: '',
+    uid: '',
+    tsid: '',
+    externalMessageId: transientId,
     chatId,
     sender: messageData.sender,
     senderId: messageData.senderId,
@@ -140,8 +153,6 @@ async function syncRiderMessageToBackend(socket, message, target = {}) {
 async function relayMessageToRider({
   socket,
   riderNamespace,
-  saveMessage,
-  reconcileMessage,
   data,
   fromType,
   senderDefault,
@@ -154,12 +165,13 @@ async function relayMessageToRider({
   }
 
   const chatId = generateRiderChatId(riderId, socket.userId, fromType);
-  const localMessage = saveAndBuildRiderMessage(saveMessage, chatId, {
+  const localMessage = buildTransientRiderMessage(chatId, {
     chatId,
     content: data?.content,
     sender: data?.sender || senderDefault,
     messageType: data?.messageType || 'text',
-    avatar: data?.avatar || ''
+    avatar: data?.avatar || '',
+    tempId: data?.tempId
   }, socket);
 
   const syncedMessage = await syncRiderMessageToBackend(socket, localMessage, {
@@ -171,16 +183,13 @@ async function relayMessageToRider({
   });
 
   const message = syncedMessage || localMessage;
-  if (syncedMessage && typeof reconcileMessage === 'function') {
-    reconcileMessage('rider_chat', chatId, localMessage.id, localMessage.legacyId, syncedMessage);
-  }
   riderNamespace.to(`rider_${riderId}`).emit(eventName, message);
   emitMessageSentAck(socket, message, data?.tempId);
 
   logger.info(`Rider relay ${message.senderRole} ${message.senderId} -> rider ${riderId}, chatId: ${chatId}`);
 }
 
-async function relayRiderMessage({ socket, riderNamespace, saveMessage, reconcileMessage, data }) {
+async function relayRiderMessage({ socket, riderNamespace, data }) {
   const targetId = String(data?.targetId || '').trim();
   const targetType = String(data?.targetType || '').trim().toLowerCase();
   if (!targetId || !['merchant', 'user'].includes(targetType)) {
@@ -189,12 +198,13 @@ async function relayRiderMessage({ socket, riderNamespace, saveMessage, reconcil
   }
 
   const chatId = generateRiderChatId(socket.userId, targetId, targetType);
-  const localMessage = saveAndBuildRiderMessage(saveMessage, chatId, {
+  const localMessage = buildTransientRiderMessage(chatId, {
     chatId,
     content: data?.content,
     sender: data?.sender || '骑手',
     messageType: data?.messageType || 'text',
-    avatar: data?.avatar || ''
+    avatar: data?.avatar || '',
+    tempId: data?.tempId
   }, socket);
 
   const syncedMessage = await syncRiderMessageToBackend(socket, localMessage, {
@@ -206,10 +216,6 @@ async function relayRiderMessage({ socket, riderNamespace, saveMessage, reconcil
   });
 
   const message = syncedMessage || localMessage;
-  if (syncedMessage && typeof reconcileMessage === 'function') {
-    reconcileMessage('rider_chat', chatId, localMessage.id, localMessage.legacyId, syncedMessage);
-  }
-
   if (targetType === 'merchant') {
     riderNamespace.to(`merchant_${targetId}`).emit('rider_message', message);
   } else {
@@ -224,9 +230,7 @@ export function setupRiderNamespace({
   io,
   authMiddleware,
   addOnlineUser,
-  removeOnlineUser,
-  saveMessage,
-  reconcileMessage
+  removeOnlineUser
 }) {
   const riderNamespace = io.of('/rider');
   riderNamespace.use(authMiddleware);
@@ -253,8 +257,6 @@ export function setupRiderNamespace({
       await relayMessageToRider({
         socket,
         riderNamespace,
-        saveMessage,
-        reconcileMessage,
         data,
         fromType: 'merchant',
         senderDefault: '商家',
@@ -270,8 +272,6 @@ export function setupRiderNamespace({
       await relayMessageToRider({
         socket,
         riderNamespace,
-        saveMessage,
-        reconcileMessage,
         data,
         fromType: 'user',
         senderDefault: '用户',
@@ -287,8 +287,6 @@ export function setupRiderNamespace({
       await relayRiderMessage({
         socket,
         riderNamespace,
-        saveMessage,
-        reconcileMessage,
         data
       });
     });
