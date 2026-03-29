@@ -120,6 +120,7 @@ Important boundaries:
 - production-like webhook dispatch must now use `https` and be signed or authenticated; insecure, unsigned, and unauthenticated webhook delivery is blocked at config validation and release preflight
 - production-like webhook dispatch is now also blocked from targeting localhost, private IP ranges, and obvious internal-only hostnames
 - the push worker now has a first real vendor-grade provider path for FCM HTTP v1, instead of only `log / webhook`
+- the push dispatcher now treats provider rejections and obvious client/auth HTTP failures as terminal errors instead of blindly retrying them into queue buildup
 - socket readiness, BFF health aggregation, and release preflight no longer carry obsolete runtime fallback-buffer assertions after the SQLite history path was removed
 
 ### Homepage operations

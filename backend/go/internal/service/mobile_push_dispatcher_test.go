@@ -214,6 +214,64 @@ func TestMobilePushServiceDispatchDueDeliveriesWebhookRejectsLogicalFailure(t *t
 	}
 }
 
+func TestMobilePushServiceDispatchDueDeliveriesWebhookRejectsWithoutRetry(t *testing.T) {
+	ctx := context.Background()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":false,"code":"invalid_signature","message":"signature mismatch"}`))
+	}))
+	defer server.Close()
+
+	svc, db := newMobilePushServiceForDispatchTest(t, MobilePushOptions{
+		DispatchEnabled: true,
+		ProviderName:    "webhook",
+		WebhookURL:      server.URL,
+		RequestTimeout:  2 * time.Second,
+		BatchSize:       10,
+		MaxRetries:      5,
+		RetryBackoff:    time.Minute,
+	})
+
+	delivery := repository.PushDelivery{
+		MessageID:   "26032700000013",
+		UserID:      "1301",
+		UserType:    "merchant",
+		DeviceToken: "token-13",
+		AppEnv:      "prod",
+		EventType:   "admin_push_message",
+		Status:      "queued",
+		Payload:     `{"messageId":"26032700000013","title":"Reject","content":"Body"}`,
+	}
+	if err := db.Create(&delivery).Error; err != nil {
+		t.Fatalf("create delivery failed: %v", err)
+	}
+
+	processed, err := svc.dispatchDueDeliveries(ctx, 10)
+	if err != nil {
+		t.Fatalf("dispatchDueDeliveries failed: %v", err)
+	}
+	if processed != 1 {
+		t.Fatalf("expected processed count 1, got %d", processed)
+	}
+
+	var stored repository.PushDelivery
+	if err := db.Where("id = ?", delivery.ID).Take(&stored).Error; err != nil {
+		t.Fatalf("query stored delivery failed: %v", err)
+	}
+	if stored.Status != "failed" {
+		t.Fatalf("expected failed status, got %q", stored.Status)
+	}
+	if stored.RetryCount != 1 {
+		t.Fatalf("expected retry_count 1, got %d", stored.RetryCount)
+	}
+	if stored.NextRetryAt != nil {
+		t.Fatalf("expected no next_retry_at for provider rejection, got %+v", stored.NextRetryAt)
+	}
+	if stored.ErrorCode != "invalid_signature" {
+		t.Fatalf("expected invalid_signature error code, got %q", stored.ErrorCode)
+	}
+}
+
 func TestMobilePushServiceDispatchDueDeliveriesRetryAndFail(t *testing.T) {
 	ctx := context.Background()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -299,6 +357,63 @@ func TestMobilePushServiceDispatchDueDeliveriesRetryAndFail(t *testing.T) {
 	}
 	if secondAttempt.DispatchProvider != "webhook" {
 		t.Fatalf("expected dispatch provider webhook, got %q", secondAttempt.DispatchProvider)
+	}
+}
+
+func TestMobilePushServiceDispatchDueDeliveriesDoesNotRetryHTTPClientErrors(t *testing.T) {
+	ctx := context.Background()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	svc, db := newMobilePushServiceForDispatchTest(t, MobilePushOptions{
+		DispatchEnabled: true,
+		ProviderName:    "webhook",
+		WebhookURL:      server.URL,
+		RequestTimeout:  2 * time.Second,
+		BatchSize:       10,
+		MaxRetries:      3,
+		RetryBackoff:    time.Minute,
+	})
+
+	delivery := repository.PushDelivery{
+		MessageID:   "26032700000023",
+		UserID:      "2301",
+		UserType:    "admin",
+		DeviceToken: "token-23",
+		AppEnv:      "prod",
+		EventType:   "admin_push_message",
+		Status:      "queued",
+		Payload:     `{"messageId":"26032700000023","title":"Auth","content":"Body"}`,
+	}
+	if err := db.Create(&delivery).Error; err != nil {
+		t.Fatalf("create delivery failed: %v", err)
+	}
+
+	processed, err := svc.dispatchDueDeliveries(ctx, 10)
+	if err != nil {
+		t.Fatalf("dispatchDueDeliveries failed: %v", err)
+	}
+	if processed != 1 {
+		t.Fatalf("expected processed count 1, got %d", processed)
+	}
+
+	var stored repository.PushDelivery
+	if err := db.Where("id = ?", delivery.ID).Take(&stored).Error; err != nil {
+		t.Fatalf("query stored delivery failed: %v", err)
+	}
+	if stored.Status != "failed" {
+		t.Fatalf("expected failed status, got %q", stored.Status)
+	}
+	if stored.RetryCount != 1 {
+		t.Fatalf("expected retry_count 1, got %d", stored.RetryCount)
+	}
+	if stored.NextRetryAt != nil {
+		t.Fatalf("expected no next_retry_at for http 401, got %+v", stored.NextRetryAt)
+	}
+	if stored.ErrorCode != "http_401" {
+		t.Fatalf("expected http_401 error code, got %q", stored.ErrorCode)
 	}
 }
 

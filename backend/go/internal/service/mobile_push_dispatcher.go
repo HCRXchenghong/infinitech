@@ -520,7 +520,7 @@ func (s *MobilePushService) dispatchSingleDelivery(ctx context.Context, delivery
 	nextRetryCount := delivery.RetryCount + 1
 	nextStatus := "failed"
 	var nextRetryAt *time.Time
-	if nextRetryCount <= s.dispatchMaxRetries {
+	if shouldRetryPushDispatch(err) && nextRetryCount <= s.dispatchMaxRetries {
 		retryAt := now.Add(s.retryBackoff)
 		nextRetryAt = &retryAt
 		nextStatus = "retry_pending"
@@ -607,6 +607,29 @@ func classifyPushDispatchError(err error) (string, string) {
 		return code, strings.TrimSpace(rejectedErr.message)
 	}
 	return "dispatch_error", strings.TrimSpace(err.Error())
+}
+
+func shouldRetryPushDispatch(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if _, ok := err.(*pushDispatchRejectedError); ok {
+		return false
+	}
+
+	if httpErr, ok := err.(*pushDispatchHTTPError); ok {
+		switch {
+		case httpErr.statusCode == http.StatusTooManyRequests:
+			return true
+		case httpErr.statusCode >= 500:
+			return true
+		default:
+			return false
+		}
+	}
+
+	return true
 }
 
 func firstNonNil(values ...interface{}) interface{} {
