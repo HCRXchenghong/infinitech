@@ -4,7 +4,7 @@
       <view class="hero">
         <view class="hero-left" @tap="selectShop">
           <text class="shop-name">{{ currentShop?.name || '未绑定店铺' }}</text>
-          <text class="shop-meta">{{ currentShop?.businessCategory || '请选择店铺' }} · {{ currentShop?.phone || '--' }}</text>
+          <text class="shop-meta">{{ currentShop?.businessCategory || '请选择店铺' }} 路 {{ currentShop?.phone || '--' }}</text>
         </view>
 
         <view class="hero-right">
@@ -20,7 +20,7 @@
 
       <view class="chat-entry" @tap="openSupportChat">
         <text class="chat-entry-title">{{ supportTitle }}</text>
-        <text class="chat-entry-desc">管理端 Web / App 同步服务中</text>
+        <text class="chat-entry-desc">商家端与客服工作台实时同步</text>
       </view>
 
       <view class="stats-grid">
@@ -72,7 +72,14 @@ import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { fetchAfterSales, fetchOrders, fetchProducts, updateShop } from '@/shared-ui/api'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/shared-ui/support-runtime'
-import { ensureMerchantShops, formatMoney, getCurrentShopId, getMerchantId, orderStatusText, setCurrentShopId } from '@/shared-ui/merchantContext'
+import {
+  ensureMerchantShops,
+  formatMoney,
+  getCurrentShopId,
+  getMerchantId,
+  orderStatusText,
+  setCurrentShopId
+} from '@/shared-ui/merchantContext'
 
 const refreshing = ref(false)
 const switching = ref(false)
@@ -101,7 +108,7 @@ const stats = computed(() => {
     todayRevenue: formatMoney(todayRevenue),
     todoCount,
     deliveringCount,
-    afterSalesCount,
+    afterSalesCount
   }
 })
 
@@ -143,7 +150,7 @@ async function loadData(force = false) {
   const [orderRes, productRes, afterSalesRes]: any[] = await Promise.all([
     fetchOrders({ page: 1, limit: 200 }),
     fetchProducts({ shopId }),
-    fetchAfterSales({ page: 1, limit: 200 }),
+    fetchAfterSales({ page: 1, limit: 200 })
   ])
 
   const allOrders = Array.isArray(orderRes?.orders) ? orderRes.orders : []
@@ -198,7 +205,7 @@ function selectShop() {
       if (!selected) return
       setCurrentShopId(selected.id)
       await refreshAll()
-    },
+    }
   })
 }
 
@@ -233,7 +240,7 @@ function maybePromptCreateShop() {
     success: (res: any) => {
       if (!res.confirm) return
       uni.navigateTo({ url: '/pages/store/create' })
-    },
+    }
   })
 }
 

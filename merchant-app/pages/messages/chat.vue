@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="nav">
-      <text class="nav-btn" @tap="goBack">‹</text>
+      <text class="nav-btn" @tap="goBack">&lt;</text>
       <view class="nav-main">
         <text class="nav-title">{{ chatTitle }}</text>
         <text class="nav-sub">{{ navSubtitle }}</text>
@@ -101,14 +101,14 @@ const localMessageSeed = ref(0)
 
 const navSubtitle = computed(() => {
   if (chatRole.value === 'admin') return `${supportTitle.value}会话`
-  if (chatRole.value === 'rider') return orderId.value ? `订单#${orderId.value}` : '骑手会话'
-  return orderId.value ? `订单#${orderId.value}` : '用户会话'
+  if (chatRole.value === 'rider') return orderId.value ? `订单 #${orderId.value}` : '骑手会话'
+  return orderId.value ? `订单 #${orderId.value}` : '用户会话'
 })
 
 function safeDecode(value: any) {
   try {
     return decodeURIComponent(String(value || ''))
-  } catch (err) {
+  } catch (_err) {
     return String(value || '')
   }
 }
@@ -141,6 +141,7 @@ function resolveMessageId(raw: any, fallback: string) {
   if (explicitId !== undefined && explicitId !== null && String(explicitId).trim()) {
     return String(explicitId)
   }
+
   const timestamp = resolveMessageTimestamp(raw?.timestamp || raw?.createdAt, Date.now())
   const senderRole = String(raw?.senderRole || 'unknown').trim() || 'unknown'
   const senderId = String(raw?.senderId || 'unknown').trim() || 'unknown'
@@ -150,6 +151,7 @@ function resolveMessageId(raw: any, fallback: string) {
     .slice(0, 24)
     .replace(/\s+/g, '_')
     .replace(/[^a-zA-Z0-9_\u4e00-\u9fa5-]/g, '')
+
   return `${fallback}_${senderRole}_${senderId}_${messageType}_${timestamp}_${contentSeed || 'empty'}`
 }
 
@@ -226,10 +228,7 @@ function normalizeCachedMessages(list: any[] = []): ViewMessage[] {
         type: String(item?.type || 'text'),
         timestamp,
         time: String(item?.time || formatClockByTimestamp(timestamp)),
-        status:
-          item?.status === 'read' || item?.status === 'failed'
-            ? item.status
-            : 'sent',
+        status: item?.status === 'read' || item?.status === 'failed' ? item.status : 'sent',
         officialIntervention: !!item?.officialIntervention,
         interventionLabel: String(item?.interventionLabel || '')
       }
@@ -242,7 +241,7 @@ function restoreLocalMessages() {
   try {
     const raw = uni.getStorageSync(localMessageKey())
     const parsed = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : []
-    const payload = Array.isArray(parsed) ? { messages: parsed, cachedAt: 0 } : (parsed || {})
+    const payload = Array.isArray(parsed) ? { messages: parsed, cachedAt: 0 } : parsed || {}
     const cachedAt = Number(payload.cachedAt || 0)
     const list = Array.isArray(payload.messages) ? payload.messages : []
 
@@ -260,7 +259,7 @@ function restoreLocalMessages() {
       scrollToBottom()
       return messages.value.length > 0
     }
-  } catch (err) {
+  } catch (_err) {
     messages.value = []
   }
   return false
@@ -278,11 +277,14 @@ function persistLocalMessages() {
       officialIntervention: item.officialIntervention,
       interventionLabel: item.interventionLabel
     }))
-    uni.setStorageSync(localMessageKey(), JSON.stringify({
-      cachedAt: Date.now(),
-      messages: snapshot
-    }))
-  } catch (err) {
+    uni.setStorageSync(
+      localMessageKey(),
+      JSON.stringify({
+        cachedAt: Date.now(),
+        messages: snapshot
+      })
+    )
+  } catch (_err) {
     // ignore
   }
 }
@@ -403,10 +405,7 @@ async function fetchSocketToken() {
     uni.request({
       url: `${config.SOCKET_URL}/api/generate-token`,
       method: 'POST',
-      header: Object.assign(
-        { 'Content-Type': 'application/json' },
-        authHeader
-      ),
+      header: Object.assign({ 'Content-Type': 'application/json' }, authHeader),
       data: { userId: merchantId.value, role: 'merchant' },
       success: resolve,
       fail: reject
@@ -441,7 +440,7 @@ function connectSocket(token: string) {
       messages.value.push(normalized)
       persistLocalMessages()
       scrollToBottom()
-      syncReadState()
+      void syncReadState()
     }
   })
 
@@ -454,9 +453,7 @@ function connectSocket(token: string) {
       payload?.timestamp || payload?.createdAt,
       messages.value[index].timestamp || Date.now()
     )
-    messages.value[index].time = String(
-      payload?.time || formatClockByTimestamp(messages.value[index].timestamp)
-    )
+    messages.value[index].time = String(payload?.time || formatClockByTimestamp(messages.value[index].timestamp))
     if (messages.value[index].status !== 'read') {
       messages.value[index].status = 'sent'
     }
@@ -519,7 +516,7 @@ function scheduleReconnect() {
   if (reconnectTimer.value) return
   reconnectTimer.value = setTimeout(() => {
     reconnectTimer.value = null
-    initSocket()
+    void initSocket()
   }, 3000)
 }
 
@@ -608,7 +605,7 @@ function chooseImage() {
                 persistLocalMessages()
               }
             }, 5000)
-          } catch (err) {
+          } catch (_err) {
             uni.showToast({ title: '图片发送失败', icon: 'none' })
           }
         },
@@ -656,7 +653,7 @@ onLoad((options: any = {}) => {
   void loadSupportRuntimeConfig(!explicitTitle).finally(async () => {
     await ensureConversationExists()
     await loadServerHistory()
-    initSocket()
+    await initSocket()
   })
 })
 
