@@ -1,6 +1,6 @@
 import createSocket from '@/utils/socket-io'
 import config from '@/shared-ui/config'
-import { request } from '@/shared-ui/api.js'
+import { fetchHistory, markConversationRead, request, upsertConversation } from '@/shared-ui/api.js'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/shared-ui/support-runtime.js'
 import OrderDetailPopup from '@/components/OrderDetailPopup.vue'
 import { normalizeIncomingMessage as normalizeIncomingMessagePayload, normalizeOrder as normalizeOrderPayload, formatOrderNo as formatOrderNoValue, formatOrderAmount as formatOrderAmountValue, getOrderStatusText as getOrderStatusTextValue, resolveMessageTimestamp as resolveIncomingMessageTimestamp } from './chat-utils'
@@ -31,8 +31,7 @@ export default {
       socketInitializing: false,
       reconnectTimer: null,
       localMessageSeed: 0,
-      supportTitle: supportRuntime.title,
-      supportWelcomeMessage: supportRuntime.welcomeMessage
+      supportTitle: supportRuntime.title
     }
   },
   onLoad() {
@@ -65,8 +64,7 @@ export default {
 
     this.loadSupportRuntimeConfig()
       .finally(() => {
-        this.addWelcomeMessage()
-        this.initSocket()
+        this.initializeConversation()
       })
   },
   onUnload() {
@@ -80,9 +78,29 @@ export default {
     async loadSupportRuntimeConfig() {
       const supportRuntime = await loadSupportRuntimeSettings()
       this.supportTitle = supportRuntime.title
-      this.supportWelcomeMessage = supportRuntime.welcomeMessage
       if (typeof uni.setNavigationBarTitle === 'function') {
         uni.setNavigationBarTitle({ title: this.supportTitle })
+      }
+    },
+
+    async initializeConversation() {
+      await this.ensureConversationExists()
+      await this.loadServerHistory()
+      await this.initSocket()
+    },
+
+    async ensureConversationExists() {
+      try {
+        await upsertConversation({
+          chatId: this.chatId,
+          targetType: 'admin',
+          targetId: 'support',
+          targetPhone: '',
+          targetName: this.supportTitle,
+          targetAvatar: ''
+        })
+      } catch (err) {
+        console.error('初始化客服会话失败:', err)
       }
     },
 
@@ -93,6 +111,14 @@ export default {
       }
       return {
         Authorization: /^bearer\s+/i.test(token) ? token : `Bearer ${token}`
+      }
+    },
+
+    async syncReadState() {
+      try {
+        await markConversationRead(this.chatId)
+      } catch (err) {
+        console.error('同步客服会话已读失败:', err)
       }
     },
 
@@ -169,31 +195,40 @@ export default {
       sock.on('connect', () => {
         this.isConnected = true
 
-        // 加入聊天室
         sock.emit('join_chat', {
           chatId: this.chatId,
           userId: this.userId,
           role: 'user'
         })
+        sock.emit('load_messages', {
+          chatId: this.chatId
+        })
       })
 
       sock.on('new_message', (payload) => {
+        if (payload?.chatId && String(payload.chatId) !== String(this.chatId)) return
         const senderId = payload && payload.senderId != null ? String(payload.senderId) : ''
         const isFromSelf = senderId === String(this.userId) && payload.senderRole === 'user'
+        const normalizedMessage = this.normalizeIncomingMessage(payload, false)
+        if (this.messages.some((item) => String(item.id) === String(normalizedMessage.id))) {
+          return
+        }
 
         if (!isFromSelf) {
-          this.messages.push(this.normalizeIncomingMessage(payload, false))
+          this.messages.push(normalizedMessage)
           this.$nextTick(() => {
             this.scrollToBottom()
           })
+          this.syncReadState()
         }
       })
 
       sock.on('messages_loaded', (payload) => {
-        if (payload && payload.messages) {
+        if (payload && String(payload.chatId || '') === String(this.chatId) && payload.messages) {
           this.messages = payload.messages.map((m) =>
             this.normalizeIncomingMessage(m, m.senderRole === 'user')
           )
+          this.syncReadState()
           this.$nextTick(() => {
             this.scrollToBottom()
           })
@@ -283,6 +318,23 @@ export default {
     normalizeIncomingMessage(payload, isSelf) {
       return normalizeIncomingMessagePayload(payload, isSelf)
     },
+
+    async loadServerHistory() {
+      try {
+        const response = await fetchHistory(this.chatId)
+        const list = Array.isArray(response) ? response : []
+        this.messages = list.map((item) =>
+          this.normalizeIncomingMessage(item, String(item.senderId || '') === String(this.userId) && item.senderRole === 'user')
+        )
+        await this.syncReadState()
+        this.$nextTick(() => {
+          this.scrollToBottom()
+        })
+      } catch (error) {
+        console.error('加载客服消息历史失败:', error)
+      }
+    },
+
     normalizeOrder(order) {
       return normalizeOrderPayload(order)
     },
@@ -294,17 +346,6 @@ export default {
     },
     getOrderStatusText(order) {
       return getOrderStatusTextValue(order)
-    },
-
-    addWelcomeMessage() {
-      const timestamp = Date.now()
-      this.messages.push({
-        id: this.createLocalMessageId('welcome', timestamp),
-        content: this.supportWelcomeMessage,
-        type: 'text',
-        isSelf: false,
-        timestamp
-      })
     },
 
     sendMessage() {
@@ -542,17 +583,7 @@ export default {
 
     clearMessages() {
       this.showMenu = false
-      uni.showModal({
-        title: '清空聊天记录',
-        content: '确定要清空所有聊天记录吗？',
-        success: (res) => {
-          if (res.confirm) {
-            this.messages = []
-            this.addWelcomeMessage()
-            uni.showToast({ title: '已清空', icon: 'success' })
-          }
-        }
-      })
+      uni.showToast({ title: '聊天记录按平台规则留存', icon: 'none' })
     }
   }
 }
