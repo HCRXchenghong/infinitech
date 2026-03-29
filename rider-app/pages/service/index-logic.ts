@@ -195,8 +195,9 @@ export default Vue.extend({
           isSelf: item.senderRole === 'rider' && senderId === String(this.riderId) ? 1 : 0,
           avatar: item.avatar || '',
           status: item.senderRole === 'rider' && senderId === String(this.riderId) ? (item.status || 'sent') : ''
-        })
+        }, { skipPrune: true })
       })
+      await db.pruneMessagesByChatId(this.chatId)
     },
 
     async ensureConversationExists() {

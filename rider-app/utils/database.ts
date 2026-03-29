@@ -1,6 +1,8 @@
 // SQLite 数据库管理
 const DB_NAME = 'rider_messages.db';
 const DB_PATH = '_doc/rider_messages.db';
+const MESSAGE_RETENTION_PER_CHAT = 200;
+const MESSAGE_RETENTION_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 class Database {
   resolveMessageTimestamp(rawValue: any, fallback = Date.now()): number {
@@ -100,7 +102,26 @@ class Database {
     return String(value || '').replace(/'/g, "''")
   }
 
-  saveMessage(chatId: string | number, message: any) {
+  pruneMessagesByChatId(chatId: string | number): Promise<void> {
+    const chatIdText = this.escapeSqlText(chatId)
+    const cutoff = Date.now() - MESSAGE_RETENTION_MAX_AGE
+    return this.executeSql(
+      `DELETE FROM messages WHERE chatId = '${chatIdText}' AND timestamp < ${cutoff}`
+    ).then(() => {
+      return this.executeSql(
+        `DELETE FROM messages
+         WHERE chatId = '${chatIdText}'
+           AND id NOT IN (
+             SELECT id FROM messages
+             WHERE chatId = '${chatIdText}'
+             ORDER BY timestamp DESC, rowid DESC
+             LIMIT ${MESSAGE_RETENTION_PER_CHAT}
+           )`
+      )
+    })
+  }
+
+  saveMessage(chatId: string | number, message: any, options: { skipPrune?: boolean } = {}) {
     const chatIdText = this.escapeSqlText(chatId)
     const avatar = this.escapeSqlText(message.avatar)
     const sender = this.escapeSqlText(message.sender)
@@ -117,7 +138,12 @@ class Database {
       name: DB_NAME,
       // @ts-ignore
       sql: `INSERT OR REPLACE INTO messages (id, chatId, sender, senderId, senderRole, content, messageType, timestamp, isSelf, avatar, status) VALUES ('${messageId}', '${chatIdText}', '${sender}', '${senderId}', '${senderRole}', '${content}', '${messageType}', ${timestamp}, ${isSelf}, '${avatar}', '${status}')`,
-      success: () => {},
+      success: () => {
+        if (options.skipPrune) return
+        void this.pruneMessagesByChatId(chatId).catch((err) => {
+          console.error('鏁版嵁搴撴秷鎭鍓け璐?', err)
+        })
+      },
       fail: (err: any) => console.error('❌ 保存失败:', err)
     });
   }
@@ -169,8 +195,12 @@ class Database {
 
   getMessages(chatId: string | number): Promise<any[]> {
     const chatIdText = this.escapeSqlText(chatId)
-    // @ts-ignore
-    return this.selectSql(`SELECT * FROM messages WHERE chatId = '${chatIdText}' ORDER BY timestamp ASC`);
+    return this.pruneMessagesByChatId(chatId)
+      .catch(() => {})
+      .then(() => {
+        // @ts-ignore
+        return this.selectSql(`SELECT * FROM messages WHERE chatId = '${chatIdText}' ORDER BY timestamp ASC`);
+      })
   }
 
   deleteMessagesByChatId(chatId: string | number): Promise<void> {

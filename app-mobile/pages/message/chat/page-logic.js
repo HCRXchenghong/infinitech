@@ -11,6 +11,8 @@ import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/s
 const DEFAULT_SELF_AVATAR = '/static/images/my-avatar.svg'
 const DEFAULT_OTHER_AVATAR = '/static/images/default-avatar.svg'
 const MESSAGE_CACHE_MAX_AGE = 24 * 60 * 60 * 1000
+const MESSAGE_CACHE_MAX_ITEMS = 120
+const MESSAGE_VISIBLE_MAX_AGE = 7 * 24 * 60 * 60 * 1000
 const DEFAULT_EMOJIS = ['😀', '😁', '😂', '🤣', '😊', '😍', '👍', '👏', '🎉', '❤️', '🔥', '🙏', '😎', '😄', '😭', '💪', '✨', '🍔', '🍜', '☕']
 
 const nowTime = () => {
@@ -396,6 +398,49 @@ export default {
       return fallback
     },
 
+    normalizeCachedMessages(list = []) {
+      const cutoff = Date.now() - MESSAGE_VISIBLE_MAX_AGE
+      return (Array.isArray(list) ? list : [])
+        .map((item, index) => {
+          const normalized = normalizeMessageContent(
+            item.type || 'text',
+            Object.prototype.hasOwnProperty.call(item || {}, 'rawContent')
+              ? item.rawContent
+              : item.text
+          )
+          const timestamp = this.resolveMessageTimestamp(
+            item.timestamp || item.createdAt,
+            Date.now() + index
+          )
+
+          return {
+            mid: this.resolveMessageId(
+              item,
+              `cached_${this.roomId || 'chat'}_${timestamp}_${index}`
+            ),
+            from: item.from === 'me' ? 'me' : 'other',
+            text: normalized.text,
+            type: normalized.type,
+            rawContent: Object.prototype.hasOwnProperty.call(item || {}, 'rawContent')
+              ? item.rawContent
+              : normalized.rawContent,
+            meta: item.meta || normalized.meta,
+            timestamp,
+            time: item.time || formatClockByTimestamp(timestamp),
+            showTime: Boolean(item.showTime),
+            status:
+              item.from === 'me'
+                ? (item.status === 'read' || item.status === 'failed' ? item.status : 'success')
+                : 'success',
+            officialIntervention: !!item.officialIntervention,
+            interventionLabel: item.interventionLabel || '',
+            previewText: item.previewText || normalized.preview
+          }
+        })
+        .filter((item) => item.timestamp >= cutoff)
+        .slice(-MESSAGE_CACHE_MAX_ITEMS)
+    },
+
     restoreLocalMessages() {
       try {
         const raw = uni.getStorageSync(this.getMessageStorageKey())
@@ -410,35 +455,11 @@ export default {
         }
 
         if (Array.isArray(list)) {
-          this.messages = list.map((item, index) => {
-            const normalized = normalizeMessageContent(
-              item.type || 'text',
-              Object.prototype.hasOwnProperty.call(item || {}, 'rawContent')
-                ? item.rawContent
-                : item.text
-            )
-            const timestamp = this.resolveMessageTimestamp(
-              item.timestamp || item.createdAt,
-              Date.now() + index
-            )
-
-            return {
-              ...item,
-              mid: this.resolveMessageId(
-                item,
-                `cached_${this.roomId || 'chat'}_${timestamp}_${index}`
-              ),
-              timestamp,
-              time: item.time || formatClockByTimestamp(timestamp),
-              type: normalized.type,
-              text: normalized.text,
-              rawContent: Object.prototype.hasOwnProperty.call(item || {}, 'rawContent')
-                ? item.rawContent
-                : normalized.rawContent,
-              meta: item.meta || normalized.meta,
-              previewText: item.previewText || normalized.preview
-            }
-          })
+          this.messages = this.normalizeCachedMessages(list)
+          if (!this.messages.length) {
+            uni.removeStorageSync(this.getMessageStorageKey())
+            return false
+          }
           return this.messages.length > 0
         }
       } catch (err) {
@@ -453,7 +474,7 @@ export default {
           this.getMessageStorageKey(),
           JSON.stringify({
             cachedAt: Date.now(),
-            messages: this.messages.slice(-200)
+            messages: this.normalizeCachedMessages(this.messages)
           })
         )
       } catch (err) {

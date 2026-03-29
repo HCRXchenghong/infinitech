@@ -284,6 +284,8 @@ node scripts/http-load-smoke.mjs
 - 2026-03-29：会员中心、公益页、医药首页等活跃页面继续清理“未开放/未配置”式占位文案，终端默认展示进一步收敛到可发布口径。
 - 2026-03-29：双端聊天页与商家聊天页的删除提示继续收口成正式平台口径，用户看到的是“平台留存 / 当前设备记录”，不再暴露内部监管式措辞。
 
+- 2026-03-29: chat local fallback was tightened again. Consumer/app chat caches now keep only a smaller recent window, merchant chat keeps a smaller bounded local snapshot, and rider SQLite now prunes per-chat history automatically.
+
 ## 11. 诚实状态说明
 
 这个仓库已经从“很多链路是假打通、假状态、本地模拟”的阶段明显往前推进了很多，但现在还不能诚实地说“全部优化完成”。

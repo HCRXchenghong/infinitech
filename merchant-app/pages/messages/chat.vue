@@ -198,9 +198,35 @@ function displayText(msg: ViewMessage) {
 }
 
 const MESSAGE_CACHE_MAX_AGE = 24 * 60 * 60 * 1000
+const MESSAGE_CACHE_MAX_ITEMS = 150
+const MESSAGE_VISIBLE_MAX_AGE = 7 * 24 * 60 * 60 * 1000
 
 function localMessageKey() {
   return `merchant_chat_messages_${merchantId.value || 'guest'}_${chatId.value || 'default'}`
+}
+
+function normalizeCachedMessages(list: any[] = []): ViewMessage[] {
+  const cutoff = Date.now() - MESSAGE_VISIBLE_MAX_AGE
+  return (Array.isArray(list) ? list : [])
+    .map((item: any, index: number) => {
+      const timestamp = resolveMessageTimestamp(item?.timestamp || item?.createdAt, Date.now() + index)
+      return {
+        mid: resolveMessageId(item, `cached_${chatId.value || 'chat'}_${timestamp}_${index}`),
+        self: !!item?.self,
+        text: String(item?.text || ''),
+        type: String(item?.type || 'text'),
+        timestamp,
+        time: String(item?.time || formatClockByTimestamp(timestamp)),
+        status:
+          item?.status === 'read' || item?.status === 'failed'
+            ? item.status
+            : 'sent',
+        officialIntervention: !!item?.officialIntervention,
+        interventionLabel: String(item?.interventionLabel || '')
+      }
+    })
+    .filter((item) => item.timestamp >= cutoff)
+    .slice(-MESSAGE_CACHE_MAX_ITEMS)
 }
 
 function restoreLocalMessages() {
@@ -217,15 +243,11 @@ function restoreLocalMessages() {
     }
 
     if (Array.isArray(list)) {
-      messages.value = list.map((item: any, index: number) => {
-        const timestamp = resolveMessageTimestamp(item?.timestamp || item?.createdAt, Date.now() + index)
-        return {
-          ...item,
-          mid: resolveMessageId(item, `cached_${chatId.value || 'chat'}_${timestamp}_${index}`),
-          timestamp,
-          time: String(item?.time || formatClockByTimestamp(timestamp))
-        }
-      })
+      messages.value = normalizeCachedMessages(list)
+      if (!messages.value.length) {
+        uni.removeStorageSync(localMessageKey())
+        return false
+      }
       scrollToBottom()
       return messages.value.length > 0
     }
@@ -239,7 +261,7 @@ function persistLocalMessages() {
   try {
     uni.setStorageSync(localMessageKey(), JSON.stringify({
       cachedAt: Date.now(),
-      messages: messages.value.slice(-300)
+      messages: normalizeCachedMessages(messages.value)
     }))
   } catch (err) {
     // ignore
