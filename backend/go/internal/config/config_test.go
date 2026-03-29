@@ -1,6 +1,10 @@
 package config
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"testing"
 	"time"
 )
@@ -56,6 +60,25 @@ func newValidConfigForTest() *Config {
 			TrustedProxies:     []string{"127.0.0.1", "::1"},
 		},
 	}
+}
+
+func validFCMPrivateKeyForTest(t *testing.T) string {
+	t.Helper()
+
+	key, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		t.Fatalf("generate rsa key: %v", err)
+	}
+
+	encoded, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		t.Fatalf("marshal private key: %v", err)
+	}
+
+	return string(pem.EncodeToMemory(&pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: encoded,
+	}))
 }
 
 func TestValidateAllowsDevelopmentSQLite(t *testing.T) {
@@ -244,7 +267,7 @@ func TestValidateAllowsProductionFCMWhenConfigured(t *testing.T) {
 	cfg.Push.DispatchProvider = "fcm"
 	cfg.Push.FCMProjectID = "demo-project"
 	cfg.Push.FCMClientEmail = "firebase-adminsdk@example.iam.gserviceaccount.com"
-	cfg.Push.FCMPrivateKey = "-----BEGIN PRIVATE KEY-----\nMIIBVwIBADANBgkqhkiG9w0BAQEFAASCAT8wggE7AgEAAkEAx\n-----END PRIVATE KEY-----"
+	cfg.Push.FCMPrivateKey = validFCMPrivateKeyForTest(t)
 
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("expected production fcm push provider to pass, got %v", err)
@@ -274,11 +297,41 @@ func TestValidateRejectsProductionFCMPrivateTokenEndpoint(t *testing.T) {
 	cfg.Push.DispatchProvider = "fcm"
 	cfg.Push.FCMProjectID = "demo-project"
 	cfg.Push.FCMClientEmail = "firebase-adminsdk@example.iam.gserviceaccount.com"
-	cfg.Push.FCMPrivateKey = "-----BEGIN PRIVATE KEY-----\nMIIBVwIBADANBgkqhkiG9w0BAQEFAASCAT8wggE7AgEAAkEAx\n-----END PRIVATE KEY-----"
+	cfg.Push.FCMPrivateKey = validFCMPrivateKeyForTest(t)
 	cfg.Push.FCMTokenURL = "https://127.0.0.1/token"
 
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("expected private production fcm token endpoint to be rejected")
+	}
+}
+
+func TestValidateRejectsProductionFCMWithInvalidClientEmail(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.Env = "production"
+	cfg.Redis.Required = true
+	cfg.Push.DispatchEnabled = true
+	cfg.Push.DispatchProvider = "fcm"
+	cfg.Push.FCMProjectID = "demo-project"
+	cfg.Push.FCMClientEmail = "invalid-email"
+	cfg.Push.FCMPrivateKey = validFCMPrivateKeyForTest(t)
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected invalid production fcm client email to be rejected")
+	}
+}
+
+func TestValidateRejectsProductionFCMWithInvalidPrivateKey(t *testing.T) {
+	cfg := newValidConfigForTest()
+	cfg.Env = "production"
+	cfg.Redis.Required = true
+	cfg.Push.DispatchEnabled = true
+	cfg.Push.DispatchProvider = "fcm"
+	cfg.Push.FCMProjectID = "demo-project"
+	cfg.Push.FCMClientEmail = "firebase-adminsdk@example.iam.gserviceaccount.com"
+	cfg.Push.FCMPrivateKey = "-----BEGIN PRIVATE KEY-----\ninvalid\n-----END PRIVATE KEY-----"
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected invalid production fcm private key to be rejected")
 	}
 }
 

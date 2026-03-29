@@ -1,9 +1,13 @@
 package config
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"log"
 	"net"
+	"net/mail"
 	"net/url"
 	"os"
 	"strconv"
@@ -266,8 +270,14 @@ func (c *Config) Validate() error {
 			if strings.TrimSpace(c.Push.FCMClientEmail) == "" {
 				return fmt.Errorf("PUSH_DISPATCH_FCM_CLIENT_EMAIL is required when PUSH_DISPATCH_PROVIDER=fcm")
 			}
+			if _, err := mail.ParseAddress(strings.TrimSpace(c.Push.FCMClientEmail)); err != nil {
+				return fmt.Errorf("PUSH_DISPATCH_FCM_CLIENT_EMAIL must be a valid email address")
+			}
 			if strings.TrimSpace(c.Push.FCMPrivateKey) == "" {
 				return fmt.Errorf("PUSH_DISPATCH_FCM_PRIVATE_KEY is required when PUSH_DISPATCH_PROVIDER=fcm")
+			}
+			if _, err := parsePushFCMPrivateKey(strings.TrimSpace(c.Push.FCMPrivateKey)); err != nil {
+				return fmt.Errorf("PUSH_DISPATCH_FCM_PRIVATE_KEY is invalid: %w", err)
 			}
 			if isProductionLikeEnv(c.Env) && !pushWebhookURLIsSecure(c.Push.FCMTokenURL) {
 				return fmt.Errorf("production FCM push dispatch requires an https PUSH_DISPATCH_FCM_TOKEN_URL")
@@ -377,6 +387,28 @@ func parseCSV(raw string) []string {
 		}
 	}
 	return result
+}
+
+func parsePushFCMPrivateKey(raw string) (*rsa.PrivateKey, error) {
+	block, _ := pem.Decode([]byte(strings.TrimSpace(raw)))
+	if block == nil {
+		return nil, fmt.Errorf("invalid PEM block")
+	}
+
+	if key, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
+		return key, nil
+	}
+
+	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	rsaKey, ok := key.(*rsa.PrivateKey)
+	if !ok {
+		return nil, fmt.Errorf("private key is not RSA")
+	}
+	return rsaKey, nil
 }
 
 func normalizeDatabaseDriver(value string) string {
