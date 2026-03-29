@@ -189,8 +189,13 @@ function buildProbeDetail(result) {
       queue.failed ? `pushFailed=${queue.failed}` : "",
       queue.oldestQueuedAt ? `pushOldestQueuedAt=${queue.oldestQueuedAt}` : "",
       queue.oldestQueuedAgeSeconds !== undefined ? `pushOldestQueuedAgeSeconds=${queue.oldestQueuedAgeSeconds}` : "",
+      queue.oldestRetryPendingAt ? `pushOldestRetryPendingAt=${queue.oldestRetryPendingAt}` : "",
+      queue.oldestRetryPendingAgeSeconds !== undefined ? `pushOldestRetryPendingAgeSeconds=${queue.oldestRetryPendingAgeSeconds}` : "",
       queue.oldestDispatchingAt ? `pushOldestDispatchingAt=${queue.oldestDispatchingAt}` : "",
-      queue.oldestDispatchingAgeSeconds !== undefined ? `pushOldestDispatchingAgeSeconds=${queue.oldestDispatchingAgeSeconds}` : ""
+      queue.oldestDispatchingAgeSeconds !== undefined ? `pushOldestDispatchingAgeSeconds=${queue.oldestDispatchingAgeSeconds}` : "",
+      queue.latestSentAt ? `pushLatestSentAt=${queue.latestSentAt}` : "",
+      queue.latestFailedAt ? `pushLatestFailedAt=${queue.latestFailedAt}` : "",
+      queue.latestAcknowledgedAt ? `pushLatestAcknowledgedAt=${queue.latestAcknowledgedAt}` : ""
     ].filter(Boolean).join(" ");
     if (pushDetail) {
       details.push(pushDetail);

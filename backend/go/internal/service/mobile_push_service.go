@@ -48,18 +48,23 @@ type MobilePushWorkerStatus struct {
 }
 
 type MobilePushQueueSnapshot struct {
-	Total                       int64  `json:"total"`
-	Queued                      int64  `json:"queued"`
-	Pending                     int64  `json:"pending"`
-	RetryPending                int64  `json:"retryPending"`
-	Dispatching                 int64  `json:"dispatching"`
-	Sent                        int64  `json:"sent"`
-	Failed                      int64  `json:"failed"`
-	Acknowledged                int64  `json:"acknowledged"`
-	OldestQueuedAt              string `json:"oldestQueuedAt,omitempty"`
-	OldestQueuedAgeSeconds      int64  `json:"oldestQueuedAgeSeconds"`
-	OldestDispatchingAt         string `json:"oldestDispatchingAt,omitempty"`
-	OldestDispatchingAgeSeconds int64  `json:"oldestDispatchingAgeSeconds"`
+	Total                        int64  `json:"total"`
+	Queued                       int64  `json:"queued"`
+	Pending                      int64  `json:"pending"`
+	RetryPending                 int64  `json:"retryPending"`
+	Dispatching                  int64  `json:"dispatching"`
+	Sent                         int64  `json:"sent"`
+	Failed                       int64  `json:"failed"`
+	Acknowledged                 int64  `json:"acknowledged"`
+	OldestQueuedAt               string `json:"oldestQueuedAt,omitempty"`
+	OldestQueuedAgeSeconds       int64  `json:"oldestQueuedAgeSeconds"`
+	OldestRetryPendingAt         string `json:"oldestRetryPendingAt,omitempty"`
+	OldestRetryPendingAgeSeconds int64  `json:"oldestRetryPendingAgeSeconds"`
+	OldestDispatchingAt          string `json:"oldestDispatchingAt,omitempty"`
+	OldestDispatchingAgeSeconds  int64  `json:"oldestDispatchingAgeSeconds"`
+	LatestSentAt                 string `json:"latestSentAt,omitempty"`
+	LatestFailedAt               string `json:"latestFailedAt,omitempty"`
+	LatestAcknowledgedAt         string `json:"latestAcknowledgedAt,omitempty"`
 }
 
 type MobilePushOptions struct {
@@ -152,6 +157,67 @@ func (s *MobilePushService) recordDispatchCycle(status string, processed int, er
 	}
 }
 
+func parsePushAggregateTimeValue(raw interface{}) (time.Time, bool) {
+	switch value := raw.(type) {
+	case nil:
+		return time.Time{}, false
+	case time.Time:
+		if value.IsZero() {
+			return time.Time{}, false
+		}
+		return value, true
+	case *time.Time:
+		if value == nil || value.IsZero() {
+			return time.Time{}, false
+		}
+		return *value, true
+	case []byte:
+		return parsePushAggregateTimeString(string(value))
+	case string:
+		return parsePushAggregateTimeString(value)
+	default:
+		return parsePushAggregateTimeString(fmt.Sprint(value))
+	}
+}
+
+func parsePushAggregateTimeString(raw string) (time.Time, bool) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return time.Time{}, false
+	}
+	layouts := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02 15:04:05.999999999-07:00",
+		"2006-01-02 15:04:05.999999999",
+		"2006-01-02 15:04:05",
+	}
+	for _, layout := range layouts {
+		if parsed, err := time.Parse(layout, value); err == nil {
+			return parsed, true
+		}
+		if parsed, err := time.ParseInLocation(layout, value, time.Local); err == nil {
+			return parsed, true
+		}
+	}
+	return time.Time{}, false
+}
+
+func scanPushAggregateTime(query *gorm.DB) (time.Time, bool) {
+	if query == nil {
+		return time.Time{}, false
+	}
+	row := query.Row()
+	if row == nil {
+		return time.Time{}, false
+	}
+	var raw interface{}
+	if err := row.Scan(&raw); err != nil {
+		return time.Time{}, false
+	}
+	return parsePushAggregateTimeValue(raw)
+}
+
 func (s *MobilePushService) QueueSnapshot(ctx context.Context) MobilePushQueueSnapshot {
 	snapshot := MobilePushQueueSnapshot{}
 	if s == nil || s.db == nil {
@@ -200,34 +266,58 @@ func (s *MobilePushService) QueueSnapshot(ctx context.Context) MobilePushQueueSn
 	}
 
 	now := time.Now()
-	type oldestRow struct {
-		Oldest time.Time
-	}
-
-	var queuedRow oldestRow
-	if err := s.db.WithContext(ctx).
+	if queuedAt, ok := scanPushAggregateTime(s.db.WithContext(ctx).
 		Model(&repository.PushDelivery{}).
-		Select("MIN(created_at) AS oldest").
-		Where("status IN ?", []string{"queued", "pending", "retry_pending"}).
-		Scan(&queuedRow).Error; err == nil && !queuedRow.Oldest.IsZero() {
-		snapshot.OldestQueuedAt = queuedRow.Oldest.Format(time.RFC3339)
-		ageSeconds := int64(now.Sub(queuedRow.Oldest) / time.Second)
+		Select("MIN(created_at)").
+		Where("status IN ?", []string{"queued", "pending", "retry_pending"})); ok {
+		snapshot.OldestQueuedAt = queuedAt.Format(time.RFC3339)
+		ageSeconds := int64(now.Sub(queuedAt) / time.Second)
 		if ageSeconds > 0 {
 			snapshot.OldestQueuedAgeSeconds = ageSeconds
 		}
 	}
 
-	var dispatchingRow oldestRow
-	if err := s.db.WithContext(ctx).
+	if retryPendingAt, ok := scanPushAggregateTime(s.db.WithContext(ctx).
 		Model(&repository.PushDelivery{}).
-		Select("MIN(updated_at) AS oldest").
-		Where("status = ?", "dispatching").
-		Scan(&dispatchingRow).Error; err == nil && !dispatchingRow.Oldest.IsZero() {
-		snapshot.OldestDispatchingAt = dispatchingRow.Oldest.Format(time.RFC3339)
-		ageSeconds := int64(now.Sub(dispatchingRow.Oldest) / time.Second)
+		Select("MIN(next_retry_at)").
+		Where("status = ? AND next_retry_at IS NOT NULL", "retry_pending")); ok {
+		snapshot.OldestRetryPendingAt = retryPendingAt.Format(time.RFC3339)
+		ageSeconds := int64(now.Sub(retryPendingAt) / time.Second)
+		if ageSeconds > 0 {
+			snapshot.OldestRetryPendingAgeSeconds = ageSeconds
+		}
+	}
+
+	if dispatchingAt, ok := scanPushAggregateTime(s.db.WithContext(ctx).
+		Model(&repository.PushDelivery{}).
+		Select("MIN(updated_at)").
+		Where("status = ?", "dispatching")); ok {
+		snapshot.OldestDispatchingAt = dispatchingAt.Format(time.RFC3339)
+		ageSeconds := int64(now.Sub(dispatchingAt) / time.Second)
 		if ageSeconds > 0 {
 			snapshot.OldestDispatchingAgeSeconds = ageSeconds
 		}
+	}
+
+	if latestSentAt, ok := scanPushAggregateTime(s.db.WithContext(ctx).
+		Model(&repository.PushDelivery{}).
+		Select("MAX(sent_at)").
+		Where("sent_at IS NOT NULL")); ok {
+		snapshot.LatestSentAt = latestSentAt.Format(time.RFC3339)
+	}
+
+	if latestFailedAt, ok := scanPushAggregateTime(s.db.WithContext(ctx).
+		Model(&repository.PushDelivery{}).
+		Select("MAX(updated_at)").
+		Where("status = ?", "failed")); ok {
+		snapshot.LatestFailedAt = latestFailedAt.Format(time.RFC3339)
+	}
+
+	if latestAcknowledgedAt, ok := scanPushAggregateTime(s.db.WithContext(ctx).
+		Model(&repository.PushDelivery{}).
+		Select("MAX(acknowledged_at)").
+		Where("acknowledged_at IS NOT NULL")); ok {
+		snapshot.LatestAcknowledgedAt = latestAcknowledgedAt.Format(time.RFC3339)
 	}
 
 	return snapshot

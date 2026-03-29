@@ -302,6 +302,12 @@ const SIGNAL_LABELS = {
   pushOldestDispatchingAgeSeconds: "最老派发年龄"
 };
 
+SIGNAL_LABELS.pushOldestRetryPendingAt = "最老重试时间";
+SIGNAL_LABELS.pushOldestRetryPendingAgeSeconds = "最老重试年龄";
+SIGNAL_LABELS.pushLatestSentAt = "最近派发";
+SIGNAL_LABELS.pushLatestFailedAt = "最近失败";
+SIGNAL_LABELS.pushLatestAcknowledgedAt = "最近确认";
+
 const loading = ref(false);
 const loadError = ref("");
 const logs = ref([]);
@@ -442,7 +448,7 @@ function normalizeSignalValue(key, value) {
   if (key === "fallbackOldestAge" && /^\d+$/.test(text)) {
     return formatAgeMs(text);
   }
-  if (["pushOldestQueuedAgeSeconds", "pushOldestDispatchingAgeSeconds"].includes(key) && /^\d+$/.test(text)) {
+  if (["pushOldestQueuedAgeSeconds", "pushOldestRetryPendingAgeSeconds", "pushOldestDispatchingAgeSeconds"].includes(key) && /^\d+$/.test(text)) {
     return formatAgeSeconds(text);
   }
   if (/^\d+$/.test(text)) return text;
@@ -483,6 +489,7 @@ function resolveSignalType(key, rawValue) {
     "pushFailed",
     "pushConsecutiveFailures",
     "pushOldestQueuedAgeSeconds",
+    "pushOldestRetryPendingAgeSeconds",
     "pushOldestDispatchingAgeSeconds"
   ].includes(key)) {
     const numeric = Number(value);
@@ -492,7 +499,7 @@ function resolveSignalType(key, rawValue) {
     if (key === "pushFailed" || key === "pushConsecutiveFailures") {
       return numeric >= 3 ? "danger" : "warning";
     }
-    if (key === "pushOldestQueuedAgeSeconds" || key === "pushOldestDispatchingAgeSeconds") {
+    if (key === "pushOldestQueuedAgeSeconds" || key === "pushOldestRetryPendingAgeSeconds" || key === "pushOldestDispatchingAgeSeconds") {
       return numeric >= 900 ? "danger" : "warning";
     }
     return "warning";

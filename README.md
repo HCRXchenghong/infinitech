@@ -299,3 +299,8 @@ node scripts/http-load-smoke.mjs
 - 但消息事实源最终收口、完整推送平台、RTC、完整压测与故障演练仍未全部完成
 
 所以当前策略不是停止，而是继续按本 README 的优先级往下收，直到真正达到可控上线标准。
+## 12. Latest Update
+
+- 2026-03-29: push worker queue snapshot now exposes `oldestRetryPendingAt`, `oldestRetryPendingAgeSeconds`, `latestSentAt`, `latestFailedAt`, and `latestAcknowledgedAt`.
+- 2026-03-29: BFF health aggregation and system log health parsing now carry those push lifecycle signals through to admin observability.
+- 2026-03-29: release preflight now blocks not only on oldest queued push age, but also on overdue `retry_pending` backlog age.

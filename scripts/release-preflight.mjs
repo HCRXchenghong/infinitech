@@ -213,13 +213,19 @@ function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStale
     failures.push(`push_consecutive_failures=${consecutiveFailures}>${maxConsecutiveFailures}`);
   }
 
+  const queuedAgeSeconds = queue ? parseIntegerEnv(queue.oldestQueuedAgeSeconds, 0) : 0;
+  const queuedAgeMs = queuedAgeSeconds > 0 ? queuedAgeSeconds * 1000 : 0;
+  const retryPendingAgeSeconds = queue ? parseIntegerEnv(queue.oldestRetryPendingAgeSeconds, 0) : 0;
+  const retryPendingAgeMs = retryPendingAgeSeconds > 0 ? retryPendingAgeSeconds * 1000 : 0;
+
   const queueTotal = queue ? parseIntegerEnv(queue.total, 0) : 0;
   if (queueTotal <= 0 || maxSuccessStaleMs <= 0) {
-    if (queue && maxQueueAgeMs > 0) {
-      const queuedAgeSeconds = parseIntegerEnv(queue.oldestQueuedAgeSeconds, 0);
-      const queuedAgeMs = queuedAgeSeconds > 0 ? queuedAgeSeconds * 1000 : 0;
+    if (maxQueueAgeMs > 0) {
       if (queuedAgeMs > maxQueueAgeMs) {
         failures.push(`push_oldest_queue_age=${formatDurationMs(queuedAgeMs)}>${formatDurationMs(maxQueueAgeMs)}`);
+      }
+      if (retryPendingAgeMs > maxQueueAgeMs) {
+        failures.push(`push_oldest_retry_age=${formatDurationMs(retryPendingAgeMs)}>${formatDurationMs(maxQueueAgeMs)}`);
       }
     }
     return failures;
@@ -235,11 +241,12 @@ function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStale
   if (staleMs > maxSuccessStaleMs) {
     failures.push(`push_last_success_age=${formatDurationMs(staleMs)}>${formatDurationMs(maxSuccessStaleMs)}`);
   }
-  if (queue && maxQueueAgeMs > 0) {
-    const queuedAgeSeconds = parseIntegerEnv(queue.oldestQueuedAgeSeconds, 0);
-    const queuedAgeMs = queuedAgeSeconds > 0 ? queuedAgeSeconds * 1000 : 0;
+  if (maxQueueAgeMs > 0) {
     if (queuedAgeMs > maxQueueAgeMs) {
       failures.push(`push_oldest_queue_age=${formatDurationMs(queuedAgeMs)}>${formatDurationMs(maxQueueAgeMs)}`);
+    }
+    if (retryPendingAgeMs > maxQueueAgeMs) {
+      failures.push(`push_oldest_retry_age=${formatDurationMs(retryPendingAgeMs)}>${formatDurationMs(maxQueueAgeMs)}`);
     }
   }
   return failures;

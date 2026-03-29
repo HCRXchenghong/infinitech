@@ -96,6 +96,21 @@ function buildGoProbeDetail(body) {
       if (queue.failed) {
         details.push(`pushFailed=${queue.failed}`);
       }
+      if (queue.oldestRetryPendingAt) {
+        details.push(`pushOldestRetryPendingAt=${queue.oldestRetryPendingAt}`);
+      }
+      if (queue.oldestRetryPendingAgeSeconds !== undefined) {
+        details.push(`pushOldestRetryPendingAgeSeconds=${queue.oldestRetryPendingAgeSeconds}`);
+      }
+      if (queue.latestSentAt) {
+        details.push(`pushLatestSentAt=${queue.latestSentAt}`);
+      }
+      if (queue.latestFailedAt) {
+        details.push(`pushLatestFailedAt=${queue.latestFailedAt}`);
+      }
+      if (queue.latestAcknowledgedAt) {
+        details.push(`pushLatestAcknowledgedAt=${queue.latestAcknowledgedAt}`);
+      }
     }
   }
 
