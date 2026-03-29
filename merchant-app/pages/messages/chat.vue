@@ -207,7 +207,7 @@ function displayText(msg: ViewMessage) {
 }
 
 const MESSAGE_CACHE_MAX_AGE = 24 * 60 * 60 * 1000
-const MESSAGE_CACHE_MAX_ITEMS = 80
+const MESSAGE_CACHE_MAX_ITEMS = 60
 const MESSAGE_VISIBLE_MAX_AGE = 3 * 24 * 60 * 60 * 1000
 
 function localMessageKey() {

@@ -510,64 +510,6 @@ export const fetchProductDetail = async (productId) => {
   })
 }
 
-export const fetchFeaturedProducts = async () => {
-  try {
-    const response = await request({
-      url: '/api/featured-products'
-    })
-
-    // 兼容三种返回格式：
-    // 1) { products: [...] }（当前 Go + BFF）
-    // 2) { success: true, data: { products: [...] } }（历史格式）
-    // 3) 直接数组（兜底）
-    if (response && Array.isArray(response.products)) {
-      return response.products
-    }
-    if (response && response.success && response.data && Array.isArray(response.data.products)) {
-      return response.data.products
-    }
-    if (Array.isArray(response)) {
-      return response
-    }
-
-    // 如果后端返回失败，尝试从本地缓存读取
-    try {
-      const cached = await syncService.getData('products', { featured: true })
-      if (Array.isArray(cached) && cached.length > 0) {
-        return cached
-      }
-    } catch (dbError) {
-      // 数据库查询失败（可能是表结构问题），忽略
-    }
-    // 如果缓存也没有，返回空数组
-    return []
-  } catch (error) {
-    const rawData = error?.data?.data || error?.data
-    const isHtmlError = typeof rawData === 'string' && rawData.includes('<!DOCTYPE html>')
-    // 检查是否是网络错误
-    const isNetworkError = error?.error?.includes('fail') ||
-                          error?.error?.includes('connect') ||
-                          error?.message?.includes('无法连接')
-
-    // HTML/网络异常时走缓存兜底，避免控制台刷屏
-    if (!isNetworkError && !isHtmlError) {
-      console.error('获取今日推荐失败:', error)
-    }
-
-    // 失败时从本地缓存读取
-    try {
-      const cached = await syncService.getData('products', { featured: true })
-      if (Array.isArray(cached) && cached.length > 0) {
-        return cached
-      }
-    } catch (e) {
-      // 数据库查询失败，忽略
-    }
-    // 如果都失败，返回空数组
-    return []
-  }
-}
-
 export const fetchHomeFeed = async (params = {}) => {
   const response = await request({
     url: '/api/home/feed',
@@ -587,18 +529,6 @@ export const fetchHomeFeed = async (params = {}) => {
     shops: [],
     products: [],
     campaigns: 0
-  }
-}
-
-export const fetchTodayRecommendedShops = async () => {
-  try {
-    const response = await request({
-      url: '/api/shops/today-recommended'
-    })
-    return Array.isArray(response) ? response : []
-  } catch (error) {
-    console.error('获取今日推荐商户失败:', error)
-    return []
   }
 }
 

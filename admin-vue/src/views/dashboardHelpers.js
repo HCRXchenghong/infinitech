@@ -16,15 +16,7 @@ export function createDefaultImStats() {
       startupOverflowPruned: 0,
       lastMaintenanceAt: 0
     },
-    fallbackRuntime: {
-      conversationListFallbackCount: 0,
-      messageHistoryFallbackCount: 0,
-      historyRefreshWriteCount: 0,
-      historyRefreshMessageCount: 0,
-      lastConversationListFallbackAt: 0,
-      lastMessageHistoryFallbackAt: 0,
-      lastHistoryRefreshWriteAt: 0
-    },
+    fallbackRuntime: {},
     redis: {
       enabled: false,
       connected: false,
@@ -227,15 +219,7 @@ export function normalizeFallbackBuffer(raw) {
 
 export function normalizeFallbackRuntime(raw) {
   const runtime = raw && typeof raw === 'object' ? raw : {}
-  return {
-    conversationListFallbackCount: Math.max(0, Math.floor(toFiniteNumber(runtime.conversationListFallbackCount))),
-    messageHistoryFallbackCount: Math.max(0, Math.floor(toFiniteNumber(runtime.messageHistoryFallbackCount))),
-    historyRefreshWriteCount: Math.max(0, Math.floor(toFiniteNumber(runtime.historyRefreshWriteCount))),
-    historyRefreshMessageCount: Math.max(0, Math.floor(toFiniteNumber(runtime.historyRefreshMessageCount))),
-    lastConversationListFallbackAt: Math.max(0, toFiniteNumber(runtime.lastConversationListFallbackAt)),
-    lastMessageHistoryFallbackAt: Math.max(0, toFiniteNumber(runtime.lastMessageHistoryFallbackAt)),
-    lastHistoryRefreshWriteAt: Math.max(0, toFiniteNumber(runtime.lastHistoryRefreshWriteAt))
-  }
+  return { ...runtime }
 }
 
 export function formatAgeFromMs(diffMs) {

@@ -145,18 +145,6 @@ function buildProbeDetail(result) {
       details.push(fallbackDetail);
     }
   }
-  if (body.fallbackRuntime && typeof body.fallbackRuntime === "object") {
-    const runtime = body.fallbackRuntime;
-    const runtimeDetail = [
-      runtime.conversationListFallbackCount !== undefined ? `fallbackListHits=${runtime.conversationListFallbackCount}` : "",
-      runtime.messageHistoryFallbackCount !== undefined ? `fallbackHistoryHits=${runtime.messageHistoryFallbackCount}` : "",
-      runtime.historyRefreshWriteCount !== undefined ? `fallbackRefreshWrites=${runtime.historyRefreshWriteCount}` : "",
-      runtime.historyRefreshMessageCount !== undefined ? `fallbackRefreshMessages=${runtime.historyRefreshMessageCount}` : ""
-    ].filter(Boolean).join(" ");
-    if (runtimeDetail) {
-      details.push(runtimeDetail);
-    }
-  }
   if (body.dependencies && body.dependencies.goApi) {
     const goApi = body.dependencies.goApi;
     const goApiDetail = [

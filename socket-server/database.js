@@ -23,15 +23,7 @@ const startupMaintenanceStats = {
   overflowPruned: 0,
   lastMaintenanceAt: 0
 };
-const fallbackRuntimeStats = {
-  conversationListFallbackCount: 0,
-  messageHistoryFallbackCount: 0,
-  historyRefreshWriteCount: 0,
-  historyRefreshMessageCount: 0,
-  lastConversationListFallbackAt: 0,
-  lastMessageHistoryFallbackAt: 0,
-  lastHistoryRefreshWriteAt: 0
-};
+const fallbackRuntimeStats = {};
 
 function selectFallbackHistoryWindow(list, keepCount = FALLBACK_CHAT_HISTORY_LIMIT) {
   const items = Array.isArray(list) ? list : [];
@@ -230,14 +222,6 @@ function pruneMessages(chatType, chatId, keepCount = FALLBACK_CHAT_HISTORY_LIMIT
   stmt.run(chatType, chatId, chatType, chatId, limit);
 }
 
-function bumpFallbackRuntimeStats(counterKey, timeKey, increment = 1) {
-  fallbackRuntimeStats[counterKey] = Math.max(
-    0,
-    Number(fallbackRuntimeStats[counterKey] || 0) + Math.max(0, Number(increment) || 0)
-  );
-  fallbackRuntimeStats[timeKey] = Date.now();
-}
-
 const startupExpiredPruneResult = pruneExpiredMessages();
 const startupOverflowPruneResult = pruneOverflowMessages();
 startupMaintenanceStats.expiredPruned = Number(startupExpiredPruneResult?.changes || 0);
@@ -308,18 +292,6 @@ export function clearMessages(chatType, chatId) {
   return stmt.run(chatType, chatId);
 }
 
-export function recordMessageHistoryFallback() {
-  bumpFallbackRuntimeStats('messageHistoryFallbackCount', 'lastMessageHistoryFallbackAt');
-}
-
-export function recordHistoryRefreshWrite(messageCount = 0) {
-  bumpFallbackRuntimeStats('historyRefreshWriteCount', 'lastHistoryRefreshWriteAt');
-  fallbackRuntimeStats.historyRefreshMessageCount = Math.max(
-    0,
-    Number(fallbackRuntimeStats.historyRefreshMessageCount || 0) + Math.max(0, Number(messageCount) || 0)
-  );
-}
-
 export function getFallbackBufferStats() {
   const summary = db.prepare(`
     SELECT
@@ -346,15 +318,7 @@ export function getFallbackBufferStats() {
 }
 
 export function getFallbackRuntimeStats() {
-  return {
-    conversationListFallbackCount: Number(fallbackRuntimeStats.conversationListFallbackCount || 0),
-    messageHistoryFallbackCount: Number(fallbackRuntimeStats.messageHistoryFallbackCount || 0),
-    historyRefreshWriteCount: Number(fallbackRuntimeStats.historyRefreshWriteCount || 0),
-    historyRefreshMessageCount: Number(fallbackRuntimeStats.historyRefreshMessageCount || 0),
-    lastConversationListFallbackAt: Number(fallbackRuntimeStats.lastConversationListFallbackAt || 0),
-    lastMessageHistoryFallbackAt: Number(fallbackRuntimeStats.lastMessageHistoryFallbackAt || 0),
-    lastHistoryRefreshWriteAt: Number(fallbackRuntimeStats.lastHistoryRefreshWriteAt || 0)
-  };
+  return { ...fallbackRuntimeStats };
 }
 
 export function reconcileMessage(chatType, chatId, localMessageId, localLegacyId, message) {

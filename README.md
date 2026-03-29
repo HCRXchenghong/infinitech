@@ -152,6 +152,7 @@
 ### 5.6 运维与发布可观测性
 
 - 后台首页与系统日志页已持续接入 readiness、Redis 模式、fallback、push worker 信号
+- 后台监控已移除失效的“列表回退 / 历史回写”统计项，只保留真实仍在生效的 fallback buffer 与 readiness 信号
 - `socket-server` 已能暴露 Redis adapter 是否真实启用，而不是只看 Redis 是否连上
 - 发布前可以串行执行：
   - 健康检查
