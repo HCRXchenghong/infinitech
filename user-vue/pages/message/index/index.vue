@@ -321,6 +321,12 @@ export default {
         const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
         if (Array.isArray(parsed)) {
           return parsed
+            .map((item) => ({
+              ...this.normalizeSession(item),
+              unread: 0,
+              online: false
+            }))
+            .filter((item) => item.roomId && this.isSessionRecent(item))
         }
 
         const cachedAt = this.parseTimestamp(parsed?.cachedAt)
