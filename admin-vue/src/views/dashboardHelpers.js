@@ -11,8 +11,8 @@ export function createDefaultImStats() {
       newestTimestamp: 0,
       oldestAgeMs: 0,
       newestAgeMs: 0,
-      retentionDays: 30,
-      perChatLimit: 500,
+      retentionDays: 0,
+      perChatLimit: 0,
       startupDisabledPurged: 0,
       startupExpiredPruned: 0,
       startupOverflowPruned: 0,
@@ -34,12 +34,12 @@ export function createDefaultImStats() {
 
 export function createDefaultStatsCards() {
   return [
-    { label: '注册客户', value: '--', tag: '用户', desc: '平台总用户数' },
-    { label: '总订单数', value: '--', tag: '订单', desc: '历史订单总量' },
-    { label: '今日订单', value: '--', tag: '实时', desc: '今日累计' },
-    { label: '员工总数', value: '--', tag: '员工', desc: '配送团队规模' },
-    { label: '在线骑手', value: '--', tag: '在线', desc: '当前在线人数' },
-    { label: '待接单', value: '--', tag: '待办', desc: '待接订单量' }
+    { key: 'customerCount', label: '注册客户', value: '--', tag: '用户', desc: '平台总用户数' },
+    { key: 'totalOrders', label: '总订单数', value: '--', tag: '订单', desc: '历史订单总量' },
+    { key: 'todayOrders', label: '今日订单', value: '--', tag: '实时', desc: '今日累计订单' },
+    { key: 'riderCount', label: '员工总数', value: '--', tag: '骑手', desc: '配送团队规模' },
+    { key: 'onlineRiderCount', label: '在线骑手', value: '--', tag: '在线', desc: '当前在线骑手数' },
+    { key: 'pendingOrdersCount', label: '待接单', value: '--', tag: '待办', desc: '待处理订单量' }
   ]
 }
 
@@ -136,7 +136,7 @@ export function getRankName(level) {
     3: '黄金骑士',
     4: '钻石骑士',
     5: '王者骑士',
-    6: '传奇大佬'
+    6: '传奇大师'
   }
   return ranks[level] || '青铜骑士'
 }
@@ -155,6 +155,18 @@ function parsePresenceTimestamp(value) {
   if (Number.isFinite(numeric) && numeric > 0) return numeric
   const parsed = Date.parse(value)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+export function formatPresenceRole(role) {
+  const roleMap = {
+    admin: '管理员',
+    support: '客服',
+    merchant: '商家',
+    rider: '骑手',
+    user: '用户',
+    customer: '用户'
+  }
+  return roleMap[String(role || '').trim().toLowerCase()] || '未知角色'
 }
 
 export function normalizeOnlinePresenceSample(sample) {
@@ -211,8 +223,8 @@ export function normalizeFallbackBuffer(raw) {
     newestTimestamp: Math.max(0, toFiniteNumber(buffer.newestTimestamp)),
     oldestAgeMs: Math.max(0, toFiniteNumber(buffer.oldestAgeMs)),
     newestAgeMs: Math.max(0, toFiniteNumber(buffer.newestAgeMs)),
-    retentionDays: Math.max(1, Math.floor(toFiniteNumber(buffer.retentionDays, 30))),
-    perChatLimit: Math.max(1, Math.floor(toFiniteNumber(buffer.perChatLimit, 500))),
+    retentionDays: Math.max(0, Math.floor(toFiniteNumber(buffer.retentionDays))),
+    perChatLimit: Math.max(0, Math.floor(toFiniteNumber(buffer.perChatLimit))),
     startupDisabledPurged: Math.max(0, Math.floor(toFiniteNumber(buffer.startupDisabledPurged))),
     startupExpiredPruned: Math.max(0, Math.floor(toFiniteNumber(buffer.startupExpiredPruned))),
     startupOverflowPruned: Math.max(0, Math.floor(toFiniteNumber(buffer.startupOverflowPruned))),
@@ -275,24 +287,12 @@ export function getRedisModeHint(redisHealth) {
     return '当前未启用 Redis，共享在线态与跨实例广播不会生效。'
   }
   if (redis.connected && redis.adapterEnabled) {
-    return 'Redis 与 Socket.IO Redis adapter 都已启用，可支持多实例共享在线态与跨实例广播。'
+    return 'Redis 和 Socket.IO Redis adapter 都已启用，可支持多实例共享在线态与跨实例广播。'
   }
   if (redis.connected && !redis.adapterEnabled) {
     return 'Redis 已连接，但 Socket.IO Redis adapter 未启用，当前广播仍可能退回单实例。'
   }
   return 'Redis 未就绪，实时服务当前处于单机回退模式。'
-}
-
-export function formatPresenceRole(role) {
-  const roleMap = {
-    admin: '管理员',
-    support: '客服',
-    merchant: '商家',
-    rider: '骑手',
-    user: '用户',
-    customer: '用户'
-  }
-  return roleMap[String(role || '').trim().toLowerCase()] || '未知角色'
 }
 
 export function formatPresenceConnectedAt(value) {

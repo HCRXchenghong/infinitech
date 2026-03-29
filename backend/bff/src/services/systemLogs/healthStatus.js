@@ -132,21 +132,6 @@ function buildProbeDetail(result) {
       details.push(`redisMode=${body.redis.mode}`);
     }
   }
-  if (body.fallbackBuffer && typeof body.fallbackBuffer === "object") {
-    const fallback = body.fallbackBuffer;
-    const fallbackDetail = [
-      fallback.enabled !== undefined ? `fallbackEnabled=${fallback.enabled}` : "",
-      fallback.messageCount !== undefined ? `fallbackMessages=${fallback.messageCount}` : "",
-      fallback.chatCount !== undefined ? `fallbackChats=${fallback.chatCount}` : "",
-      fallback.oldestAgeMs !== undefined ? `fallbackOldestAge=${fallback.oldestAgeMs}` : "",
-      fallback.startupDisabledPurged !== undefined ? `fallbackDisabledPurged=${fallback.startupDisabledPurged}` : "",
-      fallback.startupExpiredPruned !== undefined ? `fallbackExpiredPruned=${fallback.startupExpiredPruned}` : "",
-      fallback.startupOverflowPruned !== undefined ? `fallbackOverflowPruned=${fallback.startupOverflowPruned}` : ""
-    ].filter(Boolean).join(" ");
-    if (fallbackDetail) {
-      details.push(fallbackDetail);
-    }
-  }
   if (body.dependencies && body.dependencies.goApi) {
     const goApi = body.dependencies.goApi;
     const goApiDetail = [

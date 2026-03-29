@@ -8,8 +8,6 @@ import {
 } from './http-load-smoke.mjs';
 
 const DEFAULT_TIMEOUT_MS = 5000;
-const DEFAULT_MAX_FALLBACK_MESSAGES = 5000;
-const DEFAULT_MAX_FALLBACK_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 const DEFAULT_MAX_PUSH_QUEUE = 5000;
 const DEFAULT_MAX_PUSH_QUEUE_AGE_MS = 30 * 60 * 1000;
 const DEFAULT_MAX_PUSH_CONSECUTIVE_FAILURES = 2;
@@ -117,17 +115,11 @@ function collectSocketSummary(body) {
   const historyFallback = body.supportHistoryFallback && typeof body.supportHistoryFallback === 'object'
     ? body.supportHistoryFallback
     : null;
-  const fallback = body.fallbackBuffer && typeof body.fallbackBuffer === 'object' ? body.fallbackBuffer : null;
   return [
     redis ? `redisMode=${redis.mode || 'unknown'}` : '',
     redis && typeof redis.connected === 'boolean' ? `redisConnected=${redis.connected}` : '',
     redis && typeof redis.adapterEnabled === 'boolean' ? `adapter=${redis.adapterEnabled}` : '',
-    historyFallback && typeof historyFallback.enabled === 'boolean' ? `historyFallback=${historyFallback.enabled}` : '',
-    fallback && typeof fallback.enabled === 'boolean' ? `fallbackBufferEnabled=${fallback.enabled}` : '',
-    fallback && fallback.messageCount !== undefined ? `fallbackMessages=${fallback.messageCount}` : '',
-    fallback && fallback.chatCount !== undefined ? `fallbackChats=${fallback.chatCount}` : '',
-    fallback && fallback.oldestAgeMs !== undefined ? `fallbackOldestAge=${formatDurationMs(fallback.oldestAgeMs)}` : '',
-    fallback && fallback.startupDisabledPurged !== undefined ? `fallbackDisabledPurged=${fallback.startupDisabledPurged}` : ''
+    historyFallback && typeof historyFallback.enabled === 'boolean' ? `historyFallback=${historyFallback.enabled}` : ''
   ].filter(Boolean).join(' ');
 }
 
@@ -308,22 +300,6 @@ function evaluateSocketReady(body, requiredRedisMode, allowHistoryFallback) {
   return failures;
 }
 
-function evaluateSocketStats(body, maxFallbackMessages, maxFallbackAgeMs) {
-  const failures = [];
-  if (!body || typeof body !== 'object') {
-    failures.push('missing_socket_stats_body');
-    return failures;
-  }
-  const fallback = body.fallbackBuffer && typeof body.fallbackBuffer === 'object' ? body.fallbackBuffer : null;
-  if (fallback && Number.isFinite(Number(fallback.messageCount)) && Number(fallback.messageCount) > maxFallbackMessages) {
-    failures.push(`fallback_messages=${fallback.messageCount}>${maxFallbackMessages}`);
-  }
-  if (fallback && Number.isFinite(Number(fallback.oldestAgeMs)) && Number(fallback.oldestAgeMs) > maxFallbackAgeMs) {
-    failures.push(`fallback_oldest_age=${formatDurationMs(fallback.oldestAgeMs)}>${formatDurationMs(maxFallbackAgeMs)}`);
-  }
-  return failures;
-}
-
 function evaluateSystemHealth(body, allowDegraded) {
   const failures = [];
   if (!body || typeof body !== 'object') {
@@ -356,8 +332,6 @@ async function main() {
   const goBaseUrl = normalizeBaseUrl(process.env.GO_BASE_URL, 'http://127.0.0.1:1029');
   const socketBaseUrl = normalizeBaseUrl(process.env.SOCKET_BASE_URL, 'http://127.0.0.1:9898');
   const adminToken = String(process.env.ADMIN_TOKEN || '').trim();
-  const maxFallbackMessages = parseIntegerEnv(process.env.PREFLIGHT_MAX_FALLBACK_MESSAGES, DEFAULT_MAX_FALLBACK_MESSAGES);
-  const maxFallbackAgeMs = parseIntegerEnv(process.env.PREFLIGHT_MAX_FALLBACK_AGE_MS, DEFAULT_MAX_FALLBACK_AGE_MS);
   const maxPushQueue = parseIntegerEnv(process.env.PREFLIGHT_MAX_PUSH_QUEUE, DEFAULT_MAX_PUSH_QUEUE);
   const maxPushQueueAgeMs = parseIntegerEnv(process.env.PREFLIGHT_MAX_PUSH_QUEUE_AGE_MS, DEFAULT_MAX_PUSH_QUEUE_AGE_MS);
   const requiredSocketRedisMode = String(process.env.PREFLIGHT_REQUIRE_SOCKET_REDIS_MODE || 'redis').trim();
@@ -406,8 +380,7 @@ async function main() {
     {
       label: 'Socket stats',
       url: `${socketBaseUrl}/api/stats`,
-      summary: collectSocketSummary,
-      validate: (body) => evaluateSocketStats(body, maxFallbackMessages, maxFallbackAgeMs)
+      summary: collectSocketSummary
     }
   ];
 
@@ -425,7 +398,7 @@ async function main() {
   console.log(`Release preflight started at ${new Date().toISOString()}`);
   console.log(`Targets: BFF=${bffBaseUrl} GO=${goBaseUrl} SOCKET=${socketBaseUrl}`);
   console.log(
-    `Thresholds: maxFallbackMessages=${maxFallbackMessages} maxFallbackAge=${formatDurationMs(maxFallbackAgeMs)} maxPushQueue=${maxPushQueue} `
+    `Thresholds: maxPushQueue=${maxPushQueue} `
     + `maxPushQueueAge=${formatDurationMs(maxPushQueueAgeMs)} `
     + `maxPushConsecutiveFailures=${maxPushConsecutiveFailures} `
     + `maxPushSuccessStale=${formatDurationMs(maxPushSuccessStaleMs)} `
