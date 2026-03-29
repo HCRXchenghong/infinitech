@@ -283,9 +283,13 @@ export function upsertChatFromIncoming({
     return chat;
   }
 
-  chat.lastMessage = preview;
-  chat.time = displayTime;
-  chat.updatedAt = incomingUpdatedAt || chat.updatedAt || 0;
+  const currentUpdatedAt = Number(chat.updatedAt || 0);
+  const shouldAdvanceSummary = !currentUpdatedAt || !incomingUpdatedAt || incomingUpdatedAt >= currentUpdatedAt;
+  if (shouldAdvanceSummary) {
+    chat.lastMessage = preview;
+    chat.time = displayTime;
+    chat.updatedAt = incomingUpdatedAt || currentUpdatedAt || 0;
+  }
   if (data.avatar && data.senderRole !== 'admin') chat.avatar = data.avatar;
   const reordered = sortChats(chats);
   chats.splice(0, chats.length, ...reordered);
