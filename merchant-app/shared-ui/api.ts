@@ -498,9 +498,6 @@ export const upsertConversation = (payload: Record<string, any>) =>
 export const markConversationRead = (chatId: string) =>
   apiPost(`/api/messages/conversations/${encodeURIComponent(chatId)}/read`, {})
 
-export const markAllConversationsRead = () =>
-  apiPost('/api/messages/conversations/read-all', {})
-
 export const fetchPublicRuntimeSettings = () => apiGet('/api/public/runtime-settings')
 
 export const registerPushDevice = (payload: Record<string, any>) =>

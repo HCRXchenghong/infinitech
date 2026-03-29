@@ -138,11 +138,6 @@ export const markConversationRead = (chatId: string) => request({
   method: 'POST'
 })
 
-export const markAllConversationsRead = () => request({
-  url: '/api/messages/conversations/read-all',
-  method: 'POST'
-})
-
 export const fetchHistory = (roomId: string) => request({
   url: `/api/messages/${encodeURIComponent(roomId)}`,
   method: 'GET'

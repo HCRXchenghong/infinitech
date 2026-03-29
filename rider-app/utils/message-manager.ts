@@ -1,7 +1,6 @@
 /**
- * 全局消息管理器
- * 负责管理来自客服、商家、顾客和骑手的消息，
- * 并触发弹窗和原生通知。
+ * Global message manager for the rider app.
+ * It centralizes popup notifications, in-app routing, and lightweight listeners.
  */
 
 import notification from './notification'
@@ -9,12 +8,17 @@ import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/s
 
 declare const uni: any
 
+const DEFAULT_AVATAR = '/static/images/logo.png'
+const SERVICE_ROUTE = 'pages/service/index'
+
+type SenderRole = 'admin' | 'merchant' | 'user' | 'rider'
+
 export interface MessageData {
   id: string | number
   chatId: string | number
   sender: string
   senderId: string
-  senderRole: 'admin' | 'merchant' | 'user' | 'rider'
+  senderRole: SenderRole
   content: string
   messageType?: 'text' | 'image' | 'coupon' | 'order' | 'audio' | 'video'
   avatar?: string
@@ -22,7 +26,7 @@ export interface MessageData {
 }
 
 class MessageManager {
-  private currentChatId: string | number | null = null
+  private currentChatId: string | null = null
   private listeners: Array<(message: MessageData) => void> = []
 
   constructor() {
@@ -36,7 +40,7 @@ class MessageManager {
     uni.$on('onPageShow', () => {
       const pages = getCurrentPages()
       const currentPage = pages[pages.length - 1]
-      if (currentPage && currentPage.route === 'pages/service/index') {
+      if (currentPage && currentPage.route === SERVICE_ROUTE) {
         // @ts-ignore
         this.currentChatId = this.normalizeChatId(currentPage.$vm?.chatId)
       }
@@ -50,14 +54,24 @@ class MessageManager {
   private normalizeChatId(chatId: string | number | null | undefined): string | null {
     if (chatId === undefined || chatId === null) return null
     const normalized = String(chatId).trim()
-    return normalized ? normalized : null
+    return normalized || null
+  }
+
+  private notifyListeners(message: MessageData) {
+    this.listeners.forEach((callback) => {
+      try {
+        callback(message)
+      } catch (error) {
+        console.error('[MessageManager] Listener execution failed:', error)
+      }
+    })
   }
 
   setCurrentChatId(chatId: string | number | null) {
     this.currentChatId = this.normalizeChatId(chatId)
   }
 
-  getCurrentChatId(): string | number | null {
+  getCurrentChatId(): string | null {
     return this.currentChatId
   }
 
@@ -67,19 +81,9 @@ class MessageManager {
 
   removeListener(callback: (message: MessageData) => void) {
     const index = this.listeners.indexOf(callback)
-    if (index > -1) {
+    if (index >= 0) {
       this.listeners.splice(index, 1)
     }
-  }
-
-  private notifyListeners(message: MessageData) {
-    this.listeners.forEach((callback) => {
-      try {
-        callback(message)
-      } catch (e) {
-        console.error('消息监听器执行失败:', e)
-      }
-    })
   }
 
   handleNewMessage(message: MessageData) {
@@ -88,15 +92,15 @@ class MessageManager {
       return
     }
 
-    const riderId = uni.getStorageSync('riderId')
-    if (String(message.senderId) === String(riderId)) {
+    const riderId = String(uni.getStorageSync('riderId') || '')
+    if (String(message.senderId) === riderId) {
       return
     }
 
     notification.notifyMessage({
-      sender: message.sender,
+      sender: this.formatSenderName(message),
       senderRole: message.senderRole,
-      content: message.content,
+      content: this.formatMessageContent(message),
       messageType: message.messageType,
       chatId: incomingChatId || ''
     })
@@ -105,6 +109,7 @@ class MessageManager {
       ...message,
       chatId: incomingChatId || ''
     })
+
     this.notifyListeners(message)
   }
 
@@ -115,27 +120,26 @@ class MessageManager {
     if (message.messageType === 'audio') return '[语音]'
     if (message.messageType === 'video') return '[视频]'
 
-    let content = message.content || ''
-    if (content.length > 50) {
-      content = content.substring(0, 50) + '...'
-    }
-    return content
+    const content = String(message.content || '').trim()
+    if (!content) return '[暂无内容]'
+    if (content.length <= 50) return content
+    return `${content.slice(0, 50)}...`
   }
 
   formatSenderName(message: MessageData): string {
     if (message.senderRole === 'admin') {
-      return getCachedSupportRuntimeSettings().title
+      return getCachedSupportRuntimeSettings().title || '平台客服'
     }
     if (message.senderRole === 'merchant') {
       return message.sender || '商家'
     }
     if (message.senderRole === 'user') {
-      return message.sender || '顾客'
+      return message.sender || '用户'
     }
     if (message.senderRole === 'rider') {
       return message.sender || '骑手'
     }
-    return message.sender || '发送者'
+    return message.sender || '消息发送方'
   }
 
   formatTime(timestamp: number): string {
@@ -143,28 +147,18 @@ class MessageManager {
     if (!Number.isFinite(safeTimestamp) || safeTimestamp <= 0) {
       return '刚刚'
     }
-    const now = Date.now()
-    const diff = now - safeTimestamp
 
-    if (diff < 60000) {
-      return '刚刚'
-    }
-    if (diff < 3600000) {
-      return `${Math.floor(diff / 60000)}分钟前`
-    }
-    if (diff < 86400000) {
-      return `${Math.floor(diff / 3600000)}小时前`
-    }
+    const diff = Date.now() - safeTimestamp
+    if (diff < 60_000) return '刚刚'
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}分钟前`
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}小时前`
 
     const date = new Date(safeTimestamp)
     return `${date.getMonth() + 1}/${date.getDate()}`
   }
 
   getSenderAvatar(message: MessageData): string {
-    if (message.avatar) {
-      return message.avatar
-    }
-    return '/static/images/logo.png'
+    return message.avatar || DEFAULT_AVATAR
   }
 
   navigateToChat(message: MessageData) {
@@ -176,9 +170,10 @@ class MessageManager {
       })
       return
     }
+
     const pages = getCurrentPages()
     const currentPage = pages[pages.length - 1]
-    const role =
+    const role: SenderRole =
       message.senderRole === 'merchant'
         ? 'merchant'
         : message.senderRole === 'user'
@@ -186,13 +181,14 @@ class MessageManager {
           : message.senderRole === 'rider'
             ? 'rider'
             : 'admin'
+
     const name = this.formatSenderName(message)
     const avatar = this.getSenderAvatar(message)
 
-    if (currentPage && currentPage.route === 'pages/service/index') {
+    if (currentPage && currentPage.route === SERVICE_ROUTE) {
       // @ts-ignore
       const vm = currentPage.$vm
-      if (vm && vm.switchChat) {
+      if (vm && typeof vm.switchChat === 'function') {
         vm.switchChat(chatId, { role, name, avatar })
       }
       return

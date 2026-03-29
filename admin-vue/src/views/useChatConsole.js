@@ -21,10 +21,6 @@ import {
   saveLoadedMessages
 } from './chatConsoleHelpers';
 
-function resolveDefaultChatName(defaultChatName, data) {
-  return typeof defaultChatName === 'function' ? defaultChatName(data) : defaultChatName;
-}
-
 export function useChatConsole(options = {}) {
   const {
     namespace,
