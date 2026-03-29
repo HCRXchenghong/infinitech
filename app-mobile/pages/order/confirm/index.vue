@@ -291,19 +291,22 @@ export default {
       return { id, detail, fullAddress: detail, name, phone, tag, isDefault: Boolean(addr.isDefault) }
     },
     async syncDeliveryAddress() {
-      let addresses = this.normalizeAddresses(uni.getStorageSync('addresses'))
-      if (addresses.length === 0) {
-        const profile = uni.getStorageSync('userProfile') || {}
-        const userId = String(profile.id || profile.userId || profile.phone || '').trim()
-        if (userId) {
-          try {
-            addresses = this.normalizeAddresses(await fetchUserAddresses(userId))
-            if (addresses.length > 0) {
-              uni.setStorageSync('addresses', addresses)
-            }
-          } catch (error) {
-            // fallback to local cache only
+      const cachedAddresses = this.normalizeAddresses(uni.getStorageSync('addresses'))
+      let addresses = cachedAddresses
+      const profile = uni.getStorageSync('userProfile') || {}
+      const userId = String(profile.id || profile.userId || profile.phone || '').trim()
+
+      if (userId) {
+        try {
+          const serverAddresses = this.normalizeAddresses(await fetchUserAddresses(userId))
+          if (serverAddresses.length > 0 || cachedAddresses.length === 0) {
+            addresses = serverAddresses
           }
+          if (serverAddresses.length > 0) {
+            uni.setStorageSync('addresses', serverAddresses)
+          }
+        } catch (error) {
+          console.error('Failed to sync delivery addresses from server:', error)
         }
       }
       const selectedAddressId = String(uni.getStorageSync('selectedAddressId') || '').trim()

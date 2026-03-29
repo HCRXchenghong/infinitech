@@ -41,7 +41,9 @@
           </div>
           <div class="service-meta">
             <span v-if="item.httpStatus">HTTP {{ item.httpStatus }}</span>
-            <span v-if="item.latencyMs !== null && item.latencyMs !== undefined">延迟 {{ item.latencyMs }}ms</span>
+            <span v-if="item.latencyMs !== null && item.latencyMs !== undefined">
+              延迟 {{ item.latencyMs }}ms
+            </span>
             <span v-if="item.error" class="service-error">{{ item.error }}</span>
           </div>
           <div v-if="getServiceSignals(item).length > 0" class="service-signals">
@@ -522,20 +524,22 @@ function resolveSignalType(key, rawValue) {
     return "warning";
   }
 
-  if ([
-    "fallbackMessages",
-    "fallbackChats",
-    "fallbackDisabledPurged",
-    "pushQueue",
-    "pushQueued",
-    "pushRetry",
-    "pushDispatching",
-    "pushFailed",
-    "pushConsecutiveFailures",
-    "pushOldestQueuedAgeSeconds",
-    "pushOldestRetryPendingAgeSeconds",
-    "pushOldestDispatchingAgeSeconds"
-  ].includes(key)) {
+  if (
+    [
+      "fallbackMessages",
+      "fallbackChats",
+      "fallbackDisabledPurged",
+      "pushQueue",
+      "pushQueued",
+      "pushRetry",
+      "pushDispatching",
+      "pushFailed",
+      "pushConsecutiveFailures",
+      "pushOldestQueuedAgeSeconds",
+      "pushOldestRetryPendingAgeSeconds",
+      "pushOldestDispatchingAgeSeconds"
+    ].includes(key)
+  ) {
     if (!Number.isFinite(numeric) || numeric <= 0) {
       return "info";
     }
@@ -593,7 +597,7 @@ function resolveServiceSummary(item) {
   return signals
     .slice(0, 4)
     .map((signal) => `${signal.label}${signal.value ? `：${signal.value}` : ""}`)
-    .join("，");
+    .join("；");
 }
 
 async function loadLogs() {

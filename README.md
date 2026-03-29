@@ -97,7 +97,9 @@ Important boundaries:
 
 - address books are service-backed
 - order confirmation reads real addresses instead of demo contact data
+- consumer web and app order-confirm pages now prefer fresh server address lists whenever the user is signed in, with local address cache only serving as a failure fallback
 - shared sync layers across consumer, merchant, and rider clients have been rewritten into a cleaner server-first shape with more bounded local fallback behavior
+- consumer web and app home pages have been rewritten into clean UTF-8 copies so active location, weather, category routing, and homepage feed copy no longer depend on mojibake-tainted strings
 - invite pages now only use server-issued invite codes or previously cached real invite codes and no longer fabricate temporary invite codes on the client
 - many active fake success prompts, mock placeholders, and visible mojibake strings were removed
 - invite, medicine, charity, VIP, rider insurance, support naming, and portal runtime settings were pushed into controlled service-side settings where operationally justified
@@ -124,6 +126,7 @@ Important boundaries:
 - admin dashboard and system logs now expose real readiness and Redis adapter state
 - admin-side health aggregation and system-log signals have been trimmed to current live fallback metrics instead of obsolete historical fallback counters
 - the admin console now includes a dedicated phone contact audit page for filtering actor/target roles, results, and related order or room references
+- the active system logs page has been rewritten into a clean UTF-8 implementation so readiness, Redis, push worker, and audit signals are readable without mojibake-tainted labels
 - release preflight checks BFF ready, Go ready, socket ready, system health, queue age, fallback state, and other launch blockers
 
 ## Current Release Gates
