@@ -3,7 +3,7 @@
     <view class="modal-content" @tap.stop>
       <view class="modal-header">
         <text class="modal-title">{{ title }}</text>
-        <text class="modal-close" @tap="handleClose">×</text>
+        <text class="modal-close" @tap="handleClose">&times;</text>
       </view>
       <view class="modal-body">
         <view v-if="showRtc" class="action-item primary" @tap="handleRTCContact">
@@ -18,7 +18,7 @@
             <text class="action-name">{{ rtcLabel }}</text>
             <text class="action-desc">{{ rtcDescription }}</text>
           </view>
-          <text class="arrow">›</text>
+          <text class="arrow">&gt;</text>
         </view>
         <view class="action-item primary" @tap="handleOnlineContact">
           <view class="action-icon-wrapper">
@@ -32,7 +32,7 @@
             <text class="action-name">在线联系</text>
             <text class="action-desc">通过站内消息继续沟通</text>
           </view>
-          <text class="arrow">›</text>
+          <text class="arrow">&gt;</text>
         </view>
         <view class="action-item" @tap="handlePhoneContact">
           <view class="action-icon-wrapper">
@@ -46,7 +46,7 @@
             <text class="action-name">电话联系</text>
             <text class="action-desc">直接拨打系统联系电话</text>
           </view>
-          <text class="arrow">›</text>
+          <text class="arrow">&gt;</text>
         </view>
       </view>
     </view>

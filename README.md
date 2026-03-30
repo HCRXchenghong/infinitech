@@ -153,6 +153,7 @@ Important boundaries:
 - admin service settings now also expose the RTC runtime switch, unanswered timeout, and ICE / TURN server list used by the active user and app RTC flows
 - the realtime gateway now auto-times out unanswered RTC calls after a bounded ring window and emits a service-side timeout status instead of leaving initiated calls hanging indefinitely
 - user and app RTC call pages now run off a shared clean page factory, include bounded unanswered-call auto-timeout behavior, and no longer rely on the mojibake-tainted earlier implementation
+- user and app contact modals plus the shared RTC call page factory now also use clean UTF-8 operator and end-user copy, so the active RTC/contact entry path no longer exposes mojibake-tainted labels or status hints
 - release drills now also have a first structured `rtc-call-drill` step that can create, advance, inspect, and optionally admin-verify an RTC call audit record through the same BFF/Go paths used by the product
 - the active system logs page has been rewritten into a clean UTF-8 implementation so readiness, Redis, push worker, and audit signals are readable without mojibake-tainted labels
 - admin system logs now surface push production-readiness and production-issue signals as first-class tags instead of leaving them buried in raw detail strings

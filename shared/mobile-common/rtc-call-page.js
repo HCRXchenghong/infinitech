@@ -251,7 +251,11 @@ export function createRTCCallPage(options = {}) {
         }
         this.timeoutTimer = setTimeout(() => {
           this.timeoutTimer = null
-          if (!this.session || !isWaitingStatus(this.status) || typeof this.session.timeout !== 'function') {
+          if (
+            !this.session ||
+            !isWaitingStatus(this.status) ||
+            typeof this.session.timeout !== 'function'
+          ) {
             return
           }
           this.errorMessage = '对方未在有效时间内响应，本次呼叫已自动结束。'
