@@ -19,6 +19,15 @@ async function readJson(filePath) {
   return JSON.parse(content);
 }
 
+async function readOptionalJson(baseDirectory, value) {
+  const resolvedPath = normalizeLocalPath(baseDirectory, value);
+  if (!resolvedPath) {
+    return null;
+  }
+  const content = await readFile(resolvedPath, 'utf8');
+  return JSON.parse(content);
+}
+
 function isHttpUrl(value) {
   const trimmed = String(value || '').trim();
   return /^https?:\/\//i.test(trimmed);
@@ -93,6 +102,77 @@ function hasEvidenceItem(item) {
 
 function hasAnyValue(values = []) {
   return values.some((value) => String(value || '').trim());
+}
+
+function normalizeText(value) {
+  return String(value || '').trim();
+}
+
+function normalizeLowerText(value) {
+  return normalizeText(value).toLowerCase();
+}
+
+function normalizePathForCompare(baseDirectory, value) {
+  const resolvedPath = normalizeLocalPath(baseDirectory, value);
+  return resolvedPath ? path.normalize(resolvedPath) : '';
+}
+
+function extractPushDrill(report) {
+  return report
+    && report.releaseDrill
+    && report.releaseDrill.summary
+    && report.releaseDrill.summary.pushDeliveryDrill
+    && typeof report.releaseDrill.summary.pushDeliveryDrill === 'object'
+    ? report.releaseDrill.summary.pushDeliveryDrill
+    : null;
+}
+
+function extractRTCDrill(report) {
+  return report
+    && report.releaseDrill
+    && report.releaseDrill.summary
+    && report.releaseDrill.summary.rtcCallDrill
+    && typeof report.releaseDrill.summary.rtcCallDrill === 'object'
+    ? report.releaseDrill.summary.rtcCallDrill
+    : null;
+}
+
+function extractPushProvider(pushDrill) {
+  return normalizeLowerText(
+    pushDrill
+      && pushDrill.readiness
+      && pushDrill.readiness.worker
+      && pushDrill.readiness.worker.provider
+  );
+}
+
+function extractPushMessageId(pushDrill) {
+  return normalizeText(pushDrill && pushDrill.message && pushDrill.message.id);
+}
+
+function extractPushTargetConfig(pushDrill) {
+  const config = pushDrill && pushDrill.config && typeof pushDrill.config === 'object'
+    ? pushDrill.config
+    : {};
+  return {
+    userType: normalizeLowerText(config.requiredUserType),
+    userId: normalizeText(config.requiredUserId),
+    appEnv: normalizeLowerText(config.requiredAppEnv),
+    deviceTokenSuffix: normalizeLowerText(config.requiredDeviceTokenSuffix),
+  };
+}
+
+function extractRTCCallId(rtcDrill) {
+  const detail = rtcDrill && rtcDrill.detail && rtcDrill.detail.data && typeof rtcDrill.detail.data === 'object'
+    ? rtcDrill.detail.data
+    : null;
+  const create = rtcDrill && rtcDrill.create && rtcDrill.create.data && typeof rtcDrill.create.data === 'object'
+    ? rtcDrill.create.data
+    : null;
+  return normalizeText(
+    (detail && (detail.uid || detail.callId || detail.call_id_raw || detail.call_id))
+      || (create && (create.uid || create.callId || create.call_id_raw || create.call_id))
+  );
 }
 
 function collectSectionFailures(failures, sectionName, section) {
@@ -232,6 +312,131 @@ async function collectFailureRecoveryReportPathFailures(failures, details, baseD
   );
 }
 
+function collectPushConsistencyFailures(failures, manualReport, liveCutoverReport) {
+  const manualDetails = manualReport
+    && manualReport.pushRealDeviceCutover
+    && manualReport.pushRealDeviceCutover.details
+    && typeof manualReport.pushRealDeviceCutover.details === 'object'
+    ? manualReport.pushRealDeviceCutover.details
+    : {};
+  const pushDrill = extractPushDrill(liveCutoverReport);
+  if (!pushDrill) {
+    failures.push('push_real_device_cutover_live_drill_missing');
+    return;
+  }
+  const manualProvider = normalizeLowerText(manualDetails.provider);
+  const drillProvider = extractPushProvider(pushDrill);
+  if (manualProvider && drillProvider && manualProvider !== drillProvider) {
+    failures.push(`push_real_device_cutover_provider_mismatch=${manualProvider}!=${drillProvider}`);
+  }
+  const manualMessageId = normalizeText(manualDetails.messageId);
+  const drillMessageId = extractPushMessageId(pushDrill);
+  if (manualMessageId && drillMessageId && manualMessageId !== drillMessageId) {
+    failures.push(`push_real_device_cutover_message_id_mismatch=${manualMessageId}!=${drillMessageId}`);
+  }
+  const drillTarget = extractPushTargetConfig(pushDrill);
+  const manualUserType = normalizeLowerText(manualDetails.userType);
+  const manualUserId = normalizeText(manualDetails.userId);
+  const manualAppEnv = normalizeLowerText(manualDetails.appEnv);
+  const manualTokenSuffix = normalizeLowerText(manualDetails.deviceTokenSuffix);
+  if (drillTarget.userType && manualUserType && drillTarget.userType !== manualUserType) {
+    failures.push(`push_real_device_cutover_user_type_mismatch=${manualUserType}!=${drillTarget.userType}`);
+  }
+  if (drillTarget.userId && manualUserId && drillTarget.userId !== manualUserId) {
+    failures.push(`push_real_device_cutover_user_id_mismatch=${manualUserId}!=${drillTarget.userId}`);
+  }
+  if (drillTarget.appEnv && manualAppEnv && drillTarget.appEnv !== manualAppEnv) {
+    failures.push(`push_real_device_cutover_app_env_mismatch=${manualAppEnv}!=${drillTarget.appEnv}`);
+  }
+  if (drillTarget.deviceTokenSuffix && manualTokenSuffix && drillTarget.deviceTokenSuffix !== manualTokenSuffix) {
+    failures.push(
+      `push_real_device_cutover_device_token_suffix_mismatch=${manualTokenSuffix}!=${drillTarget.deviceTokenSuffix}`
+    );
+  }
+}
+
+function collectRTCConsistencyFailures(failures, manualReport, liveCutoverReport) {
+  const manualDetails = manualReport
+    && manualReport.rtcRealDeviceValidation
+    && manualReport.rtcRealDeviceValidation.details
+    && typeof manualReport.rtcRealDeviceValidation.details === 'object'
+    ? manualReport.rtcRealDeviceValidation.details
+    : {};
+  const rtcDrill = extractRTCDrill(liveCutoverReport);
+  if (!rtcDrill) {
+    failures.push('rtc_real_device_validation_live_drill_missing');
+    return;
+  }
+  const manualCallId = normalizeText(manualDetails.callId);
+  const drillCallId = extractRTCCallId(rtcDrill);
+  if (manualCallId && drillCallId && manualCallId !== drillCallId) {
+    failures.push(`rtc_real_device_validation_call_id_mismatch=${manualCallId}!=${drillCallId}`);
+  }
+}
+
+function collectFailureRecoveryConsistencyFailures(
+  failures,
+  manualReport,
+  rollbackVerifyReport,
+  failureVerifyReport,
+  manualBaseDirectory,
+  evidenceBaseDirectory
+) {
+  const manualDetails = manualReport
+    && manualReport.failureRecoveryDrill
+    && manualReport.failureRecoveryDrill.details
+    && typeof manualReport.failureRecoveryDrill.details === 'object'
+    ? manualReport.failureRecoveryDrill.details
+    : {};
+  const manualDegradedReport = normalizePathForCompare(manualBaseDirectory, manualDetails.degradedReport);
+  const manualRestoredReport = normalizePathForCompare(manualBaseDirectory, manualDetails.restoredReport);
+  const manualRollbackBaselineReport = normalizePathForCompare(
+    manualBaseDirectory,
+    manualDetails.rollbackBaselineReport
+  );
+  const manualRollbackCandidateReport = normalizePathForCompare(
+    manualBaseDirectory,
+    manualDetails.rollbackCandidateReport
+  );
+  const verifyDegradedReport = normalizePathForCompare(
+    evidenceBaseDirectory,
+    failureVerifyReport && failureVerifyReport.degradedReport
+  );
+  const verifyRestoredReport = normalizePathForCompare(
+    evidenceBaseDirectory,
+    failureVerifyReport && failureVerifyReport.restoredReport
+  );
+  const rollbackBaselineReport = normalizePathForCompare(
+    evidenceBaseDirectory,
+    rollbackVerifyReport && rollbackVerifyReport.baselineReport
+  );
+  const rollbackCandidateReport = normalizePathForCompare(
+    evidenceBaseDirectory,
+    rollbackVerifyReport && rollbackVerifyReport.candidateReport
+  );
+
+  if (manualDegradedReport && verifyDegradedReport && manualDegradedReport !== verifyDegradedReport) {
+    failures.push('failure_recovery_drill_degraded_report_mismatch');
+  }
+  if (manualRestoredReport && verifyRestoredReport && manualRestoredReport !== verifyRestoredReport) {
+    failures.push('failure_recovery_drill_restored_report_mismatch');
+  }
+  if (
+    manualRollbackBaselineReport &&
+    rollbackBaselineReport &&
+    manualRollbackBaselineReport !== rollbackBaselineReport
+  ) {
+    failures.push('failure_recovery_drill_rollback_baseline_report_mismatch');
+  }
+  if (
+    manualRollbackCandidateReport &&
+    rollbackCandidateReport &&
+    manualRollbackCandidateReport !== rollbackCandidateReport
+  ) {
+    failures.push('failure_recovery_drill_rollback_candidate_report_mismatch');
+  }
+}
+
 async function collectManualFailures(failures, manualReport, manualReportFile) {
   if (!manualReport || typeof manualReport !== 'object') {
     failures.push('manual_attestation_invalid');
@@ -298,10 +503,27 @@ async function main() {
     readJson(evidenceReportFile),
     readJson(manualAttestationFile),
   ]);
+  const evidenceBaseDirectory = path.dirname(path.resolve(evidenceReportFile));
+  const manualBaseDirectory = path.dirname(path.resolve(manualAttestationFile));
+  const [liveCutoverReport, rollbackVerifyReport, failureVerifyReport] = await Promise.all([
+    readOptionalJson(evidenceBaseDirectory, evidenceReport && evidenceReport.reports && evidenceReport.reports.liveCutover),
+    readOptionalJson(evidenceBaseDirectory, evidenceReport && evidenceReport.reports && evidenceReport.reports.rollbackVerify),
+    readOptionalJson(evidenceBaseDirectory, evidenceReport && evidenceReport.reports && evidenceReport.reports.failureVerify),
+  ]);
 
   const failures = [];
   collectEvidenceFailures(failures, evidenceReport);
   await collectManualFailures(failures, manualAttestation, manualAttestationFile);
+  collectPushConsistencyFailures(failures, manualAttestation, liveCutoverReport);
+  collectRTCConsistencyFailures(failures, manualAttestation, liveCutoverReport);
+  collectFailureRecoveryConsistencyFailures(
+    failures,
+    manualAttestation,
+    rollbackVerifyReport,
+    failureVerifyReport,
+    manualBaseDirectory,
+    evidenceBaseDirectory
+  );
   collectAgeFailure(failures, 'evidence_report', evidenceReport && evidenceReport.completedAt, maxReportAgeMinutes);
   collectAgeFailure(failures, 'manual_attestation', manualAttestation && manualAttestation.completedAt, maxReportAgeMinutes);
   collectAgeFailure(
