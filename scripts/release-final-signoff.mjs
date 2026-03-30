@@ -228,6 +228,9 @@ async function collectEvidencePathFailures(failures, sectionName, section, baseD
 
 function collectPushCutoverDetailFailures(failures, details) {
   const value = details && typeof details === 'object' ? details : {};
+  if (!String(value.prepReport || '').trim()) {
+    failures.push('push_real_device_cutover_prep_report_missing');
+  }
   if (!String(value.provider || '').trim()) {
     failures.push('push_real_device_cutover_provider_missing');
   }
@@ -243,6 +246,63 @@ function collectPushCutoverDetailFailures(failures, details) {
     ])
   ) {
     failures.push('push_real_device_cutover_target_identity_missing');
+  }
+}
+
+async function collectPushPrepPathFailures(failures, details, baseDirectory) {
+  const value = details && typeof details === 'object' ? details : {};
+  await ensureExistingLocalPath(
+    failures,
+    'push_real_device_cutover_prep_report',
+    baseDirectory,
+    value.prepReport
+  );
+}
+
+async function collectPushPrepConsistencyFailures(failures, details, baseDirectory) {
+  const value = details && typeof details === 'object' ? details : {};
+  const report = await readOptionalJson(baseDirectory, value.prepReport);
+  if (!report || typeof report !== 'object') {
+    return;
+  }
+  if (normalizeText(report.failure)) {
+    failures.push(`push_real_device_cutover_prep_report_failure=${normalizeText(report.failure)}`);
+  }
+  const readiness = report.readiness && typeof report.readiness === 'object' ? report.readiness : {};
+  const worker = readiness.worker && typeof readiness.worker === 'object' ? readiness.worker : {};
+  if (readiness.productionReady === false) {
+    failures.push('push_real_device_cutover_prep_not_production_ready');
+  }
+  const prepProvider = normalizeLowerText(
+    report.target && report.target.provider
+      ? report.target.provider
+      : worker.provider
+  );
+  const manualProvider = normalizeLowerText(value.provider);
+  const prepUserType = normalizeLowerText(report.target && report.target.userType);
+  const prepUserId = normalizeText(report.target && report.target.userId);
+  const prepAppEnv = normalizeLowerText(report.target && report.target.appEnv);
+  const prepTokenSuffix = normalizeLowerText(report.target && report.target.deviceTokenSuffix);
+  if (prepProvider && manualProvider && prepProvider !== manualProvider) {
+    failures.push(`push_real_device_cutover_prep_provider_mismatch=${manualProvider}!=${prepProvider}`);
+  }
+  if (prepUserType && normalizeLowerText(value.userType) && prepUserType !== normalizeLowerText(value.userType)) {
+    failures.push(`push_real_device_cutover_prep_user_type_mismatch=${normalizeLowerText(value.userType)}!=${prepUserType}`);
+  }
+  if (prepUserId && normalizeText(value.userId) && prepUserId !== normalizeText(value.userId)) {
+    failures.push(`push_real_device_cutover_prep_user_id_mismatch=${normalizeText(value.userId)}!=${prepUserId}`);
+  }
+  if (prepAppEnv && normalizeLowerText(value.appEnv) && prepAppEnv !== normalizeLowerText(value.appEnv)) {
+    failures.push(`push_real_device_cutover_prep_app_env_mismatch=${normalizeLowerText(value.appEnv)}!=${prepAppEnv}`);
+  }
+  if (
+    prepTokenSuffix
+    && normalizeLowerText(value.deviceTokenSuffix)
+    && prepTokenSuffix !== normalizeLowerText(value.deviceTokenSuffix)
+  ) {
+    failures.push(
+      `push_real_device_cutover_prep_device_token_suffix_mismatch=${normalizeLowerText(value.deviceTokenSuffix)}!=${prepTokenSuffix}`
+    );
   }
 }
 
@@ -510,6 +570,16 @@ async function collectManualFailures(failures, manualReport, manualReportFile) {
   await collectRTCPrepPathFailures(
     failures,
     manualReport.rtcRealDeviceValidation && manualReport.rtcRealDeviceValidation.details,
+    manualBaseDirectory
+  );
+  await collectPushPrepPathFailures(
+    failures,
+    manualReport.pushRealDeviceCutover && manualReport.pushRealDeviceCutover.details,
+    manualBaseDirectory
+  );
+  await collectPushPrepConsistencyFailures(
+    failures,
+    manualReport.pushRealDeviceCutover && manualReport.pushRealDeviceCutover.details,
     manualBaseDirectory
   );
 }

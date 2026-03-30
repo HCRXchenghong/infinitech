@@ -34,6 +34,7 @@ async function main() {
         },
       ],
       details: {
+        prepReport: '',
         provider: '',
         userType: '',
         userId: '',

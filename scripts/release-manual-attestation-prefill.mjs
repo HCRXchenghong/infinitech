@@ -15,7 +15,7 @@ function baseTemplate() {
       completedAt: '',
       summary: '',
       evidence: [{ type: 'screenshot', path: '', note: 'Push provider console or device receipt screenshot' }],
-      details: { provider: '', userType: '', userId: '', appEnv: '', deviceTokenSuffix: '', messageId: '' },
+      details: { prepReport: '', provider: '', userType: '', userId: '', appEnv: '', deviceTokenSuffix: '', messageId: '' },
     },
     rtcRealDeviceValidation: {
       status: 'pending',
@@ -43,7 +43,7 @@ function baseTemplate() {
       completedAt: '',
       summary: '',
       evidence: [{ type: 'report', path: '', note: 'Fault drill report or incident timeline' }],
-      details: { scenario: '', degradedReport: '', restoredReport: '', rollbackBaselineReport: '', rollbackCandidateReport: '' },
+      details: { scenario: '', planReport: '', degradedReport: '', restoredReport: '', rollbackBaselineReport: '', rollbackCandidateReport: '' },
     },
   };
 }
@@ -98,6 +98,17 @@ function failurePrep(planReport, outputFile) {
   };
 }
 
+function pushPrep(report, outputFile) {
+  return {
+    prepReport: rel(outputFile, report?.reportFile || ''),
+    provider: lower(report?.target?.provider),
+    userType: lower(report?.target?.userType),
+    userId: t(report?.target?.userId),
+    appEnv: lower(report?.target?.appEnv),
+    deviceTokenSuffix: lower(report?.target?.deviceTokenSuffix),
+  };
+}
+
 async function main() {
   const liveEnv = t(process.env.LIVE_CUTOVER_REPORT);
   const rollbackEnv = t(process.env.ROLLBACK_VERIFY_REPORT);
@@ -112,6 +123,8 @@ async function main() {
   const failureFile = path.resolve(process.cwd(), failureEnv);
   const rtcPrepEnv = t(process.env.RTC_REAL_DEVICE_PREP_REPORT);
   const rtcPrepFile = rtcPrepEnv ? path.resolve(process.cwd(), rtcPrepEnv) : '';
+  const pushPrepEnv = t(process.env.PUSH_REAL_DEVICE_PREP_REPORT);
+  const pushPrepFile = pushPrepEnv ? path.resolve(process.cwd(), pushPrepEnv) : '';
   const failurePrepEnv = t(process.env.FAILURE_DRILL_PREP_REPORT);
   const failurePrepFile = failurePrepEnv ? path.resolve(process.cwd(), failurePrepEnv) : '';
   const templateFile = path.resolve(process.cwd(), t(process.env.MANUAL_ATTESTATION_TEMPLATE_FILE || path.join('artifacts', 'release-manual-attestation', 'template.json')));
@@ -122,6 +135,11 @@ async function main() {
   if (rtcPrepFile) {
     prepReport = await readJson(rtcPrepFile);
     if (prepReport && typeof prepReport === 'object') prepReport.reportFile = rtcPrepFile;
+  }
+  let pushPrepReport = null;
+  if (pushPrepFile) {
+    pushPrepReport = await readJson(pushPrepFile);
+    if (pushPrepReport && typeof pushPrepReport === 'object') pushPrepReport.reportFile = pushPrepFile;
   }
   let failurePrepReport = null;
   if (failurePrepFile) {
@@ -138,6 +156,7 @@ async function main() {
   const pushDrill = pickPushDrill(liveReport);
   const rtcDrill = pickRTCDrill(liveReport);
   const target = pushTarget(pushDrill);
+  const pushPlan = pushPrep(pushPrepReport, outputFile);
   const launch = rtcLaunch(prepReport, outputFile);
   const platforms = rtcPlatforms(rtcDrill);
   const plan = failurePrep(failurePrepReport, outputFile);
@@ -145,6 +164,9 @@ async function main() {
   template.preparedBy = t(process.env.ATTESTATION_PREPARED_BY || template.preparedBy);
   template.approver = t(process.env.ATTESTATION_APPROVER || template.approver);
   template.notes = appendNote(template.notes, 'Prefilled from live cutover, rollback verify, and failure verify reports. Replace pending statuses only after real-device validation is completed.');
+  if (pushPrepFile) {
+    template.notes = appendNote(template.notes, 'Push real-device prep data is included below so operators can reuse the prepared provider and target identity.');
+  }
   if (rtcPrepFile) {
     template.notes = appendNote(template.notes, 'RTC real-device prep data is included below so operators can open the prepared caller and callee launch paths directly.');
   }
@@ -153,11 +175,15 @@ async function main() {
   }
 
   template.pushRealDeviceCutover.summary = t(template.pushRealDeviceCutover.summary) || 'Pending: complete the real-device push cutover and receipt validation, then replace this summary.';
-  template.pushRealDeviceCutover.details.provider = t(template.pushRealDeviceCutover.details.provider) || lower(pushDrill?.readiness?.worker?.provider);
-  template.pushRealDeviceCutover.details.userType = t(template.pushRealDeviceCutover.details.userType) || target.userType;
-  template.pushRealDeviceCutover.details.userId = t(template.pushRealDeviceCutover.details.userId) || target.userId;
-  template.pushRealDeviceCutover.details.appEnv = t(template.pushRealDeviceCutover.details.appEnv) || target.appEnv;
-  template.pushRealDeviceCutover.details.deviceTokenSuffix = t(template.pushRealDeviceCutover.details.deviceTokenSuffix) || target.deviceTokenSuffix;
+  template.pushRealDeviceCutover.details.prepReport = t(template.pushRealDeviceCutover.details.prepReport) || pushPlan.prepReport;
+  template.pushRealDeviceCutover.details.provider =
+    t(template.pushRealDeviceCutover.details.provider)
+    || lower(pushDrill?.readiness?.worker?.provider)
+    || pushPlan.provider;
+  template.pushRealDeviceCutover.details.userType = t(template.pushRealDeviceCutover.details.userType) || target.userType || pushPlan.userType;
+  template.pushRealDeviceCutover.details.userId = t(template.pushRealDeviceCutover.details.userId) || target.userId || pushPlan.userId;
+  template.pushRealDeviceCutover.details.appEnv = t(template.pushRealDeviceCutover.details.appEnv) || target.appEnv || pushPlan.appEnv;
+  template.pushRealDeviceCutover.details.deviceTokenSuffix = t(template.pushRealDeviceCutover.details.deviceTokenSuffix) || target.deviceTokenSuffix || pushPlan.deviceTokenSuffix;
   template.pushRealDeviceCutover.details.messageId = t(template.pushRealDeviceCutover.details.messageId) || t(pushDrill?.message?.id);
 
   template.rtcRealDeviceValidation.summary = t(template.rtcRealDeviceValidation.summary) || 'Pending: complete the real-device RTC validation, then replace this summary.';
@@ -186,6 +212,7 @@ async function main() {
     liveCutoverReport: rel(outputFile, liveFile),
     rollbackVerifyReport: rel(outputFile, rollbackFile),
     failureVerifyReport: rel(outputFile, failureFile),
+    pushRealDevicePrepReport: rel(outputFile, pushPrepFile),
     rtcRealDevicePrepReport: rel(outputFile, rtcPrepFile),
     failureDrillPrepReport: rel(outputFile, failurePrepFile),
   };

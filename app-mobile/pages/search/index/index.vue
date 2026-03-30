@@ -227,21 +227,21 @@ export default {
         return shop.tags.filter(Boolean).slice(0, 3)
       }
       if (typeof shop?.tags === 'string' && shop.tags.trim()) {
-        return shop.tags.split(/[、,，/]/).map((item) => item.trim()).filter(Boolean).slice(0, 3)
+        return shop.tags.split(/[、，,]/).map((item) => item.trim()).filter(Boolean).slice(0, 3)
       }
       return []
     },
 
     getShopInitial(name) {
       const text = String(name || '').trim()
-      if (!text) return '店'
+      if (!text) return '店铺'
       return text.slice(0, 2)
     },
 
     formatRating(value) {
       const rating = Number(value)
       if (!Number.isFinite(rating) || rating <= 0) {
-        return '评分待补充'
+        return '暂无评分'
       }
       return `评分 ${rating.toFixed(1)}`
     },
@@ -249,14 +249,14 @@ export default {
     formatSales(value) {
       const sales = Number(value)
       if (!Number.isFinite(sales) || sales < 0) {
-        return '销量待补充'
+        return '暂无销量'
       }
       return `月售 ${sales}`
     },
 
     formatDistance(value) {
       const text = String(value || '').trim()
-      return text || '距离待补充'
+      return text || '距离未知'
     }
   }
 }
