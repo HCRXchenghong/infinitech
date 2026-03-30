@@ -146,6 +146,7 @@ Important boundaries:
 - admin-side health aggregation and system-log signals have been trimmed to current live fallback metrics instead of obsolete historical fallback counters
 - the admin console now includes a dedicated phone contact audit page for filtering actor/target roles, results, and related order or room references
 - the admin console now also includes a dedicated RTC call audit page, the Go API now has a first server-side RTC audit model plus create/status-update, detail-query, history-query, and admin-list endpoints, and `socket-server` now exposes a first RTC signaling namespace for invite/status/signal relay flow
+- the RTC audit chain now also supports admin-side complaint and recording-retention review actions, so reported calls can be frozen and resolved calls can be marked for cleanup from the admin console instead of only being viewed
 - user and app order-contact flows now expose a first `/pages/rtc/call/index` entry wired from the contact modal into the RTC signaling/audit path, so RTC no longer exists only as hidden APIs and admin audit pages
 - user and app `App.vue` lifecycles now also keep a lightweight RTC invite bridge alive for authenticated consumer sessions, so incoming `/rtc` invite events can open the RTC call page even when the user is not already sitting inside a chat page
 - user and app RTC call pages now also ship a shared WebRTC media helper for microphone bootstrap, offer/answer exchange, ICE candidate relay, and hidden remote-audio playback on capable runtimes, so the client path is no longer limited to status-only signaling
@@ -202,7 +203,7 @@ These items are still open and should not be misrepresented as complete:
 - production-grade push provider integration
   - the platform now has secure webhook and FCM HTTP v1 dispatch paths plus a scripted delivery drill, but real production rollout still needs live provider cutover and a validated launch run with real devices
 - App / H5 RTC audio implementation
-  - a first server-side RTC audit model, query APIs, socket signaling namespace, client API wrappers, order-contact entry pages, shared RTC contact helper, consumer-app invite bridge, and a first client-side media negotiation helper now exist, but recording-retention policy flow, complaint freeze flow, and true App-side runtime validation are not complete
+  - a first server-side RTC audit model, query APIs, socket signaling namespace, client API wrappers, order-contact entry pages, shared RTC contact helper, consumer-app invite bridge, client-side media negotiation helper, and admin-side complaint / retention review flow now exist, but true App-side runtime validation and full lifecycle policy automation are not complete
 - full load, rollback, and failure-drill validation
   - smoke checks, rollback verification, and failure verification exist, but that is not the same as complete capacity certification
 

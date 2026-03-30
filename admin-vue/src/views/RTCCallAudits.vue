@@ -5,7 +5,7 @@
         <div>
           <div class="panel-title">RTC 通话审计</div>
           <div class="panel-subtitle">
-            查看 App / H5 音频通话的服务端留痕，便于排查投诉、授权关系和通话质量问题。
+            查看 App / H5 站内语音的服务端留痕，并在后台处理投诉冻结与录音留存状态。
           </div>
         </div>
         <div class="panel-actions">
@@ -63,9 +63,16 @@
         <el-select v-model="filters.clientKind" clearable size="small" placeholder="终端类型" style="width: 140px">
           <el-option label="App" value="app" />
           <el-option label="H5" value="h5" />
-          <el-option label="小程序" value="miniprogram" />
+          <el-option label="uni-user" value="uni-user" />
+          <el-option label="uni-app-mobile" value="uni-app-mobile" />
         </el-select>
-        <el-select v-model="filters.complaintStatus" clearable size="small" placeholder="投诉状态" style="width: 140px">
+        <el-select
+          v-model="filters.complaintStatus"
+          clearable
+          size="small"
+          placeholder="投诉状态"
+          style="width: 140px"
+        >
           <el-option label="无投诉" value="none" />
           <el-option label="投诉中" value="reported" />
           <el-option label="已处理" value="resolved" />
@@ -90,18 +97,18 @@
             {{ formatDateTime(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="通话 ID" min-width="150" show-overflow-tooltip>
+        <el-table-column label="通话 ID" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">
-            {{ row.id || row.uid || '-' }}
+            {{ row.uid || row.id || row.call_id_raw || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="发起方" min-width="150">
+        <el-table-column label="发起方" min-width="170">
           <template #default="{ row }">
             <div>{{ roleLabel(row.caller_role) }} / {{ row.caller_id || '-' }}</div>
             <div class="muted-text">{{ row.caller_phone || '-' }}</div>
           </template>
         </el-table-column>
-        <el-table-column label="接收方" min-width="150">
+        <el-table-column label="接收方" min-width="170">
           <template #default="{ row }">
             <div>{{ roleLabel(row.callee_role) }} / {{ row.callee_id || '-' }}</div>
             <div class="muted-text">{{ row.callee_phone || '-' }}</div>
@@ -115,12 +122,10 @@
         </el-table-column>
         <el-table-column label="状态" width="110">
           <template #default="{ row }">
-            <el-tag size="small" :type="statusTagType(row.status)">
-              {{ statusLabel(row.status) }}
-            </el-tag>
+            <el-tag size="small" :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="时长" width="96">
+        <el-table-column label="时长" width="110">
           <template #default="{ row }">
             {{ formatDuration(row.duration_seconds) }}
           </template>
@@ -132,13 +137,65 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="录音留存" width="120">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="openDetail(row)">查看详情</el-button>
+            <el-tag size="small" :type="retentionTagType(row.recording_retention)">
+              {{ retentionLabel(row.recording_retention) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="260" fixed="right">
+          <template #default="{ row }">
+            <div class="row-actions">
+              <el-button type="primary" link size="small" @click="openDetail(row)">查看详情</el-button>
+              <el-button
+                v-if="row.complaint_status !== 'reported'"
+                type="danger"
+                link
+                size="small"
+                :loading="actionLoading[row.uid || row.id]"
+                @click="markComplaint(row)"
+              >
+                标记投诉
+              </el-button>
+              <el-button
+                v-if="row.complaint_status === 'reported'"
+                type="success"
+                link
+                size="small"
+                :loading="actionLoading[row.uid || row.id]"
+                @click="resolveComplaint(row)"
+              >
+                处理完成
+              </el-button>
+              <el-button
+                v-if="row.recording_retention !== 'frozen'"
+                type="warning"
+                link
+                size="small"
+                :loading="actionLoading[row.uid || row.id]"
+                @click="freezeRetention(row)"
+              >
+                冻结留存
+              </el-button>
+              <el-button
+                v-if="row.recording_retention !== 'cleared' && row.complaint_status !== 'reported'"
+                type="info"
+                link
+                size="small"
+                :loading="actionLoading[row.uid || row.id]"
+                @click="clearRetention(row)"
+              >
+                标记清理
+              </el-button>
+            </div>
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty :description="loadError ? '加载失败，暂无可显示数据' : '暂无 RTC 通话审计记录'" :image-size="96" />
+          <el-empty
+            :description="loadError ? '加载失败，暂无可显示数据' : '暂无 RTC 通话审计记录'"
+            :image-size="96"
+          />
         </template>
       </el-table>
 
@@ -155,9 +212,9 @@
       />
     </div>
 
-    <el-dialog v-model="detailVisible" title="RTC 通话详情" width="780px">
+    <el-dialog v-model="detailVisible" title="RTC 通话详情" width="820px">
       <el-descriptions v-if="detailRecord" :column="2" border size="small">
-        <el-descriptions-item label="通话 ID">{{ detailRecord.id || detailRecord.uid || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="通话 ID">{{ detailRecord.uid || detailRecord.id || detailRecord.call_id_raw || '-' }}</el-descriptions-item>
         <el-descriptions-item label="通话类型">{{ callTypeLabel(detailRecord.call_type) }}</el-descriptions-item>
         <el-descriptions-item label="发起方">{{ roleLabel(detailRecord.caller_role) }}</el-descriptions-item>
         <el-descriptions-item label="发起方 ID">{{ detailRecord.caller_id || '-' }}</el-descriptions-item>
@@ -185,7 +242,40 @@
       <el-input :model-value="formatMetadata(detailRecord?.metadata)" type="textarea" :rows="10" readonly />
 
       <template #footer>
-        <el-button @click="detailVisible = false">关闭</el-button>
+        <div class="dialog-actions">
+          <el-button
+            v-if="detailRecord && detailRecord.complaint_status !== 'reported'"
+            type="danger"
+            :loading="actionLoading[detailRecord.uid || detailRecord.id]"
+            @click="markComplaint(detailRecord)"
+          >
+            标记投诉
+          </el-button>
+          <el-button
+            v-if="detailRecord && detailRecord.complaint_status === 'reported'"
+            type="success"
+            :loading="actionLoading[detailRecord.uid || detailRecord.id]"
+            @click="resolveComplaint(detailRecord)"
+          >
+            处理完成
+          </el-button>
+          <el-button
+            v-if="detailRecord && detailRecord.recording_retention !== 'frozen'"
+            type="warning"
+            :loading="actionLoading[detailRecord.uid || detailRecord.id]"
+            @click="freezeRetention(detailRecord)"
+          >
+            冻结留存
+          </el-button>
+          <el-button
+            v-if="detailRecord && detailRecord.recording_retention !== 'cleared' && detailRecord.complaint_status !== 'reported'"
+            :loading="actionLoading[detailRecord.uid || detailRecord.id]"
+            @click="clearRetention(detailRecord)"
+          >
+            标记清理
+          </el-button>
+          <el-button @click="detailVisible = false">关闭</el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -193,7 +283,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 
@@ -202,6 +292,7 @@ const loadError = ref('')
 const records = ref([])
 const detailVisible = ref(false)
 const detailRecord = ref(null)
+const actionLoading = reactive({})
 
 const filters = reactive({
   callerRole: '',
@@ -226,6 +317,10 @@ const summary = reactive({
   complaints: 0,
 })
 
+function rowKey(row) {
+  return row?.uid || row?.id || row?.call_id_raw || ''
+}
+
 function roleLabel(role) {
   if (role === 'user') return '用户'
   if (role === 'merchant') return '商户'
@@ -235,7 +330,7 @@ function roleLabel(role) {
 }
 
 function callTypeLabel(value) {
-  if (value === 'audio') return '音频通话'
+  if (value === 'audio') return '语音通话'
   return value || '-'
 }
 
@@ -274,10 +369,16 @@ function complaintTagType(value) {
 }
 
 function retentionLabel(value) {
-  if (value === 'standard') return '按默认策略保留'
-  if (value === 'frozen') return '冻结保留'
-  if (value === 'cleared') return '已清理'
+  if (value === 'standard') return '默认保留'
+  if (value === 'frozen') return '冻结留存'
+  if (value === 'cleared') return '已标记清理'
   return value || '-'
+}
+
+function retentionTagType(value) {
+  if (value === 'frozen') return 'warning'
+  if (value === 'cleared') return 'success'
+  return 'info'
 }
 
 function formatDateTime(value) {
@@ -379,8 +480,84 @@ function handlePageSizeChange() {
 }
 
 function openDetail(row) {
-  detailRecord.value = row
+  detailRecord.value = { ...row }
   detailVisible.value = true
+}
+
+function syncRecord(updated) {
+  const key = rowKey(updated)
+  if (!key) return
+  records.value = records.value.map((item) => (rowKey(item) === key ? { ...item, ...updated } : item))
+  if (detailRecord.value && rowKey(detailRecord.value) === key) {
+    detailRecord.value = { ...detailRecord.value, ...updated }
+  }
+}
+
+async function submitReview(row, payload, successMessage, confirmMessage) {
+  const key = rowKey(row)
+  if (!key) {
+    ElMessage.error('缺少 RTC 通话标识')
+    return
+  }
+
+  if (confirmMessage) {
+    await ElMessageBox.confirm(confirmMessage, '确认操作', {
+      type: 'warning',
+      confirmButtonText: '继续',
+      cancelButtonText: '取消',
+    })
+  }
+
+  actionLoading[key] = true
+  try {
+    const { data } = await request.post(`/api/rtc-call-audits/${encodeURIComponent(key)}/review`, payload)
+    const updated = data?.data || data || {}
+    syncRecord(updated)
+    ElMessage.success(successMessage)
+    await loadAudits()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error?.response?.data?.error || error?.message || '更新 RTC 审计失败')
+    }
+  } finally {
+    actionLoading[key] = false
+  }
+}
+
+function markComplaint(row) {
+  return submitReview(
+    row,
+    { complaintStatus: 'reported' },
+    '已标记为投诉中，并冻结录音留存',
+    '确认将该通话标记为投诉中并冻结录音留存吗？',
+  )
+}
+
+function resolveComplaint(row) {
+  return submitReview(
+    row,
+    { complaintStatus: 'resolved' },
+    '已标记为处理完成，录音留存已按策略切换',
+    '确认将该通话投诉标记为已处理吗？',
+  )
+}
+
+function freezeRetention(row) {
+  return submitReview(
+    row,
+    { recordingRetention: 'frozen' },
+    '已冻结录音留存',
+    '确认冻结该通话的录音留存吗？',
+  )
+}
+
+function clearRetention(row) {
+  return submitReview(
+    row,
+    { recordingRetention: 'cleared' },
+    '已标记为可清理',
+    '确认将该通话标记为可清理吗？',
+  )
 }
 
 onMounted(() => {
@@ -478,39 +655,39 @@ onMounted(() => {
 }
 
 .muted-text {
+  margin-top: 4px;
   color: #6b7280;
   font-size: 12px;
 }
 
-.pager {
-  margin-top: 18px;
-  justify-content: center;
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
 }
 
 .metadata-title {
-  margin: 16px 0 10px;
+  margin: 18px 0 10px;
+  font-size: 14px;
   font-weight: 600;
   color: #111827;
 }
 
-@media (max-width: 1200px) {
-  .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
-@media (max-width: 768px) {
-  .panel {
-    padding: 16px;
-  }
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
 
-  .panel-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
+@media (max-width: 1280px) {
   .summary-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

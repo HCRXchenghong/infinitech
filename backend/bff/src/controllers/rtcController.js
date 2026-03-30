@@ -4,6 +4,10 @@ async function listRTCCallAudits(req, res, next) {
   await proxyGet(req, res, next, '/admin/rtc-call-audits', { params: req.query });
 }
 
+async function reviewRTCCallAudit(req, res, next) {
+  await proxyPost(req, res, next, `/admin/rtc-call-audits/${encodeURIComponent(req.params.callId)}/review`);
+}
+
 async function createRTCCall(req, res, next) {
   await proxyPost(req, res, next, '/rtc/calls');
 }
@@ -25,5 +29,6 @@ module.exports = {
   getRTCCall,
   listRTCCallAudits,
   listRTCCallHistory,
+  reviewRTCCallAudit,
   updateRTCCallStatus,
 };

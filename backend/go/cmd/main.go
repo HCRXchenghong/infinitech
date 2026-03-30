@@ -1306,6 +1306,7 @@ func main() {
 		adminRTCCallAudits.Use(middleware.RequireAdmin(services.Admin))
 		{
 			adminRTCCallAudits.GET("", handlers.RTCCallAudit.AdminList)
+			adminRTCCallAudits.POST("/:callId/review", handlers.RTCCallAudit.AdminReview)
 		}
 
 		// 用户侧收藏与评价

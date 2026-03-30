@@ -206,6 +206,55 @@ func TestRTCCallAuditServiceGetCall(t *testing.T) {
 	}
 }
 
+func TestRTCCallAuditServiceAdminReviewCall(t *testing.T) {
+	svc, db := newRTCCallAuditServiceForTest(t)
+
+	record := repository.RTCCallAudit{
+		UnifiedIdentity:    repository.UnifiedIdentity{UID: "26033083000031", TSID: "260330830000312603301331"},
+		CallType:           "audio",
+		CallerRole:         "user",
+		CallerID:           "26032900000001",
+		CalleeRole:         "merchant",
+		CalleeID:           "26032900000088",
+		Status:             "ended",
+		ComplaintStatus:    "none",
+		RecordingRetention: "standard",
+	}
+	if err := db.Create(&record).Error; err != nil {
+		t.Fatalf("seed rtc call audit failed: %v", err)
+	}
+
+	adminCtx := context.Background()
+	adminCtx = context.WithValue(adminCtx, "operator_role", "admin")
+	adminCtx = context.WithValue(adminCtx, "admin_id", "26032900000999")
+
+	reported, err := svc.AdminReviewCall(adminCtx, record.UID, RTCCallAuditAdminReviewInput{
+		ComplaintStatus: "reported",
+	})
+	if err != nil {
+		t.Fatalf("AdminReviewCall report failed: %v", err)
+	}
+	if reported.ComplaintStatus != "reported" {
+		t.Fatalf("expected complaint status reported, got %q", reported.ComplaintStatus)
+	}
+	if reported.RecordingRetention != "frozen" {
+		t.Fatalf("expected recording retention frozen, got %q", reported.RecordingRetention)
+	}
+
+	resolved, err := svc.AdminReviewCall(adminCtx, record.UID, RTCCallAuditAdminReviewInput{
+		ComplaintStatus: "resolved",
+	})
+	if err != nil {
+		t.Fatalf("AdminReviewCall resolve failed: %v", err)
+	}
+	if resolved.ComplaintStatus != "resolved" {
+		t.Fatalf("expected complaint status resolved, got %q", resolved.ComplaintStatus)
+	}
+	if resolved.RecordingRetention != "cleared" {
+		t.Fatalf("expected recording retention cleared, got %q", resolved.RecordingRetention)
+	}
+}
+
 func TestRTCCallAuditServiceListHistory(t *testing.T) {
 	svc, db := newRTCCallAuditServiceForTest(t)
 

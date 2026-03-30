@@ -83,6 +83,11 @@ type RTCCallAuditAdminListResult struct {
 	Pagination RTCCallAuditAdminPagination `json:"pagination"`
 }
 
+type RTCCallAuditAdminReviewInput struct {
+	ComplaintStatus    string `json:"complaintStatus"`
+	RecordingRetention string `json:"recordingRetention"`
+}
+
 func NewRTCCallAuditService(db *gorm.DB) *RTCCallAuditService {
 	return &RTCCallAuditService{db: db}
 }
@@ -268,6 +273,63 @@ func (s *RTCCallAuditService) GetCall(ctx context.Context, callID string) (*repo
 	return record, nil
 }
 
+func (s *RTCCallAuditService) AdminReviewCall(ctx context.Context, callID string, input RTCCallAuditAdminReviewInput) (*repository.RTCCallAudit, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("rtc call audit service unavailable")
+	}
+
+	actorRole, _, _, err := resolveContactAuditActor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if actorRole != "admin" {
+		return nil, fmt.Errorf("%w: admin permission required", ErrForbidden)
+	}
+
+	record, err := s.findCallByID(ctx, callID)
+	if err != nil {
+		return nil, err
+	}
+
+	complaintProvided := strings.TrimSpace(input.ComplaintStatus) != ""
+	retentionProvided := strings.TrimSpace(input.RecordingRetention) != ""
+	if !complaintProvided && !retentionProvided {
+		return nil, fmt.Errorf("complaintStatus or recordingRetention is required")
+	}
+
+	complaintStatus := normalizeRTCCallComplaintStatus(record.ComplaintStatus)
+	if complaintProvided {
+		complaintStatus = normalizeRTCCallComplaintStatus(input.ComplaintStatus)
+	}
+
+	recordingRetention := normalizeRTCCallRecordingRetention(record.RecordingRetention)
+	if retentionProvided {
+		recordingRetention = normalizeRTCCallRecordingRetention(input.RecordingRetention)
+	}
+
+	switch complaintStatus {
+	case "reported":
+		if !retentionProvided || recordingRetention == "standard" {
+			recordingRetention = "frozen"
+		}
+	case "resolved":
+		if !retentionProvided && recordingRetention == "frozen" {
+			recordingRetention = "cleared"
+		}
+	case "none":
+		if !retentionProvided && recordingRetention == "frozen" {
+			recordingRetention = "standard"
+		}
+	}
+
+	record.ComplaintStatus = complaintStatus
+	record.RecordingRetention = recordingRetention
+	if err := s.db.WithContext(ctx).Save(record).Error; err != nil {
+		return nil, err
+	}
+	return record, nil
+}
+
 func (s *RTCCallAuditService) ListHistory(ctx context.Context, query RTCCallAuditHistoryQuery) (*RTCCallAuditHistoryResult, error) {
 	if s == nil || s.db == nil {
 		return nil, fmt.Errorf("rtc call audit service unavailable")
@@ -303,6 +365,26 @@ func (s *RTCCallAuditService) ListHistory(ctx context.Context, query RTCCallAudi
 			Total: total,
 		},
 	}, nil
+}
+
+func (s *RTCCallAuditService) findCallByID(ctx context.Context, callID string) (*repository.RTCCallAudit, error) {
+	uid, rawCallID, err := normalizeUnifiedRefID(ctx, s.db, bucketRTCCallAudit, callID)
+	if err != nil {
+		return nil, err
+	}
+
+	record := &repository.RTCCallAudit{}
+	query := s.db.WithContext(ctx).Model(&repository.RTCCallAudit{}).Where("uid = ?", uid)
+	if rawCallID != "" {
+		query = query.Or("call_id_raw = ?", rawCallID)
+	}
+	if err := query.First(record).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: rtc call audit not found", ErrForbidden)
+		}
+		return nil, err
+	}
+	return record, nil
 }
 
 func (s *RTCCallAuditService) buildAdminListQuery(ctx context.Context, query RTCCallAuditAdminQuery) *gorm.DB {

@@ -106,6 +106,7 @@ router.get('/home-slots', homeController.getHomeSlots);
 router.put('/home-slots', homeController.upsertLockedSlot);
 router.get('/contact-phone-audits', contactController.listPhoneContactAudits);
 router.get('/rtc-call-audits', rtcController.listRTCCallAudits);
+router.post('/rtc-call-audits/:callId/review', rtcController.reviewRTCCallAudit);
 
 router.get('/admins', adminController.getAdmins);
 router.post('/admins', adminController.createAdmin);

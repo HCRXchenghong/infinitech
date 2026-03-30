@@ -116,6 +116,37 @@ func (h *RTCCallAuditHandler) AdminList(c *gin.Context) {
 	})
 }
 
+func (h *RTCCallAuditHandler) AdminReview(c *gin.Context) {
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "rtc call audit service unavailable"})
+		return
+	}
+
+	var req service.RTCCallAuditAdminReviewInput
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "message": err.Error()})
+		return
+	}
+
+	record, err := h.service.AdminReviewCall(c.Request.Context(), strings.TrimSpace(c.Param("callId")), req)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrUnauthorized):
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		case errors.Is(err, service.ErrForbidden):
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    record,
+	})
+}
+
 func (h *RTCCallAuditHandler) GetCall(c *gin.Context) {
 	if h == nil || h.service == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "rtc call audit service unavailable"})
