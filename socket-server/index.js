@@ -41,6 +41,7 @@ const SOCKET_PING_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_PING_TIMEOUT_MS,
 const SOCKET_PING_INTERVAL_MS = toPositiveInt(process.env.SOCKET_PING_INTERVAL_MS, 25_000);
 const SOCKET_MAX_HTTP_BUFFER_BYTES = toPositiveInt(process.env.SOCKET_MAX_HTTP_BUFFER_BYTES, 4 * 1024 * 1024);
 const SOCKET_HTTP_SLOW_REQUEST_WARN_MS = toPositiveInt(process.env.SOCKET_HTTP_SLOW_REQUEST_WARN_MS, 1_500);
+const SOCKET_RTC_RING_TIMEOUT_SECONDS = toPositiveInt(process.env.SOCKET_RTC_RING_TIMEOUT_SECONDS, 35);
 
 let monitorNamespace;
 let supportNamespace;
@@ -359,7 +360,10 @@ function writeSocketStatus(res, statusCode, status, extra = {}) {
 function getSocketOperationalStatus() {
   return {
     redis: getRedisHealthSnapshot(),
-    supportHistoryFallback: getSupportHistoryFallbackConfig()
+    supportHistoryFallback: getSupportHistoryFallbackConfig(),
+    rtc: {
+      ringTimeoutSeconds: SOCKET_RTC_RING_TIMEOUT_SECONDS
+    }
   };
 }
 
@@ -577,7 +581,8 @@ setupRTCNamespace({
   io,
   authMiddleware,
   addOnlineUser,
-  removeOnlineUser
+  removeOnlineUser,
+  ringTimeoutMs: SOCKET_RTC_RING_TIMEOUT_SECONDS * 1000
 });
 
 setInterval(async () => {

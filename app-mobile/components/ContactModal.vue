@@ -44,7 +44,7 @@
           </view>
           <view class="action-info">
             <text class="action-name">电话联系</text>
-            <text class="action-desc">直接拨打系统电话</text>
+            <text class="action-desc">直接拨打系统联系电话</text>
           </view>
           <text class="arrow">›</text>
         </view>
@@ -74,7 +74,7 @@ export default {
     },
     rtcDescription: {
       type: String,
-      default: 'App / H5 可发起站内语音呼叫',
+      default: 'App / H5 可发起站内语音通话',
     },
   },
   methods: {

@@ -54,7 +54,7 @@ function buildIncomingCallUrl(payload) {
   const orderId = trimValue(call.orderId || call.order_id)
   const conversationId = trimValue(call.conversationId || call.conversation_id)
   const targetName =
-    callerRole === 'rider' ? '骑手' : callerRole === 'merchant' ? '商家' : '当前联系人'
+    callerRole === 'rider' ? 'Rider' : callerRole === 'merchant' ? 'Merchant' : 'Contact'
 
   return (
     `/pages/rtc/call/index?mode=incoming` +

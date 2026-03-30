@@ -150,6 +150,9 @@ Important boundaries:
 - user and app order-contact flows now expose a first `/pages/rtc/call/index` entry wired from the contact modal into the RTC signaling/audit path, so RTC no longer exists only as hidden APIs and admin audit pages
 - user and app `App.vue` lifecycles now also keep a lightweight RTC invite bridge alive for authenticated consumer sessions, so incoming `/rtc` invite events can open the RTC call page even when the user is not already sitting inside a chat page
 - user and app RTC call pages now also ship a shared WebRTC media helper for microphone bootstrap, offer/answer exchange, ICE candidate relay, and hidden remote-audio playback on capable runtimes, so the client path is no longer limited to status-only signaling
+- the realtime gateway now auto-times out unanswered RTC calls after a bounded ring window and emits a service-side timeout status instead of leaving initiated calls hanging indefinitely
+- user and app RTC call pages now run off a shared clean page factory, include bounded unanswered-call auto-timeout behavior, and no longer rely on the mojibake-tainted earlier implementation
+- release drills now also have a first structured `rtc-call-drill` step that can create, advance, inspect, and optionally admin-verify an RTC call audit record through the same BFF/Go paths used by the product
 - the active system logs page has been rewritten into a clean UTF-8 implementation so readiness, Redis, push worker, and audit signals are readable without mojibake-tainted labels
 - admin system logs now surface push production-readiness and production-issue signals as first-class tags instead of leaving them buried in raw detail strings
 - release preflight checks BFF ready, Go ready, socket ready, system health, queue age, fallback state, and other launch blockers
@@ -177,6 +180,7 @@ cd ..
 node scripts/release-preflight.mjs
 node scripts/http-load-smoke.mjs
 node scripts/push-delivery-drill.mjs
+node scripts/rtc-call-drill.mjs
 node scripts/release-drill.mjs
 node scripts/release-rollback-verify.mjs
 ```
@@ -186,9 +190,11 @@ Notes:
 - `PREFLIGHT_REPORT_FILE=artifacts/release-preflight.json node scripts/release-preflight.mjs` keeps a structured release drill report for launch review and audit retention
 - `LOAD_REPORT_FILE=artifacts/http-load-smoke.json node scripts/http-load-smoke.mjs` keeps a structured HTTP smoke report for capacity drill review
 - `PUSH_DRILL_REPORT_FILE=artifacts/push-delivery-drill.json ADMIN_TOKEN=<admin-token> node scripts/push-delivery-drill.mjs` runs an admin push delivery drill and keeps a structured provider-verification report
-- `node scripts/release-drill.mjs` now runs release preflight, HTTP smoke, and the push-delivery drill in one pass when `ADMIN_TOKEN` is available, and writes a combined summary under `artifacts/release-drills/<timestamp>/`
+- the push drill also supports `PUSH_DRILL_REQUIRE_PROVIDER`, `PUSH_DRILL_REQUIRE_ACKNOWLEDGED`, and `PUSH_DRILL_REQUIRE_READ` so production cutover drills can assert the real provider path and receipt quality instead of only checking "request was accepted"
+- `RTC_DRILL_REPORT_FILE=artifacts/rtc-call-drill.json RTC_DRILL_AUTH_TOKEN=<user-token> RTC_DRILL_CALLEE_ROLE=<role> RTC_DRILL_CALLEE_ID=<id> node scripts/rtc-call-drill.mjs` runs a structured RTC lifecycle drill against the live BFF/Go paths and can optionally verify admin visibility when `ADMIN_TOKEN` is also present
+- `node scripts/release-drill.mjs` now runs release preflight, HTTP smoke, push-delivery drill, and RTC drill in one pass when the corresponding auth env vars are available, and writes a combined summary under `artifacts/release-drills/<timestamp>/`
 - `ROLLBACK_BASELINE_REPORT=<before.json> ROLLBACK_CANDIDATE_REPORT=<after.json> node scripts/release-rollback-verify.mjs` compares two structured drill summaries and fails if latency or delivery signals regress past the allowed rollback thresholds
-- `FAILURE_BASELINE_REPORT=<steady.json> FAILURE_DEGRADED_REPORT=<fault.json> FAILURE_RESTORED_REPORT=<restored.json> node scripts/release-failure-verify.mjs` verifies that a manual fault drill actually degrades when expected and then recovers within the allowed latency and error thresholds
+- `FAILURE_BASELINE_REPORT=<steady.json> FAILURE_DEGRADED_REPORT=<fault.json> FAILURE_RESTORED_REPORT=<restored.json> node scripts/release-failure-verify.mjs` verifies that a manual fault drill actually degrades when expected and then recovers within the allowed latency, push, and RTC drill thresholds
 - `admin-vue` still emits the known `sql.js` browser externalize warning and large chunk warning during build
 - those warnings are known and were not introduced by the latest remediation batches
 

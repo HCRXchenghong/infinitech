@@ -145,6 +145,9 @@ export function createRTCContactHelper(options = {}) {
       cancel(extra = {}) {
         socket.emit('rtc_cancel_call', { callId: normalizedCallId, ...extra })
       },
+      timeout(extra = {}) {
+        socket.emit('rtc_timeout_call', { callId: normalizedCallId, ...extra })
+      },
       end(extra = {}) {
         socket.emit('rtc_end_call', { callId: normalizedCallId, ...extra })
       },

@@ -69,8 +69,17 @@ async function main() {
   const preflightReport = path.join(outputDir, 'preflight.json');
   const smokeReport = path.join(outputDir, 'http-load-smoke.json');
   const pushDrillReport = path.join(outputDir, 'push-delivery-drill.json');
+  const rtcDrillReport = path.join(outputDir, 'rtc-call-drill.json');
   const summaryReport = path.join(outputDir, 'summary.json');
   const runPushDrill = parseBooleanEnv(process.env.RELEASE_DRILL_RUN_PUSH_DRILL, Boolean(String(process.env.ADMIN_TOKEN || '').trim()));
+  const runRTCDrill = parseBooleanEnv(
+    process.env.RELEASE_DRILL_RUN_RTC_DRILL,
+    Boolean(
+      String(process.env.RTC_DRILL_AUTH_TOKEN || '').trim() &&
+      String(process.env.RTC_DRILL_CALLEE_ROLE || '').trim() &&
+      String(process.env.RTC_DRILL_CALLEE_ID || '').trim()
+    )
+  );
 
   const preflightCode = await runNodeScript(path.join('scripts', 'release-preflight.mjs'), {
     PREFLIGHT_REPORT_FILE: preflightReport,
@@ -94,21 +103,30 @@ async function main() {
     });
   }
 
+  let rtcDrillCode = 0;
+  if (runRTCDrill) {
+    rtcDrillCode = await runNodeScript(path.join('scripts', 'rtc-call-drill.mjs'), {
+      RTC_DRILL_REPORT_FILE: rtcDrillReport,
+    });
+  }
+
   const summary = {
     startedAt: startedAt.toISOString(),
     completedAt: new Date().toISOString(),
-    status: preflightCode === 0 && smokeCode === 0 && pushDrillCode === 0 ? 'passed' : 'failed',
+    status: preflightCode === 0 && smokeCode === 0 && pushDrillCode === 0 && rtcDrillCode === 0 ? 'passed' : 'failed',
     label,
     outputDir,
     reports: {
       preflight: preflightReport,
       httpLoadSmoke: smokeReport,
-      pushDeliveryDrill: runPushDrill ? pushDrillReport : ''
+      pushDeliveryDrill: runPushDrill ? pushDrillReport : '',
+      rtcCallDrill: runRTCDrill ? rtcDrillReport : ''
     },
     exitCodes: {
       preflight: preflightCode,
       httpLoadSmoke: smokeCode,
-      pushDeliveryDrill: runPushDrill ? pushDrillCode : null
+      pushDeliveryDrill: runPushDrill ? pushDrillCode : null,
+      rtcCallDrill: runRTCDrill ? rtcDrillCode : null
     },
     rollbackChecklist: [
       'Confirm the previous production release tag or commit is known and reachable.',
@@ -140,6 +158,19 @@ async function main() {
     }
   } else {
     summary.pushDeliveryDrill = { status: 'skipped', reason: 'ADMIN_TOKEN missing or RELEASE_DRILL_RUN_PUSH_DRILL=false' };
+  }
+
+  if (runRTCDrill) {
+    try {
+      summary.rtcCallDrill = await readJson(rtcDrillReport);
+    } catch (error) {
+      summary.rtcCallDrill = { status: 'missing', error: error instanceof Error ? error.message : String(error) };
+    }
+  } else {
+    summary.rtcCallDrill = {
+      status: 'skipped',
+      reason: 'RTC_DRILL_AUTH_TOKEN / RTC_DRILL_CALLEE_ROLE / RTC_DRILL_CALLEE_ID missing or RELEASE_DRILL_RUN_RTC_DRILL=false'
+    };
   }
 
   await writeJson(summaryReport, summary);

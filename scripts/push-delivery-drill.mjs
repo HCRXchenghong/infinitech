@@ -132,6 +132,10 @@ function summarizeStats(stats) {
   };
 }
 
+function normalizeProvider(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
 function pickMessageIdentifier(message) {
   if (!message || typeof message !== 'object') return '';
   return String(message.id || message.tsid || message.legacyId || '').trim();
@@ -148,7 +152,10 @@ async function main() {
   const dispatchLimit = toPositiveInt(process.env.PUSH_DRILL_DISPATCH_LIMIT, DEFAULT_DISPATCH_LIMIT);
   const deliveryLimit = toPositiveInt(process.env.PUSH_DRILL_DELIVERY_LIMIT, DEFAULT_DELIVERY_LIMIT);
   const requireDeliveries = parseBooleanEnv(process.env.PUSH_DRILL_REQUIRE_DELIVERIES, true);
+  const requireAcknowledged = parseBooleanEnv(process.env.PUSH_DRILL_REQUIRE_ACKNOWLEDGED, false);
+  const requireRead = parseBooleanEnv(process.env.PUSH_DRILL_REQUIRE_READ, false);
   const allowFailedOnly = parseBooleanEnv(process.env.PUSH_DRILL_ALLOW_FAILED_ONLY, false);
+  const requiredProvider = normalizeProvider(process.env.PUSH_DRILL_REQUIRE_PROVIDER);
   const keepMessage = parseBooleanEnv(process.env.PUSH_DRILL_KEEP_MESSAGE, false);
   const reportFile = String(process.env.PUSH_DRILL_REPORT_FILE || '').trim();
 
@@ -165,7 +172,10 @@ async function main() {
       dispatchLimit,
       deliveryLimit,
       requireDeliveries,
+      requireAcknowledged,
+      requireRead,
       allowFailedOnly,
+      requiredProvider,
       keepMessage,
     },
     message: null,
@@ -247,9 +257,17 @@ async function main() {
       const deliveries = deliveriesResponse.data && Array.isArray(deliveriesResponse.data.items)
         ? deliveriesResponse.data.items
         : [];
+      const observedProviders = Array.from(
+        new Set(
+          deliveries
+            .map((item) => normalizeProvider(item.dispatch_provider))
+            .filter(Boolean)
+        )
+      );
       report.polls.push({
         attempt,
         stats,
+        observedProviders,
         deliveryStatuses: deliveries.map((item) => ({
           id: item.id,
           status: item.status,
@@ -267,7 +285,28 @@ async function main() {
         continue;
       }
 
-      if (stats.acknowledged > 0 || stats.sent > 0) {
+      const providerSatisfied = !requiredProvider
+        || observedProviders.length === 0
+        || observedProviders.includes(requiredProvider);
+      if (!providerSatisfied) {
+        const allTerminalForWrongProvider =
+          stats.totalDeliveries > 0
+          && stats.queued <= 0
+          && deliveries.every((item) => {
+            const status = String(item.status || '').trim().toLowerCase();
+            return status === 'failed' || status === 'sent' || status === 'acknowledged' || status === 'inactive';
+          });
+        if (allTerminalForWrongProvider || attempt === maxPolls) {
+          throw new Error(`push_drill_provider_mismatch:${requiredProvider}`);
+        }
+        continue;
+      }
+
+      const sentSatisfied = stats.sent > 0 || stats.acknowledged > 0;
+      const acknowledgedSatisfied = !requireAcknowledged || stats.acknowledged > 0;
+      const readSatisfied = !requireRead || stats.read > 0;
+
+      if (sentSatisfied && acknowledgedSatisfied && readSatisfied) {
         report.status = 'passed';
         report.completedAt = new Date().toISOString();
         await writeReport(reportFile, report);

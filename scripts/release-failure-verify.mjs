@@ -84,6 +84,17 @@ function comparePushDrill(failures, baseline, restored) {
   }
 }
 
+function compareRTCDrill(failures, baseline, restored) {
+  const baselineStatus = resolveStatus(baseline);
+  const restoredStatus = resolveStatus(restored);
+  if (!baselineStatus && !restoredStatus) {
+    return;
+  }
+  if (baselineStatus.startsWith('passed') && !restoredStatus.startsWith('passed')) {
+    failures.push(`restored_rtc_call_drill=${restoredStatus || 'missing'}`);
+  }
+}
+
 async function main() {
   const baselineFile = String(process.env.FAILURE_BASELINE_REPORT || '').trim();
   const degradedFile = String(process.env.FAILURE_DEGRADED_REPORT || '').trim();
@@ -130,6 +141,7 @@ async function main() {
   );
 
   comparePushDrill(failures, baseline.pushDeliveryDrill, restored.pushDeliveryDrill);
+  compareRTCDrill(failures, baseline.rtcCallDrill, restored.rtcCallDrill);
 
   const report = {
     startedAt: new Date().toISOString(),

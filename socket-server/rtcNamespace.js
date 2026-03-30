@@ -2,6 +2,10 @@ import { logger } from './logger.js';
 import { requestBackend } from './socketIdentity.js';
 import { buildSocketRequestId } from './requestId.js';
 
+function normalizeCallStatus(raw) {
+  return String(raw || '').trim().toLowerCase();
+}
+
 function normalizeParticipantRole(raw) {
   switch (String(raw || '').trim().toLowerCase()) {
     case 'shop':
@@ -291,10 +295,58 @@ export function setupRTCNamespace({
   io,
   authMiddleware,
   addOnlineUser,
-  removeOnlineUser
+  removeOnlineUser,
+  ringTimeoutMs = 35_000
 }) {
   const rtcNamespace = io.of('/rtc');
   rtcNamespace.use(authMiddleware);
+  const timeoutHandles = new Map();
+
+  function clearCallTimeout(callId) {
+    const normalizedCallId = normalizeCallId(callId);
+    if (!normalizedCallId) return;
+    const timer = timeoutHandles.get(normalizedCallId);
+    if (timer) {
+      clearTimeout(timer);
+      timeoutHandles.delete(normalizedCallId);
+    }
+  }
+
+  function shouldAutoTimeout(status) {
+    const normalizedStatus = normalizeCallStatus(status);
+    return normalizedStatus === 'initiated' || normalizedStatus === 'ringing';
+  }
+
+  function scheduleCallTimeout(socket, callId) {
+    const normalizedCallId = normalizeCallId(callId);
+    if (!normalizedCallId || ringTimeoutMs <= 0) {
+      return;
+    }
+
+    clearCallTimeout(normalizedCallId);
+    const timer = setTimeout(async () => {
+      timeoutHandles.delete(normalizedCallId);
+      try {
+        const callRecord = await fetchCallRecord(socket, normalizedCallId);
+        if (!shouldAutoTimeout(callRecord?.status)) {
+          return;
+        }
+        const updatedCall = await updateCallRecord(socket, normalizedCallId, {
+          status: 'timeout',
+          failureReason: 'no_answer_timeout'
+        });
+        emitToRTCParticipants(rtcNamespace, updatedCall, 'rtc_status', {
+          callId: normalizeCallId(updatedCall?.uid || normalizedCallId),
+          status: 'timeout',
+          call: updatedCall,
+          failureReason: 'no_answer_timeout'
+        });
+      } catch (err) {
+        logger.warn('rtc auto-timeout failed:', err?.message || err);
+      }
+    }, ringTimeoutMs);
+    timeoutHandles.set(normalizedCallId, timer);
+  }
 
   rtcNamespace.on('connection', (socket) => {
     const actor = getSocketActor(socket);
@@ -311,7 +363,7 @@ export function setupRTCNamespace({
 
     socket.on('rtc_start_call', async (data = {}) => {
       try {
-        const callRecord = await createCallRecord(socket, data);
+        let callRecord = await createCallRecord(socket, data);
         const callId = normalizeCallId(callRecord?.uid || callRecord?.callIdRaw || '');
         const peer = resolvePeerParticipant(callRecord, actor);
         socket.join(buildCallRoom(callId));
@@ -320,6 +372,16 @@ export function setupRTCNamespace({
         const calleeOnline = peerRoom
           ? (rtcNamespace.adapter.rooms.get(peerRoom)?.size || 0) > 0
           : false;
+
+        if (calleeOnline) {
+          try {
+            callRecord = await updateCallRecord(socket, callId, {
+              status: 'ringing'
+            });
+          } catch (err) {
+            logger.warn('rtc mark ringing failed:', err?.message || err);
+          }
+        }
 
         socket.emit('rtc_call_created', {
           callId,
@@ -336,6 +398,8 @@ export function setupRTCNamespace({
             timestamp: Date.now()
           });
         }
+
+        scheduleCallTimeout(socket, callId);
       } catch (err) {
         logger.warn('rtc_start_call failed:', err?.message || err);
         emitRTCError(socket, 'rtc_start_call', err);
@@ -353,6 +417,7 @@ export function setupRTCNamespace({
 
     socket.on('rtc_accept_call', async (data = {}) => {
       try {
+        clearCallTimeout(data?.callId);
         await handleStatusUpdate(socket, rtcNamespace, 'accepted', data);
       } catch (err) {
         logger.warn('rtc_accept_call failed:', err?.message || err);
@@ -362,6 +427,7 @@ export function setupRTCNamespace({
 
     socket.on('rtc_reject_call', async (data = {}) => {
       try {
+        clearCallTimeout(data?.callId);
         await handleStatusUpdate(socket, rtcNamespace, 'rejected', data);
       } catch (err) {
         logger.warn('rtc_reject_call failed:', err?.message || err);
@@ -371,6 +437,7 @@ export function setupRTCNamespace({
 
     socket.on('rtc_cancel_call', async (data = {}) => {
       try {
+        clearCallTimeout(data?.callId);
         await handleStatusUpdate(socket, rtcNamespace, 'cancelled', data);
       } catch (err) {
         logger.warn('rtc_cancel_call failed:', err?.message || err);
@@ -380,6 +447,7 @@ export function setupRTCNamespace({
 
     socket.on('rtc_end_call', async (data = {}) => {
       try {
+        clearCallTimeout(data?.callId);
         await handleStatusUpdate(socket, rtcNamespace, 'ended', data);
       } catch (err) {
         logger.warn('rtc_end_call failed:', err?.message || err);
@@ -389,6 +457,7 @@ export function setupRTCNamespace({
 
     socket.on('rtc_timeout_call', async (data = {}) => {
       try {
+        clearCallTimeout(data?.callId);
         await handleStatusUpdate(socket, rtcNamespace, 'timeout', data);
       } catch (err) {
         logger.warn('rtc_timeout_call failed:', err?.message || err);

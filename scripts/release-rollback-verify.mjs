@@ -80,6 +80,17 @@ function comparePushDrill(failures, baseline, candidate) {
   }
 }
 
+function compareRTCDrill(failures, baseline, candidate) {
+  const baselineStatus = String(baseline && baseline.status || '').trim();
+  const candidateStatus = String(candidate && candidate.status || '').trim();
+  if (!baselineStatus && !candidateStatus) {
+    return;
+  }
+  if (baselineStatus.startsWith('passed') && !candidateStatus.startsWith('passed')) {
+    failures.push(`rtc_call_drill=${candidateStatus || 'missing'}`);
+  }
+}
+
 function comparePreflight(failures, baseline, candidate) {
   const baselineStatus = String(baseline && baseline.status || '').trim();
   const candidateStatus = String(candidate && candidate.status || '').trim();
@@ -115,6 +126,7 @@ async function main() {
     maxErrorRateRegression
   );
   comparePushDrill(failures, baseline.pushDeliveryDrill, candidate.pushDeliveryDrill);
+  compareRTCDrill(failures, baseline.rtcCallDrill, candidate.rtcCallDrill);
 
   const report = {
     startedAt: new Date().toISOString(),
