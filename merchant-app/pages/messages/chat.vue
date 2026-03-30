@@ -375,17 +375,15 @@ function connectSocket(token: string) {
 
   sock.on('all_messages_read', (payload: any) => {
     if (payload?.chatId && String(payload.chatId) !== String(chatId.value)) return
-    let changed = false
     messages.value.forEach((item) => {
       if (item.self && item.status !== 'failed' && item.status !== 'read') {
         item.status = 'read'
-        changed = true
       }
     })
   })
 
   sock.on('clear_messages_denied', () => {
-    uni.showToast({ title: '聊天记录需按平台规则留存', icon: 'none' })
+    uni.showToast({ title: '聊天记录需按平台规则保留', icon: 'none' })
   })
 
   sock.on('disconnect', () => {
