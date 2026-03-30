@@ -1,66 +1,83 @@
-import http from 'http';
-import fs from 'fs';
-import path from 'path';
-import convert from 'heic-convert';
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { createRequire } from 'node:module'
 
-const PORT = 9899;
+const require = createRequire(import.meta.url)
+const convert = require('heic-convert')
 
-const server = http.createServer(async (req, res) => {
-  // 健康检查
-  if (req.method === 'GET' && req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok' }));
-    return;
+export async function convertHeicFile({
+  inputPath,
+  outputPath = '',
+  quality = 0.85,
+  deleteSource = true,
+} = {}) {
+  const sourcePath = String(inputPath || '').trim()
+  if (!sourcePath) {
+    throw new Error('inputPath is required')
+  }
+  if (!fs.existsSync(sourcePath)) {
+    throw new Error(`input file not found: ${sourcePath}`)
   }
 
-  // HEIC 转 JPEG：POST /convert，body 为 JSON { "inputPath": "xxx", "outputPath": "xxx" }
-  if (req.method === 'POST' && req.url === '/convert') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', async () => {
-      try {
-        const { inputPath, outputPath } = JSON.parse(body);
+  const resolvedInputPath = path.resolve(sourcePath)
+  const resolvedOutputPath = path.resolve(
+    String(outputPath || '')
+      .trim() || resolvedInputPath.replace(/\.(heic|heif)$/i, '.jpg'),
+  )
 
-        if (!inputPath || !fs.existsSync(inputPath)) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: '输入文件不存在' }));
-          return;
-        }
+  const inputBuffer = fs.readFileSync(resolvedInputPath)
+  const outputBuffer = await convert({
+    buffer: inputBuffer,
+    format: 'JPEG',
+    quality,
+  })
 
-        const inputBuffer = fs.readFileSync(inputPath);
-        const outputBuffer = await convert({
-          buffer: inputBuffer,
-          format: 'JPEG',
-          quality: 0.85
-        });
+  fs.mkdirSync(path.dirname(resolvedOutputPath), { recursive: true })
+  fs.writeFileSync(resolvedOutputPath, Buffer.from(outputBuffer))
 
-        const outPath = outputPath || inputPath.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg');
-        fs.writeFileSync(outPath, Buffer.from(outputBuffer));
-
-        // 删除原始 HEIC 文件
-        if (outPath !== inputPath) {
-          try { fs.unlinkSync(inputPath); } catch {}
-        }
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          success: true,
-          outputPath: outPath,
-          filename: path.basename(outPath)
-        }));
-      } catch (err) {
-        console.error('转换失败:', err);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: '转换失败: ' + err.message }));
-      }
-    });
-    return;
+  if (deleteSource && resolvedOutputPath !== resolvedInputPath) {
+    try {
+      fs.unlinkSync(resolvedInputPath)
+    } catch (_error) {
+      // Ignore source cleanup failures.
+    }
   }
 
-  res.writeHead(404, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ error: 'Not found' }));
-});
+  return {
+    success: true,
+    inputPath: resolvedInputPath,
+    outputPath: resolvedOutputPath,
+    filename: path.basename(resolvedOutputPath),
+  }
+}
 
-server.listen(PORT, () => {
-  console.log(`🖼️  HEIC Converter 服务运行在端口 ${PORT}`);
-});
+async function runCli() {
+  const inputPath = process.argv[2]
+  const outputPath = process.argv[3]
+
+  if (!inputPath) {
+    console.error(JSON.stringify({ success: false, error: 'inputPath is required' }))
+    process.exit(1)
+  }
+
+  try {
+    const result = await convertHeicFile({ inputPath, outputPath })
+    process.stdout.write(`${JSON.stringify(result)}\n`)
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    )
+    process.exit(1)
+  }
+}
+
+const currentFilePath = fileURLToPath(import.meta.url)
+const entryFilePath = process.argv[1] ? path.resolve(process.argv[1]) : ''
+
+if (entryFilePath && currentFilePath === entryFilePath) {
+  await runCli()
+}

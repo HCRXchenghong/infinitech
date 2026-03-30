@@ -167,7 +167,8 @@ function buildComposeArgs(prefixArgs, flags) {
 
 function printUsage() {
   console.log(`Usage:
-  node scripts/deploy-all.mjs up [--no-build] [--attach] [--profile=legacy-mysql] [--profile=messaging]
+  node scripts/deploy-all.mjs
+  node scripts/deploy-all.mjs up [--no-build] [--attach] [--profile=reverse-proxy]
   node scripts/deploy-all.mjs up --proxy --public-domain=api.example.com --admin-domain=admin.example.com --caddy-email=ops@example.com
   node scripts/deploy-all.mjs down
   node scripts/deploy-all.mjs restart
@@ -207,7 +208,7 @@ async function prompt(question, fallback = '') {
 }
 
 async function interactiveMenu(parsed) {
-  console.log('\n请选择部署动作：')
+  console.log('\n请选择部署动作:')
   console.log('  1. 启动核心服务')
   console.log('  2. 启动核心服务并前台附着日志')
   console.log('  3. 启动完整服务 + 域名反向代理')
@@ -229,7 +230,7 @@ async function interactiveMenu(parsed) {
       return parsed
     case '3': {
       const publicDomain = normalizeDomain(
-        await prompt('请输入 API/业务域名', parsed.flags.publicDomain || 'api.example.com'),
+        await prompt('请输入 API / 业务域名', parsed.flags.publicDomain || 'api.example.com'),
       )
       const defaultAdminDomain =
         publicDomain && !parsed.flags.adminDomain

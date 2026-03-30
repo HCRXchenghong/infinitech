@@ -13,6 +13,7 @@ import { setupRiderNamespace } from './riderNamespace.js';
 import { setupRTCNamespace } from './rtcNamespace.js';
 import { validateSocketIdentity } from './socketIdentity.js';
 import { REQUEST_ID_HEADER, attachRequestId, resolveRequestId } from './requestId.js';
+import { convertHeicIfNeeded } from './heicConvert.js';
 import {
   allowFixedWindowRateLimit,
   attachSocketIoRedisAdapter,
@@ -46,28 +47,6 @@ const SOCKET_RTC_RING_TIMEOUT_SECONDS = toPositiveInt(process.env.SOCKET_RTC_RIN
 let monitorNamespace;
 let supportNamespace;
 initRedisState();
-
-async function convertHeicIfNeeded(filePath, ext) {
-  if (ext.toLowerCase() !== '.heic' && ext.toLowerCase() !== '.heif') return filePath;
-  try {
-    const absPath = join(dirname(fileURLToPath(import.meta.url)), filePath.startsWith('.') ? filePath : filePath);
-    const outPath = absPath.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg');
-    const heicConverterUrl = process.env.HEIC_CONVERTER_URL || 'http://127.0.0.1:9899';
-    const resp = await fetch(`${heicConverterUrl}/convert`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ inputPath: absPath, outputPath: outPath })
-    });
-    const result = await resp.json();
-    if (result.success) {
-      logger.info(`HEIC 转码成功: ${filePath} -> ${result.filename}`);
-      return outPath;
-    }
-  } catch (err) {
-    logger.error('HEIC 转码失败:', err.message);
-  }
-  return filePath;
-}
 
 const UPLOAD_DIR = join(__dirname, 'uploads');
 if (!existsSync(UPLOAD_DIR)) {
@@ -443,8 +422,8 @@ const httpServer = createServer(async (req, res) => {
       const url = `http://${host}/uploads/${finalFilename}`;
       writeJson(res, 200, { url, filename: finalFilename });
     } catch (err) {
-      logger.error('上传失败:', err);
-      writeJson(res, Number(err?.statusCode || 500), { error: err?.message || '上传失败' });
+      logger.error('涓婁紶澶辫触:', err);
+      writeJson(res, Number(err?.statusCode || 500), { error: err?.message || '涓婁紶澶辫触' });
     }
     return;
   }
@@ -599,8 +578,8 @@ setInterval(async () => {
 }, 5000);
 
 httpServer.listen(PORT, () => {
-  logger.info(`Socket.IO 服务运行在端口 ${PORT}`);
+  logger.info(`Socket.IO 鏈嶅姟杩愯鍦ㄧ鍙?${PORT}`);
   logger.info('Socket auth now requires validated business auth or TOKEN_API_SECRET');
-  logger.info('监控端点: /api/stats');
-  logger.info('生成 token: POST /api/generate-token');
+  logger.info('鐩戞帶绔偣: /api/stats');
+  logger.info('鐢熸垚 token: POST /api/generate-token');
 });

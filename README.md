@@ -1,141 +1,281 @@
 # Infinitech
 
-Infinitech is a multi-role local life services platform monorepo. The active product surface includes:
+中文（默认） | [English](#english)
 
-- consumer web and app clients
-- merchant app
-- rider app
-- admin web console
-- Go business API
-- Node.js BFF
-- a single real-time gateway (`socket-server`)
-- shared mobile runtime modules
+Infinitech 是一个面向本地生活服务的多端一体化平台仓库，目标覆盖：
 
-The engineering goal is not to claim "single machine, 100k online". The goal is to keep turning the codebase into a horizontally extensible, observable, testable, rollback-friendly production platform that does not fail because of avoidable single-point design, fake data, or weak defaults.
+- 外卖
+- 团购
+- 跑腿 / 同城配送
+- 用户端
+- 商家端
+- 骑手端
+- 管理后台
+- 实时消息
+- 推送通知
+- `App / H5` 站内音频联系能力
 
-## Repository Scope
+这不是一个“演示站”仓库。当前仓库目标是把它持续收口成一个：
 
-Active remediation scope:
+- 可水平扩展
+- 可观测
+- 可压测
+- 可回滚
+- 可审计
+- 默认配置更安全
+
+的大型平台代码库。
+
+## 项目状态
+
+当前仓库已经完成了大规模整治，核心方向包括：
+
+- 生产基线固定为 `PostgreSQL + Redis`
+- 核心业务事实源收口到 `backend/go`
+- 实时能力收口到单一 `socket-server`
+- BFF 负责聚合、上传代理、健康聚合、发布 drill 和证据链
+- 主要消息链路已经改成 `server-first`
+- 发布前具备 `preflight / smoke / drill / evidence / signoff` 全链脚本
+- `heic-converter` 已经集成为本地转换模块，不再默认要求独立 HTTP 端口
+
+仍然需要在真实环境执行、不能只靠本地改代码就宣称“完成”的事项：
+
+- 真设备 push 实投切换与验收
+- `App / H5` RTC 真机联调验收
+- 真故障注入后的恢复 / 回滚演练
+
+## 功能矩阵
+
+### 用户端
+
+- 注册 / 登录 / 找回密码 / 资料编辑
+- 地址簿
+- 外卖浏览、点餐、下单、订单流转
+- 团购浏览、购买、订单流转
+- 跑腿 / 医药等扩展场景入口
+- 订单消息、客服消息、聊天上传
+- 商家联系、客服联系、RTC 联系入口
+
+### 商家端
+
+- 入驻 / 建店 / 店铺资料管理
+- 商品管理
+- 订单处理
+- 客服聊天
+- 图片上传
+
+### 骑手端
+
+- 登录
+- 接单 / 任务详情
+- 客服消息
+- 证件与头像上传
+
+### 管理后台
+
+- 运营配置
+- 首页编排 / 推广位 / 推荐位
+- 推送管理
+- 电话联系审计
+- RTC 通话审计
+- 系统日志与健康状态
+
+## 仓库结构
 
 - `backend/go`
+  - Go 业务 API
+  - 核心模型与仓储
+  - 消息事实源
+  - 推送 worker
+  - RTC 审计与 retention cleanup
 - `backend/bff`
+  - Node.js BFF
+  - 上传代理
+  - 管理聚合
+  - 健康聚合
+  - 发布 drill / signoff 接口
 - `socket-server`
+  - 单一实时网关
+  - Socket.IO
+  - Redis 共享状态
+  - RTC 信令 namespace
 - `admin-vue`
+  - 管理后台 Web
 - `user-vue`
+  - 用户 uni-app 端
 - `app-mobile`
+  - 用户 App 版 uni-app 端
 - `merchant-app`
+  - 商家 uni-app 端
 - `rider-app`
+  - 骑手 uni-app 端
 - `shared/mobile-common`
+  - 多端共享 schema、运行时工具、RTC helper、同步层
+- `heic-converter`
+  - HEIC 本地转换模块
+- `backend/docker`
+  - Dockerfile、Compose、Caddy 反代配置
+- `scripts`
+  - 一键部署
+  - 发布巡检
+  - 压测 smoke
+  - drill / evidence / signoff
 
-Kept in the repository but not part of the current main remediation scope:
+## 当前架构边界
 
-- `android-user-app`
-- `ios-user-app`
-- `admin-app`
-- historical prototypes, demo assets, and non-critical legacy folders
+### 权威边界
 
-## Production Baseline
+- 业务事实源：`backend/go`
+- 单一实时服务：`socket-server`
+- 聚合 / 上传代理 / 管理侧健康视图：`backend/bff`
+- 前端本地缓存：只作为加速层或失败兜底，不再作为长期事实源
 
-The intended baseline is:
+### 不再采用的方向
 
-- primary database: `PostgreSQL`
-- distributed cache and shared state: `Redis`
-- single real-time service: `socket-server`
-- business fact source: `backend/go`
-- gateway and aggregation layer: `backend/bff`
+- 不再使用 `SQLite` 作为生产主库
+- 不再保留第二套 socket 服务
+- 不再让本地消息缓存充当长期事实源
+- 不再默认要求单独开启 `heic-converter` HTTP 端口
 
-Important boundaries:
+## HEIC 图片处理
 
-- `SQLite` is not a production primary database
-- `socket-server` is the only real-time gateway
-- OpenClaw has been removed from the active platform
-- mini-programs use system phone calls instead of in-app RTC audio
-- planned in-app RTC audio is for `App / H5` only
-- first-stage homepage promotion is manually operated by admins, not a self-serve bidding system
+仓库根目录的 [`heic-converter`](./heic-converter) 已经从“独立微服务”收成“本地转换模块”。
 
-## Directory Guide
+当前默认行为：
 
-- `backend/go`: business API, persistence, config validation, readiness, dispatch workers
-- `backend/bff`: API gateway, aggregation, admin-facing health aggregation, contact and proxy routes
-- `socket-server`: single real-time gateway, Redis-backed shared state, Socket.IO namespaces
-- `admin-vue`: operations and admin console
-- `user-vue`: consumer uni-app client
-- `app-mobile`: app-facing consumer uni-app client
-- `merchant-app`: merchant uni-app client
-- `rider-app`: rider uni-app client
-- `shared/mobile-common`: cross-client shared mobile utilities
-- `backend/docker`: local infrastructure compose files
-- `scripts`: release preflight, smoke checks, helper scripts
-- `.github/workflows`: CI
+- 活跃上传链优先统一走 `BFF -> Go /api/upload`
+- Go 端和 `socket-server` 都优先调用本地 `heic-converter/index.js`
+- Docker 镜像会把 `heic-converter` 一起打包进去
+- 不再默认要求单独启动 `9899` 之类的 HEIC 转换端口
 
-## One-Command Deployment
+当前覆盖的活跃上传链包括：
 
-The repository now includes a cross-platform deployment entry:
+- 用户 / App 聊天图片与音频上传
+- 用户 / App 客服上传
+- 用户 / App 通用图片上传
+- 商家聊天图片上传
+- 骑手客服图片上传
+- 商家商品图 / 店铺图
+- 骑手证件图
+- 后台图片上传
+
+本地非 Docker 开发如需 HEIC 转换，请先执行：
+
+```bash
+cd heic-converter
+npm ci
+```
+
+Go 端仍保留 `HEIC_CONVERTER_URL` 兼容项，作为特殊场景下的可选外部转换回退，但默认路径已经不依赖独立端口。
+
+## 快速开始
+
+### 依赖
+
+建议本机具备：
+
+- Node.js 20+
+- Go 1.23+
+- PostgreSQL
+- Redis
+
+如果直接走 Docker，可以跳过本地安装数据库和 Redis。
+
+### 本地开发回归
+
+Go：
+
+```powershell
+cd backend/go
+go test ./...
+go build ./cmd
+```
+
+BFF：
+
+```powershell
+cd backend/bff
+cmd /c npm test -- --runInBand
+cmd /c npm run lint
+```
+
+后台：
+
+```powershell
+cd admin-vue
+cmd /c npm run build
+```
+
+实时服务：
+
+```powershell
+cd socket-server
+cmd /c npm run check
+```
+
+## 一键命令行部署
+
+统一入口：
+
+```powershell
+node scripts/deploy-all.mjs
+```
+
+如果不带动作参数，脚本会进入数字菜单。
+
+### 数字菜单
+
+1. 启动核心服务
+2. 启动核心服务并前台附着日志
+3. 启动完整服务 + 域名反向代理
+4. 停止并删除容器
+5. 重建并重启
+6. 查看日志
+7. 查看容器状态
+8. 输出 Compose 配置
+
+### Windows
+
+```powershell
+scripts\deploy-all.cmd
+```
+
+### Ubuntu / Debian / 其他 Linux
+
+```bash
+sh scripts/deploy-all.sh
+```
+
+### 直接命令模式
 
 ```powershell
 node scripts/deploy-all.mjs up
+node scripts/deploy-all.mjs down
+node scripts/deploy-all.mjs restart
+node scripts/deploy-all.mjs logs
+node scripts/deploy-all.mjs ps
+node scripts/deploy-all.mjs config
 ```
 
-If you run the command without an action, it now opens an interactive numbered menu. This works well for operators who want a guided start/stop/restart flow on Windows, Ubuntu, and Debian.
-
-It works on:
-
-- Windows PowerShell / CMD
-- Ubuntu
-- Debian
-
-Optional convenience wrappers are also included:
+### 带域名和反向代理
 
 ```powershell
-scripts\deploy-all.cmd up
+node scripts/deploy-all.mjs up --proxy --public-domain=api.example.com --admin-domain=admin.example.com --caddy-email=ops@example.com
 ```
 
-```bash
-sh scripts/deploy-all.sh up
-```
-
-Supported actions:
-
-- `up`: start the full backend stack with `--build`
-- `down`: stop and remove containers
-- `restart`: rebuild and restart
-- `logs [service...]`: follow logs
-- `ps`: list running services
-- `config`: print rendered compose config
-
-Interactive menu options now include:
-
-- start core services
-- start services in attached mode
-- start full services with reverse proxy and domains
-- stop all services
-- rebuild and restart
-- tail logs
-- inspect container status
-- print rendered compose config
-
-Useful flags:
-
-- `--no-build`
-- `--attach`
-- `--profile=legacy-mysql`
-- `--profile=messaging`
-- `--proxy`
-- `--public-domain=api.example.com`
-- `--admin-domain=admin.example.com`
-- `--caddy-email=ops@example.com`
-
-Reverse proxy mode writes a generated runtime env file at:
+脚本会自动生成运行时环境文件：
 
 ```text
 backend/docker/.deploy.runtime.env
 ```
 
-and automatically enables the `reverse-proxy` compose profile.
+## Docker 完整启动
 
-## Docker Startup
+核心编排文件：
 
-`backend/docker/docker-compose.yml` now starts the complete backend stack:
+- [`backend/docker/docker-compose.yml`](./backend/docker/docker-compose.yml)
+
+默认核心服务：
 
 - `admin-web`
 - `postgres`
@@ -143,15 +283,14 @@ and automatically enables the `reverse-proxy` compose profile.
 - `go-api`
 - `socket-server`
 - `bff`
-- optional `reverse-proxy` profile for domain-based access
 
-Optional profiles remain available for:
+可选 profile：
 
-- `mysql` via `--profile=legacy-mysql`
-- `rabbitmq` via `--profile=messaging`
-- `reverse-proxy` via `--proxy` or interactive menu option `3`
+- `mysql`
+- `rabbitmq`
+- `reverse-proxy`
 
-Default local endpoints after `up`:
+### 默认端口
 
 - Admin Web: `http://127.0.0.1:8080`
 - Go API: `http://127.0.0.1:1029/ready`
@@ -160,237 +299,137 @@ Default local endpoints after `up`:
 - PostgreSQL: `127.0.0.1:5432`
 - Redis: `127.0.0.1:2550`
 
-Domain-based reverse proxy mode uses:
+### Docker 部署拓扑
 
-- `PUBLIC_DOMAIN`: public API / gateway domain
-- `ADMIN_DOMAIN`: admin console domain
-- `CADDY_EMAIL`: Caddy ACME email
+- `admin-web`
+  - 管理后台静态站点
+- `postgres`
+  - 主业务数据库
+- `redis`
+  - 会话、限流、实时共享状态
+- `go-api`
+  - 核心业务 API、消息事实源、push worker、RTC 审计
+- `socket-server`
+  - 单一实时网关、RTC 信令、上传接入
+- `bff`
+  - Web 聚合层、上传代理、管理健康接口
+- `reverse-proxy`
+  - 可选 Caddy 反代
 
-In reverse proxy mode:
+### 反向代理模式
 
-- `https://PUBLIC_DOMAIN` serves API and realtime gateway routes
-- `https://ADMIN_DOMAIN` serves the admin web console
+相关文件：
 
-## What Has Already Been Remediated
+- [`backend/docker/Caddyfile`](./backend/docker/Caddyfile)
+- [`backend/docker/Dockerfile.admin`](./backend/docker/Dockerfile.admin)
+- [`backend/docker/Dockerfile.go`](./backend/docker/Dockerfile.go)
+- [`backend/docker/Dockerfile.socket`](./backend/docker/Dockerfile.socket)
 
-### Architecture and runtime hardening
+域名模式下：
 
-- the repo has been consolidated into a single main repository
-- production-like environments now enforce `PostgreSQL + Redis`
-- Go, BFF, and `socket-server` expose health and readiness endpoints
-- request ids are propagated across Go, BFF, and `socket-server`
-- core request size limits, timeouts, rate limits, and slow-request warnings are in place
-- admin QR login sessions are now Redis-backed by default with in-memory fallback, reducing single-instance login drift during multi-instance rollout
-- release preflight and HTTP smoke scripts are checked into the repo
-- HTTP load smoke and release preflight can now enforce both `p95` and `p99` latency ceilings instead of only broad error-rate checks
-- release preflight can now emit a structured JSON report for launch drills and audit retention
-- `socket-server` is part of CI smoke validation
+- `PUBLIC_DOMAIN` 负责 API 与实时入口
+- `ADMIN_DOMAIN` 负责后台 Web
 
-### Messaging and support system cleanup
+## 代码整治重点
 
-- Go message APIs are the authority for conversations and history
-- consumer, merchant, rider, and admin chat flows have been pushed toward "server-first, local fallback only"
-- old socket history loading routes were removed from the default path
-- `socket-server` no longer maintains SQLite chat history as a runtime fact source
-- local message caches on active clients have been reduced to tightly bounded emergency display fallbacks
-- unread sync now depends much more strictly on service-side read confirmation instead of local optimistic mutation
-- chat time, temporary ids, and read receipts have been normalized across active clients
-- the admin chat console no longer rewrites conversation summaries locally on incoming messages and now waits for the service conversation list refresh
-- the admin chat console no longer writes incoming realtime messages into a local fallback store during the default operator path
-- the admin local message fallback store now uses text chat/message ids, preserves real timestamps and statuses, and prunes aggressively instead of behaving like a long-lived second fact source
-- the admin chat console no longer falls back to local history when service-side message history fetches fail, keeping the default operator path pinned to service authority
-- active merchant and rider messaging entry points have been rewritten into clean UTF-8 copies so live chat, popup routing, and merchant support entry text no longer depend on mojibake-tainted legacy strings
-- the rider global message manager has been rewritten into a clean, stable implementation so popup routing and notification text no longer depend on mojibake-tainted legacy strings
-- the rider support chat page logic has now been rewritten into a clean UTF-8 server-first copy, removing the dead local-history replacement path and fixing the self/read status bug that previously checked `msg.self` instead of `msg.isSelf`
-- the active merchant chat page plus rider task contact and task-detail flows have been cleaned into stable UTF-8 copies so send-state text, contact prompts, navigation fallbacks, and exception reporting no longer rely on mojibake-tainted strings
-- the merchant live chat page has now been fully rewritten into a clean server-first copy, so service history, read sync, reconnect behavior, local-only clearing, and upload/send prompts no longer depend on mojibake-tainted legacy markup
-- merchant chat and rider support chat now default to service-side history only; the old local history snapshot and SQLite history fallback paths are no longer part of the default runtime flow
+当前已经完成或显著推进的重点包括：
 
-### Main flow cleanup
+- 消息链路 `server-first`
+- 单一 `socket-server`
+- Redis-backed 会话 / 限流 / 在线状态
+- 推送 worker、push drill、provider readiness
+- RTC 审计、RTC 信令、RTC 运行时配置、RTC retention cleanup
+- 首页编排与店铺域边界收口
+- 统一 schema 与字段投影
+- 本地缓存降级为加速层
+- 电话联系审计与后台查询
+- 一键部署、Docker、发布 gate、evidence、signoff
 
-- address books are service-backed
-- order confirmation reads real addresses instead of demo contact data
-- consumer web and app order-confirm pages now prefer fresh server address lists whenever the user is signed in, with local address cache only serving as a failure fallback
-- shared sync layers across consumer, merchant, and rider clients have been rewritten into a cleaner server-first shape with more bounded local fallback behavior
-- stale client-side `menus` sync and cache tails have been removed from active shared sync contracts so current clients no longer treat menu data as a separate dataset
-- consumer web and app home pages have been rewritten into clean UTF-8 copies so active location, weather, category routing, and homepage feed copy no longer depend on mojibake-tainted strings
-- invite pages now only use server-issued invite codes or previously cached real invite codes and no longer fabricate temporary invite codes on the client
-- many active fake success prompts, mock placeholders, and visible mojibake strings were removed
-- invite, medicine, charity, VIP, rider insurance, support naming, and portal runtime settings were pushed into controlled service-side settings where operationally justified
-- system phone contact clicks are now not only recorded but also queryable from the admin console, so hotline usage can be audited without direct database access
+## 测试与发布
 
-### Push foundations
+### 代码回归
 
-- device registration is connected across active clients
-- push worker queue, stats, delivery materialization, and readiness signals exist
-- admin pages can inspect push-related readiness and queue signals
-- push worker readiness now surfaces FCM token/API target and transport-safety signals through Go, BFF health aggregation, and release preflight
-- push worker readiness now also publishes a single production-ready verdict plus explicit provider issues, so admin health views and release preflight no longer need to infer production safety from scattered fields
-- release preflight blocks obviously unsafe push worker states
-- admin-only manual push dispatch cycle and a scripted push-delivery drill now exist, so release drills can create a real test push message, force a dispatch cycle, poll delivery results, and clean up the drill record
-- production-like environments now reject `PUSH_DISPATCH_PROVIDER=log` when dispatch is enabled
-- the webhook push path now supports optional auth headers, signed payloads, and logical rejection handling instead of treating every HTTP 200 as success
-- production-like webhook dispatch must now use `https` and be signed or authenticated; insecure, unsigned, and unauthenticated webhook delivery is blocked at config validation and release preflight
-- production-like webhook dispatch is now also blocked from targeting localhost, private IP ranges, and obvious internal-only hostnames
-- the push worker now has a first real vendor-grade provider path for FCM HTTP v1, instead of only `log / webhook`
-- FCM dispatch config is now validated more strictly before startup, including client-email format and parseable RSA private-key checks
-- the push dispatcher now treats provider rejections and obvious client/auth HTTP failures as terminal errors instead of blindly retrying them into queue buildup
-- socket readiness, BFF health aggregation, and release preflight no longer carry obsolete runtime fallback-buffer assertions after the SQLite history path was removed
+- `go test ./...`
+- `go build ./cmd`
+- `backend/bff`: `npm test -- --runInBand`
+- `backend/bff`: `npm run lint`
+- `admin-vue`: `npm run build`
+- `socket-server`: `npm run check`
 
-### Homepage operations
+### 发布脚本
 
-- admin-managed homepage campaign and slot management has been added
-- homepage feed service has been introduced
-- featured pages have been moved toward the unified homepage feed result
+- `scripts/release-preflight.mjs`
+- `scripts/http-load-smoke.mjs`
+- `scripts/push-delivery-drill.mjs`
+- `scripts/rtc-call-drill.mjs`
+- `scripts/rtc-retention-drill.mjs`
+- `scripts/release-drill.mjs`
+- `scripts/release-live-cutover.mjs`
+- `scripts/release-evidence-gate.mjs`
+- `scripts/release-final-signoff.mjs`
 
-### Operational visibility
+## 上线前最后三件事
 
-- admin dashboard and system logs now expose real readiness and Redis adapter state
-- the active admin dashboard and rider ranking page have been rewritten into clean UTF-8 implementations so weather, online presence, ranking tables, and readiness copy no longer depend on mojibake-tainted legacy strings
-- admin-side health aggregation and system-log signals have been trimmed to current live fallback metrics instead of obsolete historical fallback counters
-- the admin console now includes a dedicated phone contact audit page for filtering actor/target roles, results, and related order or room references
-- the admin console now also includes a dedicated RTC call audit page, the Go API now has a first server-side RTC audit model plus create/status-update, detail-query, history-query, and admin-list endpoints, and `socket-server` now exposes a first RTC signaling namespace for invite/status/signal relay flow
-- the RTC audit chain now also supports admin-side complaint and recording-retention review actions, so reported calls can be frozen and resolved calls can be marked for cleanup from the admin console instead of only being viewed
-- user and app order-contact flows now expose a first `/pages/rtc/call/index` entry wired from the contact modal into the RTC signaling/audit path, so RTC no longer exists only as hidden APIs and admin audit pages
-- user and app `App.vue` lifecycles now also keep a lightweight RTC invite bridge alive for authenticated consumer sessions, so incoming `/rtc` invite events can open the RTC call page even when the user is not already sitting inside a chat page
-- user and app RTC call pages now also ship a shared WebRTC media helper for microphone bootstrap, offer/answer exchange, ICE candidate relay, and hidden remote-audio playback on capable runtimes, so the client path is no longer limited to status-only signaling
-- admin service settings now also expose the RTC runtime switch, unanswered timeout, and ICE / TURN server list used by the active user and app RTC flows
-- the realtime gateway now auto-times out unanswered RTC calls after a bounded ring window and emits a service-side timeout status instead of leaving initiated calls hanging indefinitely
-- user and app RTC call pages now run off a shared clean page factory, include bounded unanswered-call auto-timeout behavior, and no longer rely on the mojibake-tainted earlier implementation
-- user and app contact modals plus the shared RTC call page factory now also use clean UTF-8 operator and end-user copy, so the active RTC/contact entry path no longer exposes mojibake-tainted labels or status hints
-- release drills now also have a first structured `rtc-call-drill` step that can create, advance, inspect, and optionally admin-verify an RTC call audit record through the same BFF/Go paths used by the product
-- the active system logs page has been rewritten into a clean UTF-8 implementation so readiness, Redis, push worker, and audit signals are readable without mojibake-tainted labels
-- admin system logs now surface push production-readiness and production-issue signals as first-class tags instead of leaving them buried in raw detail strings
-- release preflight checks BFF ready, Go ready, socket ready, system health, queue age, fallback state, and other launch blockers
+仓库内能补的代码、脚本、gate、evidence、signoff 基本已经收口。现在真正必须在真实环境执行的只剩：
 
-## Current Release Gates
+1. 真设备 push 实投切换和验收
+2. `App / H5` RTC 真机联调验收
+3. 真故障注入后的恢复 / 回滚演练
 
-Before a release, the repository should at minimum pass:
+---
 
-```powershell
-cd backend/go
-go test ./...
-go build ./cmd
+## English
 
-cd ../bff
-cmd /c npm test -- --runInBand
-cmd /c npm run lint
+Infinitech is a multi-client local services platform repository covering food delivery, group buying, errands, merchant tools, rider tools, admin operations, real-time messaging, notifications, and in-app RTC contact flows.
 
-cd ../../admin-vue
-cmd /c npm run build
+### Current state
 
-cd ../socket-server
-cmd /c npm run check
+- Production baseline is `PostgreSQL + Redis`
+- The primary business source of truth lives in `backend/go`
+- `socket-server` is the only realtime gateway
+- BFF handles aggregation, upload proxying, health aggregation, release drills, and signoff support
+- Main messaging flows are now `server-first`
+- Release gating includes `preflight / smoke / drill / evidence / signoff`
+- `heic-converter` is integrated as a local conversion module and is no longer expected to run as a standalone HTTP service by default
 
-cd ..
-node scripts/release-preflight.mjs
-node scripts/http-load-smoke.mjs
-node scripts/push-delivery-drill.mjs
-node scripts/rtc-call-drill.mjs
-node scripts/release-drill.mjs
-node scripts/release-live-cutover.mjs
-node scripts/release-rollback-verify.mjs
-node scripts/release-evidence-gate.mjs
-node scripts/release-manual-attestation-template.mjs
-node scripts/release-manual-attestation-prefill.mjs
-node scripts/release-go-live-bundle.mjs
-node scripts/release-final-signoff.mjs
-```
+### One-command deployment
 
-Notes:
+- Interactive entry:
+  - `node scripts/deploy-all.mjs`
+- Windows:
+  - `scripts\deploy-all.cmd`
+- Ubuntu / Debian / Linux:
+  - `sh scripts/deploy-all.sh`
 
-- `PREFLIGHT_REPORT_FILE=artifacts/release-preflight.json node scripts/release-preflight.mjs` keeps a structured release drill report for launch review and audit retention
-- `LOAD_REPORT_FILE=artifacts/http-load-smoke.json node scripts/http-load-smoke.mjs` keeps a structured HTTP smoke report for capacity drill review
-- `PUSH_DRILL_REPORT_FILE=artifacts/push-delivery-drill.json ADMIN_TOKEN=<admin-token> node scripts/push-delivery-drill.mjs` runs an admin push delivery drill and keeps a structured provider-verification report
-- the push drill now also fetches Go `/ready` first and can hard-block on worker running state, production-ready state, and the expected active provider before any drill message is sent
-- the push drill also supports `PUSH_DRILL_REQUIRE_PROVIDER`, `PUSH_DRILL_REQUIRE_ACKNOWLEDGED`, and `PUSH_DRILL_REQUIRE_READ` so production cutover drills can assert the real provider path and receipt quality instead of only checking "request was accepted"
-- the push drill also supports `PUSH_DRILL_REQUIRE_USER_TYPE`, `PUSH_DRILL_REQUIRE_USER_ID`, `PUSH_DRILL_REQUIRE_APP_ENV`, and `PUSH_DRILL_REQUIRE_DEVICE_TOKEN_SUFFIX` so production cutover drills can insist that a specific real test account or device actually received the delivery
-- `PUSH_REAL_DEVICE_PREP_REPORT_FILE=artifacts/push-real-device-prep.json PUSH_REAL_DEVICE_PROVIDER=<provider> PUSH_REAL_DEVICE_USER_TYPE=<type> PUSH_REAL_DEVICE_USER_ID=<id> node scripts/push-real-device-prep.mjs` generates a structured prep report for the real-device push cutover, validates worker readiness, and records the expected provider and target identity for manual execution
-- `RTC_DRILL_REPORT_FILE=artifacts/rtc-call-drill.json RTC_DRILL_AUTH_TOKEN=<user-token> RTC_DRILL_CALLEE_ROLE=<role> RTC_DRILL_CALLEE_ID=<id> node scripts/rtc-call-drill.mjs` runs a structured RTC lifecycle drill against the live BFF/Go paths and can optionally verify admin visibility when `ADMIN_TOKEN` is also present
-- the RTC call drill now also validates public runtime settings before creating the call, including the RTC enable switch, unanswered timeout, ICE server count, and optional TURN-server presence
-- `RTC_REAL_DEVICE_REPORT_FILE=artifacts/rtc-real-device-prep.json RTC_REAL_DEVICE_AUTH_TOKEN=<user-token> RTC_REAL_DEVICE_CALLEE_ROLE=<role> RTC_REAL_DEVICE_CALLEE_ID=<id> RTC_REAL_DEVICE_H5_BASE_URL=<https://h5-host> node scripts/rtc-real-device-prep.mjs` creates one pending RTC call plus caller/callee page paths and optional H5 URLs so operators can run the real-device validation without hand-building query strings
-- `RTC_RETENTION_DRILL_REPORT_FILE=artifacts/rtc-retention-drill.json ADMIN_TOKEN=<admin-token> node scripts/rtc-retention-drill.mjs` triggers one RTC retention cleanup cycle through the admin API and keeps a structured cleanup report for launch review
-- Go now runs an RTC recording-retention cleanup worker by default; standard retained calls are auto-marked `cleared` after the configured retention window, while reported complaints remain frozen until an admin review changes their state
-- BFF health aggregation and release preflight now surface RTC retention-worker running/error signals directly, so launch drills can block if the cleanup worker is enabled but not actually healthy
-- `node scripts/release-drill.mjs` now runs release preflight, HTTP smoke, push-delivery drill, RTC drill, and RTC retention drill in one pass when the corresponding auth env vars are available, and writes a combined summary under `artifacts/release-drills/<timestamp>/`
-- `node scripts/release-live-cutover.mjs` is the strict launch gate for real cutover rehearsal: it requires admin auth, push target constraints, push provider expectations, RTC callee identity, then runs the full release drill and fails if any required drill is skipped or does not pass
-- `ROLLBACK_BASELINE_REPORT=<before.json> ROLLBACK_CANDIDATE_REPORT=<after.json> node scripts/release-rollback-verify.mjs` compares two structured drill summaries and fails if latency or delivery signals regress past the allowed rollback thresholds
-- `FAILURE_BASELINE_REPORT=<steady.json> FAILURE_DEGRADED_REPORT=<fault.json> FAILURE_RESTORED_REPORT=<restored.json> node scripts/release-failure-verify.mjs` verifies that a manual fault drill actually degrades when expected and then recovers within the allowed latency, push, RTC, and RTC-retention drill thresholds
-- `FAILURE_DRILL_PREP_REPORT_FILE=artifacts/failure-drill-prep.json FAILURE_DRILL_SCENARIO=<scenario> node scripts/failure-drill-prep.mjs` generates a structured operator prep report for the manual fault-injection drill, including the expected scenario name, report paths, and execution notes
-- `LIVE_CUTOVER_REPORT=<live-cutover.json> ROLLBACK_VERIFY_REPORT=<rollback-verify.json> FAILURE_VERIFY_REPORT=<failure-verify.json> node scripts/release-evidence-gate.mjs` is the final sign-off gate for launch evidence: it requires a passed live cutover report, a passed rollback verification report, and a passed failure verification report, and it can optionally enforce a maximum report age with `EVIDENCE_MAX_REPORT_AGE_MINUTES`
-- `MANUAL_ATTESTATION_TEMPLATE_FILE=artifacts/release-manual-attestation/template.json node scripts/release-manual-attestation-template.mjs` writes the operator template used to record real-device push cutover, real-device RTC validation, and the fault-recovery drill
-- `LIVE_CUTOVER_REPORT=<live-cutover.json> ROLLBACK_VERIFY_REPORT=<rollback-verify.json> FAILURE_VERIFY_REPORT=<failure-verify.json> PUSH_REAL_DEVICE_PREP_REPORT=artifacts/push-real-device-prep.json RTC_REAL_DEVICE_PREP_REPORT=artifacts/rtc-real-device-prep.json FAILURE_DRILL_PREP_REPORT=artifacts/failure-drill-prep.json MANUAL_ATTESTATION_PREFILL_FILE=artifacts/release-manual-attestation/prefilled.json node scripts/release-manual-attestation-prefill.mjs` prefills the manual attestation draft with push provider/message id and prep metadata, RTC call id and launch metadata, plus failure-drill scenario/report references
-- `GO_LIVE_BUNDLE_DIR=artifacts/go-live-bundles/<label> node scripts/release-go-live-bundle.mjs` prepares a launch bundle directory with the manual attestation template, expected report file locations, push real-device prep output, failure-drill prep output, RTC real-device prep output, and the exact execution order for live cutover, rollback verification, failure verification, evidence gate, manual prefill, and final signoff
-- `EVIDENCE_REPORT=<evidence.json> MANUAL_ATTESTATION_REPORT=<manual.json> node scripts/release-final-signoff.mjs` is the last human-in-the-loop launch gate: it requires a passed automated evidence report plus a completed manual attestation with push real-device cutover, RTC real-device validation, and failure-recovery drill evidence, can enforce evidence freshness with `FINAL_SIGNOFF_MAX_REPORT_AGE_MINUTES`, fails if the manual evidence files or referenced failure-drill reports do not actually exist, cross-checks the manual provider / message id / RTC call id / recovery-report references against the live cutover and verification reports, and now also validates the referenced push real-device prep report content against the signed target identity
-- `admin-vue` still emits the known `sql.js` browser externalize warning and large chunk warning during build
-- those warnings are known and were not introduced by the latest remediation batches
+The interactive menu includes:
 
-## What Is Still Not Finished
+1. Start core services
+2. Start core services with attached logs
+3. Start full stack with reverse proxy and domains
+4. Stop and remove containers
+5. Rebuild and restart
+6. View logs
+7. View container status
+8. Output Compose config
 
-These items are still open and should not be misrepresented as complete:
+### Docker stack
 
-### P0: still important before claiming platform completion
+The full Docker stack is defined in [`backend/docker/docker-compose.yml`](./backend/docker/docker-compose.yml) and includes:
 
-- final messaging fact-source closure
-  - conversation summaries and unread counts are much tighter now, but not every active surface is fully free from local assistance logic
-- production-grade push provider integration
-  - the platform now has secure webhook and FCM HTTP v1 dispatch paths plus a scripted delivery drill, but real production rollout still needs live provider cutover and a validated launch run with real devices
-- App / H5 RTC audio implementation
-  - a first server-side RTC audit model, query APIs, socket signaling namespace, client API wrappers, order-contact entry pages, shared RTC contact helper, consumer-app invite bridge, client-side media negotiation helper, and admin-side complaint / retention review flow now exist, but true App-side runtime validation and full lifecycle policy automation are not complete
-- full load, rollback, and failure-drill validation
-  - smoke checks, rollback verification, and failure verification exist, but that is not the same as complete capacity certification
+- `admin-web`
+- `postgres`
+- `redis`
+- `go-api`
+- `socket-server`
+- `bff`
+- optional `reverse-proxy`
 
-### P1: still worth completing soon
+### HEIC handling
 
-- homepage promotion feed closure
-  - the admin side is in place, but the front-end surfaces still have some compatibility logic around the unified feed result
-- remaining local compatibility tails
-  - a few sync and client fallback paths still keep conservative local recovery logic for safety
+HEIC conversion is now integrated into the main upload chain. Active uploads no longer require a dedicated HEIC conversion port by default. Docker builds package the converter into the Go API and socket server images.
 
-### Out of current main scope
+### What still requires real environment execution
 
-- deep remediation of `android-user-app`
-- deep remediation of `ios-user-app`
-- old `admin-app`
-
-## Operational Principles
-
-- do not add a second real-time service
-- do not reintroduce local mock data into active business flows
-- do not expand runtime-config usage for static text that rarely changes
-- prefer server authority over client snapshots
-- keep local fallback windows small and disposable
-- treat release preflight failures as blockers, not warnings
-
-## Current Real-Time Boundary
-
-- `socket-server` is the only real-time gateway
-- Go remains the business fact source
-- BFF remains the outer aggregation and admin-facing gateway
-- new real-time features should build on this boundary, not around it
-
-## Homepage Promotion Direction
-
-The current first-stage direction is:
-
-- manual admin-operated campaigns
-- support for both shop and product promotion slots
-- manual slot locking takes priority over paid campaign positioning
-- no self-serve merchant bidding
-- no automatic CPC or CPM charging in this stage
-
-## RTC Direction
-
-Planned boundary:
-
-- `App / H5`: 1v1 in-app audio only
-- mini-program: system phone call only
-- no video
-- no live streaming
-- no arbitrary raw-id dialing
-
-## Final Notes
-
-- This repository should keep only one root documentation entry point: this `README.md`.
-- If a remediation batch is completed, validated, and pushed, update this file instead of creating more Markdown silos.
-- Do not claim the platform is fully complete until the remaining P0 items above are actually closed.
+- real-device push provider cutover and validation
+- real-device `App / H5` RTC validation
+- real failure injection with recovery / rollback verification

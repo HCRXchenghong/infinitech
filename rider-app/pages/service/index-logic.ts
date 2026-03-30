@@ -547,7 +547,7 @@ export default Vue.extend({
 
           uni.showLoading({ title: '上传中...' })
           uni.uploadFile({
-            url: `${config.SOCKET_URL}/api/upload`,
+            url: `${config.API_BASE_URL}/api/upload`,
             filePath: tempFilePath,
             name: 'file',
             success: (uploadRes: any) => {

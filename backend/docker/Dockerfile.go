@@ -1,23 +1,36 @@
+FROM node:20-alpine AS heic-builder
+
+WORKDIR /src/heic-converter
+
+COPY heic-converter/package*.json ./
+RUN npm ci --omit=dev
+COPY heic-converter/index.js ./index.js
+
 FROM golang:1.23-alpine AS builder
 
-WORKDIR /app
+WORKDIR /src/backend/go
 
 RUN apk add --no-cache git
 
-COPY . .
-
+COPY backend/go/go.mod backend/go/go.sum ./
 RUN go mod download
-RUN CGO_ENABLED=0 GOOS=linux go build -o go-api ./cmd/main.go
+
+WORKDIR /src
+COPY backend/go ./backend/go
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o /tmp/go-api ./backend/go/cmd/main.go
 
 FROM alpine:3.20
 
-RUN apk add --no-cache ca-certificates tzdata wget
+RUN apk add --no-cache ca-certificates tzdata wget nodejs
 
 ENV TZ=Asia/Shanghai
 
 WORKDIR /app
 
-COPY --from=builder /app/go-api ./go-api
+COPY --from=builder /tmp/go-api ./go-api
+COPY scripts ./scripts
+COPY --from=heic-builder /src/heic-converter ./heic-converter
 
 EXPOSE 1029
 
