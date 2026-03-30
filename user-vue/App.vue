@@ -13,6 +13,7 @@ import { setupRequestInterceptor, forceLogout, manualRefreshToken } from '@/shar
 import { checkAndClearCacheIfNeeded } from '@/shared-ui/cache-cleaner'
 import { registerCurrentPushDevice, clearPushRegistrationState } from '@/shared-ui/push-registration'
 import { startPushEventBridge } from '@/shared-ui/push-events'
+import { ensureUserRTCInviteBridge, disconnectUserRTCInviteBridge } from '@/shared-ui/rtc-contact.js'
 
 export default Vue.extend({
   onLaunch() {
@@ -62,6 +63,22 @@ export default Vue.extend({
       }
     },
 
+    async syncRTCInviteBridge() {
+      const token = uni.getStorageSync('token')
+      const authMode = uni.getStorageSync('authMode')
+
+      if (!token || authMode !== 'user') {
+        disconnectUserRTCInviteBridge()
+        return
+      }
+
+      try {
+        await ensureUserRTCInviteBridge()
+      } catch (err) {
+        console.error('[App] RTC invite bridge init failed:', err)
+      }
+    },
+
     async validateAuth() {
       const token = uni.getStorageSync('token')
       const refreshToken = uni.getStorageSync('refreshToken')
@@ -98,6 +115,7 @@ export default Vue.extend({
         } else {
           // login state verified
           void this.syncPushRegistration()
+          void this.syncRTCInviteBridge()
         }
       } catch (err) {
         console.error('❌ Token验证请求失败:', err)
@@ -111,10 +129,12 @@ export default Vue.extend({
       uni.removeStorageSync('userProfile')
       uni.removeStorageSync('authMode')
       clearPushRegistrationState()
+      disconnectUserRTCInviteBridge()
     }
   },
   onShow() {
     void this.syncPushRegistration()
+    void this.syncRTCInviteBridge()
   },
   onHide() {
   }
