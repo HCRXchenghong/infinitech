@@ -37,6 +37,8 @@ type MobilePushWorkerStatus struct {
 	Enabled                   bool                    `json:"enabled"`
 	Running                   bool                    `json:"running"`
 	Provider                  string                  `json:"provider"`
+	ProductionReady           bool                    `json:"productionReady"`
+	ProductionIssues          []string                `json:"productionIssues,omitempty"`
 	WebhookTarget             string                  `json:"webhookTarget,omitempty"`
 	WebhookSecureTransport    bool                    `json:"webhookSecureTransport"`
 	WebhookPrivateTarget      bool                    `json:"webhookPrivateTarget"`
@@ -359,6 +361,10 @@ func (s *MobilePushService) WorkerStatusSnapshot(ctx context.Context) MobilePush
 			Enabled:         false,
 			Running:         false,
 			Provider:        "",
+			ProductionReady: false,
+			ProductionIssues: []string{
+				"service_unavailable",
+			},
 			BatchSize:       0,
 			LastCycleStatus: "unavailable",
 		}
@@ -426,8 +432,59 @@ func (s *MobilePushService) WorkerStatusSnapshot(ctx context.Context) MobilePush
 	if !lastSuccessAt.IsZero() {
 		snapshot.LastSuccessAt = lastSuccessAt.Format(time.RFC3339)
 	}
+	snapshot.ProductionIssues = evaluatePushProviderReadiness(snapshot)
+	snapshot.ProductionReady = len(snapshot.ProductionIssues) == 0
 	snapshot.Queue = s.QueueSnapshot(ctx)
 	return snapshot
+}
+
+func evaluatePushProviderReadiness(snapshot MobilePushWorkerStatus) []string {
+	if !snapshot.Enabled {
+		return []string{"dispatch_disabled"}
+	}
+
+	provider := strings.ToLower(strings.TrimSpace(snapshot.Provider))
+	if provider == "" {
+		return []string{"provider_missing"}
+	}
+
+	issues := make([]string, 0, 6)
+	switch provider {
+	case "log":
+		issues = append(issues, "log_provider_not_allowed")
+	case "webhook":
+		if strings.TrimSpace(snapshot.WebhookTarget) == "" {
+			issues = append(issues, "webhook_target_missing")
+		}
+		if !snapshot.WebhookSecureTransport {
+			issues = append(issues, "webhook_insecure_transport")
+		}
+		if snapshot.WebhookPrivateTarget {
+			issues = append(issues, "webhook_private_target_not_allowed")
+		}
+		if !snapshot.WebhookAuthConfigured && !snapshot.WebhookSignatureEnabled {
+			issues = append(issues, "webhook_unsigned_and_unauthenticated")
+		}
+	case "fcm":
+		if !snapshot.FCMConfigured {
+			issues = append(issues, "fcm_missing_required_credentials")
+		}
+		if !snapshot.FCMTokenSecureTransport {
+			issues = append(issues, "fcm_token_insecure_transport")
+		}
+		if snapshot.FCMTokenPrivateTarget {
+			issues = append(issues, "fcm_token_private_target_not_allowed")
+		}
+		if !snapshot.FCMAPIBaseSecureTransport {
+			issues = append(issues, "fcm_api_insecure_transport")
+		}
+		if snapshot.FCMAPIBasePrivateTarget {
+			issues = append(issues, "fcm_api_private_target_not_allowed")
+		}
+	default:
+		issues = append(issues, "provider_unknown")
+	}
+	return issues
 }
 
 func pushWebhookUsesSecureTransport(raw string) bool {

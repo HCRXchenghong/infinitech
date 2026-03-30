@@ -208,6 +208,17 @@ function evaluatePushWorkerSignals(body, maxConsecutiveFailures, maxSuccessStale
     return failures;
   }
 
+  if (worker.productionReady === false) {
+    const providerIssues = Array.isArray(worker.productionIssues) ? worker.productionIssues : [];
+    if (providerIssues.length > 0) {
+      providerIssues.forEach((issue) => {
+        failures.push(`push_provider_issue=${issue}`);
+      });
+    } else {
+      failures.push("push_provider=not_production_ready");
+    }
+  }
+
   const provider = String(worker.provider || '').trim().toLowerCase();
   if (provider === 'log') {
     failures.push('push_provider=log_not_allowed');

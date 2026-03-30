@@ -41,4 +41,35 @@ func TestMobilePushServiceWorkerStatusIncludesFCMEndpointSignals(t *testing.T) {
 	if status.FCMAPIBasePrivateTarget {
 		t.Fatal("expected public fcm api target")
 	}
+	if status.ProductionReady != true {
+		t.Fatalf("expected fcm provider to be production ready, got issues: %v", status.ProductionIssues)
+	}
+	if len(status.ProductionIssues) != 0 {
+		t.Fatalf("expected no production issues, got %v", status.ProductionIssues)
+	}
+}
+
+func TestMobilePushServiceWorkerStatusMarksLogProviderNotProductionReady(t *testing.T) {
+	svc, _ := newMobilePushServiceForDispatchTest(t, MobilePushOptions{
+		DispatchEnabled: true,
+		ProviderName:    "log",
+	})
+
+	status := svc.WorkerStatusSnapshot(context.Background())
+	if status.ProductionReady {
+		t.Fatal("expected log provider to be blocked from production readiness")
+	}
+	if len(status.ProductionIssues) == 0 {
+		t.Fatal("expected production issues for log provider")
+	}
+	found := false
+	for _, issue := range status.ProductionIssues {
+		if issue == "log_provider_not_allowed" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected log_provider_not_allowed issue, got %v", status.ProductionIssues)
+	}
 }
