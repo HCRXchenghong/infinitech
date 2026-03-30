@@ -1,6 +1,22 @@
 version: '3.8'
 
 services:
+  admin-web:
+    build:
+      context: ../..
+      dockerfile: backend/docker/Dockerfile.admin
+    container_name: yuexiang-admin-web
+    restart: unless-stopped
+    ports:
+      - '${ADMIN_WEB_HOST_PORT:-8080}:80'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1/health >/dev/null || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks:
+      - yuexiang-network
+
   postgres:
     image: postgres:14-alpine
     container_name: yuexiang-postgres
@@ -207,6 +223,33 @@ services:
     networks:
       - yuexiang-network
 
+  reverse-proxy:
+    image: caddy:2-alpine
+    container_name: yuexiang-reverse-proxy
+    restart: unless-stopped
+    depends_on:
+      admin-web:
+        condition: service_healthy
+      bff:
+        condition: service_started
+      socket-server:
+        condition: service_started
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-localhost}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:-admin.localhost}
+      CADDY_EMAIL: ${CADDY_EMAIL:-ops@example.com}
+    ports:
+      - '${REVERSE_PROXY_HTTP_PORT:-80}:80'
+      - '${REVERSE_PROXY_HTTPS_PORT:-443}:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    profiles:
+      - reverse-proxy
+    networks:
+      - yuexiang-network
+
   mysql:
     image: mysql:8.0
     container_name: yuexiang-mysql-legacy
@@ -245,6 +288,8 @@ services:
       - yuexiang-network
 
 volumes:
+  caddy_data:
+  caddy_config:
   postgres_data:
   redis_data:
   mysql_data:

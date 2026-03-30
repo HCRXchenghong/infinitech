@@ -1,0 +1,26 @@
+{
+  email {$CADDY_EMAIL}
+}
+
+{$PUBLIC_DOMAIN} {
+  encode zstd gzip
+
+  @socket path /socket.io* /token* /api/stats*
+  handle @socket {
+    reverse_proxy socket-server:9898
+  }
+
+  @api path /api/* /ready* /health*
+  handle @api {
+    reverse_proxy bff:25500
+  }
+
+  handle {
+    respond "Infinitech gateway is running." 200
+  }
+}
+
+{$ADMIN_DOMAIN} {
+  encode zstd gzip
+  reverse_proxy admin-web:80
+}

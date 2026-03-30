@@ -76,6 +76,8 @@ The repository now includes a cross-platform deployment entry:
 node scripts/deploy-all.mjs up
 ```
 
+If you run the command without an action, it now opens an interactive numbered menu. This works well for operators who want a guided start/stop/restart flow on Windows, Ubuntu, and Debian.
+
 It works on:
 
 - Windows PowerShell / CMD
@@ -101,35 +103,73 @@ Supported actions:
 - `ps`: list running services
 - `config`: print rendered compose config
 
+Interactive menu options now include:
+
+- start core services
+- start services in attached mode
+- start full services with reverse proxy and domains
+- stop all services
+- rebuild and restart
+- tail logs
+- inspect container status
+- print rendered compose config
+
 Useful flags:
 
 - `--no-build`
 - `--attach`
 - `--profile=legacy-mysql`
 - `--profile=messaging`
+- `--proxy`
+- `--public-domain=api.example.com`
+- `--admin-domain=admin.example.com`
+- `--caddy-email=ops@example.com`
+
+Reverse proxy mode writes a generated runtime env file at:
+
+```text
+backend/docker/.deploy.runtime.env
+```
+
+and automatically enables the `reverse-proxy` compose profile.
 
 ## Docker Startup
 
 `backend/docker/docker-compose.yml` now starts the complete backend stack:
 
+- `admin-web`
 - `postgres`
 - `redis`
 - `go-api`
 - `socket-server`
 - `bff`
+- optional `reverse-proxy` profile for domain-based access
 
 Optional profiles remain available for:
 
 - `mysql` via `--profile=legacy-mysql`
 - `rabbitmq` via `--profile=messaging`
+- `reverse-proxy` via `--proxy` or interactive menu option `3`
 
 Default local endpoints after `up`:
 
+- Admin Web: `http://127.0.0.1:8080`
 - Go API: `http://127.0.0.1:1029/ready`
 - BFF: `http://127.0.0.1:25500/ready`
 - Socket Server: `http://127.0.0.1:9898/ready`
 - PostgreSQL: `127.0.0.1:5432`
 - Redis: `127.0.0.1:2550`
+
+Domain-based reverse proxy mode uses:
+
+- `PUBLIC_DOMAIN`: public API / gateway domain
+- `ADMIN_DOMAIN`: admin console domain
+- `CADDY_EMAIL`: Caddy ACME email
+
+In reverse proxy mode:
+
+- `https://PUBLIC_DOMAIN` serves API and realtime gateway routes
+- `https://ADMIN_DOMAIN` serves the admin web console
 
 ## What Has Already Been Remediated
 
