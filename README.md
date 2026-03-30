@@ -187,6 +187,7 @@ node scripts/release-live-cutover.mjs
 node scripts/release-rollback-verify.mjs
 node scripts/release-evidence-gate.mjs
 node scripts/release-manual-attestation-template.mjs
+node scripts/release-go-live-bundle.mjs
 node scripts/release-final-signoff.mjs
 ```
 
@@ -209,6 +210,7 @@ Notes:
 - `FAILURE_BASELINE_REPORT=<steady.json> FAILURE_DEGRADED_REPORT=<fault.json> FAILURE_RESTORED_REPORT=<restored.json> node scripts/release-failure-verify.mjs` verifies that a manual fault drill actually degrades when expected and then recovers within the allowed latency, push, RTC, and RTC-retention drill thresholds
 - `LIVE_CUTOVER_REPORT=<live-cutover.json> ROLLBACK_VERIFY_REPORT=<rollback-verify.json> FAILURE_VERIFY_REPORT=<failure-verify.json> node scripts/release-evidence-gate.mjs` is the final sign-off gate for launch evidence: it requires a passed live cutover report, a passed rollback verification report, and a passed failure verification report, and it can optionally enforce a maximum report age with `EVIDENCE_MAX_REPORT_AGE_MINUTES`
 - `MANUAL_ATTESTATION_TEMPLATE_FILE=artifacts/release-manual-attestation/template.json node scripts/release-manual-attestation-template.mjs` writes the operator template used to record real-device push cutover, real-device RTC validation, and the fault-recovery drill
+- `GO_LIVE_BUNDLE_DIR=artifacts/go-live-bundles/<label> node scripts/release-go-live-bundle.mjs` prepares a launch bundle directory with the manual attestation template, expected report file locations, and the exact execution order for live cutover, rollback verification, failure verification, evidence gate, and final signoff
 - `EVIDENCE_REPORT=<evidence.json> MANUAL_ATTESTATION_REPORT=<manual.json> node scripts/release-final-signoff.mjs` is the last human-in-the-loop launch gate: it requires a passed automated evidence report plus a completed manual attestation with push real-device cutover, RTC real-device validation, and failure-recovery drill evidence, and it can enforce evidence freshness with `FINAL_SIGNOFF_MAX_REPORT_AGE_MINUTES`
 - `admin-vue` still emits the known `sql.js` browser externalize warning and large chunk warning during build
 - those warnings are known and were not introduced by the latest remediation batches

@@ -63,11 +63,11 @@ function collectEvidenceFailures(failures, evidenceReport) {
 
 function hasEvidenceItem(item) {
   if (!item || typeof item !== 'object') return false;
-  return Boolean(
-    String(item.path || '').trim() ||
-    String(item.url || '').trim() ||
-    String(item.note || '').trim()
-  );
+  return Boolean(String(item.path || '').trim() || String(item.url || '').trim());
+}
+
+function hasAnyValue(values = []) {
+  return values.some((value) => String(value || '').trim());
 }
 
 function collectSectionFailures(failures, sectionName, section) {
@@ -95,6 +95,64 @@ function collectSectionFailures(failures, sectionName, section) {
   }
 }
 
+function collectPushCutoverDetailFailures(failures, details) {
+  const value = details && typeof details === 'object' ? details : {};
+  if (!String(value.provider || '').trim()) {
+    failures.push('push_real_device_cutover_provider_missing');
+  }
+  if (!String(value.messageId || '').trim()) {
+    failures.push('push_real_device_cutover_message_id_missing');
+  }
+  if (
+    !hasAnyValue([
+      value.userType,
+      value.userId,
+      value.appEnv,
+      value.deviceTokenSuffix,
+    ])
+  ) {
+    failures.push('push_real_device_cutover_target_identity_missing');
+  }
+}
+
+function collectRTCDetailFailures(failures, details) {
+  const value = details && typeof details === 'object' ? details : {};
+  if (!String(value.callerPlatform || '').trim()) {
+    failures.push('rtc_real_device_validation_caller_platform_missing');
+  }
+  if (!String(value.calleePlatform || '').trim()) {
+    failures.push('rtc_real_device_validation_callee_platform_missing');
+  }
+  if (!String(value.callerAccount || '').trim()) {
+    failures.push('rtc_real_device_validation_caller_account_missing');
+  }
+  if (!String(value.calleeAccount || '').trim()) {
+    failures.push('rtc_real_device_validation_callee_account_missing');
+  }
+  if (!String(value.callId || '').trim()) {
+    failures.push('rtc_real_device_validation_call_id_missing');
+  }
+}
+
+function collectFailureRecoveryDetailFailures(failures, details) {
+  const value = details && typeof details === 'object' ? details : {};
+  if (!String(value.scenario || '').trim()) {
+    failures.push('failure_recovery_drill_scenario_missing');
+  }
+  if (!String(value.degradedReport || '').trim()) {
+    failures.push('failure_recovery_drill_degraded_report_missing');
+  }
+  if (!String(value.restoredReport || '').trim()) {
+    failures.push('failure_recovery_drill_restored_report_missing');
+  }
+  if (!String(value.rollbackBaselineReport || '').trim()) {
+    failures.push('failure_recovery_drill_rollback_baseline_missing');
+  }
+  if (!String(value.rollbackCandidateReport || '').trim()) {
+    failures.push('failure_recovery_drill_rollback_candidate_missing');
+  }
+}
+
 function collectManualFailures(failures, manualReport) {
   if (!manualReport || typeof manualReport !== 'object') {
     failures.push('manual_attestation_invalid');
@@ -116,6 +174,9 @@ function collectManualFailures(failures, manualReport) {
   collectSectionFailures(failures, 'push_real_device_cutover', manualReport.pushRealDeviceCutover);
   collectSectionFailures(failures, 'rtc_real_device_validation', manualReport.rtcRealDeviceValidation);
   collectSectionFailures(failures, 'failure_recovery_drill', manualReport.failureRecoveryDrill);
+  collectPushCutoverDetailFailures(failures, manualReport.pushRealDeviceCutover && manualReport.pushRealDeviceCutover.details);
+  collectRTCDetailFailures(failures, manualReport.rtcRealDeviceValidation && manualReport.rtcRealDeviceValidation.details);
+  collectFailureRecoveryDetailFailures(failures, manualReport.failureRecoveryDrill && manualReport.failureRecoveryDrill.details);
 }
 
 async function main() {
