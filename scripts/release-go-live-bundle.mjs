@@ -61,6 +61,7 @@ async function main() {
       evidenceReport: path.join(reportsDir, 'evidence-gate.json'),
       finalSignoffReport: path.join(reportsDir, 'final-signoff.json'),
       manualAttestationTemplate: templateFile,
+      manualAttestationPrefilled: path.join(attestationDir, 'prefilled.json'),
       manualAttestationCompleted: path.join(attestationDir, 'completed.json'),
     },
     commands: {
@@ -68,6 +69,7 @@ async function main() {
       rollbackVerify: 'node scripts/release-rollback-verify.mjs',
       failureVerify: 'node scripts/release-failure-verify.mjs',
       evidenceGate: 'node scripts/release-evidence-gate.mjs',
+      prefillManualAttestation: 'node scripts/release-manual-attestation-prefill.mjs',
       finalSignoff: 'node scripts/release-final-signoff.mjs',
     },
     requiredEnvironmentKeys: [
@@ -84,8 +86,9 @@ async function main() {
       '3. Run rollback verification and store the report in reports/rollback-verify.json.',
       '4. Run failure verification and store the report in reports/failure-verify.json.',
       '5. Run release-evidence-gate and store the report in reports/evidence-gate.json.',
-      '6. Complete manual-attestation/completed.json with real-device push, RTC, and failure-recovery evidence.',
-      '7. Run release-final-signoff and store the report in reports/final-signoff.json.',
+      '6. Run release-manual-attestation-prefill to generate manual-attestation/prefilled.json from the drill reports.',
+      '7. Complete manual-attestation/completed.json with real-device push, RTC, and failure-recovery evidence.',
+      '8. Run release-final-signoff and store the report in reports/final-signoff.json.',
     ],
     templateExitCode,
   };
