@@ -136,6 +136,14 @@ function normalizeProvider(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function normalizeText(value) {
+  return String(value || '').trim();
+}
+
+function normalizeTokenSuffix(value) {
+  return normalizeText(value).toLowerCase();
+}
+
 function pickMessageIdentifier(message) {
   if (!message || typeof message !== 'object') return '';
   return String(message.id || message.tsid || message.legacyId || '').trim();
@@ -156,6 +164,10 @@ async function main() {
   const requireRead = parseBooleanEnv(process.env.PUSH_DRILL_REQUIRE_READ, false);
   const allowFailedOnly = parseBooleanEnv(process.env.PUSH_DRILL_ALLOW_FAILED_ONLY, false);
   const requiredProvider = normalizeProvider(process.env.PUSH_DRILL_REQUIRE_PROVIDER);
+  const requiredUserType = normalizeText(process.env.PUSH_DRILL_REQUIRE_USER_TYPE).toLowerCase();
+  const requiredUserId = normalizeText(process.env.PUSH_DRILL_REQUIRE_USER_ID);
+  const requiredAppEnv = normalizeText(process.env.PUSH_DRILL_REQUIRE_APP_ENV).toLowerCase();
+  const requiredDeviceTokenSuffix = normalizeTokenSuffix(process.env.PUSH_DRILL_REQUIRE_DEVICE_TOKEN_SUFFIX);
   const keepMessage = parseBooleanEnv(process.env.PUSH_DRILL_KEEP_MESSAGE, false);
   const reportFile = String(process.env.PUSH_DRILL_REPORT_FILE || '').trim();
 
@@ -176,6 +188,10 @@ async function main() {
       requireRead,
       allowFailedOnly,
       requiredProvider,
+      requiredUserType,
+      requiredUserId,
+      requiredAppEnv,
+      requiredDeviceTokenSuffix,
       keepMessage,
     },
     message: null,
@@ -198,6 +214,21 @@ async function main() {
 
   const payload = createPushMessagePayload(label, startedAt);
   let messageId = '';
+  const requiresTargetMatch = Boolean(
+    requiredUserType || requiredUserId || requiredAppEnv || requiredDeviceTokenSuffix
+  );
+
+  function deliveryMatchesTarget(item = {}) {
+    const userType = normalizeText(item.user_type || item.userType).toLowerCase();
+    const userId = normalizeText(item.user_id || item.userId);
+    const appEnv = normalizeText(item.app_env || item.appEnv).toLowerCase();
+    const deviceToken = normalizeTokenSuffix(item.device_token || item.deviceToken);
+    if (requiredUserType && userType !== requiredUserType) return false;
+    if (requiredUserId && userId !== requiredUserId) return false;
+    if (requiredAppEnv && appEnv !== requiredAppEnv) return false;
+    if (requiredDeviceTokenSuffix && !deviceToken.endsWith(requiredDeviceTokenSuffix)) return false;
+    return true;
+  }
 
   try {
     const createResponse = await requestJson(baseUrl, adminToken, 'POST', '/api/push-messages', { body: payload });
@@ -257,6 +288,9 @@ async function main() {
       const deliveries = deliveriesResponse.data && Array.isArray(deliveriesResponse.data.items)
         ? deliveriesResponse.data.items
         : [];
+      const matchingDeliveries = requiresTargetMatch
+        ? deliveries.filter((item) => deliveryMatchesTarget(item))
+        : deliveries;
       const observedProviders = Array.from(
         new Set(
           deliveries
@@ -267,6 +301,18 @@ async function main() {
       report.polls.push({
         attempt,
         stats,
+        target: {
+          required: requiresTargetMatch,
+          matchCount: matchingDeliveries.length,
+          statuses: matchingDeliveries.map((item) => ({
+            userType: item.user_type || item.userType || '',
+            userId: item.user_id || item.userId || '',
+            appEnv: item.app_env || item.appEnv || '',
+            deviceTokenSuffix: normalizeText(item.device_token || item.deviceToken).slice(-8),
+            status: item.status || '',
+            dispatchProvider: item.dispatch_provider || item.dispatchProvider || '',
+          })),
+        },
         observedProviders,
         deliveryStatuses: deliveries.map((item) => ({
           id: item.id,
@@ -281,6 +327,13 @@ async function main() {
       if (requireDeliveries && stats.totalDeliveries <= 0) {
         if (attempt === maxPolls) {
           throw new Error('push_drill_no_active_recipients');
+        }
+        continue;
+      }
+
+      if (requiresTargetMatch && matchingDeliveries.length <= 0) {
+        if (attempt === maxPolls) {
+          throw new Error('push_drill_target_delivery_not_found');
         }
         continue;
       }
@@ -305,8 +358,16 @@ async function main() {
       const sentSatisfied = stats.sent > 0 || stats.acknowledged > 0;
       const acknowledgedSatisfied = !requireAcknowledged || stats.acknowledged > 0;
       const readSatisfied = !requireRead || stats.read > 0;
+      const targetSentSatisfied = !requiresTargetMatch || matchingDeliveries.some((item) => {
+        const status = normalizeText(item.status).toLowerCase();
+        return status === 'sent' || status === 'acknowledged';
+      });
+      const targetAcknowledgedSatisfied = !requiresTargetMatch || !requireAcknowledged || matchingDeliveries.some((item) => {
+        const status = normalizeText(item.status).toLowerCase();
+        return status === 'acknowledged';
+      });
 
-      if (sentSatisfied && acknowledgedSatisfied && readSatisfied) {
+      if (sentSatisfied && acknowledgedSatisfied && readSatisfied && targetSentSatisfied && targetAcknowledgedSatisfied) {
         report.status = 'passed';
         report.completedAt = new Date().toISOString();
         await writeReport(reportFile, report);
@@ -326,6 +387,9 @@ async function main() {
         const status = String(item.status || '').trim().toLowerCase();
         return status === 'failed' || status === 'sent' || status === 'acknowledged' || status === 'inactive';
       });
+      if (requiresTargetMatch && allTerminal && matchingDeliveries.length <= 0) {
+        throw new Error('push_drill_terminal_without_target_delivery');
+      }
       if (allTerminal && stats.sent <= 0 && stats.acknowledged <= 0) {
         throw new Error('push_drill_terminal_without_success');
       }
