@@ -15,7 +15,9 @@
     <ContactModal
       :show="showContactModal"
       :title="contactModalTitle"
+      :show-rtc="showRtcContact"
       @close="showContactModal = false"
+      @rtc="handleRTCContact"
       @online="handleOnlineContact"
       @phone="handlePhoneContact"
     />

@@ -385,28 +385,40 @@ export const recordPhoneContactClick = (payload) => request({
   data: payload
 })
 
-export const createRTCCall = (payload) => request({
-  url: '/api/rtc/calls',
-  method: 'POST',
-  data: payload
-})
+export const createRTCCall = async (payload) => {
+  const response = await request({
+    url: '/api/rtc/calls',
+    method: 'POST',
+    data: payload
+  })
+  return response && response.data ? response.data : response
+}
 
-export const getRTCCall = (callId) => request({
-  url: `/api/rtc/calls/${encodeURIComponent(callId)}`,
-  method: 'GET'
-})
+export const getRTCCall = async (callId) => {
+  const response = await request({
+    url: `/api/rtc/calls/${encodeURIComponent(callId)}`,
+    method: 'GET'
+  })
+  return response && response.data ? response.data : response
+}
 
-export const listRTCCallHistory = (params = {}) => request({
-  url: '/api/rtc/calls/history',
-  method: 'GET',
-  data: params
-})
+export const listRTCCallHistory = async (params = {}) => {
+  const response = await request({
+    url: '/api/rtc/calls/history',
+    method: 'GET',
+    data: params
+  })
+  return response && response.data ? response.data : response
+}
 
-export const updateRTCCallStatus = (callId, payload) => request({
-  url: `/api/rtc/calls/${encodeURIComponent(callId)}/status`,
-  method: 'POST',
-  data: payload
-})
+export const updateRTCCallStatus = async (callId, payload) => {
+  const response = await request({
+    url: `/api/rtc/calls/${encodeURIComponent(callId)}/status`,
+    method: 'POST',
+    data: payload
+  })
+  return response && response.data ? response.data : response
+}
 
 export const createUserAddress = (userId, payload) => request({
   url: `/api/user/${encodeURIComponent(userId)}/addresses`,

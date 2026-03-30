@@ -232,6 +232,13 @@
       }
     },
     {
+      "path": "pages/rtc/call/index",
+      "style": {
+        "navigationBarTitleText": "站内语音",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/message/notification-detail/index",
       "style": {
         "navigationBarTitleText": "通知详情",

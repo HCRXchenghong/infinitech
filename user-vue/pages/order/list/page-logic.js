@@ -1,4 +1,5 @@
 import { fetchAfterSalesList, fetchGroupbuyVouchers, fetchOrders, fetchVoucherQRCode, recordPhoneContactClick } from '@/shared-ui/api.js'
+import { canUseUserRTCContact } from '@/shared-ui/rtc-contact.js'
 import { mapAfterSalesItem, mapOrderItem } from './order-list-utils'
 import ContactModal from '@/components/ContactModal.vue'
 import PhoneWarningModal from '@/components/PhoneWarningModal.vue'
@@ -35,6 +36,22 @@ function buildOrderPhoneAuditPayload(order, contactType, phoneNumber) {
   }
 }
 
+function buildOrderRTCContext(order, contactType) {
+  const isRider = contactType === 'rider'
+  const riderInfo = String((order?.deliveryInfo && order.deliveryInfo.rider) || '')
+  const riderPhone = riderInfo.match(/1[3-9]\d{9}/)
+  return {
+    targetRole: isRider ? 'rider' : 'merchant',
+    targetId: String(isRider ? (order?.riderId || '') : (order?.shopId || '')),
+    targetName: isRider ? (riderInfo.split(' ')[0] || '骑手') : String(order?.shopName || '商家'),
+    targetPhone: normalizePhoneNumber(
+      isRider ? ((riderPhone && riderPhone[0]) || order?.riderPhone || '') : (order?.shopPhone || '')
+    ),
+    conversationId: isRider ? `rider_${order?.id || ''}` : `shop_${order?.id || ''}`,
+    orderId: String(order?.id || ''),
+  }
+}
+
 export default {
   components: {
     ContactModal,
@@ -47,6 +64,7 @@ export default {
       scrollTop: 0,
       showContactModal: false,
       showPhoneWarning: false,
+      showRtcContact: canUseUserRTCContact(),
       contactModalTitle: '选择联系方式',
       currentOrder: null,
       contactType: null, // 'rider' or 'shop'
@@ -287,6 +305,32 @@ export default {
 
       uni.navigateTo({
         url: `/pages/message/chat/index?chatType=direct&roomId=${encodeURIComponent(roomId)}&name=${encodeURIComponent(name)}&role=${encodeURIComponent(role)}&avatar=${encodeURIComponent(avatar)}&targetId=${encodeURIComponent(targetId)}&orderId=${encodeURIComponent(String(order.id || ''))}`
+      })
+    },
+    handleRTCContact() {
+      if (!this.currentOrder) return
+      if (!this.showRtcContact) {
+        this.handlePhoneContact()
+        return
+      }
+
+      const context = buildOrderRTCContext(this.currentOrder, this.contactType)
+      if (!context.orderId || !context.targetRole || !context.targetId) {
+        uni.showToast({ title: '缺少语音联系目标', icon: 'none' })
+        return
+      }
+
+      uni.navigateTo({
+        url:
+          `/pages/rtc/call/index?mode=outgoing` +
+          `&entryPoint=${encodeURIComponent('order_list')}` +
+          `&scene=${encodeURIComponent('order_contact')}` +
+          `&orderId=${encodeURIComponent(context.orderId)}` +
+          `&conversationId=${encodeURIComponent(context.conversationId)}` +
+          `&targetRole=${encodeURIComponent(context.targetRole)}` +
+          `&targetId=${encodeURIComponent(context.targetId)}` +
+          `&targetName=${encodeURIComponent(context.targetName)}` +
+          `&targetPhone=${encodeURIComponent(context.targetPhone)}`
       })
     },
     handlePhoneContact() {
