@@ -1,4 +1,7 @@
 const crypto = require("crypto");
+const { createClient } = require("redis");
+const config = require("../../config");
+const { logger } = require("../../utils/logger");
 const { extractVerifiedAdminIdentity } = require("../../utils/authIdentity");
 const {
   QR_LOGIN_SESSION_TTL_MS,
@@ -17,46 +20,213 @@ const {
   verifyToken,
 } = require("./qrCommon");
 
-const qrLoginSessions = new Map();
+const localQrLoginSessions = new Map();
+const QR_LOGIN_REDIS_PREFIX = "bff:admin:qr-login";
+const REDIS_RETRY_DELAY_MS = 30_000;
+
+let redisClient = null;
+let redisConnectionAttempt = null;
+let redisDisabledUntil = 0;
 
 function createQrTicket() {
   return `${Date.now().toString(36)}${crypto.randomBytes(12).toString("hex")}`;
 }
 
+function normalizeSessionTicket(ticket) {
+  return String(ticket || "").trim();
+}
+
+function getRedisKey(ticket) {
+  const normalizedTicket = normalizeSessionTicket(ticket);
+  return normalizedTicket ? `${QR_LOGIN_REDIS_PREFIX}:${normalizedTicket}` : "";
+}
+
+function cloneSession(session) {
+  return session ? JSON.parse(JSON.stringify(session)) : null;
+}
+
 function markSessionExpired(session, currentTime) {
   if (!session) {
-    return;
+    return false;
   }
-  if (currentTime > session.expiresAt && (session.status === "pending" || session.status === "scanned")) {
+  if (
+    currentTime > session.expiresAt
+    && (session.status === "pending" || session.status === "scanned")
+  ) {
     session.status = "expired";
     session.expiredAt = currentTime;
+    return true;
+  }
+  return false;
+}
+
+function getFinalAt(session) {
+  return session?.consumedAt || session?.confirmedAt || session?.rejectedAt || session?.expiredAt || 0;
+}
+
+function getSessionTtlSeconds(session, currentTime = nowMs()) {
+  const finalAt = getFinalAt(session);
+  const expiryDeadline = Math.max(
+    Number(session?.expiresAt || 0) + QR_LOGIN_FINAL_KEEP_MS,
+    finalAt > 0 ? finalAt + QR_LOGIN_FINAL_KEEP_MS : 0
+  );
+  const ttlMs = Math.max(expiryDeadline - currentTime, 0);
+  return Math.ceil(ttlMs / 1000);
+}
+
+async function connectRedis() {
+  if (!config.redis?.enabled) {
+    return null;
+  }
+  if (redisClient?.isOpen) {
+    return redisClient;
+  }
+  if (redisConnectionAttempt) {
+    return redisConnectionAttempt;
+  }
+  if (Date.now() < redisDisabledUntil) {
+    return null;
+  }
+
+  const client = createClient({
+    socket: {
+      host: config.redis.host,
+      port: Number(config.redis.port || 2550),
+      connectTimeout: 1000,
+      reconnectStrategy: false,
+    },
+    password: config.redis.password || undefined,
+    database: Number(config.redis.db || 0),
+  });
+
+  client.on("error", (err) => {
+    logger.warn("BFF qr-login redis client error", { message: err.message });
+  });
+
+  redisConnectionAttempt = client.connect()
+    .then(() => {
+      redisClient = client;
+      redisDisabledUntil = 0;
+      return redisClient;
+    })
+    .catch((err) => {
+      redisDisabledUntil = Date.now() + REDIS_RETRY_DELAY_MS;
+      logger.warn("BFF qr-login redis store falling back to in-memory sessions", {
+        message: err.message,
+      });
+      try {
+        client.disconnect();
+      } catch (_error) {
+        // ignore cleanup errors
+      }
+      return null;
+    })
+    .finally(() => {
+      redisConnectionAttempt = null;
+    });
+
+  return redisConnectionAttempt;
+}
+
+async function loadRedisSession(ticket) {
+  const redisKey = getRedisKey(ticket);
+  if (!redisKey) {
+    return null;
+  }
+
+  try {
+    const client = await connectRedis();
+    if (!client) {
+      return null;
+    }
+    const raw = await client.get(redisKey);
+    if (!raw) {
+      return null;
+    }
+    return JSON.parse(raw);
+  } catch (err) {
+    logger.warn("BFF qr-login redis read failed", {
+      ticket: normalizeSessionTicket(ticket),
+      message: err?.message || err,
+    });
+    return null;
   }
 }
 
-function cleanupQrLoginSessions() {
-  const currentTime = nowMs();
-  for (const [ticket, session] of qrLoginSessions.entries()) {
-    markSessionExpired(session, currentTime);
+async function saveRedisSession(session) {
+  const redisKey = getRedisKey(session?.ticket);
+  if (!redisKey) {
+    return false;
+  }
 
-    const finalAt = session.consumedAt || session.confirmedAt || session.rejectedAt || session.expiredAt;
-    if (finalAt && currentTime - finalAt > QR_LOGIN_FINAL_KEEP_MS) {
-      qrLoginSessions.delete(ticket);
+  try {
+    const client = await connectRedis();
+    if (!client) {
+      return false;
+    }
+
+    const ttlSeconds = getSessionTtlSeconds(session);
+    if (ttlSeconds <= 0) {
+      await client.del(redisKey);
+      return true;
+    }
+
+    await client.set(redisKey, JSON.stringify(session), { EX: ttlSeconds });
+    return true;
+  } catch (err) {
+    logger.warn("BFF qr-login redis write failed", {
+      ticket: normalizeSessionTicket(session?.ticket),
+      message: err?.message || err,
+    });
+    return false;
+  }
+}
+
+async function cleanupLocalSessions() {
+  const currentTime = nowMs();
+  for (const [ticket, session] of localQrLoginSessions.entries()) {
+    markSessionExpired(session, currentTime);
+    const finalAt = getFinalAt(session);
+    const keepDeadline = Math.max(
+      Number(session?.expiresAt || 0) + QR_LOGIN_FINAL_KEEP_MS,
+      finalAt > 0 ? finalAt + QR_LOGIN_FINAL_KEEP_MS : 0
+    );
+    if (!keepDeadline || currentTime > keepDeadline) {
+      localQrLoginSessions.delete(ticket);
     }
   }
 }
 
-function getQrLoginSession(ticket) {
-  cleanupQrLoginSessions();
-  const key = String(ticket || "").trim();
-  if (!key) {
+async function getQrLoginSession(ticket) {
+  await cleanupLocalSessions();
+  const normalizedTicket = normalizeSessionTicket(ticket);
+  if (!normalizedTicket) {
     return null;
   }
-  const session = qrLoginSessions.get(key);
+
+  let session = await loadRedisSession(normalizedTicket);
+  if (!session) {
+    session = localQrLoginSessions.get(normalizedTicket) || null;
+  }
   if (!session) {
     return null;
   }
-  markSessionExpired(session, nowMs());
+
+  const changed = markSessionExpired(session, nowMs());
+  localQrLoginSessions.set(normalizedTicket, cloneSession(session));
+  if (changed) {
+    await saveRedisSession(session);
+  }
   return session;
+}
+
+async function persistQrLoginSession(session) {
+  const normalizedTicket = normalizeSessionTicket(session?.ticket);
+  if (!normalizedTicket) {
+    return;
+  }
+  localQrLoginSessions.set(normalizedTicket, cloneSession(session));
+  await saveRedisSession(session);
 }
 
 function buildQrSessionPublicData(session) {
@@ -114,9 +284,7 @@ async function ensureValidAdminIdentity(req, res) {
   return auth.identity;
 }
 
-function createQrLoginSession(req, res) {
-  cleanupQrLoginSessions();
-
+async function createQrLoginSession(req, res) {
   const ticket = createQrTicket();
   const createdAt = nowMs();
   const webBaseUrl = resolveWebBaseUrl(req);
@@ -135,7 +303,7 @@ function createQrLoginSession(req, res) {
     authorizedUser: null,
   };
 
-  qrLoginSessions.set(ticket, session);
+  await persistQrLoginSession(session);
   const encryptedPayload = buildQrLoginEncryptedPayload(ticket, session.expiresAt);
   const qrText = `${webBaseUrl}${QR_LOGIN_DOWNLOAD_PATH}?${QR_LOGIN_PAYLOAD_PARAM}=${encodeURIComponent(encryptedPayload)}`;
 
@@ -150,7 +318,7 @@ function createQrLoginSession(req, res) {
   });
 }
 
-function getQrLoginSessionStatus(req, res) {
+async function getQrLoginSessionStatus(req, res) {
   const ticket = String(req.params.ticket || "").trim();
   if (!ticket) {
     return res.status(400).json({
@@ -159,7 +327,7 @@ function getQrLoginSessionStatus(req, res) {
     });
   }
 
-  const session = getQrLoginSession(ticket);
+  const session = await getQrLoginSession(ticket);
   if (!session) {
     return res.status(404).json({
       success: false,
@@ -170,6 +338,7 @@ function getQrLoginSessionStatus(req, res) {
   if (session.status === "confirmed" && session.authorizedToken) {
     session.status = "consumed";
     session.consumedAt = nowMs();
+    await persistQrLoginSession(session);
     return res.json({
       success: true,
       data: {
@@ -201,7 +370,7 @@ async function scanQrLoginSession(req, res) {
     return null;
   }
 
-  const session = getQrLoginSession(ticket);
+  const session = await getQrLoginSession(ticket);
   if (!session) {
     return res.status(404).json({
       success: false,
@@ -238,6 +407,7 @@ async function scanQrLoginSession(req, res) {
     name: scanUser.name,
     type: scanUser.type,
   };
+  await persistQrLoginSession(session);
 
   return res.json({
     success: true,
@@ -261,7 +431,7 @@ async function confirmQrLoginSession(req, res) {
     return null;
   }
 
-  const session = getQrLoginSession(ticket);
+  const session = await getQrLoginSession(ticket);
   if (!session) {
     return res.status(404).json({
       success: false,
@@ -296,6 +466,7 @@ async function confirmQrLoginSession(req, res) {
     session.rejectedAt = nowMs();
     session.authorizedToken = "";
     session.authorizedUser = null;
+    await persistQrLoginSession(session);
     return res.json({
       success: true,
       data: buildQrSessionPublicData(session),
@@ -313,6 +484,7 @@ async function confirmQrLoginSession(req, res) {
   };
   session.authorizedToken = identity.token;
   session.authorizedUser = upstreamUser || currentUser;
+  await persistQrLoginSession(session);
 
   return res.json({
     success: true,

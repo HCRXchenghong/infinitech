@@ -77,6 +77,7 @@ Important boundaries:
 - Go, BFF, and `socket-server` expose health and readiness endpoints
 - request ids are propagated across Go, BFF, and `socket-server`
 - core request size limits, timeouts, rate limits, and slow-request warnings are in place
+- admin QR login sessions are now Redis-backed by default with in-memory fallback, reducing single-instance login drift during multi-instance rollout
 - release preflight and HTTP smoke scripts are checked into the repo
 - HTTP load smoke and release preflight can now enforce both `p95` and `p99` latency ceilings instead of only broad error-rate checks
 - release preflight can now emit a structured JSON report for launch drills and audit retention
