@@ -207,7 +207,7 @@ func main() {
 		log.Printf("⚠️  钱包索引检查失败: %v", err)
 	}
 	if err := ensurePushDeliveryIndexes(db); err != nil {
-		log.Printf("鈿狅笍  鎺ㄩ€佸洖鎵х储寮曟鏌ュけ璐? %v", err)
+		log.Printf("⚠️  推送回执索引检查失败: %v", err)
 	}
 	if err := ensureShopMerchantTypeBackfill(db); err != nil {
 		log.Printf("⚠️  商户类型字段回填失败: %v", err)
