@@ -168,11 +168,11 @@ func resolveHEICConverterScript() string {
 	exePath, _ := os.Executable()
 	exeDir := filepath.Dir(exePath)
 	candidates := []string{
-		filepath.Join(".", "heic-converter", "index.js"),
-		filepath.Join("..", "heic-converter", "index.js"),
-		filepath.Join("..", "..", "heic-converter", "index.js"),
-		filepath.Join(exeDir, "heic-converter", "index.js"),
-		filepath.Join(exeDir, "scripts", "..", "heic-converter", "index.js"),
+		filepath.Join(".", "tools", "heic-converter", "index.js"),
+		filepath.Join("..", "tools", "heic-converter", "index.js"),
+		filepath.Join("..", "..", "tools", "heic-converter", "index.js"),
+		filepath.Join(exeDir, "tools", "heic-converter", "index.js"),
+		filepath.Join(exeDir, "scripts", "..", "tools", "heic-converter", "index.js"),
 	}
 
 	for _, candidate := range candidates {

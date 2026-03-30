@@ -509,7 +509,7 @@ func (h *AdminSettingsHandler) RunPushDispatchCycle(c *gin.Context) {
 	if c.Request.ContentLength > 0 {
 		var req map[string]interface{}
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "璇锋眰鍙傛暟閿欒"})
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
 			return
 		}
 		if raw, ok := req["limit"]; ok {

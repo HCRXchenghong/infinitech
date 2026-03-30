@@ -578,8 +578,8 @@ setInterval(async () => {
 }, 5000);
 
 httpServer.listen(PORT, () => {
-  logger.info(`Socket.IO 鏈嶅姟杩愯鍦ㄧ鍙?${PORT}`);
+  logger.info(`Socket.IO 服务运行在端口 ${PORT}`);
   logger.info('Socket auth now requires validated business auth or TOKEN_API_SECRET');
-  logger.info('鐩戞帶绔偣: /api/stats');
-  logger.info('鐢熸垚 token: POST /api/generate-token');
+  logger.info('监控端点: /api/stats');
+  logger.info('生成 token: POST /api/generate-token');
 });

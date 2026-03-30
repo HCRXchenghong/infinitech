@@ -9,8 +9,7 @@ const __dirname = dirname(__filename)
 
 function resolveHeicCliPath() {
   const candidates = [
-    resolve(__dirname, '..', 'heic-converter', 'index.js'),
-    resolve(__dirname, 'heic-converter', 'index.js'),
+    resolve(__dirname, '..', 'tools', 'heic-converter', 'index.js'),
   ]
 
   for (const candidate of candidates) {

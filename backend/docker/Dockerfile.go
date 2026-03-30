@@ -1,10 +1,10 @@
 FROM node:20-alpine AS heic-builder
 
-WORKDIR /src/heic-converter
+WORKDIR /src/tools/heic-converter
 
-COPY heic-converter/package*.json ./
+COPY tools/heic-converter/package*.json ./
 RUN npm ci --omit=dev
-COPY heic-converter/index.js ./index.js
+COPY tools/heic-converter/index.js ./index.js
 
 FROM golang:1.23-alpine AS builder
 
@@ -30,7 +30,7 @@ WORKDIR /app
 
 COPY --from=builder /tmp/go-api ./go-api
 COPY scripts ./scripts
-COPY --from=heic-builder /src/heic-converter ./heic-converter
+COPY --from=heic-builder /src/tools/heic-converter ./tools/heic-converter
 
 EXPOSE 1029
 

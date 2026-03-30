@@ -7,10 +7,10 @@ RUN apk add --no-cache wget
 COPY socket-server/package*.json ./
 RUN npm ci --omit=dev
 
-WORKDIR /app/heic-converter
-COPY heic-converter/package*.json ./
+WORKDIR /app/tools/heic-converter
+COPY tools/heic-converter/package*.json ./
 RUN npm ci --omit=dev
-COPY heic-converter/index.js ./index.js
+COPY tools/heic-converter/index.js ./index.js
 
 WORKDIR /app
 COPY socket-server ./socket-server

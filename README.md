@@ -36,7 +36,7 @@ Infinitech 是一个面向本地生活服务的多端一体化平台仓库，目
 - BFF 负责聚合、上传代理、健康聚合、发布 drill 和证据链
 - 主要消息链路已经改成 `server-first`
 - 发布前具备 `preflight / smoke / drill / evidence / signoff` 全链脚本
-- `heic-converter` 已经集成为本地转换模块，不再默认要求独立 HTTP 端口
+- `tools/heic-converter` 已经集成为本地转换模块，不再默认要求独立 HTTP 端口
 
 仍然需要在真实环境执行、不能只靠本地改代码就宣称“完成”的事项：
 
@@ -111,7 +111,7 @@ Infinitech 是一个面向本地生活服务的多端一体化平台仓库，目
   - 骑手 uni-app 端
 - `shared/mobile-common`
   - 多端共享 schema、运行时工具、RTC helper、同步层
-- `heic-converter`
+- `tools/heic-converter`
   - HEIC 本地转换模块
 - `backend/docker`
   - Dockerfile、Compose、Caddy 反代配置
@@ -135,17 +135,17 @@ Infinitech 是一个面向本地生活服务的多端一体化平台仓库，目
 - 不再使用 `SQLite` 作为生产主库
 - 不再保留第二套 socket 服务
 - 不再让本地消息缓存充当长期事实源
-- 不再默认要求单独开启 `heic-converter` HTTP 端口
+- 不再默认要求单独开启 `tools/heic-converter` 之外的独立 HEIC HTTP 端口
 
 ## HEIC 图片处理
 
-仓库根目录的 [`heic-converter`](./heic-converter) 已经从“独立微服务”收成“本地转换模块”。
+仓库内的 [`tools/heic-converter`](./tools/heic-converter) 已经从“独立微服务”收成“本地转换模块”。
 
 当前默认行为：
 
 - 活跃上传链优先统一走 `BFF -> Go /api/upload`
-- Go 端和 `socket-server` 都优先调用本地 `heic-converter/index.js`
-- Docker 镜像会把 `heic-converter` 一起打包进去
+- Go 端和 `socket-server` 都优先调用本地 `tools/heic-converter/index.js`
+- Docker 镜像会把 `tools/heic-converter` 一起打包进去
 - 不再默认要求单独启动 `9899` 之类的 HEIC 转换端口
 
 当前覆盖的活跃上传链包括：
@@ -162,7 +162,7 @@ Infinitech 是一个面向本地生活服务的多端一体化平台仓库，目
 本地非 Docker 开发如需 HEIC 转换，请先执行：
 
 ```bash
-cd heic-converter
+cd tools/heic-converter
 npm ci
 ```
 
@@ -390,7 +390,7 @@ Infinitech is a multi-client local services platform repository covering food de
 - BFF handles aggregation, upload proxying, health aggregation, release drills, and signoff support
 - Main messaging flows are now `server-first`
 - Release gating includes `preflight / smoke / drill / evidence / signoff`
-- `heic-converter` is integrated as a local conversion module and is no longer expected to run as a standalone HTTP service by default
+- `tools/heic-converter` is integrated as a local conversion module and is no longer expected to run as a standalone HTTP service by default
 
 ### One-command deployment
 
