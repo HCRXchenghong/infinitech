@@ -1,7 +1,6 @@
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import socketService, { SOCKET_HTTP_BASE } from '@/utils/socket';
-import messageDB from '@/utils/messageDB';
 import {
   fetchMessageConversations,
   fetchMessageHistory,
@@ -12,7 +11,6 @@ import {
   createSeenMessageTracker,
   isAdminSender,
   mapLoadedChats,
-  mapCachedMessages,
   mapLoadedMessages,
   sortChats,
   createOutgoingTempMessage,
@@ -23,8 +21,8 @@ export function useChatConsole(options = {}) {
   const {
     namespace,
     beforeInitLoad,
-    defaultChatName = '聊天',
-    disabledActionMessage = '按平台规则，仅监控页可彻底删除聊天记录。',
+    defaultChatName = 'Chat',
+    disabledActionMessage = 'Only the monitor page can permanently delete chat history.',
     coupons: couponSeed = [],
     orders: orderSeed = [],
     upsertBeforeSelectedCheck = false,
@@ -91,7 +89,7 @@ export function useChatConsole(options = {}) {
       }
       return true;
     } catch (error) {
-      console.error('加载服务端会话列表失败:', error);
+      console.error('Failed to load server conversation list.', error);
       return false;
     }
   }
@@ -112,7 +110,7 @@ export function useChatConsole(options = {}) {
       await markMessageConversationRead(normalizedChatId);
       return true;
     } catch (error) {
-      console.error('同步服务端已读状态失败:', error);
+      console.error('Failed to sync conversation read state.', error);
       return false;
     }
   }
@@ -123,24 +121,6 @@ export function useChatConsole(options = {}) {
     }
   }
 
-  async function loadCachedMessages(chatId) {
-    const normalizedChatId = normalizeChatId(chatId);
-    if (!normalizedChatId) return false;
-
-    try {
-      const cachedMessages = await messageDB.getMessages(normalizedChatId);
-      if (cachedMessages && cachedMessages.length > 0) {
-        messages.value = mapCachedMessages(cachedMessages);
-        nextTick(() => scrollToBottom());
-        return true;
-      }
-    } catch (error) {
-      console.error('加载本地消息失败:', error);
-    }
-
-    return false;
-  }
-
   function emitSendMessage(payload) {
     const socket = getSocket();
     if (!socket || !selectedChat.value) return;
@@ -149,7 +129,7 @@ export function useChatConsole(options = {}) {
       chatId: selectedChat.value.id,
       senderId: 'admin',
       senderRole: 'admin',
-      sender: '客服',
+      sender: 'Support',
       ...payload
     });
   }
@@ -168,7 +148,7 @@ export function useChatConsole(options = {}) {
       await syncReadState(normalizedChatId);
       nextTick(() => scrollToBottom());
     } catch (error) {
-      console.error('加载服务端消息失败:', error);
+      console.error('Failed to load server message history.', error);
       if (hadServerHistory) return;
     }
   }
@@ -237,7 +217,7 @@ export function useChatConsole(options = {}) {
         body: formData
       });
       const data = await res.json();
-      if (!data.url) throw new Error('图片上传失败');
+      if (!data.url) throw new Error('image_upload_failed');
 
       messages.value.push(createOutgoingTempMessage({
         id: createLocalMessageId('image'),
@@ -252,7 +232,7 @@ export function useChatConsole(options = {}) {
 
       nextTick(() => scrollToBottom());
     } catch (_error) {
-      ElMessage.error('图片上传失败');
+      ElMessage.error('Image upload failed');
     } finally {
       uploadingImage.value = false;
     }
@@ -279,7 +259,7 @@ export function useChatConsole(options = {}) {
 
     showCouponDialog.value = false;
     nextTick(() => scrollToBottom());
-    ElMessage.success('优惠券发送成功');
+    ElMessage.success('Coupon sent successfully');
     sendingCoupon.value = false;
   }
 
@@ -302,7 +282,7 @@ export function useChatConsole(options = {}) {
 
     showOrderDialog.value = false;
     nextTick(() => scrollToBottom());
-    ElMessage.success('订单发送成功');
+    ElMessage.success('Order sent successfully');
     sendingOrder.value = false;
   }
 
@@ -357,7 +337,7 @@ export function useChatConsole(options = {}) {
   function toggleMute() {
     if (contextMenu.value.chat) {
       contextMenu.value.chat.muted = !contextMenu.value.chat.muted;
-      ElMessage.success(contextMenu.value.chat.muted ? '已开启免打扰' : '已取消免打扰');
+      ElMessage.success(contextMenu.value.chat.muted ? 'Mute enabled' : 'Mute disabled');
     }
     contextMenu.value.show = false;
   }
@@ -416,7 +396,7 @@ export function useChatConsole(options = {}) {
       initLoad();
     }
 
-    socket.on('new_message', async (data) => {
+    socket.on('new_message', (data) => {
       const incomingChatId = normalizeChatId(data.chatId);
       if (!incomingChatId) return;
       if (hasSeenMessage(incomingChatId, data.id)) return;
@@ -522,4 +502,5 @@ export function useChatConsole(options = {}) {
     deleteChat
   };
 }
+
 

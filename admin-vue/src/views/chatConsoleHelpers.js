@@ -1,5 +1,4 @@
-﻿const TIME_OPTIONS = { hour: '2-digit', minute: '2-digit' };
-const LOCAL_HISTORY_CACHE_LIMIT = 60;
+const TIME_OPTIONS = { hour: '2-digit', minute: '2-digit' };
 
 export function normalizeChatId(value) {
   if (value === undefined || value === null) return '';
@@ -55,10 +54,10 @@ export function isAdminSender(data) {
 }
 
 export function getMessagePreview(data) {
-  if (data?.messageType === 'image') return '[图片]';
-  if (data?.messageType === 'coupon') return '[优惠券]';
-  if (data?.messageType === 'order') return '[订单]';
-  return String(data?.content || '').trim() || '[暂无消息]';
+  if (data?.messageType === 'image') return '[Image]';
+  if (data?.messageType === 'coupon') return '[Coupon]';
+  if (data?.messageType === 'order') return '[Order]';
+  return String(data?.content || '').trim() || '[No messages yet]';
 }
 
 export function formatMessageTime(timestamp) {
@@ -122,11 +121,11 @@ export function mapLoadedChats(list) {
     const chatId = normalizeChatId(chat.id || chat.chatId || chat.roomId);
     return {
       id: chatId,
-      name: String(chat.name || '').trim() || `聊天 #${chatId || 'unknown'}`,
+      name: String(chat.name || '').trim() || `Chat #${chatId || 'unknown'}`,
       phone: chat.phone || '',
       role: chat.role || 'user',
       avatar: chat.avatar || null,
-      lastMessage: String(chat.lastMessage || chat.msg || '').trim() || '[暂无消息]',
+      lastMessage: String(chat.lastMessage || chat.msg || '').trim() || '[No messages yet]',
       time: String(chat.time || '').trim() || (updatedAt ? formatMessageTime(updatedAt) : ''),
       unread: normalizeUnreadCount(chat.unread),
       updatedAt
@@ -134,24 +133,6 @@ export function mapLoadedChats(list) {
   });
 }
 
-export function mapCachedMessages(list) {
-  return (list || []).map((item) => {
-    const timestamp = resolveMessageTimestamp(item.timestamp, Date.now());
-    return {
-      timestamp,
-      id: item.id,
-      sender: item.sender,
-      content: item.content,
-      time: formatMessageTime(timestamp),
-      isSelf: item.senderRole === 'admin',
-      type: item.messageType,
-      coupon: item.coupon,
-      order: item.order,
-      avatar: item.avatar,
-      status: item.status || 'sent'
-    };
-  });
-}
 
 export function mapLoadedMessages(list) {
   return (list || []).map((item, index) => {
@@ -178,7 +159,7 @@ export function createOutgoingTempMessage({
   id,
   content,
   type = 'text',
-  sender = '客服',
+  sender = 'Support',
   coupon,
   order,
   status
@@ -216,41 +197,4 @@ export function createIncomingDisplayMessage(data) {
   };
 }
 
-function toDbRecord(chatId, message) {
-  return {
-    id: message.id,
-    chatId,
-    sender: message.sender,
-    senderId: message.senderId,
-    senderRole: message.senderRole,
-    content: message.content,
-    messageType: message.messageType,
-    coupon: message.coupon,
-    order: message.order,
-    imageUrl: message.imageUrl,
-    avatar: message.avatar
-  };
-}
-
-export function saveIncomingMessage(messageDB, chatId, message) {
-  return messageDB.saveMessage({
-    ...toDbRecord(chatId, message),
-    timestamp: message.timestamp
-  });
-}
-
-export async function saveLoadedMessages(messageDB, chatId, list) {
-  await messageDB.clearMessages(chatId);
-
-  const historyWindow = Array.isArray(list) ? list.slice(-LOCAL_HISTORY_CACHE_LIMIT) : [];
-  const baseTimestamp = Date.now();
-  for (const [index, message] of historyWindow.entries()) {
-    await messageDB.saveMessage({
-      ...toDbRecord(chatId, message),
-      timestamp: Number.isFinite(Number(message?.timestamp))
-        ? Number(message.timestamp)
-        : baseTimestamp + index
-    });
-  }
-}
 

@@ -92,6 +92,7 @@ Important boundaries:
 - unread sync now depends much more strictly on service-side read confirmation instead of local optimistic mutation
 - chat time, temporary ids, and read receipts have been normalized across active clients
 - the admin chat console no longer rewrites conversation summaries locally on incoming messages and now waits for the service conversation list refresh
+- the admin chat console no longer writes incoming realtime messages into a local fallback store during the default operator path
 - the admin local message fallback store now uses text chat/message ids, preserves real timestamps and statuses, and prunes aggressively instead of behaving like a long-lived second fact source
 - the admin chat console no longer falls back to local history when service-side message history fetches fail, keeping the default operator path pinned to service authority
 - active merchant and rider messaging entry points have been rewritten into clean UTF-8 copies so live chat, popup routing, and merchant support entry text no longer depend on mojibake-tainted legacy strings
@@ -169,6 +170,7 @@ node scripts/http-load-smoke.mjs
 
 Notes:
 
+- `PREFLIGHT_REPORT_FILE=artifacts/release-preflight.json node scripts/release-preflight.mjs` keeps a structured release drill report for launch review and audit retention
 - `admin-vue` still emits the known `sql.js` browser externalize warning and large chunk warning during build
 - those warnings are known and were not introduced by the latest remediation batches
 
