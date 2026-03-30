@@ -42,6 +42,28 @@ function normalizeCandidate(candidate) {
   return normalized
 }
 
+function normalizeIceServers(items = []) {
+  if (!Array.isArray(items)) return []
+  return items
+    .map((item) => {
+      const urls = Array.isArray(item?.urls)
+        ? item.urls.map((value) => trimValue(value)).filter(Boolean)
+        : trimValue(item?.urls || item?.url)
+      const normalized = {
+        urls,
+      }
+      const username = trimValue(item?.username)
+      const credential = trimValue(item?.credential)
+      if (username) normalized.username = username
+      if (credential) normalized.credential = credential
+      return normalized
+    })
+    .filter((item) => {
+      if (Array.isArray(item.urls)) return item.urls.length > 0
+      return Boolean(item.urls)
+    })
+}
+
 function resolveRTCConstructors() {
   const target = getGlobalTarget()
   return {
@@ -106,6 +128,7 @@ export function createRTCMediaSession(options = {}) {
   let remoteDescriptionSet = false
   const pendingCandidates = []
   const defaultIceServers = [{ urls: 'stun:stun.l.google.com:19302' }]
+  const resolvedIceServers = normalizeIceServers(options.iceServers)
 
   function getRemoteStream() {
     if (remoteStream) return remoteStream
@@ -145,9 +168,7 @@ export function createRTCMediaSession(options = {}) {
   function ensurePeerConnection() {
     if (peerConnection) return peerConnection
     peerConnection = new runtime.RTCPeerConnection({
-      iceServers: Array.isArray(options.iceServers) && options.iceServers.length
-        ? options.iceServers
-        : defaultIceServers,
+      iceServers: resolvedIceServers.length ? resolvedIceServers : defaultIceServers,
     })
 
     peerConnection.onicecandidate = (event) => {

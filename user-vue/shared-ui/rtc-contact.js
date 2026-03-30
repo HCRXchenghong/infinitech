@@ -10,6 +10,7 @@ import {
   canUseRTCContact as canUseSharedRTCContact,
   createRTCContactHelper,
 } from '../../shared/mobile-common/rtc-contact.js'
+import { getCachedRTCRuntimeSettings, loadRTCRuntimeSettings } from './rtc-runtime.js'
 
 function trimValue(value) {
   return String(value || '').trim()
@@ -107,8 +108,10 @@ const rtcHelper = createRTCContactHelper({
 })
 
 export function canUseUserRTCContact() {
-  return canUseSharedRTCContact()
+  return canUseSharedRTCContact() && getCachedRTCRuntimeSettings().enabled
 }
+
+export { getCachedRTCRuntimeSettings, loadRTCRuntimeSettings }
 
 export async function startUserRTCCall(payload, handlers = {}) {
   return rtcHelper.startCall(

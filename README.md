@@ -150,6 +150,7 @@ Important boundaries:
 - user and app order-contact flows now expose a first `/pages/rtc/call/index` entry wired from the contact modal into the RTC signaling/audit path, so RTC no longer exists only as hidden APIs and admin audit pages
 - user and app `App.vue` lifecycles now also keep a lightweight RTC invite bridge alive for authenticated consumer sessions, so incoming `/rtc` invite events can open the RTC call page even when the user is not already sitting inside a chat page
 - user and app RTC call pages now also ship a shared WebRTC media helper for microphone bootstrap, offer/answer exchange, ICE candidate relay, and hidden remote-audio playback on capable runtimes, so the client path is no longer limited to status-only signaling
+- admin service settings now also expose the RTC runtime switch, unanswered timeout, and ICE / TURN server list used by the active user and app RTC flows
 - the realtime gateway now auto-times out unanswered RTC calls after a bounded ring window and emits a service-side timeout status instead of leaving initiated calls hanging indefinitely
 - user and app RTC call pages now run off a shared clean page factory, include bounded unanswered-call auto-timeout behavior, and no longer rely on the mojibake-tainted earlier implementation
 - release drills now also have a first structured `rtc-call-drill` step that can create, advance, inspect, and optionally admin-verify an RTC call audit record through the same BFF/Go paths used by the product

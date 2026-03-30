@@ -1,5 +1,5 @@
 import { fetchGroupbuyVouchers, fetchOrderDetail, fetchVoucherQRCode, recordPhoneContactClick } from '@/shared-ui/api.js'
-import { canUseUserRTCContact } from '@/shared-ui/rtc-contact.js'
+import { canUseUserRTCContact, loadRTCRuntimeSettings } from '@/shared-ui/rtc-contact.js'
 import ContactModal from '@/components/ContactModal.vue'
 import PhoneWarningModal from '@/components/PhoneWarningModal.vue'
 
@@ -91,6 +91,7 @@ export default {
     }
   },
   onLoad(query) {
+    void this.syncRTCContactAvailability()
     const id = query && query.id
     if (id) {
       fetchOrderDetail(id)
@@ -110,6 +111,13 @@ export default {
     }
   },
   methods: {
+    async syncRTCContactAvailability() {
+      this.showRtcContact = canUseUserRTCContact()
+      try {
+        await loadRTCRuntimeSettings()
+      } catch (_err) {}
+      this.showRtcContact = canUseUserRTCContact()
+    },
     formatOrderData(data) {
       // 格式化后端返回的订单数据
       const shopId = data.shopId || data.shop_id || data.shop?.id

@@ -36,6 +36,12 @@ type RiderInsuranceCoverageItem struct {
 	Amount string `json:"amount"`
 }
 
+type RTCIceServerItem struct {
+	URL        string `json:"url"`
+	Username   string `json:"username"`
+	Credential string `json:"credential"`
+}
+
 type ServiceSettings struct {
 	ServicePhone                string                       `json:"service_phone"`
 	SupportChatTitle            string                       `json:"support_chat_title"`
@@ -78,6 +84,9 @@ type ServiceSettings struct {
 	RiderInsuranceDetailButton  string                       `json:"rider_insurance_detail_button_text"`
 	RiderInsuranceClaimSteps    []string                     `json:"rider_insurance_claim_steps"`
 	RiderInsuranceCoverages     []RiderInsuranceCoverageItem `json:"rider_insurance_coverages"`
+	RTCEnabled                  bool                         `json:"rtc_enabled"`
+	RTCTimeoutSec               int                          `json:"rtc_timeout_seconds"`
+	RTCIceServers               []RTCIceServerItem           `json:"rtc_ice_servers"`
 	MapProvider                 string                       `json:"map_provider"`
 	MapSearchURL                string                       `json:"map_search_url"`
 	MapReverseURL               string                       `json:"map_reverse_url"`
@@ -128,6 +137,9 @@ type PublicRuntimeSettings struct {
 	RiderInsuranceDetailButton  string                       `json:"rider_insurance_detail_button_text"`
 	RiderInsuranceClaimSteps    []string                     `json:"rider_insurance_claim_steps"`
 	RiderInsuranceCoverages     []RiderInsuranceCoverageItem `json:"rider_insurance_coverages"`
+	RTCEnabled                  bool                         `json:"rtc_enabled"`
+	RTCTimeoutSec               int                          `json:"rtc_timeout_seconds"`
+	RTCIceServers               []RTCIceServerItem           `json:"rtc_ice_servers"`
 }
 
 func DefaultServiceSettings() ServiceSettings {
@@ -162,6 +174,11 @@ func DefaultServiceSettings() ServiceSettings {
 		RiderInsuranceDetailButton:  "查看保障说明",
 		RiderInsuranceClaimSteps:    cloneStringSlice(defaultRiderInsuranceClaimSteps),
 		RiderInsuranceCoverages:     []RiderInsuranceCoverageItem{},
+		RTCEnabled:                  true,
+		RTCTimeoutSec:               35,
+		RTCIceServers: []RTCIceServerItem{
+			{URL: "stun:stun.l.google.com:19302"},
+		},
 		MapProvider:                 DefaultMapProvider,
 		MapSearchURL:                "",
 		MapReverseURL:               "",
@@ -228,6 +245,9 @@ func NormalizeServiceSettings(input ServiceSettings) ServiceSettings {
 	settings.RiderInsuranceDetailButton = normalizeOptionalMultiline(input.RiderInsuranceDetailButton)
 	settings.RiderInsuranceClaimSteps = normalizeRuntimeStringList(input.RiderInsuranceClaimSteps)
 	settings.RiderInsuranceCoverages = normalizeRiderInsuranceCoverages(input.RiderInsuranceCoverages)
+	settings.RTCEnabled = input.RTCEnabled
+	settings.RTCTimeoutSec = input.RTCTimeoutSec
+	settings.RTCIceServers = normalizeRTCIceServers(input.RTCIceServers)
 	settings.MapProvider = normalizeMapProvider(input.MapProvider)
 	settings.MapSearchURL = strings.TrimSpace(input.MapSearchURL)
 	settings.MapReverseURL = strings.TrimSpace(input.MapReverseURL)
@@ -324,6 +344,15 @@ func NormalizeServiceSettings(input ServiceSettings) ServiceSettings {
 	}
 	if len(settings.RiderInsuranceClaimSteps) == 0 {
 		settings.RiderInsuranceClaimSteps = cloneStringSlice(defaultRiderInsuranceClaimSteps)
+	}
+	if !input.RTCEnabled && input.RTCTimeoutSec == 0 && len(input.RTCIceServers) == 0 {
+		settings.RTCEnabled = defaults.RTCEnabled
+	}
+	if settings.RTCTimeoutSec <= 0 {
+		settings.RTCTimeoutSec = defaults.RTCTimeoutSec
+	}
+	if len(settings.RTCIceServers) == 0 {
+		settings.RTCIceServers = cloneRTCIceServers(defaults.RTCIceServers)
 	}
 	if settings.MapTileTemplate == "" {
 		settings.MapTileTemplate = DefaultMapTileTemplate
@@ -485,6 +514,26 @@ func ValidateServiceSettings(input ServiceSettings) error {
 			return fmt.Errorf("rider_insurance_coverages amount is too long")
 		}
 	}
+	if settings.RTCTimeoutSec < 10 || settings.RTCTimeoutSec > 120 {
+		return fmt.Errorf("rtc_timeout_seconds must be between 10 and 120")
+	}
+	if len(settings.RTCIceServers) > 10 {
+		return fmt.Errorf("rtc_ice_servers exceeds maximum size")
+	}
+	for _, server := range settings.RTCIceServers {
+		if strings.TrimSpace(server.URL) == "" {
+			return fmt.Errorf("rtc_ice_servers url is required")
+		}
+		if err := validateRTCIceURL(server.URL); err != nil {
+			return err
+		}
+		if len(server.Username) > 256 {
+			return fmt.Errorf("rtc_ice_servers username is too long")
+		}
+		if len(server.Credential) > 512 {
+			return fmt.Errorf("rtc_ice_servers credential is too long")
+		}
+	}
 	if settings.MapProvider != "proxy" && settings.MapProvider != "custom" && settings.MapProvider != "tianditu" {
 		return fmt.Errorf("map_provider is invalid")
 	}
@@ -565,6 +614,9 @@ func BuildPublicRuntimeSettings(input ServiceSettings) PublicRuntimeSettings {
 		RiderInsuranceDetailButton:  settings.RiderInsuranceDetailButton,
 		RiderInsuranceClaimSteps:    cloneStringSlice(settings.RiderInsuranceClaimSteps),
 		RiderInsuranceCoverages:     cloneRiderInsuranceCoverages(settings.RiderInsuranceCoverages),
+		RTCEnabled:                  settings.RTCEnabled,
+		RTCTimeoutSec:               settings.RTCTimeoutSec,
+		RTCIceServers:               cloneRTCIceServers(settings.RTCIceServers),
 	}
 }
 
@@ -597,6 +649,29 @@ func validateOptionalMapTileTemplate(raw string) error {
 	}
 	sanitized := strings.NewReplacer("{z}", "0", "{x}", "0", "{y}", "0").Replace(value)
 	return validateOptionalServiceURL(sanitized, "map_tile_template")
+}
+
+func validateRTCIceURL(raw string) error {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return fmt.Errorf("rtc_ice_servers url is required")
+	}
+	parts := strings.SplitN(value, ":", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("rtc_ice_servers url must include a scheme")
+	}
+	switch strings.ToLower(strings.TrimSpace(parts[0])) {
+	case "stun", "stuns", "turn", "turns":
+	default:
+		return fmt.Errorf("rtc_ice_servers url scheme is invalid")
+	}
+	if strings.TrimSpace(parts[1]) == "" {
+		return fmt.Errorf("rtc_ice_servers url host is required")
+	}
+	if len(value) > 512 {
+		return fmt.Errorf("rtc_ice_servers url is too long")
+	}
+	return nil
 }
 
 func normalizeOptionalMultiline(value string) string {
@@ -646,6 +721,26 @@ func normalizeRiderInsuranceCoverages(items []RiderInsuranceCoverageItem) []Ride
 	return result
 }
 
+func normalizeRTCIceServers(items []RTCIceServerItem) []RTCIceServerItem {
+	if len(items) == 0 {
+		return []RTCIceServerItem{}
+	}
+
+	result := make([]RTCIceServerItem, 0, len(items))
+	for _, item := range items {
+		normalized := RTCIceServerItem{
+			URL:        strings.TrimSpace(item.URL),
+			Username:   strings.TrimSpace(item.Username),
+			Credential: strings.TrimSpace(item.Credential),
+		}
+		if normalized.URL == "" {
+			continue
+		}
+		result = append(result, normalized)
+	}
+	return result
+}
+
 func cloneStringSlice(items []string) []string {
 	if len(items) == 0 {
 		return []string{}
@@ -660,6 +755,15 @@ func cloneRiderInsuranceCoverages(items []RiderInsuranceCoverageItem) []RiderIns
 		return []RiderInsuranceCoverageItem{}
 	}
 	cloned := make([]RiderInsuranceCoverageItem, len(items))
+	copy(cloned, items)
+	return cloned
+}
+
+func cloneRTCIceServers(items []RTCIceServerItem) []RTCIceServerItem {
+	if len(items) == 0 {
+		return []RTCIceServerItem{}
+	}
+	cloned := make([]RTCIceServerItem, len(items))
 	copy(cloned, items)
 	return cloned
 }

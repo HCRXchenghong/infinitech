@@ -78,6 +78,8 @@ import {
   canUseUserRTCContact,
   connectUserRTCSignalSession,
   fetchUserRTCCall,
+  getCachedRTCRuntimeSettings,
+  loadRTCRuntimeSettings,
   startUserRTCCall,
 } from '@/shared-ui/rtc-contact.js'
 import { canUseRTCMedia, createRTCMediaSession } from '@/shared-ui/rtc-media.js'
@@ -90,6 +92,8 @@ export default createRTCCallPage({
   startRTCCall: startUserRTCCall,
   canUseRTCMedia,
   createRTCMediaSession,
+  getCachedRTCRuntimeSettings,
+  loadRTCRuntimeSettings,
 })
 </script>
 

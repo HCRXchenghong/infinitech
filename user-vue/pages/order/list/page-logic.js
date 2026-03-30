@@ -1,5 +1,5 @@
 import { fetchAfterSalesList, fetchGroupbuyVouchers, fetchOrders, fetchVoucherQRCode, recordPhoneContactClick } from '@/shared-ui/api.js'
-import { canUseUserRTCContact } from '@/shared-ui/rtc-contact.js'
+import { canUseUserRTCContact, loadRTCRuntimeSettings } from '@/shared-ui/rtc-contact.js'
 import { mapAfterSalesItem, mapOrderItem } from './order-list-utils'
 import ContactModal from '@/components/ContactModal.vue'
 import PhoneWarningModal from '@/components/PhoneWarningModal.vue'
@@ -97,6 +97,7 @@ export default {
     }
   },
   onLoad(query) {
+    void this.syncRTCContactAvailability()
     // 支持从外部传入tab参数
     if (query && query.tab) {
       this.currentTab = query.tab
@@ -104,6 +105,7 @@ export default {
     this.loadOrders()
   },
   onShow() {
+    void this.syncRTCContactAvailability()
     // 监听切换tab事件
     uni.$off('switchToRefundTab', this.switchToRefundTab)
     uni.$on('switchToRefundTab', this.switchToRefundTab)
@@ -114,6 +116,13 @@ export default {
     uni.$off('switchToRefundTab', this.switchToRefundTab)
   },
   methods: {
+    async syncRTCContactAvailability() {
+      this.showRtcContact = canUseUserRTCContact()
+      try {
+        await loadRTCRuntimeSettings()
+      } catch (_err) {}
+      this.showRtcContact = canUseUserRTCContact()
+    },
     // 加载订单数据
     loadOrders() {
       const profile = uni.getStorageSync('userProfile') || {}

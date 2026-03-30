@@ -887,6 +887,54 @@
       </el-card>
 
       <el-card class="card full-width">
+        <div class="card-title">RTC 音频配置</div>
+        <el-form :model="serviceSettings" label-width="120px" size="small">
+          <el-form-item label="语音开关">
+            <el-switch v-model="serviceSettings.rtc_enabled" />
+            <span class="form-tip-inline">关闭后，双端联系弹窗将只保留在线聊天和系统电话。</span>
+          </el-form-item>
+          <el-form-item label="超时秒数">
+            <el-input-number v-model="serviceSettings.rtc_timeout_seconds" :min="10" :max="120" />
+            <span class="form-tip-inline">发起站内语音后，超过该秒数无人接听将自动超时结束。</span>
+          </el-form-item>
+          <el-form-item label="ICE / TURN">
+            <div style="display:grid;gap:12px;width:100%;">
+              <div style="display:flex;justify-content:flex-end;">
+                <el-button size="small" @click="addRTCIceServer">新增 ICE / TURN</el-button>
+              </div>
+              <div v-if="!serviceSettings.rtc_ice_servers?.length" class="form-tip">
+                当前未配置自定义 ICE / TURN，客户端会回退到默认 STUN。
+              </div>
+              <div
+                v-for="(server, index) in serviceSettings.rtc_ice_servers"
+                :key="`rtc-ice-server-${index}`"
+                style="display:grid;grid-template-columns:1.2fr 1fr 1fr auto;gap:12px;"
+              >
+                <el-input
+                  v-model="serviceSettings.rtc_ice_servers[index].url"
+                  placeholder="如：turns:turn.example.com:5349?transport=tcp"
+                />
+                <el-input
+                  v-model="serviceSettings.rtc_ice_servers[index].username"
+                  placeholder="用户名（可选）"
+                />
+                <el-input
+                  v-model="serviceSettings.rtc_ice_servers[index].credential"
+                  type="password"
+                  show-password
+                  placeholder="凭证（可选）"
+                />
+                <el-button link type="danger" @click="removeRTCIceServer(index)">删除</el-button>
+              </div>
+            </div>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="savingServiceSettings" @click="saveServiceSettings">保存 RTC 配置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+
+      <el-card class="card full-width">
         <div class="card-title">数据管理</div>
         <div class="data-mgmt-grid">
           <div class="data-mgmt-item" v-for="item in dataMgmtItems" :key="item.label">
@@ -1113,6 +1161,8 @@ const {
   removeRiderInsuranceCoverage,
   addRiderInsuranceClaimStep,
   removeRiderInsuranceClaimStep,
+  addRTCIceServer,
+  removeRTCIceServer,
   saveCharitySettings,
   addCharityLeaderboardItem,
   removeCharityLeaderboardItem,

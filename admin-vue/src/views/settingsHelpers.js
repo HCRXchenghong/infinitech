@@ -97,6 +97,9 @@ export function useSettingsPage() {
     rider_insurance_detail_button_text: '查看保障说明',
     rider_insurance_coverages: [],
     rider_insurance_claim_steps: [...DEFAULT_RIDER_INSURANCE_CLAIM_STEPS],
+    rtc_enabled: true,
+    rtc_timeout_seconds: 35,
+    rtc_ice_servers: [{ url: 'stun:stun.l.google.com:19302', username: '', credential: '' }],
     map_provider: 'proxy',
     map_search_url: '',
     map_reverse_url: '',
@@ -233,6 +236,28 @@ export function useSettingsPage() {
     };
   }
 
+  function normalizeRTCIceServers(items = []) {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+    return items
+      .map((item) => ({
+        url: String(item?.url || '').trim(),
+        username: String(item?.username || '').trim(),
+        credential: String(item?.credential || '').trim(),
+      }))
+      .filter((item) => item.url || item.username || item.credential)
+      .slice(0, 10);
+  }
+
+  function createEmptyRTCIceServer() {
+    return {
+      url: '',
+      username: '',
+      credential: '',
+    };
+  }
+
   function mergeServiceSettings(payload = {}) {
     serviceSettings.value = {
       ...DEFAULT_SERVICE_SETTINGS,
@@ -281,6 +306,9 @@ export function useSettingsPage() {
       serviceSettings.value.rider_insurance_claim_steps,
       DEFAULT_RIDER_INSURANCE_CLAIM_STEPS
     );
+    serviceSettings.value.rtc_enabled = Boolean(serviceSettings.value.rtc_enabled);
+    serviceSettings.value.rtc_timeout_seconds = Number(serviceSettings.value.rtc_timeout_seconds || DEFAULT_SERVICE_SETTINGS.rtc_timeout_seconds);
+    serviceSettings.value.rtc_ice_servers = normalizeRTCIceServers(serviceSettings.value.rtc_ice_servers);
     serviceSettings.value.map_provider = String(serviceSettings.value.map_provider || DEFAULT_SERVICE_SETTINGS.map_provider).trim() || DEFAULT_SERVICE_SETTINGS.map_provider;
     serviceSettings.value.map_search_url = String(serviceSettings.value.map_search_url || '').trim();
     serviceSettings.value.map_reverse_url = String(serviceSettings.value.map_reverse_url || '').trim();
@@ -351,6 +379,26 @@ export function useSettingsPage() {
       : [];
     steps.splice(index, 1);
     serviceSettings.value.rider_insurance_claim_steps = steps;
+  }
+
+  function addRTCIceServer() {
+    const servers = normalizeRTCIceServers(serviceSettings.value.rtc_ice_servers);
+    if (servers.length >= 10) {
+      ElMessage.warning('RTC ICE/TURN 最多保留 10 组');
+      return;
+    }
+    serviceSettings.value.rtc_ice_servers = [
+      ...servers,
+      createEmptyRTCIceServer()
+    ];
+  }
+
+  function removeRTCIceServer(index) {
+    const servers = Array.isArray(serviceSettings.value.rtc_ice_servers)
+      ? [...serviceSettings.value.rtc_ice_servers]
+      : [];
+    servers.splice(index, 1);
+    serviceSettings.value.rtc_ice_servers = servers;
   }
 
   function normalizeCharityText(value, fallback = '') {
@@ -732,6 +780,9 @@ export function useSettingsPage() {
           serviceSettings.value.rider_insurance_claim_steps,
           DEFAULT_RIDER_INSURANCE_CLAIM_STEPS
         ),
+        rtc_enabled: Boolean(serviceSettings.value.rtc_enabled),
+        rtc_timeout_seconds: Number(serviceSettings.value.rtc_timeout_seconds || DEFAULT_SERVICE_SETTINGS.rtc_timeout_seconds),
+        rtc_ice_servers: normalizeRTCIceServers(serviceSettings.value.rtc_ice_servers),
         rider_exception_report_reasons: normalizeServiceStringList(
           serviceSettings.value.rider_exception_report_reasons,
           DEFAULT_RIDER_EXCEPTION_REPORT_REASONS
@@ -1079,6 +1130,8 @@ export function useSettingsPage() {
     removeRiderInsuranceCoverage,
     addRiderInsuranceClaimStep,
     removeRiderInsuranceClaimStep,
+    addRTCIceServer,
+    removeRTCIceServer,
     saveCharitySettings,
     addCharityLeaderboardItem,
     removeCharityLeaderboardItem,

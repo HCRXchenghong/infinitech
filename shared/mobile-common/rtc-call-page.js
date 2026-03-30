@@ -89,7 +89,16 @@ export function createRTCCallPage(options = {}) {
     startRTCCall,
     canUseRTCMedia,
     createRTCMediaSession,
+    getCachedRTCRuntimeSettings,
+    loadRTCRuntimeSettings,
   } = options
+
+  const cachedRTCRuntime =
+    typeof getCachedRTCRuntimeSettings === 'function' ? getCachedRTCRuntimeSettings() : null
+  const initialRTCTimeoutSeconds = toPositiveInt(
+    cachedRTCRuntime && cachedRTCRuntime.timeoutSeconds,
+    35
+  )
 
   return {
     data() {
@@ -115,7 +124,8 @@ export function createRTCCallPage(options = {}) {
         offerSent: false,
         answerSent: false,
         remoteAudioReady: false,
-        rtcTimeoutSeconds: 35,
+        rtcTimeoutSeconds: initialRTCTimeoutSeconds,
+        rtcRuntimeSettings: cachedRTCRuntime,
         timeoutTimer: null,
       }
     },
@@ -161,6 +171,7 @@ export function createRTCCallPage(options = {}) {
       },
     },
     async onLoad(query) {
+      const queryTimeoutSeconds = toPositiveInt(query.timeoutSeconds, 0)
       this.mode = trimValue(query.mode || 'outgoing') || 'outgoing'
       this.callId = trimValue(query.callId)
       this.orderId = trimValue(query.orderId)
@@ -171,7 +182,10 @@ export function createRTCCallPage(options = {}) {
       this.targetPhone = trimValue(query.targetPhone)
       this.entryPoint = trimValue(query.entryPoint || this.entryPoint)
       this.scene = trimValue(query.scene || this.scene)
-      this.rtcTimeoutSeconds = toPositiveInt(query.timeoutSeconds, 35)
+      await this.loadRTCRuntimeSettingsIfNeeded()
+      if (queryTimeoutSeconds > 0) {
+        this.rtcTimeoutSeconds = queryTimeoutSeconds
+      }
 
       if (!this.signalSupported) {
         this.errorMessage = '当前平台暂不支持站内语音，请改用系统电话。'
@@ -196,6 +210,27 @@ export function createRTCCallPage(options = {}) {
       }
     },
     methods: {
+      async loadRTCRuntimeSettingsIfNeeded() {
+        if (typeof loadRTCRuntimeSettings !== 'function') {
+          return
+        }
+        try {
+          const runtimeSettings = await loadRTCRuntimeSettings()
+          if (!runtimeSettings || typeof runtimeSettings !== 'object') {
+            return
+          }
+          this.rtcRuntimeSettings = runtimeSettings
+          this.rtcTimeoutSeconds = toPositiveInt(
+            runtimeSettings.timeoutSeconds,
+            this.rtcTimeoutSeconds || initialRTCTimeoutSeconds
+          )
+          this.signalSupported =
+            (typeof canUseRTCContact === 'function' ? canUseRTCContact() : false) &&
+            runtimeSettings.enabled !== false
+        } catch (_err) {
+          this.signalSupported = typeof canUseRTCContact === 'function' ? canUseRTCContact() : false
+        }
+      },
       buildSignalMeta() {
         return {
           orderId: this.orderId,
@@ -300,6 +335,9 @@ export function createRTCCallPage(options = {}) {
         if (this.mediaSession) return this.mediaSession
 
         this.mediaSession = createRTCMediaSession({
+          iceServers: Array.isArray(this.rtcRuntimeSettings?.iceServers)
+            ? this.rtcRuntimeSettings.iceServers
+            : [],
           onIceCandidate: (candidate) => {
             if (!candidate || !this.session || !this.callId) return
             this.session.signal('ice-candidate', candidate, this.buildSignalMeta())
