@@ -82,6 +82,7 @@ async function main() {
       ],
       details: {
         scenario: '',
+        planReport: '',
         degradedReport: '',
         restoredReport: '',
         rollbackBaselineReport: '',

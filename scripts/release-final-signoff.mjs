@@ -288,6 +288,12 @@ async function collectFailureRecoveryReportPathFailures(failures, details, baseD
   const value = details && typeof details === 'object' ? details : {};
   await ensureExistingLocalPath(
     failures,
+    'failure_recovery_drill_plan_report',
+    baseDirectory,
+    value.planReport
+  );
+  await ensureExistingLocalPath(
+    failures,
     'failure_recovery_drill_degraded_report',
     baseDirectory,
     value.degradedReport
@@ -309,6 +315,16 @@ async function collectFailureRecoveryReportPathFailures(failures, details, baseD
     'failure_recovery_drill_rollback_candidate_report',
     baseDirectory,
     value.rollbackCandidateReport
+  );
+}
+
+async function collectRTCPrepPathFailures(failures, details, baseDirectory) {
+  const value = details && typeof details === 'object' ? details : {};
+  await ensureExistingLocalPath(
+    failures,
+    'rtc_real_device_validation_prep_report',
+    baseDirectory,
+    value.prepReport
   );
 }
 
@@ -388,6 +404,8 @@ function collectFailureRecoveryConsistencyFailures(
     && typeof manualReport.failureRecoveryDrill.details === 'object'
     ? manualReport.failureRecoveryDrill.details
     : {};
+  const manualScenario = normalizeText(manualDetails.scenario);
+  const verifyScenario = normalizeText(failureVerifyReport && failureVerifyReport.scenario);
   const manualDegradedReport = normalizePathForCompare(manualBaseDirectory, manualDetails.degradedReport);
   const manualRestoredReport = normalizePathForCompare(manualBaseDirectory, manualDetails.restoredReport);
   const manualRollbackBaselineReport = normalizePathForCompare(
@@ -414,6 +432,10 @@ function collectFailureRecoveryConsistencyFailures(
     evidenceBaseDirectory,
     rollbackVerifyReport && rollbackVerifyReport.candidateReport
   );
+
+  if (manualScenario && verifyScenario && manualScenario !== verifyScenario) {
+    failures.push('failure_recovery_drill_scenario_mismatch');
+  }
 
   if (manualDegradedReport && verifyDegradedReport && manualDegradedReport !== verifyDegradedReport) {
     failures.push('failure_recovery_drill_degraded_report_mismatch');
@@ -483,6 +505,11 @@ async function collectManualFailures(failures, manualReport, manualReportFile) {
   await collectFailureRecoveryReportPathFailures(
     failures,
     manualReport.failureRecoveryDrill && manualReport.failureRecoveryDrill.details,
+    manualBaseDirectory
+  );
+  await collectRTCPrepPathFailures(
+    failures,
+    manualReport.rtcRealDeviceValidation && manualReport.rtcRealDeviceValidation.details,
     manualBaseDirectory
   );
 }

@@ -91,6 +91,13 @@ function rtcLaunch(prepReport, outputFile) {
   };
 }
 
+function failurePrep(planReport, outputFile) {
+  return {
+    scenario: t(planReport?.scenario),
+    planReport: rel(outputFile, planReport?.reportFile || ''),
+  };
+}
+
 async function main() {
   const liveEnv = t(process.env.LIVE_CUTOVER_REPORT);
   const rollbackEnv = t(process.env.ROLLBACK_VERIFY_REPORT);
@@ -105,6 +112,8 @@ async function main() {
   const failureFile = path.resolve(process.cwd(), failureEnv);
   const rtcPrepEnv = t(process.env.RTC_REAL_DEVICE_PREP_REPORT);
   const rtcPrepFile = rtcPrepEnv ? path.resolve(process.cwd(), rtcPrepEnv) : '';
+  const failurePrepEnv = t(process.env.FAILURE_DRILL_PREP_REPORT);
+  const failurePrepFile = failurePrepEnv ? path.resolve(process.cwd(), failurePrepEnv) : '';
   const templateFile = path.resolve(process.cwd(), t(process.env.MANUAL_ATTESTATION_TEMPLATE_FILE || path.join('artifacts', 'release-manual-attestation', 'template.json')));
   const outputFile = path.resolve(process.cwd(), t(process.env.MANUAL_ATTESTATION_PREFILL_FILE || path.join('artifacts', 'release-manual-attestation', 'prefilled.json')));
 
@@ -113,6 +122,13 @@ async function main() {
   if (rtcPrepFile) {
     prepReport = await readJson(rtcPrepFile);
     if (prepReport && typeof prepReport === 'object') prepReport.reportFile = rtcPrepFile;
+  }
+  let failurePrepReport = null;
+  if (failurePrepFile) {
+    failurePrepReport = await readJson(failurePrepFile);
+    if (failurePrepReport && typeof failurePrepReport === 'object') {
+      failurePrepReport.reportFile = failurePrepFile;
+    }
   }
 
   let templatePayload = null;
@@ -124,12 +140,16 @@ async function main() {
   const target = pushTarget(pushDrill);
   const launch = rtcLaunch(prepReport, outputFile);
   const platforms = rtcPlatforms(rtcDrill);
+  const plan = failurePrep(failurePrepReport, outputFile);
 
   template.preparedBy = t(process.env.ATTESTATION_PREPARED_BY || template.preparedBy);
   template.approver = t(process.env.ATTESTATION_APPROVER || template.approver);
   template.notes = appendNote(template.notes, 'Prefilled from live cutover, rollback verify, and failure verify reports. Replace pending statuses only after real-device validation is completed.');
   if (rtcPrepFile) {
     template.notes = appendNote(template.notes, 'RTC real-device prep data is included below so operators can open the prepared caller and callee launch paths directly.');
+  }
+  if (failurePrepFile) {
+    template.notes = appendNote(template.notes, 'Failure drill prep data is included below so operators can reuse the prepared scenario and expected report paths.');
   }
 
   template.pushRealDeviceCutover.summary = t(template.pushRealDeviceCutover.summary) || 'Pending: complete the real-device push cutover and receipt validation, then replace this summary.';
@@ -151,6 +171,11 @@ async function main() {
   template.rtcRealDeviceValidation.details.calleeLaunchUrl = t(template.rtcRealDeviceValidation.details.calleeLaunchUrl) || launch.calleeLaunchUrl;
 
   template.failureRecoveryDrill.summary = t(template.failureRecoveryDrill.summary) || 'Pending: complete the real fault-injection recovery and rollback drill, then replace this summary.';
+  template.failureRecoveryDrill.details.scenario =
+    t(template.failureRecoveryDrill.details.scenario)
+    || plan.scenario
+    || t(failureReport.scenario);
+  template.failureRecoveryDrill.details.planReport = t(template.failureRecoveryDrill.details.planReport) || plan.planReport;
   template.failureRecoveryDrill.details.degradedReport = t(template.failureRecoveryDrill.details.degradedReport) || rel(outputFile, failureReport.degradedReport || '');
   template.failureRecoveryDrill.details.restoredReport = t(template.failureRecoveryDrill.details.restoredReport) || rel(outputFile, failureReport.restoredReport || '');
   template.failureRecoveryDrill.details.rollbackBaselineReport = t(template.failureRecoveryDrill.details.rollbackBaselineReport) || rel(outputFile, rollbackReport.baselineReport || '');
@@ -162,6 +187,7 @@ async function main() {
     rollbackVerifyReport: rel(outputFile, rollbackFile),
     failureVerifyReport: rel(outputFile, failureFile),
     rtcRealDevicePrepReport: rel(outputFile, rtcPrepFile),
+    failureDrillPrepReport: rel(outputFile, failurePrepFile),
   };
 
   await writeJson(outputFile, template);

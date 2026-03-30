@@ -111,6 +111,8 @@ async function main() {
   const degradedFile = String(process.env.FAILURE_DEGRADED_REPORT || '').trim();
   const restoredFile = String(process.env.FAILURE_RESTORED_REPORT || '').trim();
   const reportFile = String(process.env.FAILURE_VERIFY_REPORT_FILE || '').trim();
+  const scenario = String(process.env.FAILURE_SCENARIO_NAME || process.env.FAILURE_DRILL_SCENARIO || '').trim();
+  const notes = String(process.env.FAILURE_SCENARIO_NOTES || '').trim();
   const maxP95RegressionMs = toNonNegativeInt(process.env.FAILURE_MAX_P95_REGRESSION_MS, 250);
   const maxP99RegressionMs = toNonNegativeInt(process.env.FAILURE_MAX_P99_REGRESSION_MS, 400);
   const maxErrorRateRegression = toNonNegativeFloat(process.env.FAILURE_MAX_ERROR_RATE_REGRESSION, 0.02);
@@ -159,6 +161,8 @@ async function main() {
     startedAt: new Date().toISOString(),
     completedAt: new Date().toISOString(),
     status: failures.length === 0 ? 'passed' : 'failed',
+    scenario,
+    notes,
     baselineReport: baselineFile,
     degradedReport: degradedFile,
     restoredReport: restoredFile,
