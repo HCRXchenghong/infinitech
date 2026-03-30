@@ -1,6 +1,6 @@
 /**
  * Data sync service.
- * Uses local cached data for fast reads and syncs incrementally in the background.
+ * Server data stays authoritative. Local storage is only a fast fallback cache.
  */
 
 import config from './config'
@@ -75,10 +75,6 @@ function isNetworkError(error: any) {
     errorText.includes('connect') ||
     messageText.includes('Network') ||
     errMsgText.includes('fail')
-}
-
-function hasLocalRecords(localData: any) {
-  return Array.isArray(localData) && localData.length > 0
 }
 
 class SyncService {
@@ -158,13 +154,8 @@ class SyncService {
 
   async getData(dataset: string, conditions: DataConditions = {}, options: GetDataOptions = {}): Promise<any> {
     const localData = await this.localDB.getLocalData(dataset, conditions)
-    const shouldUseFreshData = Boolean(options.preferFresh)
 
     try {
-      if (!shouldUseFreshData && hasLocalRecords(localData)) {
-        return localData
-      }
-
       const serverData = await request({
         url: this.getApiUrl(dataset, conditions),
         method: 'GET'
@@ -181,8 +172,12 @@ class SyncService {
 
       return serverData
     } catch (error: any) {
+      const shouldUseFreshData = Boolean(options.preferFresh)
       if (!isNetworkError(error)) {
         console.error(`Failed to get ${dataset}:`, error)
+      }
+      if (shouldUseFreshData) {
+        throw error
       }
       return localData
     }

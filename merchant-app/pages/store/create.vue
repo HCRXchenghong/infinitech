@@ -2,7 +2,7 @@
   <view class="page">
     <view class="header">
       <text class="title">创建店铺</text>
-      <text class="sub">首次入驻请补全店铺与经营信息</text>
+      <text class="sub">首次入驻请先补全店铺与经营信息</text>
     </view>
 
     <scroll-view scroll-y class="content">
@@ -41,7 +41,7 @@
 
         <view class="split-row">
           <view class="half-item">
-            <text class="label">开门时间</text>
+            <text class="label">营业时间</text>
             <picker mode="time" :value="form.openTime" @change="onTimeChange('openTime', $event)">
               <view class="picker">{{ form.openTime }}</view>
             </picker>
@@ -91,7 +91,7 @@
 
         <view class="form-item">
           <text class="label">优惠信息（逗号分隔）</text>
-          <input v-model="form.discountsText" class="input" placeholder="如：满30减5,新客立减" />
+          <input v-model="form.discountsText" class="input" placeholder="如：满20减5,新客立减" />
         </view>
 
         <view class="upload-row">
@@ -122,12 +122,22 @@
         <view class="upload-row">
           <view class="upload-item" @tap="chooseAndUpload('merchantQualification')">
             <text class="upload-title">营业执照</text>
-            <image v-if="form.merchantQualification" :src="form.merchantQualification" class="upload-image" mode="aspectFill" />
+            <image
+              v-if="form.merchantQualification"
+              :src="form.merchantQualification"
+              class="upload-image"
+              mode="aspectFill"
+            />
             <text v-else class="upload-placeholder">点击上传</text>
           </view>
           <view class="upload-item" @tap="chooseAndUpload('foodBusinessLicense')">
             <text class="upload-title">食品经营许可</text>
-            <image v-if="form.foodBusinessLicense" :src="form.foodBusinessLicense" class="upload-image" mode="aspectFill" />
+            <image
+              v-if="form.foodBusinessLicense"
+              :src="form.foodBusinessLicense"
+              class="upload-image"
+              mode="aspectFill"
+            />
             <text v-else class="upload-placeholder">点击上传</text>
           </view>
         </view>
@@ -139,7 +149,11 @@
 
         <view class="switch-row">
           <text class="label">加盟店</text>
-          <switch :checked="form.isFranchise" color="#009bf5" @change="form.isFranchise = !!$event.detail.value" />
+          <switch
+            :checked="form.isFranchise"
+            color="#009bf5"
+            @change="form.isFranchise = !!$event.detail.value"
+          />
         </view>
 
         <view class="switch-row">
@@ -176,7 +190,11 @@
           </view>
           <view class="half-item">
             <text class="label">健康证到期日</text>
-            <picker mode="date" :value="form.healthCertExpireAt" @change="onDateChange('healthCertExpireAt', $event)">
+            <picker
+              mode="date"
+              :value="form.healthCertExpireAt"
+              @change="onDateChange('healthCertExpireAt', $event)"
+            >
               <view class="picker">{{ form.healthCertExpireAt || '请选择日期' }}</view>
             </picker>
           </view>
@@ -198,12 +216,22 @@
         <view class="upload-row">
           <view class="upload-item" @tap="chooseAndUpload('healthCertFrontImage')">
             <text class="upload-title">健康证正面</text>
-            <image v-if="form.healthCertFrontImage" :src="form.healthCertFrontImage" class="upload-image" mode="aspectFill" />
+            <image
+              v-if="form.healthCertFrontImage"
+              :src="form.healthCertFrontImage"
+              class="upload-image"
+              mode="aspectFill"
+            />
             <text v-else class="upload-placeholder">点击上传</text>
           </view>
           <view class="upload-item" @tap="chooseAndUpload('healthCertBackImage')">
             <text class="upload-title">健康证反面</text>
-            <image v-if="form.healthCertBackImage" :src="form.healthCertBackImage" class="upload-image" mode="aspectFill" />
+            <image
+              v-if="form.healthCertBackImage"
+              :src="form.healthCertBackImage"
+              class="upload-image"
+              mode="aspectFill"
+            />
             <text v-else class="upload-placeholder">点击上传</text>
           </view>
         </view>
@@ -224,17 +252,24 @@
 import { computed, reactive, ref } from 'vue'
 import { createShop, uploadImage } from '@/shared-ui/api'
 import { clearMerchantContext, setCurrentShopId } from '@/shared-ui/merchantContext'
+import {
+  BUSINESS_CATEGORY_OPTIONS,
+  ORDER_TYPE_OPTIONS,
+  merchantTypeFromOrderType,
+  normalizeBusinessCategory,
+  normalizeOrderTypeLabel,
+} from '@/shared-ui/platform-schema'
 
 const submitting = ref(false)
 const uploading = ref(false)
 
-const orderTypeOptions = ['外卖类', '团购类', '混合类']
-const categoryOptions = ['美食', '团购', '甜点饮品', '超市便利', '休闲玩乐', '生活服务']
+const orderTypeOptions = ORDER_TYPE_OPTIONS
+const categoryOptions = BUSINESS_CATEGORY_OPTIONS
 
 const form = reactive({
   name: '',
-  orderType: '外卖类',
-  businessCategory: '美食',
+  orderType: ORDER_TYPE_OPTIONS[0],
+  businessCategory: BUSINESS_CATEGORY_OPTIONS[0],
   phone: '',
   address: '',
   announcement: '',
@@ -268,11 +303,13 @@ const orderTypeIndex = computed(() => Math.max(orderTypeOptions.indexOf(form.ord
 const categoryIndex = computed(() => Math.max(categoryOptions.indexOf(form.businessCategory), 0))
 
 function onOrderTypeChange(e: any) {
-  form.orderType = orderTypeOptions[Number(e.detail.value) || 0] || orderTypeOptions[0]
+  const value = orderTypeOptions[Number(e.detail.value) || 0] || orderTypeOptions[0]
+  form.orderType = normalizeOrderTypeLabel(value)
 }
 
 function onCategoryChange(e: any) {
-  form.businessCategory = categoryOptions[Number(e.detail.value) || 0] || categoryOptions[0]
+  const value = categoryOptions[Number(e.detail.value) || 0] || categoryOptions[0]
+  form.businessCategory = normalizeBusinessCategory(value)
 }
 
 function onTimeChange(field: 'openTime' | 'closeTime', e: any) {
@@ -288,13 +325,6 @@ function splitByComma(text: string) {
     .split(/[，,]/)
     .map((item) => item.trim())
     .filter(Boolean)
-}
-
-function merchantTypeFromOrderType(orderType: string) {
-  const value = String(orderType || '').trim()
-  if (value === '团购类') return 'groupbuy'
-  if (value === '混合类') return 'hybrid'
-  return 'takeout'
 }
 
 function toMerchantId() {
@@ -333,6 +363,7 @@ function chooseAndUpload(field: keyof typeof form) {
 
 async function submitCreate() {
   if (submitting.value || uploading.value) return
+
   const name = String(form.name || '').trim()
   if (!name) {
     uni.showToast({ title: '请填写店铺名称', icon: 'none' })
@@ -344,9 +375,9 @@ async function submitCreate() {
     const payload: Record<string, any> = {
       merchant_id: toMerchantId(),
       name,
-      orderType: form.orderType,
+      orderType: normalizeOrderTypeLabel(form.orderType),
       merchantType: merchantTypeFromOrderType(form.orderType),
-      businessCategory: form.businessCategory,
+      businessCategory: normalizeBusinessCategory(form.businessCategory),
       phone: String(form.phone || '').trim(),
       address: String(form.address || '').trim(),
       announcement: String(form.announcement || '').trim(),

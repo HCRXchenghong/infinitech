@@ -215,6 +215,101 @@ function buildProbeDetail(result) {
   return details.join(" | ");
 }
 
+function buildJourneyStatus(ok, degraded) {
+  if (ok) return "ok";
+  if (degraded) return "degraded";
+  return "down";
+}
+
+function buildJourneySummary({ bffCheck, goCheck, socketCheck, redisCheck }) {
+  const goBody = goCheck && goCheck.body && typeof goCheck.body === "object" ? goCheck.body : {};
+  const pushWorker = goBody.dependencies && goBody.dependencies.pushWorker && goBody.dependencies.pushWorker.worker
+    ? goBody.dependencies.pushWorker.worker
+    : {};
+  const rtcRetentionWorker = goBody.dependencies && goBody.dependencies.rtcRetention && goBody.dependencies.rtcRetention.worker
+    ? goBody.dependencies.rtcRetention.worker
+    : {};
+
+  const authOk = bffCheck.ok && goCheck.ok && redisCheck.ok;
+  const authDegraded = bffCheck.ok && goCheck.ok && !redisCheck.ok;
+
+  const orderingOk = bffCheck.ok && goCheck.ok;
+  const orderingDegraded = false;
+
+  const messagingOk = goCheck.ok && socketCheck.ok && redisCheck.ok;
+  const messagingDegraded = goCheck.ok && socketCheck.ok && !redisCheck.ok;
+
+  const pushOk = goCheck.ok &&
+    pushWorker.enabled === true &&
+    pushWorker.running === true &&
+    pushWorker.productionReady === true;
+  const pushDegraded = goCheck.ok && (pushWorker.enabled === true || pushWorker.provider);
+
+  const rtcOk = goCheck.ok && socketCheck.ok && rtcRetentionWorker.enabled === true;
+  const rtcDegraded = goCheck.ok && socketCheck.ok;
+
+  const homeFeedOk = bffCheck.ok && goCheck.ok;
+
+  return [
+    {
+      key: "auth",
+      label: "注册登录",
+      status: buildJourneyStatus(authOk, authDegraded),
+      detail: authOk
+        ? "BFF、Go、Redis 均正常，登录与会话链路完整。"
+        : authDegraded
+          ? "Redis 不可用，登录主链仍可运行，但会话能力进入降级模式。"
+          : "BFF 或 Go 不可用，注册登录链路存在阻断风险。"
+    },
+    {
+      key: "ordering",
+      label: "点餐下单",
+      status: buildJourneyStatus(orderingOk, orderingDegraded),
+      detail: orderingOk
+        ? "BFF 与 Go 正常，可继续验证外卖、团购和跑腿下单链。"
+        : "BFF 或 Go 不可用，下单链路存在阻断风险。"
+    },
+    {
+      key: "messaging",
+      label: "消息会话",
+      status: buildJourneyStatus(messagingOk, messagingDegraded),
+      detail: messagingOk
+        ? "Go、Socket、Redis 正常，消息与在线态链路完整。"
+        : messagingDegraded
+          ? "Socket 可用但 Redis 异常，消息链路进入单机降级风险。"
+          : "Socket 或 Go 不可用，消息与客服链路存在阻断风险。"
+    },
+    {
+      key: "push",
+      label: "消息推送",
+      status: buildJourneyStatus(pushOk, pushDegraded),
+      detail: pushOk
+        ? `Push worker 正常，provider=${pushWorker.provider || "-"}` 
+        : pushDegraded
+          ? `Push worker 未达到生产就绪，issues=${Array.isArray(pushWorker.productionIssues) ? pushWorker.productionIssues.join(",") : "未就绪"}`
+          : "Go 或推送 worker 未准备好，推送链路尚未就绪。"
+    },
+    {
+      key: "rtc",
+      label: "RTC 音频",
+      status: buildJourneyStatus(rtcOk, rtcDegraded),
+      detail: rtcOk
+        ? "Go、Socket 和 RTC 留存清理 worker 正常，RTC 运行链可进入联调。"
+        : rtcDegraded
+          ? "RTC 信令主链可用，但留存清理或审计保障未完全就绪。"
+          : "Go 或 Socket 不可用，RTC 信令链路存在阻断风险。"
+    },
+    {
+      key: "homeFeed",
+      label: "首页编排",
+      status: buildJourneyStatus(homeFeedOk, false),
+      detail: homeFeedOk
+        ? "首页 feed 由 BFF/Go 统一编排，可继续验证推广位和自然排序。"
+        : "首页编排依赖未就绪，首页展示存在阻断风险。"
+    }
+  ];
+}
+
 async function probeHttpWithFallback(urls, timeoutMs) {
   const targets = Array.isArray(urls) ? urls.filter(Boolean) : [urls].filter(Boolean);
   if (targets.length === 0) {
@@ -343,7 +438,8 @@ async function collectServiceStatus() {
   return {
     checkedAt: new Date().toISOString(),
     overall,
-    services
+    services,
+    journeys: buildJourneySummary({ bffCheck, goCheck, socketCheck, redisCheck })
   };
 }
 

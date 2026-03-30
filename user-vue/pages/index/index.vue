@@ -46,6 +46,10 @@ import LocationModal from '@/components/LocationModal.vue'
 import WeatherModal from '@/components/WeatherModal.vue'
 import { fetchWeather, fetchHomeFeed, fetchShopCategories } from '@/shared-ui/api.js'
 import { getCurrentLocation } from '@/shared-ui/location.js'
+import {
+  normalizeFeaturedProductProjection,
+  normalizeShopProjection,
+} from '@/shared-ui/platform-schema.js'
 import { buildHomeCategories } from '@/shared-ui/home-categories.js'
 
 function normalizeSelectedAddress(value) {
@@ -57,24 +61,6 @@ function normalizeSelectedAddress(value) {
   return ''
 }
 
-function normalizeFeaturedProduct(item = {}) {
-  return {
-    id: item.id || item.productId,
-    legacyId: item.legacyId || item.productId || '',
-    name: item.name || item.productName || item.title || '',
-    shopId: item.shopId || item.shop_id || '',
-    shopName: item.shopName || item.shop_name || '',
-    price: item.price || 0,
-    originalPrice: item.originalPrice || item.original_price || 0,
-    image: item.image || item.productImage || item.imageUrl || item.image_url || '/static/images/default-food.svg',
-    tag: item.tag || item.label || '',
-    detail: item.detail || item.description || '',
-    isPromoted: Boolean(item.isPromoted),
-    promoteLabel: item.promoteLabel || '',
-    positionSource: item.positionSource || 'featured'
-  }
-}
-
 export default {
   components: {
     HomeHeader,
@@ -82,7 +68,7 @@ export default {
     FeaturedSection,
     HomeShopCard,
     LocationModal,
-    WeatherModal
+    WeatherModal,
   },
   data() {
     return {
@@ -97,13 +83,13 @@ export default {
       weatherRequesting: false,
       lastWeatherRefreshAt: 0,
       showLocationModalFlag: false,
-      showWeatherModalFlag: false
+      showWeatherModalFlag: false,
     }
   },
   computed: {
     weatherText() {
       return `${this.weather.temp}° ${this.weather.condition}`
-    }
+    },
   },
   onLoad() {
     this.getLocation()
@@ -179,7 +165,8 @@ export default {
             }
           }
         }
-      } catch (_) {
+      } catch (_error) {
+        // Keep last good weather snapshot.
       } finally {
         this.weatherRequesting = false
       }
@@ -238,7 +225,7 @@ export default {
       const directMap = {
         美食: '/pages/category/food/index',
         甜点饮品: '/pages/category/dessert/index',
-        超市便利: '/pages/category/market/index'
+        超市便利: '/pages/category/market/index',
       }
       const direct = directMap[cat.name]
       if (direct) {
@@ -254,7 +241,7 @@ export default {
         return
       }
       uni.navigateTo({
-        url: `/pages/product/detail/index?id=${item.id}&shopId=${item.shopId || ''}`
+        url: `/pages/product/detail/index?id=${item.id}&shopId=${item.shopId || ''}`,
       })
     },
     goFeatured() {
@@ -283,7 +270,7 @@ export default {
           this.currentAddress = selectedAddress || '请手动选择地址'
           uni.showToast({
             title: isPermissionIssue ? '定位权限异常，请手动选址' : '定位失败，请手动选址',
-            icon: 'none'
+            icon: 'none',
           })
         })
     },
@@ -303,9 +290,9 @@ export default {
     async loadHomeFeed() {
       try {
         const data = await fetchHomeFeed()
-        this.shops = Array.isArray(data.shops) ? data.shops : []
+        this.shops = Array.isArray(data.shops) ? data.shops.map((item) => normalizeShopProjection(item)) : []
         this.featuredProducts = Array.isArray(data.products)
-          ? data.products.map((item) => normalizeFeaturedProduct(item))
+          ? data.products.map((item) => normalizeFeaturedProductProjection(item))
           : []
       } catch (error) {
         console.error('加载首页编排失败:', error)
@@ -313,8 +300,8 @@ export default {
     },
     goShopDetail(id) {
       uni.navigateTo({ url: `/pages/shop/detail/index?id=${id}` })
-    }
-  }
+    },
+  },
 }
 </script>
 
