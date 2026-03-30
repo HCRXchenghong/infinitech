@@ -173,6 +173,7 @@ node scripts/release-preflight.mjs
 node scripts/http-load-smoke.mjs
 node scripts/push-delivery-drill.mjs
 node scripts/release-drill.mjs
+node scripts/release-rollback-verify.mjs
 ```
 
 Notes:
@@ -181,6 +182,7 @@ Notes:
 - `LOAD_REPORT_FILE=artifacts/http-load-smoke.json node scripts/http-load-smoke.mjs` keeps a structured HTTP smoke report for capacity drill review
 - `PUSH_DRILL_REPORT_FILE=artifacts/push-delivery-drill.json ADMIN_TOKEN=<admin-token> node scripts/push-delivery-drill.mjs` runs an admin push delivery drill and keeps a structured provider-verification report
 - `node scripts/release-drill.mjs` now runs release preflight, HTTP smoke, and the push-delivery drill in one pass when `ADMIN_TOKEN` is available, and writes a combined summary under `artifacts/release-drills/<timestamp>/`
+- `ROLLBACK_BASELINE_REPORT=<before.json> ROLLBACK_CANDIDATE_REPORT=<after.json> node scripts/release-rollback-verify.mjs` compares two structured drill summaries and fails if latency or delivery signals regress past the allowed rollback thresholds
 - `admin-vue` still emits the known `sql.js` browser externalize warning and large chunk warning during build
 - those warnings are known and were not introduced by the latest remediation batches
 
