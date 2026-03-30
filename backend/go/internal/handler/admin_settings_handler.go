@@ -435,7 +435,7 @@ func (h *AdminSettingsHandler) GetPushMessageStats(c *gin.Context) {
 func (h *AdminSettingsHandler) GetPushMessageDeliveries(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 
