@@ -70,6 +70,7 @@ async function main() {
   const smokeReport = path.join(outputDir, 'http-load-smoke.json');
   const pushDrillReport = path.join(outputDir, 'push-delivery-drill.json');
   const rtcDrillReport = path.join(outputDir, 'rtc-call-drill.json');
+  const rtcRetentionDrillReport = path.join(outputDir, 'rtc-retention-drill.json');
   const summaryReport = path.join(outputDir, 'summary.json');
   const runPushDrill = parseBooleanEnv(process.env.RELEASE_DRILL_RUN_PUSH_DRILL, Boolean(String(process.env.ADMIN_TOKEN || '').trim()));
   const runRTCDrill = parseBooleanEnv(
@@ -79,6 +80,10 @@ async function main() {
       String(process.env.RTC_DRILL_CALLEE_ROLE || '').trim() &&
       String(process.env.RTC_DRILL_CALLEE_ID || '').trim()
     )
+  );
+  const runRTCRetentionDrill = parseBooleanEnv(
+    process.env.RELEASE_DRILL_RUN_RTC_RETENTION_DRILL,
+    Boolean(String(process.env.ADMIN_TOKEN || '').trim())
   );
 
   const preflightCode = await runNodeScript(path.join('scripts', 'release-preflight.mjs'), {
@@ -110,23 +115,38 @@ async function main() {
     });
   }
 
+  let rtcRetentionDrillCode = 0;
+  if (runRTCRetentionDrill) {
+    rtcRetentionDrillCode = await runNodeScript(path.join('scripts', 'rtc-retention-drill.mjs'), {
+      RTC_RETENTION_DRILL_REPORT_FILE: rtcRetentionDrillReport,
+    });
+  }
+
   const summary = {
     startedAt: startedAt.toISOString(),
     completedAt: new Date().toISOString(),
-    status: preflightCode === 0 && smokeCode === 0 && pushDrillCode === 0 && rtcDrillCode === 0 ? 'passed' : 'failed',
+    status: preflightCode === 0
+      && smokeCode === 0
+      && pushDrillCode === 0
+      && rtcDrillCode === 0
+      && rtcRetentionDrillCode === 0
+      ? 'passed'
+      : 'failed',
     label,
     outputDir,
     reports: {
       preflight: preflightReport,
       httpLoadSmoke: smokeReport,
       pushDeliveryDrill: runPushDrill ? pushDrillReport : '',
-      rtcCallDrill: runRTCDrill ? rtcDrillReport : ''
+      rtcCallDrill: runRTCDrill ? rtcDrillReport : '',
+      rtcRetentionDrill: runRTCRetentionDrill ? rtcRetentionDrillReport : ''
     },
     exitCodes: {
       preflight: preflightCode,
       httpLoadSmoke: smokeCode,
       pushDeliveryDrill: runPushDrill ? pushDrillCode : null,
-      rtcCallDrill: runRTCDrill ? rtcDrillCode : null
+      rtcCallDrill: runRTCDrill ? rtcDrillCode : null,
+      rtcRetentionDrill: runRTCRetentionDrill ? rtcRetentionDrillCode : null
     },
     rollbackChecklist: [
       'Confirm the previous production release tag or commit is known and reachable.',
@@ -170,6 +190,19 @@ async function main() {
     summary.rtcCallDrill = {
       status: 'skipped',
       reason: 'RTC_DRILL_AUTH_TOKEN / RTC_DRILL_CALLEE_ROLE / RTC_DRILL_CALLEE_ID missing or RELEASE_DRILL_RUN_RTC_DRILL=false'
+    };
+  }
+
+  if (runRTCRetentionDrill) {
+    try {
+      summary.rtcRetentionDrill = await readJson(rtcRetentionDrillReport);
+    } catch (error) {
+      summary.rtcRetentionDrill = { status: 'missing', error: error instanceof Error ? error.message : String(error) };
+    }
+  } else {
+    summary.rtcRetentionDrill = {
+      status: 'skipped',
+      reason: 'ADMIN_TOKEN missing or RELEASE_DRILL_RUN_RTC_RETENTION_DRILL=false'
     };
   }
 

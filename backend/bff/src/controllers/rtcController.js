@@ -8,6 +8,12 @@ async function reviewRTCCallAudit(req, res, next) {
   await proxyPost(req, res, next, `/admin/rtc-call-audits/${encodeURIComponent(req.params.callId)}/review`);
 }
 
+async function runRTCRetentionCleanupCycle(req, res, next) {
+  await proxyPost(req, res, next, '/admin/rtc-call-audits/cleanup-cycle', {
+    params: req.query,
+  });
+}
+
 async function createRTCCall(req, res, next) {
   await proxyPost(req, res, next, '/rtc/calls');
 }
@@ -29,6 +35,7 @@ module.exports = {
   getRTCCall,
   listRTCCallAudits,
   listRTCCallHistory,
+  runRTCRetentionCleanupCycle,
   reviewRTCCallAudit,
   updateRTCCallStatus,
 };

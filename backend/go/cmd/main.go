@@ -1365,6 +1365,7 @@ func main() {
 		adminRTCCallAudits.Use(middleware.RequireAdmin(services.Admin))
 		{
 			adminRTCCallAudits.GET("", handlers.RTCCallAudit.AdminList)
+			adminRTCCallAudits.POST("/cleanup-cycle", handlers.RTCCallAudit.AdminRunRetentionCleanup)
 			adminRTCCallAudits.POST("/:callId/review", handlers.RTCCallAudit.AdminReview)
 		}
 

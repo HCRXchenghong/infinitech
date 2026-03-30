@@ -246,6 +246,12 @@ func (s *RTCCallAuditService) RunRetentionCleanupCycle(ctx context.Context, limi
 	return int(result.RowsAffected), nil
 }
 
+func (s *RTCCallAuditService) RunRetentionCleanupCycleNow(ctx context.Context, limit int) (int, error) {
+	cleared, err := s.RunRetentionCleanupCycle(ctx, limit)
+	s.recordCleanupCycle(statusForCleanupErr(err), cleared, err)
+	return cleared, err
+}
+
 func (s *RTCCallAuditService) setCleanupRunning(running bool) {
 	if s == nil {
 		return

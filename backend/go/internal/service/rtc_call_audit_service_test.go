@@ -418,6 +418,45 @@ func TestRTCCallAuditServiceRunRetentionCleanupCycle(t *testing.T) {
 	}
 }
 
+func TestRTCCallAuditServiceRunRetentionCleanupCycleNowUpdatesStatus(t *testing.T) {
+	svc, db := newRTCCallAuditServiceForTest(t)
+	now := time.Now()
+	row := repository.RTCCallAudit{
+		UnifiedIdentity:    repository.UnifiedIdentity{UID: "26033083001021", TSID: "260330830010212603301421"},
+		CallType:           "audio",
+		CallerRole:         "user",
+		CallerID:           "26032900000121",
+		CalleeRole:         "merchant",
+		CalleeID:           "26032900000188",
+		Status:             "ended",
+		ComplaintStatus:    "none",
+		RecordingRetention: "standard",
+		EndedAt:            timePtr(now.Add(-25 * time.Hour)),
+	}
+	if err := db.Create(&row).Error; err != nil {
+		t.Fatalf("seed cleanup status row failed: %v", err)
+	}
+
+	cleared, err := svc.RunRetentionCleanupCycleNow(context.Background(), 10)
+	if err != nil {
+		t.Fatalf("RunRetentionCleanupCycleNow failed: %v", err)
+	}
+	if cleared != 1 {
+		t.Fatalf("expected cleared count 1, got %d", cleared)
+	}
+
+	snapshot := svc.RetentionCleanupStatusSnapshot()
+	if snapshot.LastCleanupStatus != "ok" {
+		t.Fatalf("expected cleanup status ok, got %q", snapshot.LastCleanupStatus)
+	}
+	if snapshot.LastCleanupCount != 1 {
+		t.Fatalf("expected cleanup count 1, got %d", snapshot.LastCleanupCount)
+	}
+	if snapshot.LastCleanupAt == "" {
+		t.Fatal("expected last cleanup timestamp to be recorded")
+	}
+}
+
 func timePtr(value time.Time) *time.Time {
 	return &value
 }

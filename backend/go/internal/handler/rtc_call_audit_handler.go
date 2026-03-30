@@ -147,6 +147,38 @@ func (h *RTCCallAuditHandler) AdminReview(c *gin.Context) {
 	})
 }
 
+func (h *RTCCallAuditHandler) AdminRunRetentionCleanup(c *gin.Context) {
+	if h == nil || h.service == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "rtc call audit service unavailable"})
+		return
+	}
+
+	limit := parsePositiveInt(c.Query("limit"), 0)
+	before := h.service.RetentionCleanupStatusSnapshot()
+	cleared, err := h.service.RunRetentionCleanupCycleNow(c.Request.Context(), limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "rtc retention cleanup failed",
+			"detail": err.Error(),
+			"data": gin.H{
+				"before": before,
+			},
+		})
+		return
+	}
+
+	after := h.service.RetentionCleanupStatusSnapshot()
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"before":  before,
+			"after":   after,
+			"cleared": cleared,
+			"limit":   limit,
+		},
+	})
+}
+
 func (h *RTCCallAuditHandler) GetCall(c *gin.Context) {
 	if h == nil || h.service == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "rtc call audit service unavailable"})
