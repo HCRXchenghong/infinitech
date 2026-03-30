@@ -60,8 +60,10 @@ async function requestJson(baseUrl, token, method, pathname, { body, params } = 
 
   const headers = {
     Accept: 'application/json',
-    Authorization: `Bearer ${token}`,
   };
+  if (String(token || '').trim()) {
+    headers.Authorization = `Bearer ${token}`;
+  }
   const init = { method, headers };
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
@@ -82,6 +84,16 @@ async function requestJson(baseUrl, token, method, pathname, { body, params } = 
     data: payload,
     url: url.toString(),
   };
+}
+
+function pickPushWorker(body) {
+  return body
+    && body.dependencies
+    && body.dependencies.pushWorker
+    && body.dependencies.pushWorker.worker
+    && typeof body.dependencies.pushWorker.worker === 'object'
+    ? body.dependencies.pushWorker.worker
+    : null;
 }
 
 function createPushMessagePayload(label, now = new Date()) {
@@ -170,6 +182,12 @@ async function main() {
   const requiredDeviceTokenSuffix = normalizeTokenSuffix(process.env.PUSH_DRILL_REQUIRE_DEVICE_TOKEN_SUFFIX);
   const keepMessage = parseBooleanEnv(process.env.PUSH_DRILL_KEEP_MESSAGE, false);
   const reportFile = String(process.env.PUSH_DRILL_REPORT_FILE || '').trim();
+  const goBaseUrl = normalizeBaseUrl(
+    process.env.PUSH_DRILL_GO_BASE_URL || process.env.GO_BASE_URL,
+    'http://127.0.0.1:1029'
+  );
+  const requireProductionReady = parseBooleanEnv(process.env.PUSH_DRILL_REQUIRE_PRODUCTION_READY, true);
+  const requireWorkerRunning = parseBooleanEnv(process.env.PUSH_DRILL_REQUIRE_WORKER_RUNNING, true);
 
   const report = {
     startedAt: startedAt.toISOString(),
@@ -188,12 +206,15 @@ async function main() {
       requireRead,
       allowFailedOnly,
       requiredProvider,
+      requireProductionReady,
+      requireWorkerRunning,
       requiredUserType,
       requiredUserId,
       requiredAppEnv,
       requiredDeviceTokenSuffix,
       keepMessage,
     },
+    readiness: null,
     message: null,
     creation: null,
     dispatchCycles: [],
@@ -231,6 +252,31 @@ async function main() {
   }
 
   try {
+    report.readiness = await requestJson(goBaseUrl, '', 'GET', '/ready');
+    if (!report.readiness.ok || !report.readiness.data || typeof report.readiness.data !== 'object') {
+      throw new Error(`push_ready_fetch_failed:${report.readiness.status || 0}`);
+    }
+    const worker = pickPushWorker(report.readiness.data);
+    report.readiness = {
+      ok: true,
+      goBaseUrl,
+      status: String(report.readiness.data.status || '').trim(),
+      worker,
+    };
+    if (!worker) {
+      throw new Error('push_worker_snapshot_missing');
+    }
+    if (requireWorkerRunning && worker.enabled === true && worker.running !== true) {
+      throw new Error('push_worker_not_running');
+    }
+    if (requireProductionReady && worker.productionReady === false) {
+      const issues = Array.isArray(worker.productionIssues) ? worker.productionIssues.join(',') : 'not_ready';
+      throw new Error(`push_worker_not_production_ready:${issues}`);
+    }
+    if (requiredProvider && normalizeProvider(worker.provider) && normalizeProvider(worker.provider) !== requiredProvider) {
+      throw new Error(`push_worker_provider_mismatch:${normalizeProvider(worker.provider)}`);
+    }
+
     const createResponse = await requestJson(baseUrl, adminToken, 'POST', '/api/push-messages', { body: payload });
     report.creation = createResponse;
     if (!createResponse.ok) {

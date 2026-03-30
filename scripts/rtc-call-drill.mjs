@@ -52,8 +52,10 @@ async function requestJson(baseUrl, token, method, pathname, { body, params } = 
 
   const headers = {
     Accept: 'application/json',
-    Authorization: `Bearer ${token}`,
   };
+  if (String(token || '').trim()) {
+    headers.Authorization = `Bearer ${token}`;
+  }
   const init = { method, headers };
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
@@ -74,6 +76,26 @@ async function requestJson(baseUrl, token, method, pathname, { body, params } = 
     data: payload,
     url: url.toString(),
   };
+}
+
+function normalizeIceServers(runtimePayload) {
+  if (!runtimePayload || typeof runtimePayload !== 'object') return [];
+  const items = Array.isArray(runtimePayload.rtc_ice_servers)
+    ? runtimePayload.rtc_ice_servers
+    : Array.isArray(runtimePayload.rtcIceServers)
+      ? runtimePayload.rtcIceServers
+      : [];
+  return items
+    .map((item) => ({
+      url: String(item?.url || item?.URL || '').trim(),
+      username: String(item?.username || item?.Username || '').trim(),
+      credential: String(item?.credential || item?.Credential || '').trim(),
+    }))
+    .filter((item) => item.url);
+}
+
+function hasTurnServer(iceServers) {
+  return iceServers.some((item) => /^(turn|turns):/i.test(String(item.url || '').trim()));
 }
 
 function pickCallRecord(payload) {
@@ -146,6 +168,10 @@ async function main() {
   const timeoutMs = toPositiveInt(process.env.RTC_DRILL_TIMEOUT_MS, DEFAULT_TIMEOUT_MS);
   const runAdminCheck = parseBooleanEnv(process.env.RTC_DRILL_RUN_ADMIN_CHECK, Boolean(adminToken));
   const reportFile = String(process.env.RTC_DRILL_REPORT_FILE || '').trim();
+  const requireRuntimeEnabled = parseBooleanEnv(process.env.RTC_DRILL_REQUIRE_RUNTIME_ENABLED, true);
+  const requireTurnServer = parseBooleanEnv(process.env.RTC_DRILL_REQUIRE_TURN_SERVER, false);
+  const requireIceServerCount = toPositiveInt(process.env.RTC_DRILL_REQUIRE_ICE_SERVER_COUNT, 1);
+  const requireTimeoutMinSeconds = toPositiveInt(process.env.RTC_DRILL_REQUIRE_TIMEOUT_MIN_SECONDS, 10);
 
   const report = {
     startedAt: startedAt.toISOString(),
@@ -156,9 +182,14 @@ async function main() {
     config: {
       timeoutMs,
       runAdminCheck,
+      requireRuntimeEnabled,
+      requireTurnServer,
+      requireIceServerCount,
+      requireTimeoutMinSeconds,
       calleeRole: String(process.env.RTC_DRILL_CALLEE_ROLE || '').trim(),
       calleeId: String(process.env.RTC_DRILL_CALLEE_ID || '').trim(),
     },
+    runtime: null,
     create: null,
     accepted: null,
     ended: null,
@@ -192,6 +223,35 @@ async function main() {
   let callId = '';
 
   try {
+    report.runtime = await requestJson(baseUrl, '', 'GET', '/api/public/runtime-settings');
+    if (!report.runtime.ok || !report.runtime.data || typeof report.runtime.data !== 'object') {
+      throw new Error(`rtc_runtime_fetch_failed:${report.runtime.status || 0}`);
+    }
+    const runtimePayload = report.runtime.data;
+    const runtimeEnabled = runtimePayload.rtc_enabled !== false;
+    const runtimeTimeoutSeconds = toPositiveInt(runtimePayload.rtc_timeout_seconds, 0);
+    const runtimeIceServers = normalizeIceServers(runtimePayload);
+    report.runtime = {
+      ok: true,
+      enabled: runtimeEnabled,
+      timeoutSeconds: runtimeTimeoutSeconds,
+      iceServerCount: runtimeIceServers.length,
+      hasTurnServer: hasTurnServer(runtimeIceServers),
+      iceServers: runtimeIceServers,
+    };
+    if (requireRuntimeEnabled && !runtimeEnabled) {
+      throw new Error('rtc_runtime_disabled');
+    }
+    if (runtimeTimeoutSeconds < requireTimeoutMinSeconds) {
+      throw new Error(`rtc_runtime_timeout_too_low:${runtimeTimeoutSeconds}`);
+    }
+    if (runtimeIceServers.length < requireIceServerCount) {
+      throw new Error(`rtc_runtime_ice_count_too_low:${runtimeIceServers.length}`);
+    }
+    if (requireTurnServer && !hasTurnServer(runtimeIceServers)) {
+      throw new Error('rtc_runtime_turn_server_missing');
+    }
+
     report.create = await requestJson(baseUrl, authToken, 'POST', '/api/rtc/calls', { body: payload });
     if (!report.create.ok) {
       throw new Error(`rtc_create_failed:${report.create.status}`);
