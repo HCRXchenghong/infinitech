@@ -6,6 +6,20 @@
         <text class="modal-close" @tap="handleClose">×</text>
       </view>
       <view class="modal-body">
+        <view v-if="showRtc" class="action-item primary" @tap="handleRTCContact">
+          <view class="action-icon-wrapper">
+            <image
+              class="action-icon"
+              src="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%230095ff%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M22%2016.92v3a2%202%200%200%201-2.18%202%2019.79%2019.79%200%200%201-8.63-3.07%2019.5%2019.5%200%200%201-6-6%2019.79%2019.79%200%200%201-3.07-8.67A2%202%200%200%201%204.11%202h3a2%202%200%200%201%202%201.72%2012.84%2012.84%200%200%200%20.7%202.81%202%202%200%200%201-.45%202.11L8.09%209.91a16%2016%200%200%200%206%206l1.27-1.27a2%202%200%200%201%202.11-.45%2012.84%2012.84%200%200%200%202.81.7A2%202%200%200%201%2022%2016.92z%22%2F%3E%3Cpath%20d%3D%22M14.5%209.5a3.5%203.5%200%201%201-5%205%22%2F%3E%3C%2Fsvg%3E"
+              mode="aspectFit"
+            />
+          </view>
+          <view class="action-info">
+            <text class="action-name">{{ rtcLabel }}</text>
+            <text class="action-desc">{{ rtcDescription }}</text>
+          </view>
+          <text class="arrow">›</text>
+        </view>
         <view class="action-item primary" @tap="handleOnlineContact">
           <view class="action-icon-wrapper">
             <image
@@ -50,10 +64,26 @@ export default {
       type: String,
       default: '选择联系方式',
     },
+    showRtc: {
+      type: Boolean,
+      default: false,
+    },
+    rtcLabel: {
+      type: String,
+      default: '站内语音',
+    },
+    rtcDescription: {
+      type: String,
+      default: 'App / H5 可发起站内语音呼叫',
+    },
   },
   methods: {
     handleClose() {
       this.$emit('close')
+    },
+    handleRTCContact() {
+      this.$emit('rtc')
+      this.handleClose()
     },
     handleOnlineContact() {
       this.$emit('online')

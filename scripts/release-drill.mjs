@@ -115,7 +115,8 @@ async function main() {
       'Keep the generated preflight and smoke reports with the launch ticket.',
       'Verify /ready, /api/system-health, and socket /api/stats before and after rollback.',
       'Verify push worker health and queue age after rollback.',
-      'Verify admin chat console, merchant chat, rider support chat, and consumer message list after rollback.'
+      'Verify admin chat console, merchant chat, rider support chat, and consumer message list after rollback.',
+      'If you run manual fault drills, compare baseline/degraded/restored reports with scripts/release-failure-verify.mjs.'
     ]
   };
 

@@ -184,6 +184,7 @@ Notes:
 - `PUSH_DRILL_REPORT_FILE=artifacts/push-delivery-drill.json ADMIN_TOKEN=<admin-token> node scripts/push-delivery-drill.mjs` runs an admin push delivery drill and keeps a structured provider-verification report
 - `node scripts/release-drill.mjs` now runs release preflight, HTTP smoke, and the push-delivery drill in one pass when `ADMIN_TOKEN` is available, and writes a combined summary under `artifacts/release-drills/<timestamp>/`
 - `ROLLBACK_BASELINE_REPORT=<before.json> ROLLBACK_CANDIDATE_REPORT=<after.json> node scripts/release-rollback-verify.mjs` compares two structured drill summaries and fails if latency or delivery signals regress past the allowed rollback thresholds
+- `FAILURE_BASELINE_REPORT=<steady.json> FAILURE_DEGRADED_REPORT=<fault.json> FAILURE_RESTORED_REPORT=<restored.json> node scripts/release-failure-verify.mjs` verifies that a manual fault drill actually degrades when expected and then recovers within the allowed latency and error thresholds
 - `admin-vue` still emits the known `sql.js` browser externalize warning and large chunk warning during build
 - those warnings are known and were not introduced by the latest remediation batches
 
@@ -198,9 +199,9 @@ These items are still open and should not be misrepresented as complete:
 - production-grade push provider integration
   - the platform now has secure webhook and FCM HTTP v1 dispatch paths plus a scripted delivery drill, but real production rollout still needs live provider cutover and a validated launch run with real devices
 - App / H5 RTC audio implementation
-  - a first server-side RTC audit model, query APIs, and socket signaling namespace now exist, but client-side media negotiation, recording-retention policy flow, and complaint freeze flow are not complete
+  - a first server-side RTC audit model, query APIs, socket signaling namespace, client API wrappers, and shared RTC contact helper now exist, but client-side media negotiation, recording-retention policy flow, and complaint freeze flow are not complete
 - full load, rollback, and failure-drill validation
-  - smoke checks exist, but that is not the same as complete capacity certification
+  - smoke checks, rollback verification, and failure verification exist, but that is not the same as complete capacity certification
 
 ### P1: still worth completing soon
 

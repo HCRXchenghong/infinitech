@@ -384,6 +384,29 @@ export const recordPhoneContactClick = (payload) => request({
   data: payload
 })
 
+export const createRTCCall = (payload) => request({
+  url: '/api/rtc/calls',
+  method: 'POST',
+  data: payload
+})
+
+export const getRTCCall = (callId) => request({
+  url: `/api/rtc/calls/${encodeURIComponent(callId)}`,
+  method: 'GET'
+})
+
+export const listRTCCallHistory = (params = {}) => request({
+  url: '/api/rtc/calls/history',
+  method: 'GET',
+  data: params
+})
+
+export const updateRTCCallStatus = (callId, payload) => request({
+  url: `/api/rtc/calls/${encodeURIComponent(callId)}/status`,
+  method: 'POST',
+  data: payload
+})
+
 export const createUserAddress = (userId, payload) => request({
   url: `/api/user/${encodeURIComponent(userId)}/addresses`,
   method: 'POST',
