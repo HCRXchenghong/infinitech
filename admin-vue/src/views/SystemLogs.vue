@@ -285,6 +285,8 @@ const SIGNAL_LABELS = {
   pushEnabled: "推送已启用",
   pushRunning: "推送运行中",
   pushProvider: "推送通道",
+  pushProductionReady: "推送生产就绪",
+  pushProductionIssues: "推送生产问题",
   pushWebhookTarget: "Webhook 目标",
   pushWebhookSecure: "Webhook 安全传输",
   pushWebhookPrivate: "Webhook 私有目标",
@@ -499,7 +501,13 @@ function resolveSignalType(key, rawValue) {
   const value = String(rawValue ?? "").trim();
   const numeric = Number(value);
 
-  if (key.endsWith("Error") || key === "error" || key === "pushError" || key === "goApiError") {
+  if (
+    key.endsWith("Error") ||
+    key === "error" ||
+    key === "pushError" ||
+    key === "goApiError" ||
+    key === "pushProductionIssues"
+  ) {
     return "danger";
   }
 
@@ -511,6 +519,7 @@ function resolveSignalType(key, rawValue) {
       "pushWorkerOk",
       "pushEnabled",
       "pushRunning",
+      "pushProductionReady",
       "pushWebhookSecure",
       "pushWebhookAuth",
       "pushWebhookSignature",

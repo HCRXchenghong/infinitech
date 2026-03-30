@@ -97,6 +97,7 @@ Important boundaries:
 - the admin chat console no longer falls back to local history when service-side message history fetches fail, keeping the default operator path pinned to service authority
 - active merchant and rider messaging entry points have been rewritten into clean UTF-8 copies so live chat, popup routing, and merchant support entry text no longer depend on mojibake-tainted legacy strings
 - the rider global message manager has been rewritten into a clean, stable implementation so popup routing and notification text no longer depend on mojibake-tainted legacy strings
+- the rider support chat page logic has now been rewritten into a clean UTF-8 server-first copy, removing the dead local-history replacement path and fixing the self/read status bug that previously checked `msg.self` instead of `msg.isSelf`
 - the active merchant chat page plus rider task contact and task-detail flows have been cleaned into stable UTF-8 copies so send-state text, contact prompts, navigation fallbacks, and exception reporting no longer rely on mojibake-tainted strings
 - the merchant live chat page has now been fully rewritten into a clean server-first copy, so service history, read sync, reconnect behavior, local-only clearing, and upload/send prompts no longer depend on mojibake-tainted legacy markup
 - merchant chat and rider support chat now default to service-side history only; the old local history snapshot and SQLite history fallback paths are no longer part of the default runtime flow
@@ -144,6 +145,7 @@ Important boundaries:
 - admin-side health aggregation and system-log signals have been trimmed to current live fallback metrics instead of obsolete historical fallback counters
 - the admin console now includes a dedicated phone contact audit page for filtering actor/target roles, results, and related order or room references
 - the active system logs page has been rewritten into a clean UTF-8 implementation so readiness, Redis, push worker, and audit signals are readable without mojibake-tainted labels
+- admin system logs now surface push production-readiness and production-issue signals as first-class tags instead of leaving them buried in raw detail strings
 - release preflight checks BFF ready, Go ready, socket ready, system health, queue age, fallback state, and other launch blockers
 
 ## Current Release Gates

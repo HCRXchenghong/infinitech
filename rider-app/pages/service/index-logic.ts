@@ -1,5 +1,4 @@
-
-import Vue from 'vue'
+﻿import Vue from 'vue'
 import config from '@/shared-ui/config'
 import { fetchHistory, markConversationRead, upsertConversation } from '@/shared-ui/api'
 import { loadSupportRuntimeSettings } from '@/shared-ui/support-runtime'
@@ -8,9 +7,19 @@ import { db } from '@/utils/database'
 import messageManager from '@/utils/message-manager'
 import OrderDetailPopup from '../../components/OrderDetailPopup.vue'
 
+const DEFAULT_SUPPORT_CHAT_ID = 'rider_default'
+const SEND_TIMEOUT_MS = 5000
+
+function formatClockTime(timestamp: number) {
+  return new Date(timestamp).toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export default Vue.extend({
   components: {
-    OrderDetailPopup
+    OrderDetailPopup,
   },
   data() {
     return {
@@ -21,7 +30,7 @@ export default Vue.extend({
       riderId: '',
       riderName: '骑手',
       avatarUrl: '',
-      chatId: 'rider_default',
+      chatId: DEFAULT_SUPPORT_CHAT_ID,
       targetId: '',
       orderId: '',
       chatRole: 'admin',
@@ -33,7 +42,8 @@ export default Vue.extend({
       recentOrders: [] as any[],
       showOrderDetailPopup: false,
       currentOrderDetail: null as any,
-      localMessageSeed: 0
+      localMessageSeed: 0,
+      dbReady: false,
     }
   },
   onLoad(options: any = {}) {
@@ -45,20 +55,24 @@ export default Vue.extend({
       this.riderId = String(riderId)
       this.chatId = this.riderId
     }
+
     const queryChatId = options.chatId || options.id
     if (queryChatId !== undefined && queryChatId !== null && queryChatId !== '') {
       this.chatId = String(queryChatId).trim()
     }
+
     const queryTargetId = options.targetId || options.peerId
     if (queryTargetId !== undefined && queryTargetId !== null && queryTargetId !== '') {
       this.targetId = this.safeDecode(queryTargetId)
     }
+
     const queryOrderId = options.orderId || options.order_id
     if (queryOrderId !== undefined && queryOrderId !== null && queryOrderId !== '') {
       this.orderId = this.safeDecode(queryOrderId)
     }
+
     if (!this.chatId) {
-      this.chatId = this.riderId || 'rider_default'
+      this.chatId = this.riderId || DEFAULT_SUPPORT_CHAT_ID
     }
 
     const queryRole = options.role ? String(options.role).toLowerCase() : ''
@@ -66,15 +80,14 @@ export default Vue.extend({
 
     const queryName = options.name ? this.safeDecode(options.name) : ''
     this.chatTitle = queryName || this.inferTitleByRole(this.chatRole)
-
-    if (options.avatar) {
-      this.otherAvatar = this.safeDecode(options.avatar)
-    } else {
-      this.otherAvatar = this.defaultAvatarByRole(this.chatRole)
-    }
+    this.otherAvatar = options.avatar
+      ? this.safeDecode(options.avatar)
+      : this.defaultAvatarByRole(this.chatRole)
 
     const riderName = uni.getStorageSync('riderName')
-    if (riderName) this.riderName = riderName
+    if (riderName) {
+      this.riderName = String(riderName)
+    }
 
     const profile = uni.getStorageSync('riderProfile')
     if (profile) {
@@ -86,6 +99,7 @@ export default Vue.extend({
 
     this.loadRecentOrders()
     this.bindSocketEvents()
+
     Promise.resolve(this.loadSupportRuntimeConfig(!queryName))
       .finally(async () => {
         await this.initDatabase()
@@ -118,11 +132,12 @@ export default Vue.extend({
     async initDatabase() {
       try {
         await db.open()
-      } catch (err) {
-        /* ignore */
+        this.dbReady = true
+      } catch {
+        this.dbReady = false
+        // Rider chat can continue without local SQLite support.
       }
     },
-
 
     normalizeTargetType() {
       if (this.chatRole === 'user') return 'user'
@@ -138,7 +153,7 @@ export default Vue.extend({
         targetPhone: '',
         targetName: this.chatTitle || this.inferTitleByRole(this.chatRole),
         targetAvatar: this.otherAvatar || '',
-        targetOrderId: this.orderId || ''
+        targetOrderId: this.orderId || '',
       }
     },
 
@@ -148,33 +163,51 @@ export default Vue.extend({
         const isSelf = item?.senderRole === 'rider' && senderId === String(this.riderId)
         return {
           ...this.normalizeIncomingMessage(item, isSelf),
-          status: isSelf ? (item?.status || 'sent') : undefined
+          status: isSelf ? item?.status || 'sent' : undefined,
         }
       })
     },
 
-    async replaceCachedHistory(list: any[] = []) {
-      const historyWindow = Array.isArray(list) ? list.slice(-LOCAL_HISTORY_CACHE_LIMIT) : []
-      const baseTimestamp = Date.now()
-      await db.deleteMessagesByChatId(this.chatId)
-      historyWindow.forEach((item: any, index: number) => {
-        const senderId = item?.senderId != null ? String(item.senderId) : ''
-        const messageTimestamp = this.resolveMessageTimestamp(item?.timestamp || item?.createdAt, baseTimestamp + index)
-        db.saveMessage(this.chatId, {
-          id: this.resolveMessageId(item, `history_${this.chatId}_${messageTimestamp}_${index}`),
-          chatId: this.chatId,
-          sender: item.sender,
-          senderId: item.senderId,
-          senderRole: item.senderRole,
-          content: item.content,
-          messageType: item.messageType || 'text',
-          timestamp: messageTimestamp,
-          isSelf: item.senderRole === 'rider' && senderId === String(this.riderId) ? 1 : 0,
-          avatar: item.avatar || '',
-          status: item.senderRole === 'rider' && senderId === String(this.riderId) ? (item.status || 'sent') : ''
-        }, { skipPrune: true })
+    saveLocalMessage(message: any, options: { skipPrune?: boolean } = {}) {
+      if (!this.dbReady) return
+      try {
+        db.saveMessage(this.chatId, message, options)
+      } catch (err) {
+        console.error('[RiderService] 保存本地消息失败:', err)
+      }
+    },
+
+    updateLocalMessage(messageId: string | number, updates: Record<string, any>, label: string) {
+      if (!this.dbReady) return
+      void db.updateMessage(this.chatId, messageId, updates).catch((err) => {
+        console.error(label, err)
       })
-      await db.pruneMessagesByChatId(this.chatId)
+    },
+
+    buildCachedMessage(record: any, overrides: Record<string, any> = {}) {
+      return {
+        id: record.id,
+        chatId: this.chatId,
+        sender: record.sender,
+        senderId: record.senderId,
+        senderRole: record.senderRole,
+        content: record.content,
+        messageType: record.messageType,
+        timestamp: record.timestamp,
+        isSelf: record.isSelf,
+        avatar: record.avatar || '',
+        status: record.status || '',
+        ...overrides,
+      }
+    },
+
+    schedulePendingFailure(tempId: string) {
+      setTimeout(() => {
+        const msg = this.messages.find((item: any) => item.id === tempId && item.status === 'sending')
+        if (!msg) return
+        msg.status = 'failed'
+        this.updateLocalMessage(tempId, { status: 'failed' }, '[RiderService] 更新本地消息失败状态失败:')
+      }, SEND_TIMEOUT_MS)
     },
 
     async ensureConversationExists() {
@@ -199,20 +232,19 @@ export default Vue.extend({
         const response: any = await fetchHistory(this.chatId)
         const list = Array.isArray(response) ? response : []
         this.messages = this.normalizeHistoryMessages(list)
-        this.$nextTick(() => { this.scrollToBottom() })
+        this.$nextTick(() => {
+          this.scrollToBottom()
+        })
         await this.syncReadState()
       } catch (err) {
         if (hadServerHistory) {
-          console.error('[RiderService] 加载服务端消息历史失败，保留当前服务端消�?', err)
+          console.error('[RiderService] 加载服务端消息历史失败，保留当前服务端消息。', err)
           return
         }
-        console.error('[RiderService] 加载服务端消息历史失�?', err)
+        console.error('[RiderService] 加载服务端消息历史失败。', err)
       }
     },
 
-    /**
-     * 绑定来自 App.vue 全局 Socket 的事�?
-     */
     bindSocketEvents() {
       uni.$on('socket:new_message', this.onNewMessage)
       uni.$on('socket:message_sent', this.onMessageSent)
@@ -249,14 +281,14 @@ export default Vue.extend({
       return this.socketEmit('join_chat', {
         chatId: this.chatId,
         userId: this.riderId,
-        role: 'rider'
+        role: 'rider',
       })
     },
 
     safeDecode(value: any) {
       try {
         return decodeURIComponent(String(value || ''))
-      } catch (err) {
+      } catch {
         return String(value || '')
       }
     },
@@ -278,10 +310,14 @@ export default Vue.extend({
         ? this.safeDecode(payload.avatar)
         : this.defaultAvatarByRole(this.chatRole)
       this.messages = []
+      this.showOrderPicker = false
+      this.showMenu = false
+      this.showOrderDetailPopup = false
+      this.currentOrderDetail = null
 
       if (typeof uni.setNavigationBarTitle === 'function') {
         uni.setNavigationBarTitle({
-          title: this.chatRole === 'admin' ? this.supportChatTitle : this.chatTitle
+          title: this.chatRole === 'admin' ? this.supportChatTitle : this.chatTitle,
         })
       }
 
@@ -301,76 +337,89 @@ export default Vue.extend({
     onSocketDisconnected(payload: any) {
       if (payload && payload.namespace && payload.namespace !== 'support') return
     },
+
     ...serviceDataMethods,
 
     onNewMessage(payload: any) {
       if (!payload || String(payload.chatId) !== String(this.chatId)) return
       const senderId = payload?.senderId != null ? String(payload.senderId) : ''
-      if (senderId !== String(this.riderId) || payload.senderRole !== 'rider') {
-        this.messages.push(this.normalizeIncomingMessage(payload, false))
-        const messageTimestamp = this.resolveMessageTimestamp(payload?.timestamp || payload?.createdAt, Date.now())
-        db.saveMessage(this.chatId, {
-          id: this.resolveMessageId(payload, `incoming_${this.chatId}_${messageTimestamp}`),
-          chatId: this.chatId,
-          sender: payload.sender,
-          senderId: payload.senderId,
-          senderRole: payload.senderRole,
-          content: payload.content,
-          messageType: payload.messageType || 'text',
-          timestamp: messageTimestamp,
+      const isSelf = payload.senderRole === 'rider' && senderId === String(this.riderId)
+      if (isSelf) return
+
+      const normalized = this.normalizeIncomingMessage(payload, false)
+      this.messages.push(normalized)
+      this.saveLocalMessage(
+        this.buildCachedMessage({
+          ...payload,
+          id: normalized.id,
+          timestamp: normalized.timestamp,
+          sender: normalized.sender,
+          senderId: normalized.senderId,
+          senderRole: normalized.senderRole,
+          content: normalized.content,
+          messageType: normalized.type,
           isSelf: 0,
-          avatar: payload.avatar || '',
-          status: payload.status || ''
+          avatar: normalized.avatar,
+          status: payload.status || '',
         })
-        this.$nextTick(() => { this.scrollToBottom() })
-      }
+      )
+      this.$nextTick(() => {
+        this.scrollToBottom()
+      })
       void this.syncReadState()
     },
 
     onMessageSent(data: any) {
       if (data?.chatId && String(data.chatId) !== String(this.chatId)) return
-      const msg = this.messages.find((m: any) => m.id === data.tempId)
+      const msg = this.messages.find((item: any) => item.id === data.tempId)
       const nextStatus = msg?.status === 'read' ? 'read' : 'sent'
+      const nextTimestamp = this.resolveMessageTimestamp(data?.timestamp || data?.createdAt, msg?.timestamp || Date.now())
       if (msg) {
-        msg.id = data.messageId
-        if (data.time) {
-          msg.time = data.time
-        }
-        msg.timestamp = this.resolveMessageTimestamp(data?.timestamp || data?.createdAt, msg.timestamp || Date.now())
+        msg.id = data.messageId || data.tempId
+        msg.timestamp = nextTimestamp
+        msg.time = data.time || formatClockTime(nextTimestamp)
         msg.status = nextStatus
       }
-      void db.updateMessage(this.chatId, data.tempId, {
-        id: data.messageId || data.tempId,
-        timestamp: data?.timestamp || data?.createdAt,
-        status: nextStatus
-      }).catch((err) => {
-        console.error('[RiderService] 更新本地消息发送状态失�?', err)
-      })
+      this.updateLocalMessage(
+        data.tempId,
+        {
+          id: data.messageId || data.tempId,
+          timestamp: nextTimestamp,
+          status: nextStatus,
+        },
+        '[RiderService] 更新本地消息发送状态失败:'
+      )
     },
 
     onMessageRead(data: any) {
       if (data?.chatId && String(data.chatId) !== String(this.chatId)) return
-      const msg = this.messages.find((m: any) => m.id === data.messageId)
-      if (msg) msg.status = 'read'
-      void db.updateMessage(this.chatId, data.messageId, {
-        status: 'read'
-      }).catch((err) => {
-        console.error('[RiderService] 更新本地消息已读状态失�?', err)
-      })
+      const msg = this.messages.find((item: any) => item.id === data.messageId)
+      if (msg) {
+        msg.status = 'read'
+      }
+      this.updateLocalMessage(data.messageId, { status: 'read' }, '[RiderService] 更新本地消息已读状态失败:')
     },
 
     onAllMessagesRead(data: any) {
       if (!data || String(data.chatId) !== String(this.chatId)) return
+      if (!this.dbReady) {
+        this.messages.forEach((msg: any) => {
+          if (msg?.isSelf && msg.status !== 'failed') {
+            msg.status = 'read'
+          }
+        })
+        return
+      }
 
-      const pendingUpdates: Promise<void>[] = []
+      const pendingUpdates: Promise<unknown>[] = []
       this.messages.forEach((msg: any) => {
-        if (!msg?.self || msg.status === 'failed' || msg.status === 'read') return
+        if (!msg?.isSelf || msg.status === 'failed' || msg.status === 'read') return
         msg.status = 'read'
         const messageId = String(msg.id || '').trim()
         if (!messageId) return
         pendingUpdates.push(
           db.updateMessage(this.chatId, messageId, { status: 'read' }).catch((err) => {
-            console.error('[RiderService] 批量更新本地消息已读状态失�?', err)
+            console.error('[RiderService] 批量更新本地消息已读状态失败:', err)
           })
         )
       })
@@ -379,7 +428,7 @@ export default Vue.extend({
       void Promise.allSettled(pendingUpdates)
     },
 
-    buildOutgoingSocketPayload(messageType: string, content: any, tempId: number) {
+    buildOutgoingSocketPayload(messageType: string, content: any, tempId: string) {
       return {
         chatId: this.chatId,
         senderId: this.riderId,
@@ -393,22 +442,29 @@ export default Vue.extend({
         targetType: this.normalizeTargetType(),
         targetId: this.targetId || (this.chatRole === 'admin' ? 'support' : ''),
         targetName: this.chatTitle || this.inferTitleByRole(this.chatRole),
-        targetAvatar: this.otherAvatar || ''
+        targetAvatar: this.otherAvatar || '',
       }
     },
 
     resendMessage(msg: any) {
-      const previousId = msg.id
+      const previousId = String(msg.id)
       const resendTimestamp = Date.now()
-      msg.status = 'sending'
-      msg.timestamp = resendTimestamp
       const tempId = this.createLocalMessageId('resend', resendTimestamp)
       msg.id = tempId
-      void db.updateMessage(this.chatId, previousId, {
-        id: tempId,
-        timestamp: resendTimestamp,
-        status: 'sending'
-      }).catch(() => {})
+      msg.status = 'sending'
+      msg.timestamp = resendTimestamp
+      msg.time = formatClockTime(resendTimestamp)
+
+      this.updateLocalMessage(
+        previousId,
+        {
+          id: tempId,
+          timestamp: resendTimestamp,
+          status: 'sending',
+        },
+        '[RiderService] 更新本地重发消息状态失败:'
+      )
+
       const emitted = this.socketEmit(
         'send_message',
         this.buildOutgoingSocketPayload(
@@ -419,70 +475,63 @@ export default Vue.extend({
           tempId
         )
       )
+
       if (!emitted) {
         msg.status = 'failed'
-        void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
-        uni.showToast({ title: '客服连接中，请稍后重�?, icon: 'none' })
+        this.updateLocalMessage(tempId, { status: 'failed' }, '[RiderService] 更新本地消息失败状态失败:')
+        uni.showToast({ title: '客服连接中，请稍后重试', icon: 'none' })
         return
       }
-      setTimeout(() => {
-        if (msg.status === 'sending') {
-          msg.status = 'failed'
-          void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
-        }
-      }, 5000)
+
+      this.schedulePendingFailure(tempId)
     },
 
     sendMessage() {
-      if (!this.inputText.trim()) return
+      const content = String(this.inputText || '').trim()
+      if (!content) return
 
       const tempTimestamp = Date.now()
       const tempId = this.createLocalMessageId('send', tempTimestamp)
       const newMsg = {
         id: tempId,
-        content: this.inputText,
+        content,
         type: 'text',
         isSelf: true,
-        status: 'sending'
+        timestamp: tempTimestamp,
+        time: formatClockTime(tempTimestamp),
+        status: 'sending',
       }
       this.messages.push(newMsg)
 
-      const emitted = this.socketEmit(
-        'send_message',
-        this.buildOutgoingSocketPayload('text', this.inputText, tempId)
-      )
-
+      const emitted = this.socketEmit('send_message', this.buildOutgoingSocketPayload('text', content, tempId))
       if (!emitted) {
-        const msg = this.messages.find((m: any) => m.id === tempId)
+        const msg = this.messages.find((item: any) => item.id === tempId)
         if (msg) msg.status = 'failed'
-        void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
-        uni.showToast({ title: '客服连接中，请稍后重�?, icon: 'none' })
+        this.updateLocalMessage(tempId, { status: 'failed' }, '[RiderService] 更新本地消息失败状态失败:')
+        uni.showToast({ title: '客服连接中，请稍后重试', icon: 'none' })
       } else {
-        setTimeout(() => {
-          const msg = this.messages.find((m: any) => m.id === tempId && m.status === 'sending')
-          if (msg) {
-            msg.status = 'failed'
-            void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
-          }
-        }, 5000)
+        this.schedulePendingFailure(tempId)
       }
 
-      db.saveMessage(this.chatId, {
-        id: String(newMsg.id),
-        chatId: this.chatId,
-        sender: this.riderName,
-        senderId: this.riderId,
-        senderRole: 'rider',
-        content: this.inputText,
-        messageType: 'text',
-        timestamp: tempTimestamp,
-        isSelf: 1,
-        avatar: this.avatarUrl || '',
-        status: 'sending'
-      })
+      this.saveLocalMessage(
+        this.buildCachedMessage({
+          id: tempId,
+          sender: this.riderName,
+          senderId: this.riderId,
+          senderRole: 'rider',
+          content,
+          messageType: 'text',
+          timestamp: tempTimestamp,
+          isSelf: 1,
+          avatar: this.avatarUrl || '',
+          status: 'sending',
+        })
+      )
 
       this.inputText = ''
-      this.$nextTick(() => { this.scrollToBottom() })
+      this.$nextTick(() => {
+        this.scrollToBottom()
+      })
     },
 
     chooseImage() {
@@ -490,42 +539,55 @@ export default Vue.extend({
         count: 1,
         sizeType: ['compressed'],
         success: (res: any) => {
-          const tempFilePath = res.tempFilePaths[0]
-          uni.showLoading({ title: '上传�?..' })
+          const tempFilePath = res.tempFilePaths?.[0]
+          if (!tempFilePath) {
+            uni.showToast({ title: '未选择图片', icon: 'none' })
+            return
+          }
+
+          uni.showLoading({ title: '上传中...' })
           uni.uploadFile({
-            url: config.SOCKET_URL + '/api/upload',
+            url: `${config.SOCKET_URL}/api/upload`,
             filePath: tempFilePath,
             name: 'file',
             success: (uploadRes: any) => {
               uni.hideLoading()
               try {
                 const data = JSON.parse(uploadRes.data)
-                if (data.url) {
-                  const messageTimestamp = Date.now()
-                  const tempId = this.createLocalMessageId('image', messageTimestamp)
-                  const newMsg = { id: tempId, content: data.url, type: 'image', isSelf: true, status: 'sending' }
-                  this.messages.push(newMsg)
-                  const emitted = this.socketEmit(
-                    'send_message',
-                    this.buildOutgoingSocketPayload('image', data.url, tempId)
-                  )
-                  if (!emitted) {
-                    const msg = this.messages.find((m: any) => m.id === tempId)
-                    if (msg) msg.status = 'failed'
-                    void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
-                    uni.showToast({ title: '客服连接中，请稍后重�?, icon: 'none' })
-                  } else {
-                    setTimeout(() => {
-                      const msg = this.messages.find((m: any) => m.id === tempId && m.status === 'sending')
-                      if (msg) {
-                        msg.status = 'failed'
-                        void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
-                      }
-                    }, 5000)
-                  }
-                  db.saveMessage(this.chatId, {
-                    id: String(newMsg.id),
-                    chatId: this.chatId,
+                if (!data?.url) {
+                  uni.showToast({ title: '上传失败', icon: 'none' })
+                  return
+                }
+
+                const messageTimestamp = Date.now()
+                const tempId = this.createLocalMessageId('image', messageTimestamp)
+                const newMsg = {
+                  id: tempId,
+                  content: data.url,
+                  type: 'image',
+                  isSelf: true,
+                  timestamp: messageTimestamp,
+                  time: formatClockTime(messageTimestamp),
+                  status: 'sending',
+                }
+                this.messages.push(newMsg)
+
+                const emitted = this.socketEmit(
+                  'send_message',
+                  this.buildOutgoingSocketPayload('image', data.url, tempId)
+                )
+                if (!emitted) {
+                  const msg = this.messages.find((item: any) => item.id === tempId)
+                  if (msg) msg.status = 'failed'
+                  this.updateLocalMessage(tempId, { status: 'failed' }, '[RiderService] 更新本地图片消息失败状态失败:')
+                  uni.showToast({ title: '客服连接中，请稍后重试', icon: 'none' })
+                } else {
+                  this.schedulePendingFailure(tempId)
+                }
+
+                this.saveLocalMessage(
+                  this.buildCachedMessage({
+                    id: tempId,
                     sender: this.riderName,
                     senderId: this.riderId,
                     senderRole: 'rider',
@@ -534,20 +596,23 @@ export default Vue.extend({
                     timestamp: messageTimestamp,
                     isSelf: 1,
                     avatar: this.avatarUrl || '',
-                    status: 'sending'
+                    status: 'sending',
                   })
-                  this.$nextTick(() => { this.scrollToBottom() })
-                }
-              } catch (e) {
+                )
+
+                this.$nextTick(() => {
+                  this.scrollToBottom()
+                })
+              } catch {
                 uni.showToast({ title: '上传失败', icon: 'none' })
               }
             },
             fail: () => {
               uni.hideLoading()
               uni.showToast({ title: '上传失败', icon: 'none' })
-            }
+            },
           })
-        }
+        },
       })
     },
 
@@ -557,49 +622,59 @@ export default Vue.extend({
         uni.showToast({ title: '订单信息异常', icon: 'none' })
         return
       }
+
       const tempTimestamp = Date.now()
       const tempId = this.createLocalMessageId('order', tempTimestamp)
-      const newMsg = { id: tempId, content: '', type: 'order', isSelf: true, order: normalizedOrder, status: 'sending' }
+      const newMsg = {
+        id: tempId,
+        content: '',
+        type: 'order',
+        isSelf: true,
+        order: normalizedOrder,
+        timestamp: tempTimestamp,
+        time: formatClockTime(tempTimestamp),
+        status: 'sending',
+      }
       this.messages.push(newMsg)
+
       const emitted = this.socketEmit(
         'send_message',
         this.buildOutgoingSocketPayload('order', JSON.stringify(normalizedOrder), tempId)
       )
       if (!emitted) {
-        const msg = this.messages.find((m: any) => m.id === tempId)
+        const msg = this.messages.find((item: any) => item.id === tempId)
         if (msg) msg.status = 'failed'
-        void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
-        uni.showToast({ title: '客服连接中，请稍后重�?, icon: 'none' })
+        this.updateLocalMessage(tempId, { status: 'failed' }, '[RiderService] 更新本地订单消息失败状态失败:')
+        uni.showToast({ title: '客服连接中，请稍后重试', icon: 'none' })
       } else {
-        setTimeout(() => {
-          const msg = this.messages.find((m: any) => m.id === tempId && m.status === 'sending')
-          if (msg) {
-            msg.status = 'failed'
-            void db.updateMessage(this.chatId, tempId, { status: 'failed' }).catch(() => {})
-          }
-        }, 5000)
+        this.schedulePendingFailure(tempId)
       }
-      db.saveMessage(this.chatId, {
-        id: String(newMsg.id),
-        chatId: this.chatId,
-        sender: this.riderName,
-        senderId: this.riderId,
-        senderRole: 'rider',
-        content: JSON.stringify(normalizedOrder),
-        messageType: 'order',
-        timestamp: tempTimestamp,
-        isSelf: 1,
-        avatar: this.avatarUrl || '',
-        status: 'sending'
-      })
+
+      this.saveLocalMessage(
+        this.buildCachedMessage({
+          id: tempId,
+          sender: this.riderName,
+          senderId: this.riderId,
+          senderRole: 'rider',
+          content: JSON.stringify(normalizedOrder),
+          messageType: 'order',
+          timestamp: tempTimestamp,
+          isSelf: 1,
+          avatar: this.avatarUrl || '',
+          status: 'sending',
+        })
+      )
+
       this.showOrderPicker = false
-      this.$nextTick(() => { this.scrollToBottom() })
+      this.$nextTick(() => {
+        this.scrollToBottom()
+      })
     },
 
     openOrderDetail(order: any) {
       const normalized = this.normalizeOrder(order)
       if (!normalized) {
-        uni.showToast({ title: '订单信息不完�?, icon: 'none' })
+        uni.showToast({ title: '订单信息不完整', icon: 'none' })
         return
       }
       this.currentOrderDetail = normalized
@@ -612,7 +687,7 @@ export default Vue.extend({
 
     scrollToBottom() {
       if (this.messages.length > 0) {
-        this.scrollToView = 'msg-' + this.messages[this.messages.length - 1].id
+        this.scrollToView = `msg-${this.messages[this.messages.length - 1].id}`
       }
     },
 
@@ -624,8 +699,8 @@ export default Vue.extend({
       this.showMenu = false
       uni.showModal({
         title: '举报客服',
-        content: '当前请联系平台运营处理客服问题�?,
-        showCancel: false
+        content: '如需反馈客服问题，请联系平台运营或管理人员处理。',
+        showCancel: false,
       })
     },
 
@@ -635,17 +710,18 @@ export default Vue.extend({
         title: '删除聊天记录',
         content: '确定要删除当前会话的本地聊天记录吗？',
         success: async (res: any) => {
-          if (res.confirm) {
-            try {
+          if (!res.confirm) return
+          try {
+            if (this.dbReady) {
               await db.deleteMessagesByChatId(this.chatId)
-              this.messages = []
-              uni.showToast({ title: '已清除本地记�?, icon: 'success' })
-            } catch (err) {
-              uni.showToast({ title: '删除失败', icon: 'none' })
             }
+            this.messages = []
+            uni.showToast({ title: '已清除本地记录', icon: 'success' })
+          } catch {
+            uni.showToast({ title: '删除失败', icon: 'none' })
           }
-        }
+        },
       })
-    }
-  }
+    },
+  },
 })
