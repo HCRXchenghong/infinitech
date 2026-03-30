@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
-function createBaseTemplate() {
+function baseTemplate() {
   return {
     version: 1,
     environment: 'production',
@@ -14,40 +14,26 @@ function createBaseTemplate() {
       operator: '',
       completedAt: '',
       summary: '',
-      evidence: [
-        {
-          type: 'screenshot',
-          path: '',
-          note: 'Push provider console or device receipt screenshot',
-        },
-      ],
-      details: {
-        provider: '',
-        userType: '',
-        userId: '',
-        appEnv: '',
-        deviceTokenSuffix: '',
-        messageId: '',
-      },
+      evidence: [{ type: 'screenshot', path: '', note: 'Push provider console or device receipt screenshot' }],
+      details: { provider: '', userType: '', userId: '', appEnv: '', deviceTokenSuffix: '', messageId: '' },
     },
     rtcRealDeviceValidation: {
       status: 'pending',
       operator: '',
       completedAt: '',
       summary: '',
-      evidence: [
-        {
-          type: 'screen-recording',
-          path: '',
-          note: 'App/H5 call setup, audio, and teardown proof',
-        },
-      ],
+      evidence: [{ type: 'screen-recording', path: '', note: 'App/H5 call setup, audio, and teardown proof' }],
       details: {
         callerPlatform: '',
         calleePlatform: '',
         callerAccount: '',
         calleeAccount: '',
         callId: '',
+        prepReport: '',
+        callerLaunchPath: '',
+        calleeLaunchPath: '',
+        callerLaunchUrl: '',
+        calleeLaunchUrl: '',
         turnUsed: false,
       },
     },
@@ -56,271 +42,126 @@ function createBaseTemplate() {
       operator: '',
       completedAt: '',
       summary: '',
-      evidence: [
-        {
-          type: 'report',
-          path: '',
-          note: 'Fault drill report or incident timeline',
-        },
-      ],
-      details: {
-        scenario: '',
-        degradedReport: '',
-        restoredReport: '',
-        rollbackBaselineReport: '',
-        rollbackCandidateReport: '',
-      },
+      evidence: [{ type: 'report', path: '', note: 'Fault drill report or incident timeline' }],
+      details: { scenario: '', degradedReport: '', restoredReport: '', rollbackBaselineReport: '', rollbackCandidateReport: '' },
     },
   };
 }
 
-function normalizeText(value) {
-  return String(value || '').trim();
-}
-
-function normalizeLowerText(value) {
-  return normalizeText(value).toLowerCase();
-}
-
-async function ensureDir(filePath) {
-  const directory = path.dirname(filePath);
-  if (directory && directory !== '.') {
-    await mkdir(directory, { recursive: true });
-  }
-}
-
-async function readJson(filePath) {
-  const content = await readFile(filePath, 'utf8');
-  return JSON.parse(content);
-}
-
-async function writeJson(filePath, payload) {
-  await ensureDir(filePath);
-  await writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
-}
-
-function makeRelativePath(fromFile, toFile) {
-  const target = normalizeText(toFile);
-  if (!target) {
-    return '';
-  }
-  const fromDirectory = path.dirname(path.resolve(fromFile));
-  const resolvedTarget = path.resolve(target);
-  const relativePath = path.relative(fromDirectory, resolvedTarget);
-  return relativePath || '.';
-}
-
-function readTemplateObject(templatePayload) {
-  if (!templatePayload || typeof templatePayload !== 'object') {
-    return createBaseTemplate();
-  }
-  return templatePayload;
-}
-
-function extractPushDrill(liveCutoverReport) {
-  return liveCutoverReport
-    && liveCutoverReport.releaseDrill
-    && liveCutoverReport.releaseDrill.summary
-    && liveCutoverReport.releaseDrill.summary.pushDeliveryDrill
-    && typeof liveCutoverReport.releaseDrill.summary.pushDeliveryDrill === 'object'
-    ? liveCutoverReport.releaseDrill.summary.pushDeliveryDrill
-    : null;
-}
-
-function extractRTCDrill(liveCutoverReport) {
-  return liveCutoverReport
-    && liveCutoverReport.releaseDrill
-    && liveCutoverReport.releaseDrill.summary
-    && liveCutoverReport.releaseDrill.summary.rtcCallDrill
-    && typeof liveCutoverReport.releaseDrill.summary.rtcCallDrill === 'object'
-    ? liveCutoverReport.releaseDrill.summary.rtcCallDrill
-    : null;
-}
-
-function extractPushProvider(pushDrill) {
-  return normalizeLowerText(
-    pushDrill
-      && pushDrill.readiness
-      && pushDrill.readiness.worker
-      && pushDrill.readiness.worker.provider
-  );
-}
-
-function extractPushMessageId(pushDrill) {
-  return normalizeText(pushDrill && pushDrill.message && pushDrill.message.id);
-}
-
-function extractPushTargetConfig(pushDrill) {
-  const config = pushDrill && pushDrill.config && typeof pushDrill.config === 'object'
-    ? pushDrill.config
-    : {};
+function t(v) { return String(v || '').trim(); }
+function lower(v) { return t(v).toLowerCase(); }
+async function ensureDir(file) { const dir = path.dirname(file); if (dir && dir !== '.') await mkdir(dir, { recursive: true }); }
+async function readJson(file) { return JSON.parse(await readFile(file, 'utf8')); }
+async function writeJson(file, value) { await ensureDir(file); await writeFile(file, `${JSON.stringify(value, null, 2)}\n`, 'utf8'); }
+function rel(fromFile, toFile) { const target = t(toFile); if (!target) return ''; const fromDir = path.dirname(path.resolve(fromFile)); const out = path.relative(fromDir, path.resolve(target)); return out || '.'; }
+function appendNote(current, next) { const a = t(current); const b = t(next); if (!b) return a; if (!a) return b; if (a.includes(b)) return a; return `${a}\n${b}`; }
+function pickPushDrill(report) { return report?.releaseDrill?.summary?.pushDeliveryDrill && typeof report.releaseDrill.summary.pushDeliveryDrill === 'object' ? report.releaseDrill.summary.pushDeliveryDrill : null; }
+function pickRTCDrill(report) { return report?.releaseDrill?.summary?.rtcCallDrill && typeof report.releaseDrill.summary.rtcCallDrill === 'object' ? report.releaseDrill.summary.rtcCallDrill : null; }
+function pushTarget(pushDrill) {
+  const config = pushDrill?.config && typeof pushDrill.config === 'object' ? pushDrill.config : {};
   return {
-    userType: normalizeLowerText(config.requiredUserType),
-    userId: normalizeText(config.requiredUserId),
-    appEnv: normalizeLowerText(config.requiredAppEnv),
-    deviceTokenSuffix: normalizeLowerText(config.requiredDeviceTokenSuffix),
+    userType: lower(config.requiredUserType),
+    userId: t(config.requiredUserId),
+    appEnv: lower(config.requiredAppEnv),
+    deviceTokenSuffix: lower(config.requiredDeviceTokenSuffix),
   };
 }
-
-function extractRTCCallId(rtcDrill) {
-  const detail = rtcDrill && rtcDrill.detail && rtcDrill.detail.data && typeof rtcDrill.detail.data === 'object'
-    ? rtcDrill.detail.data
-    : null;
-  const create = rtcDrill && rtcDrill.create && rtcDrill.create.data && typeof rtcDrill.create.data === 'object'
-    ? rtcDrill.create.data
-    : null;
-  return normalizeText(
-    (detail && (detail.uid || detail.callId || detail.call_id_raw || detail.call_id))
-      || (create && (create.uid || create.callId || create.call_id_raw || create.call_id))
-  );
+function rtcCallId(rtcDrill) {
+  const detail = rtcDrill?.detail?.data && typeof rtcDrill.detail.data === 'object' ? rtcDrill.detail.data : null;
+  const create = rtcDrill?.create?.data && typeof rtcDrill.create.data === 'object' ? rtcDrill.create.data : null;
+  return t((detail && (detail.uid || detail.callId || detail.call_id_raw || detail.call_id)) || (create && (create.uid || create.callId || create.call_id_raw || create.call_id)));
 }
-
-function extractRTCPlatforms(rtcDrill) {
-  const detail = rtcDrill && rtcDrill.detail && rtcDrill.detail.data && typeof rtcDrill.detail.data === 'object'
-    ? rtcDrill.detail.data
-    : null;
-  const create = rtcDrill && rtcDrill.create && rtcDrill.create.data && typeof rtcDrill.create.data === 'object'
-    ? rtcDrill.create.data
-    : null;
-  const config = rtcDrill && rtcDrill.config && typeof rtcDrill.config === 'object'
-    ? rtcDrill.config
-    : {};
+function rtcPlatforms(rtcDrill) {
+  const detail = rtcDrill?.detail?.data && typeof rtcDrill.detail.data === 'object' ? rtcDrill.detail.data : null;
+  const create = rtcDrill?.create?.data && typeof rtcDrill.create.data === 'object' ? rtcDrill.create.data : null;
+  const config = rtcDrill?.config && typeof rtcDrill.config === 'object' ? rtcDrill.config : {};
   return {
-    callerPlatform: normalizeText(
-      (detail && (detail.caller_platform || detail.callerPlatform))
-        || (create && (create.clientPlatform || create.client_platform))
-        || config.clientPlatform
-    ),
-    calleePlatform: normalizeText(
-      (detail && (detail.callee_platform || detail.calleePlatform))
-        || config.calleePlatform
-    ),
+    callerPlatform: t((detail && (detail.caller_platform || detail.callerPlatform)) || (create && (create.clientPlatform || create.client_platform)) || config.clientPlatform),
+    calleePlatform: t((detail && (detail.callee_platform || detail.calleePlatform)) || config.calleePlatform),
   };
 }
-
-function appendNote(existingNotes, value) {
-  const current = normalizeText(existingNotes);
-  const next = normalizeText(value);
-  if (!next) return current;
-  if (!current) return next;
-  if (current.includes(next)) return current;
-  return `${current}\n${next}`;
+function rtcLaunch(prepReport, outputFile) {
+  const launch = prepReport?.launch && typeof prepReport.launch === 'object' ? prepReport.launch : {};
+  return {
+    prepReport: rel(outputFile, prepReport?.reportFile || ''),
+    callerLaunchPath: t(launch.appCallerPath),
+    calleeLaunchPath: t(launch.appCalleePath),
+    callerLaunchUrl: t(launch.h5CallerUrl),
+    calleeLaunchUrl: t(launch.h5CalleeUrl),
+  };
 }
 
 async function main() {
-  const liveCutoverReportFile = path.resolve(
-    process.cwd(),
-    normalizeText(process.env.LIVE_CUTOVER_REPORT)
-  );
-  const rollbackVerifyReportFile = path.resolve(
-    process.cwd(),
-    normalizeText(process.env.ROLLBACK_VERIFY_REPORT)
-  );
-  const failureVerifyReportFile = path.resolve(
-    process.cwd(),
-    normalizeText(process.env.FAILURE_VERIFY_REPORT)
-  );
-  const templateFile = path.resolve(
-    process.cwd(),
-    normalizeText(
-      process.env.MANUAL_ATTESTATION_TEMPLATE_FILE
-        || path.join('artifacts', 'release-manual-attestation', 'template.json')
-    )
-  );
-  const outputFile = path.resolve(
-    process.cwd(),
-    normalizeText(
-      process.env.MANUAL_ATTESTATION_PREFILL_FILE
-        || path.join('artifacts', 'release-manual-attestation', 'prefilled.json')
-    )
-  );
-
-  if (
-    !normalizeText(process.env.LIVE_CUTOVER_REPORT) ||
-    !normalizeText(process.env.ROLLBACK_VERIFY_REPORT) ||
-    !normalizeText(process.env.FAILURE_VERIFY_REPORT)
-  ) {
-    console.error(
-      'LIVE_CUTOVER_REPORT, ROLLBACK_VERIFY_REPORT, and FAILURE_VERIFY_REPORT are required'
-    );
+  const liveEnv = t(process.env.LIVE_CUTOVER_REPORT);
+  const rollbackEnv = t(process.env.ROLLBACK_VERIFY_REPORT);
+  const failureEnv = t(process.env.FAILURE_VERIFY_REPORT);
+  if (!liveEnv || !rollbackEnv || !failureEnv) {
+    console.error('LIVE_CUTOVER_REPORT, ROLLBACK_VERIFY_REPORT, and FAILURE_VERIFY_REPORT are required');
     process.exitCode = 1;
     return;
   }
+  const liveFile = path.resolve(process.cwd(), liveEnv);
+  const rollbackFile = path.resolve(process.cwd(), rollbackEnv);
+  const failureFile = path.resolve(process.cwd(), failureEnv);
+  const rtcPrepEnv = t(process.env.RTC_REAL_DEVICE_PREP_REPORT);
+  const rtcPrepFile = rtcPrepEnv ? path.resolve(process.cwd(), rtcPrepEnv) : '';
+  const templateFile = path.resolve(process.cwd(), t(process.env.MANUAL_ATTESTATION_TEMPLATE_FILE || path.join('artifacts', 'release-manual-attestation', 'template.json')));
+  const outputFile = path.resolve(process.cwd(), t(process.env.MANUAL_ATTESTATION_PREFILL_FILE || path.join('artifacts', 'release-manual-attestation', 'prefilled.json')));
 
-  const [liveCutoverReport, rollbackVerifyReport, failureVerifyReport] = await Promise.all([
-    readJson(liveCutoverReportFile),
-    readJson(rollbackVerifyReportFile),
-    readJson(failureVerifyReportFile),
-  ]);
-
-  let templatePayload = null;
-  try {
-    templatePayload = await readJson(templateFile);
-  } catch (_error) {
-    templatePayload = createBaseTemplate();
+  const [liveReport, rollbackReport, failureReport] = await Promise.all([readJson(liveFile), readJson(rollbackFile), readJson(failureFile)]);
+  let prepReport = null;
+  if (rtcPrepFile) {
+    prepReport = await readJson(rtcPrepFile);
+    if (prepReport && typeof prepReport === 'object') prepReport.reportFile = rtcPrepFile;
   }
 
-  const template = readTemplateObject(templatePayload);
-  const pushDrill = extractPushDrill(liveCutoverReport);
-  const rtcDrill = extractRTCDrill(liveCutoverReport);
-  const pushTarget = extractPushTargetConfig(pushDrill);
-  const rtcPlatforms = extractRTCPlatforms(rtcDrill);
+  let templatePayload = null;
+  try { templatePayload = await readJson(templateFile); } catch { templatePayload = baseTemplate(); }
 
-  template.preparedBy = normalizeText(process.env.ATTESTATION_PREPARED_BY || template.preparedBy);
-  template.approver = normalizeText(process.env.ATTESTATION_APPROVER || template.approver);
-  template.notes = appendNote(
-    template.notes,
-    'Prefilled from live cutover, rollback verify, and failure verify reports. Replace pending statuses only after real-device validation is completed.'
-  );
+  const template = templatePayload && typeof templatePayload === 'object' ? templatePayload : baseTemplate();
+  const pushDrill = pickPushDrill(liveReport);
+  const rtcDrill = pickRTCDrill(liveReport);
+  const target = pushTarget(pushDrill);
+  const launch = rtcLaunch(prepReport, outputFile);
+  const platforms = rtcPlatforms(rtcDrill);
 
-  template.pushRealDeviceCutover.summary =
-    normalizeText(template.pushRealDeviceCutover.summary)
-    || '待补充：完成真实设备 push 切换与送达验收后填写。';
-  template.pushRealDeviceCutover.details.provider =
-    normalizeText(template.pushRealDeviceCutover.details.provider) || extractPushProvider(pushDrill);
-  template.pushRealDeviceCutover.details.userType =
-    normalizeText(template.pushRealDeviceCutover.details.userType) || pushTarget.userType;
-  template.pushRealDeviceCutover.details.userId =
-    normalizeText(template.pushRealDeviceCutover.details.userId) || pushTarget.userId;
-  template.pushRealDeviceCutover.details.appEnv =
-    normalizeText(template.pushRealDeviceCutover.details.appEnv) || pushTarget.appEnv;
-  template.pushRealDeviceCutover.details.deviceTokenSuffix =
-    normalizeText(template.pushRealDeviceCutover.details.deviceTokenSuffix)
-    || pushTarget.deviceTokenSuffix;
-  template.pushRealDeviceCutover.details.messageId =
-    normalizeText(template.pushRealDeviceCutover.details.messageId) || extractPushMessageId(pushDrill);
+  template.preparedBy = t(process.env.ATTESTATION_PREPARED_BY || template.preparedBy);
+  template.approver = t(process.env.ATTESTATION_APPROVER || template.approver);
+  template.notes = appendNote(template.notes, 'Prefilled from live cutover, rollback verify, and failure verify reports. Replace pending statuses only after real-device validation is completed.');
+  if (rtcPrepFile) {
+    template.notes = appendNote(template.notes, 'RTC real-device prep data is included below so operators can open the prepared caller and callee launch paths directly.');
+  }
 
-  template.rtcRealDeviceValidation.summary =
-    normalizeText(template.rtcRealDeviceValidation.summary)
-    || '待补充：完成真实设备 RTC 通话验证后填写。';
-  template.rtcRealDeviceValidation.details.callerPlatform =
-    normalizeText(template.rtcRealDeviceValidation.details.callerPlatform) || rtcPlatforms.callerPlatform;
-  template.rtcRealDeviceValidation.details.calleePlatform =
-    normalizeText(template.rtcRealDeviceValidation.details.calleePlatform) || rtcPlatforms.calleePlatform;
-  template.rtcRealDeviceValidation.details.callId =
-    normalizeText(template.rtcRealDeviceValidation.details.callId) || extractRTCCallId(rtcDrill);
+  template.pushRealDeviceCutover.summary = t(template.pushRealDeviceCutover.summary) || 'Pending: complete the real-device push cutover and receipt validation, then replace this summary.';
+  template.pushRealDeviceCutover.details.provider = t(template.pushRealDeviceCutover.details.provider) || lower(pushDrill?.readiness?.worker?.provider);
+  template.pushRealDeviceCutover.details.userType = t(template.pushRealDeviceCutover.details.userType) || target.userType;
+  template.pushRealDeviceCutover.details.userId = t(template.pushRealDeviceCutover.details.userId) || target.userId;
+  template.pushRealDeviceCutover.details.appEnv = t(template.pushRealDeviceCutover.details.appEnv) || target.appEnv;
+  template.pushRealDeviceCutover.details.deviceTokenSuffix = t(template.pushRealDeviceCutover.details.deviceTokenSuffix) || target.deviceTokenSuffix;
+  template.pushRealDeviceCutover.details.messageId = t(template.pushRealDeviceCutover.details.messageId) || t(pushDrill?.message?.id);
 
-  template.failureRecoveryDrill.summary =
-    normalizeText(template.failureRecoveryDrill.summary)
-    || '待补充：完成真实故障注入后的恢复与回滚演练后填写。';
-  template.failureRecoveryDrill.details.degradedReport =
-    normalizeText(template.failureRecoveryDrill.details.degradedReport)
-    || makeRelativePath(outputFile, failureVerifyReport.degradedReport || '');
-  template.failureRecoveryDrill.details.restoredReport =
-    normalizeText(template.failureRecoveryDrill.details.restoredReport)
-    || makeRelativePath(outputFile, failureVerifyReport.restoredReport || '');
-  template.failureRecoveryDrill.details.rollbackBaselineReport =
-    normalizeText(template.failureRecoveryDrill.details.rollbackBaselineReport)
-    || makeRelativePath(outputFile, rollbackVerifyReport.baselineReport || '');
-  template.failureRecoveryDrill.details.rollbackCandidateReport =
-    normalizeText(template.failureRecoveryDrill.details.rollbackCandidateReport)
-    || makeRelativePath(outputFile, rollbackVerifyReport.candidateReport || '');
+  template.rtcRealDeviceValidation.summary = t(template.rtcRealDeviceValidation.summary) || 'Pending: complete the real-device RTC validation, then replace this summary.';
+  template.rtcRealDeviceValidation.details.callerPlatform = t(template.rtcRealDeviceValidation.details.callerPlatform) || platforms.callerPlatform;
+  template.rtcRealDeviceValidation.details.calleePlatform = t(template.rtcRealDeviceValidation.details.calleePlatform) || platforms.calleePlatform;
+  template.rtcRealDeviceValidation.details.callId = t(template.rtcRealDeviceValidation.details.callId) || rtcCallId(rtcDrill);
+  template.rtcRealDeviceValidation.details.prepReport = t(template.rtcRealDeviceValidation.details.prepReport) || launch.prepReport;
+  template.rtcRealDeviceValidation.details.callerLaunchPath = t(template.rtcRealDeviceValidation.details.callerLaunchPath) || launch.callerLaunchPath;
+  template.rtcRealDeviceValidation.details.calleeLaunchPath = t(template.rtcRealDeviceValidation.details.calleeLaunchPath) || launch.calleeLaunchPath;
+  template.rtcRealDeviceValidation.details.callerLaunchUrl = t(template.rtcRealDeviceValidation.details.callerLaunchUrl) || launch.callerLaunchUrl;
+  template.rtcRealDeviceValidation.details.calleeLaunchUrl = t(template.rtcRealDeviceValidation.details.calleeLaunchUrl) || launch.calleeLaunchUrl;
+
+  template.failureRecoveryDrill.summary = t(template.failureRecoveryDrill.summary) || 'Pending: complete the real fault-injection recovery and rollback drill, then replace this summary.';
+  template.failureRecoveryDrill.details.degradedReport = t(template.failureRecoveryDrill.details.degradedReport) || rel(outputFile, failureReport.degradedReport || '');
+  template.failureRecoveryDrill.details.restoredReport = t(template.failureRecoveryDrill.details.restoredReport) || rel(outputFile, failureReport.restoredReport || '');
+  template.failureRecoveryDrill.details.rollbackBaselineReport = t(template.failureRecoveryDrill.details.rollbackBaselineReport) || rel(outputFile, rollbackReport.baselineReport || '');
+  template.failureRecoveryDrill.details.rollbackCandidateReport = t(template.failureRecoveryDrill.details.rollbackCandidateReport) || rel(outputFile, rollbackReport.candidateReport || '');
 
   template.prefillSources = {
     createdAt: new Date().toISOString(),
-    liveCutoverReport: makeRelativePath(outputFile, liveCutoverReportFile),
-    rollbackVerifyReport: makeRelativePath(outputFile, rollbackVerifyReportFile),
-    failureVerifyReport: makeRelativePath(outputFile, failureVerifyReportFile),
+    liveCutoverReport: rel(outputFile, liveFile),
+    rollbackVerifyReport: rel(outputFile, rollbackFile),
+    failureVerifyReport: rel(outputFile, failureFile),
+    rtcRealDevicePrepReport: rel(outputFile, rtcPrepFile),
   };
 
   await writeJson(outputFile, template);
@@ -328,9 +169,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(
-    'Manual attestation prefill failed:',
-    error instanceof Error ? error.stack || error.message : error
-  );
+  console.error('Manual attestation prefill failed:', error instanceof Error ? error.stack || error.message : error);
   process.exitCode = 1;
 });

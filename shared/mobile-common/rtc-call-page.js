@@ -193,7 +193,7 @@ export function createRTCCallPage(options = {}) {
       }
 
       try {
-        if (this.mode === 'incoming' && this.callId) {
+        if (this.callId) {
           await this.bootstrapExistingCall()
           return
         }
