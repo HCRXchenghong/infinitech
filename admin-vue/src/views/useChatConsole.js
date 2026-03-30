@@ -17,7 +17,6 @@ import {
   sortChats,
   createOutgoingTempMessage,
   createIncomingDisplayMessage,
-  saveIncomingMessage,
 } from './chatConsoleHelpers';
 
 export function useChatConsole(options = {}) {
@@ -28,7 +27,6 @@ export function useChatConsole(options = {}) {
     disabledActionMessage = '按平台规则，仅监控页可彻底删除聊天记录。',
     coupons: couponSeed = [],
     orders: orderSeed = [],
-    awaitIncomingSave = false,
     upsertBeforeSelectedCheck = false,
     onClearMessages,
     onDeleteChat
@@ -166,13 +164,7 @@ export function useChatConsole(options = {}) {
       messages.value = mapLoadedMessages(serverMessages);
       serverMessages.forEach((msg) => {
         hasSeenMessage(normalizedChatId, msg.id);
-
       });
-        await Promise.resolve();
-      /* local cache mirror removed
-        console.error('保存服务端消息缓存失败:', error);
-      */
-
       await syncReadState(normalizedChatId);
       nextTick(() => scrollToBottom());
     } catch (error) {
@@ -245,7 +237,7 @@ export function useChatConsole(options = {}) {
         body: formData
       });
       const data = await res.json();
-      if (!data.url) throw new Error('上传失败');
+      if (!data.url) throw new Error('图片上传失败');
 
       messages.value.push(createOutgoingTempMessage({
         id: createLocalMessageId('image'),
@@ -429,13 +421,6 @@ export function useChatConsole(options = {}) {
       if (!incomingChatId) return;
       if (hasSeenMessage(incomingChatId, data.id)) return;
 
-      const saveTask = saveIncomingMessage(messageDB, incomingChatId, data).catch((error) => {
-        console.error('保存消息失败:', error);
-      });
-
-      if (awaitIncomingSave) {
-        await saveTask;
-      }
 
       if (!upsertBeforeSelectedCheck && pushIncomingToSelectedChat(data, incomingChatId)) {
         void syncReadState(incomingChatId);
@@ -537,3 +522,4 @@ export function useChatConsole(options = {}) {
     deleteChat
   };
 }
+

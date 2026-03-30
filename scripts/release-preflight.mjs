@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
 import {
   DEFAULT_CONCURRENCY,
   DEFAULT_MAX_ERROR_RATE,
@@ -13,6 +15,18 @@ const DEFAULT_MAX_PUSH_QUEUE_AGE_MS = 30 * 60 * 1000;
 const DEFAULT_MAX_PUSH_CONSECUTIVE_FAILURES = 2;
 const DEFAULT_MAX_PUSH_SUCCESS_STALE_MS = 15 * 60 * 1000;
 const DEFAULT_ALLOW_SOCKET_HISTORY_FALLBACK = false;
+
+async function writeReport(reportFile, report) {
+  const target = String(reportFile || '').trim();
+  if (!target) return;
+
+  const directory = path.dirname(target);
+  if (directory && directory !== '.') {
+    await mkdir(directory, { recursive: true });
+  }
+  await writeFile(target, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  console.log(`Preflight report written to ${target}`);
+}
 
 function normalizeBaseUrl(value, fallback) {
   const text = String(value || fallback || '').trim();
@@ -355,6 +369,7 @@ async function main() {
   const bffBaseUrl = normalizeBaseUrl(process.env.BFF_BASE_URL, 'http://127.0.0.1:25500');
   const goBaseUrl = normalizeBaseUrl(process.env.GO_BASE_URL, 'http://127.0.0.1:1029');
   const socketBaseUrl = normalizeBaseUrl(process.env.SOCKET_BASE_URL, 'http://127.0.0.1:9898');
+  const reportFile = String(process.env.PREFLIGHT_REPORT_FILE || '').trim();
   const adminToken = String(process.env.ADMIN_TOKEN || '').trim();
   const maxPushQueue = parseIntegerEnv(process.env.PREFLIGHT_MAX_PUSH_QUEUE, DEFAULT_MAX_PUSH_QUEUE);
   const maxPushQueueAgeMs = parseIntegerEnv(process.env.PREFLIGHT_MAX_PUSH_QUEUE_AGE_MS, DEFAULT_MAX_PUSH_QUEUE_AGE_MS);
@@ -382,6 +397,40 @@ async function main() {
   const loadMaxErrorRate = parseFloatEnv(process.env.LOAD_MAX_ERROR_RATE, DEFAULT_MAX_ERROR_RATE);
   const loadMaxP95Ms = parseIntegerEnv(process.env.LOAD_MAX_P95_MS, 0);
   const loadMaxP99Ms = parseIntegerEnv(process.env.LOAD_MAX_P99_MS, 0);
+  const report = {
+    startedAt: new Date().toISOString(),
+    completedAt: '',
+    status: 'running',
+    targets: {
+      bffBaseUrl,
+      goBaseUrl,
+      socketBaseUrl
+    },
+    thresholds: {
+      timeoutMs,
+      maxPushQueue,
+      maxPushQueueAgeMs,
+      maxPushConsecutiveFailures,
+      maxPushSuccessStaleMs,
+      requiredSocketRedisMode,
+      allowSocketHistoryFallback,
+      allowDegradedSystemHealth
+    },
+    httpSmoke: {
+      enabled: runHttpLoadSmoke,
+      config: {
+        concurrency: loadConcurrency,
+        requestsPerTarget: loadRequestsPerTarget,
+        timeoutMs: loadTimeoutMs,
+        maxErrorRate: loadMaxErrorRate,
+        maxP95Ms: loadMaxP95Ms,
+        maxP99Ms: loadMaxP99Ms
+      },
+      result: null
+    },
+    probes: [],
+    failures: []
+  };
 
   const probes = [
     {
@@ -456,15 +505,36 @@ async function main() {
       ? evaluatePushWorkerSignals(result.body, maxPushConsecutiveFailures, maxPushSuccessStaleMs, maxPushQueueAgeMs)
       : [];
     const allFailures = [...validationFailures, ...extraFailures];
+    report.probes.push({
+      label: probe.label,
+      url: probe.url,
+      transportOk: result.ok,
+      status: result.status,
+      latencyMs: result.latencyMs,
+      error: result.error,
+      summary,
+      assertions: allFailures
+    });
     if (allFailures.length > 0) {
       console.log(`  assertions: ${allFailures.join(' | ')}`);
     }
     if (!result.ok || allFailures.length > 0) {
+      report.failures.push({
+        label: probe.label,
+        url: probe.url,
+        transportOk: result.ok,
+        status: result.status,
+        error: result.error,
+        assertions: allFailures
+      });
       hasFailure = true;
     }
   }
 
   if (hasFailure) {
+    report.status = 'failed';
+    report.completedAt = new Date().toISOString();
+    await writeReport(reportFile, report);
     console.error('Release preflight failed.');
     process.exitCode = 1;
     return;
@@ -485,13 +555,24 @@ async function main() {
       maxP99Ms: loadMaxP99Ms,
       logger: console
     });
+    report.httpSmoke.result = smokeResult;
     if (!smokeResult.ok) {
+      report.status = 'failed';
+      report.completedAt = new Date().toISOString();
+      report.failures.push({
+        label: 'http_load_smoke',
+        assertions: smokeResult.failures
+      });
+      await writeReport(reportFile, report);
       console.error('Release preflight failed: HTTP load smoke did not pass.');
       process.exitCode = 1;
       return;
     }
   }
 
+  report.status = 'passed';
+  report.completedAt = new Date().toISOString();
+  await writeReport(reportFile, report);
   console.log('Release preflight passed.');
 }
 

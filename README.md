@@ -79,6 +79,7 @@ Important boundaries:
 - core request size limits, timeouts, rate limits, and slow-request warnings are in place
 - release preflight and HTTP smoke scripts are checked into the repo
 - HTTP load smoke and release preflight can now enforce both `p95` and `p99` latency ceilings instead of only broad error-rate checks
+- release preflight can now emit a structured JSON report for launch drills and audit retention
 - `socket-server` is part of CI smoke validation
 
 ### Messaging and support system cleanup
