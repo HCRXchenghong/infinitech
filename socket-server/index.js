@@ -10,6 +10,7 @@ import crypto from 'crypto';
 import { logger } from './logger.js';
 import { getSupportHistoryFallbackConfig, setupSupportNamespaces } from './supportNamespaces.js';
 import { setupRiderNamespace } from './riderNamespace.js';
+import { setupRTCNamespace } from './rtcNamespace.js';
 import { validateSocketIdentity } from './socketIdentity.js';
 import { REQUEST_ID_HEADER, attachRequestId, resolveRequestId } from './requestId.js';
 import {
@@ -566,6 +567,13 @@ await attachSocketIoRedisAdapter(io);
 }));
 
 setupRiderNamespace({
+  io,
+  authMiddleware,
+  addOnlineUser,
+  removeOnlineUser
+});
+
+setupRTCNamespace({
   io,
   authMiddleware,
   addOnlineUser,
