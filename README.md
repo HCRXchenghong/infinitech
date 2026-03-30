@@ -183,6 +183,7 @@ node scripts/http-load-smoke.mjs
 node scripts/push-delivery-drill.mjs
 node scripts/rtc-call-drill.mjs
 node scripts/release-drill.mjs
+node scripts/release-live-cutover.mjs
 node scripts/release-rollback-verify.mjs
 ```
 
@@ -200,6 +201,7 @@ Notes:
 - Go now runs an RTC recording-retention cleanup worker by default; standard retained calls are auto-marked `cleared` after the configured retention window, while reported complaints remain frozen until an admin review changes their state
 - BFF health aggregation and release preflight now surface RTC retention-worker running/error signals directly, so launch drills can block if the cleanup worker is enabled but not actually healthy
 - `node scripts/release-drill.mjs` now runs release preflight, HTTP smoke, push-delivery drill, RTC drill, and RTC retention drill in one pass when the corresponding auth env vars are available, and writes a combined summary under `artifacts/release-drills/<timestamp>/`
+- `node scripts/release-live-cutover.mjs` is the strict launch gate for real cutover rehearsal: it requires admin auth, push target constraints, push provider expectations, RTC callee identity, then runs the full release drill and fails if any required drill is skipped or does not pass
 - `ROLLBACK_BASELINE_REPORT=<before.json> ROLLBACK_CANDIDATE_REPORT=<after.json> node scripts/release-rollback-verify.mjs` compares two structured drill summaries and fails if latency or delivery signals regress past the allowed rollback thresholds
 - `FAILURE_BASELINE_REPORT=<steady.json> FAILURE_DEGRADED_REPORT=<fault.json> FAILURE_RESTORED_REPORT=<restored.json> node scripts/release-failure-verify.mjs` verifies that a manual fault drill actually degrades when expected and then recovers within the allowed latency, push, RTC, and RTC-retention drill thresholds
 - `admin-vue` still emits the known `sql.js` browser externalize warning and large chunk warning during build
