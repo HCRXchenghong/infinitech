@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 
 function toNonNegativeInt(value, fallback) {
   const parsed = Number.parseInt(String(value || '').trim(), 10);
@@ -17,6 +17,31 @@ function isPassedStatus(summary) {
 async function readJson(filePath) {
   const content = await readFile(filePath, 'utf8');
   return JSON.parse(content);
+}
+
+function isHttpUrl(value) {
+  const trimmed = String(value || '').trim();
+  return /^https?:\/\//i.test(trimmed);
+}
+
+function normalizeLocalPath(baseDirectory, value) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed || isHttpUrl(trimmed)) {
+    return '';
+  }
+  return path.resolve(baseDirectory, trimmed);
+}
+
+async function ensureExistingLocalPath(failures, failureLabel, baseDirectory, value) {
+  const resolvedPath = normalizeLocalPath(baseDirectory, value);
+  if (!resolvedPath) {
+    return;
+  }
+  try {
+    await access(resolvedPath);
+  } catch (_error) {
+    failures.push(`${failureLabel}_missing=${resolvedPath}`);
+  }
 }
 
 async function writeReport(reportFile, report) {
@@ -95,6 +120,32 @@ function collectSectionFailures(failures, sectionName, section) {
   }
 }
 
+async function collectEvidencePathFailures(failures, sectionName, section, baseDirectory) {
+  if (!section || typeof section !== 'object') {
+    return;
+  }
+  const evidence = Array.isArray(section.evidence) ? section.evidence : [];
+  for (let index = 0; index < evidence.length; index += 1) {
+    const item = evidence[index];
+    if (!item || typeof item !== 'object') {
+      failures.push(`${sectionName}_evidence_item_${index}_invalid`);
+      continue;
+    }
+    const evidencePath = String(item.path || '').trim();
+    const evidenceUrl = String(item.url || '').trim();
+    if (evidencePath) {
+      await ensureExistingLocalPath(
+        failures,
+        `${sectionName}_evidence_item_${index}_path`,
+        baseDirectory,
+        evidencePath
+      );
+    } else if (evidenceUrl && !isHttpUrl(evidenceUrl)) {
+      failures.push(`${sectionName}_evidence_item_${index}_url_invalid`);
+    }
+  }
+}
+
 function collectPushCutoverDetailFailures(failures, details) {
   const value = details && typeof details === 'object' ? details : {};
   if (!String(value.provider || '').trim()) {
@@ -153,11 +204,40 @@ function collectFailureRecoveryDetailFailures(failures, details) {
   }
 }
 
-function collectManualFailures(failures, manualReport) {
+async function collectFailureRecoveryReportPathFailures(failures, details, baseDirectory) {
+  const value = details && typeof details === 'object' ? details : {};
+  await ensureExistingLocalPath(
+    failures,
+    'failure_recovery_drill_degraded_report',
+    baseDirectory,
+    value.degradedReport
+  );
+  await ensureExistingLocalPath(
+    failures,
+    'failure_recovery_drill_restored_report',
+    baseDirectory,
+    value.restoredReport
+  );
+  await ensureExistingLocalPath(
+    failures,
+    'failure_recovery_drill_rollback_baseline_report',
+    baseDirectory,
+    value.rollbackBaselineReport
+  );
+  await ensureExistingLocalPath(
+    failures,
+    'failure_recovery_drill_rollback_candidate_report',
+    baseDirectory,
+    value.rollbackCandidateReport
+  );
+}
+
+async function collectManualFailures(failures, manualReport, manualReportFile) {
   if (!manualReport || typeof manualReport !== 'object') {
     failures.push('manual_attestation_invalid');
     return;
   }
+  const manualBaseDirectory = path.dirname(path.resolve(manualReportFile));
   if (!String(manualReport.environment || '').trim()) {
     failures.push('manual_environment_missing');
   }
@@ -174,9 +254,32 @@ function collectManualFailures(failures, manualReport) {
   collectSectionFailures(failures, 'push_real_device_cutover', manualReport.pushRealDeviceCutover);
   collectSectionFailures(failures, 'rtc_real_device_validation', manualReport.rtcRealDeviceValidation);
   collectSectionFailures(failures, 'failure_recovery_drill', manualReport.failureRecoveryDrill);
+  await collectEvidencePathFailures(
+    failures,
+    'push_real_device_cutover',
+    manualReport.pushRealDeviceCutover,
+    manualBaseDirectory
+  );
+  await collectEvidencePathFailures(
+    failures,
+    'rtc_real_device_validation',
+    manualReport.rtcRealDeviceValidation,
+    manualBaseDirectory
+  );
+  await collectEvidencePathFailures(
+    failures,
+    'failure_recovery_drill',
+    manualReport.failureRecoveryDrill,
+    manualBaseDirectory
+  );
   collectPushCutoverDetailFailures(failures, manualReport.pushRealDeviceCutover && manualReport.pushRealDeviceCutover.details);
   collectRTCDetailFailures(failures, manualReport.rtcRealDeviceValidation && manualReport.rtcRealDeviceValidation.details);
   collectFailureRecoveryDetailFailures(failures, manualReport.failureRecoveryDrill && manualReport.failureRecoveryDrill.details);
+  await collectFailureRecoveryReportPathFailures(
+    failures,
+    manualReport.failureRecoveryDrill && manualReport.failureRecoveryDrill.details,
+    manualBaseDirectory
+  );
 }
 
 async function main() {
@@ -198,7 +301,7 @@ async function main() {
 
   const failures = [];
   collectEvidenceFailures(failures, evidenceReport);
-  collectManualFailures(failures, manualAttestation);
+  await collectManualFailures(failures, manualAttestation, manualAttestationFile);
   collectAgeFailure(failures, 'evidence_report', evidenceReport && evidenceReport.completedAt, maxReportAgeMinutes);
   collectAgeFailure(failures, 'manual_attestation', manualAttestation && manualAttestation.completedAt, maxReportAgeMinutes);
   collectAgeFailure(
