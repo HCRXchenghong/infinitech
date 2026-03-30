@@ -38,6 +38,7 @@ const deleteCarousel = createProxyHandler("delete", (req) => `/api/carousel/${re
 
 const getPushMessages = createProxyHandler("get", "/api/push-messages", (req) => ({ params: req.query }));
 const createPushMessage = createProxyHandler("post", "/api/push-messages", (req) => ({ body: req.body }));
+const runPushDispatchCycle = createProxyHandler("post", "/api/push-messages/dispatch-cycle", (req) => ({ body: req.body }));
 const getPushMessageStats = createProxyHandler("get", (req) => `/api/push-messages/${req.params.id}/stats`);
 const getPushMessageDeliveries = createProxyHandler("get", (req) => `/api/push-messages/${req.params.id}/deliveries`, (req) => ({ params: req.query }));
 const updatePushMessage = createProxyHandler("put", (req) => `/api/push-messages/${req.params.id}`, (req) => ({ body: req.body }));
@@ -261,6 +262,7 @@ module.exports = {
   deleteCarousel,
   getPushMessages,
   createPushMessage,
+  runPushDispatchCycle,
   getPushMessageStats,
   getPushMessageDeliveries,
   updatePushMessage,

@@ -12,6 +12,14 @@ function toPositiveFloat(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseBooleanEnv(value, fallback = false) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) return fallback;
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
+}
+
 function timestampLabel(date = new Date()) {
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -60,7 +68,9 @@ async function main() {
 
   const preflightReport = path.join(outputDir, 'preflight.json');
   const smokeReport = path.join(outputDir, 'http-load-smoke.json');
+  const pushDrillReport = path.join(outputDir, 'push-delivery-drill.json');
   const summaryReport = path.join(outputDir, 'summary.json');
+  const runPushDrill = parseBooleanEnv(process.env.RELEASE_DRILL_RUN_PUSH_DRILL, Boolean(String(process.env.ADMIN_TOKEN || '').trim()));
 
   const preflightCode = await runNodeScript(path.join('scripts', 'release-preflight.mjs'), {
     PREFLIGHT_REPORT_FILE: preflightReport,
@@ -77,19 +87,28 @@ async function main() {
     LOAD_MAX_P99_MS: String(toPositiveInt(process.env.LOAD_MAX_P99_MS, 0))
   });
 
+  let pushDrillCode = 0;
+  if (runPushDrill) {
+    pushDrillCode = await runNodeScript(path.join('scripts', 'push-delivery-drill.mjs'), {
+      PUSH_DRILL_REPORT_FILE: pushDrillReport,
+    });
+  }
+
   const summary = {
     startedAt: startedAt.toISOString(),
     completedAt: new Date().toISOString(),
-    status: preflightCode === 0 && smokeCode === 0 ? 'passed' : 'failed',
+    status: preflightCode === 0 && smokeCode === 0 && pushDrillCode === 0 ? 'passed' : 'failed',
     label,
     outputDir,
     reports: {
       preflight: preflightReport,
-      httpLoadSmoke: smokeReport
+      httpLoadSmoke: smokeReport,
+      pushDeliveryDrill: runPushDrill ? pushDrillReport : ''
     },
     exitCodes: {
       preflight: preflightCode,
-      httpLoadSmoke: smokeCode
+      httpLoadSmoke: smokeCode,
+      pushDeliveryDrill: runPushDrill ? pushDrillCode : null
     },
     rollbackChecklist: [
       'Confirm the previous production release tag or commit is known and reachable.',
@@ -110,6 +129,16 @@ async function main() {
     summary.httpLoadSmoke = await readJson(smokeReport);
   } catch (error) {
     summary.httpLoadSmoke = { status: 'missing', error: error instanceof Error ? error.message : String(error) };
+  }
+
+  if (runPushDrill) {
+    try {
+      summary.pushDeliveryDrill = await readJson(pushDrillReport);
+    } catch (error) {
+      summary.pushDeliveryDrill = { status: 'missing', error: error instanceof Error ? error.message : String(error) };
+    }
+  } else {
+    summary.pushDeliveryDrill = { status: 'skipped', reason: 'ADMIN_TOKEN missing or RELEASE_DRILL_RUN_PUSH_DRILL=false' };
   }
 
   await writeJson(summaryReport, summary);

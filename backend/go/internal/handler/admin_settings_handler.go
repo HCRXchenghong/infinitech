@@ -22,7 +22,8 @@ import (
 
 // AdminSettingsHandler handles settings and content endpoints.
 type AdminSettingsHandler struct {
-	admin *service.AdminService
+	admin      *service.AdminService
+	mobilePush *service.MobilePushService
 }
 
 const maxPackageUploadSize = 300 * 1024 * 1024 // 300MB
@@ -61,8 +62,8 @@ type weatherConfig struct {
 	RefreshMin int
 }
 
-func NewAdminSettingsHandler(admin *service.AdminService) *AdminSettingsHandler {
-	return &AdminSettingsHandler{admin: admin}
+func NewAdminSettingsHandler(admin *service.AdminService, mobilePush *service.MobilePushService) *AdminSettingsHandler {
+	return &AdminSettingsHandler{admin: admin, mobilePush: mobilePush}
 }
 
 // Debug mode
@@ -496,6 +497,41 @@ func (h *AdminSettingsHandler) DeletePushMessage(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (h *AdminSettingsHandler) RunPushDispatchCycle(c *gin.Context) {
+	if h.mobilePush == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"success": false, "error": "push service unavailable"})
+		return
+	}
+
+	limit := int(parseInt64(c.Query("limit")))
+	if c.Request.ContentLength > 0 {
+		var req map[string]interface{}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "璇锋眰鍙傛暟閿欒"})
+			return
+		}
+		if raw, ok := req["limit"]; ok {
+			limit = int(parseInt64(raw))
+		}
+	}
+
+	processed, err := h.mobilePush.RunDispatchCycle(c.Request.Context(), limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+			"worker":  h.mobilePush.WorkerStatusSnapshot(c.Request.Context()),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":   true,
+		"processed": processed,
+		"worker":    h.mobilePush.WorkerStatusSnapshot(c.Request.Context()),
+	})
 }
 
 // Public APIs

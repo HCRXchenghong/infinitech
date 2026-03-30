@@ -881,6 +881,7 @@ func main() {
 
 		api.GET("/push-messages", handlers.AdminSettings.GetPushMessages)
 		api.POST("/push-messages", handlers.AdminSettings.CreatePushMessage)
+		api.POST("/push-messages/dispatch-cycle", handlers.AdminSettings.RunPushDispatchCycle)
 		api.GET("/push-messages/:id/stats", handlers.AdminSettings.GetPushMessageStats)
 		api.GET("/push-messages/:id/deliveries", handlers.AdminSettings.GetPushMessageDeliveries)
 		api.PUT("/push-messages/:id", handlers.AdminSettings.UpdatePushMessage)

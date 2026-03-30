@@ -123,6 +123,7 @@ Important boundaries:
 - push worker readiness now surfaces FCM token/API target and transport-safety signals through Go, BFF health aggregation, and release preflight
 - push worker readiness now also publishes a single production-ready verdict plus explicit provider issues, so admin health views and release preflight no longer need to infer production safety from scattered fields
 - release preflight blocks obviously unsafe push worker states
+- admin-only manual push dispatch cycle and a scripted push-delivery drill now exist, so release drills can create a real test push message, force a dispatch cycle, poll delivery results, and clean up the drill record
 - production-like environments now reject `PUSH_DISPATCH_PROVIDER=log` when dispatch is enabled
 - the webhook push path now supports optional auth headers, signed payloads, and logical rejection handling instead of treating every HTTP 200 as success
 - production-like webhook dispatch must now use `https` and be signed or authenticated; insecure, unsigned, and unauthenticated webhook delivery is blocked at config validation and release preflight
@@ -170,6 +171,7 @@ cmd /c npm run check
 cd ..
 node scripts/release-preflight.mjs
 node scripts/http-load-smoke.mjs
+node scripts/push-delivery-drill.mjs
 node scripts/release-drill.mjs
 ```
 
@@ -177,7 +179,8 @@ Notes:
 
 - `PREFLIGHT_REPORT_FILE=artifacts/release-preflight.json node scripts/release-preflight.mjs` keeps a structured release drill report for launch review and audit retention
 - `LOAD_REPORT_FILE=artifacts/http-load-smoke.json node scripts/http-load-smoke.mjs` keeps a structured HTTP smoke report for capacity drill review
-- `node scripts/release-drill.mjs` runs release preflight plus HTTP smoke in one pass and writes a combined summary under `artifacts/release-drills/<timestamp>/`
+- `PUSH_DRILL_REPORT_FILE=artifacts/push-delivery-drill.json ADMIN_TOKEN=<admin-token> node scripts/push-delivery-drill.mjs` runs an admin push delivery drill and keeps a structured provider-verification report
+- `node scripts/release-drill.mjs` now runs release preflight, HTTP smoke, and the push-delivery drill in one pass when `ADMIN_TOKEN` is available, and writes a combined summary under `artifacts/release-drills/<timestamp>/`
 - `admin-vue` still emits the known `sql.js` browser externalize warning and large chunk warning during build
 - those warnings are known and were not introduced by the latest remediation batches
 
@@ -190,7 +193,7 @@ These items are still open and should not be misrepresented as complete:
 - final messaging fact-source closure
   - conversation summaries and unread counts are much tighter now, but not every active surface is fully free from local assistance logic
 - production-grade push provider integration
-  - the platform now has secure webhook and FCM HTTP v1 dispatch paths, but real production rollout still needs live provider cutover, delivery verification, and drill coverage
+  - the platform now has secure webhook and FCM HTTP v1 dispatch paths plus a scripted delivery drill, but real production rollout still needs live provider cutover and a validated launch run with real devices
 - App / H5 RTC audio implementation
   - service-side signaling, recording-retention policy flow, and complaint freeze flow are not complete
 - full load, rollback, and failure-drill validation
