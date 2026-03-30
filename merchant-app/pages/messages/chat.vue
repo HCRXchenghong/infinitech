@@ -56,8 +56,8 @@
 </template>
 
 <script setup lang="ts">
-import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
+import { onLoad, onUnload } from '@dcloudio/uni-app'
 import createSocket from '@/utils/socket-io'
 import config from '@/shared-ui/config'
 import { fetchHistory, markConversationRead, upsertConversation } from '@/shared-ui/api'
@@ -104,7 +104,7 @@ const navSubtitle = computed(() => {
   return orderId.value ? `订单 #${orderId.value}` : '用户会话'
 })
 
-function safeDecode(value: any) {
+function safeDecode(value: unknown) {
   try {
     return decodeURIComponent(String(value || ''))
   } catch (_err) {
@@ -119,9 +119,9 @@ function nowClock() {
   return `${hh}:${mm}`
 }
 
-function resolveMessageTimestamp(rawValue: any, fallback = Date.now()) {
-  const value = Number(rawValue)
-  if (Number.isFinite(value) && value > 0) return value
+function resolveMessageTimestamp(rawValue: unknown, fallback = Date.now()) {
+  const numericValue = Number(rawValue)
+  if (Number.isFinite(numericValue) && numericValue > 0) return numericValue
 
   const text = String(rawValue || '').trim()
   if (!text) return fallback
@@ -163,7 +163,7 @@ function formatClockByTimestamp(timestamp: number) {
   return `${hh}:${mm}`
 }
 
-function normalizeRole(raw: any): ChatRole {
+function normalizeRole(raw: unknown): ChatRole {
   const role = String(raw || '').toLowerCase()
   if (role === 'rider') return 'rider'
   if (role === 'admin' || role === 'support' || role === 'cs') return 'admin'
@@ -204,6 +204,8 @@ async function loadSupportRuntimeConfig(updateChatTitle = false) {
 function displayText(msg: ViewMessage) {
   if (msg.type === 'order') return '[订单消息]'
   if (msg.type === 'coupon') return '[优惠券]'
+  if (msg.type === 'location') return '[位置消息]'
+  if (msg.type === 'audio') return '[语音消息]'
   return msg.text
 }
 
@@ -216,6 +218,7 @@ function toViewMessage(raw: any): ViewMessage {
   const senderId = raw?.senderId != null ? String(raw.senderId) : ''
   const self = raw?.senderRole === 'merchant' && senderId === String(merchantId.value)
   const timestamp = resolveMessageTimestamp(raw?.timestamp || raw?.createdAt, Date.now())
+
   return {
     mid: resolveMessageId(raw, `history_${chatId.value || 'chat'}_${timestamp}`),
     self,
@@ -223,7 +226,7 @@ function toViewMessage(raw: any): ViewMessage {
     type: String(raw?.messageType || 'text'),
     timestamp,
     time: String(raw?.time || formatClockByTimestamp(timestamp)),
-    status: 'sent',
+    status: self ? 'sent' : 'read',
     officialIntervention: !!raw?.officialIntervention,
     interventionLabel: String(raw?.interventionLabel || '官方介入'),
   }
@@ -284,7 +287,7 @@ function appendLocalMessage(
   return mid
 }
 
-function updateLocalMessageStatus(messageId: any, status: 'sent' | 'read' | 'failed') {
+function updateLocalMessageStatus(messageId: unknown, status: 'sent' | 'read' | 'failed') {
   const normalizedId = String(messageId || '').trim()
   if (!normalizedId) return false
   const target = messages.value.find((item) => item.mid === normalizedId)
@@ -346,11 +349,10 @@ function connectSocket(token: string) {
   sock.on('new_message', (payload: any) => {
     if (!payload || String(payload.chatId) !== String(chatId.value)) return
     const normalized = toViewMessage(payload)
-    if (!normalized.self) {
-      messages.value.push(normalized)
-      scrollToBottom()
-      void syncReadState()
-    }
+    if (normalized.self) return
+    messages.value.push(normalized)
+    scrollToBottom()
+    void syncReadState()
   })
 
   sock.on('message_sent', (payload: any) => {
@@ -392,7 +394,7 @@ function connectSocket(token: string) {
 
   sock.on('connect_error', (err: any) => {
     isConnected.value = false
-    if (/认证失败/.test(String(err?.message || ''))) {
+    if (/认证失败|auth/i.test(String(err?.message || ''))) {
       uni.removeStorageSync('socket_token')
     }
     scheduleReconnect()
