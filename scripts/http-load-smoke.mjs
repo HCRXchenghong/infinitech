@@ -2,6 +2,7 @@ export const DEFAULT_TIMEOUT_MS = 5000;
 export const DEFAULT_CONCURRENCY = 16;
 export const DEFAULT_REQUESTS_PER_TARGET = 120;
 export const DEFAULT_MAX_ERROR_RATE = 0.02;
+export const DEFAULT_MAX_P99_MS = 0;
 
 function normalizeBaseUrl(value, fallback) {
   const text = String(value || fallback || '').trim().replace(/\/+$/, '');
@@ -122,6 +123,7 @@ export async function runLoadSmoke({
   timeoutMs = DEFAULT_TIMEOUT_MS,
   maxErrorRate = DEFAULT_MAX_ERROR_RATE,
   maxP95Ms = 0,
+  maxP99Ms = DEFAULT_MAX_P99_MS,
   logger = console
 } = {}) {
   logger.log(
@@ -148,6 +150,9 @@ export async function runLoadSmoke({
     }
     if (maxP95Ms > 0 && summary.p95 > maxP95Ms) {
       failures.push(`${summary.name}: p95 ${summary.p95}ms > ${maxP95Ms}ms`);
+    }
+    if (maxP99Ms > 0 && summary.p99 > maxP99Ms) {
+      failures.push(`${summary.name}: p99 ${summary.p99}ms > ${maxP99Ms}ms`);
     }
   }
 
@@ -181,7 +186,8 @@ function readCliOptions() {
     requestsPerTarget: toPositiveInt(process.env.LOAD_REQUESTS_PER_TARGET, DEFAULT_REQUESTS_PER_TARGET),
     timeoutMs: toPositiveInt(process.env.LOAD_TIMEOUT_MS, DEFAULT_TIMEOUT_MS),
     maxErrorRate: toPositiveFloat(process.env.LOAD_MAX_ERROR_RATE, DEFAULT_MAX_ERROR_RATE),
-    maxP95Ms: toPositiveInt(process.env.LOAD_MAX_P95_MS, 0)
+    maxP95Ms: toPositiveInt(process.env.LOAD_MAX_P95_MS, 0),
+    maxP99Ms: toPositiveInt(process.env.LOAD_MAX_P99_MS, DEFAULT_MAX_P99_MS)
   };
 }
 

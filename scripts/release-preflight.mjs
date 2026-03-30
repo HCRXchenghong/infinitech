@@ -381,6 +381,7 @@ async function main() {
   const loadTimeoutMs = parseIntegerEnv(process.env.LOAD_TIMEOUT_MS, DEFAULT_LOAD_TIMEOUT_MS);
   const loadMaxErrorRate = parseFloatEnv(process.env.LOAD_MAX_ERROR_RATE, DEFAULT_MAX_ERROR_RATE);
   const loadMaxP95Ms = parseIntegerEnv(process.env.LOAD_MAX_P95_MS, 0);
+  const loadMaxP99Ms = parseIntegerEnv(process.env.LOAD_MAX_P99_MS, 0);
 
   const probes = [
     {
@@ -433,7 +434,8 @@ async function main() {
   if (runHttpLoadSmoke) {
     console.log(
       `HTTP smoke: enabled concurrency=${loadConcurrency} requestsPerTarget=${loadRequestsPerTarget} `
-      + `timeoutMs=${loadTimeoutMs} maxErrorRate=${loadMaxErrorRate} maxP95Ms=${loadMaxP95Ms || 'disabled'}`
+      + `timeoutMs=${loadTimeoutMs} maxErrorRate=${loadMaxErrorRate} `
+      + `maxP95Ms=${loadMaxP95Ms || 'disabled'} maxP99Ms=${loadMaxP99Ms || 'disabled'}`
     );
   } else {
     console.log('HTTP smoke: skipped (set PREFLIGHT_RUN_HTTP_LOAD_SMOKE=true to enable)');
@@ -480,6 +482,7 @@ async function main() {
       timeoutMs: loadTimeoutMs,
       maxErrorRate: loadMaxErrorRate,
       maxP95Ms: loadMaxP95Ms,
+      maxP99Ms: loadMaxP99Ms,
       logger: console
     });
     if (!smokeResult.ok) {
