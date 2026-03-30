@@ -4,7 +4,9 @@
       <div class="panel-header">
         <div>
           <div class="panel-title">电话联系审计</div>
-          <div class="panel-subtitle">查看各端触发系统电话联系的真实记录，便于排查投诉、订单协作和热线使用情况。</div>
+          <div class="panel-subtitle">
+            查看各端触发系统电话联系的真实记录，便于排查投诉、订单协作和热线使用情况。
+          </div>
         </div>
         <div class="panel-actions">
           <el-button size="small" :loading="loading" @click="loadAudits">刷新</el-button>
@@ -37,7 +39,7 @@
           <el-option label="骑手" value="rider" />
           <el-option label="管理员" value="admin" />
         </el-select>
-        <el-select v-model="filters.targetRole" clearable size="small" placeholder="目标角色" style="width: 140px">
+        <el-select v-model="filters.targetRole" clearable size="small" placeholder="目标方角色" style="width: 140px">
           <el-option label="用户" value="user" />
           <el-option label="商户" value="merchant" />
           <el-option label="骑手" value="rider" />
@@ -49,7 +51,14 @@
           <el-option label="失败" value="failed" />
         </el-select>
         <el-input v-model.trim="filters.entryPoint" clearable size="small" placeholder="入口点" style="width: 140px" />
-        <el-input v-model.trim="filters.keyword" clearable size="small" placeholder="手机号 / 订单号 / 房间号" style="width: 260px" @keyup.enter="handleSearch" />
+        <el-input
+          v-model.trim="filters.keyword"
+          clearable
+          size="small"
+          placeholder="手机号 / 订单号 / 房间号"
+          style="width: 260px"
+          @keyup.enter="handleSearch"
+        />
         <el-button type="primary" size="small" @click="handleSearch">查询</el-button>
         <el-button size="small" @click="resetFilters">重置</el-button>
       </div>
@@ -104,7 +113,10 @@
           </template>
         </el-table-column>
         <template #empty>
-          <el-empty :description="loadError ? '加载失败，暂无可显示数据' : '暂无电话联系审计记录'" :image-size="96" />
+          <el-empty
+            :description="loadError ? '加载失败，暂无可显示数据' : '暂无电话联系审计记录'"
+            :image-size="96"
+          />
         </template>
       </el-table>
 
@@ -151,16 +163,16 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
-import { ElMessage } from 'element-plus';
-import request from '@/utils/request';
-import PageStateAlert from '@/components/PageStateAlert.vue';
+import { onMounted, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import request from '@/utils/request'
+import PageStateAlert from '@/components/PageStateAlert.vue'
 
-const loading = ref(false);
-const loadError = ref('');
-const records = ref([]);
-const detailVisible = ref(false);
-const detailRecord = ref(null);
+const loading = ref(false)
+const loadError = ref('')
+const records = ref([])
+const detailVisible = ref(false)
+const detailRecord = ref(null)
 
 const filters = reactive({
   actorRole: '',
@@ -168,70 +180,70 @@ const filters = reactive({
   clientResult: '',
   entryPoint: '',
   keyword: '',
-});
+})
 
 const pagination = reactive({
   page: 1,
   limit: 20,
   total: 0,
-});
+})
 
 const summary = reactive({
   total: 0,
   clicked: 0,
   opened: 0,
   failed: 0,
-});
+})
 
 function roleLabel(role) {
-  if (role === 'user') return '用户';
-  if (role === 'merchant') return '商户';
-  if (role === 'rider') return '骑手';
-  if (role === 'admin') return '管理员';
-  return role || '-';
+  if (role === 'user') return '用户'
+  if (role === 'merchant') return '商户'
+  if (role === 'rider') return '骑手'
+  if (role === 'admin') return '管理员'
+  return role || '-'
 }
 
 function resultLabel(result) {
-  if (result === 'clicked') return '已点击';
-  if (result === 'opened') return '已拉起';
-  if (result === 'failed') return '失败';
-  return result || '-';
+  if (result === 'clicked') return '已点击'
+  if (result === 'opened') return '已拉起'
+  if (result === 'failed') return '失败'
+  return result || '-'
 }
 
 function resultTagType(result) {
-  if (result === 'clicked') return 'info';
-  if (result === 'opened') return 'success';
-  if (result === 'failed') return 'danger';
-  return '';
+  if (result === 'clicked') return 'info'
+  if (result === 'opened') return 'success'
+  if (result === 'failed') return 'danger'
+  return ''
 }
 
 function formatDateTime(value) {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hour = String(date.getHours()).padStart(2, '0');
-  const minute = String(date.getMinutes()).padStart(2, '0');
-  const second = String(date.getSeconds()).padStart(2, '0');
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hour = String(date.getHours()).padStart(2, '0')
+  const minute = String(date.getMinutes()).padStart(2, '0')
+  const second = String(date.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hour}:${minute}:${second}`
 }
 
 function formatMetadata(metadata) {
-  if (!metadata) return '-';
-  const text = String(metadata).trim();
-  if (!text) return '-';
+  if (!metadata) return '-'
+  const text = String(metadata).trim()
+  if (!text) return '-'
   try {
-    return JSON.stringify(JSON.parse(text), null, 2);
-  } catch (error) {
-    return text;
+    return JSON.stringify(JSON.parse(text), null, 2)
+  } catch {
+    return text
   }
 }
 
 async function loadAudits() {
-  loading.value = true;
-  loadError.value = '';
+  loading.value = true
+  loadError.value = ''
   try {
     const { data } = await request.get('/api/contact-phone-audits', {
       params: {
@@ -243,58 +255,58 @@ async function loadAudits() {
         page: pagination.page,
         limit: pagination.limit,
       },
-    });
-    const payload = data?.data || data || {};
-    records.value = Array.isArray(payload.items) ? payload.items : [];
-    const nextSummary = payload.summary || {};
-    summary.total = Number(nextSummary.total || 0);
-    summary.clicked = Number(nextSummary.clicked || 0);
-    summary.opened = Number(nextSummary.opened || 0);
-    summary.failed = Number(nextSummary.failed || 0);
-    const nextPagination = payload.pagination || {};
-    pagination.total = Number(nextPagination.total || 0);
+    })
+    const payload = data?.data || data || {}
+    records.value = Array.isArray(payload.items) ? payload.items : []
+    const nextSummary = payload.summary || {}
+    summary.total = Number(nextSummary.total || 0)
+    summary.clicked = Number(nextSummary.clicked || 0)
+    summary.opened = Number(nextSummary.opened || 0)
+    summary.failed = Number(nextSummary.failed || 0)
+    const nextPagination = payload.pagination || {}
+    pagination.total = Number(nextPagination.total || 0)
   } catch (error) {
-    records.value = [];
-    summary.total = 0;
-    summary.clicked = 0;
-    summary.opened = 0;
-    summary.failed = 0;
-    pagination.total = 0;
-    loadError.value = error?.response?.data?.error || error?.message || '加载电话联系审计失败';
-    ElMessage.error('加载电话联系审计失败');
+    records.value = []
+    summary.total = 0
+    summary.clicked = 0
+    summary.opened = 0
+    summary.failed = 0
+    pagination.total = 0
+    loadError.value = error?.response?.data?.error || error?.message || '加载电话联系审计失败'
+    ElMessage.error('加载电话联系审计失败')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
 function handleSearch() {
-  pagination.page = 1;
-  void loadAudits();
+  pagination.page = 1
+  void loadAudits()
 }
 
 function resetFilters() {
-  filters.actorRole = '';
-  filters.targetRole = '';
-  filters.clientResult = '';
-  filters.entryPoint = '';
-  filters.keyword = '';
-  pagination.page = 1;
-  void loadAudits();
+  filters.actorRole = ''
+  filters.targetRole = ''
+  filters.clientResult = ''
+  filters.entryPoint = ''
+  filters.keyword = ''
+  pagination.page = 1
+  void loadAudits()
 }
 
 function handlePageSizeChange() {
-  pagination.page = 1;
-  void loadAudits();
+  pagination.page = 1
+  void loadAudits()
 }
 
 function openDetail(row) {
-  detailRecord.value = row;
-  detailVisible.value = true;
+  detailRecord.value = row
+  detailVisible.value = true
 }
 
 onMounted(() => {
-  void loadAudits();
-});
+  void loadAudits()
+})
 </script>
 
 <style scoped>

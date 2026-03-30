@@ -1,10 +1,10 @@
-import { createRouter, createWebHistory } from 'vue-router';
-import Login from '@/views/Login.vue';
-import InviteLanding from '@/views/InviteLanding.vue';
-import CouponLanding from '@/views/CouponLanding.vue';
-import AccessDenied from '@/views/AccessDenied.vue';
-import AppDownloadLanding from '@/views/AppDownloadLanding.vue';
-import { getToken, isInviteRuntime } from '@/utils/runtime';
+import { createRouter, createWebHistory } from 'vue-router'
+import Login from '@/views/Login.vue'
+import InviteLanding from '@/views/InviteLanding.vue'
+import CouponLanding from '@/views/CouponLanding.vue'
+import AccessDenied from '@/views/AccessDenied.vue'
+import AppDownloadLanding from '@/views/AppDownloadLanding.vue'
+import { getToken, isInviteRuntime } from '@/utils/runtime'
 
 const protectedRoutes = [
   { path: '/dashboard', name: 'dashboard', title: '仪表盘' },
@@ -19,6 +19,7 @@ const protectedRoutes = [
   { path: '/featured-products', name: 'featured-products', title: '今日推荐' },
   { path: '/home-campaigns', name: 'home-campaigns', title: '首页推广' },
   { path: '/contact-phone-audits', name: 'contact-phone-audits', title: '电话联系审计' },
+  { path: '/rtc-call-audits', name: 'rtc-call-audits', title: 'RTC 通话审计' },
   { path: '/after-sales', name: 'after-sales', title: '售后服务' },
   { path: '/operations-center', name: 'operations-center', title: '运营管理' },
   { path: '/finance-center', name: 'finance-center', title: '财务中心' },
@@ -31,7 +32,7 @@ const protectedRoutes = [
   { path: '/api-management', name: 'api-management', title: 'API 管理' },
   { path: '/api-permissions', name: 'api-permissions', title: 'API 权限管理' },
   { path: '/api-documentation', name: 'api-documentation', title: 'API 文档' },
-];
+]
 
 const protectedViewMap = {
   dashboard: () => import('@/views/Dashboard.vue'),
@@ -46,6 +47,7 @@ const protectedViewMap = {
   'featured-products': () => import('@/views/FeaturedProducts.vue'),
   'home-campaigns': () => import('@/views/HomeCampaigns.vue'),
   'contact-phone-audits': () => import('@/views/ContactPhoneAudits.vue'),
+  'rtc-call-audits': () => import('@/views/RTCCallAudits.vue'),
   'after-sales': () => import('@/views/AfterSales.vue'),
   'operations-center': () => import('@/views/OperationsCenter.vue'),
   'finance-center': () => import('@/views/FinanceCenter.vue'),
@@ -58,7 +60,7 @@ const protectedViewMap = {
   'api-management': () => import('@/views/ApiManagement.vue'),
   'api-permissions': () => import('@/views/ApiPermissions.vue'),
   'api-documentation': () => import('@/views/ApiDocumentation.vue'),
-};
+}
 
 const routes = [
   { path: '/login', name: 'login', component: Login, meta: { title: '登录' } },
@@ -133,75 +135,75 @@ const routes = [
     meta: { requiresAuth: true, title: item.title },
   })),
   { path: '/system-settings', redirect: '/settings' },
-];
+]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
-});
+})
 
 function isInvitePath(path) {
-  return typeof path === 'string' && path.startsWith('/invite/');
+  return typeof path === 'string' && path.startsWith('/invite/')
 }
 
 function isDownloadPath(path) {
-  return typeof path === 'string' && path === '/download';
+  return typeof path === 'string' && path === '/download'
 }
 
 function isCouponClaimPath(path) {
-  return typeof path === 'string' && path.startsWith('/coupon/');
+  return typeof path === 'string' && path.startsWith('/coupon/')
 }
 
 function resolveDocumentTitle(route) {
-  const inviteOnlyRuntime = isInviteRuntime();
-  const routeTitle = typeof route?.meta?.title === 'string' ? route.meta.title.trim() : '';
+  const inviteOnlyRuntime = isInviteRuntime()
+  const routeTitle = typeof route?.meta?.title === 'string' ? route.meta.title.trim() : ''
   if (inviteOnlyRuntime) {
     if (routeTitle) {
-      return `悦享e食 - ${routeTitle}`;
+      return `悦享e食 - ${routeTitle}`
     }
-    return '悦享e食';
+    return '悦享e食'
   }
   if (routeTitle) {
-    return `悦享e食管理后台 - ${routeTitle}`;
+    return `悦享e食管理后台 - ${routeTitle}`
   }
-  return '悦享e食管理后台';
+  return '悦享e食管理后台'
 }
 
 router.beforeEach((to, from, next) => {
-  const inviteOnlyRuntime = isInviteRuntime();
-  const invitePath = isInvitePath(to.path);
-  const downloadPath = isDownloadPath(to.path);
-  const couponClaimPath = isCouponClaimPath(to.path);
-  const accessDeniedRoute = to.name === 'access-denied';
+  const inviteOnlyRuntime = isInviteRuntime()
+  const invitePath = isInvitePath(to.path)
+  const downloadPath = isDownloadPath(to.path)
+  const couponClaimPath = isCouponClaimPath(to.path)
+  const accessDeniedRoute = to.name === 'access-denied'
 
   if (inviteOnlyRuntime && to.path === '/') {
-    next({ name: 'download-landing', replace: true });
-    return;
+    next({ name: 'download-landing', replace: true })
+    return
   }
   if (inviteOnlyRuntime && !invitePath && !downloadPath && !couponClaimPath && !accessDeniedRoute) {
-    next({ name: 'download-landing', replace: true });
-    return;
+    next({ name: 'download-landing', replace: true })
+    return
   }
 
   if (!inviteOnlyRuntime && (invitePath || couponClaimPath)) {
-    next({ name: 'access-denied', query: { mode: 'admin-only' }, replace: true });
-    return;
+    next({ name: 'access-denied', query: { mode: 'admin-only' }, replace: true })
+    return
   }
 
-  const token = getToken();
+  const token = getToken()
   if (to.meta.requiresAuth && !token) {
-    next({ name: 'login', replace: true });
-    return;
+    next({ name: 'login', replace: true })
+    return
   }
 
-  next();
-});
+  next()
+})
 
 router.afterEach((to) => {
   if (typeof document === 'undefined') {
-    return;
+    return
   }
-  document.title = resolveDocumentTitle(to);
-});
+  document.title = resolveDocumentTitle(to)
+})
 
-export default router;
+export default router

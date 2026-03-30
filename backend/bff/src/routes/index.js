@@ -25,6 +25,7 @@ const reviewRoutes = require('./review');
 const riderReviewRoutes = require('./riderReview');
 const mobileRoutes = require('./mobile');
 const contactController = require('../controllers/contactController');
+const rtcController = require('../controllers/rtcController');
 
 const authController = require('../controllers/authController');
 const shopController = require('../controllers/shopController');
@@ -61,6 +62,10 @@ router.use('/reviews', reviewRoutes);
 router.use('/rider-reviews', riderReviewRoutes);
 router.use('/mobile', mobileRoutes);
 router.post('/contact/phone-clicks', contactController.recordPhoneContactClick);
+router.post('/rtc/calls', rtcController.createRTCCall);
+router.get('/rtc/calls/history', rtcController.listRTCCallHistory);
+router.get('/rtc/calls/:callId', rtcController.getRTCCall);
+router.post('/rtc/calls/:callId/status', rtcController.updateRTCCallStatus);
 
 router.post('/merchant/groupbuy/vouchers/redeem-by-scan', groupbuyController.redeemByScan);
 router.post('/merchant/groupbuy/refunds', afterSalesController.createMerchantGroupbuyRefund);

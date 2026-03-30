@@ -145,6 +145,7 @@ Important boundaries:
 - the active admin dashboard and rider ranking page have been rewritten into clean UTF-8 implementations so weather, online presence, ranking tables, and readiness copy no longer depend on mojibake-tainted legacy strings
 - admin-side health aggregation and system-log signals have been trimmed to current live fallback metrics instead of obsolete historical fallback counters
 - the admin console now includes a dedicated phone contact audit page for filtering actor/target roles, results, and related order or room references
+- the admin console now also includes a dedicated RTC call audit page, and the Go API now has a first server-side RTC audit model plus create/status-update, detail-query, history-query, and admin-list endpoints for future App / H5 signaling integration
 - the active system logs page has been rewritten into a clean UTF-8 implementation so readiness, Redis, push worker, and audit signals are readable without mojibake-tainted labels
 - admin system logs now surface push production-readiness and production-issue signals as first-class tags instead of leaving them buried in raw detail strings
 - release preflight checks BFF ready, Go ready, socket ready, system health, queue age, fallback state, and other launch blockers
@@ -197,7 +198,7 @@ These items are still open and should not be misrepresented as complete:
 - production-grade push provider integration
   - the platform now has secure webhook and FCM HTTP v1 dispatch paths plus a scripted delivery drill, but real production rollout still needs live provider cutover and a validated launch run with real devices
 - App / H5 RTC audio implementation
-  - service-side signaling, recording-retention policy flow, and complaint freeze flow are not complete
+  - a first server-side RTC audit model plus create, status-update, detail-query, history-query, and admin-list APIs now exist, but service-side signaling, media negotiation, recording-retention policy flow, and complaint freeze flow are not complete
 - full load, rollback, and failure-drill validation
   - smoke checks exist, but that is not the same as complete capacity certification
 

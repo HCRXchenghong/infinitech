@@ -24,6 +24,7 @@ export const MENU_GROUPS = [
       { path: '/after-sales', name: '售后服务' },
       { path: '/support-chat', name: '客服工作台' },
       { path: '/contact-phone-audits', name: '电话联系审计' },
+      { path: '/rtc-call-audits', name: 'RTC 通话审计' },
     ],
   },
   {
@@ -67,4 +68,4 @@ export const MENU_GROUPS = [
       { path: '/api-documentation', name: 'API 文档' },
     ],
   },
-];
+]

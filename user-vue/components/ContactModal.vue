@@ -30,7 +30,7 @@
           </view>
           <view class="action-info">
             <text class="action-name">电话联系</text>
-            <text class="action-desc">直接拨打电话</text>
+            <text class="action-desc">直接拨打系统电话</text>
           </view>
           <text class="arrow">›</text>
         </view>
@@ -44,12 +44,12 @@ export default {
   props: {
     show: {
       type: Boolean,
-      default: false
+      default: false,
     },
     title: {
       type: String,
-      default: '选择联系方式'
-    }
+      default: '选择联系方式',
+    },
   },
   methods: {
     handleClose() {
@@ -62,8 +62,8 @@ export default {
     handlePhoneContact() {
       this.$emit('phone')
       this.handleClose()
-    }
-  }
+    },
+  },
 }
 </script>
 

@@ -15,6 +15,7 @@ const (
 	bucketAdminOperation    = "74"
 	bucketPaymentCallback   = "76"
 	bucketIdempotency       = "77"
+	bucketRTCCallAudit      = "83"
 )
 
 func nextUnifiedRefID(ctx context.Context, db *gorm.DB, bucketCode string) (string, error) {

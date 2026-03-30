@@ -11,6 +11,7 @@ const adminOperationsController = require('../controllers/adminOperationsControl
 const onboardingInviteController = require('../controllers/onboardingInviteController');
 const homeController = require('../controllers/homeController');
 const contactController = require('../controllers/contactController');
+const rtcController = require('../controllers/rtcController');
 const financialRoutes = require('./financial');
 const adminWalletRoutes = require('./adminWallet');
 
@@ -104,6 +105,7 @@ router.post('/home-campaigns/:id/:action', homeController.changeCampaignStatus);
 router.get('/home-slots', homeController.getHomeSlots);
 router.put('/home-slots', homeController.upsertLockedSlot);
 router.get('/contact-phone-audits', contactController.listPhoneContactAudits);
+router.get('/rtc-call-audits', rtcController.listRTCCallAudits);
 
 router.get('/admins', adminController.getAdmins);
 router.post('/admins', adminController.createAdmin);

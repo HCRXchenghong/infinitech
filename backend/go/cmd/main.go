@@ -148,6 +148,7 @@ func main() {
 		&repository.SupportConversation{},
 		&repository.SupportMessage{},
 		&repository.PhoneContactAudit{},
+		&repository.RTCCallAudit{},
 		&repository.DiningBuddyParty{},
 		&repository.DiningBuddyPartyMember{},
 		&repository.DiningBuddyMessage{},
@@ -1301,6 +1302,11 @@ func main() {
 		{
 			adminContactAudits.GET("", handlers.PhoneContactAudit.AdminList)
 		}
+		adminRTCCallAudits := api.Group("/admin/rtc-call-audits")
+		adminRTCCallAudits.Use(middleware.RequireAdmin(services.Admin))
+		{
+			adminRTCCallAudits.GET("", handlers.RTCCallAudit.AdminList)
+		}
 
 		// 用户侧收藏与评价
 		api.GET("/user/:id/favorites", handlers.Shop.GetUserFavorites)
@@ -1320,6 +1326,10 @@ func main() {
 		api.DELETE("/user/:id/addresses/:addressId", handlers.User.DeleteAddress)
 		api.POST("/user/:id/addresses/:addressId/default", handlers.User.SetDefaultAddress)
 		api.POST("/contact/phone-clicks", handlers.PhoneContactAudit.RecordPhoneClick)
+		api.POST("/rtc/calls", handlers.RTCCallAudit.UpsertCall)
+		api.GET("/rtc/calls/history", handlers.RTCCallAudit.ListHistory)
+		api.GET("/rtc/calls/:callId", handlers.RTCCallAudit.GetCall)
+		api.POST("/rtc/calls/:callId/status", handlers.RTCCallAudit.UpdateCallStatus)
 
 		// 消息相关（注意：更具体的路由必须放在更通用的路由之前）
 		messages := api.Group("/messages")
