@@ -4,15 +4,28 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/yuexiang/go-api/internal/config"
 	"github.com/yuexiang/go-api/internal/repository"
 	"gorm.io/gorm"
 )
 
 type RTCCallAuditService struct {
-	db *gorm.DB
+	db                *gorm.DB
+	retentionWindow   time.Duration
+	cleanupEnabled    bool
+	cleanupInterval   time.Duration
+	cleanupBatchSize  int
+	cleanupMu         sync.RWMutex
+	cleanupRunning    bool
+	lastCleanupAt     time.Time
+	lastCleanupCount  int
+	lastCleanupStatus string
+	lastCleanupError  string
 }
 
 type RTCCallAuditUpsertInput struct {
@@ -88,8 +101,181 @@ type RTCCallAuditAdminReviewInput struct {
 	RecordingRetention string `json:"recordingRetention"`
 }
 
-func NewRTCCallAuditService(db *gorm.DB) *RTCCallAuditService {
-	return &RTCCallAuditService{db: db}
+type RTCCallRetentionCleanupStatus struct {
+	Enabled                bool      `json:"enabled"`
+	Running                bool      `json:"running"`
+	RetentionHours         int64     `json:"retentionHours"`
+	CleanupIntervalSeconds int64     `json:"cleanupIntervalSeconds"`
+	LastCleanupAt          string    `json:"lastCleanupAt"`
+	LastCleanupCount       int       `json:"lastCleanupCount"`
+	LastCleanupStatus      string    `json:"lastCleanupStatus"`
+	LastCleanupError       string    `json:"lastCleanupError"`
+	LastCleanupAtTime      time.Time `json:"-"`
+}
+
+func NewRTCCallAuditService(db *gorm.DB, cfg *config.Config) *RTCCallAuditService {
+	retentionWindow := 24 * time.Hour
+	cleanupEnabled := true
+	cleanupInterval := 5 * time.Minute
+	cleanupBatchSize := 200
+
+	if cfg != nil {
+		if cfg.RTC.RecordingRetention > 0 {
+			retentionWindow = cfg.RTC.RecordingRetention
+		}
+		cleanupEnabled = cfg.RTC.RetentionCleanupEnabled
+		if cfg.RTC.RetentionCleanupEvery > 0 {
+			cleanupInterval = cfg.RTC.RetentionCleanupEvery
+		}
+		if cfg.RTC.RetentionCleanupBatch > 0 {
+			cleanupBatchSize = cfg.RTC.RetentionCleanupBatch
+		}
+	}
+
+	return &RTCCallAuditService{
+		db:               db,
+		retentionWindow:  retentionWindow,
+		cleanupEnabled:   cleanupEnabled,
+		cleanupInterval:  cleanupInterval,
+		cleanupBatchSize: cleanupBatchSize,
+	}
+}
+
+func (s *RTCCallAuditService) RetentionCleanupStatusSnapshot() RTCCallRetentionCleanupStatus {
+	if s == nil {
+		return RTCCallRetentionCleanupStatus{}
+	}
+
+	s.cleanupMu.RLock()
+	defer s.cleanupMu.RUnlock()
+
+	snapshot := RTCCallRetentionCleanupStatus{
+		Enabled:                s.cleanupEnabled,
+		Running:                s.cleanupRunning,
+		RetentionHours:         int64(s.retentionWindow / time.Hour),
+		CleanupIntervalSeconds: int64(s.cleanupInterval / time.Second),
+		LastCleanupCount:       s.lastCleanupCount,
+		LastCleanupStatus:      s.lastCleanupStatus,
+		LastCleanupError:       s.lastCleanupError,
+		LastCleanupAtTime:      s.lastCleanupAt,
+	}
+	if !s.lastCleanupAt.IsZero() {
+		snapshot.LastCleanupAt = s.lastCleanupAt.Format(time.RFC3339)
+	}
+	return snapshot
+}
+
+func (s *RTCCallAuditService) StartRetentionCleanupWorker(ctx context.Context) {
+	if s == nil || s.db == nil {
+		return
+	}
+	if !s.cleanupEnabled {
+		s.setCleanupRunning(false)
+		s.recordCleanupCycle("disabled", 0, nil)
+		log.Println("[rtc-retention] cleanup worker disabled")
+		return
+	}
+
+	s.setCleanupRunning(true)
+	cleared, err := s.RunRetentionCleanupCycle(ctx, s.cleanupBatchSize)
+	s.recordCleanupCycle(statusForCleanupErr(err), cleared, err)
+	if err != nil {
+		log.Printf("[rtc-retention] initial cleanup cycle failed: %v", err)
+	}
+
+	ticker := time.NewTicker(s.cleanupInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			s.setCleanupRunning(false)
+			s.recordCleanupCycle("stopped", 0, nil)
+			log.Println("[rtc-retention] cleanup worker stopped")
+			return
+		case <-ticker.C:
+			cleared, err := s.RunRetentionCleanupCycle(ctx, s.cleanupBatchSize)
+			s.recordCleanupCycle(statusForCleanupErr(err), cleared, err)
+			if err != nil {
+				log.Printf("[rtc-retention] cleanup cycle failed: %v", err)
+			}
+		}
+	}
+}
+
+func (s *RTCCallAuditService) RunRetentionCleanupCycle(ctx context.Context, limit int) (int, error) {
+	if s == nil || s.db == nil || !s.cleanupEnabled {
+		return 0, nil
+	}
+	if limit <= 0 {
+		limit = s.cleanupBatchSize
+	}
+	if limit <= 0 {
+		limit = 200
+	}
+
+	cutoff := time.Now().Add(-s.retentionWindow)
+	var ids []uint
+	if err := s.db.WithContext(ctx).
+		Model(&repository.RTCCallAudit{}).
+		Select("id").
+		Where("recording_retention = ?", "standard").
+		Where("complaint_status IN ?", []string{"none", "resolved"}).
+		Where("ended_at IS NOT NULL AND ended_at <= ?", cutoff).
+		Where("status IN ?", []string{"ended", "rejected", "busy", "cancelled", "failed", "timeout"}).
+		Order("ended_at ASC, id ASC").
+		Limit(limit).
+		Pluck("id", &ids).Error; err != nil {
+		return 0, err
+	}
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	updates := map[string]interface{}{
+		"recording_retention": "cleared",
+		"updated_at":          time.Now(),
+	}
+	result := s.db.WithContext(ctx).
+		Model(&repository.RTCCallAudit{}).
+		Where("id IN ?", ids).
+		Updates(updates)
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	return int(result.RowsAffected), nil
+}
+
+func (s *RTCCallAuditService) setCleanupRunning(running bool) {
+	if s == nil {
+		return
+	}
+	s.cleanupMu.Lock()
+	defer s.cleanupMu.Unlock()
+	s.cleanupRunning = running
+}
+
+func (s *RTCCallAuditService) recordCleanupCycle(status string, count int, err error) {
+	if s == nil {
+		return
+	}
+	s.cleanupMu.Lock()
+	defer s.cleanupMu.Unlock()
+	s.lastCleanupAt = time.Now()
+	s.lastCleanupCount = count
+	s.lastCleanupStatus = strings.TrimSpace(status)
+	if err != nil {
+		s.lastCleanupError = strings.TrimSpace(err.Error())
+	} else {
+		s.lastCleanupError = ""
+	}
+}
+
+func statusForCleanupErr(err error) string {
+	if err != nil {
+		return "error"
+	}
+	return "ok"
 }
 
 func (s *RTCCallAuditService) UpsertCall(ctx context.Context, input RTCCallAuditUpsertInput) (*repository.RTCCallAudit, error) {

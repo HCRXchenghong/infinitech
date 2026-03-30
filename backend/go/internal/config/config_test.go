@@ -44,6 +44,12 @@ func newValidConfigForTest() *Config {
 			ReadyMaxQueue:    5000,
 			ReadyMaxQueueAge: 30 * time.Minute,
 		},
+		RTC: RTCConfig{
+			RecordingRetention:      24 * time.Hour,
+			RetentionCleanupEnabled: true,
+			RetentionCleanupEvery:   5 * time.Minute,
+			RetentionCleanupBatch:   200,
+		},
 		HTTP: HTTPConfig{
 			ReadTimeout:        15 * time.Second,
 			ReadHeaderTimeout:  10 * time.Second,

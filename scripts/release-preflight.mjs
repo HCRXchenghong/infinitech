@@ -123,6 +123,28 @@ function collectBffSummary(body) {
   ].filter(Boolean).join(' ');
 }
 
+function collectGoSummary(body) {
+  if (!body || typeof body !== 'object') return '';
+  const pushWorker = body.dependencies && body.dependencies.pushWorker;
+  const push = pushWorker && pushWorker.worker && typeof pushWorker.worker === 'object'
+    ? pushWorker.worker
+    : null;
+  const rtcRetention = body.dependencies && body.dependencies.rtcRetention;
+  const rtc = rtcRetention && rtcRetention.worker && typeof rtcRetention.worker === 'object'
+    ? rtcRetention.worker
+    : null;
+  return [
+    body.status ? `status=${body.status}` : '',
+    push && push.enabled !== undefined ? `pushEnabled=${push.enabled === true}` : '',
+    push && push.running !== undefined ? `pushRunning=${push.running === true}` : '',
+    push && push.lastCycleStatus ? `pushCycle=${push.lastCycleStatus}` : '',
+    rtc && rtc.enabled !== undefined ? `rtcRetentionEnabled=${rtc.enabled === true}` : '',
+    rtc && rtc.running !== undefined ? `rtcRetentionRunning=${rtc.running === true}` : '',
+    rtc && rtc.lastCleanupStatus ? `rtcRetentionStatus=${rtc.lastCleanupStatus}` : '',
+    rtc && rtc.lastCleanupError ? `rtcRetentionError=${rtc.lastCleanupError}` : ''
+  ].filter(Boolean).join(' ');
+}
+
 function collectSocketSummary(body) {
   if (!body || typeof body !== 'object') return '';
   const redis = body.redis && typeof body.redis === 'object' ? body.redis : null;
@@ -194,6 +216,20 @@ function evaluateGoReady(body, maxPushQueue) {
     }
     if (queue && Number.isFinite(Number(queue.total)) && Number(queue.total) > maxPushQueue) {
       failures.push(`push_queue=${queue.total}>${maxPushQueue}`);
+    }
+  }
+
+  const rtcRetention = body.dependencies && body.dependencies.rtcRetention;
+  const rtcWorker = rtcRetention && rtcRetention.worker && typeof rtcRetention.worker === 'object'
+    ? rtcRetention.worker
+    : null;
+  if (rtcWorker && rtcWorker.enabled === true) {
+    if (rtcWorker.running !== true) {
+      failures.push('rtc_retention_worker_not_running');
+    }
+    const cleanupStatus = String(rtcWorker.lastCleanupStatus || '').trim().toLowerCase();
+    if (cleanupStatus && (cleanupStatus.includes('failed') || cleanupStatus.includes('error'))) {
+      failures.push(`rtc_retention_status=${cleanupStatus}`);
     }
   }
   return failures;
@@ -453,7 +489,7 @@ async function main() {
     {
       label: 'Go ready',
       url: `${goBaseUrl}/ready`,
-      summary: () => '',
+      summary: collectGoSummary,
       validate: (body) => evaluateGoReady(body, maxPushQueue)
     },
     {

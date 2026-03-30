@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/glebarez/sqlite"
+	"github.com/yuexiang/go-api/internal/config"
 	"github.com/yuexiang/go-api/internal/repository"
 	"gorm.io/gorm"
 )
@@ -32,7 +33,7 @@ func newRTCCallAuditServiceForTest(t *testing.T) (*RTCCallAuditService, *gorm.DB
 		t.Fatalf("auto migrate failed: %v", err)
 	}
 
-	return NewRTCCallAuditService(db), db
+	return NewRTCCallAuditService(db, nil), db
 }
 
 func TestRTCCallAuditServiceUpsertCall(t *testing.T) {
@@ -320,4 +321,103 @@ func TestRTCCallAuditServiceListHistory(t *testing.T) {
 	if filtered.Pagination.Total != 1 || len(filtered.Items) != 1 || filtered.Items[0].Status != "failed" {
 		t.Fatalf("unexpected filtered history: %+v", filtered)
 	}
+}
+
+func TestRTCCallAuditServiceRunRetentionCleanupCycle(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "rtc_call_audit_cleanup_test.db")
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("resolve sql db failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = sqlDB.Close()
+	})
+	if err := db.AutoMigrate(&repository.RTCCallAudit{}, &repository.IDSequence{}, &repository.IDCodebook{}); err != nil {
+		t.Fatalf("auto migrate failed: %v", err)
+	}
+
+	cfg := &config.Config{
+		RTC: config.RTCConfig{
+			RecordingRetention:      24 * time.Hour,
+			RetentionCleanupEnabled: true,
+			RetentionCleanupEvery:   time.Minute,
+			RetentionCleanupBatch:   10,
+		},
+	}
+	svc := NewRTCCallAuditService(db, cfg)
+
+	now := time.Now()
+	rows := []repository.RTCCallAudit{
+		{
+			UnifiedIdentity:    repository.UnifiedIdentity{UID: "26033083001001", TSID: "260330830010012603301401"},
+			CallType:           "audio",
+			CallerRole:         "user",
+			CallerID:           "26032900000001",
+			CalleeRole:         "merchant",
+			CalleeID:           "26032900000088",
+			Status:             "ended",
+			ComplaintStatus:    "none",
+			RecordingRetention: "standard",
+			EndedAt:            timePtr(now.Add(-25 * time.Hour)),
+		},
+		{
+			UnifiedIdentity:    repository.UnifiedIdentity{UID: "26033083001002", TSID: "260330830010022603301402"},
+			CallType:           "audio",
+			CallerRole:         "user",
+			CallerID:           "26032900000002",
+			CalleeRole:         "merchant",
+			CalleeID:           "26032900000089",
+			Status:             "ended",
+			ComplaintStatus:    "reported",
+			RecordingRetention: "frozen",
+			EndedAt:            timePtr(now.Add(-30 * time.Hour)),
+		},
+		{
+			UnifiedIdentity:    repository.UnifiedIdentity{UID: "26033083001003", TSID: "260330830010032603301403"},
+			CallType:           "audio",
+			CallerRole:         "user",
+			CallerID:           "26032900000003",
+			CalleeRole:         "merchant",
+			CalleeID:           "26032900000090",
+			Status:             "ringing",
+			ComplaintStatus:    "none",
+			RecordingRetention: "standard",
+			EndedAt:            nil,
+		},
+	}
+	if err := db.Create(&rows).Error; err != nil {
+		t.Fatalf("seed rtc cleanup rows failed: %v", err)
+	}
+
+	cleared, err := svc.RunRetentionCleanupCycle(context.Background(), 10)
+	if err != nil {
+		t.Fatalf("RunRetentionCleanupCycle failed: %v", err)
+	}
+	if cleared != 1 {
+		t.Fatalf("expected cleared count 1, got %d", cleared)
+	}
+
+	var eligible repository.RTCCallAudit
+	if err := db.Where("uid = ?", "26033083001001").First(&eligible).Error; err != nil {
+		t.Fatalf("query eligible record failed: %v", err)
+	}
+	if eligible.RecordingRetention != "cleared" {
+		t.Fatalf("expected eligible record cleared, got %q", eligible.RecordingRetention)
+	}
+
+	var frozen repository.RTCCallAudit
+	if err := db.Where("uid = ?", "26033083001002").First(&frozen).Error; err != nil {
+		t.Fatalf("query frozen record failed: %v", err)
+	}
+	if frozen.RecordingRetention != "frozen" {
+		t.Fatalf("expected frozen record unchanged, got %q", frozen.RecordingRetention)
+	}
+}
+
+func timePtr(value time.Time) *time.Time {
+	return &value
 }

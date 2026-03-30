@@ -193,6 +193,24 @@ function buildProbeDetail(result) {
       details.push(pushDetail);
     }
   }
+  if (body.dependencies && body.dependencies.rtcRetention) {
+    const rtcRetention = body.dependencies.rtcRetention;
+    const worker = rtcRetention.worker && typeof rtcRetention.worker === "object" ? rtcRetention.worker : {};
+    const rtcDetail = [
+      `rtcRetentionOk=${rtcRetention.ok === true}`,
+      worker.enabled !== undefined ? `rtcRetentionEnabled=${worker.enabled === true}` : "",
+      worker.running !== undefined ? `rtcRetentionRunning=${worker.running === true}` : "",
+      worker.retentionHours !== undefined ? `rtcRetentionHours=${worker.retentionHours}` : "",
+      worker.cleanupIntervalSeconds !== undefined ? `rtcRetentionCleanupIntervalSeconds=${worker.cleanupIntervalSeconds}` : "",
+      worker.lastCleanupStatus ? `rtcRetentionStatus=${worker.lastCleanupStatus}` : "",
+      worker.lastCleanupAt ? `rtcRetentionLastCleanupAt=${worker.lastCleanupAt}` : "",
+      worker.lastCleanupCount !== undefined ? `rtcRetentionLastCleanupCount=${worker.lastCleanupCount}` : "",
+      worker.lastCleanupError ? `rtcRetentionError=${worker.lastCleanupError}` : ""
+    ].filter(Boolean).join(" ");
+    if (rtcDetail) {
+      details.push(rtcDetail);
+    }
+  }
 
   return details.join(" | ");
 }

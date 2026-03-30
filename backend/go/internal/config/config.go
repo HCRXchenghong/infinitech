@@ -24,6 +24,7 @@ type Config struct {
 	Invite   InviteConfig
 	Map      MapConfig
 	Push     PushConfig
+	RTC      RTCConfig
 	HTTP     HTTPConfig
 }
 
@@ -89,6 +90,13 @@ type PushConfig struct {
 	RetryBackoff      time.Duration
 	ReadyMaxQueue     int64
 	ReadyMaxQueueAge  time.Duration
+}
+
+type RTCConfig struct {
+	RecordingRetention      time.Duration
+	RetentionCleanupEnabled bool
+	RetentionCleanupEvery   time.Duration
+	RetentionCleanupBatch   int
 }
 
 type HTTPConfig struct {
@@ -175,6 +183,12 @@ func Load() *Config {
 			RetryBackoff:      time.Duration(getEnvInt("PUSH_DISPATCH_RETRY_BACKOFF_SECONDS", 60)) * time.Second,
 			ReadyMaxQueue:     int64(getEnvInt("PUSH_READY_MAX_QUEUE", 5000)),
 			ReadyMaxQueueAge:  time.Duration(getEnvInt("PUSH_READY_MAX_QUEUE_AGE_SECONDS", 1800)) * time.Second,
+		},
+		RTC: RTCConfig{
+			RecordingRetention:      time.Duration(getEnvInt("RTC_RECORDING_RETENTION_HOURS", 24)) * time.Hour,
+			RetentionCleanupEnabled: strings.EqualFold(getEnv("RTC_RETENTION_CLEANUP_ENABLED", "true"), "true"),
+			RetentionCleanupEvery:   time.Duration(getEnvInt("RTC_RETENTION_CLEANUP_SECONDS", 300)) * time.Second,
+			RetentionCleanupBatch:   getEnvInt("RTC_RETENTION_CLEANUP_BATCH_SIZE", 200),
 		},
 		HTTP: HTTPConfig{
 			ReadTimeout:        time.Duration(getEnvInt("HTTP_READ_TIMEOUT_SECONDS", 15)) * time.Second,
@@ -313,6 +327,15 @@ func (c *Config) Validate() error {
 	}
 	if c.Push.ReadyMaxQueueAge < 0 {
 		return fmt.Errorf("PUSH_READY_MAX_QUEUE_AGE_SECONDS must be 0 or greater")
+	}
+	if c.RTC.RecordingRetention <= 0 {
+		return fmt.Errorf("RTC_RECORDING_RETENTION_HOURS must be greater than 0")
+	}
+	if c.RTC.RetentionCleanupEnabled && c.RTC.RetentionCleanupEvery <= 0 {
+		return fmt.Errorf("RTC_RETENTION_CLEANUP_SECONDS must be greater than 0")
+	}
+	if c.RTC.RetentionCleanupBatch <= 0 {
+		return fmt.Errorf("RTC_RETENTION_CLEANUP_BATCH_SIZE must be greater than 0")
 	}
 
 	if c.HTTP.MaxBodyBytes <= 0 {

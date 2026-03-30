@@ -233,10 +233,13 @@ func main() {
 
 	// 初始化服务层
 	services := service.NewServices(repos, cfg)
-	pushWorkerCtx, pushWorkerCancel := context.WithCancel(context.Background())
-	defer pushWorkerCancel()
+	backgroundWorkerCtx, backgroundWorkerCancel := context.WithCancel(context.Background())
+	defer backgroundWorkerCancel()
 	if services.MobilePush != nil {
-		go services.MobilePush.StartDeliveryWorker(pushWorkerCtx)
+		go services.MobilePush.StartDeliveryWorker(backgroundWorkerCtx)
+	}
+	if services.RTCCallAudit != nil {
+		go services.RTCCallAudit.StartRetentionCleanupWorker(backgroundWorkerCtx)
 	}
 
 	// 初始化处理器
@@ -325,13 +328,22 @@ func main() {
 				"worker": pushWorkerSnapshot,
 			}
 		}
+		rtcRetention := gin.H{}
+		var rtcRetentionSnapshot service.RTCCallRetentionCleanupStatus
+		if services.RTCCallAudit != nil {
+			rtcRetentionSnapshot = services.RTCCallAudit.RetentionCleanupStatusSnapshot()
+			rtcRetention = gin.H{
+				"ok":     true,
+				"worker": rtcRetentionSnapshot,
+			}
+		}
 
 		if err := sqlDB.PingContext(ctx); err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
 				"status":       "degraded",
 				"service":      "go-api",
 				"error":        "database not ready",
-				"dependencies": gin.H{"pushWorker": pushWorker},
+				"dependencies": gin.H{"pushWorker": pushWorker, "rtcRetention": rtcRetention},
 			})
 			return
 		}
@@ -343,8 +355,9 @@ func main() {
 					"service": "go-api",
 					"error":   "redis not initialized",
 					"dependencies": gin.H{
-						"database":   gin.H{"ok": true},
-						"pushWorker": pushWorker,
+						"database":     gin.H{"ok": true},
+						"pushWorker":   pushWorker,
+						"rtcRetention": rtcRetention,
 					},
 				})
 				return
@@ -355,8 +368,9 @@ func main() {
 					"service": "go-api",
 					"error":   "redis not ready",
 					"dependencies": gin.H{
-						"database":   gin.H{"ok": true},
-						"pushWorker": pushWorker,
+						"database":     gin.H{"ok": true},
+						"pushWorker":   pushWorker,
+						"rtcRetention": rtcRetention,
 					},
 				})
 				return
@@ -376,7 +390,8 @@ func main() {
 							"enabled":  cfg.Redis.Enabled,
 							"required": cfg.Redis.Required,
 						},
-						"pushWorker": pushWorker,
+						"pushWorker":   pushWorker,
+						"rtcRetention": rtcRetention,
 					},
 				})
 				return
@@ -395,7 +410,8 @@ func main() {
 							"enabled":  cfg.Redis.Enabled,
 							"required": cfg.Redis.Required,
 						},
-						"pushWorker": pushWorker,
+						"pushWorker":   pushWorker,
+						"rtcRetention": rtcRetention,
 					},
 				})
 				return
@@ -413,7 +429,8 @@ func main() {
 							"enabled":  cfg.Redis.Enabled,
 							"required": cfg.Redis.Required,
 						},
-						"pushWorker": pushWorker,
+						"pushWorker":   pushWorker,
+						"rtcRetention": rtcRetention,
 					},
 					"maxPushQueue": cfg.Push.ReadyMaxQueue,
 				})
@@ -433,9 +450,50 @@ func main() {
 							"enabled":  cfg.Redis.Enabled,
 							"required": cfg.Redis.Required,
 						},
-						"pushWorker": pushWorker,
+						"pushWorker":   pushWorker,
+						"rtcRetention": rtcRetention,
 					},
 					"maxPushQueueAgeSeconds": int64(cfg.Push.ReadyMaxQueueAge / time.Second),
+				})
+				return
+			}
+		}
+
+		if services.RTCCallAudit != nil && rtcRetentionSnapshot.Enabled {
+			if !rtcRetentionSnapshot.Running {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"status":  "degraded",
+					"service": "go-api",
+					"error":   "rtc retention worker not running",
+					"dependencies": gin.H{
+						"database": gin.H{"ok": true},
+						"redis": gin.H{
+							"ok":       !cfg.Redis.Enabled || rdb != nil,
+							"enabled":  cfg.Redis.Enabled,
+							"required": cfg.Redis.Required,
+						},
+						"pushWorker":   pushWorker,
+						"rtcRetention": rtcRetention,
+					},
+				})
+				return
+			}
+			cleanupStatus := strings.ToLower(strings.TrimSpace(rtcRetentionSnapshot.LastCleanupStatus))
+			if strings.Contains(cleanupStatus, "error") {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"status":  "degraded",
+					"service": "go-api",
+					"error":   "rtc retention cleanup failed",
+					"dependencies": gin.H{
+						"database": gin.H{"ok": true},
+						"redis": gin.H{
+							"ok":       !cfg.Redis.Enabled || rdb != nil,
+							"enabled":  cfg.Redis.Enabled,
+							"required": cfg.Redis.Required,
+						},
+						"pushWorker":   pushWorker,
+						"rtcRetention": rtcRetention,
+					},
 				})
 				return
 			}
@@ -452,7 +510,8 @@ func main() {
 					"enabled":  cfg.Redis.Enabled,
 					"required": cfg.Redis.Required,
 				},
-				"pushWorker": pushWorker,
+				"pushWorker":   pushWorker,
+				"rtcRetention": rtcRetention,
 			},
 		})
 	}
@@ -1547,7 +1606,7 @@ func main() {
 		}
 	case sig := <-stopSignals:
 		log.Printf("Shutdown signal received: %s", sig.String())
-		pushWorkerCancel()
+		backgroundWorkerCancel()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 		defer cancel()
 		if err := server.Shutdown(shutdownCtx); err != nil {

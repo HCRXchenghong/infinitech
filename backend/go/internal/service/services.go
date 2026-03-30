@@ -54,7 +54,7 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 	mobileMapService := NewMobileMapService(cfg, adminService)
 	captchaService := NewCaptchaService(repos.DB)
 	phoneContactAuditService := NewPhoneContactAuditService(repos.DB)
-	rtcCallAuditService := NewRTCCallAuditService(repos.DB)
+	rtcCallAuditService := NewRTCCallAuditService(repos.DB, cfg)
 
 	return &Services{
 		Shop:              NewShopService(repos.Shop, repos.Redis),
