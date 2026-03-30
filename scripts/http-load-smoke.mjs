@@ -1,8 +1,24 @@
+import path from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+
 export const DEFAULT_TIMEOUT_MS = 5000;
 export const DEFAULT_CONCURRENCY = 16;
 export const DEFAULT_REQUESTS_PER_TARGET = 120;
 export const DEFAULT_MAX_ERROR_RATE = 0.02;
 export const DEFAULT_MAX_P99_MS = 0;
+
+async function writeReport(reportFile, report) {
+  const target = String(reportFile || '').trim();
+  if (!target) return;
+
+  const directory = path.dirname(target);
+  if (directory && directory !== '.') {
+    await mkdir(directory, { recursive: true });
+  }
+
+  await writeFile(target, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  console.log(`HTTP load smoke report written to ${target}`);
+}
 
 function normalizeBaseUrl(value, fallback) {
   const text = String(value || fallback || '').trim().replace(/\/+$/, '');
@@ -187,12 +203,36 @@ function readCliOptions() {
     timeoutMs: toPositiveInt(process.env.LOAD_TIMEOUT_MS, DEFAULT_TIMEOUT_MS),
     maxErrorRate: toPositiveFloat(process.env.LOAD_MAX_ERROR_RATE, DEFAULT_MAX_ERROR_RATE),
     maxP95Ms: toPositiveInt(process.env.LOAD_MAX_P95_MS, 0),
-    maxP99Ms: toPositiveInt(process.env.LOAD_MAX_P99_MS, DEFAULT_MAX_P99_MS)
+    maxP99Ms: toPositiveInt(process.env.LOAD_MAX_P99_MS, DEFAULT_MAX_P99_MS),
+    reportFile: String(process.env.LOAD_REPORT_FILE || '').trim(),
+    baseUrls: {
+      bffBaseUrl,
+      goBaseUrl,
+      socketBaseUrl
+    }
   };
 }
 
 async function main() {
-  const result = await runLoadSmoke(readCliOptions());
+  const options = readCliOptions();
+  const startedAt = new Date().toISOString();
+  const result = await runLoadSmoke(options);
+  await writeReport(options.reportFile, {
+    startedAt,
+    completedAt: new Date().toISOString(),
+    status: result.ok ? 'passed' : 'failed',
+    config: {
+      concurrency: options.concurrency,
+      requestsPerTarget: options.requestsPerTarget,
+      timeoutMs: options.timeoutMs,
+      maxErrorRate: options.maxErrorRate,
+      maxP95Ms: options.maxP95Ms,
+      maxP99Ms: options.maxP99Ms,
+      targets: options.targets,
+      baseUrls: options.baseUrls
+    },
+    result
+  });
   if (!result.ok) {
     process.exitCode = 1;
   }

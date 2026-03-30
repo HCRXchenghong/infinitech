@@ -1,0 +1,126 @@
+import path from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+
+function toPositiveInt(value, fallback) {
+  const parsed = Number.parseInt(String(value || '').trim(), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function toPositiveFloat(value, fallback) {
+  const parsed = Number.parseFloat(String(value || '').trim());
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function timestampLabel(date = new Date()) {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mi = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}-${hh}${mi}${ss}`;
+}
+
+async function ensureDir(dirPath) {
+  await mkdir(dirPath, { recursive: true });
+}
+
+async function readJson(filePath) {
+  const content = await readFile(filePath, 'utf8');
+  return JSON.parse(content);
+}
+
+async function writeJson(filePath, payload) {
+  await writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+}
+
+function runNodeScript(scriptPath, extraEnv = {}) {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [scriptPath], {
+      cwd: process.cwd(),
+      env: { ...process.env, ...extraEnv },
+      stdio: 'inherit'
+    });
+
+    child.on('close', (code) => {
+      resolve(Number(code || 0));
+    });
+  });
+}
+
+async function main() {
+  const startedAt = new Date();
+  const label = process.env.DRILL_LABEL || timestampLabel(startedAt);
+  const outputDir = path.resolve(
+    process.cwd(),
+    process.env.RELEASE_DRILL_DIR || path.join('artifacts', 'release-drills', label)
+  );
+  await ensureDir(outputDir);
+
+  const preflightReport = path.join(outputDir, 'preflight.json');
+  const smokeReport = path.join(outputDir, 'http-load-smoke.json');
+  const summaryReport = path.join(outputDir, 'summary.json');
+
+  const preflightCode = await runNodeScript(path.join('scripts', 'release-preflight.mjs'), {
+    PREFLIGHT_REPORT_FILE: preflightReport,
+    PREFLIGHT_RUN_HTTP_LOAD_SMOKE: 'false'
+  });
+
+  const smokeCode = await runNodeScript(path.join('scripts', 'http-load-smoke.mjs'), {
+    LOAD_REPORT_FILE: smokeReport,
+    LOAD_CONCURRENCY: String(toPositiveInt(process.env.LOAD_CONCURRENCY, 16)),
+    LOAD_REQUESTS_PER_TARGET: String(toPositiveInt(process.env.LOAD_REQUESTS_PER_TARGET, 120)),
+    LOAD_TIMEOUT_MS: String(toPositiveInt(process.env.LOAD_TIMEOUT_MS, 5000)),
+    LOAD_MAX_ERROR_RATE: String(toPositiveFloat(process.env.LOAD_MAX_ERROR_RATE, 0.02)),
+    LOAD_MAX_P95_MS: String(toPositiveInt(process.env.LOAD_MAX_P95_MS, 0)),
+    LOAD_MAX_P99_MS: String(toPositiveInt(process.env.LOAD_MAX_P99_MS, 0))
+  });
+
+  const summary = {
+    startedAt: startedAt.toISOString(),
+    completedAt: new Date().toISOString(),
+    status: preflightCode === 0 && smokeCode === 0 ? 'passed' : 'failed',
+    label,
+    outputDir,
+    reports: {
+      preflight: preflightReport,
+      httpLoadSmoke: smokeReport
+    },
+    exitCodes: {
+      preflight: preflightCode,
+      httpLoadSmoke: smokeCode
+    },
+    rollbackChecklist: [
+      'Confirm the previous production release tag or commit is known and reachable.',
+      'Keep the generated preflight and smoke reports with the launch ticket.',
+      'Verify /ready, /api/system-health, and socket /api/stats before and after rollback.',
+      'Verify push worker health and queue age after rollback.',
+      'Verify admin chat console, merchant chat, rider support chat, and consumer message list after rollback.'
+    ]
+  };
+
+  try {
+    summary.preflight = await readJson(preflightReport);
+  } catch (error) {
+    summary.preflight = { status: 'missing', error: error instanceof Error ? error.message : String(error) };
+  }
+
+  try {
+    summary.httpLoadSmoke = await readJson(smokeReport);
+  } catch (error) {
+    summary.httpLoadSmoke = { status: 'missing', error: error instanceof Error ? error.message : String(error) };
+  }
+
+  await writeJson(summaryReport, summary);
+  console.log(`Release drill summary written to ${summaryReport}`);
+
+  if (summary.status !== 'passed') {
+    process.exitCode = 1;
+  }
+}
+
+main().catch((error) => {
+  console.error('Release drill crashed:', error instanceof Error ? error.stack || error.message : error);
+  process.exitCode = 1;
+});

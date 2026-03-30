@@ -166,11 +166,14 @@ cmd /c npm run check
 cd ..
 node scripts/release-preflight.mjs
 node scripts/http-load-smoke.mjs
+node scripts/release-drill.mjs
 ```
 
 Notes:
 
 - `PREFLIGHT_REPORT_FILE=artifacts/release-preflight.json node scripts/release-preflight.mjs` keeps a structured release drill report for launch review and audit retention
+- `LOAD_REPORT_FILE=artifacts/http-load-smoke.json node scripts/http-load-smoke.mjs` keeps a structured HTTP smoke report for capacity drill review
+- `node scripts/release-drill.mjs` runs release preflight plus HTTP smoke in one pass and writes a combined summary under `artifacts/release-drills/<timestamp>/`
 - `admin-vue` still emits the known `sql.js` browser externalize warning and large chunk warning during build
 - those warnings are known and were not introduced by the latest remediation batches
 
