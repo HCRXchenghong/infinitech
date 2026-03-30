@@ -1,29 +1,9 @@
 const ERRAND_SERVICE_META = {
-  errand_buy: {
-    serviceType: 'errand_buy',
-    name: '帮我买',
-    summary: '代买商品'
-  },
-  errand_deliver: {
-    serviceType: 'errand_deliver',
-    name: '帮我送',
-    summary: '同城配送'
-  },
-  errand_pickup: {
-    serviceType: 'errand_pickup',
-    name: '帮我取',
-    summary: '快递代取'
-  },
-  errand_do: {
-    serviceType: 'errand_do',
-    name: '帮我办',
-    summary: '排队代办'
-  },
-  errand_generic: {
-    serviceType: 'errand_generic',
-    name: '跑腿服务',
-    summary: '同城跑腿'
-  }
+  errand_buy: { serviceType: 'errand_buy', name: '帮我买', summary: '代买商品' },
+  errand_deliver: { serviceType: 'errand_deliver', name: '帮我送', summary: '同城配送' },
+  errand_pickup: { serviceType: 'errand_pickup', name: '帮我取', summary: '快递代取' },
+  errand_do: { serviceType: 'errand_do', name: '帮我办', summary: '排队代办' },
+  errand_generic: { serviceType: 'errand_generic', name: '跑腿服务', summary: '同城跑腿' }
 }
 
 function normalizeServiceType(value) {
@@ -55,29 +35,29 @@ function formatDateTime(value) {
   try {
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) return String(value)
-    return date.toLocaleString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).replace(/\//g, '-')
-  } catch (error) {
+    return date
+      .toLocaleString('zh-CN', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+      .replace(/\//g, '-')
+  } catch (_error) {
     return String(value)
   }
 }
 
 function parseJsonObject(value) {
   if (!value) return {}
-  if (typeof value === 'object' && !Array.isArray(value)) {
-    return value
-  }
+  if (typeof value === 'object' && !Array.isArray(value)) return value
   if (typeof value !== 'string') return {}
   try {
     const parsed = JSON.parse(value)
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       return parsed
     }
-  } catch (error) {
+  } catch (_error) {
     return {}
   }
   return {}
@@ -85,9 +65,8 @@ function parseJsonObject(value) {
 
 export function getCurrentUserIdentity() {
   const profile = uni.getStorageSync('userProfile') || {}
-  const userId = pickText(profile.phone, profile.id, profile.userId)
   return {
-    userId,
+    userId: pickText(profile.phone, profile.id, profile.userId),
     phone: pickText(profile.phone),
     name: pickText(profile.name, profile.nickname, profile.username, profile.userName)
   }
@@ -95,9 +74,7 @@ export function getCurrentUserIdentity() {
 
 export function requireCurrentUserIdentity() {
   const identity = getCurrentUserIdentity()
-  if (identity.userId) {
-    return identity
-  }
+  if (identity.userId) return identity
   uni.showToast({ title: '请先登录', icon: 'none' })
   setTimeout(() => {
     uni.navigateTo({ url: '/pages/auth/login/index' })
@@ -111,9 +88,7 @@ export function getErrandServiceMeta(serviceType) {
 
 export function isErrandOrder(order = {}) {
   const serviceType = normalizeServiceType(order.serviceType || order.service_type)
-  if (serviceType.startsWith('errand_')) {
-    return true
-  }
+  if (serviceType.startsWith('errand_')) return true
   return Boolean(
     order.errandRequest ||
       order.errand_request ||
@@ -154,10 +129,7 @@ export function buildErrandOrderPayload(config = {}, identity = {}) {
     deliveryFee,
     address: dropoff,
     preferredTime,
-    errandLocation: {
-      pickup,
-      dropoff
-    },
+    errandLocation: { pickup, dropoff },
     errandRequest: {
       serviceType,
       serviceName,
@@ -189,10 +161,7 @@ export function mapErrandOrderDetail(order = {}) {
     serviceType === 'errand_do' ? '' : order.address
   )
   const item = pickText(order.items, request.itemDescription, request.taskDescription, meta.name)
-  const amount = Math.max(
-    0,
-    toNumber(request.estimatedAmount, toNumber(order.productPrice ?? order.product_price, 0))
-  )
+  const amount = Math.max(0, toNumber(request.estimatedAmount, toNumber(order.productPrice ?? order.product_price, 0)))
   const deliveryFee = Math.max(0, toNumber(order.deliveryFee ?? order.delivery_fee))
   const totalPrice = Math.max(0, toNumber(order.totalPrice ?? order.total_price ?? order.price))
   const preferredTime = pickText(

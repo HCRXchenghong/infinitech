@@ -23,7 +23,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("❌ [Auth Handler] 参数绑定失败: %v", err)
+		log.Printf("[Auth Handler] login bind failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   "请求参数错误",
@@ -32,12 +32,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	log.Printf("📱 [Auth Handler] 收到登录请求: phone=%s, hasCode=%v, hasPassword=%v",
-		req.Phone, req.Code != "", req.Password != "")
+	log.Printf("[Auth Handler] login request: phone=%s hasCode=%v hasPassword=%v", req.Phone, req.Code != "", req.Password != "")
 
 	result, err := h.service.Login(c.Request.Context(), req.Phone, req.Code, req.Password)
 	if err != nil {
-		log.Printf("❌ [Auth Handler] 登录失败: %v", err)
+		log.Printf("[Auth Handler] login failed: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -45,20 +44,27 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	log.Printf("✅ [Auth Handler] 登录成功: phone=%s", req.Phone)
+	log.Printf("[Auth Handler] login success: phone=%s", req.Phone)
 	c.JSON(http.StatusOK, result)
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "请求参数错误",
+			"message": err.Error(),
+		})
 		return
 	}
 
 	result, err := h.service.Register(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
 		return
 	}
 	c.JSON(http.StatusOK, result)
@@ -71,7 +77,7 @@ func (h *AuthHandler) RiderLogin(c *gin.Context) {
 		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("❌ [Rider Auth] 参数绑定失败: %v", err)
+		log.Printf("[Rider Auth] bind failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   "请求参数错误",
@@ -80,12 +86,11 @@ func (h *AuthHandler) RiderLogin(c *gin.Context) {
 		return
 	}
 
-	log.Printf("📱 [Rider Auth] 收到骑手登录请求: phone=%s, hasCode=%v, hasPassword=%v",
-		req.Phone, req.Code != "", req.Password != "")
+	log.Printf("[Rider Auth] login request: phone=%s hasCode=%v hasPassword=%v", req.Phone, req.Code != "", req.Password != "")
 
 	result, err := h.service.RiderLogin(c.Request.Context(), req.Phone, req.Code, req.Password)
 	if err != nil {
-		log.Printf("❌ [Rider Auth] 骑手登录失败: %v", err)
+		log.Printf("[Rider Auth] login failed: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -93,7 +98,7 @@ func (h *AuthHandler) RiderLogin(c *gin.Context) {
 		return
 	}
 
-	log.Printf("✅ [Rider Auth] 骑手登录成功: phone=%s", req.Phone)
+	log.Printf("[Rider Auth] login success: phone=%s", req.Phone)
 	c.JSON(http.StatusOK, result)
 }
 
@@ -104,7 +109,7 @@ func (h *AuthHandler) MerchantLogin(c *gin.Context) {
 		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("❌ [Merchant Auth] 参数绑定失败: %v", err)
+		log.Printf("[Merchant Auth] bind failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   "请求参数错误",
@@ -113,12 +118,11 @@ func (h *AuthHandler) MerchantLogin(c *gin.Context) {
 		return
 	}
 
-	log.Printf("📱 [Merchant Auth] 收到商户登录请求: phone=%s, hasCode=%v, hasPassword=%v",
-		req.Phone, req.Code != "", req.Password != "")
+	log.Printf("[Merchant Auth] login request: phone=%s hasCode=%v hasPassword=%v", req.Phone, req.Code != "", req.Password != "")
 
 	result, err := h.service.MerchantLogin(c.Request.Context(), req.Phone, req.Code, req.Password)
 	if err != nil {
-		log.Printf("❌ [Merchant Auth] 商户登录失败: %v", err)
+		log.Printf("[Merchant Auth] login failed: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -126,7 +130,7 @@ func (h *AuthHandler) MerchantLogin(c *gin.Context) {
 		return
 	}
 
-	log.Printf("✅ [Merchant Auth] 商户登录成功: phone=%s", req.Phone)
+	log.Printf("[Merchant Auth] login success: phone=%s", req.Phone)
 	c.JSON(http.StatusOK, result)
 }
 
@@ -185,7 +189,6 @@ func (h *AuthHandler) MerchantSetNewPassword(c *gin.Context) {
 }
 
 func (h *AuthHandler) VerifyToken(c *gin.Context) {
-	// 从 Authorization header 获取 token
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -195,16 +198,14 @@ func (h *AuthHandler) VerifyToken(c *gin.Context) {
 		return
 	}
 
-	// 移除 "Bearer " 前缀
 	token := authHeader
 	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
 		token = authHeader[7:]
 	}
 
-	// 验证 token
-	valid, phone, userId, err := h.service.VerifyToken(token)
+	valid, phone, userID, err := h.service.VerifyToken(token)
 	if err != nil || !valid {
-		log.Printf("❌ [Auth Handler] Token验证失败: %v", err)
+		log.Printf("[Auth Handler] token verify failed: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"valid": false,
 			"error": "invalid or expired token",
@@ -212,11 +213,11 @@ func (h *AuthHandler) VerifyToken(c *gin.Context) {
 		return
 	}
 
-	log.Printf("✅ [Auth Handler] Token验证成功: phone=%s, userId=%d", phone, userId)
+	log.Printf("[Auth Handler] token verify success: phone=%s userId=%d", phone, userID)
 	c.JSON(http.StatusOK, gin.H{
 		"valid":  true,
 		"phone":  phone,
-		"userId": userId,
+		"userId": userID,
 	})
 }
 
@@ -225,7 +226,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		RefreshToken string `json:"refreshToken"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("❌ [Auth Handler] 刷新Token参数错误: %v", err)
+		log.Printf("[Auth Handler] refresh token bind failed: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   "请求参数错误",
@@ -241,15 +242,14 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	log.Printf("🔄 [Auth Handler] 收到刷新Token请求")
-
+	log.Printf("[Auth Handler] refresh token request")
 	result, err := h.service.RefreshToken(c.Request.Context(), req.RefreshToken)
 	if err != nil {
-		log.Printf("❌ [Auth Handler] 刷新Token失败: %v", err)
+		log.Printf("[Auth Handler] refresh token failed: %v", err)
 		c.JSON(http.StatusUnauthorized, result)
 		return
 	}
 
-	log.Printf("✅ [Auth Handler] Token刷新成功")
+	log.Printf("[Auth Handler] refresh token success")
 	c.JSON(http.StatusOK, result)
 }

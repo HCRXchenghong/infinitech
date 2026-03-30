@@ -2,13 +2,13 @@
   <view class="page tableware">
     <view class="card">
       <view
-        v-for="n in options"
-        :key="n.value"
+        v-for="item in options"
+        :key="item.value"
         class="row"
-        @tap="select(n.value)"
+        @tap="select(item.value)"
       >
-        <text class="label">{{ n.label }}</text>
-        <view class="radio" :class="{ active: value === n.value }" />
+        <text class="label">{{ item.label }}</text>
+        <view class="radio" :class="{ active: value === item.value }" />
       </view>
     </view>
   </view>
@@ -22,10 +22,10 @@ export default {
     return {
       value: useUserOrderStore().state.tableware,
       options: [
-  { value: 0, label: '不需要餐具' },
-  { value: 1, label: '1 套' },
-  { value: 2, label: '2 套' },
-  { value: 3, label: '3 套以上' }
+        { value: 0, label: '不需要餐具' },
+        { value: 1, label: '1 套' },
+        { value: 2, label: '2 套' },
+        { value: 3, label: '3 套以上' }
       ]
     }
   },
@@ -84,4 +84,3 @@ export default {
   background: #009bf5;
 }
 </style>
-

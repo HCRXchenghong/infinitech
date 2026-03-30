@@ -1,7 +1,7 @@
 {
   "name": "yuexiang-bff",
   "version": "1.0.0",
-  "description": "悦享e食 Node.js BFF 中后端服务",
+  "description": "悦享e食 Node.js BFF service",
   "main": "src/index.js",
   "scripts": {
     "dev": "node ./node_modules/nodemon/bin/nodemon.js src/index.js",

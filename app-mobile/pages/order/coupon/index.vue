@@ -18,7 +18,7 @@
       >
         <view class="coupon-left">
           <view class="coupon-amount-area">
-            <text class="coupon-symbol">¥</text>
+            <text v-if="coupon.coupon.type === 'fixed'" class="coupon-symbol">¥</text>
             <text class="coupon-amount">{{ formatAmount(coupon.coupon) }}</text>
           </view>
           <text class="coupon-condition">{{ getConditionText(coupon.coupon) }}</text>
@@ -48,6 +48,14 @@
 <script>
 import { request } from '@/shared-ui/api.js'
 
+function formatDiscountLabel(amount) {
+  const reduced = 100 - Number(amount || 0)
+  if (reduced <= 0) return '限时折扣'
+  const discount = reduced / 10
+  const text = Number.isInteger(discount) ? String(discount) : discount.toFixed(1)
+  return `${text}折`
+}
+
 export default {
   data() {
     return {
@@ -60,7 +68,7 @@ export default {
   },
   onLoad(query) {
     this.shopId = String(query.shopId || '').trim()
-    this.orderAmount = Number(query.amount)
+    this.orderAmount = Number(query.amount) || 0
     this.loadCoupons()
   },
   methods: {
@@ -75,7 +83,6 @@ export default {
         }
 
         uni.showLoading({ title: '加载中...' })
-
         const res = await request({
           url: '/api/coupons/available',
           method: 'GET',
@@ -86,28 +93,28 @@ export default {
           }
         })
 
-        uni.hideLoading()
-
         if (res && Array.isArray(res.data)) {
           this.coupons = res.data
         }
-      } catch (err) {
-        uni.hideLoading()
-        console.error('加载优惠券失败:', err)
+      } catch (error) {
+        console.error('加载优惠券失败:', error)
         uni.showToast({ title: '加载失败', icon: 'none' })
+      } finally {
+        uni.hideLoading()
+        this.loading = false
       }
     },
 
     canUseCoupon(userCoupon) {
-      const coupon = userCoupon.coupon
+      const coupon = userCoupon && userCoupon.coupon
       if (!coupon) return false
-      return this.orderAmount >= coupon.minAmount
+      return this.orderAmount >= Number(coupon.minAmount || 0)
     },
 
     selectCoupon(coupon) {
       if (!this.canUseCoupon(coupon)) {
         uni.showToast({
-          title: `需满${coupon.coupon.minAmount}元可用`,
+          title: `满 ${Number(coupon.coupon.minAmount || 0).toFixed(2)} 元可用`,
           icon: 'none'
         })
         return
@@ -120,10 +127,9 @@ export default {
     },
 
     confirmSelection() {
-      // 将选中的优惠券信息传回订单确认页
       const pages = getCurrentPages()
       const prevPage = pages[pages.length - 2]
-      if (prevPage) {
+      if (prevPage && prevPage.$vm) {
         prevPage.$vm.selectedCoupon = this.selectedCoupon ? this.selectedCoupon.coupon : null
         prevPage.$vm.selectedUserCouponId = this.selectedCoupon ? this.selectedCoupon.id : null
       }
@@ -131,18 +137,19 @@ export default {
     },
 
     formatAmount(coupon) {
+      if (!coupon) return ''
       if (coupon.type === 'fixed') {
-        return coupon.amount.toFixed(0)
-      } else {
-        return `${(100 - coupon.amount).toFixed(0)}折`
+        return Number(coupon.amount || 0).toFixed(0)
       }
+      return formatDiscountLabel(coupon.amount)
     },
 
     getConditionText(coupon) {
-      if (coupon.minAmount > 0) {
-        return `满${coupon.minAmount}元可用`
+      if (!coupon) return ''
+      if (Number(coupon.minAmount || 0) > 0) {
+        return `满 ${Number(coupon.minAmount || 0).toFixed(2)} 元可用`
       }
-      return '无门槛'
+      return '无门槛可用'
     },
 
     formatTime(coupon) {

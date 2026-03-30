@@ -47,6 +47,7 @@ export default {
   border-radius: 8px;
   background: #fff;
   font-size: 14px;
+  box-sizing: border-box;
 }
 
 .tip {
@@ -65,4 +66,3 @@ export default {
   font-size: 15px;
 }
 </style>
-

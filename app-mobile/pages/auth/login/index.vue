@@ -8,7 +8,7 @@
     <view v-if="bindRequired" class="bind-banner">
       <image v-if="wechatAvatarUrl" class="bind-avatar" :src="wechatAvatarUrl" mode="aspectFill" />
       <view class="bind-copy">
-        <text class="bind-title">检测到待绑定微信账号</text>
+        <text class="bind-title">检测到待绑定的微信账号</text>
         <text class="bind-desc">{{ bindBannerDesc }}</text>
       </view>
     </view>
@@ -17,11 +17,7 @@
       <text class="tab-item" :class="{ active: loginType === 'code' }" @tap="switchLoginType('code')">
         验证码登录
       </text>
-      <text
-        class="tab-item"
-        :class="{ active: loginType === 'password' }"
-        @tap="switchLoginType('password')"
-      >
+      <text class="tab-item" :class="{ active: loginType === 'password' }" @tap="switchLoginType('password')">
         密码登录
       </text>
     </view>
@@ -44,14 +40,22 @@
       </view>
 
       <button class="btn" @tap="submit" :disabled="loading">
-        {{ loading ? (bindRequired ? '绑定中...' : '登录中...') : (bindRequired ? '登录并绑定微信' : '登录') }}
+        {{
+          loading
+            ? bindRequired
+              ? '绑定中...'
+              : '登录中...'
+            : bindRequired
+              ? '登录并绑定微信'
+              : '登录'
+        }}
       </button>
     </view>
 
     <view class="footer">
       <view class="footer-row">
-        <text class="txt">没有账号？</text>
-        <text class="link" @tap="goRegister">注册</text>
+        <text class="txt">还没有账号？</text>
+        <text class="link" @tap="goRegister">去注册</text>
       </view>
       <text class="portal-footer">{{ portalRuntime.loginFooter }}</text>
     </view>
@@ -137,12 +141,13 @@ export default {
       return trimValue(this.wechatBindToken) !== ''
     },
     headerSubtitle() {
-      return this.bindRequired ? '先登录已有账号，再完成微信绑定' : this.portalRuntime.subtitle
+      return this.bindRequired ? '请先登录已有账号，再完成微信绑定' : this.portalRuntime.subtitle
     },
     bindBannerDesc() {
-      return this.wechatNickname
-        ? `微信昵称：${this.wechatNickname}`
-        : '登录后会自动绑定当前微信账号。'
+      if (this.wechatNickname) {
+        return `微信昵称：${this.wechatNickname}`
+      }
+      return '登录后会自动绑定当前微信账号。'
     },
     wechatLoginAvailable() {
       return Boolean(this.portalRuntime.wechatLoginEnabled && trimValue(this.portalRuntime.wechatLoginEntryUrl))
@@ -161,6 +166,7 @@ export default {
       if (loginType === 'code' || loginType === 'password') {
         this.loginType = loginType
       }
+      this.phone = trimValue(query.phone)
       this.wechatBindToken = trimValue(query.wechatBindToken)
       this.wechatNickname = trimValue(query.wechatNickname)
       this.wechatAvatarUrl = trimValue(query.wechatAvatarUrl)
@@ -181,6 +187,7 @@ export default {
     },
     buildBindParams(extra = {}) {
       return {
+        phone: this.phone,
         wechatBindToken: this.wechatBindToken,
         wechatNickname: this.wechatNickname,
         wechatAvatarUrl: this.wechatAvatarUrl,
@@ -219,9 +226,7 @@ export default {
       }
       uni.setClipboardData({
         data: target,
-        success: () => {
-          uni.showToast({ title: '登录链接已复制', icon: 'success' })
-        }
+        success: () => uni.showToast({ title: '登录链接已复制', icon: 'success' })
       })
     },
     startWechatLogin(mode = 'login') {
@@ -239,6 +244,14 @@ export default {
     },
     goResetPassword() {
       uni.navigateTo({ url: '/pages/auth/reset-password/index' })
+    },
+    validatePhone() {
+      const phone = trimValue(this.phone)
+      if (!/^1\d{10}$/.test(phone)) {
+        uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
+        return ''
+      }
+      return phone
     },
     startCodeCooldown() {
       this.codeCooldown = 60
@@ -279,9 +292,8 @@ export default {
         return
       }
 
-      const phone = trimValue(this.phone)
-      if (!/^1\d{10}$/.test(phone)) {
-        uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
+      const phone = this.validatePhone()
+      if (!phone) {
         return
       }
 
@@ -291,8 +303,7 @@ export default {
         if (res.success === false) {
           uni.showToast({
             title: res.error || res.message || '验证码发送失败',
-            icon: 'none',
-            duration: 2000
+            icon: 'none'
           })
           return
         }
@@ -300,16 +311,17 @@ export default {
         uni.showToast({ title: res.message || '验证码已发送', icon: 'success' })
         this.startCodeCooldown()
       } catch (err) {
-        const message = err.data?.error || err.error || err.message || '验证码发送失败，请稍后重试'
-        uni.showToast({ title: message, icon: 'none', duration: 2000 })
+        uni.showToast({
+          title: err.data?.error || err.error || err.message || '验证码发送失败',
+          icon: 'none'
+        })
       } finally {
         this.loading = false
       }
     },
     async submit() {
-      const phone = trimValue(this.phone)
-      if (!/^1\d{10}$/.test(phone)) {
-        uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
+      const phone = this.validatePhone()
+      if (!phone) {
         return
       }
 

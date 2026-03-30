@@ -8,7 +8,7 @@
     <view v-if="bindRequired" class="bind-banner">
       <image v-if="wechatAvatarUrl" class="bind-avatar" :src="wechatAvatarUrl" mode="aspectFill" />
       <view class="bind-copy">
-        <text class="bind-title">检测到待绑定微信账号</text>
+        <text class="bind-title">检测到待绑定的微信账号</text>
         <text class="bind-desc">{{ bindBannerDesc }}</text>
       </view>
     </view>
@@ -36,23 +36,25 @@
       </view>
 
       <input v-model="password" class="input" placeholder="密码，至少 6 位" :password="true" maxlength="20" />
-      <input
-        v-model="confirmPassword"
-        class="input"
-        placeholder="确认密码"
-        :password="true"
-        maxlength="20"
-      />
+      <input v-model="confirmPassword" class="input" placeholder="确认密码" :password="true" maxlength="20" />
 
       <button class="btn" @tap="submit" :disabled="loading">
-        {{ loading ? (bindRequired ? '注册并绑定中...' : '注册中...') : (bindRequired ? '注册并绑定微信' : '注册') }}
+        {{
+          loading
+            ? bindRequired
+              ? '注册并绑定中...'
+              : '注册中...'
+            : bindRequired
+              ? '注册并绑定微信'
+              : '注册'
+        }}
       </button>
     </view>
 
     <view class="footer">
       <view class="footer-row">
         <text class="txt">已有账号？</text>
-        <text class="link" @tap="goLogin">登录</text>
+        <text class="link" @tap="goLogin">去登录</text>
       </view>
       <text class="portal-footer">{{ portalRuntime.loginFooter }}</text>
     </view>
@@ -72,7 +74,13 @@
 </template>
 
 <script>
-import { getBaseUrl, login as loginApi, register as registerApi, request, requestSMSCode } from '@/shared-ui/api.js'
+import {
+  getBaseUrl,
+  login as loginApi,
+  register as registerApi,
+  requestSMSCode,
+  verifySMSCodeCheck
+} from '@/shared-ui/api.js'
 import { saveTokenInfo } from '@/shared-ui/request-interceptor'
 import {
   getCachedConsumerAuthRuntimeSettings,
@@ -117,6 +125,11 @@ function deriveWebRootFromEntryUrl(entryUrl) {
   return match ? match[1] : ''
 }
 
+function shouldRedirectToLogin(message) {
+  const content = trimValue(message)
+  return /已注册|已存在|already registered|already exists/i.test(content)
+}
+
 export default {
   data() {
     return {
@@ -148,9 +161,10 @@ export default {
       return this.bindRequired ? '注册后会自动绑定当前微信账号' : this.portalRuntime.subtitle
     },
     bindBannerDesc() {
-      return this.wechatNickname
-        ? `微信昵称：${this.wechatNickname}`
-        : '完成注册后会自动绑定当前微信账号。'
+      if (this.wechatNickname) {
+        return `微信昵称：${this.wechatNickname}`
+      }
+      return '完成注册后会自动绑定当前微信账号。'
     },
     wechatLoginAvailable() {
       return Boolean(this.portalRuntime.wechatLoginEnabled && trimValue(this.portalRuntime.wechatLoginEntryUrl))
@@ -172,6 +186,7 @@ export default {
   methods: {
     applyQueryState(query = {}) {
       this.inviteCode = trimValue(query.inviteCode).toUpperCase()
+      this.phone = trimValue(query.phone)
       this.wechatBindToken = trimValue(query.wechatBindToken)
       this.wechatNickname = trimValue(query.wechatNickname)
       this.wechatAvatarUrl = trimValue(query.wechatAvatarUrl)
@@ -190,6 +205,7 @@ export default {
     },
     buildQueryParams(extra = {}) {
       return {
+        phone: this.phone,
         inviteCode: this.inviteCode,
         wechatBindToken: this.wechatBindToken,
         wechatNickname: this.wechatNickname,
@@ -232,9 +248,7 @@ export default {
       }
       uni.setClipboardData({
         data: target,
-        success: () => {
-          uni.showToast({ title: '登录链接已复制', icon: 'success' })
-        }
+        success: () => uni.showToast({ title: '登录链接已复制', icon: 'success' })
       })
     },
     startWechatLogin(mode = 'register') {
@@ -261,6 +275,14 @@ export default {
       this.captchaCode = ''
       void this.loadCaptcha()
     },
+    validatePhone() {
+      const phone = trimValue(this.phone)
+      if (!/^1\d{10}$/.test(phone)) {
+        uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
+        return ''
+      }
+      return phone
+    },
     startCodeCooldown() {
       this.codeCooldown = 60
       this.clearTimer()
@@ -278,7 +300,7 @@ export default {
     },
     maybeRedirectToLogin(message) {
       const content = trimValue(message)
-      if (!content || (!content.includes('已注册') && !content.includes('已存在'))) {
+      if (!shouldRedirectToLogin(content)) {
         return false
       }
       uni.showModal({
@@ -299,9 +321,8 @@ export default {
         return
       }
 
-      const phone = trimValue(this.phone)
-      if (!/^1\d{10}$/.test(phone)) {
-        uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
+      const phone = this.validatePhone()
+      if (!phone) {
         return
       }
 
@@ -336,8 +357,7 @@ export default {
           }
           uni.showToast({
             title: res.message || res.error || '验证码发送失败',
-            icon: 'none',
-            duration: 2000
+            icon: 'none'
           })
           return
         }
@@ -367,6 +387,7 @@ export default {
           err.error ||
           err.message ||
           '验证码发送失败'
+
         if (this.maybeRedirectToLogin(message)) {
           return
         }
@@ -380,7 +401,7 @@ export default {
           return
         }
 
-        uni.showToast({ title: message, icon: 'none', duration: 2000 })
+        uni.showToast({ title: message, icon: 'none' })
       } finally {
         this.loading = false
       }
@@ -395,7 +416,7 @@ export default {
     },
     async submit() {
       const nickname = trimValue(this.nickname)
-      const phone = trimValue(this.phone)
+      const phone = this.validatePhone()
       const password = trimValue(this.password)
       const confirmPassword = trimValue(this.confirmPassword)
       const code = trimValue(this.code)
@@ -404,8 +425,7 @@ export default {
         uni.showToast({ title: '请输入昵称', icon: 'none' })
         return
       }
-      if (!/^1\d{10}$/.test(phone)) {
-        uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
+      if (!phone) {
         return
       }
       if (!password) {
@@ -427,14 +447,9 @@ export default {
 
       this.loading = true
       try {
-        const verifyRes = await request({
-          url: '/api/verify-sms-code',
-          method: 'POST',
-          data: { phone, scene: 'register', code }
-        })
-
+        const verifyRes = await verifySMSCodeCheck(phone, 'register', code)
         if (!verifyRes.success) {
-          throw new Error(verifyRes.error || '验证码校验失败')
+          throw new Error(verifyRes.error || verifyRes.message || '验证码校验失败')
         }
 
         const res = await registerApi({
@@ -459,13 +474,18 @@ export default {
             this.persistLoginSuccess(loginRes, phone)
             return
           }
-        } catch (error) {
-          // 自动登录失败时回退到普通登录入口。
+        } catch (_error) {
+          // 自动登录失败时回退到登录入口
         }
 
-        uni.showToast({ title: this.bindRequired ? '注册成功，请重新登录' : '注册成功', icon: 'success' })
+        uni.showToast({
+          title: this.bindRequired ? '注册成功，请重新登录完成绑定' : '注册成功',
+          icon: 'success'
+        })
         setTimeout(() => {
-          uni.redirectTo({ url: '/pages/auth/login/index' })
+          uni.redirectTo({
+            url: buildPageUrl('/pages/auth/login/index', this.buildQueryParams({ phone }))
+          })
         }, 800)
       } catch (err) {
         const message =

@@ -1,36 +1,26 @@
-# Go API Dockerfile
-FROM golang:1.19-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-# 安装依赖
 RUN apk add --no-cache git
 
-# 复制 go mod 文件
-COPY go/go.mod go/go.sum ./
+COPY . .
 
-# 下载依赖
 RUN go mod download
+RUN CGO_ENABLED=0 GOOS=linux go build -o go-api ./cmd/main.go
 
-# 复制源代码
-COPY go/ ./
+FROM alpine:3.20
 
-# 构建应用
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o go-api ./cmd/main.go
+RUN apk add --no-cache ca-certificates tzdata wget
 
-# 运行阶段
-FROM alpine:latest
-
-RUN apk --no-cache add ca-certificates tzdata
 ENV TZ=Asia/Shanghai
 
-WORKDIR /root/
+WORKDIR /app
 
-# 从构建阶段复制二进制文件
-COPY --from=builder /app/go-api .
+COPY --from=builder /app/go-api ./go-api
 
-# 暴露端口
 EXPOSE 1029
 
-# 运行应用
+HEALTHCHECK --interval=15s --timeout=5s --retries=10 CMD wget -qO- http://127.0.0.1:1029/ready >/dev/null || exit 1
+
 CMD ["./go-api"]

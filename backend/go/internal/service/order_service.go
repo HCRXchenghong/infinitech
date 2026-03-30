@@ -463,9 +463,9 @@ func (s *OrderService) CreateOrder(ctx context.Context, data interface{}) (inter
 		}
 		merchantType = normalizeMerchantType(shop.MerchantType)
 		if merchantType == "takeout" && strings.TrimSpace(shop.OrderType) != "" {
-			// 兼容旧数据
+			// 兼容历史数据里的 orderType
 			merchantType = normalizeMerchantType(shop.OrderType)
-			if merchantType == "外卖类" || merchantType == "" {
+			if merchantType == "" {
 				merchantType = "takeout"
 			}
 		}
@@ -1104,3 +1104,4 @@ func orderStatusText(status string) string {
 		return status
 	}
 }
+

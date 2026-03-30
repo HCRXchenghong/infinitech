@@ -1,0 +1,19 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache wget
+
+COPY package*.json ./
+
+RUN npm ci --omit=dev
+
+COPY . .
+
+RUN mkdir -p uploads
+
+EXPOSE 9898
+
+HEALTHCHECK --interval=15s --timeout=5s --retries=10 CMD wget -qO- http://127.0.0.1:9898/ready >/dev/null || exit 1
+
+CMD ["npm", "start"]

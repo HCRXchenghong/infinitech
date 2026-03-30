@@ -6,16 +6,16 @@ services:
     container_name: yuexiang-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: yuexiang_user
-      POSTGRES_PASSWORD: yuexiang_password
-      POSTGRES_DB: yuexiang
+      POSTGRES_USER: ${POSTGRES_USER:-yuexiang_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yuexiang_password}
+      POSTGRES_DB: ${POSTGRES_DB:-yuexiang}
     ports:
-      - '5432:5432'
+      - '${POSTGRES_HOST_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-postgres.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U yuexiang_user -d yuexiang']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-yuexiang_user} -d ${POSTGRES_DB:-yuexiang}']
       interval: 10s
       timeout: 5s
       retries: 10
@@ -27,7 +27,7 @@ services:
     container_name: yuexiang-redis
     restart: unless-stopped
     ports:
-      - '2550:2550'
+      - '${REDIS_HOST_PORT:-2550}:2550'
     volumes:
       - redis_data:/data
     command: redis-server --port 2550 --appendonly yes
@@ -36,6 +36,174 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    networks:
+      - yuexiang-network
+
+  go-api:
+    build:
+      context: ../go
+      dockerfile: ../docker/Dockerfile.go
+    container_name: yuexiang-go-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ENV: ${ENV:-development}
+      GO_API_PORT: 1029
+      JWT_SECRET: ${JWT_SECRET:-yuexiang-dev-secret-key-change-in-production-32chars}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      DB_DRIVER: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-yuexiang_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-yuexiang_password}
+      DB_NAME: ${POSTGRES_DB:-yuexiang}
+      DB_MAX_OPEN_CONNS: ${DB_MAX_OPEN_CONNS:-40}
+      DB_MAX_IDLE_CONNS: ${DB_MAX_IDLE_CONNS:-20}
+      DB_CONN_MAX_LIFETIME_MINUTES: ${DB_CONN_MAX_LIFETIME_MINUTES:-60}
+      DB_CONN_MAX_IDLE_TIME_MINUTES: ${DB_CONN_MAX_IDLE_TIME_MINUTES:-30}
+      REDIS_ENABLED: 'true'
+      REDIS_REQUIRED: ${REDIS_REQUIRED:-true}
+      REDIS_HOST: redis
+      REDIS_PORT: 2550
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      PUSH_DISPATCH_ENABLED: ${PUSH_DISPATCH_ENABLED:-false}
+      PUSH_DISPATCH_PROVIDER: ${PUSH_DISPATCH_PROVIDER:-log}
+      PUSH_DISPATCH_WEBHOOK_URL: ${PUSH_DISPATCH_WEBHOOK_URL:-}
+      PUSH_DISPATCH_WEBHOOK_SECRET: ${PUSH_DISPATCH_WEBHOOK_SECRET:-}
+      PUSH_DISPATCH_WEBHOOK_AUTH_HEADER: ${PUSH_DISPATCH_WEBHOOK_AUTH_HEADER:-}
+      PUSH_DISPATCH_WEBHOOK_AUTH_VALUE: ${PUSH_DISPATCH_WEBHOOK_AUTH_VALUE:-}
+      PUSH_DISPATCH_FCM_PROJECT_ID: ${PUSH_DISPATCH_FCM_PROJECT_ID:-}
+      PUSH_DISPATCH_FCM_CLIENT_EMAIL: ${PUSH_DISPATCH_FCM_CLIENT_EMAIL:-}
+      PUSH_DISPATCH_FCM_PRIVATE_KEY: ${PUSH_DISPATCH_FCM_PRIVATE_KEY:-}
+      PUSH_DISPATCH_FCM_TOKEN_URL: ${PUSH_DISPATCH_FCM_TOKEN_URL:-https://oauth2.googleapis.com/token}
+      PUSH_DISPATCH_FCM_API_BASE_URL: ${PUSH_DISPATCH_FCM_API_BASE_URL:-https://fcm.googleapis.com}
+      PUSH_READY_MAX_QUEUE: ${PUSH_READY_MAX_QUEUE:-5000}
+      PUSH_READY_MAX_QUEUE_AGE_SECONDS: ${PUSH_READY_MAX_QUEUE_AGE_SECONDS:-1800}
+      RTC_RECORDING_RETENTION_HOURS: ${RTC_RECORDING_RETENTION_HOURS:-24}
+      RTC_RETENTION_CLEANUP_ENABLED: ${RTC_RETENTION_CLEANUP_ENABLED:-true}
+      RTC_RETENTION_CLEANUP_SECONDS: ${RTC_RETENTION_CLEANUP_SECONDS:-300}
+      RTC_RETENTION_CLEANUP_BATCH_SIZE: ${RTC_RETENTION_CLEANUP_BATCH_SIZE:-200}
+      HTTP_SLOW_REQUEST_WARN_MS: ${HTTP_SLOW_REQUEST_WARN_MS:-1500}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://127.0.0.1:8888,http://localhost:8888,http://127.0.0.1:8080,http://localhost:8080}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - '${GO_API_HOST_PORT:-1029}:1029'
+    volumes:
+      - go_logs:/app/logs
+      - go_data:/app/data
+    networks:
+      - yuexiang-network
+
+  socket-server:
+    build:
+      context: ../../socket-server
+      dockerfile: ../backend/docker/Dockerfile.socket
+    container_name: yuexiang-socket-server
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      go-api:
+        condition: service_healthy
+    environment:
+      SOCKET_PORT: 9898
+      JWT_SECRET: ${JWT_SECRET:-yuexiang-dev-secret-key-change-in-production-32chars}
+      TOKEN_API_SECRET: ${TOKEN_API_SECRET:-compose-token-api-secret}
+      GO_API_URL: http://go-api:1029
+      REDIS_ENABLED: 'true'
+      REDIS_HOST: redis
+      REDIS_PORT: 2550
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      SOCKET_REDIS_ENABLED: 'true'
+      SOCKET_REDIS_HOST: redis
+      SOCKET_REDIS_PORT: 2550
+      SOCKET_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      SOCKET_REDIS_DB: ${REDIS_DB:-0}
+      HEIC_CONVERTER_URL: ${HEIC_CONVERTER_URL:-http://127.0.0.1:9899}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://127.0.0.1:8888,http://localhost:8888,http://127.0.0.1:8080,http://localhost:8080}
+      SOCKET_HTTP_REQUEST_TIMEOUT_MS: ${SOCKET_HTTP_REQUEST_TIMEOUT_MS:-30000}
+      SOCKET_HTTP_HEADERS_TIMEOUT_MS: ${SOCKET_HTTP_HEADERS_TIMEOUT_MS:-35000}
+      SOCKET_HTTP_KEEP_ALIVE_TIMEOUT_MS: ${SOCKET_HTTP_KEEP_ALIVE_TIMEOUT_MS:-5000}
+      SOCKET_HTTP_RATE_LIMIT_WINDOW_MS: ${SOCKET_HTTP_RATE_LIMIT_WINDOW_MS:-60000}
+      SOCKET_HTTP_RATE_LIMIT_MAX: ${SOCKET_HTTP_RATE_LIMIT_MAX:-300}
+      SOCKET_HTTP_SLOW_REQUEST_WARN_MS: ${SOCKET_HTTP_SLOW_REQUEST_WARN_MS:-1500}
+      SOCKET_JSON_BODY_LIMIT_BYTES: ${SOCKET_JSON_BODY_LIMIT_BYTES:-1048576}
+      SOCKET_UPLOAD_LIMIT_BYTES: ${SOCKET_UPLOAD_LIMIT_BYTES:-12582912}
+      SOCKET_PING_TIMEOUT_MS: ${SOCKET_PING_TIMEOUT_MS:-20000}
+      SOCKET_PING_INTERVAL_MS: ${SOCKET_PING_INTERVAL_MS:-25000}
+      SOCKET_MAX_HTTP_BUFFER_BYTES: ${SOCKET_MAX_HTTP_BUFFER_BYTES:-4194304}
+      SOCKET_RTC_RING_TIMEOUT_SECONDS: ${SOCKET_RTC_RING_TIMEOUT_SECONDS:-35}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - '${SOCKET_HOST_PORT:-9898}:9898'
+    volumes:
+      - socket_uploads:/app/uploads
+    networks:
+      - yuexiang-network
+
+  bff:
+    build:
+      context: ../bff
+      dockerfile: ../docker/Dockerfile.bff
+    container_name: yuexiang-bff
+    restart: unless-stopped
+    depends_on:
+      go-api:
+        condition: service_healthy
+      socket-server:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      BFF_PORT: 25500
+      NODE_ENV: ${ENV:-development}
+      GO_API_URL: http://go-api:1029
+      SOCKET_SERVER_URL: http://socket-server:9898
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-yuexiang_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-yuexiang_password}
+      DB_NAME: ${POSTGRES_DB:-yuexiang}
+      DB_DIALECT: postgres
+      REDIS_ENABLED: 'true'
+      REDIS_HOST: redis
+      REDIS_PORT: 2550
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      JWT_SECRET: ${JWT_SECRET:-yuexiang-dev-secret-key-change-in-production-32chars}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      BFF_API_RATE_LIMIT_WINDOW_MS: ${BFF_API_RATE_LIMIT_WINDOW_MS:-60000}
+      BFF_API_RATE_LIMIT_MAX: ${BFF_API_RATE_LIMIT_MAX:-3000}
+      BFF_REDIS_RATE_LIMIT_ENABLED: ${BFF_REDIS_RATE_LIMIT_ENABLED:-true}
+      BFF_REDIS_RATE_LIMIT_PREFIX: ${BFF_REDIS_RATE_LIMIT_PREFIX:-ratelimit:bff:api}
+      BFF_REDIS_RATE_LIMIT_CONNECT_TIMEOUT_MS: ${BFF_REDIS_RATE_LIMIT_CONNECT_TIMEOUT_MS:-1000}
+      BFF_JSON_LIMIT_BYTES: ${BFF_JSON_LIMIT_BYTES:-1048576}
+      BFF_URLENCODED_LIMIT_BYTES: ${BFF_URLENCODED_LIMIT_BYTES:-1048576}
+      BFF_UPLOAD_MAX_FILE_SIZE_BYTES: ${BFF_UPLOAD_MAX_FILE_SIZE_BYTES:-10485760}
+      BFF_UPLOAD_MAX_FIELD_SIZE_BYTES: ${BFF_UPLOAD_MAX_FIELD_SIZE_BYTES:-65536}
+      BFF_UPLOAD_MAX_FILES: ${BFF_UPLOAD_MAX_FILES:-1}
+      BFF_REQUEST_TIMEOUT_MS: ${BFF_REQUEST_TIMEOUT_MS:-30000}
+      BFF_HEADERS_TIMEOUT_MS: ${BFF_HEADERS_TIMEOUT_MS:-35000}
+      BFF_KEEP_ALIVE_TIMEOUT_MS: ${BFF_KEEP_ALIVE_TIMEOUT_MS:-5000}
+      BFF_SLOW_REQUEST_WARN_MS: ${BFF_SLOW_REQUEST_WARN_MS:-1500}
+      BFF_READY_REQUIRE_SOCKET: ${BFF_READY_REQUIRE_SOCKET:-true}
+      ADMIN_TOKEN_SECRET: ${ADMIN_TOKEN_SECRET:-yuexiang-admin-token-secret}
+      ADMIN_QR_LOGIN_SECRET: ${ADMIN_QR_LOGIN_SECRET:-}
+      ADMIN_WEB_BASE_URL: ${ADMIN_WEB_BASE_URL:-http://127.0.0.1:8080}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - '${BFF_HOST_PORT:-25500}:25500'
+    volumes:
+      - bff_logs:/app/logs
+      - bff_uploads:/app/uploads
     networks:
       - yuexiang-network
 
@@ -81,6 +249,11 @@ volumes:
   redis_data:
   mysql_data:
   rabbitmq_data:
+  go_logs:
+  go_data:
+  bff_logs:
+  bff_uploads:
+  socket_uploads:
 
 networks:
   yuexiang-network:

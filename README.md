@@ -68,6 +68,69 @@ Important boundaries:
 - `scripts`: release preflight, smoke checks, helper scripts
 - `.github/workflows`: CI
 
+## One-Command Deployment
+
+The repository now includes a cross-platform deployment entry:
+
+```powershell
+node scripts/deploy-all.mjs up
+```
+
+It works on:
+
+- Windows PowerShell / CMD
+- Ubuntu
+- Debian
+
+Optional convenience wrappers are also included:
+
+```powershell
+scripts\deploy-all.cmd up
+```
+
+```bash
+sh scripts/deploy-all.sh up
+```
+
+Supported actions:
+
+- `up`: start the full backend stack with `--build`
+- `down`: stop and remove containers
+- `restart`: rebuild and restart
+- `logs [service...]`: follow logs
+- `ps`: list running services
+- `config`: print rendered compose config
+
+Useful flags:
+
+- `--no-build`
+- `--attach`
+- `--profile=legacy-mysql`
+- `--profile=messaging`
+
+## Docker Startup
+
+`backend/docker/docker-compose.yml` now starts the complete backend stack:
+
+- `postgres`
+- `redis`
+- `go-api`
+- `socket-server`
+- `bff`
+
+Optional profiles remain available for:
+
+- `mysql` via `--profile=legacy-mysql`
+- `rabbitmq` via `--profile=messaging`
+
+Default local endpoints after `up`:
+
+- Go API: `http://127.0.0.1:1029/ready`
+- BFF: `http://127.0.0.1:25500/ready`
+- Socket Server: `http://127.0.0.1:9898/ready`
+- PostgreSQL: `127.0.0.1:5432`
+- Redis: `127.0.0.1:2550`
+
 ## What Has Already Been Remediated
 
 ### Architecture and runtime hardening

@@ -1,7 +1,7 @@
 <template>
   <view class="page med-order">
     <view class="header">
-      <view class="back" @tap="back">‹</view>
+      <view class="back" @tap="back">></view>
       <text class="title">极速买药</text>
     </view>
 
@@ -11,7 +11,7 @@
         <textarea
           v-model="medOrderDesc"
           class="textarea"
-          placeholder="例如：布洛芬缓释胶囊（芬必得）一盒，999感冒灵一盒"
+          placeholder="例如：布洛芬缓释胶囊一盒，感冒灵一盒"
           auto-height
           maxlength="200"
           show-confirm-bar="false"
@@ -19,9 +19,9 @@
       </view>
 
       <view class="row space-between">
-        <text class="label">预估药品费</text>
+        <text class="label">预计药品费</text>
         <view class="price-input">
-          <text class="price-prefix">¥</text>
+          <text class="price-prefix">￥</text>
           <input v-model="medPrice" class="price-field" type="digit" placeholder="0" />
         </view>
       </view>
@@ -33,7 +33,7 @@
         </view>
         <text class="rx-sub">若包含处方药，请先上传电子处方或病历图片</text>
         <view v-if="hasPrescription" class="rx-upload" @tap="uploadPrescription">
-          <text class="rx-upload-icon">📷</text>
+          <text class="rx-upload-icon">PIC</text>
           <text class="rx-upload-text">
             {{ uploadingPrescription ? '上传中...' : (prescriptionFileName || '点击上传处方/病历') }}
           </text>
@@ -46,22 +46,22 @@
           <text class="addr-label">送药地址</text>
           <text class="addr-value">{{ deliveryAddress }}</text>
         </view>
-        <text class="addr-arrow">›</text>
+        <text class="addr-arrow">></text>
       </view>
 
       <view v-if="canEstimate" class="fee-card">
         <view class="fee-row">
           <text class="fee-label">跑腿费（夜间/加急）</text>
-          <text class="fee-value">¥{{ serviceFee.toFixed(2) }}</text>
+          <text class="fee-value">￥{{ serviceFee.toFixed(2) }}</text>
         </view>
         <view class="fee-row">
-          <text class="fee-label">预估药品费</text>
-          <text class="fee-value">¥{{ medPriceNumber.toFixed(2) }}</text>
+          <text class="fee-label">预计药品费</text>
+          <text class="fee-value">￥{{ medPriceNumber.toFixed(2) }}</text>
         </view>
         <view class="fee-divider" />
         <view class="fee-row total">
-          <text class="fee-total-label">预估总价</text>
-          <text class="fee-total-value">¥{{ totalFee.toFixed(2) }}</text>
+          <text class="fee-total-label">预计总价</text>
+          <text class="fee-total-value">￥{{ totalFee.toFixed(2) }}</text>
         </view>
       </view>
 
@@ -102,7 +102,7 @@ export default {
       return Number.isFinite(n) ? n : 0
     },
     canEstimate() {
-      return (this.medOrderDesc || '').trim() && this.medPriceNumber > 0
+      return String(this.medOrderDesc || '').trim() !== '' && this.medPriceNumber > 0
     },
     canSubmit() {
       if (!this.canEstimate) return false
@@ -116,8 +116,7 @@ export default {
   },
   onLoad(query) {
     if (query && query.prefill) {
-      const name = decodeURIComponent(query.prefill)
-      this.medOrderDesc = `${name} 一盒`
+      this.medOrderDesc = decodeURIComponent(query.prefill)
     }
     this.syncAddress()
   },
@@ -153,14 +152,14 @@ export default {
           uni.showLoading({ title: '上传处方中...', mask: true })
           try {
             const uploaded = await uploadCommonImage(filePath)
-            const url = String((uploaded && uploaded.url) || '')
+            const url = String((uploaded && uploaded.url) || '').trim()
             if (!url) {
               throw new Error('上传失败')
             }
             const parts = filePath.split(/[\\/]/)
-            this.prescriptionFileName = parts[parts.length - 1] || '已上传'
+            this.prescriptionFileName = parts[parts.length - 1] || '已上传处方'
             this.prescriptionFileUrl = url
-          } catch (error) {
+          } catch (_error) {
             uni.showToast({ title: '处方上传失败', icon: 'none' })
           } finally {
             uni.hideLoading()
@@ -200,13 +199,14 @@ export default {
           },
           identity
         )
+
         const result = await createOrder(payload)
         if (!result || !result.id) {
           throw new Error('订单创建失败')
         }
         uni.navigateTo({ url: `/pages/medicine/tracking?id=${encodeURIComponent(result.id)}` })
       } catch (error) {
-        const message = (error && error.data && error.data.error) || error.error || error.message || '提交失败'
+        const message = error?.data?.error || error?.error || error?.message || '提交失败'
         uni.showToast({ title: message, icon: 'none' })
       } finally {
         uni.hideLoading()
@@ -350,6 +350,7 @@ export default {
 .rx-upload-icon {
   font-size: 22px;
   color: #fb923c;
+  font-weight: 900;
 }
 
 .rx-upload-text {

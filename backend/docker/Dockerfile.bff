@@ -1,22 +1,19 @@
-# Node.js BFF Dockerfile
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
-# 复制 package 文件
-COPY bff/package*.json ./
+RUN apk add --no-cache wget
 
-# 安装依赖
-RUN npm ci --only=production
+COPY package*.json ./
 
-# 复制源代码
-COPY bff/ ./
+RUN npm ci --omit=dev
 
-# 创建日志目录
-RUN mkdir -p logs
+COPY . .
 
-# 暴露端口
+RUN mkdir -p logs uploads
+
 EXPOSE 25500
 
-# 启动服务
+HEALTHCHECK --interval=15s --timeout=5s --retries=10 CMD wget -qO- http://127.0.0.1:25500/ready >/dev/null || exit 1
+
 CMD ["npm", "start"]
