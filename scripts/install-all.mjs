@@ -95,6 +95,18 @@ function getDockerCommandCandidates() {
   return candidates
 }
 
+function getDockerComposeExecutableCandidates() {
+  const candidates = process.platform === 'win32'
+    ? [
+        'docker-compose.exe',
+        'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker-compose.exe',
+        'C:\\Program Files\\Docker\\Docker\\resources\\cli-plugins\\docker-compose.exe',
+      ]
+    : ['docker-compose']
+
+  return candidates
+}
+
 function readEnvFile(filePath) {
   if (!filePath || !fs.existsSync(filePath)) {
     return {}
@@ -285,8 +297,9 @@ function detectComposeCommand() {
     })
   }
 
-  const legacyCommand = process.platform === 'win32' ? 'docker-compose.exe' : 'docker-compose'
-  candidates.push({ command: legacyCommand, prefixArgs: [], probeArgs: ['version'] })
+  for (const legacyCommand of getDockerComposeExecutableCandidates()) {
+    candidates.push({ command: legacyCommand, prefixArgs: [], probeArgs: ['version'] })
+  }
 
   if (isLinux) {
     candidates.push({
@@ -299,6 +312,18 @@ function detectComposeCommand() {
   for (const candidate of candidates) {
     if (canRun(candidate.command, candidate.probeArgs)) {
       return candidate
+    }
+  }
+
+  for (const [dockerCommand] of getDockerCommandCandidates()) {
+    if (fs.existsSync(dockerCommand)) {
+      return { command: dockerCommand, prefixArgs: ['compose'] }
+    }
+  }
+
+  for (const composeCommand of getDockerComposeExecutableCandidates()) {
+    if (fs.existsSync(composeCommand)) {
+      return { command: composeCommand, prefixArgs: [] }
     }
   }
 
@@ -542,18 +567,18 @@ async function main() {
     return
   }
 
-  const compose = detectComposeCommand()
-  if (!compose) {
-    const hints = getInstallerHints()
-    throw new Error(
-      `未检测到 Docker Compose。\n请先运行安装脚本完成 Docker / Compose 依赖准备：\n- Windows CMD：${hints.cmd}\n- Windows PowerShell：${hints.ps}\n- Linux / macOS：${hints.shell}`,
-    )
-  }
-
   if (!ensureDockerReady()) {
     const hints = getInstallerHints()
     throw new Error(
       `Docker 已安装但当前未就绪。\n请先手动打开 Docker Desktop 或确认 Docker Engine 已启动，然后重新执行：\n- Windows CMD：${hints.cmd}\n- Windows PowerShell：${hints.ps}\n- Linux / macOS：${hints.shell}`,
+    )
+  }
+
+  const compose = detectComposeCommand()
+  if (!compose) {
+    const hints = getInstallerHints()
+    throw new Error(
+      `未检测到 Docker Compose。\n请先确认 Docker Desktop 已完整安装并完成首次初始化，然后重新执行：\n- Windows CMD：${hints.cmd}\n- Windows PowerShell：${hints.ps}\n- Linux / macOS：${hints.shell}`,
     )
   }
 

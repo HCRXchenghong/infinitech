@@ -37,6 +37,18 @@ function getDockerCommandCandidates() {
   return candidates
 }
 
+function getDockerComposeExecutableCandidates() {
+  const candidates = isWindows
+    ? [
+        'docker-compose.exe',
+        'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker-compose.exe',
+        'C:\\Program Files\\Docker\\Docker\\resources\\cli-plugins\\docker-compose.exe',
+      ]
+    : ['docker-compose']
+
+  return candidates
+}
+
 function readEnvFile(filePath) {
   if (!filePath || !fs.existsSync(filePath)) {
     return {}
@@ -101,8 +113,9 @@ function detectComposeCommand() {
     })
   }
 
-  const legacyCommand = isWindows ? 'docker-compose.exe' : 'docker-compose'
-  candidates.push({ command: legacyCommand, prefixArgs: [], probeArgs: ['version'] })
+  for (const legacyCommand of getDockerComposeExecutableCandidates()) {
+    candidates.push({ command: legacyCommand, prefixArgs: [], probeArgs: ['version'] })
+  }
 
   if (isLinux) {
     candidates.push({
@@ -115,6 +128,18 @@ function detectComposeCommand() {
   for (const candidate of candidates) {
     if (canRun(candidate.command, candidate.probeArgs)) {
       return { command: candidate.command, prefixArgs: candidate.prefixArgs }
+    }
+  }
+
+  for (const [dockerCommand] of getDockerCommandCandidates()) {
+    if (fs.existsSync(dockerCommand)) {
+      return { command: dockerCommand, prefixArgs: ['compose'] }
+    }
+  }
+
+  for (const composeCommand of getDockerComposeExecutableCandidates()) {
+    if (fs.existsSync(composeCommand)) {
+      return { command: composeCommand, prefixArgs: [] }
     }
   }
 
