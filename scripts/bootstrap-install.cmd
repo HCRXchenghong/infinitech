@@ -1,14 +1,10 @@
 @echo off
 setlocal
-chcp 65001 >nul
 
 set "SCRIPT_DIR=%~dp0"
 set "PS_SCRIPT=%SCRIPT_DIR%bootstrap-install.ps1"
 set "RAW_URL=https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1"
 set "TEMP_PS=%TEMP%\infinitech-bootstrap-install.ps1"
-
-echo.
-echo 正在准备 Windows 安装器...
 
 if exist "%PS_SCRIPT%" (
   powershell -ExecutionPolicy Bypass -File "%PS_SCRIPT%" %*

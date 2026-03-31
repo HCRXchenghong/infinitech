@@ -37,27 +37,41 @@ Linux / macOS:
 curl -fsSL https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.sh | bash
 ```
 
-Windows options:
+Windows:
 
-| Terminal | Recommendation | Command |
-| --- | --- | --- |
-| PowerShell | Recommended | `powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 \| iex"` |
-| CMD | Supported | `powershell -ExecutionPolicy Bypass -Command "$u='https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.cmd'; $p=Join-Path $env:TEMP 'infinitech-bootstrap-install.cmd'; irm $u -OutFile $p; & $env:ComSpec /c $p"` |
+PowerShell (Recommended):
+
+```powershell
+irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex
+```
+
+CMD:
+
+```cmd
+powershell -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1' | iex"
+```
 
 Notes:
 
-- The `PowerShell` entry downloads and executes `bootstrap-install.ps1` directly
-- The `CMD` entry downloads `bootstrap-install.cmd`, then lets it fetch a local `ps1` and run it
-- If you are already in `CMD`, just run the `CMD` row as-is
+- Both blocks are meant to be copied directly in the corresponding terminal
+- On Windows, both terminal types now use the same raw `bootstrap-install.ps1` path for the GitHub bootstrap flow
+- This is the most stable Windows path and closest to the `curl | bash` style on Linux / macOS
 
 ### Install and deploy from a local checkout
 
-Windows options:
+Windows:
 
-| Terminal | Recommendation | Command |
-| --- | --- | --- |
-| PowerShell | Recommended | `powershell -ExecutionPolicy Bypass -File .\scripts\install-all.ps1` |
-| CMD | Supported | `scripts\install-all.cmd` |
+PowerShell (Recommended):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-all.ps1
+```
+
+CMD:
+
+```cmd
+scripts\install-all.cmd
+```
 
 Ubuntu / Debian / macOS:
 
@@ -289,31 +303,45 @@ Specify directory or branch:
 curl -fsSL https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.sh | bash -s -- --target-dir=/opt/infinitech --branch=main
 ```
 
-### Windows options
+### Windows
 
-| Terminal | Recommendation | Command |
-| --- | --- | --- |
-| PowerShell | Recommended | `powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 \| iex"` |
-| CMD | Supported | `powershell -ExecutionPolicy Bypass -Command "$u='https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.cmd'; $p=Join-Path $env:TEMP 'infinitech-bootstrap-install.cmd'; irm $u -OutFile $p; & $env:ComSpec /c $p"` |
+PowerShell (Recommended):
+
+```powershell
+irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex
+```
+
+CMD:
+
+```cmd
+powershell -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1' | iex"
+```
 
 Example with a custom directory:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex --target-dir D:\infinitech"
+& ([scriptblock]::Create((irm 'https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1'))) -TargetDir 'D:\infinitech'
 ```
 
 ```cmd
-powershell -ExecutionPolicy Bypass -Command "$u='https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.cmd'; $p=Join-Path $env:TEMP 'infinitech-bootstrap-install.cmd'; irm $u -OutFile $p; & $env:ComSpec /c $p --target-dir D:\infinitech"
+powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm 'https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1'))) -TargetDir 'D:\infinitech'"
 ```
 
 ## Local Installer Entry Points
 
-Windows options:
+Windows:
 
-| Terminal | Recommendation | Command |
-| --- | --- | --- |
-| PowerShell | Recommended | `powershell -ExecutionPolicy Bypass -File .\scripts\install-all.ps1` |
-| CMD | Supported | `scripts\install-all.cmd` |
+PowerShell (Recommended):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-all.ps1
+```
+
+CMD:
+
+```cmd
+scripts\install-all.cmd
+```
 
 Ubuntu / Debian / macOS:
 
