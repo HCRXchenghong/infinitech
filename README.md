@@ -29,6 +29,8 @@ Infinitech 是一个面向本地生活服务场景的多端一体化平台仓库
 
 ### 从 GitHub 直接拉起
 
+不带 `--target-dir` 时，bootstrap 脚本会先询问本地安装目录；也可以直接通过参数指定。
+
 Linux / macOS：
 
 ```bash
@@ -283,6 +285,12 @@ curl -fsSL https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scrip
 
 ```powershell
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex"
+```
+
+指定目录示例：
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex --target-dir D:\infinitech"
 ```
 
 ## 本地安装器入口

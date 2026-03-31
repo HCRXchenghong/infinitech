@@ -29,6 +29,8 @@ If you want to get the stack up quickly, use one of these two paths first.
 
 ### Bootstrap directly from GitHub
 
+If `--target-dir` is not provided, the bootstrap script will prompt for a local install directory first. You can also pass the target path explicitly.
+
 Linux / macOS:
 
 ```bash
@@ -283,6 +285,12 @@ curl -fsSL https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scrip
 
 ```powershell
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex"
+```
+
+Example with a custom directory:
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex --target-dir D:\infinitech"
 ```
 
 ## Local Installer Entry Points

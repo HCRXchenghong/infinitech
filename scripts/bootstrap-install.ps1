@@ -13,6 +13,32 @@ if (-not $TargetDir) {
   $TargetDir = Join-Path $HOME 'infinitech'
 }
 
+function Select-TargetDir {
+  param([string]$Current)
+
+  if (-not $Current) {
+    return $Current
+  }
+
+  Write-Host ""
+  Write-Host "Choose repository install directory:"
+  Write-Host ("  1. Use default directory: {0}" -f $Current)
+  Write-Host "  2. Enter a custom directory"
+  $choice = Read-Host "Enter menu number [1]"
+  switch (($choice | ForEach-Object { $_.Trim() })) {
+    '2' {
+      $custom = Read-Host "Enter install directory path"
+      if ($custom -and $custom.Trim()) {
+        return $custom.Trim()
+      }
+      return $Current
+    }
+    default {
+      return $Current
+    }
+  }
+}
+
 function Test-Command {
   param([string]$Name)
   return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
@@ -86,6 +112,8 @@ function Sync-Repo {
   Write-Host "Cloning repository from GitHub..."
   & $GitExe clone --branch $RemoteBranch --single-branch $RemoteUrl $RepoDir
 }
+
+$TargetDir = Select-TargetDir -Current $TargetDir
 
 Ensure-Git
 $gitExe = Get-GitExecutable

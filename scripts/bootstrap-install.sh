@@ -27,6 +27,30 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+pick_target_dir() {
+  if [[ -n "${TARGET_DIR:-}" ]]; then
+    local default_dir="$TARGET_DIR"
+    if [[ -t 0 ]]; then
+      echo
+      echo "请选择仓库安装目录："
+      echo "  1. 使用默认目录: $default_dir"
+      echo "  2. 输入自定义目录"
+      read -r -p "输入数字选项 [1]: " mode
+      case "${mode:-1}" in
+        2)
+          read -r -p "请输入安装目录路径: " custom_dir
+          if [[ -n "${custom_dir// }" ]]; then
+            TARGET_DIR="$custom_dir"
+          fi
+          ;;
+        *)
+          TARGET_DIR="$default_dir"
+          ;;
+      esac
+    fi
+  fi
+}
+
 command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
@@ -118,6 +142,7 @@ sync_repo() {
 }
 
 main() {
+  pick_target_dir
   ensure_git
   sync_repo "$REPO_URL" "$REPO_BRANCH" "$TARGET_DIR"
 
