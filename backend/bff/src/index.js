@@ -281,7 +281,9 @@ const corsOptions = {
 };
 
 app.disable("x-powered-by");
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(compression());
 app.use(cors(corsOptions));
 app.set("trust proxy", 1);

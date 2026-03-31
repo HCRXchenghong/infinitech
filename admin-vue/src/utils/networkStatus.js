@@ -54,15 +54,17 @@ export async function checkServerConnection(baseURL) {
       ? `${normalized.replace(/\/api$/, '')}/health`
       : `${normalized}/health`;
 
-    await fetch(healthURL, {
+    const response = await fetch(healthURL, {
       method: 'GET',
       signal: controller.signal,
       cache: 'no-store',
-      mode: 'no-cors'
+      headers: {
+        Accept: 'application/json, text/plain;q=0.9, */*;q=0.8'
+      }
     });
 
     clearTimeout(timeoutId);
-    return true;
+    return response.ok;
   } catch (error) {
     return false;
   }
