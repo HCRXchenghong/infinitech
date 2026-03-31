@@ -165,50 +165,54 @@
       检测到你当前使用的是首次部署生成的临时管理员账号。请先改成真实的管理员名称、手机号和密码后再进入后台。
     </p>
 
-    <div class="field-group">
-      <label>真实管理员名称</label>
-      <input
-        v-model.trim="bootstrapForm.name"
-        class="glass-input"
-        type="text"
-        placeholder="请输入真实管理员名称"
-      />
-    </div>
+    <form id="bootstrap-form" @submit.prevent="handleCompleteBootstrap">
+      <div class="field-group">
+        <label>真实管理员名称</label>
+        <input
+          v-model.trim="bootstrapForm.name"
+          class="glass-input"
+          type="text"
+          placeholder="请输入真实管理员名称"
+        />
+      </div>
 
-    <div class="field-group">
-      <label>真实管理员手机号</label>
-      <input
-        v-model.trim="bootstrapForm.phone"
-        class="glass-input"
-        type="text"
-        maxlength="11"
-        placeholder="请输入真实管理员手机号"
-      />
-    </div>
+      <div class="field-group">
+        <label>真实管理员手机号</label>
+        <input
+          v-model.trim="bootstrapForm.phone"
+          class="glass-input"
+          type="text"
+          maxlength="11"
+          placeholder="请输入真实管理员手机号"
+        />
+      </div>
 
-    <div class="field-group">
-      <label>新的管理员密码</label>
-      <input
-        v-model="bootstrapForm.newPassword"
-        class="glass-input"
-        type="password"
-        placeholder="请输入新的管理员密码"
-      />
-    </div>
+      <div class="field-group">
+        <label>新的管理员密码</label>
+        <input
+          v-model="bootstrapForm.newPassword"
+          class="glass-input"
+          type="password"
+          placeholder="请输入新的管理员密码"
+          autocomplete="new-password"
+        />
+      </div>
 
-    <div class="field-group">
-      <label>确认新的管理员密码</label>
-      <input
-        v-model="bootstrapForm.confirmPassword"
-        class="glass-input"
-        type="password"
-        placeholder="请再次输入新的管理员密码"
-      />
-    </div>
+      <div class="field-group">
+        <label>确认新的管理员密码</label>
+        <input
+          v-model="bootstrapForm.confirmPassword"
+          class="glass-input"
+          type="password"
+          placeholder="请再次输入新的管理员密码"
+          autocomplete="new-password"
+        />
+      </div>
+    </form>
 
     <template #footer>
       <el-button @click="handleBootstrapLogout">退出登录</el-button>
-      <el-button type="primary" :loading="bootstrapSubmitting" @click="handleCompleteBootstrap">
+      <el-button type="primary" native-type="submit" form="bootstrap-form" :loading="bootstrapSubmitting">
         保存并进入后台
       </el-button>
     </template>

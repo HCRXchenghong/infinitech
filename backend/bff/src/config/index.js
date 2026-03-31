@@ -41,7 +41,7 @@ function uniqueValues(values) {
 }
 
 function requireSharedSecret() {
-  const secret = String(process.env.ADMIN_TOKEN_SECRET || process.env.JWT_SECRET || "").trim();
+  const secret = String(process.env.JWT_SECRET || process.env.ADMIN_TOKEN_SECRET || "").trim();
   if (!secret) {
     throw new Error("BFF requires ADMIN_TOKEN_SECRET or JWT_SECRET");
   }
