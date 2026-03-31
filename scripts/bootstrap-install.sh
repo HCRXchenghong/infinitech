@@ -61,7 +61,7 @@ require_sudo() {
     return
   fi
   if ! command_exists sudo; then
-    echo "sudo is required to install missing dependencies." >&2
+    echo "当前缺少 sudo，无法安装缺失依赖。" >&2
     exit 1
   fi
   echo "sudo"
@@ -74,12 +74,12 @@ ensure_git() {
     return
   fi
 
-  echo "Git is missing. Installing Git first..."
+  echo "未检测到 Git，正在优先安装 Git..."
 
   case "$(uname -s)" in
     Linux)
       if [[ ! -f /etc/os-release ]]; then
-        echo "Unsupported Linux distribution. Install git manually and rerun." >&2
+        echo "当前 Linux 发行版暂不支持自动安装 Git，请先手动安装后重试。" >&2
         exit 1
       fi
       # shellcheck disable=SC1091
@@ -95,7 +95,7 @@ ensure_git() {
           fi
           ;;
         *)
-          echo "Unsupported Linux distribution: ${ID:-unknown}. Install git manually and rerun." >&2
+          echo "当前 Linux 发行版 ${ID:-unknown} 暂不支持自动安装 Git，请先手动安装后重试。" >&2
           exit 1
           ;;
       esac
@@ -110,7 +110,7 @@ ensure_git() {
       brew install git
       ;;
     *)
-      echo "Unsupported platform for bootstrap script. Install git manually and rerun." >&2
+      echo "当前平台暂不支持 bootstrap bash 脚本，请先手动安装 Git 后重试。" >&2
       exit 1
       ;;
   esac
@@ -124,7 +124,7 @@ sync_repo() {
   mkdir -p "$(dirname "$target_dir")"
 
   if [[ -d "$target_dir/.git" ]]; then
-    echo "Repository already exists. Updating latest code from GitHub..."
+    echo "检测到仓库已存在，正在从 GitHub 更新到最新代码..."
     git -C "$target_dir" remote set-url origin "$repo_url"
     git -C "$target_dir" fetch origin "$branch"
     git -C "$target_dir" checkout "$branch"
@@ -133,11 +133,11 @@ sync_repo() {
   fi
 
   if [[ -e "$target_dir" && ! -d "$target_dir/.git" ]]; then
-    echo "Target directory exists but is not a git repository: $target_dir" >&2
+    echo "目标目录已存在，但不是 Git 仓库：$target_dir" >&2
     exit 1
   fi
 
-  echo "Cloning repository from GitHub..."
+  echo "正在从 GitHub 克隆仓库..."
   git clone --branch "$branch" --single-branch "$repo_url" "$target_dir"
 }
 
@@ -147,7 +147,7 @@ main() {
   sync_repo "$REPO_URL" "$REPO_BRANCH" "$TARGET_DIR"
 
   cd "$TARGET_DIR"
-  echo "Repository is ready at: $TARGET_DIR"
+  echo "仓库已准备完成：$TARGET_DIR"
   exec bash scripts/install-all.sh "${FORWARD_ARGS[@]}"
 }
 

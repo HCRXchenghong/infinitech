@@ -22,13 +22,13 @@ function Select-MirrorProfile {
   }
 
   Write-Host ""
-  Write-Host "Select mirror profile:"
-  Write-Host "  1. Official (default)"
-  Write-Host "  2. Aliyun"
-  Write-Host "  3. Tencent Cloud"
-  Write-Host "  4. Huawei Cloud"
-  Write-Host "  5. Tsinghua / goproxy.cn"
-  $choice = Read-Host "Enter menu number [1]"
+  Write-Host "请选择镜像源："
+  Write-Host "  1. 官方源（默认）"
+  Write-Host "  2. 阿里云"
+  Write-Host "  3. 腾讯云"
+  Write-Host "  4. 华为云"
+  Write-Host "  5. 清华 / goproxy.cn"
+  $choice = Read-Host "输入数字选项 [1]"
   switch (($choice | ForEach-Object { $_.Trim() })) {
     '2' { return 'aliyun' }
     '3' { return 'tencent' }
@@ -44,7 +44,7 @@ function Ensure-Node {
   }
 
   Write-Host ""
-  Write-Host "Installing Node.js LTS..."
+  Write-Host "正在安装 Node.js LTS..."
 
   if (Test-Command winget) {
     & winget install -e --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements
@@ -56,7 +56,7 @@ function Ensure-Node {
     return
   }
 
-  throw "Neither winget nor choco is available. Cannot auto-install Node.js."
+  throw "当前既没有 winget 也没有 choco，无法自动安装 Node.js。"
 }
 
 function Ensure-DockerDesktop {
@@ -65,7 +65,7 @@ function Ensure-DockerDesktop {
   }
 
   Write-Host ""
-  Write-Host "Installing Docker..."
+  Write-Host "正在安装 Docker..."
 
   $os = Get-CimInstance Win32_OperatingSystem
   $isServer = $os.ProductType -ne 1
@@ -79,10 +79,10 @@ function Ensure-DockerDesktop {
       & choco install docker-desktop -y
       return
     }
-    throw "Neither winget nor choco is available. Cannot auto-install Docker Desktop."
+    throw "当前既没有 winget 也没有 choco，无法自动安装 Docker Desktop。"
   }
 
-  Write-Host "Windows Server detected. Switching to Docker Engine installation path..."
+  Write-Host "检测到 Windows Server，切换到 Docker Engine 安装路径..."
 
   if (Get-Command Install-WindowsFeature -ErrorAction SilentlyContinue) {
     Install-WindowsFeature -Name Containers | Out-Null
@@ -118,7 +118,7 @@ function Wait-ForDocker {
     }
   }
 
-  throw "Docker is installed but not ready yet. Start Docker Desktop / Docker Engine and retry."
+  throw "Docker 已安装，但当前还未就绪。请启动 Docker Desktop / Docker Engine 后重试。"
 }
 
 function Get-NodeExecutable {
@@ -137,14 +137,14 @@ function Get-NodeExecutable {
     }
   }
 
-  throw "Node.js is installed but node.exe is not visible in the current session. Reopen the terminal and retry."
+  throw "Node.js 已安装，但当前终端会话还不可见。请重新打开终端后重试。"
 }
 
 $mirror = Select-MirrorProfile -Current $MirrorProfile
 $computer = Get-ComputerInfo
 $arch = (Get-CimInstance Win32_Processor | Select-Object -First 1 -ExpandProperty AddressWidth)
-Write-Host ("Detected system: {0} / {1}-bit" -f $computer.WindowsProductName, $arch)
-Write-Host ("Selected mirror profile: {0}" -f $mirror)
+Write-Host ("检测到系统：{0} / {1} 位" -f $computer.WindowsProductName, $arch)
+Write-Host ("已选择镜像源：{0}" -f $mirror)
 
 Ensure-Node
 Ensure-DockerDesktop

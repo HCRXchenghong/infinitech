@@ -21,13 +21,13 @@ function Select-TargetDir {
   }
 
   Write-Host ""
-  Write-Host "Choose repository install directory:"
-  Write-Host ("  1. Use default directory: {0}" -f $Current)
-  Write-Host "  2. Enter a custom directory"
-  $choice = Read-Host "Enter menu number [1]"
+  Write-Host "请选择仓库安装目录："
+  Write-Host ("  1. 使用默认目录：{0}" -f $Current)
+  Write-Host "  2. 输入自定义目录"
+  $choice = Read-Host "输入数字选项 [1]"
   switch (($choice | ForEach-Object { $_.Trim() })) {
     '2' {
-      $custom = Read-Host "Enter install directory path"
+      $custom = Read-Host "请输入安装目录路径"
       if ($custom -and $custom.Trim()) {
         return $custom.Trim()
       }
@@ -49,7 +49,7 @@ function Ensure-Git {
     return
   }
 
-  Write-Host "Git is missing. Installing Git first..."
+  Write-Host "未检测到 Git，正在优先安装 Git..."
 
   if (Test-Command winget) {
     & winget install -e --id Git.Git --accept-source-agreements --accept-package-agreements
@@ -61,7 +61,7 @@ function Ensure-Git {
     return
   }
 
-  throw "Neither winget nor choco is available. Cannot auto-install Git."
+  throw "当前既没有 winget 也没有 choco，无法自动安装 Git。"
 }
 
 function Get-GitExecutable {
@@ -80,7 +80,7 @@ function Get-GitExecutable {
     }
   }
 
-  throw "Git is installed but not visible in the current session. Reopen the terminal and retry."
+  throw "Git 已安装，但当前终端会话还不可见。请重新打开终端后重试。"
 }
 
 function Sync-Repo {
@@ -97,7 +97,7 @@ function Sync-Repo {
   }
 
   if (Test-Path (Join-Path $RepoDir '.git')) {
-    Write-Host "Repository already exists. Updating latest code from GitHub..."
+    Write-Host "检测到仓库已存在，正在从 GitHub 更新到最新代码..."
     & $GitExe -C $RepoDir remote set-url origin $RemoteUrl
     & $GitExe -C $RepoDir fetch origin $RemoteBranch
     & $GitExe -C $RepoDir checkout $RemoteBranch
@@ -106,10 +106,10 @@ function Sync-Repo {
   }
 
   if (Test-Path $RepoDir) {
-    throw "Target directory exists but is not a git repository: $RepoDir"
+    throw "目标目录已存在，但不是 Git 仓库：$RepoDir"
   }
 
-  Write-Host "Cloning repository from GitHub..."
+  Write-Host "正在从 GitHub 克隆仓库..."
   & $GitExe clone --branch $RemoteBranch --single-branch $RemoteUrl $RepoDir
 }
 
@@ -121,8 +121,8 @@ Sync-Repo -GitExe $gitExe -RemoteUrl $RepoUrl -RemoteBranch $Branch -RepoDir $Ta
 
 $installCmd = Join-Path $TargetDir 'scripts\install-all.cmd'
 if (-not (Test-Path $installCmd)) {
-  throw "Installer entry was not found after clone: $installCmd"
+  throw "克隆完成后未找到安装入口：$installCmd"
 }
 
-Write-Host ("Repository is ready at: {0}" -f $TargetDir)
+Write-Host ("仓库已准备完成：{0}" -f $TargetDir)
 & $installCmd @ForwardArgs
