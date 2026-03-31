@@ -44,6 +44,30 @@ const (
 
 var errOrderNotDelivering = errors.New("order is not in delivering status")
 
+type migrationTarget struct {
+	name  string
+	model any
+}
+
+func autoMigrateTargets(db *gorm.DB, targets []migrationTarget) error {
+	if db == nil {
+		return fmt.Errorf("database is nil")
+	}
+
+	failed := make([]string, 0)
+	for _, target := range targets {
+		if err := db.AutoMigrate(target.model); err != nil {
+			failed = append(failed, target.name)
+			log.Printf("migration failed model=%s err=%v", target.name, err)
+		}
+	}
+
+	if len(failed) > 0 {
+		return fmt.Errorf("%d migration targets failed: %s", len(failed), strings.Join(failed, ", "))
+	}
+	return nil
+}
+
 func configureLogOutput() {
 	logPath := filepath.Join("logs", "combined.log")
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
@@ -176,6 +200,78 @@ func main() {
 		log.Printf("⚠️  数据库迁移警告: %v", err)
 	} else {
 		log.Println("✅ 数据库表结构迁移成功")
+	}
+
+	if recoveryErr := autoMigrateTargets(db, []migrationTarget{
+		{name: "Notification", model: &repository.Notification{}},
+		{name: "NotificationReadRecord", model: &repository.NotificationReadRecord{}},
+		{name: "Admin", model: &repository.Admin{}},
+		{name: "User", model: &repository.User{}},
+		{name: "Rider", model: &repository.Rider{}},
+		{name: "Merchant", model: &repository.Merchant{}},
+		{name: "Order", model: &repository.Order{}},
+		{name: "AfterSalesRequest", model: &repository.AfterSalesRequest{}},
+		{name: "Setting", model: &repository.Setting{}},
+		{name: "Carousel", model: &repository.Carousel{}},
+		{name: "PushMessage", model: &repository.PushMessage{}},
+		{name: "PublicAPI", model: &repository.PublicAPI{}},
+		{name: "Shop", model: &repository.Shop{}},
+		{name: "Review", model: &repository.Review{}},
+		{name: "UserFavorite", model: &repository.UserFavorite{}},
+		{name: "UserAddress", model: &repository.UserAddress{}},
+		{name: "RiderReview", model: &repository.RiderReview{}},
+		{name: "Category", model: &repository.Category{}},
+		{name: "Product", model: &repository.Product{}},
+		{name: "Banner", model: &repository.Banner{}},
+		{name: "FeaturedProduct", model: &repository.FeaturedProduct{}},
+		{name: "CooperationRequest", model: &repository.CooperationRequest{}},
+		{name: "InviteCode", model: &repository.InviteCode{}},
+		{name: "InviteRecord", model: &repository.InviteRecord{}},
+		{name: "OnboardingInviteLink", model: &repository.OnboardingInviteLink{}},
+		{name: "OnboardingInviteSubmission", model: &repository.OnboardingInviteSubmission{}},
+		{name: "PointsGood", model: &repository.PointsGood{}},
+		{name: "PointsRedemption", model: &repository.PointsRedemption{}},
+		{name: "PointsLedger", model: &repository.PointsLedger{}},
+		{name: "WalletAccount", model: &repository.WalletAccount{}},
+		{name: "WalletTransaction", model: &repository.WalletTransaction{}},
+		{name: "RechargeOrder", model: &repository.RechargeOrder{}},
+		{name: "WithdrawRequest", model: &repository.WithdrawRequest{}},
+		{name: "AdminWalletOperation", model: &repository.AdminWalletOperation{}},
+		{name: "FinancialLogAudit", model: &repository.FinancialLogAudit{}},
+		{name: "PaymentCallback", model: &repository.PaymentCallback{}},
+		{name: "IdempotencyRecord", model: &repository.IdempotencyRecord{}},
+		{name: "ReconciliationTask", model: &repository.ReconciliationTask{}},
+		{name: "ExternalAuthSession", model: &repository.ExternalAuthSession{}},
+		{name: "CaptchaChallenge", model: &repository.CaptchaChallenge{}},
+		{name: "SMSVerificationCode", model: &repository.SMSVerificationCode{}},
+		{name: "MessageConversation", model: &repository.MessageConversation{}},
+		{name: "SupportConversation", model: &repository.SupportConversation{}},
+		{name: "SupportMessage", model: &repository.SupportMessage{}},
+		{name: "PhoneContactAudit", model: &repository.PhoneContactAudit{}},
+		{name: "RTCCallAudit", model: &repository.RTCCallAudit{}},
+		{name: "DiningBuddyParty", model: &repository.DiningBuddyParty{}},
+		{name: "DiningBuddyPartyMember", model: &repository.DiningBuddyPartyMember{}},
+		{name: "DiningBuddyMessage", model: &repository.DiningBuddyMessage{}},
+		{name: "Coupon", model: &repository.Coupon{}},
+		{name: "UserCoupon", model: &repository.UserCoupon{}},
+		{name: "CouponIssueLog", model: &repository.CouponIssueLog{}},
+		{name: "GroupbuyDeal", model: &repository.GroupbuyDeal{}},
+		{name: "GroupbuyVoucher", model: &repository.GroupbuyVoucher{}},
+		{name: "GroupbuyRedemptionLog", model: &repository.GroupbuyRedemptionLog{}},
+		{name: "EventOutbox", model: &repository.EventOutbox{}},
+		{name: "OpNotification", model: &repository.OpNotification{}},
+		{name: "PushDevice", model: &repository.PushDevice{}},
+		{name: "PushDelivery", model: &repository.PushDelivery{}},
+		{name: "PushTemplate", model: &repository.PushTemplate{}},
+		{name: "HomePromotionCampaign", model: &repository.HomePromotionCampaign{}},
+		{name: "IDCodebook", model: &repository.IDCodebook{}},
+		{name: "IDSequence", model: &repository.IDSequence{}},
+		{name: "IDLegacyMapping", model: &repository.IDLegacyMapping{}},
+		{name: "IDMigrationAnomaly", model: &repository.IDMigrationAnomaly{}},
+	}); recoveryErr != nil {
+		log.Printf("migration recovery warning: %v", recoveryErr)
+	} else {
+		log.Println("database migration recovery pass completed")
 	}
 
 	if err := idkit.Bootstrap(db); err != nil {
