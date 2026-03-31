@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
   [string]$MirrorProfile = '',
   [Parameter(ValueFromRemainingArguments = $true)]
@@ -9,6 +9,11 @@ $ErrorActionPreference = 'Stop'
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Resolve-Path (Join-Path $ScriptDir '..')
+
+function L {
+  param([string]$Text)
+  return [regex]::Unescape($Text)
+}
 
 function Test-Command {
   param([string]$Name)
@@ -21,14 +26,14 @@ function Select-MirrorProfile {
     return $Current.ToLowerInvariant()
   }
 
-  Write-Host ""
-  Write-Host "请选择镜像源："
-  Write-Host "  1. 官方源（默认）"
-  Write-Host "  2. 阿里云"
-  Write-Host "  3. 腾讯云"
-  Write-Host "  4. 华为云"
-  Write-Host "  5. 清华 / goproxy.cn"
-  $choice = Read-Host "输入数字选项 [1]"
+  Write-Host ''
+  Write-Host (L '\u8bf7\u9009\u62e9\u955c\u50cf\u6e90\uff1a')
+  Write-Host (L '  1. \u5b98\u65b9\u6e90\uff08\u9ed8\u8ba4\uff09')
+  Write-Host (L '  2. \u963f\u91cc\u4e91')
+  Write-Host (L '  3. \u817e\u8baf\u4e91')
+  Write-Host (L '  4. \u534e\u4e3a\u4e91')
+  Write-Host (L '  5. \u6e05\u534e / goproxy.cn')
+  $choice = Read-Host (L '\u8f93\u5165\u6570\u5b57\u9009\u9879 [1]')
   switch (($choice | ForEach-Object { $_.Trim() })) {
     '2' { return 'aliyun' }
     '3' { return 'tencent' }
@@ -43,20 +48,24 @@ function Ensure-Node {
     return
   }
 
-  Write-Host ""
-  Write-Host "正在安装 Node.js LTS..."
+  Write-Host ''
+  Write-Host (L '\u6b63\u5728\u5b89\u88c5 Node.js LTS...')
 
   if (Test-Command winget) {
     & winget install -e --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements
-    return
+    if ($LASTEXITCODE -eq 0) {
+      return
+    }
   }
 
   if (Test-Command choco) {
     & choco install nodejs-lts -y
-    return
+    if ($LASTEXITCODE -eq 0) {
+      return
+    }
   }
 
-  throw "当前既没有 winget 也没有 choco，无法自动安装 Node.js。"
+  throw (L '\u5f53\u524d\u65e2\u6ca1\u6709 winget \u4e5f\u6ca1\u6709 choco\uff0c\u65e0\u6cd5\u81ea\u52a8\u5b89\u88c5 Node.js\u3002')
 }
 
 function Ensure-DockerDesktop {
@@ -64,8 +73,8 @@ function Ensure-DockerDesktop {
     return
   }
 
-  Write-Host ""
-  Write-Host "正在安装 Docker..."
+  Write-Host ''
+  Write-Host (L '\u6b63\u5728\u5b89\u88c5 Docker...')
 
   $os = Get-CimInstance Win32_OperatingSystem
   $isServer = $os.ProductType -ne 1
@@ -73,16 +82,20 @@ function Ensure-DockerDesktop {
   if (-not $isServer) {
     if (Test-Command winget) {
       & winget install -e --id Docker.DockerDesktop --accept-source-agreements --accept-package-agreements
-      return
+      if ($LASTEXITCODE -eq 0) {
+        return
+      }
     }
     if (Test-Command choco) {
       & choco install docker-desktop -y
-      return
+      if ($LASTEXITCODE -eq 0) {
+        return
+      }
     }
-    throw "当前既没有 winget 也没有 choco，无法自动安装 Docker Desktop。"
+    throw (L '\u5f53\u524d\u65e2\u6ca1\u6709 winget \u4e5f\u6ca1\u6709 choco\uff0c\u65e0\u6cd5\u81ea\u52a8\u5b89\u88c5 Docker Desktop\u3002')
   }
 
-  Write-Host "检测到 Windows Server，切换到 Docker Engine 安装路径..."
+  Write-Host (L '\u68c0\u6d4b\u5230 Windows Server\uff0c\u5207\u6362\u5230 Docker Engine \u5b89\u88c5\u8def\u5f84...')
 
   if (Get-Command Install-WindowsFeature -ErrorAction SilentlyContinue) {
     Install-WindowsFeature -Name Containers | Out-Null
@@ -118,7 +131,7 @@ function Wait-ForDocker {
     }
   }
 
-  throw "Docker 已安装，但当前还未就绪。请启动 Docker Desktop / Docker Engine 后重试。"
+  throw (L 'Docker \u5df2\u5b89\u88c5\uff0c\u4f46\u5f53\u524d\u8fd8\u672a\u5c31\u7eea\u3002\u8bf7\u542f\u52a8 Docker Desktop / Docker Engine \u540e\u91cd\u8bd5\u3002')
 }
 
 function Get-NodeExecutable {
@@ -137,14 +150,14 @@ function Get-NodeExecutable {
     }
   }
 
-  throw "Node.js 已安装，但当前终端会话还不可见。请重新打开终端后重试。"
+  throw (L 'Node.js \u5df2\u5b89\u88c5\uff0c\u4f46\u5f53\u524d\u7ec8\u7aef\u4f1a\u8bdd\u8fd8\u4e0d\u53ef\u89c1\u3002\u8bf7\u91cd\u65b0\u6253\u5f00\u7ec8\u7aef\u540e\u91cd\u8bd5\u3002')
 }
 
 $mirror = Select-MirrorProfile -Current $MirrorProfile
 $computer = Get-ComputerInfo
 $arch = (Get-CimInstance Win32_Processor | Select-Object -First 1 -ExpandProperty AddressWidth)
-Write-Host ("检测到系统：{0} / {1} 位" -f $computer.WindowsProductName, $arch)
-Write-Host ("已选择镜像源：{0}" -f $mirror)
+Write-Host ((L '\u68c0\u6d4b\u5230\u7cfb\u7edf\uff1a{0} / {1} \u4f4d') -f $computer.WindowsProductName, $arch)
+Write-Host ((L '\u5df2\u9009\u62e9\u955c\u50cf\u6e90\uff1a{0}') -f $mirror)
 
 Ensure-Node
 Ensure-DockerDesktop

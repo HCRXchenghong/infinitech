@@ -25,7 +25,7 @@ function Select-TargetDir {
     return $Current
   }
 
-  Write-Host ""
+  Write-Host ''
   Write-Host (L '\u8bf7\u9009\u62e9\u4ed3\u5e93\u5b89\u88c5\u76ee\u5f55\uff1a')
   Write-Host ((L '  1. \u4f7f\u7528\u9ed8\u8ba4\u76ee\u5f55\uff1a{0}') -f $Current)
   Write-Host (L '  2. \u8f93\u5165\u81ea\u5b9a\u4e49\u76ee\u5f55')
@@ -58,12 +58,16 @@ function Ensure-Git {
 
   if (Test-Command winget) {
     & winget install -e --id Git.Git --accept-source-agreements --accept-package-agreements
-    return
+    if ($LASTEXITCODE -eq 0) {
+      return
+    }
   }
 
   if (Test-Command choco) {
     & choco install git -y
-    return
+    if ($LASTEXITCODE -eq 0) {
+      return
+    }
   }
 
   throw (L '\u5f53\u524d\u65e2\u6ca1\u6709 winget \u4e5f\u6ca1\u6709 choco\uff0c\u65e0\u6cd5\u81ea\u52a8\u5b89\u88c5 Git\u3002')
@@ -88,6 +92,22 @@ function Get-GitExecutable {
   throw (L 'Git \u5df2\u5b89\u88c5\uff0c\u4f46\u5f53\u524d\u7ec8\u7aef\u4f1a\u8bdd\u8fd8\u4e0d\u53ef\u89c1\u3002\u8bf7\u91cd\u65b0\u6253\u5f00\u7ec8\u7aef\u540e\u91cd\u8bd5\u3002')
 }
 
+function Invoke-ExternalToHost {
+  param(
+    [string]$FilePath,
+    [string[]]$Arguments,
+    [string]$ErrorMessage
+  )
+
+  & $FilePath @Arguments | Out-Host
+  if ($LASTEXITCODE -ne 0) {
+    if ($ErrorMessage) {
+      throw $ErrorMessage
+    }
+    throw ((L '\u547d\u4ee4\u6267\u884c\u5931\u8d25\uff1a{0} {1}') -f $FilePath, ($Arguments -join ' '))
+  }
+}
+
 function Sync-Repo {
   param(
     [string]$GitExe,
@@ -104,10 +124,10 @@ function Sync-Repo {
 
     if (Test-Path (Join-Path $RepoDir '.git')) {
       Write-Host (L '\u68c0\u6d4b\u5230\u4ed3\u5e93\u5df2\u5b58\u5728\uff0c\u6b63\u5728\u4ece GitHub \u66f4\u65b0\u6700\u65b0\u4ee3\u7801...')
-      & $GitExe -C $RepoDir remote set-url origin $RemoteUrl
-      & $GitExe -C $RepoDir fetch origin $RemoteBranch
-      & $GitExe -C $RepoDir checkout $RemoteBranch
-      & $GitExe -C $RepoDir pull --ff-only origin $RemoteBranch
+      Invoke-ExternalToHost -FilePath $GitExe -Arguments @('-C', $RepoDir, 'remote', 'set-url', 'origin', $RemoteUrl) -ErrorMessage (L '\u66f4\u65b0 Git \u8fdc\u7a0b\u5730\u5740\u5931\u8d25\u3002')
+      Invoke-ExternalToHost -FilePath $GitExe -Arguments @('-C', $RepoDir, 'fetch', 'origin', $RemoteBranch) -ErrorMessage (L '\u4ece GitHub \u6293\u53d6\u6700\u65b0\u4ee3\u7801\u5931\u8d25\u3002')
+      Invoke-ExternalToHost -FilePath $GitExe -Arguments @('-C', $RepoDir, 'checkout', $RemoteBranch) -ErrorMessage (L '\u5207\u6362\u5230\u76ee\u6807\u5206\u652f\u5931\u8d25\u3002')
+      Invoke-ExternalToHost -FilePath $GitExe -Arguments @('-C', $RepoDir, 'pull', '--ff-only', 'origin', $RemoteBranch) -ErrorMessage (L '\u540c\u6b65\u6700\u65b0\u4ee3\u7801\u5931\u8d25\u3002')
       return $RepoDir
     }
 
@@ -120,11 +140,11 @@ function Sync-Repo {
       $entries = @(Get-ChildItem -Force -LiteralPath $RepoDir)
       if ($entries.Count -eq 0) {
         Write-Host (L '\u76ee\u6807\u76ee\u5f55\u5df2\u5b58\u5728\u4e14\u4e3a\u7a7a\uff0c\u6b63\u5728\u76f4\u63a5\u514b\u9686\u5230\u8be5\u76ee\u5f55...')
-        & $GitExe clone --branch $RemoteBranch --single-branch $RemoteUrl $RepoDir
+        Invoke-ExternalToHost -FilePath $GitExe -Arguments @('clone', '--branch', $RemoteBranch, '--single-branch', $RemoteUrl, $RepoDir) -ErrorMessage (L '\u514b\u9686\u4ed3\u5e93\u5931\u8d25\u3002')
         return $RepoDir
       }
 
-      Write-Host ""
+      Write-Host ''
       Write-Host ((L '\u76ee\u6807\u76ee\u5f55\u5df2\u5b58\u5728\u4e14\u4e0d\u4e3a\u7a7a\uff1a{0}') -f $RepoDir)
       Write-Host (L '  1. \u5728\u8be5\u8def\u5f84\u4e0b\u521b\u5efa infinitech \u5b50\u76ee\u5f55')
       Write-Host (L '  2. \u91cd\u65b0\u8f93\u5165\u5b89\u88c5\u76ee\u5f55')
@@ -150,7 +170,7 @@ function Sync-Repo {
     }
 
     Write-Host (L '\u6b63\u5728\u4ece GitHub \u514b\u9686\u4ed3\u5e93...')
-    & $GitExe clone --branch $RemoteBranch --single-branch $RemoteUrl $RepoDir
+    Invoke-ExternalToHost -FilePath $GitExe -Arguments @('clone', '--branch', $RemoteBranch, '--single-branch', $RemoteUrl, $RepoDir) -ErrorMessage (L '\u514b\u9686\u4ed3\u5e93\u5931\u8d25\u3002')
     return $RepoDir
   }
 }
