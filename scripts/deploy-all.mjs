@@ -20,37 +20,48 @@ function getCredentialHelperCandidates() {
   }
 
   return [
-    'docker-credential-desktop.exe',
     'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker-credential-desktop.exe',
   ]
 }
 
-function hasDockerCredentialHelper() {
-  for (const candidate of getCredentialHelperCandidates()) {
-    if (candidate.includes('\\')) {
-      if (fs.existsSync(candidate)) {
-        return true
-      }
-      continue
-    }
+function resolveCredentialHelper() {
+  if (!isWindows) {
+    return { mode: 'none', helperDir: '' }
+  }
 
-    const result = spawnSync(candidate, ['list'], {
-      cwd: repoRoot,
-      stdio: 'ignore',
-      shell: false,
-    })
-    if ((result.status ?? 1) === 0) {
-      return true
+  const directResult = spawnSync('docker-credential-desktop.exe', ['list'], {
+    cwd: repoRoot,
+    stdio: 'ignore',
+    shell: false,
+  })
+  if ((directResult.status ?? 1) === 0) {
+    return { mode: 'path', helperDir: '' }
+  }
+
+  for (const candidate of getCredentialHelperCandidates()) {
+    if (fs.existsSync(candidate)) {
+      return { mode: 'prepend-path', helperDir: path.dirname(candidate) }
     }
   }
 
-  return false
+  return { mode: 'compat', helperDir: '' }
 }
 
 function buildDockerCompatEnv() {
   const env = { ...process.env }
 
-  if (!isWindows || hasDockerCredentialHelper()) {
+  if (!isWindows) {
+    return env
+  }
+
+  const helper = resolveCredentialHelper()
+  if (helper.mode === 'path') {
+    return env
+  }
+
+  if (helper.mode === 'prepend-path') {
+    env.PATH = helper.helperDir + (env.PATH ? `;${env.PATH}` : '')
+    env.INFINITECH_DOCKER_HELPER_PATH_FIXED = '1'
     return env
   }
 
@@ -376,7 +387,9 @@ function printUpSummary(flags) {
 
 function printDockerCompatHint() {
   const env = getProcessEnv()
-  if (env.INFINITECH_DOCKER_COMPAT === '1') {
+  if (env.INFINITECH_DOCKER_HELPER_PATH_FIXED === '1') {
+    console.log('\n检测到 docker-credential-desktop 未在 PATH 中，脚本已自动补上 Docker Desktop 安装目录。')
+  } else if (env.INFINITECH_DOCKER_COMPAT === '1') {
     console.log('\n检测到本机缺少 docker-credential-desktop，已启用兼容模式继续拉取公开镜像。')
   }
 }
