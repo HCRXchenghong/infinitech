@@ -182,9 +182,18 @@ $gitExe = Get-GitExecutable
 $TargetDir = Sync-Repo -GitExe $gitExe -RemoteUrl $RepoUrl -RemoteBranch $Branch -RepoDir $TargetDir
 
 $installCmd = Join-Path $TargetDir 'scripts\install-all.cmd'
-if (-not (Test-Path $installCmd)) {
-  throw ((L '\u514b\u9686\u5b8c\u6210\u540e\u672a\u627e\u5230\u5b89\u88c5\u5165\u53e3\uff1a{0}') -f $installCmd)
-}
+$installPs1 = Join-Path $TargetDir 'scripts\install-all.ps1'
 
 Write-Host ((L '\u4ed3\u5e93\u5df2\u51c6\u5907\u5b8c\u6210\uff1a{0}') -f $TargetDir)
-& $installCmd @ForwardArgs
+
+if (Test-Path $installCmd) {
+  & $installCmd @ForwardArgs
+  exit $LASTEXITCODE
+}
+
+if (Test-Path $installPs1) {
+  powershell -ExecutionPolicy Bypass -File $installPs1 @ForwardArgs
+  exit $LASTEXITCODE
+}
+
+throw ((L '\u514b\u9686\u5b8c\u6210\u540e\u672a\u627e\u5230\u5b89\u88c5\u5165\u53e3\uff1a{0} \u6216 {1}') -f $installCmd, $installPs1)
