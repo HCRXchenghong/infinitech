@@ -22,13 +22,6 @@ If this is your first time opening the repository, the easiest way to think abou
 - multi-client apps share schema and runtime helpers wherever possible
 - releases require executable checks, drills, and signoff gates
 
-This README is written for developers, operators, and future maintainers. Its goal is not to retell every historical decision, but to answer these questions quickly:
-
-1. What is this project?
-2. How is the repository structured?
-3. What are the current architecture boundaries?
-4. How do I pull it from GitHub and deploy it directly?
-5. What still has to be done in a real environment before go-live?
 
 ## Quick Start
 
