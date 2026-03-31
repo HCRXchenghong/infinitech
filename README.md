@@ -1,6 +1,6 @@
 # Infinitech
 
-中文（默认） | [English](#english)
+中文（默认） | [English](./README.en.md)
 
 Infinitech 是一个面向本地生活服务场景的多端一体化平台仓库。这个仓库不是单一业务站点，也不是纯演示项目，而是把以下能力放进同一套工程基线里持续收口：
 
@@ -446,63 +446,3 @@ backend/docker/.deploy.runtime.env
 1. 真设备 push 实投切换和验收  
 2. `App / H5` RTC 真机联调验收  
 3. 真故障注入后的恢复 / 回滚演练  
-
-## English
-
-Infinitech is a multi-client local services platform repository that combines:
-
-- food delivery
-- group buying
-- errands / local delivery
-- customer apps
-- merchant tools
-- rider tools
-- admin operations
-- realtime messaging
-- push notifications
-- in-app RTC contact flows
-
-This repository is maintained as a production-oriented platform baseline rather than a demo application.
-
-### Core architecture
-
-- `backend/go` is the primary business source of truth
-- `socket-server` is the only realtime gateway
-- `backend/bff` handles aggregation, upload proxying, health aggregation, and release support
-- client-side caches are acceleration layers, not long-term business truth
-- production baseline is `PostgreSQL + Redis`
-
-### Deployment
-
-Fresh machines can bootstrap directly from GitHub:
-
-Linux / macOS:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.sh | bash
-```
-
-Windows:
-
-```powershell
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex"
-```
-
-The installer supports:
-
-- OS detection
-- dependency installation
-- mirror selection
-- runtime env generation
-- full Docker stack deployment
-
-### HEIC handling
-
-HEIC conversion is built into the main upload path through `tools/heic-converter`.  
-Docker images package the converter together with the Go API and socket server, so a separate HEIC service port is no longer required by default.
-
-### What still requires real-environment execution
-
-- real-device push provider cutover and validation
-- real-device `App / H5` RTC validation
-- real failure injection with recovery / rollback verification
