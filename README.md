@@ -251,6 +251,28 @@ cmd /c npm run check
 
 ### 新机器推荐入口
 
+如果你希望**直接从 GitHub 拉取并开始安装**，优先用 bootstrap 入口。
+
+#### Linux / macOS 直接从 GitHub 拉取
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.sh | bash
+```
+
+如果要指定目录、分支或镜像参数：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.sh | bash -s -- --target-dir=/opt/infinitech --branch=main
+```
+
+#### Windows 直接从 GitHub 拉取
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex"
+```
+
+如果你已经手动 clone 到本地，再使用下面这些本地入口。
+
 Windows：
 
 ```powershell
