@@ -483,6 +483,26 @@ function printMirrorSummary(profileKey) {
   console.log(`说明：${profile.notes}`)
 }
 
+function getInstallerHints() {
+  const installCmd = path.join(repoRoot, 'scripts', 'install-all.cmd')
+  const installPs1 = path.join(repoRoot, 'scripts', 'install-all.ps1')
+  const installSh = path.join(repoRoot, 'scripts', 'install-all.sh')
+
+  if (process.platform === 'win32') {
+    return {
+      cmd: installCmd,
+      ps: `powershell -ExecutionPolicy Bypass -File "${installPs1}"`,
+      shell: installCmd,
+    }
+  }
+
+  return {
+    cmd: installSh,
+    ps: installSh,
+    shell: `bash "${installSh}"`,
+  }
+}
+
 async function main() {
   const flags = parseArgs(process.argv.slice(2))
   const system = detectSystem()
@@ -503,11 +523,17 @@ async function main() {
 
   const compose = detectComposeCommand()
   if (!compose) {
-    throw new Error('未检测到 Docker Compose，请先运行 scripts/install-all.sh / install-all.cmd 安装依赖。')
+    const hints = getInstallerHints()
+    throw new Error(
+      `未检测到 Docker Compose。\n请先运行安装脚本完成 Docker / Compose 依赖准备：\n- Windows CMD：${hints.cmd}\n- Windows PowerShell：${hints.ps}\n- Linux / macOS：${hints.shell}`,
+    )
   }
 
   if (!ensureDockerReady()) {
-    throw new Error('Docker 已安装但当前未就绪，请先启动 Docker 服务 / Docker Desktop 再继续。')
+    const hints = getInstallerHints()
+    throw new Error(
+      `Docker 已安装但当前未就绪。\n请先手动打开 Docker Desktop 或确认 Docker Engine 已启动，然后重新执行：\n- Windows CMD：${hints.cmd}\n- Windows PowerShell：${hints.ps}\n- Linux / macOS：${hints.shell}`,
+    )
   }
 
   const deployArgs = ['scripts/deploy-all.mjs', 'up', `--env-file=${envFile}`]
