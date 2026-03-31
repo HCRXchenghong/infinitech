@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { createInterface } from 'node:readline/promises'
@@ -13,11 +14,81 @@ const deployEnvFile = path.join(repoRoot, 'backend', 'docker', '.deploy.runtime.
 const isWindows = process.platform === 'win32'
 const isLinux = process.platform === 'linux'
 
+function getCredentialHelperCandidates() {
+  if (!isWindows) {
+    return []
+  }
+
+  return [
+    'docker-credential-desktop.exe',
+    'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker-credential-desktop.exe',
+  ]
+}
+
+function hasDockerCredentialHelper() {
+  for (const candidate of getCredentialHelperCandidates()) {
+    if (candidate.includes('\\')) {
+      if (fs.existsSync(candidate)) {
+        return true
+      }
+      continue
+    }
+
+    const result = spawnSync(candidate, ['list'], {
+      cwd: repoRoot,
+      stdio: 'ignore',
+      shell: false,
+    })
+    if ((result.status ?? 1) === 0) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function buildDockerCompatEnv() {
+  const env = { ...process.env }
+
+  if (!isWindows || hasDockerCredentialHelper()) {
+    return env
+  }
+
+  const sourceConfigDir = env.DOCKER_CONFIG || path.join(os.homedir(), '.docker')
+  const sourceConfigFile = path.join(sourceConfigDir, 'config.json')
+  const compatDir = path.join(os.tmpdir(), 'infinitech-docker-config')
+  const compatFile = path.join(compatDir, 'config.json')
+
+  let config = {}
+  try {
+    if (fs.existsSync(sourceConfigFile)) {
+      config = JSON.parse(fs.readFileSync(sourceConfigFile, 'utf8'))
+    }
+  } catch {
+    config = {}
+  }
+
+  delete config.credsStore
+  delete config.credStore
+  delete config.credHelpers
+
+  fs.mkdirSync(compatDir, { recursive: true })
+  fs.writeFileSync(compatFile, `${JSON.stringify(config, null, 2)}\n`, 'utf8')
+  env.DOCKER_CONFIG = compatDir
+  env.INFINITECH_DOCKER_COMPAT = '1'
+  return env
+}
+
+function getProcessEnv() {
+  return buildDockerCompatEnv()
+}
+
 function canRun(command, args) {
   const result = spawnSync(command, args, {
     cwd: repoRoot,
     stdio: 'ignore',
     shell: false,
+    env: getProcessEnv(),
   })
   return (result.status ?? 1) === 0
 }
@@ -84,6 +155,7 @@ function run(command, args, options = {}) {
     cwd: repoRoot,
     stdio: 'inherit',
     shell: false,
+    env: getProcessEnv(),
     ...options,
   })
 
@@ -302,6 +374,13 @@ function printUpSummary(flags) {
   console.log('\nUse `node scripts/deploy-all.mjs logs` to inspect startup logs.')
 }
 
+function printDockerCompatHint() {
+  const env = getProcessEnv()
+  if (env.INFINITECH_DOCKER_COMPAT === '1') {
+    console.log('\n检测到本机缺少 docker-credential-desktop，已启用兼容模式继续拉取公开镜像。')
+  }
+}
+
 async function prompt(question, fallback = '') {
   const rl = createInterface({ input, output })
   try {
@@ -434,6 +513,7 @@ async function main() {
   ensureProxyConfig(parsed.flags)
 
   const compose = detectComposeCommand()
+  printDockerCompatHint()
   const baseArgs = buildComposeArgs(compose.prefixArgs, parsed.flags)
 
   let args

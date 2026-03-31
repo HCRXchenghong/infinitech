@@ -13,6 +13,75 @@ const deployEnvFile = path.join(repoRoot, 'backend', 'docker', '.deploy.runtime.
 const deployScript = path.join(repoRoot, 'scripts', 'deploy-all.mjs')
 const isLinux = process.platform === 'linux'
 
+function getCredentialHelperCandidates() {
+  if (process.platform !== 'win32') {
+    return []
+  }
+
+  return [
+    'docker-credential-desktop.exe',
+    'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker-credential-desktop.exe',
+  ]
+}
+
+function hasDockerCredentialHelper() {
+  for (const candidate of getCredentialHelperCandidates()) {
+    if (candidate.includes('\\')) {
+      if (fs.existsSync(candidate)) {
+        return true
+      }
+      continue
+    }
+
+    const result = spawnSync(candidate, ['list'], {
+      cwd: repoRoot,
+      stdio: 'ignore',
+      shell: false,
+    })
+    if ((result.status ?? 1) === 0) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function buildDockerCompatEnv() {
+  const env = { ...process.env }
+
+  if (process.platform !== 'win32' || hasDockerCredentialHelper()) {
+    return env
+  }
+
+  const sourceConfigDir = env.DOCKER_CONFIG || path.join(os.homedir(), '.docker')
+  const sourceConfigFile = path.join(sourceConfigDir, 'config.json')
+  const compatDir = path.join(os.tmpdir(), 'infinitech-docker-config')
+  const compatFile = path.join(compatDir, 'config.json')
+
+  let config = {}
+  try {
+    if (fs.existsSync(sourceConfigFile)) {
+      config = JSON.parse(fs.readFileSync(sourceConfigFile, 'utf8'))
+    }
+  } catch {
+    config = {}
+  }
+
+  delete config.credsStore
+  delete config.credStore
+  delete config.credHelpers
+
+  fs.mkdirSync(compatDir, { recursive: true })
+  fs.writeFileSync(compatFile, `${JSON.stringify(config, null, 2)}\n`, 'utf8')
+  env.DOCKER_CONFIG = compatDir
+  env.INFINITECH_DOCKER_COMPAT = '1'
+  return env
+}
+
+function getProcessEnv() {
+  return buildDockerCompatEnv()
+}
+
 const MIRROR_PROFILES = {
   official: {
     label: '官方源（默认）',
@@ -61,6 +130,7 @@ function run(command, args, options = {}) {
     cwd: repoRoot,
     stdio: 'inherit',
     shell: false,
+    env: getProcessEnv(),
     ...options,
   })
 
@@ -76,6 +146,7 @@ function canRun(command, args) {
     cwd: repoRoot,
     stdio: 'ignore',
     shell: false,
+    env: getProcessEnv(),
   })
   return (result.status ?? 1) === 0
 }
@@ -529,6 +600,13 @@ function printMirrorSummary(profileKey) {
   console.log(`说明：${profile.notes}`)
 }
 
+function printDockerCompatHint() {
+  const env = getProcessEnv()
+  if (env.INFINITECH_DOCKER_COMPAT === '1') {
+    console.log('\n检测到本机缺少 docker-credential-desktop，脚本将临时绕过 credential helper 继续拉取公开镜像。')
+  }
+}
+
 function getInstallerHints() {
   const installCmd = path.join(repoRoot, 'scripts', 'install-all.cmd')
   const installPs1 = path.join(repoRoot, 'scripts', 'install-all.ps1')
@@ -581,6 +659,8 @@ async function main() {
       `未检测到 Docker Compose。\n请先确认 Docker Desktop 已完整安装并完成首次初始化，然后重新执行：\n- Windows CMD：${hints.cmd}\n- Windows PowerShell：${hints.ps}\n- Linux / macOS：${hints.shell}`,
     )
   }
+
+  printDockerCompatHint()
 
   const deployArgs = ['scripts/deploy-all.mjs', 'up', `--env-file=${envFile}`]
   if (deployMode.withProxy) {
