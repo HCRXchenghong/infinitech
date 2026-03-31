@@ -91,33 +91,70 @@ function Sync-Repo {
     [string]$RepoDir
   )
 
-  $parentDir = Split-Path -Parent $RepoDir
-  if ($parentDir -and -not (Test-Path $parentDir)) {
-    New-Item -ItemType Directory -Force -Path $parentDir | Out-Null
-  }
+  while ($true) {
+    $parentDir = Split-Path -Parent $RepoDir
+    if ($parentDir -and -not (Test-Path $parentDir)) {
+      New-Item -ItemType Directory -Force -Path $parentDir | Out-Null
+    }
 
-  if (Test-Path (Join-Path $RepoDir '.git')) {
-    Write-Host "检测到仓库已存在，正在从 GitHub 更新到最新代码..."
-    & $GitExe -C $RepoDir remote set-url origin $RemoteUrl
-    & $GitExe -C $RepoDir fetch origin $RemoteBranch
-    & $GitExe -C $RepoDir checkout $RemoteBranch
-    & $GitExe -C $RepoDir pull --ff-only origin $RemoteBranch
-    return
-  }
+    if (Test-Path (Join-Path $RepoDir '.git')) {
+      Write-Host "检测到仓库已存在，正在从 GitHub 更新到最新代码..."
+      & $GitExe -C $RepoDir remote set-url origin $RemoteUrl
+      & $GitExe -C $RepoDir fetch origin $RemoteBranch
+      & $GitExe -C $RepoDir checkout $RemoteBranch
+      & $GitExe -C $RepoDir pull --ff-only origin $RemoteBranch
+      return $RepoDir
+    }
 
-  if (Test-Path $RepoDir) {
-    throw "目标目录已存在，但不是 Git 仓库：$RepoDir"
-  }
+    if (Test-Path $RepoDir) {
+      $item = Get-Item -LiteralPath $RepoDir
+      if (-not $item.PSIsContainer) {
+        throw "目标路径已存在，但不是目录：$RepoDir"
+      }
 
-  Write-Host "正在从 GitHub 克隆仓库..."
-  & $GitExe clone --branch $RemoteBranch --single-branch $RemoteUrl $RepoDir
+      $entries = @(Get-ChildItem -Force -LiteralPath $RepoDir)
+      if ($entries.Count -eq 0) {
+        Write-Host "检测到目标目录为空，正在直接克隆到该目录..."
+        & $GitExe clone --branch $RemoteBranch --single-branch $RemoteUrl $RepoDir
+        return $RepoDir
+      }
+
+      Write-Host ""
+      Write-Host ("目标目录已存在且非空：{0}" -f $RepoDir)
+      Write-Host "  1. 在该目录下创建子目录 infinitech"
+      Write-Host "  2. 重新输入安装目录"
+      Write-Host "  3. 取消安装"
+      $choice = Read-Host "输入数字选项 [1]"
+      switch (($choice | ForEach-Object { $_.Trim() })) {
+        '2' {
+          $custom = Read-Host "请输入新的安装目录路径"
+          if ($custom -and $custom.Trim()) {
+            $RepoDir = $custom.Trim()
+            continue
+          }
+          continue
+        }
+        '3' {
+          throw "安装已取消。"
+        }
+        default {
+          $RepoDir = Join-Path $RepoDir 'infinitech'
+          continue
+        }
+      }
+    }
+
+    Write-Host "正在从 GitHub 克隆仓库..."
+    & $GitExe clone --branch $RemoteBranch --single-branch $RemoteUrl $RepoDir
+    return $RepoDir
+  }
 }
 
 $TargetDir = Select-TargetDir -Current $TargetDir
 
 Ensure-Git
 $gitExe = Get-GitExecutable
-Sync-Repo -GitExe $gitExe -RemoteUrl $RepoUrl -RemoteBranch $Branch -RepoDir $TargetDir
+$TargetDir = Sync-Repo -GitExe $gitExe -RemoteUrl $RepoUrl -RemoteBranch $Branch -RepoDir $TargetDir
 
 $installCmd = Join-Path $TargetDir 'scripts\install-all.cmd'
 if (-not (Test-Path $installCmd)) {

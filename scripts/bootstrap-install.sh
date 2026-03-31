@@ -121,30 +121,68 @@ sync_repo() {
   local branch="$2"
   local target_dir="$3"
 
-  mkdir -p "$(dirname "$target_dir")"
+  while true; do
+    mkdir -p "$(dirname "$target_dir")"
 
-  if [[ -d "$target_dir/.git" ]]; then
-    echo "检测到仓库已存在，正在从 GitHub 更新到最新代码..."
-    git -C "$target_dir" remote set-url origin "$repo_url"
-    git -C "$target_dir" fetch origin "$branch"
-    git -C "$target_dir" checkout "$branch"
-    git -C "$target_dir" pull --ff-only origin "$branch"
+    if [[ -d "$target_dir/.git" ]]; then
+      echo "检测到仓库已存在，正在从 GitHub 更新到最新代码..."
+      git -C "$target_dir" remote set-url origin "$repo_url"
+      git -C "$target_dir" fetch origin "$branch"
+      git -C "$target_dir" checkout "$branch"
+      git -C "$target_dir" pull --ff-only origin "$branch"
+      printf '%s\n' "$target_dir"
+      return
+    fi
+
+    if [[ -e "$target_dir" ]]; then
+      if [[ ! -d "$target_dir" ]]; then
+        echo "目标路径已存在，但不是目录：$target_dir" >&2
+        exit 1
+      fi
+
+      if [[ -z "$(find "$target_dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
+        echo "检测到目标目录为空，正在直接克隆到该目录..."
+        git clone --branch "$branch" --single-branch "$repo_url" "$target_dir"
+        printf '%s\n' "$target_dir"
+        return
+      fi
+
+      echo
+      echo "目标目录已存在且非空：$target_dir"
+      echo "  1. 在该目录下创建子目录 infinitech"
+      echo "  2. 重新输入安装目录"
+      echo "  3. 取消安装"
+      read -r -p "输入数字选项 [1]: " choice
+      case "${choice:-1}" in
+        2)
+          read -r -p "请输入新的安装目录路径: " custom_dir
+          if [[ -n "${custom_dir// }" ]]; then
+            target_dir="$custom_dir"
+          fi
+          continue
+          ;;
+        3)
+          echo "安装已取消。" >&2
+          exit 1
+          ;;
+        *)
+          target_dir="${target_dir%/}/infinitech"
+          continue
+          ;;
+      esac
+    fi
+
+    echo "正在从 GitHub 克隆仓库..."
+    git clone --branch "$branch" --single-branch "$repo_url" "$target_dir"
+    printf '%s\n' "$target_dir"
     return
-  fi
-
-  if [[ -e "$target_dir" && ! -d "$target_dir/.git" ]]; then
-    echo "目标目录已存在，但不是 Git 仓库：$target_dir" >&2
-    exit 1
-  fi
-
-  echo "正在从 GitHub 克隆仓库..."
-  git clone --branch "$branch" --single-branch "$repo_url" "$target_dir"
+  done
 }
 
 main() {
   pick_target_dir
   ensure_git
-  sync_repo "$REPO_URL" "$REPO_BRANCH" "$TARGET_DIR"
+  TARGET_DIR="$(sync_repo "$REPO_URL" "$REPO_BRANCH" "$TARGET_DIR")"
 
   cd "$TARGET_DIR"
   echo "仓库已准备完成：$TARGET_DIR"
