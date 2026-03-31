@@ -293,6 +293,14 @@ Example with a custom directory:
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex --target-dir D:\infinitech"
 ```
 
+CMD entry (Windows CMD compatible):
+
+```cmd
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex"
+```
+
+If the repository is private, set `GITHUB_TOKEN` / `GITHUB_PAT` before running the command.
+
 ## Local Installer Entry Points
 
 Windows:

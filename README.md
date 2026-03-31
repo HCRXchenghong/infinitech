@@ -293,6 +293,14 @@ powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.c
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex --target-dir D:\infinitech"
 ```
 
+CMD 入口（兼容 Windows CMD 终端）：
+
+```cmd
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex"
+```
+
+如果仓库是私有的，请先设置 `GITHUB_TOKEN` / `GITHUB_PAT` 再执行。
+
 ## 本地安装器入口
 
 Windows：
