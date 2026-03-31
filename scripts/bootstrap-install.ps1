@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
   [string]$RepoUrl = 'https://github.com/HCRXchenghong/infinitech.git',
   [string]$Branch = 'main',
@@ -21,13 +21,13 @@ function Select-TargetDir {
   }
 
   Write-Host ""
-  Write-Host "请选择仓库安装目录："
-  Write-Host ("  1. 使用默认目录：{0}" -f $Current)
-  Write-Host "  2. 输入自定义目录"
-  $choice = Read-Host "输入数字选项 [1]"
+  Write-Host "Choose repository install directory:"
+  Write-Host ("  1. Use default directory: {0}" -f $Current)
+  Write-Host "  2. Enter a custom directory"
+  $choice = Read-Host "Enter menu number [1]"
   switch (($choice | ForEach-Object { $_.Trim() })) {
     '2' {
-      $custom = Read-Host "请输入安装目录路径"
+      $custom = Read-Host "Enter install directory path"
       if ($custom -and $custom.Trim()) {
         return $custom.Trim()
       }
@@ -49,7 +49,7 @@ function Ensure-Git {
     return
   }
 
-  Write-Host "未检测到 Git，正在优先安装 Git..."
+  Write-Host "Git is missing. Installing Git first..."
 
   if (Test-Command winget) {
     & winget install -e --id Git.Git --accept-source-agreements --accept-package-agreements
@@ -61,7 +61,7 @@ function Ensure-Git {
     return
   }
 
-  throw "当前既没有 winget 也没有 choco，无法自动安装 Git。"
+  throw "Neither winget nor choco is available. Cannot auto-install Git."
 }
 
 function Get-GitExecutable {
@@ -80,7 +80,7 @@ function Get-GitExecutable {
     }
   }
 
-  throw "Git 已安装，但当前终端会话还不可见。请重新打开终端后重试。"
+  throw "Git is installed but not visible in the current session. Reopen the terminal and retry."
 }
 
 function Sync-Repo {
@@ -98,7 +98,7 @@ function Sync-Repo {
     }
 
     if (Test-Path (Join-Path $RepoDir '.git')) {
-      Write-Host "检测到仓库已存在，正在从 GitHub 更新到最新代码..."
+      Write-Host "Repository already exists. Updating latest code from GitHub..."
       & $GitExe -C $RepoDir remote set-url origin $RemoteUrl
       & $GitExe -C $RepoDir fetch origin $RemoteBranch
       & $GitExe -C $RepoDir checkout $RemoteBranch
@@ -109,25 +109,25 @@ function Sync-Repo {
     if (Test-Path $RepoDir) {
       $item = Get-Item -LiteralPath $RepoDir
       if (-not $item.PSIsContainer) {
-        throw "目标路径已存在，但不是目录：$RepoDir"
+        throw "Target path already exists but is not a directory: $RepoDir"
       }
 
       $entries = @(Get-ChildItem -Force -LiteralPath $RepoDir)
       if ($entries.Count -eq 0) {
-        Write-Host "检测到目标目录为空，正在直接克隆到该目录..."
+        Write-Host "Target directory exists and is empty. Cloning directly into it..."
         & $GitExe clone --branch $RemoteBranch --single-branch $RemoteUrl $RepoDir
         return $RepoDir
       }
 
       Write-Host ""
-      Write-Host ("目标目录已存在且非空：{0}" -f $RepoDir)
-      Write-Host "  1. 在该目录下创建子目录 infinitech"
-      Write-Host "  2. 重新输入安装目录"
-      Write-Host "  3. 取消安装"
-      $choice = Read-Host "输入数字选项 [1]"
+      Write-Host ("Target directory already exists and is not empty: {0}" -f $RepoDir)
+      Write-Host "  1. Create subdirectory infinitech under this path"
+      Write-Host "  2. Enter another install directory"
+      Write-Host "  3. Cancel installation"
+      $choice = Read-Host "Enter menu number [1]"
       switch (($choice | ForEach-Object { $_.Trim() })) {
         '2' {
-          $custom = Read-Host "请输入新的安装目录路径"
+          $custom = Read-Host "Enter a new install directory path"
           if ($custom -and $custom.Trim()) {
             $RepoDir = $custom.Trim()
             continue
@@ -135,7 +135,7 @@ function Sync-Repo {
           continue
         }
         '3' {
-          throw "安装已取消。"
+          throw "Installation cancelled."
         }
         default {
           $RepoDir = Join-Path $RepoDir 'infinitech'
@@ -144,7 +144,7 @@ function Sync-Repo {
       }
     }
 
-    Write-Host "正在从 GitHub 克隆仓库..."
+    Write-Host "Cloning repository from GitHub..."
     & $GitExe clone --branch $RemoteBranch --single-branch $RemoteUrl $RepoDir
     return $RepoDir
   }
@@ -158,8 +158,8 @@ $TargetDir = Sync-Repo -GitExe $gitExe -RemoteUrl $RepoUrl -RemoteBranch $Branch
 
 $installCmd = Join-Path $TargetDir 'scripts\install-all.cmd'
 if (-not (Test-Path $installCmd)) {
-  throw "克隆完成后未找到安装入口：$installCmd"
+  throw "Installer entry was not found after clone: $installCmd"
 }
 
-Write-Host ("仓库已准备完成：{0}" -f $TargetDir)
+Write-Host ("Repository is ready at: {0}" -f $TargetDir)
 & $installCmd @ForwardArgs
