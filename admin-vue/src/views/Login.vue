@@ -184,6 +184,8 @@
           type="text"
           maxlength="11"
           placeholder="请输入真实管理员手机号"
+          autocomplete="username"
+          inputmode="numeric"
         />
       </div>
 

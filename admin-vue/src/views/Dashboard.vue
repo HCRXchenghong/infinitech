@@ -288,6 +288,12 @@ const weatherCacheDurationMs = ref(10 * 60 * 1000)
 let weatherTimer = null
 let monitorSocket = null
 
+function hasWeatherLocationConfig() {
+  const adcode = String(weatherConfig.value?.adcode || '').trim()
+  const city = String(weatherConfig.value?.city || weatherConfig.value?.location || '').trim()
+  return Boolean(adcode || city)
+}
+
 const displayedRiderRanks = computed(() => (allRiderRanks.value[riderTab.value] || []).slice(0, 10))
 const lifeIndexEntries = computed(() => Object.entries(weatherData.value?.life_indices || {}))
 const forecastList = computed(() => (Array.isArray(weatherData.value?.forecast) ? weatherData.value.forecast : []))
@@ -463,6 +469,14 @@ async function refreshData() {
 }
 
 async function loadWeather(forceRefresh = false) {
+  if (!hasWeatherLocationConfig()) {
+    weatherError.value = ''
+    weatherData.value = { available: false }
+    weatherCache.value = weatherData.value
+    cacheTimestamp.value.weather = Date.now()
+    return
+  }
+
   const now = Date.now()
   if (!forceRefresh && weatherCache.value && now - cacheTimestamp.value.weather < weatherCacheDurationMs.value) {
     weatherError.value = ''

@@ -4,9 +4,21 @@ import { getToken as getAdminToken } from './runtime';
 
 const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
 const envSocketUrl =
-  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SOCKET_URL) || '';
-const SOCKET_BASE_URL = isDev ? '' : envSocketUrl;
-const SOCKET_HTTP_BASE = isDev ? '/socket-api' : envSocketUrl;
+  ((typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SOCKET_URL) || '').trim();
+
+function buildDefaultSocketOrigin() {
+  if (typeof window === 'undefined' || !window.location) {
+    return 'http://127.0.0.1:9898';
+  }
+
+  const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+  const hostname = window.location.hostname || '127.0.0.1';
+  return `${protocol}//${hostname}:9898`;
+}
+
+const resolvedSocketBase = envSocketUrl || buildDefaultSocketOrigin();
+const SOCKET_BASE_URL = isDev ? '' : resolvedSocketBase;
+const SOCKET_HTTP_BASE = isDev ? '/socket-api' : resolvedSocketBase;
 
 function buildSocketAuthHeader() {
   const token = String(getAdminToken() || '').trim();
