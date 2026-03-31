@@ -104,6 +104,10 @@ function canRun(command, args) {
   return (result.status ?? 1) === 0
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 function getDockerCommandCandidates() {
   const candidates = [['docker']]
 
@@ -117,6 +121,17 @@ function getDockerCommandCandidates() {
   }
 
   return candidates
+}
+
+function getDockerDesktopExecutableCandidates() {
+  if (!isWindows) {
+    return []
+  }
+
+  return [
+    'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe',
+    'C:\\Program Files (x86)\\Docker\\Docker\\Docker Desktop.exe',
+  ]
 }
 
 function getDockerComposeExecutableCandidates() {
@@ -159,6 +174,86 @@ function readEnvFile(filePath) {
   }
 
   return values
+}
+
+function probeDockerReady() {
+  const probes = getDockerCommandCandidates().map(([command]) => [command, ['info']])
+
+  if (isLinux) {
+    probes.push(['sudo', ['docker', 'info']])
+  }
+
+  for (const [command, args] of probes) {
+    if (canRun(command, args)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function tryStartDockerDesktop() {
+  if (!isWindows) {
+    return false
+  }
+
+  for (const candidate of getDockerDesktopExecutableCandidates()) {
+    if (!fs.existsSync(candidate)) {
+      continue
+    }
+
+    const result = spawnSync('powershell.exe', [
+      '-NoProfile',
+      '-Command',
+      `Start-Process -FilePath '${candidate.replace(/'/g, "''")}'`,
+    ], {
+      cwd: repoRoot,
+      stdio: 'ignore',
+      shell: false,
+      env: getProcessEnv(),
+    })
+
+    if (!result.error) {
+      return true
+    }
+  }
+
+  return false
+}
+
+async function waitForDockerReady(options = {}) {
+  const {
+    attempts = 12,
+    delayMs = 5000,
+    stableSuccesses = 2,
+    quiet = false,
+  } = options
+
+  let successCount = 0
+  let startedDesktop = false
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    if (probeDockerReady()) {
+      successCount += 1
+      if (successCount >= stableSuccesses) {
+        return true
+      }
+    } else {
+      successCount = 0
+      if (isWindows && !startedDesktop) {
+        startedDesktop = tryStartDockerDesktop()
+        if (startedDesktop && !quiet) {
+          console.log('\n检测到 Docker Desktop 还未完全就绪，脚本正在尝试自动启动并等待 Linux 引擎准备完成...')
+        }
+      }
+    }
+
+    if (attempt < attempts) {
+      await sleep(delayMs)
+    }
+  }
+
+  return false
 }
 
 function run(command, args, options = {}) {
@@ -527,6 +622,22 @@ async function main() {
 
   const compose = detectComposeCommand()
   printDockerCompatHint()
+  const requiresDockerDaemon = parsed.action !== 'config'
+  if (requiresDockerDaemon) {
+    const ready = await waitForDockerReady({
+      attempts: isWindows ? 18 : 8,
+      delayMs: isWindows ? 5000 : 2000,
+      stableSuccesses: isWindows ? 2 : 1,
+    })
+
+    if (!ready) {
+      throw new Error(
+        isWindows
+          ? 'Docker Desktop Linux 引擎当前未就绪。请确认 Docker Desktop 已打开并显示 Running，然后重新执行脚本。'
+          : 'Docker daemon 当前未就绪。请先确认 Docker Engine 已启动，然后重新执行脚本。',
+      )
+    }
+  }
   const baseArgs = buildComposeArgs(compose.prefixArgs, parsed.flags)
 
   let args
@@ -568,7 +679,18 @@ async function main() {
       throw new Error(`Unsupported action: ${parsed.action}`)
   }
 
-  const exitCode = run(compose.command, args)
+  let exitCode = run(compose.command, args)
+  if (exitCode !== 0 && requiresDockerDaemon && isWindows && !probeDockerReady()) {
+    console.log('\n检测到 Docker Desktop Linux 引擎在执行期间短暂掉线，脚本将等待恢复后自动重试一次...')
+    const recovered = await waitForDockerReady({
+      attempts: 12,
+      delayMs: 5000,
+      stableSuccesses: 1,
+    })
+    if (recovered) {
+      exitCode = run(compose.command, args)
+    }
+  }
   if (exitCode !== 0) {
     process.exit(exitCode)
   }
