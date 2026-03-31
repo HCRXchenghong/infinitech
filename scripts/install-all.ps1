@@ -112,16 +112,58 @@ function Ensure-DockerDesktop {
   Set-Service docker -StartupType Automatic -ErrorAction SilentlyContinue
 }
 
-function Wait-ForDocker {
+function Get-DockerExecutable {
+  if (Test-Command docker) {
+    return (Get-Command docker).Source
+  }
+
+  $candidates = @(
+    'C:\Program Files\Docker\Docker\resources\bin\docker.exe',
+    'C:\Program Files\Docker\Docker\resources\docker.exe'
+  )
+
+  foreach ($candidate in $candidates) {
+    if (Test-Path $candidate) {
+      return $candidate
+    }
+  }
+
+  return $null
+}
+
+function Start-DockerRuntime {
   $desktopPath = 'C:\Program Files\Docker\Docker\Docker Desktop.exe'
+
+  foreach ($serviceName in @('com.docker.service', 'docker')) {
+    $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+    if ($service) {
+      if ($service.Status -ne 'Running') {
+        Start-Service $serviceName -ErrorAction SilentlyContinue
+      }
+      Set-Service $serviceName -StartupType Automatic -ErrorAction SilentlyContinue
+    }
+  }
+
   if (Test-Path $desktopPath) {
     Start-Process -FilePath $desktopPath -ErrorAction SilentlyContinue | Out-Null
   }
+}
 
-  for ($i = 0; $i -lt 45; $i++) {
-    if (Test-Command docker) {
+function Wait-ForDocker {
+  $desktopPath = 'C:\Program Files\Docker\Docker\Docker Desktop.exe'
+  if (Test-Path $desktopPath) {
+    Write-Host (L '\u6b63\u5728\u5c1d\u8bd5\u542f\u52a8 Docker Desktop...')
+  }
+
+  for ($i = 0; $i -lt 90; $i++) {
+    if (($i % 10) -eq 0) {
+      Start-DockerRuntime
+    }
+
+    $dockerExe = Get-DockerExecutable
+    if ($dockerExe) {
       try {
-        & docker info | Out-Null
+        & $dockerExe info | Out-Null
         return
       } catch {
         Start-Sleep -Seconds 2
@@ -131,7 +173,7 @@ function Wait-ForDocker {
     }
   }
 
-  throw (L 'Docker \u5df2\u5b89\u88c5\uff0c\u4f46\u5f53\u524d\u8fd8\u672a\u5c31\u7eea\u3002\u8bf7\u542f\u52a8 Docker Desktop / Docker Engine \u540e\u91cd\u8bd5\u3002')
+  throw (L 'Docker \u5df2\u5b89\u88c5\uff0c\u4f46\u5f53\u524d\u8fd8\u672a\u5c31\u7eea\u3002\u811a\u672c\u5df2\u5c1d\u8bd5\u81ea\u52a8\u542f\u52a8 Docker Desktop / Docker Engine\u3002\u8bf7\u5148\u786e\u8ba4 Docker \u5df2\u5b8c\u5168\u542f\u52a8\uff0c\u7136\u540e\u91cd\u65b0\u6267\u884c scripts\\install-all.cmd \u6216 scripts\\install-all.ps1\u3002')
 }
 
 function Get-NodeExecutable {
