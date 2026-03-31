@@ -647,13 +647,15 @@ func main() {
 		api.POST("/send-admin-sms-code", handlers.Admin.SendAdminSMSCode)
 
 		// 管理员账号管理
-		api.GET("/admins", handlers.Admin.GetAdmins)
-		api.POST("/admins", handlers.Admin.CreateAdmin)
-		api.PUT("/admins/:id", handlers.Admin.UpdateAdmin)
-		api.DELETE("/admins/:id", handlers.Admin.DeleteAdmin)
-		api.POST("/admins/:id/reset-password", handlers.Admin.ResetAdminPassword)
-		api.POST("/admins/complete-bootstrap", handlers.Admin.CompleteBootstrapSetup)
-		api.POST("/admins/change-password", handlers.Admin.ChangeOwnPassword)
+		adminAccounts := api.Group("")
+		adminAccounts.Use(middleware.RequireAdmin(services.Admin))
+		adminAccounts.GET("/admins", handlers.Admin.GetAdmins)
+		adminAccounts.POST("/admins", handlers.Admin.CreateAdmin)
+		adminAccounts.PUT("/admins/:id", handlers.Admin.UpdateAdmin)
+		adminAccounts.DELETE("/admins/:id", handlers.Admin.DeleteAdmin)
+		adminAccounts.POST("/admins/:id/reset-password", handlers.Admin.ResetAdminPassword)
+		adminAccounts.POST("/admins/complete-bootstrap", handlers.Admin.CompleteBootstrapSetup)
+		adminAccounts.POST("/admins/change-password", handlers.Admin.ChangeOwnPassword)
 
 		// 管理端数据（用户/骑手/商家）
 		api.GET("/users", handlers.Admin.GetUsers)
