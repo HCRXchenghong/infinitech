@@ -31,7 +31,8 @@ RUN go mod download
 WORKDIR /src
 COPY backend/go ./backend/go
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /tmp/go-api ./backend/go/cmd/main.go
+WORKDIR /src/backend/go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /tmp/go-api ./cmd/main.go
 
 FROM ${GO_RUNTIME_BASE_IMAGE}
 
