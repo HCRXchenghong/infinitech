@@ -1,5 +1,5 @@
 ARG NODE_BASE_IMAGE=node:20-alpine
-ARG GO_BUILDER_BASE_IMAGE=golang:1.23-alpine
+ARG GO_BUILDER_BASE_IMAGE=golang:1.24-alpine
 ARG GO_RUNTIME_BASE_IMAGE=alpine:3.20
 
 FROM ${NODE_BASE_IMAGE} AS heic-builder

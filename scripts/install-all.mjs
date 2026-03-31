@@ -347,7 +347,7 @@ function buildMirrorEnv(profileKey) {
     GOPROXY: profile.goProxy,
     ALPINE_MIRROR: profile.alpineMirror,
     NODE_BASE_IMAGE: dockerHubImageWithMirror(prefix, 'node:20-alpine'),
-    GO_BUILDER_BASE_IMAGE: dockerHubImageWithMirror(prefix, 'golang:1.23-alpine'),
+    GO_BUILDER_BASE_IMAGE: dockerHubImageWithMirror(prefix, 'golang:1.24-alpine'),
     GO_RUNTIME_BASE_IMAGE: dockerHubImageWithMirror(prefix, 'alpine:3.20'),
     NGINX_BASE_IMAGE: dockerHubImageWithMirror(prefix, 'nginx:1.27-alpine'),
     POSTGRES_IMAGE: dockerHubImageWithMirror(prefix, 'postgres:14-alpine'),
