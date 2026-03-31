@@ -20,6 +20,44 @@ function Test-Command {
   return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
 }
 
+function Get-DockerExecutable {
+  if (Test-Command docker) {
+    return (Get-Command docker).Source
+  }
+
+  $candidates = @(
+    'C:\Program Files\Docker\Docker\resources\bin\docker.exe',
+    'C:\Program Files\Docker\Docker\resources\docker.exe'
+  )
+
+  foreach ($candidate in $candidates) {
+    if (Test-Path $candidate) {
+      return $candidate
+    }
+  }
+
+  return $null
+}
+
+function Get-DockerDesktopPath {
+  $candidates = @(
+    'C:\Program Files\Docker\Docker\Docker Desktop.exe',
+    'C:\Program Files\Docker\Docker Desktop.exe'
+  )
+
+  foreach ($candidate in $candidates) {
+    if (Test-Path $candidate) {
+      return $candidate
+    }
+  }
+
+  return $null
+}
+
+function Test-DockerDesktopInstalled {
+  return [bool](Get-DockerExecutable) -or [bool](Get-DockerDesktopPath)
+}
+
 function Select-MirrorProfile {
   param([string]$Current)
   if ($Current) {
@@ -69,7 +107,7 @@ function Ensure-Node {
 }
 
 function Ensure-DockerDesktop {
-  if (Test-Command docker) {
+  if (Test-DockerDesktopInstalled) {
     return
   }
 
@@ -80,19 +118,35 @@ function Ensure-DockerDesktop {
   $isServer = $os.ProductType -ne 1
 
   if (-not $isServer) {
-    if (Test-Command winget) {
+    $wingetAvailable = Test-Command winget
+    $chocoAvailable = Test-Command choco
+
+    if ($wingetAvailable) {
       & winget install -e --id Docker.DockerDesktop --accept-source-agreements --accept-package-agreements
-      if ($LASTEXITCODE -eq 0) {
+      if ($LASTEXITCODE -eq 0 -or (Test-DockerDesktopInstalled)) {
         return
       }
     }
-    if (Test-Command choco) {
+    if ($chocoAvailable) {
       & choco install docker-desktop -y
-      if ($LASTEXITCODE -eq 0) {
+      if ($LASTEXITCODE -eq 0 -or (Test-DockerDesktopInstalled)) {
         return
       }
     }
-    throw (L '\u5f53\u524d\u65e2\u6ca1\u6709 winget \u4e5f\u6ca1\u6709 choco\uff0c\u65e0\u6cd5\u81ea\u52a8\u5b89\u88c5 Docker Desktop\u3002')
+
+    Write-Host ''
+    Write-Host (L '\u672a\u80fd\u5b8c\u5168\u81ea\u52a8\u5b89\u88c5 Docker Desktop\u3002')
+
+    if (-not $wingetAvailable -and -not $chocoAvailable) {
+      Write-Host (L '\u5f53\u524d\u672a\u68c0\u6d4b\u5230 winget \u6216 choco\uff0c\u65e0\u6cd5\u7ee7\u7eed\u81ea\u52a8\u4e0b\u8f7d Docker Desktop\u3002')
+      Write-Host (L '\u4e0b\u4e00\u6b65\u8bf7\u5148\u624b\u52a8\u5b89\u88c5 Docker Desktop\uff1a')
+      Write-Host 'https://docs.docker.com/desktop/setup/install/windows-install/'
+      Write-Host (L '\u5b89\u88c5\u5b8c\u6210\u540e\uff0c\u91cd\u65b0\u6267\u884c scripts\install-all.cmd \u6216 scripts\install-all.ps1\u3002')
+      throw (L '\u5f53\u524d\u65e2\u6ca1\u6709 winget \u4e5f\u6ca1\u6709 choco\uff0c\u65e0\u6cd5\u81ea\u52a8\u5b89\u88c5 Docker Desktop\u3002')
+    }
+
+    Write-Host (L '\u5982\u679c Docker Desktop \u5b9e\u9645\u5df2\u5b89\u88c5\uff0c\u8bf7\u5148\u624b\u52a8\u6253\u5f00\u5b83\u5b8c\u6210\u9996\u6b21\u521d\u59cb\u5316\uff0c\u7136\u540e\u91cd\u65b0\u6267\u884c\u5b89\u88c5\u811a\u672c\u3002')
+    throw (L '\u65e0\u6cd5\u786e\u8ba4 Docker Desktop \u5df2\u53ef\u7528\uff0c\u8bf7\u5148\u5b8c\u6210 Docker Desktop \u5b89\u88c5\u6216\u542f\u52a8\u3002')
   }
 
   Write-Host (L '\u68c0\u6d4b\u5230 Windows Server\uff0c\u5207\u6362\u5230 Docker Engine \u5b89\u88c5\u8def\u5f84...')
@@ -112,27 +166,8 @@ function Ensure-DockerDesktop {
   Set-Service docker -StartupType Automatic -ErrorAction SilentlyContinue
 }
 
-function Get-DockerExecutable {
-  if (Test-Command docker) {
-    return (Get-Command docker).Source
-  }
-
-  $candidates = @(
-    'C:\Program Files\Docker\Docker\resources\bin\docker.exe',
-    'C:\Program Files\Docker\Docker\resources\docker.exe'
-  )
-
-  foreach ($candidate in $candidates) {
-    if (Test-Path $candidate) {
-      return $candidate
-    }
-  }
-
-  return $null
-}
-
 function Start-DockerRuntime {
-  $desktopPath = 'C:\Program Files\Docker\Docker\Docker Desktop.exe'
+  $desktopPath = Get-DockerDesktopPath
 
   foreach ($serviceName in @('com.docker.service', 'docker')) {
     $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
@@ -144,14 +179,14 @@ function Start-DockerRuntime {
     }
   }
 
-  if (Test-Path $desktopPath) {
+  if ($desktopPath) {
     Start-Process -FilePath $desktopPath -ErrorAction SilentlyContinue | Out-Null
   }
 }
 
 function Wait-ForDocker {
-  $desktopPath = 'C:\Program Files\Docker\Docker\Docker Desktop.exe'
-  if (Test-Path $desktopPath) {
+  $desktopPath = Get-DockerDesktopPath
+  if ($desktopPath) {
     Write-Host (L '\u6b63\u5728\u5c1d\u8bd5\u542f\u52a8 Docker Desktop...')
   }
 
@@ -173,7 +208,16 @@ function Wait-ForDocker {
     }
   }
 
-  throw (L 'Docker \u5df2\u5b89\u88c5\uff0c\u4f46\u5f53\u524d\u8fd8\u672a\u5c31\u7eea\u3002\u811a\u672c\u5df2\u5c1d\u8bd5\u81ea\u52a8\u542f\u52a8 Docker Desktop / Docker Engine\u3002\u8bf7\u5148\u786e\u8ba4 Docker \u5df2\u5b8c\u5168\u542f\u52a8\uff0c\u7136\u540e\u91cd\u65b0\u6267\u884c scripts\\install-all.cmd \u6216 scripts\\install-all.ps1\u3002')
+  Write-Host ''
+  Write-Host (L '\u811a\u672c\u5df2\u5c1d\u8bd5\u81ea\u52a8\u542f\u52a8 Docker Desktop / Docker Engine\uff0c\u4f46\u8fd8\u6ca1\u6709\u7b49\u5230 Docker \u5c31\u7eea\u3002')
+  Write-Host (L '\u4e0b\u4e00\u6b65\u8bf7\u5148\u624b\u52a8\u786e\u8ba4\uff1a')
+  Write-Host (L '  1. Docker Desktop \u5df2\u6253\u5f00')
+  Write-Host (L '  2. \u9996\u6b21\u542f\u52a8\u65f6\u5df2\u7ecf\u63a5\u53d7 Docker \u534f\u8bae')
+  Write-Host (L '  3. Docker Engine \u663e\u793a\u4e3a Running')
+  Write-Host (L '  4. \u5982\u679c\u63d0\u793a WSL / \u865a\u62df\u5316\uff0c\u5148\u6309 Docker Desktop \u6307\u5f15\u5b8c\u6210\u521d\u59cb\u5316')
+  Write-Host (L '\u786e\u8ba4\u5b8c\u6210\u540e\uff0c\u91cd\u65b0\u6267\u884c scripts\install-all.cmd \u6216 scripts\install-all.ps1\u3002')
+  Write-Host 'https://docs.docker.com/desktop/setup/install/windows-install/'
+  throw (L 'Docker \u5df2\u5b89\u88c5\uff0c\u4f46\u5f53\u524d\u8fd8\u672a\u5c31\u7eea\u3002')
 }
 
 function Get-NodeExecutable {
