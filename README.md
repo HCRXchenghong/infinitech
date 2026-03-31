@@ -42,20 +42,22 @@ Windows 入口对照：
 | 终端 | 建议 | 直接可用命令 |
 | --- | --- | --- |
 | PowerShell | 推荐 | `powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 \| iex"` |
-| CMD | 支持 | `powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 \| iex"` |
+| CMD | 支持 | `powershell -ExecutionPolicy Bypass -Command "$u='https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.cmd'; $p=Join-Path $env:TEMP 'infinitech-bootstrap-install.cmd'; irm $u -OutFile $p; & $env:ComSpec /c $p"` |
 
 说明：
 
+- `PowerShell` 入口会直接拉取并执行 `bootstrap-install.ps1`
+- `CMD` 入口会先拉取 `bootstrap-install.cmd`，再由它下载本地 `ps1` 并执行
 - 如果你当前就在 `CMD`，直接复制 `CMD` 那一行即可
-- `CMD` 模式本质上还是调用 PowerShell 去执行 bootstrap 脚本，这是当前最稳的兼容方式
 
 ### 仓库已在本地，直接安装并部署
 
-Windows：
+Windows 入口对照：
 
-```powershell
-scripts\install-all.cmd
-```
+| 终端 | 建议 | 直接可用命令 |
+| --- | --- | --- |
+| PowerShell | 推荐 | `powershell -ExecutionPolicy Bypass -File .\scripts\install-all.ps1` |
+| CMD | 支持 | `scripts\install-all.cmd` |
 
 Ubuntu / Debian / macOS：
 
@@ -292,25 +294,26 @@ curl -fsSL https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scrip
 | 终端 | 建议 | 直接可用命令 |
 | --- | --- | --- |
 | PowerShell | 推荐 | `powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 \| iex"` |
-| CMD | 支持 | `powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 \| iex"` |
+| CMD | 支持 | `powershell -ExecutionPolicy Bypass -Command "$u='https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.cmd'; $p=Join-Path $env:TEMP 'infinitech-bootstrap-install.cmd'; irm $u -OutFile $p; & $env:ComSpec /c $p"` |
 
-指定目录示例（两者通用）：
+指定目录示例：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex --target-dir D:\infinitech"
 ```
 
 ```cmd
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex --target-dir D:\infinitech"
+powershell -ExecutionPolicy Bypass -Command "$u='https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.cmd'; $p=Join-Path $env:TEMP 'infinitech-bootstrap-install.cmd'; irm $u -OutFile $p; & $env:ComSpec /c $p --target-dir D:\infinitech"
 ```
 
 ## 本地安装器入口
 
-Windows：
+Windows 入口对照：
 
-```powershell
-scripts\install-all.cmd
-```
+| 终端 | 建议 | 直接可用命令 |
+| --- | --- | --- |
+| PowerShell | 推荐 | `powershell -ExecutionPolicy Bypass -File .\scripts\install-all.ps1` |
+| CMD | 支持 | `scripts\install-all.cmd` |
 
 Ubuntu / Debian / macOS：
 

@@ -13,6 +13,11 @@ if (-not $TargetDir) {
   $TargetDir = Join-Path $HOME 'infinitech'
 }
 
+function L {
+  param([string]$Text)
+  return [regex]::Unescape($Text)
+}
+
 function Select-TargetDir {
   param([string]$Current)
 
@@ -21,13 +26,13 @@ function Select-TargetDir {
   }
 
   Write-Host ""
-  Write-Host "Choose repository install directory:"
-  Write-Host ("  1. Use default directory: {0}" -f $Current)
-  Write-Host "  2. Enter a custom directory"
-  $choice = Read-Host "Enter menu number [1]"
+  Write-Host (L '\u8bf7\u9009\u62e9\u4ed3\u5e93\u5b89\u88c5\u76ee\u5f55\uff1a')
+  Write-Host ((L '  1. \u4f7f\u7528\u9ed8\u8ba4\u76ee\u5f55\uff1a{0}') -f $Current)
+  Write-Host (L '  2. \u8f93\u5165\u81ea\u5b9a\u4e49\u76ee\u5f55')
+  $choice = Read-Host (L '\u8f93\u5165\u6570\u5b57\u9009\u9879 [1]')
   switch (($choice | ForEach-Object { $_.Trim() })) {
     '2' {
-      $custom = Read-Host "Enter install directory path"
+      $custom = Read-Host (L '\u8bf7\u8f93\u5165\u5b89\u88c5\u76ee\u5f55\u8def\u5f84')
       if ($custom -and $custom.Trim()) {
         return $custom.Trim()
       }
@@ -49,7 +54,7 @@ function Ensure-Git {
     return
   }
 
-  Write-Host "Git is missing. Installing Git first..."
+  Write-Host (L '\u672a\u68c0\u6d4b\u5230 Git\uff0c\u6b63\u5728\u5148\u5b89\u88c5 Git...')
 
   if (Test-Command winget) {
     & winget install -e --id Git.Git --accept-source-agreements --accept-package-agreements
@@ -61,7 +66,7 @@ function Ensure-Git {
     return
   }
 
-  throw "Neither winget nor choco is available. Cannot auto-install Git."
+  throw (L '\u5f53\u524d\u65e2\u6ca1\u6709 winget \u4e5f\u6ca1\u6709 choco\uff0c\u65e0\u6cd5\u81ea\u52a8\u5b89\u88c5 Git\u3002')
 }
 
 function Get-GitExecutable {
@@ -80,7 +85,7 @@ function Get-GitExecutable {
     }
   }
 
-  throw "Git is installed but not visible in the current session. Reopen the terminal and retry."
+  throw (L 'Git \u5df2\u5b89\u88c5\uff0c\u4f46\u5f53\u524d\u7ec8\u7aef\u4f1a\u8bdd\u8fd8\u4e0d\u53ef\u89c1\u3002\u8bf7\u91cd\u65b0\u6253\u5f00\u7ec8\u7aef\u540e\u91cd\u8bd5\u3002')
 }
 
 function Sync-Repo {
@@ -98,7 +103,7 @@ function Sync-Repo {
     }
 
     if (Test-Path (Join-Path $RepoDir '.git')) {
-      Write-Host "Repository already exists. Updating latest code from GitHub..."
+      Write-Host (L '\u68c0\u6d4b\u5230\u4ed3\u5e93\u5df2\u5b58\u5728\uff0c\u6b63\u5728\u4ece GitHub \u66f4\u65b0\u6700\u65b0\u4ee3\u7801...')
       & $GitExe -C $RepoDir remote set-url origin $RemoteUrl
       & $GitExe -C $RepoDir fetch origin $RemoteBranch
       & $GitExe -C $RepoDir checkout $RemoteBranch
@@ -109,25 +114,25 @@ function Sync-Repo {
     if (Test-Path $RepoDir) {
       $item = Get-Item -LiteralPath $RepoDir
       if (-not $item.PSIsContainer) {
-        throw "Target path already exists but is not a directory: $RepoDir"
+        throw ((L '\u76ee\u6807\u8def\u5f84\u5df2\u5b58\u5728\uff0c\u4f46\u4e0d\u662f\u76ee\u5f55\uff1a{0}') -f $RepoDir)
       }
 
       $entries = @(Get-ChildItem -Force -LiteralPath $RepoDir)
       if ($entries.Count -eq 0) {
-        Write-Host "Target directory exists and is empty. Cloning directly into it..."
+        Write-Host (L '\u76ee\u6807\u76ee\u5f55\u5df2\u5b58\u5728\u4e14\u4e3a\u7a7a\uff0c\u6b63\u5728\u76f4\u63a5\u514b\u9686\u5230\u8be5\u76ee\u5f55...')
         & $GitExe clone --branch $RemoteBranch --single-branch $RemoteUrl $RepoDir
         return $RepoDir
       }
 
       Write-Host ""
-      Write-Host ("Target directory already exists and is not empty: {0}" -f $RepoDir)
-      Write-Host "  1. Create subdirectory infinitech under this path"
-      Write-Host "  2. Enter another install directory"
-      Write-Host "  3. Cancel installation"
-      $choice = Read-Host "Enter menu number [1]"
+      Write-Host ((L '\u76ee\u6807\u76ee\u5f55\u5df2\u5b58\u5728\u4e14\u4e0d\u4e3a\u7a7a\uff1a{0}') -f $RepoDir)
+      Write-Host (L '  1. \u5728\u8be5\u8def\u5f84\u4e0b\u521b\u5efa infinitech \u5b50\u76ee\u5f55')
+      Write-Host (L '  2. \u91cd\u65b0\u8f93\u5165\u5b89\u88c5\u76ee\u5f55')
+      Write-Host (L '  3. \u53d6\u6d88\u5b89\u88c5')
+      $choice = Read-Host (L '\u8f93\u5165\u6570\u5b57\u9009\u9879 [1]')
       switch (($choice | ForEach-Object { $_.Trim() })) {
         '2' {
-          $custom = Read-Host "Enter a new install directory path"
+          $custom = Read-Host (L '\u8bf7\u8f93\u5165\u65b0\u7684\u5b89\u88c5\u76ee\u5f55\u8def\u5f84')
           if ($custom -and $custom.Trim()) {
             $RepoDir = $custom.Trim()
             continue
@@ -135,7 +140,7 @@ function Sync-Repo {
           continue
         }
         '3' {
-          throw "Installation cancelled."
+          throw (L '\u5df2\u53d6\u6d88\u5b89\u88c5\u3002')
         }
         default {
           $RepoDir = Join-Path $RepoDir 'infinitech'
@@ -144,7 +149,7 @@ function Sync-Repo {
       }
     }
 
-    Write-Host "Cloning repository from GitHub..."
+    Write-Host (L '\u6b63\u5728\u4ece GitHub \u514b\u9686\u4ed3\u5e93...')
     & $GitExe clone --branch $RemoteBranch --single-branch $RemoteUrl $RepoDir
     return $RepoDir
   }
@@ -158,8 +163,8 @@ $TargetDir = Sync-Repo -GitExe $gitExe -RemoteUrl $RepoUrl -RemoteBranch $Branch
 
 $installCmd = Join-Path $TargetDir 'scripts\install-all.cmd'
 if (-not (Test-Path $installCmd)) {
-  throw "Installer entry was not found after clone: $installCmd"
+  throw ((L '\u514b\u9686\u5b8c\u6210\u540e\u672a\u627e\u5230\u5b89\u88c5\u5165\u53e3\uff1a{0}') -f $installCmd)
 }
 
-Write-Host ("Repository is ready at: {0}" -f $TargetDir)
+Write-Host ((L '\u4ed3\u5e93\u5df2\u51c6\u5907\u5b8c\u6210\uff1a{0}') -f $TargetDir)
 & $installCmd @ForwardArgs

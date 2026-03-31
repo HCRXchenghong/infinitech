@@ -42,20 +42,22 @@ Windows options:
 | Terminal | Recommendation | Command |
 | --- | --- | --- |
 | PowerShell | Recommended | `powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 \| iex"` |
-| CMD | Supported | `powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 \| iex"` |
+| CMD | Supported | `powershell -ExecutionPolicy Bypass -Command "$u='https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.cmd'; $p=Join-Path $env:TEMP 'infinitech-bootstrap-install.cmd'; irm $u -OutFile $p; & $env:ComSpec /c $p"` |
 
 Notes:
 
+- The `PowerShell` entry downloads and executes `bootstrap-install.ps1` directly
+- The `CMD` entry downloads `bootstrap-install.cmd`, then lets it fetch a local `ps1` and run it
 - If you are already in `CMD`, just run the `CMD` row as-is
-- `CMD` support currently works by invoking PowerShell for the bootstrap step, which is the most stable Windows path in this repository
 
 ### Install and deploy from a local checkout
 
-Windows:
+Windows options:
 
-```powershell
-scripts\install-all.cmd
-```
+| Terminal | Recommendation | Command |
+| --- | --- | --- |
+| PowerShell | Recommended | `powershell -ExecutionPolicy Bypass -File .\scripts\install-all.ps1` |
+| CMD | Supported | `scripts\install-all.cmd` |
 
 Ubuntu / Debian / macOS:
 
@@ -292,25 +294,26 @@ curl -fsSL https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scrip
 | Terminal | Recommendation | Command |
 | --- | --- | --- |
 | PowerShell | Recommended | `powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 \| iex"` |
-| CMD | Supported | `powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 \| iex"` |
+| CMD | Supported | `powershell -ExecutionPolicy Bypass -Command "$u='https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.cmd'; $p=Join-Path $env:TEMP 'infinitech-bootstrap-install.cmd'; irm $u -OutFile $p; & $env:ComSpec /c $p"` |
 
-Example with a custom directory (works in both):
+Example with a custom directory:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex --target-dir D:\infinitech"
 ```
 
 ```cmd
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex --target-dir D:\infinitech"
+powershell -ExecutionPolicy Bypass -Command "$u='https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.cmd'; $p=Join-Path $env:TEMP 'infinitech-bootstrap-install.cmd'; irm $u -OutFile $p; & $env:ComSpec /c $p --target-dir D:\infinitech"
 ```
 
 ## Local Installer Entry Points
 
-Windows:
+Windows options:
 
-```powershell
-scripts\install-all.cmd
-```
+| Terminal | Recommendation | Command |
+| --- | --- | --- |
+| PowerShell | Recommended | `powershell -ExecutionPolicy Bypass -File .\scripts\install-all.ps1` |
+| CMD | Supported | `scripts\install-all.cmd` |
 
 Ubuntu / Debian / macOS:
 
