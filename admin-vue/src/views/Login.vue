@@ -3,35 +3,39 @@
     <div v-if="isMobile && !showLogin" class="intro-page">
       <div class="intro-content">
         <div class="logo-row">
-          <img class="logo-mark" :src="logoUrl" alt="logo" />
+          <img class="logo-mark" :src="logoUrl" alt="悦享e食" />
           <div class="logo-text">悦享e食</div>
         </div>
         <div class="intro-title">管理后台</div>
         <div class="intro-slogan">高效运营 · 轻松管理 · 即时履约</div>
-        <button class="start-btn" @click="enterLogin">立即管理</button>
+        <button class="start-btn" @click="enterLogin">立即开始</button>
       </div>
     </div>
-    <template v-if="!isMobile || showLogin">
-      <div class="hero" v-if="!isMobile">
+
+    <template v-else>
+      <div v-if="!isMobile" class="hero">
         <div class="hero-logo-ring">
           <img class="hero-logo" :src="logoUrl" alt="悦享e食" />
         </div>
         <h1 class="hero-title">悦享e食管理后台</h1>
-        <p class="hero-subtitle">高效运营 · 轻松管理</p>
+        <p class="hero-subtitle">高效运营 · 轻松管理 · 即时履约</p>
       </div>
+
       <div class="login-card" :class="{ 'mobile-card': isMobile }">
         <button class="corner-switch" @click="toggleMode">
           <span class="corner-bg" :class="{ inactive: isQrMode }"></span>
           <span class="corner-fold"></span>
-          <span class="corner-icon">{{ isQrMode ? '⌂' : 'QR' }}</span>
+          <span class="corner-icon">{{ isQrMode ? '账号' : 'QR' }}</span>
         </button>
+
         <div class="card-content">
           <transition name="slide-fade" mode="out-in">
             <div v-if="!isQrMode" key="login-form" class="card-body">
               <header class="panel-header">
                 <h3>欢迎回来</h3>
-                <p>请输入您的凭据以访问后台</p>
+                <p>请输入管理员凭证以访问后台</p>
               </header>
+
               <div class="mode-tabs">
                 <button
                   type="button"
@@ -48,18 +52,20 @@
                   验证码登录
                 </button>
               </div>
+
               <form class="login-form" @submit.prevent="handleLogin">
                 <div class="field-group">
-                  <label>手机号码</label>
+                  <label>手机号</label>
                   <input
                     v-model.trim="form.phone"
                     class="glass-input"
                     type="text"
                     maxlength="11"
-                    placeholder="请输入手机号"
+                    placeholder="请输入管理员手机号"
                     autocomplete="username"
                   />
                 </div>
+
                 <div class="field-group">
                   <label>{{ credentialMode === 'password' ? '登录密码' : '短信验证码' }}</label>
                   <div class="credential-row">
@@ -68,7 +74,7 @@
                       v-model="form.password"
                       class="glass-input"
                       type="password"
-                      placeholder="请输入密码"
+                      placeholder="请输入登录密码"
                       autocomplete="current-password"
                     />
                     <input
@@ -77,7 +83,7 @@
                       class="glass-input"
                       type="text"
                       maxlength="6"
-                      placeholder="请输入验证码"
+                      placeholder="请输入短信验证码"
                     />
                     <button
                       v-if="credentialMode === 'code'"
@@ -86,369 +92,619 @@
                       :disabled="!canSendCode || sendingCode || loading"
                       @click="sendCode"
                     >
-                      {{ sendingCode ? '发送中' : (countdown > 0 ? `${countdown}s` : '获取') }}
+                      {{ sendingCode ? '发送中' : (countdown > 0 ? `${countdown}s` : '获取验证码') }}
                     </button>
                   </div>
                 </div>
+
                 <div class="form-meta">
                   <label class="remember-label">
                     <input v-model="form.rememberMe" type="checkbox" />
                     <span>保持登录状态</span>
                   </label>
-                  <span class="meta-note">忘记密码请联系平台管理员</span>
+                  <span class="meta-note">忘记密码请联系平台负责人处理</span>
                 </div>
+
                 <button type="submit" class="submit-btn" :disabled="loading || sendingCode">
-                  {{ loading ? '登录中...' : '进入系统' }}
+                  {{ loading ? '登录中...' : '进入后台' }}
                 </button>
               </form>
             </div>
-            <div v-else key="qrcode-panel" class="card-body qr-body">
+
+            <div v-else key="qr-panel" class="card-body qr-body">
               <header class="panel-header qr-header">
                 <h3>扫码登录</h3>
-                <p>使用移动端 App 扫描以登录</p>
+                <p>使用管理端 App 扫描二维码确认登录</p>
               </header>
+
               <div class="qr-wrap">
                 <div class="qr-shell">
                   <img v-if="qrImage" :src="qrImage" class="qr-image" alt="扫码登录二维码" />
-                  <div class="qr-scan-line" v-if="qrStatus === 'pending' || qrStatus === 'scanned'"></div>
-                  <div class="qr-overlay" v-if="qrLoading || qrStatus === 'expired' || qrStatus === 'error' || qrStatus === 'rejected'">
+                  <div
+                    v-if="qrStatus === 'pending' || qrStatus === 'scanned'"
+                    class="qr-scan-line"
+                  ></div>
+                  <div
+                    v-if="qrLoading || qrStatus === 'expired' || qrStatus === 'error' || qrStatus === 'rejected'"
+                    class="qr-overlay"
+                  >
                     <div class="overlay-title">{{ qrOverlayText }}</div>
-                    <button type="button" class="overlay-refresh" :disabled="qrLoading" @click="refreshQrCode(true)">
+                    <button
+                      type="button"
+                      class="overlay-refresh"
+                      :disabled="qrLoading"
+                      @click="refreshQrCode(true)"
+                    >
                       立即刷新
                     </button>
                   </div>
                 </div>
               </div>
+
               <button type="button" class="submit-btn" :disabled="qrLoading" @click="refreshQrCode(true)">
                 {{ qrLoading ? '刷新中...' : '刷新二维码' }}
               </button>
             </div>
           </transition>
         </div>
+
         <footer class="card-footer">安全连接已启用</footer>
       </div>
     </template>
   </div>
+
+  <el-dialog
+    v-model="bootstrapDialogVisible"
+    title="完成首次管理员初始化"
+    width="420px"
+    :close-on-click-modal="false"
+    :close-on-press-escape="false"
+    :show-close="false"
+  >
+    <p style="margin-top: 0; color: #6b7280;">
+      检测到你当前使用的是首次部署生成的临时管理员账号。请先改成真实的管理员名称、手机号和密码后再进入后台。
+    </p>
+
+    <div class="field-group">
+      <label>真实管理员名称</label>
+      <input
+        v-model.trim="bootstrapForm.name"
+        class="glass-input"
+        type="text"
+        placeholder="请输入真实管理员名称"
+      />
+    </div>
+
+    <div class="field-group">
+      <label>真实管理员手机号</label>
+      <input
+        v-model.trim="bootstrapForm.phone"
+        class="glass-input"
+        type="text"
+        maxlength="11"
+        placeholder="请输入真实管理员手机号"
+      />
+    </div>
+
+    <div class="field-group">
+      <label>新的管理员密码</label>
+      <input
+        v-model="bootstrapForm.newPassword"
+        class="glass-input"
+        type="password"
+        placeholder="请输入新的管理员密码"
+      />
+    </div>
+
+    <div class="field-group">
+      <label>确认新的管理员密码</label>
+      <input
+        v-model="bootstrapForm.confirmPassword"
+        class="glass-input"
+        type="password"
+        placeholder="请再次输入新的管理员密码"
+      />
+    </div>
+
+    <template #footer>
+      <el-button @click="handleBootstrapLogout">退出登录</el-button>
+      <el-button type="primary" :loading="bootstrapSubmitting" @click="handleCompleteBootstrap">
+        保存并进入后台
+      </el-button>
+    </template>
+  </el-dialog>
 </template>
+
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
-import request from '@/utils/request';
-import { ElMessage } from 'element-plus';
-import QRCode from 'qrcode';
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import QRCode from 'qrcode'
+
+import request from '@/utils/request'
 import {
   createDefaultLoginForm,
-  isValidPhone,
+  getQrFlowErrorMessage,
   isMissingQrRoute,
-  getQrFlowErrorMessage
-} from './loginHelpers';
-const logoUrl = new URL('/logo.png', import.meta.url).href;
-const router = useRouter();
-const loading = ref(false);
-const sendingCode = ref(false);
-const countdown = ref(0);
-const isMobile = ref(window.innerWidth <= 768);
-const showLogin = ref(false);
-const credentialMode = ref(localStorage.getItem('admin_login_type') === 'code' ? 'code' : 'password');
-const isQrMode = ref(false);
-const qrLoading = ref(false);
-const qrImage = ref('');
-const qrTicket = ref('');
-const qrStatus = ref('idle');
-const qrRemainSeconds = ref(0);
-let qrPollTimer = null;
-let qrCountdownTimer = null;
-let qrRefreshTimer = null;
-let qrLastStatusToast = '';
-const QR_REFRESH_INTERVAL_MS = 10000;
-const canSendCode = computed(() => countdown.value === 0);
-const form = ref(createDefaultLoginForm());
+  isValidPhone,
+} from './loginHelpers'
+
+const logoUrl = new URL('/logo.png', import.meta.url).href
+const router = useRouter()
+
+const loading = ref(false)
+const sendingCode = ref(false)
+const countdown = ref(0)
+const isMobile = ref(window.innerWidth <= 768)
+const showLogin = ref(false)
+const credentialMode = ref(localStorage.getItem('admin_login_type') === 'code' ? 'code' : 'password')
+const isQrMode = ref(false)
+const qrLoading = ref(false)
+const qrImage = ref('')
+const qrTicket = ref('')
+const qrStatus = ref('idle')
+const qrRemainSeconds = ref(0)
+const form = ref(createDefaultLoginForm())
+const bootstrapDialogVisible = ref(false)
+const bootstrapSubmitting = ref(false)
+const bootstrapForm = ref({
+  phone: '',
+  name: '',
+  newPassword: '',
+  confirmPassword: '',
+})
+
+let qrPollTimer = null
+let qrCountdownTimer = null
+let qrRefreshTimer = null
+let qrLastStatusToast = ''
+
+const QR_REFRESH_INTERVAL_MS = 10000
+const canSendCode = computed(() => countdown.value === 0)
+
 const qrOverlayText = computed(() => {
-  if (qrLoading.value) return '二维码生成中...';
-  if (qrStatus.value === 'expired') return '二维码已过期';
-  if (qrStatus.value === 'rejected') return '授权已取消';
-  if (qrStatus.value === 'error') return '网络异常';
-  return '';
-});
+  if (qrLoading.value) return '二维码生成中...'
+  if (qrStatus.value === 'expired') return '二维码已过期'
+  if (qrStatus.value === 'rejected') return '登录授权已取消'
+  if (qrStatus.value === 'error') return '二维码加载失败'
+  return ''
+})
+
 function clearQrTimers() {
   if (qrPollTimer) {
-    clearInterval(qrPollTimer);
-    qrPollTimer = null;
+    clearInterval(qrPollTimer)
+    qrPollTimer = null
   }
   if (qrCountdownTimer) {
-    clearInterval(qrCountdownTimer);
-    qrCountdownTimer = null;
+    clearInterval(qrCountdownTimer)
+    qrCountdownTimer = null
   }
   if (qrRefreshTimer) {
-    clearTimeout(qrRefreshTimer);
-    qrRefreshTimer = null;
+    clearTimeout(qrRefreshTimer)
+    qrRefreshTimer = null
   }
 }
+
 function scheduleQrRefresh(delay = QR_REFRESH_INTERVAL_MS) {
-  if (qrRefreshTimer) clearTimeout(qrRefreshTimer);
+  if (qrRefreshTimer) {
+    clearTimeout(qrRefreshTimer)
+  }
   qrRefreshTimer = setTimeout(() => {
-    refreshQrCode(false);
-  }, delay);
+    refreshQrCode(false)
+  }, delay)
 }
+
 function updateQrStatus(status) {
-  if (!status || qrStatus.value === status) return;
-  qrStatus.value = status;
+  if (!status || qrStatus.value === status) {
+    return
+  }
+
+  qrStatus.value = status
+
   if (status === 'scanned' && qrLastStatusToast !== 'scanned') {
-    ElMessage.info('已扫码，请在管理端 App 确认登录');
+    ElMessage.info('已扫码，请在管理端 App 内确认登录')
   }
   if (status === 'rejected' && qrLastStatusToast !== 'rejected') {
-    ElMessage.warning('登录授权已取消，二维码将自动刷新');
+    ElMessage.warning('本次扫码登录已取消，系统将自动刷新二维码')
   }
-  qrLastStatusToast = status;
+  qrLastStatusToast = status
 }
+
 function startQrCountdown() {
-  if (qrCountdownTimer) clearInterval(qrCountdownTimer);
+  if (qrCountdownTimer) {
+    clearInterval(qrCountdownTimer)
+  }
+
   qrCountdownTimer = setInterval(() => {
-    if (qrRemainSeconds.value > 0) qrRemainSeconds.value -= 1;
-    if (qrRemainSeconds.value <= 0 && (qrStatus.value === 'pending' || qrStatus.value === 'scanned')) {
-      updateQrStatus('expired');
-      scheduleQrRefresh();
+    if (qrRemainSeconds.value > 0) {
+      qrRemainSeconds.value -= 1
     }
-  }, 1000);
+    if (qrRemainSeconds.value <= 0 && (qrStatus.value === 'pending' || qrStatus.value === 'scanned')) {
+      updateQrStatus('expired')
+      scheduleQrRefresh()
+    }
+  }, 1000)
 }
+
 function startQrPolling() {
-  if (qrPollTimer) clearInterval(qrPollTimer);
+  if (qrPollTimer) {
+    clearInterval(qrPollTimer)
+  }
+
   qrPollTimer = setInterval(() => {
-    pollQrStatus();
-  }, 2000);
-  pollQrStatus();
+    pollQrStatus()
+  }, 2000)
+  pollQrStatus()
 }
+
+function clearLoginSession() {
+  localStorage.removeItem('admin_token')
+  localStorage.removeItem('admin_user')
+  sessionStorage.removeItem('admin_token')
+  sessionStorage.removeItem('admin_user')
+}
+
+function readStoredAdminUser() {
+  try {
+    const raw = localStorage.getItem('admin_user') || sessionStorage.getItem('admin_user') || ''
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function openBootstrapDialog(user = {}) {
+  bootstrapForm.value.phone = String(user?.phone || '')
+  bootstrapForm.value.name = String(user?.name || '')
+  bootstrapForm.value.newPassword = ''
+  bootstrapForm.value.confirmPassword = ''
+  bootstrapDialogVisible.value = true
+  showLogin.value = true
+  isQrMode.value = false
+}
+
+function handleBootstrapLogout() {
+  bootstrapDialogVisible.value = false
+  clearLoginSession()
+  form.value = createDefaultLoginForm()
+  showLogin.value = true
+  isQrMode.value = false
+  router.replace('/login')
+}
+
 function saveLoginSession(payload, mode = credentialMode.value) {
   if (!payload?.token) {
-    ElMessage.error('登录失败，缺少凭证');
-    return;
+    ElMessage.error('登录失败，缺少有效凭证')
+    return
   }
-  localStorage.removeItem('admin_token');
-  localStorage.removeItem('admin_user');
-  sessionStorage.removeItem('admin_token');
-  sessionStorage.removeItem('admin_user');
-  const storage = form.value.rememberMe ? localStorage : sessionStorage;
-  storage.setItem('admin_token', payload.token);
-  storage.setItem('admin_user', JSON.stringify(payload.user || { name: '管理员', type: 'admin' }));
-  storage.setItem('admin_login_type', mode);
-  storage.setItem('admin_remember_me', form.value.rememberMe.toString());
-  localStorage.setItem('admin_login_type', mode);
-  router.push('/dashboard');
+
+  clearLoginSession()
+  const storage = form.value.rememberMe ? localStorage : sessionStorage
+  storage.setItem('admin_token', payload.token)
+  storage.setItem(
+    'admin_user',
+    JSON.stringify(payload.user || { name: '管理员', type: 'admin', mustChangeBootstrap: false }),
+  )
+  storage.setItem('admin_login_type', mode)
+  storage.setItem('admin_remember_me', String(form.value.rememberMe))
+  localStorage.setItem('admin_login_type', mode)
+
+  if (payload?.user?.mustChangeBootstrap) {
+    openBootstrapDialog(payload.user || {})
+    ElMessage.warning('请先完成首次管理员初始化，再进入后台。')
+    return
+  }
+
+  bootstrapDialogVisible.value = false
+  router.push('/dashboard')
 }
+
+async function handleCompleteBootstrap() {
+  if (bootstrapSubmitting.value) {
+    return
+  }
+  if (!bootstrapForm.value.name) {
+    ElMessage.error('请输入真实管理员名称')
+    return
+  }
+  if (!isValidPhone(bootstrapForm.value.phone)) {
+    ElMessage.error('请输入正确的管理员手机号')
+    return
+  }
+  if (!bootstrapForm.value.newPassword) {
+    ElMessage.error('请输入新的管理员密码')
+    return
+  }
+  if (bootstrapForm.value.newPassword.length < 6) {
+    ElMessage.error('新密码至少需要 6 位')
+    return
+  }
+  if (bootstrapForm.value.newPassword !== bootstrapForm.value.confirmPassword) {
+    ElMessage.error('两次输入的新密码不一致')
+    return
+  }
+
+  bootstrapSubmitting.value = true
+  try {
+    const { data } = await request.post('/api/admins/complete-bootstrap', {
+      phone: bootstrapForm.value.phone,
+      name: bootstrapForm.value.name,
+      newPassword: bootstrapForm.value.newPassword,
+      confirmPassword: bootstrapForm.value.confirmPassword,
+    })
+    const payload = data?.token ? data : data?.data
+    if (!payload?.token) {
+      throw new Error('首次管理员初始化失败，未返回新的登录凭证')
+    }
+
+    ElMessage.success('首次管理员初始化已完成，请使用新的管理员信息进入后台。')
+    saveLoginSession(payload, 'password')
+  } catch (error) {
+    ElMessage.error(error.response?.data?.error || error.message || '首次管理员初始化失败')
+  } finally {
+    bootstrapSubmitting.value = false
+  }
+}
+
 async function refreshQrCode(showMessage = false) {
-  if (!isQrMode.value) return;
-  clearQrTimers();
-  qrLoading.value = true;
-  qrImage.value = '';
-  qrTicket.value = '';
-  qrRemainSeconds.value = 0;
-  qrStatus.value = 'pending';
-  qrLastStatusToast = '';
+  if (!isQrMode.value) {
+    return
+  }
+
+  clearQrTimers()
+  qrLoading.value = true
+  qrImage.value = ''
+  qrTicket.value = ''
+  qrRemainSeconds.value = 0
+  qrStatus.value = 'pending'
+  qrLastStatusToast = ''
+
   try {
     const { data } = await request.post('/api/qr-login/session', {
-      webOrigin: typeof window !== 'undefined' && window.location
-        ? window.location.origin
-        : ''
-    });
-    const payload = data?.data || data;
+      webOrigin: typeof window !== 'undefined' && window.location ? window.location.origin : '',
+    })
+    const payload = data?.data || data
     if (!payload?.ticket || !payload?.qrText) {
-      throw new Error('二维码初始化失败');
+      throw new Error('二维码初始化失败')
     }
-    qrTicket.value = String(payload.ticket);
-    qrRemainSeconds.value = Math.max(0, Number(payload.remainSeconds || payload.expiresIn || 120));
+
+    qrTicket.value = String(payload.ticket)
+    qrRemainSeconds.value = Math.max(0, Number(payload.remainSeconds || payload.expiresIn || 120))
     qrImage.value = await QRCode.toDataURL(payload.qrText, {
       width: 240,
       margin: 1,
       errorCorrectionLevel: 'M',
       color: {
         dark: '#111827',
-        light: '#ffffff'
-      }
-    });
-    startQrCountdown();
-    startQrPolling();
-    scheduleQrRefresh(QR_REFRESH_INTERVAL_MS);
-    if (showMessage) ElMessage.success('二维码已刷新');
-  } catch (error) {
-    updateQrStatus('error');
-    if (!isMissingQrRoute(error)) {
-      scheduleQrRefresh(QR_REFRESH_INTERVAL_MS);
-    }
-    const message = getQrFlowErrorMessage(error);
-    if (isMissingQrRoute(error)) {
-      ElMessage.error(message);
-    }
+        light: '#ffffff',
+      },
+    })
+
+    startQrCountdown()
+    startQrPolling()
+    scheduleQrRefresh(QR_REFRESH_INTERVAL_MS)
     if (showMessage) {
-      ElMessage.error(message);
+      ElMessage.success('二维码已刷新')
+    }
+  } catch (error) {
+    updateQrStatus('error')
+    if (!isMissingQrRoute(error)) {
+      scheduleQrRefresh(QR_REFRESH_INTERVAL_MS)
+    }
+    const message = getQrFlowErrorMessage(error)
+    if (showMessage || isMissingQrRoute(error)) {
+      ElMessage.error(message)
     }
   } finally {
-    qrLoading.value = false;
+    qrLoading.value = false
   }
 }
+
 async function pollQrStatus() {
-  if (!isQrMode.value || !qrTicket.value || qrLoading.value) return;
+  if (!isQrMode.value || !qrTicket.value || qrLoading.value) {
+    return
+  }
+
   try {
-    const { data } = await request.get(`/api/qr-login/session/${encodeURIComponent(qrTicket.value)}`);
-    const payload = data?.data || data || {};
+    const { data } = await request.get(`/api/qr-login/session/${encodeURIComponent(qrTicket.value)}`)
+    const payload = data?.data || data || {}
     if (typeof payload.remainSeconds === 'number') {
-      qrRemainSeconds.value = Math.max(0, payload.remainSeconds);
+      qrRemainSeconds.value = Math.max(0, payload.remainSeconds)
     }
-    const status = String(payload.status || 'pending');
+
+    const status = String(payload.status || 'pending')
     if (status === 'confirmed' && payload.token) {
-      clearQrTimers();
-      saveLoginSession({ token: payload.token, user: payload.user }, 'qr');
-      return;
+      clearQrTimers()
+      saveLoginSession({ token: payload.token, user: payload.user }, 'qr')
+      return
     }
-    updateQrStatus(status);
+
+    updateQrStatus(status)
     if (status === 'expired' || status === 'rejected' || status === 'consumed') {
-      scheduleQrRefresh(QR_REFRESH_INTERVAL_MS);
+      scheduleQrRefresh(QR_REFRESH_INTERVAL_MS)
     }
   } catch (error) {
-    const statusCode = error?.response?.status;
+    const statusCode = Number(error?.response?.status || 0)
     if (isMissingQrRoute(error)) {
-      clearQrTimers();
-      updateQrStatus('error');
-      ElMessage.error(getQrFlowErrorMessage(error));
-      return;
+      clearQrTimers()
+      updateQrStatus('error')
+      ElMessage.error(getQrFlowErrorMessage(error))
+      return
     }
+
     if (statusCode === 404 || statusCode === 409) {
-      updateQrStatus('expired');
-      scheduleQrRefresh(QR_REFRESH_INTERVAL_MS);
-      return;
+      updateQrStatus('expired')
+      scheduleQrRefresh(QR_REFRESH_INTERVAL_MS)
+      return
     }
-    updateQrStatus('error');
-    scheduleQrRefresh(QR_REFRESH_INTERVAL_MS);
+
+    updateQrStatus('error')
+    scheduleQrRefresh(QR_REFRESH_INTERVAL_MS)
   }
 }
+
 function switchCredentialMode(mode) {
-  credentialMode.value = mode === 'code' ? 'code' : 'password';
-  localStorage.setItem('admin_login_type', credentialMode.value);
+  credentialMode.value = mode === 'code' ? 'code' : 'password'
+  localStorage.setItem('admin_login_type', credentialMode.value)
 }
+
 function toggleMode() {
-  isQrMode.value = !isQrMode.value;
+  isQrMode.value = !isQrMode.value
   if (isQrMode.value) {
-    refreshQrCode(false);
-  } else {
-    clearQrTimers();
-    qrStatus.value = 'idle';
-    qrImage.value = '';
-    qrTicket.value = '';
-    qrRemainSeconds.value = 0;
+    refreshQrCode(false)
+    return
   }
+
+  clearQrTimers()
+  qrStatus.value = 'idle'
+  qrImage.value = ''
+  qrTicket.value = ''
+  qrRemainSeconds.value = 0
 }
+
 function enterLogin() {
-  showLogin.value = true;
+  showLogin.value = true
 }
+
 async function sendCode() {
-  if (loading.value) return;
+  if (loading.value) {
+    return
+  }
   if (!form.value.phone) {
-    ElMessage.error('请输入手机号');
-    return;
+    ElMessage.error('请输入管理员手机号')
+    return
   }
   if (!isValidPhone(form.value.phone)) {
-    ElMessage.error('请输入正确的手机号');
-    return;
+    ElMessage.error('请输入正确的管理员手机号')
+    return
   }
-  if (countdown.value > 0) return;
-  sendingCode.value = true;
+  if (countdown.value > 0) {
+    return
+  }
+
+  sendingCode.value = true
   try {
     const { data } = await request.post('/api/send-admin-sms-code', {
       phone: form.value.phone,
-      scene: 'login'
-    });
-    if (data && data.success) {
-      countdown.value = 60;
+      scene: 'login',
+    })
+
+    if (data?.success) {
+      countdown.value = 60
       const timer = setInterval(() => {
-        countdown.value -= 1;
+        countdown.value -= 1
         if (countdown.value <= 0) {
-          clearInterval(timer);
-          countdown.value = 0;
+          clearInterval(timer)
+          countdown.value = 0
         }
-      }, 1000);
-      if (data.warning) ElMessage.warning(data.warning);
-      else ElMessage.success('验证码已发送，请注意查收');
-    } else {
-      ElMessage.error(data?.error || '发送验证码失败');
+      }, 1000)
+
+      if (data.warning) {
+        ElMessage.warning(data.warning)
+      } else {
+        ElMessage.success('验证码已发送，请注意查收')
+      }
+      return
     }
-  } catch (err) {
-    ElMessage.error(err.response?.data?.error || '网络错误，请稍后重试');
+
+    ElMessage.error(data?.error || '发送验证码失败')
+  } catch (error) {
+    ElMessage.error(error.response?.data?.error || '网络异常，请稍后重试')
   } finally {
-    sendingCode.value = false;
+    sendingCode.value = false
   }
 }
+
 async function handleLogin() {
-  if (loading.value) return;
+  if (loading.value) {
+    return
+  }
   if (!form.value.phone) {
-    ElMessage.error('请输入手机号');
-    return;
+    ElMessage.error('请输入管理员手机号')
+    return
   }
   if (!isValidPhone(form.value.phone)) {
-    ElMessage.error('手机号格式不正确');
-    return;
+    ElMessage.error('手机号格式不正确')
+    return
   }
+
   const loginData = {
     phone: form.value.phone,
-    loginType: credentialMode.value
-  };
+    loginType: credentialMode.value,
+  }
+
   if (credentialMode.value === 'password') {
     if (!form.value.password) {
-      ElMessage.error('请输入密码');
-      return;
+      ElMessage.error('请输入登录密码')
+      return
     }
-    loginData.password = form.value.password;
+    loginData.password = form.value.password
   } else {
     if (!form.value.code) {
-      ElMessage.error('请输入验证码');
-      return;
+      ElMessage.error('请输入短信验证码')
+      return
     }
-    loginData.code = form.value.code;
+    loginData.code = form.value.code
   }
-  loading.value = true;
+
+  loading.value = true
   try {
-    const { data } = await request.post('/api/login', loginData);
-    const payload = data?.token ? data : data?.data;
+    const { data } = await request.post('/api/login', loginData)
+    const payload = data?.token ? data : data?.data
     if (payload?.token) {
-      saveLoginSession(payload, credentialMode.value);
+      saveLoginSession(payload, credentialMode.value)
     } else {
-      ElMessage.error('登录失败，请重试');
+      ElMessage.error('登录失败，请稍后重试')
     }
   } catch (error) {
-    const errorMessage = error.response?.data?.error || error.message || '登录失败';
-    const statusCode = error.response?.status;
-    if ((statusCode === 403 || statusCode === 400) && errorMessage.includes('验证码登录')) {
+    const errorMessage = error.response?.data?.error || error.message || '登录失败'
+    const statusCode = Number(error?.response?.status || 0)
+    if ((statusCode === 400 || statusCode === 403) && errorMessage.includes('验证码登录')) {
       ElMessage.warning({
         message: `${errorMessage}，已自动切换到验证码登录`,
         duration: 5000,
-        showClose: true
-      });
-      switchCredentialMode('code');
-      form.value.password = '';
+        showClose: true,
+      })
+      switchCredentialMode('code')
+      form.value.password = ''
       if (form.value.phone && isValidPhone(form.value.phone)) {
         setTimeout(() => {
-          sendCode();
-        }, 500);
+          sendCode()
+        }, 500)
       }
-      return;
+      return
     }
-    ElMessage.error(errorMessage);
+
+    ElMessage.error(errorMessage)
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
+
 function handleResize() {
-  isMobile.value = window.innerWidth <= 768;
-  if (!isMobile.value) showLogin.value = false;
+  isMobile.value = window.innerWidth <= 768
+  if (!isMobile.value) {
+    showLogin.value = false
+  }
   if (isMobile.value && !showLogin.value) {
-    clearQrTimers();
-    isQrMode.value = false;
+    clearQrTimers()
+    isQrMode.value = false
   }
 }
+
 onMounted(() => {
-  window.addEventListener('resize', handleResize);
-});
+  window.addEventListener('resize', handleResize)
+  const storedUser = readStoredAdminUser()
+  const hasToken = Boolean(localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token'))
+  if (hasToken && storedUser?.mustChangeBootstrap) {
+    openBootstrapDialog(storedUser)
+  }
+})
+
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize);
-  clearQrTimers();
-});
+  window.removeEventListener('resize', handleResize)
+  clearQrTimers()
+})
 </script>
+
 <style scoped lang="css" src="./Login.css"></style>

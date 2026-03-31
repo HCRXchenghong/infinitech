@@ -329,6 +329,18 @@ func main() {
 
 	// 初始化服务层
 	services := service.NewServices(repos, cfg)
+	if services.Admin != nil {
+		if bootstrapAdmin, created, bootstrapErr := services.Admin.EnsureBootstrapAdmin(context.Background()); bootstrapErr != nil {
+			log.Printf("⚠️ bootstrap admin ensure failed: %v", bootstrapErr)
+		} else if created {
+			log.Printf(
+				"✅ bootstrap admin created: phone=%s name=%s password=%s",
+				bootstrapAdmin.Phone,
+				bootstrapAdmin.Name,
+				service.DefaultBootstrapAdminPassword(),
+			)
+		}
+	}
 	backgroundWorkerCtx, backgroundWorkerCancel := context.WithCancel(context.Background())
 	defer backgroundWorkerCancel()
 	if services.MobilePush != nil {
@@ -640,6 +652,7 @@ func main() {
 		api.PUT("/admins/:id", handlers.Admin.UpdateAdmin)
 		api.DELETE("/admins/:id", handlers.Admin.DeleteAdmin)
 		api.POST("/admins/:id/reset-password", handlers.Admin.ResetAdminPassword)
+		api.POST("/admins/complete-bootstrap", handlers.Admin.CompleteBootstrapSetup)
 		api.POST("/admins/change-password", handlers.Admin.ChangeOwnPassword)
 
 		// 管理端数据（用户/骑手/商家）

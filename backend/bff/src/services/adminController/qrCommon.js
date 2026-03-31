@@ -258,7 +258,10 @@ function buildVerifiedAdminUser(identity) {
   return {
     id: String(identity?.id || ""),
     name: String(identity?.name || "\u7ba1\u7406\u5458"),
-    type: normalizeAdminType(identity?.type || "")
+    type: normalizeAdminType(identity?.type || ""),
+    mustChangeBootstrap: Boolean(
+      identity?.payload?.bootstrapPending || identity?.payload?.mustChangeBootstrap
+    )
   };
 }
 

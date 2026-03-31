@@ -19,6 +19,8 @@ import (
 )
 
 const defaultAdminPassword = "123456"
+const defaultBootstrapAdminPhone = "13800138000"
+const defaultBootstrapAdminName = "Bootstrap Admin"
 const riderOnlineTTL = 90 * time.Second
 
 // AdminService handles admin-side operations.
@@ -52,10 +54,11 @@ type AdminLoginRequest struct {
 }
 
 type AdminLoginResponse struct {
-	Success bool                   `json:"success"`
-	Token   string                 `json:"token,omitempty"`
-	User    map[string]interface{} `json:"user,omitempty"`
-	Error   string                 `json:"error,omitempty"`
+	Success             bool                   `json:"success"`
+	Token               string                 `json:"token,omitempty"`
+	User                map[string]interface{} `json:"user,omitempty"`
+	Error               string                 `json:"error,omitempty"`
+	MustChangeBootstrap bool                   `json:"mustChangeBootstrap,omitempty"`
 }
 
 type PushMessageStats struct {
@@ -102,56 +105,52 @@ type PushMessageDeliveryList struct {
 
 func (s *AdminService) Login(ctx context.Context, req AdminLoginRequest) (*AdminLoginResponse, int, error) {
 	if !isValidPhone(req.Phone) {
-		return &AdminLoginResponse{Success: false, Error: "手机号格式不正确"}, 400, fmt.Errorf("invalid phone")
+		return &AdminLoginResponse{Success: false, Error: "????????????"}, 400, fmt.Errorf("invalid phone")
 	}
-
 	useCode := req.LoginType == "code" || req.Code != ""
 	usePassword := req.LoginType == "password" || req.Password != ""
-
 	var admin repository.Admin
-
 	if useCode {
 		if err := s.verifySMSCode(ctx, req.Phone, req.Code); err != nil {
-			return &AdminLoginResponse{Success: false, Error: "验证码错误或已过期"}, 400, err
+			return &AdminLoginResponse{Success: false, Error: "?????????"}, 400, err
 		}
 		if err := s.db.WithContext(ctx).Where("phone = ?", req.Phone).First(&admin).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return &AdminLoginResponse{Success: false, Error: "管理员不存在"}, 404, err
+				return &AdminLoginResponse{Success: false, Error: "??????"}, 404, err
 			}
-			return &AdminLoginResponse{Success: false, Error: "查询管理员失败"}, 500, err
+			return &AdminLoginResponse{Success: false, Error: "???????"}, 500, err
 		}
 	} else if usePassword {
 		if err := s.db.WithContext(ctx).Where("phone = ?", req.Phone).First(&admin).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return &AdminLoginResponse{Success: false, Error: "管理员不存在"}, 404, err
+				return &AdminLoginResponse{Success: false, Error: "??????"}, 404, err
 			}
-			return &AdminLoginResponse{Success: false, Error: "查询管理员失败"}, 500, err
+			return &AdminLoginResponse{Success: false, Error: "???????"}, 500, err
 		}
-
 		if !checkPassword(admin.PasswordHash, req.Password) {
-			return &AdminLoginResponse{Success: false, Error: "密码错误，请使用验证码登录"}, 403, fmt.Errorf("invalid password")
+			return &AdminLoginResponse{Success: false, Error: "?????????????"}, 403, fmt.Errorf("invalid password")
 		}
 	} else {
-		return &AdminLoginResponse{Success: false, Error: "请输入验证码或密码"}, 400, fmt.Errorf("missing credentials")
+		return &AdminLoginResponse{Success: false, Error: "?????????"}, 400, fmt.Errorf("missing credentials")
 	}
-
 	token, err := s.generateToken(admin)
 	if err != nil {
-		return &AdminLoginResponse{Success: false, Error: "生成 Token 失败"}, 500, err
+		return &AdminLoginResponse{Success: false, Error: "???? Token ??"}, 500, err
 	}
-
+	mustChangeBootstrap := s.AdminRequiresBootstrapSetup(admin)
 	return &AdminLoginResponse{
-		Success: true,
-		Token:   token,
+		Success:             true,
+		Token:               token,
+		MustChangeBootstrap: mustChangeBootstrap,
 		User: map[string]interface{}{
-			"id":    admin.UID,
-			"phone": admin.Phone,
-			"name":  admin.Name,
-			"type":  admin.Type,
+			"id":                  admin.UID,
+			"phone":               admin.Phone,
+			"name":                admin.Name,
+			"type":                admin.Type,
+			"mustChangeBootstrap": mustChangeBootstrap,
 		},
 	}, 200, nil
 }
-
 func (s *AdminService) verifySMSCode(ctx context.Context, phone, code string) error {
 	if code == "" {
 		return fmt.Errorf("missing code")
@@ -171,15 +170,16 @@ func (s *AdminService) generateToken(admin repository.Admin) (string, error) {
 		return "", fmt.Errorf("admin token secret is not configured")
 	}
 	payload := map[string]interface{}{
-		"phone":   admin.Phone,
-		"userId":  admin.ID,
-		"id":      admin.UID,
-		"sub":     admin.UID,
-		"adminId": admin.UID,
-		"name":    admin.Name,
-		"type":    admin.Type,
-		"exp":     time.Now().Add(7 * 24 * time.Hour).Unix(),
-		"iat":     time.Now().Unix(),
+		"phone":            admin.Phone,
+		"userId":           admin.ID,
+		"id":               admin.UID,
+		"sub":              admin.UID,
+		"adminId":          admin.UID,
+		"name":             admin.Name,
+		"type":             admin.Type,
+		"bootstrapPending": s.AdminRequiresBootstrapSetup(admin),
+		"exp":              time.Now().Add(7 * 24 * time.Hour).Unix(),
+		"iat":              time.Now().Unix(),
 	}
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
@@ -296,16 +296,16 @@ func (s *AdminService) ListAdmins(ctx context.Context) ([]repository.Admin, erro
 
 func (s *AdminService) CreateAdmin(ctx context.Context, phone, name, password, adminType string) error {
 	if !isValidPhone(phone) {
-		return fmt.Errorf("手机号格式不正确")
+		return fmt.Errorf("鎵嬫満鍙锋牸寮忎笉姝ｇ‘")
 	}
 	if password == "" {
-		return fmt.Errorf("密码不能为空")
+		return fmt.Errorf("瀵嗙爜涓嶈兘涓虹┖")
 	}
 
 	var count int64
 	s.db.WithContext(ctx).Model(&repository.Admin{}).Where("phone = ?", phone).Count(&count)
 	if count > 0 {
-		return fmt.Errorf("手机号已存在")
+		return fmt.Errorf("鎵嬫満鍙峰凡瀛樺湪")
 	}
 
 	hash, err := hashPassword(password)
@@ -358,10 +358,10 @@ func (s *AdminService) ChangeOwnPassword(ctx context.Context, adminID uint, curr
 		return fmt.Errorf("%w: admin identity is missing", ErrUnauthorized)
 	}
 	if strings.TrimSpace(currentPassword) == "" {
-		return fmt.Errorf("当前密码不能为空")
+		return fmt.Errorf("褰撳墠瀵嗙爜涓嶈兘涓虹┖")
 	}
 	if len(strings.TrimSpace(newPassword)) < 6 {
-		return fmt.Errorf("新密码至少 6 位")
+		return fmt.Errorf("新密码至少需要 6 位")
 	}
 
 	var admin repository.Admin
@@ -376,7 +376,7 @@ func (s *AdminService) ChangeOwnPassword(ctx context.Context, adminID uint, curr
 		return fmt.Errorf("当前密码不正确")
 	}
 	if checkPassword(admin.PasswordHash, newPassword) {
-		return fmt.Errorf("新密码不能与当前密码相同")
+		return fmt.Errorf("鏂板瘑鐮佷笉鑳戒笌褰撳墠瀵嗙爜鐩稿悓")
 	}
 
 	hash, err := hashPassword(newPassword)
@@ -441,10 +441,10 @@ func (s *AdminService) ListUsers(ctx context.Context, search, userType string, l
 
 func (s *AdminService) CreateUser(ctx context.Context, phone, name, password, userType string) error {
 	if !isValidPhone(phone) {
-		return fmt.Errorf("手机号格式不正确")
+		return fmt.Errorf("鎵嬫満鍙锋牸寮忎笉姝ｇ‘")
 	}
 	if password == "" {
-		return fmt.Errorf("密码不能为空")
+		return fmt.Errorf("瀵嗙爜涓嶈兘涓虹┖")
 	}
 	if userType == "" {
 		userType = "customer"
@@ -452,7 +452,7 @@ func (s *AdminService) CreateUser(ctx context.Context, phone, name, password, us
 	var count int64
 	s.db.WithContext(ctx).Model(&repository.User{}).Where("phone = ?", phone).Count(&count)
 	if count > 0 {
-		return fmt.Errorf("手机号已存在")
+		return fmt.Errorf("鎵嬫満鍙峰凡瀛樺湪")
 	}
 	hash, err := hashPassword(password)
 	if err != nil {
@@ -609,7 +609,7 @@ func riderOrderIdentities(rider repository.Rider) []string {
 func (s *AdminService) GetRider(ctx context.Context, id string) (map[string]interface{}, error) {
 	resolvedID, err := resolveEntityID(ctx, s.db, "riders", id)
 	if err != nil {
-		return nil, fmt.Errorf("无效的骑手ID")
+		return nil, fmt.Errorf("鏃犳晥鐨勯獞鎵婭D")
 	}
 
 	var rider repository.Rider
@@ -641,15 +641,15 @@ func (s *AdminService) GetRider(ctx context.Context, id string) (map[string]inte
 
 func (s *AdminService) CreateRider(ctx context.Context, phone, name, password string) error {
 	if !isValidPhone(phone) {
-		return fmt.Errorf("手机号格式不正确")
+		return fmt.Errorf("鎵嬫満鍙锋牸寮忎笉姝ｇ‘")
 	}
 	if password == "" {
-		return fmt.Errorf("密码不能为空")
+		return fmt.Errorf("瀵嗙爜涓嶈兘涓虹┖")
 	}
 	var count int64
 	s.db.WithContext(ctx).Model(&repository.Rider{}).Where("phone = ?", phone).Count(&count)
 	if count > 0 {
-		return fmt.Errorf("手机号已存在")
+		return fmt.Errorf("鎵嬫満鍙峰凡瀛樺湪")
 	}
 	hash, err := hashPassword(password)
 	if err != nil {
@@ -673,13 +673,13 @@ func (s *AdminService) CreateRider(ctx context.Context, phone, name, password st
 func (s *AdminService) UpdateRider(ctx context.Context, id string, phone, name, idCardFront, emergencyContactName, emergencyContactPhone string) error {
 	resolvedID, err := resolveEntityID(ctx, s.db, "riders", id)
 	if err != nil {
-		return fmt.Errorf("无效的骑手ID")
+		return fmt.Errorf("鏃犳晥鐨勯獞鎵婭D")
 	}
 	if strings.TrimSpace(name) == "" {
-		return fmt.Errorf("姓名不能为空")
+		return fmt.Errorf("濮撳悕涓嶈兘涓虹┖")
 	}
 	if phone == "" || !isValidPhone(phone) {
-		return fmt.Errorf("手机号格式不正确")
+		return fmt.Errorf("鎵嬫満鍙锋牸寮忎笉姝ｇ‘")
 	}
 	if emergencyContactPhone != "" && !isValidPhone(emergencyContactPhone) {
 		return fmt.Errorf("紧急联系人电话格式不正确")
@@ -695,7 +695,7 @@ func (s *AdminService) UpdateRider(ctx context.Context, id string, phone, name, 
 		Where("phone = ? AND id <> ?", phone, resolvedID).
 		Count(&count)
 	if count > 0 {
-		return fmt.Errorf("手机号已存在")
+		return fmt.Errorf("鎵嬫満鍙峰凡瀛樺湪")
 	}
 
 	if strings.TrimSpace(idCardFront) == "" {
@@ -819,7 +819,7 @@ func (s *AdminService) ListMerchants(ctx context.Context, search string, limit, 
 func (s *AdminService) GetMerchant(ctx context.Context, id string) (map[string]interface{}, error) {
 	resolvedID, err := resolveEntityID(ctx, s.db, "merchants", id)
 	if err != nil {
-		return nil, fmt.Errorf("无效的商户ID")
+		return nil, fmt.Errorf("鏃犳晥鐨勫晢鎴稩D")
 	}
 
 	var merchant repository.Merchant
@@ -844,10 +844,10 @@ func (s *AdminService) GetMerchant(ctx context.Context, id string) (map[string]i
 
 func (s *AdminService) CreateMerchant(ctx context.Context, phone, name, ownerName, password string) error {
 	if !isValidPhone(phone) {
-		return fmt.Errorf("手机号格式不正确")
+		return fmt.Errorf("鎵嬫満鍙锋牸寮忎笉姝ｇ‘")
 	}
 	if password == "" {
-		return fmt.Errorf("密码不能为空")
+		return fmt.Errorf("瀵嗙爜涓嶈兘涓虹┖")
 	}
 	if ownerName == "" {
 		ownerName = name
@@ -855,7 +855,7 @@ func (s *AdminService) CreateMerchant(ctx context.Context, phone, name, ownerNam
 	var count int64
 	s.db.WithContext(ctx).Model(&repository.Merchant{}).Where("phone = ?", phone).Count(&count)
 	if count > 0 {
-		return fmt.Errorf("手机号已存在")
+		return fmt.Errorf("鎵嬫満鍙峰凡瀛樺湪")
 	}
 	hash, err := hashPassword(password)
 	if err != nil {
@@ -880,13 +880,13 @@ func (s *AdminService) CreateMerchant(ctx context.Context, phone, name, ownerNam
 func (s *AdminService) UpdateMerchant(ctx context.Context, id string, phone, name, ownerName, businessLicenseImage string) error {
 	resolvedID, err := resolveEntityID(ctx, s.db, "merchants", id)
 	if err != nil {
-		return fmt.Errorf("无效的商户ID")
+		return fmt.Errorf("鏃犳晥鐨勫晢鎴稩D")
 	}
 	if phone == "" || !isValidPhone(phone) {
-		return fmt.Errorf("手机号格式不正确")
+		return fmt.Errorf("鎵嬫満鍙锋牸寮忎笉姝ｇ‘")
 	}
 	if name == "" {
-		return fmt.Errorf("商户名称不能为空")
+		return fmt.Errorf("鍟嗘埛鍚嶇О涓嶈兘涓虹┖")
 	}
 	if ownerName == "" {
 		ownerName = name
@@ -902,7 +902,7 @@ func (s *AdminService) UpdateMerchant(ctx context.Context, id string, phone, nam
 		Where("phone = ? AND id <> ?", phone, resolvedID).
 		Count(&count)
 	if count > 0 {
-		return fmt.Errorf("手机号已存在")
+		return fmt.Errorf("鎵嬫満鍙峰凡瀛樺湪")
 	}
 
 	if strings.TrimSpace(businessLicenseImage) == "" {
@@ -2244,13 +2244,13 @@ func uniqueNonEmptyStrings(values ...string) []string {
 func resolveVIPLevel(pointsBalance int64) string {
 	switch {
 	case pointsBalance >= 8000:
-		return "至尊VIP"
+		return "鑷冲皧VIP"
 	case pointsBalance >= 5000:
-		return "尊贵VIP"
+		return "灏婅吹VIP"
 	case pointsBalance >= 3000:
-		return "黄金VIP"
+		return "榛勯噾VIP"
 	case pointsBalance >= 800:
-		return "优质VIP"
+		return "浼樿川VIP"
 	default:
 		return "普通用户"
 	}
@@ -2367,7 +2367,7 @@ func parseBool(v interface{}) bool {
 	}
 }
 
-// GetUsers 获取用户列表（带分页和搜索）
+// GetUsers 鑾峰彇鐢ㄦ埛鍒楄〃锛堝甫鍒嗛〉鍜屾悳绱級
 func (s *AdminService) GetUsers(ctx context.Context, page, limit int, search, userType string) (map[string]interface{}, error) {
 	offset := (page - 1) * limit
 	var users []repository.User
@@ -2395,7 +2395,7 @@ func (s *AdminService) GetUsers(ctx context.Context, page, limit int, search, us
 	}, nil
 }
 
-// GetRiders 获取骑手列表（带分页和搜索）
+// GetRiders 鑾峰彇楠戞墜鍒楄〃锛堝甫鍒嗛〉鍜屾悳绱級
 func (s *AdminService) GetRiders(ctx context.Context, page, limit int, search string) (map[string]interface{}, error) {
 	offset := (page - 1) * limit
 	var riders []repository.Rider
@@ -2426,7 +2426,7 @@ func (s *AdminService) GetRiders(ctx context.Context, page, limit int, search st
 	}, nil
 }
 
-// GetMerchants 获取商户列表（带分页和搜索）
+// GetMerchants 鑾峰彇鍟嗘埛鍒楄〃锛堝甫鍒嗛〉鍜屾悳绱級
 func (s *AdminService) GetMerchants(ctx context.Context, page, limit int, search string) (map[string]interface{}, error) {
 	offset := (page - 1) * limit
 	var merchants []repository.Merchant
@@ -2451,7 +2451,7 @@ func (s *AdminService) GetMerchants(ctx context.Context, page, limit int, search
 	}, nil
 }
 
-// ReorganizeRoleIds 重组角色ID
+// ReorganizeRoleIds 閲嶇粍瑙掕壊ID
 func (s *AdminService) ReorganizeRoleIds(ctx context.Context, userType string) error {
 	switch userType {
 	case "customer":

@@ -17,6 +17,14 @@ function validateAdminToken(token) {
   return verifyAdminTokenSignature(token).valid;
 }
 
+function isBootstrapAllowedPath(pathname) {
+  const path = String(pathname || "").trim();
+  return path === "/admins/complete-bootstrap"
+    || path === "/verify-token"
+    || path === "/qr-login/scan"
+    || path === "/qr-login/confirm";
+}
+
 async function requireAdminAuth(req, res, next) {
   const identity = extractVerifiedAdminIdentity(req, { normalizeType: true });
   if (!identity || !identity.token) {
@@ -47,6 +55,17 @@ async function requireAdminAuth(req, res, next) {
     return res.status(403).json({
       success: false,
       error: "\u6743\u9650\u4e0d\u8db3"
+    });
+  }
+
+  const bootstrapPending = Boolean(
+    identity.payload?.bootstrapPending || identity.payload?.mustChangeBootstrap
+  );
+  if (bootstrapPending && !isBootstrapAllowedPath(req.path)) {
+    return res.status(403).json({
+      success: false,
+      code: "ADMIN_BOOTSTRAP_REQUIRED",
+      error: "\u8bf7\u5148\u5b8c\u6210\u9996\u6b21\u7ba1\u7406\u5458\u521d\u59cb\u5316"
     });
   }
 

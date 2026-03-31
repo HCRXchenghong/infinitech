@@ -114,6 +114,7 @@ router.post('/admins', adminController.createAdmin);
 router.put('/admins/:id', adminController.updateAdmin);
 router.delete('/admins/:id', adminController.deleteAdmin);
 router.post('/admins/:id/reset-password', adminController.resetAdminPassword);
+router.post('/admins/complete-bootstrap', adminController.completeBootstrapSetup);
 router.post('/admins/change-password', adminController.changeOwnPassword);
 
 router.get('/users', adminDataController.getUsers);

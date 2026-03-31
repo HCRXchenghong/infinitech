@@ -13,6 +13,9 @@ const composeFile = path.join(repoRoot, 'backend', 'docker', 'docker-compose.yml
 const deployEnvFile = path.join(repoRoot, 'backend', 'docker', '.deploy.runtime.env')
 const isWindows = process.platform === 'win32'
 const isLinux = process.platform === 'linux'
+const bootstrapAdminPhone = '13800138000'
+const bootstrapAdminPassword = '123456'
+const bootstrapAdminName = 'Bootstrap Admin'
 
 function getCredentialHelperCandidates() {
   if (!isWindows) {
@@ -476,6 +479,12 @@ function printUpSummary(flags) {
     console.log(`  Public Domain: https://${flags.publicDomain}`)
     console.log(`  Admin Domain:  https://${flags.adminDomain}`)
   }
+
+  console.log('\n首次部署提示：如果当前数据库里还没有管理员账号，可先使用下面这组临时后台信息登录')
+  console.log(`  首次登录账号: ${bootstrapAdminPhone}`)
+  console.log(`  首次登录密码: ${bootstrapAdminPassword}`)
+  console.log(`  初始管理员名: ${bootstrapAdminName}`)
+  console.log('  第一次登录后，后台会强制要求你改成真实的管理员名称、手机号和密码。')
 
   console.log('\nUse `node scripts/deploy-all.mjs logs` to inspect startup logs.')
 }

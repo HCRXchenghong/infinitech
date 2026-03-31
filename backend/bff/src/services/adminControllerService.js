@@ -69,6 +69,12 @@ async function changeOwnPassword(req, res, next) {
   });
 }
 
+async function completeBootstrapSetup(req, res, next) {
+  await proxyPost(req, res, next, "/admins/complete-bootstrap", {
+    data: req.body || {}
+  });
+}
+
 module.exports = {
   login,
   verifyToken,
@@ -82,5 +88,6 @@ module.exports = {
   updateAdmin,
   deleteAdmin,
   resetAdminPassword,
-  changeOwnPassword
+  changeOwnPassword,
+  completeBootstrapSetup
 };
