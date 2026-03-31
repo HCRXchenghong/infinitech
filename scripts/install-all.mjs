@@ -80,6 +80,21 @@ function canRun(command, args) {
   return (result.status ?? 1) === 0
 }
 
+function getDockerCommandCandidates() {
+  const candidates = [['docker']]
+
+  if (process.platform === 'win32') {
+    candidates.push([
+      'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe',
+    ])
+    candidates.push([
+      'C:\\Program Files\\Docker\\Docker\\resources\\docker.exe',
+    ])
+  }
+
+  return candidates
+}
+
 function readEnvFile(filePath) {
   if (!filePath || !fs.existsSync(filePath)) {
     return {}
@@ -252,9 +267,15 @@ function buildMirrorEnv(profileKey) {
 }
 
 function detectComposeCommand() {
-  const candidates = [
-    { command: 'docker', prefixArgs: ['compose'], probeArgs: ['compose', 'version'] },
-  ]
+  const candidates = []
+
+  for (const [dockerCommand] of getDockerCommandCandidates()) {
+    candidates.push({
+      command: dockerCommand,
+      prefixArgs: ['compose'],
+      probeArgs: ['compose', 'version'],
+    })
+  }
 
   if (isLinux) {
     candidates.push({
@@ -285,7 +306,7 @@ function detectComposeCommand() {
 }
 
 function ensureDockerReady() {
-  const probes = [['docker', ['info']]]
+  const probes = getDockerCommandCandidates().map(([command]) => [command, ['info']])
 
   if (isLinux) {
     probes.push(['sudo', ['docker', 'info']])

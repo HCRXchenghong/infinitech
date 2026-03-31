@@ -22,6 +22,21 @@ function canRun(command, args) {
   return (result.status ?? 1) === 0
 }
 
+function getDockerCommandCandidates() {
+  const candidates = [['docker']]
+
+  if (isWindows) {
+    candidates.push([
+      'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe',
+    ])
+    candidates.push([
+      'C:\\Program Files\\Docker\\Docker\\resources\\docker.exe',
+    ])
+  }
+
+  return candidates
+}
+
 function readEnvFile(filePath) {
   if (!filePath || !fs.existsSync(filePath)) {
     return {}
@@ -68,9 +83,15 @@ function run(command, args, options = {}) {
 }
 
 function detectComposeCommand() {
-  const candidates = [
-    { command: 'docker', prefixArgs: ['compose'], probeArgs: ['compose', 'version'] },
-  ]
+  const candidates = []
+
+  for (const [dockerCommand] of getDockerCommandCandidates()) {
+    candidates.push({
+      command: dockerCommand,
+      prefixArgs: ['compose'],
+      probeArgs: ['compose', 'version'],
+    })
+  }
 
   if (isLinux) {
     candidates.push({
