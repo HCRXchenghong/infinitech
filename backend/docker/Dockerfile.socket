@@ -1,15 +1,23 @@
-FROM node:20-alpine
+ARG NODE_BASE_IMAGE=node:20-alpine
+
+FROM ${NODE_BASE_IMAGE}
+
+ARG ALPINE_MIRROR=
+ARG NPM_REGISTRY=
 
 WORKDIR /app/socket-server
 
-RUN apk add --no-cache wget
+RUN if [ -n "$ALPINE_MIRROR" ]; then sed -i "s|https\?://dl-cdn.alpinelinux.org/alpine|${ALPINE_MIRROR}|g" /etc/apk/repositories; fi \
+  && apk add --no-cache wget
 
 COPY socket-server/package*.json ./
-RUN npm ci --omit=dev
+RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi \
+  && npm ci --omit=dev
 
 WORKDIR /app/tools/heic-converter
 COPY tools/heic-converter/package*.json ./
-RUN npm ci --omit=dev
+RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi \
+  && npm ci --omit=dev
 COPY tools/heic-converter/index.js ./index.js
 
 WORKDIR /app

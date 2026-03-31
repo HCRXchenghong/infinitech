@@ -43,6 +43,7 @@ socket-server/chat.db-*
 **/.env
 **/.env.*
 !.env.example
+backend/docker/.deploy.runtime.env
 
 # Uploads and caches
 data/uploads/

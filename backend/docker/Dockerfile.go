@@ -1,16 +1,29 @@
-FROM node:20-alpine AS heic-builder
+ARG NODE_BASE_IMAGE=node:20-alpine
+ARG GO_BUILDER_BASE_IMAGE=golang:1.23-alpine
+ARG GO_RUNTIME_BASE_IMAGE=alpine:3.20
+
+FROM ${NODE_BASE_IMAGE} AS heic-builder
+
+ARG NPM_REGISTRY=
 
 WORKDIR /src/tools/heic-converter
 
 COPY tools/heic-converter/package*.json ./
-RUN npm ci --omit=dev
+RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi \
+  && npm ci --omit=dev
 COPY tools/heic-converter/index.js ./index.js
 
-FROM golang:1.23-alpine AS builder
+FROM ${GO_BUILDER_BASE_IMAGE} AS builder
+
+ARG ALPINE_MIRROR=
+ARG GOPROXY=https://proxy.golang.org,direct
 
 WORKDIR /src/backend/go
 
-RUN apk add --no-cache git
+RUN if [ -n "$ALPINE_MIRROR" ]; then sed -i "s|https\?://dl-cdn.alpinelinux.org/alpine|${ALPINE_MIRROR}|g" /etc/apk/repositories; fi \
+  && apk add --no-cache git
+
+ENV GOPROXY=${GOPROXY}
 
 COPY backend/go/go.mod backend/go/go.sum ./
 RUN go mod download
@@ -20,9 +33,12 @@ COPY backend/go ./backend/go
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /tmp/go-api ./backend/go/cmd/main.go
 
-FROM alpine:3.20
+FROM ${GO_RUNTIME_BASE_IMAGE}
 
-RUN apk add --no-cache ca-certificates tzdata wget nodejs
+ARG ALPINE_MIRROR=
+
+RUN if [ -n "$ALPINE_MIRROR" ]; then sed -i "s|https\?://dl-cdn.alpinelinux.org/alpine|${ALPINE_MIRROR}|g" /etc/apk/repositories; fi \
+  && apk add --no-cache ca-certificates tzdata wget nodejs
 
 ENV TZ=Asia/Shanghai
 

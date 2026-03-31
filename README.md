@@ -213,6 +213,68 @@ cd socket-server
 cmd /c npm run check
 ```
 
+## 傻瓜式一键安装与部署
+
+如果是新机器，请优先使用安装器入口。安装器会先做这些事：
+
+- 扫描当前系统类型与架构
+- 检查 `Docker / Docker Compose / Node.js` 是否已安装
+- 自动安装缺失依赖
+- 提供数字菜单选择镜像源
+- 生成统一运行时环境文件
+- 最后自动调用 Docker 编排启动整套服务
+
+### 支持的平台
+
+- Windows 10 / 11
+- Windows Server（Docker Engine 路径）
+- macOS Apple Silicon（M 系列）
+- Ubuntu
+- Debian
+
+### 镜像源选择
+
+安装器支持数字选择：
+
+1. 官方源（默认）
+2. 阿里云镜像
+3. 腾讯云镜像
+4. 华为云镜像
+5. 清华 / goproxy.cn 组合镜像
+
+镜像源会同时作用在：
+
+- Docker 基础镜像选择
+- `npm` registry
+- `GOPROXY`
+- Alpine 包仓库
+
+### 新机器推荐入口
+
+Windows：
+
+```powershell
+scripts\install-all.cmd
+```
+
+Ubuntu / Debian / macOS：
+
+```bash
+bash scripts/install-all.sh
+```
+
+安装器统一入口脚本：
+
+```powershell
+node scripts/install-all.mjs
+```
+
+如果只是想准备环境、不立即部署：
+
+```powershell
+node scripts/install-all.mjs --no-deploy
+```
+
 ## 一键命令行部署
 
 统一入口：
@@ -243,7 +305,7 @@ scripts\deploy-all.cmd
 ### Ubuntu / Debian / 其他 Linux
 
 ```bash
-sh scripts/deploy-all.sh
+bash scripts/deploy-all.sh
 ```
 
 ### 直接命令模式
@@ -269,6 +331,8 @@ node scripts/deploy-all.mjs up --proxy --public-domain=api.example.com --admin-d
 backend/docker/.deploy.runtime.env
 ```
 
+如果已经跑过安装器，这个文件里还会包含镜像源和 Docker 基础镜像配置，不会只保留域名设置。
+
 ## Docker 完整启动
 
 核心编排文件：
@@ -289,6 +353,20 @@ backend/docker/.deploy.runtime.env
 - `mysql`
 - `rabbitmq`
 - `reverse-proxy`
+
+### Docker 启动方式
+
+新机器推荐直接走安装器，它会自动写好镜像源和运行时环境，再调用：
+
+```powershell
+node scripts/deploy-all.mjs up --env-file=backend/docker/.deploy.runtime.env
+```
+
+如果需要反向代理，则会自动附加：
+
+```powershell
+--profile=reverse-proxy
+```
 
 ### 默认端口
 

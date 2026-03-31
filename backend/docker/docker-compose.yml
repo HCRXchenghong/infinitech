@@ -5,6 +5,10 @@ services:
     build:
       context: ../..
       dockerfile: backend/docker/Dockerfile.admin
+      args:
+        NODE_BASE_IMAGE: ${NODE_BASE_IMAGE:-node:20-alpine}
+        NGINX_BASE_IMAGE: ${NGINX_BASE_IMAGE:-nginx:1.27-alpine}
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
     container_name: yuexiang-admin-web
     restart: unless-stopped
     ports:
@@ -18,7 +22,7 @@ services:
       - yuexiang-network
 
   postgres:
-    image: postgres:14-alpine
+    image: ${POSTGRES_IMAGE:-postgres:14-alpine}
     container_name: yuexiang-postgres
     restart: unless-stopped
     environment:
@@ -39,7 +43,7 @@ services:
       - yuexiang-network
 
   redis:
-    image: redis:7-alpine
+    image: ${REDIS_IMAGE:-redis:7-alpine}
     container_name: yuexiang-redis
     restart: unless-stopped
     ports:
@@ -59,6 +63,13 @@ services:
     build:
       context: ../..
       dockerfile: backend/docker/Dockerfile.go
+      args:
+        NODE_BASE_IMAGE: ${NODE_BASE_IMAGE:-node:20-alpine}
+        GO_BUILDER_BASE_IMAGE: ${GO_BUILDER_BASE_IMAGE:-golang:1.23-alpine}
+        GO_RUNTIME_BASE_IMAGE: ${GO_RUNTIME_BASE_IMAGE:-alpine:3.20}
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
+        GOPROXY: ${GOPROXY:-https://proxy.golang.org,direct}
+        ALPINE_MIRROR: ${ALPINE_MIRROR:-}
     container_name: yuexiang-go-api
     restart: unless-stopped
     depends_on:
@@ -119,6 +130,10 @@ services:
     build:
       context: ../..
       dockerfile: backend/docker/Dockerfile.socket
+      args:
+        NODE_BASE_IMAGE: ${NODE_BASE_IMAGE:-node:20-alpine}
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
+        ALPINE_MIRROR: ${ALPINE_MIRROR:-}
     container_name: yuexiang-socket-server
     restart: unless-stopped
     depends_on:
@@ -166,6 +181,10 @@ services:
     build:
       context: ../bff
       dockerfile: ../docker/Dockerfile.bff
+      args:
+        NODE_BASE_IMAGE: ${NODE_BASE_IMAGE:-node:20-alpine}
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
+        ALPINE_MIRROR: ${ALPINE_MIRROR:-}
     container_name: yuexiang-bff
     restart: unless-stopped
     depends_on:
@@ -223,7 +242,7 @@ services:
       - yuexiang-network
 
   reverse-proxy:
-    image: caddy:2-alpine
+    image: ${CADDY_IMAGE:-caddy:2-alpine}
     container_name: yuexiang-reverse-proxy
     restart: unless-stopped
     depends_on:
@@ -250,7 +269,7 @@ services:
       - yuexiang-network
 
   mysql:
-    image: mysql:8.0
+    image: ${MYSQL_IMAGE:-mysql:8.0}
     container_name: yuexiang-mysql-legacy
     restart: unless-stopped
     environment:
@@ -270,7 +289,7 @@ services:
       - yuexiang-network
 
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    image: ${RABBITMQ_IMAGE:-rabbitmq:3-management-alpine}
     container_name: yuexiang-rabbitmq
     restart: unless-stopped
     environment:

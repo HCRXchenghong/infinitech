@@ -11,6 +11,46 @@ const repoRoot = path.resolve(__dirname, '..')
 const composeFile = path.join(repoRoot, 'backend', 'docker', 'docker-compose.yml')
 const deployEnvFile = path.join(repoRoot, 'backend', 'docker', '.deploy.runtime.env')
 const isWindows = process.platform === 'win32'
+const isLinux = process.platform === 'linux'
+
+function canRun(command, args) {
+  const result = spawnSync(command, args, {
+    cwd: repoRoot,
+    stdio: 'ignore',
+    shell: false,
+  })
+  return (result.status ?? 1) === 0
+}
+
+function readEnvFile(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return {}
+  }
+
+  const content = fs.readFileSync(filePath, 'utf8')
+  const lines = content.split(/\r?\n/)
+  const values = {}
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue
+    }
+
+    const separator = trimmed.indexOf('=')
+    if (separator <= 0) {
+      continue
+    }
+
+    const key = trimmed.slice(0, separator).trim()
+    const value = trimmed.slice(separator + 1)
+    if (key) {
+      values[key] = value
+    }
+  }
+
+  return values
+}
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -28,26 +68,38 @@ function run(command, args, options = {}) {
 }
 
 function detectComposeCommand() {
-  const dockerCompose = spawnSync('docker', ['compose', 'version'], {
-    cwd: repoRoot,
-    stdio: 'ignore',
-    shell: false,
-  })
-  if ((dockerCompose.status ?? 1) === 0) {
-    return { command: 'docker', prefixArgs: ['compose'] }
+  const candidates = [
+    { command: 'docker', prefixArgs: ['compose'], probeArgs: ['compose', 'version'] },
+  ]
+
+  if (isLinux) {
+    candidates.push({
+      command: 'sudo',
+      prefixArgs: ['docker', 'compose'],
+      probeArgs: ['docker', 'compose', 'version'],
+    })
   }
 
   const legacyCommand = isWindows ? 'docker-compose.exe' : 'docker-compose'
-  const legacyCompose = spawnSync(legacyCommand, ['version'], {
-    cwd: repoRoot,
-    stdio: 'ignore',
-    shell: false,
-  })
-  if ((legacyCompose.status ?? 1) === 0) {
-    return { command: legacyCommand, prefixArgs: [] }
+  candidates.push({ command: legacyCommand, prefixArgs: [], probeArgs: ['version'] })
+
+  if (isLinux) {
+    candidates.push({
+      command: 'sudo',
+      prefixArgs: ['docker-compose'],
+      probeArgs: ['docker-compose', 'version'],
+    })
   }
 
-  throw new Error('Docker Compose is not available. Install Docker Desktop or docker-compose first.')
+  for (const candidate of candidates) {
+    if (canRun(candidate.command, candidate.probeArgs)) {
+      return { command: candidate.command, prefixArgs: candidate.prefixArgs }
+    }
+  }
+
+  throw new Error(
+    'Docker Compose is not available. Install Docker Desktop / Docker Engine with Compose first, or allow the script to use sudo docker compose on Linux.',
+  )
 }
 
 function normalizeDomain(value) {
@@ -75,13 +127,21 @@ function buildAllowedOrigins(publicDomain, adminDomain) {
 }
 
 function writeDeployEnvFile(config) {
-  const lines = [
-    `PUBLIC_DOMAIN=${config.publicDomain || 'localhost'}`,
-    `ADMIN_DOMAIN=${config.adminDomain || 'admin.localhost'}`,
-    `CADDY_EMAIL=${config.caddyEmail || 'ops@example.com'}`,
-    `ADMIN_WEB_BASE_URL=${config.adminWebBaseUrl || 'http://127.0.0.1:8080'}`,
-    `ALLOWED_ORIGINS=${config.allowedOrigins || 'http://127.0.0.1:8888,http://localhost:8888,http://127.0.0.1:8080,http://localhost:8080'}`,
-  ]
+  const currentValues = readEnvFile(deployEnvFile)
+  const nextValues = {
+    ...currentValues,
+    PUBLIC_DOMAIN: config.publicDomain || currentValues.PUBLIC_DOMAIN || 'localhost',
+    ADMIN_DOMAIN: config.adminDomain || currentValues.ADMIN_DOMAIN || 'admin.localhost',
+    CADDY_EMAIL: config.caddyEmail || currentValues.CADDY_EMAIL || 'ops@example.com',
+    ADMIN_WEB_BASE_URL:
+      config.adminWebBaseUrl || currentValues.ADMIN_WEB_BASE_URL || 'http://127.0.0.1:8080',
+    ALLOWED_ORIGINS:
+      config.allowedOrigins ||
+      currentValues.ALLOWED_ORIGINS ||
+      'http://127.0.0.1:8888,http://localhost:8888,http://127.0.0.1:8080,http://localhost:8080',
+  }
+
+  const lines = Object.entries(nextValues).map(([key, value]) => `${key}=${value}`)
 
   fs.writeFileSync(deployEnvFile, `${lines.join('\n')}\n`, 'utf8')
   return deployEnvFile
