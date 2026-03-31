@@ -40,9 +40,9 @@ type PushDelivery struct {
 	DispatchProvider  string     `gorm:"size:32" json:"dispatch_provider"`
 	ProviderMessageID string     `gorm:"size:128" json:"provider_message_id"`
 	RetryCount        int        `gorm:"default:0" json:"retry_count"`
-	NextRetryAt       *time.Time `gorm:"type:datetime;index" json:"next_retry_at"`
-	SentAt            *time.Time `gorm:"type:datetime" json:"sent_at"`
-	AcknowledgedAt    *time.Time `gorm:"type:datetime" json:"acknowledged_at"`
+	NextRetryAt       *time.Time `gorm:"index" json:"next_retry_at"`
+	SentAt            *time.Time `json:"sent_at"`
+	AcknowledgedAt    *time.Time `json:"acknowledged_at"`
 	ErrorCode         string     `gorm:"size:64" json:"error_code"`
 	ErrorMessage      string     `gorm:"type:text" json:"error_message"`
 	CreatedAt         time.Time  `json:"created_at"`

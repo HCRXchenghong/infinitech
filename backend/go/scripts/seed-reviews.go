@@ -21,7 +21,7 @@ type Review struct {
 	Content    string     `gorm:"type:text" json:"content"`
 	Images     string     `gorm:"type:text" json:"images"`
 	Reply      string     `gorm:"type:text" json:"reply"`
-	ReplyTime  *time.Time `gorm:"type:datetime" json:"reply_time"`
+	ReplyTime  *time.Time `json:"reply_time"`
 	UserName   string     `gorm:"size:50" json:"user_name"`
 	UserAvatar string     `gorm:"size:500" json:"user_avatar"`
 	CreatedAt  time.Time  `json:"created_at"`

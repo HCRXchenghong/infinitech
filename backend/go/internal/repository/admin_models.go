@@ -39,7 +39,7 @@ type Rider struct {
 	IDCardFront           string     `gorm:"size:500" json:"id_card_front"`
 	IDCardBack            string     `gorm:"size:500" json:"id_card_back"`
 	HealthCert            string     `gorm:"size:500" json:"health_cert"`
-	HealthCertExpiry      *time.Time `gorm:"type:datetime" json:"health_cert_expiry"`
+	HealthCertExpiry      *time.Time `json:"health_cert_expiry"`
 	IsVerified            bool       `gorm:"default:false" json:"is_verified"`
 
 	Level            int `gorm:"default:1" json:"level"`
@@ -48,7 +48,7 @@ type Rider struct {
 	ConsecutiveWeeks int `gorm:"default:0" json:"consecutive_weeks"`
 
 	TodayOnlineMinutes int        `gorm:"default:0" json:"today_online_minutes"`
-	OnlineStartTime    *time.Time `gorm:"type:datetime" json:"online_start_time"`
+	OnlineStartTime    *time.Time `json:"online_start_time"`
 	LastOnlineDate     string     `gorm:"size:10" json:"last_online_date"`
 
 	CreatedAt time.Time `json:"created_at"`
@@ -108,12 +108,12 @@ type Shop struct {
 	EmployeePosition       string     `gorm:"size:100" json:"employeePosition"`
 	IDCardFrontImage       string     `gorm:"size:500" json:"idCardFrontImage"`
 	IDCardBackImage        string     `gorm:"size:500" json:"idCardBackImage"`
-	IDCardExpireAt         *time.Time `gorm:"type:datetime" json:"idCardExpireAt"`
+	IDCardExpireAt         *time.Time `json:"idCardExpireAt"`
 	HealthCertFrontImage   string     `gorm:"size:500" json:"healthCertFrontImage"`
 	HealthCertBackImage    string     `gorm:"size:500" json:"healthCertBackImage"`
-	HealthCertExpireAt     *time.Time `gorm:"type:datetime" json:"healthCertExpireAt"`
-	EmploymentStartAt      *time.Time `gorm:"type:datetime" json:"employmentStartAt"`
-	EmploymentEndAt        *time.Time `gorm:"type:datetime" json:"employmentEndAt"`
+	HealthCertExpireAt     *time.Time `json:"healthCertExpireAt"`
+	EmploymentStartAt      *time.Time `json:"employmentStartAt"`
+	EmploymentEndAt        *time.Time `json:"employmentEndAt"`
 	IsBrand                bool       `gorm:"default:false" json:"isBrand"`
 	IsFranchise            bool       `gorm:"default:false" json:"isFranchise"`
 	IsTodayRecommended     bool       `gorm:"default:false;index" json:"isTodayRecommended"`
@@ -142,7 +142,7 @@ type Review struct {
 	Content    string     `gorm:"type:text" json:"content"`
 	Images     string     `gorm:"type:text" json:"images"`
 	Reply      string     `gorm:"type:text" json:"reply"`
-	ReplyTime  *time.Time `gorm:"type:datetime" json:"reply_time"`
+	ReplyTime  *time.Time `json:"reply_time"`
 	UserName   string     `gorm:"size:50" json:"user_name"`
 	UserAvatar string     `gorm:"size:500" json:"user_avatar"`
 	CreatedAt  time.Time  `json:"created_at"`

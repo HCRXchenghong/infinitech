@@ -24,9 +24,9 @@ type RTCCallAudit struct {
 	FailureReason      string     `gorm:"size:128" json:"failure_reason"`
 	ComplaintStatus    string     `gorm:"size:32;index" json:"complaint_status"`
 	RecordingRetention string     `gorm:"size:32" json:"recording_retention"`
-	StartedAt          *time.Time `gorm:"type:datetime;index" json:"started_at"`
-	AnsweredAt         *time.Time `gorm:"type:datetime" json:"answered_at"`
-	EndedAt            *time.Time `gorm:"type:datetime" json:"ended_at"`
+	StartedAt          *time.Time `gorm:"index" json:"started_at"`
+	AnsweredAt         *time.Time `json:"answered_at"`
+	EndedAt            *time.Time `json:"ended_at"`
 	DurationSeconds    int        `gorm:"default:0" json:"duration_seconds"`
 	Metadata           string     `gorm:"type:text" json:"metadata"`
 	CreatedAt          time.Time  `json:"created_at"`

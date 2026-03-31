@@ -19,7 +19,7 @@ type HomePromotionCampaign struct {
 	Remark            string     `gorm:"type:text" json:"remark"`
 	StartAt           time.Time  `gorm:"index;not null" json:"startAt"`
 	EndAt             time.Time  `gorm:"index;not null" json:"endAt"`
-	ApprovedAt        *time.Time `gorm:"type:datetime" json:"approvedAt"`
+	ApprovedAt        *time.Time `json:"approvedAt"`
 	ApprovedByAdminID *uint      `gorm:"index" json:"approvedByAdminId"`
 	CreatedAt         time.Time  `json:"created_at"`
 	UpdatedAt         time.Time  `json:"updated_at"`
