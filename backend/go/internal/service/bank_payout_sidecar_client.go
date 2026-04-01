@@ -23,6 +23,7 @@ type bankPayoutSidecarEnvelope struct {
 	ResponseData      map[string]interface{} `json:"responseData"`
 	TransferResult    string                 `json:"transferResult"`
 	EventType         string                 `json:"eventType"`
+	Verified          bool                   `json:"verified"`
 	Message           string                 `json:"message"`
 	Error             string                 `json:"error"`
 }
@@ -139,4 +140,26 @@ func (s *WalletService) queryBankPayoutSidecar(
 		"arrivalText":       cfg.BankCard.ArrivalText,
 		"integrationTarget": "bank-payout-sidecar",
 	})
+}
+
+func verifyBankPayoutSidecarCallback(
+	ctx context.Context,
+	cfg paymentGatewayRuntimeConfig,
+	req PaymentCallbackRequest,
+) (*bankPayoutSidecarEnvelope, error) {
+	payload := map[string]interface{}{
+		"params":            req.Params,
+		"rawBody":           req.RawBody,
+		"providerUrl":       cfg.BankCard.ProviderURL,
+		"merchantId":        cfg.BankCard.MerchantID,
+		"apiKey":            cfg.BankCard.APIKey,
+		"notifyUrl":         cfg.BankCard.NotifyURL,
+		"allowStub":         cfg.BankCard.AllowStub,
+		"arrivalText":       cfg.BankCard.ArrivalText,
+		"integrationTarget": "bank-payout-sidecar",
+	}
+	if len(req.Headers) > 0 {
+		payload["headers"] = req.Headers
+	}
+	return callBankPayoutSidecar(ctx, strings.TrimRight(cfg.BankCard.SidecarURL, "/")+"/v1/notify/verify", payload)
 }

@@ -61,3 +61,53 @@ func TestCallBankPayoutSidecarReturnsReadableError(t *testing.T) {
 		t.Fatal("expected sidecar error to contain message")
 	}
 }
+
+func TestVerifyBankPayoutSidecarCallbackParsesVerifiedEnvelope(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/notify/verify" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":           true,
+			"status":            "verified",
+			"verified":          true,
+			"gateway":           "bank_card",
+			"integrationTarget": "bank-payout-sidecar",
+			"transactionId":     "WITHDRAW-TXN-1",
+			"thirdPartyOrderId": "BANK-PAYOUT-1",
+			"eventType":         "payout.success",
+			"responseData": map[string]interface{}{
+				"gatewayStatus": "success",
+			},
+		})
+	}))
+	defer server.Close()
+
+	envelope, err := verifyBankPayoutSidecarCallback(context.Background(), paymentGatewayRuntimeConfig{
+		BankCard: bankCardPayoutRuntimeConfig{
+			SidecarURL: server.URL,
+		},
+	}, PaymentCallbackRequest{
+		Channel: "bank_card",
+		Params: map[string]string{
+			"requestId": "WITHDRAW-REQ-1",
+		},
+		RawBody: `{"status":"success"}`,
+	})
+	if err != nil {
+		t.Fatalf("expected verify callback to succeed: %v", err)
+	}
+	if !envelope.Verified {
+		t.Fatal("expected verified callback envelope")
+	}
+	if envelope.EventType != "payout.success" {
+		t.Fatalf("expected payout.success, got %q", envelope.EventType)
+	}
+	if envelope.TransactionID != "WITHDRAW-TXN-1" {
+		t.Fatalf("expected transaction id to be parsed, got %q", envelope.TransactionID)
+	}
+	if envelope.ThirdPartyOrderID != "BANK-PAYOUT-1" {
+		t.Fatalf("expected third party order id to be parsed, got %q", envelope.ThirdPartyOrderID)
+	}
+}

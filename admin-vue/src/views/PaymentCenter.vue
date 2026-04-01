@@ -144,6 +144,8 @@
               </el-form-item>
               <div class="hint">仅商户端和骑手端开放银行卡提现，用户端不展示该选项。</div>
               <div class="hint">未配置真实供应商时，可暂时打开 Stub 兜底，保留 24-48 小时异步出款业务态。</div>
+              <div class="hint">推荐银行卡回调地址：`/api/payment/callback/bank-card/payout`，第三方出款回调与后台补单统一走这条链路。</div>
+              <div class="hint">如果暂时无法直连真实出款渠道，可先配置管理端人工打款流程；一旦侧车和供应商打通，再切回自动异步通知。</div>
             </el-form>
           </el-card>
         </div>

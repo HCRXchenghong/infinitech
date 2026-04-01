@@ -98,6 +98,12 @@ function normalizeLifecycleStatus(value) {
   return 'transferring'
 }
 
+function toEventTypeFromStatus(status) {
+  if (status === 'success') return 'payout.success'
+  if (status === 'failed') return 'payout.fail'
+  return 'payout.processing'
+}
+
 function buildEnvelope(payload) {
   return {
     success: true,
@@ -129,6 +135,77 @@ function getStoredPayout(body = {}) {
     }
   }
   return null
+}
+
+function lowerCaseHeaders(rawHeaders = {}) {
+  if (!rawHeaders || typeof rawHeaders !== 'object') return {}
+  return Object.entries(rawHeaders).reduce((acc, [key, value]) => {
+    const normalizedKey = normalizeText(key).toLowerCase()
+    if (!normalizedKey) return acc
+    acc[normalizedKey] = normalizeText(Array.isArray(value) ? value[0] : value)
+    return acc
+  }, {})
+}
+
+function parseRawBodyPayload(rawBody) {
+  const source = normalizeText(rawBody)
+  if (!source) return {}
+  try {
+    const parsed = JSON.parse(source)
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {}
+  try {
+    const parsed = Object.fromEntries(new URLSearchParams(source).entries())
+    return parsed && Object.keys(parsed).length > 0 ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function mergeCallbackPayload(body = {}) {
+  const rawPayload = parseRawBodyPayload(body.rawBody)
+  const paramsPayload = body.params && typeof body.params === 'object' ? body.params : {}
+  return {
+    ...rawPayload,
+    ...paramsPayload,
+  }
+}
+
+function resolveCallbackSignature(headers = {}, payload = {}) {
+  return normalizeText(
+    headers['x-bank-signature'] ||
+      headers['x-signature'] ||
+      headers.signature ||
+      payload.signature ||
+      payload.sign,
+  )
+}
+
+function resolveCallbackTransactionId(payload = {}, record = null) {
+  return normalizeText(
+    payload.transactionId ||
+      payload.transaction_id ||
+      payload.requestId ||
+      payload.request_id ||
+      record?.transactionId,
+  )
+}
+
+function resolveCallbackThirdPartyOrderId(payload = {}, record = null) {
+  return normalizeText(
+    payload.thirdPartyOrderId ||
+      payload.third_party_order_id ||
+      payload.providerOrderId ||
+      payload.provider_order_id ||
+      payload.orderId ||
+      payload.order_id ||
+      record?.thirdPartyOrderId,
+  )
+}
+
+function verifyConfiguredAdapterSignature(signature, body = {}) {
+  const apiKey = normalizeText(body.apiKey)
+  return Boolean(apiKey) && signature === apiKey
 }
 
 function buildCreateResponse(body = {}) {
@@ -164,6 +241,7 @@ function buildCreateResponse(body = {}) {
 
   return buildEnvelope({
     status: record.status,
+    transactionId,
     thirdPartyOrderId,
     transferResult,
     responseData: {
@@ -179,6 +257,7 @@ function buildQueryResponse(body = {}) {
   const mode = ensureAvailable(body)
   const record = getStoredPayout(body)
   const requestId = requireText(body.requestId || record?.requestId, 'requestId')
+  const transactionId = normalizeText(body.transactionId || record?.transactionId)
   const thirdPartyOrderId = normalizeText(body.thirdPartyOrderId || record?.thirdPartyOrderId) || `BANKPAYOUT-${requestId}`
   const forcedStatus = normalizeLifecycleStatus(
     body.gatewayStatus || body.mockStatus || process.env.BANK_PAYOUT_STUB_QUERY_STATUS || record?.status,
@@ -199,11 +278,13 @@ function buildQueryResponse(body = {}) {
 
   return buildEnvelope({
     status: forcedStatus,
-    eventType: forcedStatus,
+    eventType: toEventTypeFromStatus(forcedStatus),
+    transactionId,
     thirdPartyOrderId,
     transferResult,
     responseData: {
       requestId,
+      transactionId,
       thirdPartyOrderId,
       gatewayStatus: forcedStatus,
       transferResult,
@@ -212,6 +293,68 @@ function buildQueryResponse(body = {}) {
       record: record || null,
     },
     message: 'Bank payout sidecar queried payout status.',
+  })
+}
+
+function buildVerifyResponse(body = {}) {
+  const mode = ensureAvailable(body)
+  const payload = mergeCallbackPayload(body)
+  const headers = lowerCaseHeaders(body.headers)
+  const record = getStoredPayout({
+    requestId: payload.requestId || payload.request_id || body.requestId,
+    thirdPartyOrderId:
+      payload.thirdPartyOrderId || payload.third_party_order_id || payload.providerOrderId || payload.provider_order_id || body.thirdPartyOrderId,
+  })
+
+  const signature = resolveCallbackSignature(headers, payload)
+  const verified = mode === 'configured-adapter' ? verifyConfiguredAdapterSignature(signature, body) : allowStub(body)
+  if (!verified) {
+    throw new Error('bank payout callback signature verification failed')
+  }
+
+  const normalizedStatus = normalizeLifecycleStatus(
+    payload.status ||
+      payload.eventType ||
+      payload.gatewayStatus ||
+      payload.transferStatus ||
+      payload.resultCode ||
+      payload.result_code ||
+      record?.status,
+  )
+  const transactionId = resolveCallbackTransactionId(payload, record)
+  const thirdPartyOrderId = resolveCallbackThirdPartyOrderId(payload, record)
+  const transferResult =
+    normalizeText(payload.transferResult || payload.message || record?.transferResult) ||
+    (normalizedStatus === 'success'
+      ? '银行卡提现已到账'
+      : normalizedStatus === 'failed'
+        ? '银行卡提现失败'
+        : '银行卡提现处理中')
+
+  if (record) {
+    record.status = normalizedStatus
+    record.transferResult = transferResult
+    record.updatedAt = new Date().toISOString()
+  }
+
+  return buildEnvelope({
+    verified: true,
+    status: 'verified',
+    eventType: toEventTypeFromStatus(normalizedStatus),
+    transactionId,
+    thirdPartyOrderId,
+    transferResult,
+    responseData: {
+      gatewayStatus: normalizedStatus,
+      transferResult,
+      notifyPayload: payload,
+      config: configSummary(body),
+      record: record || null,
+    },
+    message:
+      mode === 'configured-adapter'
+        ? 'Bank payout sidecar verified provider callback.'
+        : 'Bank payout sidecar accepted callback in stub mode.',
   })
 }
 
@@ -253,6 +396,11 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && url.pathname === '/v1/payouts/query') {
     await handleJsonPost(req, res, buildQueryResponse)
+    return
+  }
+
+  if (req.method === 'POST' && url.pathname === '/v1/notify/verify') {
+    await handleJsonPost(req, res, buildVerifyResponse)
     return
   }
 

@@ -212,6 +212,8 @@ func (s *PaymentService) verifyAndNormalizeCallback(ctx context.Context, req Pay
 		return s.verifyWechatCallback(ctx, req)
 	case "alipay":
 		return s.verifyAlipayCallback(ctx, req)
+	case "bank_card":
+		return s.verifyBankCardCallback(ctx, req)
 	default:
 		return req, fmt.Errorf("%w: unsupported callback channel", ErrInvalidArgument)
 	}
@@ -445,6 +447,26 @@ func (s *PaymentService) verifyAlipayCallback(ctx context.Context, req PaymentCa
 	req.EventType = firstTrimmed(envelope.EventType, req.EventType)
 	req.TransactionID = firstTrimmed(envelope.TransactionID, envelope.ThirdPartyOrderID, req.TransactionID)
 	req.ThirdPartyOrderID = firstTrimmed(envelope.ThirdPartyOrderID, envelope.TransactionID, req.ThirdPartyOrderID)
+	return req, nil
+}
+
+func (s *PaymentService) verifyBankCardCallback(ctx context.Context, req PaymentCallbackRequest) (PaymentCallbackRequest, error) {
+	cfg, err := loadPaymentGatewayRuntimeConfig(ctx, s.walletRepo)
+	if err != nil {
+		return req, err
+	}
+	envelope, err := verifyBankPayoutSidecarCallback(ctx, cfg, req)
+	if err != nil {
+		return req, err
+	}
+
+	req.Verified = envelope.Verified
+	if !req.Verified {
+		return req, fmt.Errorf("%w: bank payout callback verification failed", ErrInvalidArgument)
+	}
+	req.EventType = firstTrimmed(envelope.EventType, req.EventType)
+	req.TransactionID = firstTrimmed(envelope.TransactionID, req.TransactionID)
+	req.ThirdPartyOrderID = firstTrimmed(envelope.ThirdPartyOrderID, req.ThirdPartyOrderID)
 	return req, nil
 }
 

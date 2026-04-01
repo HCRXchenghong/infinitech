@@ -1621,6 +1621,10 @@ func main() {
 		// 支付回调
 		api.POST("/payment/callback/wechat", handlers.Payment.WechatCallback)
 		api.POST("/payment/callback/alipay", handlers.Payment.AlipayCallback)
+		api.POST("/payment/callback/wechat/payout", handlers.Payment.WechatPayoutCallback)
+		api.POST("/payment/callback/alipay/payout", handlers.Payment.AlipayPayoutCallback)
+		api.POST("/payment/callback/bank-card", handlers.Payment.BankCardCallback)
+		api.POST("/payment/callback/bank-card/payout", handlers.Payment.BankCardCallback)
 
 		// 财务中心（admin）
 		financial := api.Group("/admin/financial")
