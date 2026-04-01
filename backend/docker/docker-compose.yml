@@ -176,6 +176,7 @@ services:
       dockerfile: backend/docker/Dockerfile.bank-payout-sidecar
       args:
         NODE_BASE_IMAGE: ${NODE_BASE_IMAGE:-node:20-alpine}
+        ALPINE_MIRROR: ${ALPINE_MIRROR:-}
     container_name: yuexiang-bank-payout-sidecar
     restart: unless-stopped
     environment:

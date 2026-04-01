@@ -2,7 +2,12 @@ ARG NODE_BASE_IMAGE=node:20-alpine
 
 FROM ${NODE_BASE_IMAGE}
 
+ARG ALPINE_MIRROR=
+
 WORKDIR /app/backend/bank-payout-sidecar
+
+RUN if [ -n "$ALPINE_MIRROR" ]; then sed -i "s|https\\?://dl-cdn.alpinelinux.org/alpine|${ALPINE_MIRROR}|g" /etc/apk/repositories; fi \
+  && apk add --no-cache wget
 
 COPY backend/bank-payout-sidecar/package.json ./package.json
 COPY backend/bank-payout-sidecar/server.js ./server.js

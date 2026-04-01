@@ -1,7 +1,11 @@
 import http from 'node:http'
-import AlipaySdk from 'alipay-sdk'
+import * as AlipaySdkModule from 'alipay-sdk'
 
 const port = Number(process.env.ALIPAY_SIDECAR_PORT || 10301)
+const AlipaySdkCtor =
+  AlipaySdkModule?.default ||
+  AlipaySdkModule?.AlipaySdk ||
+  AlipaySdkModule
 
 function json(res, statusCode, payload) {
   res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -129,7 +133,10 @@ let cachedSdk = null
 function getAlipaySdk() {
   if (!isReady()) return null
   if (cachedSdk) return cachedSdk
-  cachedSdk = new AlipaySdk({
+  if (typeof AlipaySdkCtor !== 'function') {
+    throw new Error('alipay-sdk constructor is unavailable in current module format')
+  }
+  cachedSdk = new AlipaySdkCtor({
     appId: normalizeText(process.env.ALIPAY_APP_ID),
     privateKey: normalizeText(process.env.ALIPAY_PRIVATE_KEY),
     alipayPublicKey: normalizeText(process.env.ALIPAY_PUBLIC_KEY),
