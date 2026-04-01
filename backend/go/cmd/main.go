@@ -160,7 +160,14 @@ func main() {
 		&repository.WalletTransaction{},
 		&repository.RechargeOrder{},
 		&repository.WithdrawRequest{},
+		&repository.WithdrawFeeRule{},
 		&repository.AdminWalletOperation{},
+		&repository.SettlementSubject{},
+		&repository.SettlementRuleSet{},
+		&repository.SettlementRuleStep{},
+		&repository.OrderSettlementSnapshot{},
+		&repository.SettlementLedgerEntry{},
+		&repository.RiderDepositRecord{},
 		&repository.FinancialLogAudit{},
 		&repository.PaymentCallback{},
 		&repository.IdempotencyRecord{},
@@ -236,7 +243,14 @@ func main() {
 		{name: "WalletTransaction", model: &repository.WalletTransaction{}},
 		{name: "RechargeOrder", model: &repository.RechargeOrder{}},
 		{name: "WithdrawRequest", model: &repository.WithdrawRequest{}},
+		{name: "WithdrawFeeRule", model: &repository.WithdrawFeeRule{}},
 		{name: "AdminWalletOperation", model: &repository.AdminWalletOperation{}},
+		{name: "SettlementSubject", model: &repository.SettlementSubject{}},
+		{name: "SettlementRuleSet", model: &repository.SettlementRuleSet{}},
+		{name: "SettlementRuleStep", model: &repository.SettlementRuleStep{}},
+		{name: "OrderSettlementSnapshot", model: &repository.OrderSettlementSnapshot{}},
+		{name: "SettlementLedgerEntry", model: &repository.SettlementLedgerEntry{}},
+		{name: "RiderDepositRecord", model: &repository.RiderDepositRecord{}},
 		{name: "FinancialLogAudit", model: &repository.FinancialLogAudit{}},
 		{name: "PaymentCallback", model: &repository.PaymentCallback{}},
 		{name: "IdempotencyRecord", model: &repository.IdempotencyRecord{}},
@@ -349,6 +363,9 @@ func main() {
 	if services.RTCCallAudit != nil {
 		go services.RTCCallAudit.StartRetentionCleanupWorker(backgroundWorkerCtx)
 	}
+	if services.Wallet != nil {
+		go services.Wallet.StartWithdrawGatewayReconcileWorker(backgroundWorkerCtx)
+	}
 
 	// 初始化处理器
 	handlers := handler.NewHandlers(services)
@@ -445,13 +462,35 @@ func main() {
 				"worker": rtcRetentionSnapshot,
 			}
 		}
+		withdrawReconcile := gin.H{}
+		var withdrawReconcileSnapshot service.WithdrawGatewayReconcileWorkerStatus
+		if services.Wallet != nil {
+			withdrawReconcileSnapshot = services.Wallet.WithdrawGatewayReconcileStatusSnapshot(ctx)
+			withdrawReconcile = gin.H{
+				"ok":     true,
+				"worker": withdrawReconcileSnapshot,
+			}
+		}
+		buildDependencies := func(databaseOK bool) gin.H {
+			return gin.H{
+				"database": gin.H{"ok": databaseOK},
+				"redis": gin.H{
+					"ok":       !cfg.Redis.Enabled || rdb != nil,
+					"enabled":  cfg.Redis.Enabled,
+					"required": cfg.Redis.Required,
+				},
+				"pushWorker":        pushWorker,
+				"rtcRetention":      rtcRetention,
+				"withdrawReconcile": withdrawReconcile,
+			}
+		}
 
 		if err := sqlDB.PingContext(ctx); err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
 				"status":       "degraded",
 				"service":      "go-api",
 				"error":        "database not ready",
-				"dependencies": gin.H{"pushWorker": pushWorker, "rtcRetention": rtcRetention},
+				"dependencies": buildDependencies(false),
 			})
 			return
 		}
@@ -459,27 +498,19 @@ func main() {
 		if cfg.Redis.Enabled && cfg.Redis.Required {
 			if rdb == nil {
 				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"status":  "degraded",
-					"service": "go-api",
-					"error":   "redis not initialized",
-					"dependencies": gin.H{
-						"database":     gin.H{"ok": true},
-						"pushWorker":   pushWorker,
-						"rtcRetention": rtcRetention,
-					},
+					"status":       "degraded",
+					"service":      "go-api",
+					"error":        "redis not initialized",
+					"dependencies": buildDependencies(true),
 				})
 				return
 			}
 			if err := rdb.Ping(ctx).Err(); err != nil {
 				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"status":  "degraded",
-					"service": "go-api",
-					"error":   "redis not ready",
-					"dependencies": gin.H{
-						"database":     gin.H{"ok": true},
-						"pushWorker":   pushWorker,
-						"rtcRetention": rtcRetention,
-					},
+					"status":       "degraded",
+					"service":      "go-api",
+					"error":        "redis not ready",
+					"dependencies": buildDependencies(true),
 				})
 				return
 			}
@@ -488,19 +519,10 @@ func main() {
 		if services.MobilePush != nil && pushWorkerSnapshot.Enabled {
 			if !pushWorkerSnapshot.Running {
 				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"status":  "degraded",
-					"service": "go-api",
-					"error":   "push worker not running",
-					"dependencies": gin.H{
-						"database": gin.H{"ok": true},
-						"redis": gin.H{
-							"ok":       !cfg.Redis.Enabled || rdb != nil,
-							"enabled":  cfg.Redis.Enabled,
-							"required": cfg.Redis.Required,
-						},
-						"pushWorker":   pushWorker,
-						"rtcRetention": rtcRetention,
-					},
+					"status":       "degraded",
+					"service":      "go-api",
+					"error":        "push worker not running",
+					"dependencies": buildDependencies(true),
 				})
 				return
 			}
@@ -508,38 +530,20 @@ func main() {
 			cycleStatus := strings.ToLower(strings.TrimSpace(pushWorkerSnapshot.LastCycleStatus))
 			if strings.Contains(cycleStatus, "failed") || strings.Contains(cycleStatus, "error") {
 				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"status":  "degraded",
-					"service": "go-api",
-					"error":   "push worker cycle failed",
-					"dependencies": gin.H{
-						"database": gin.H{"ok": true},
-						"redis": gin.H{
-							"ok":       !cfg.Redis.Enabled || rdb != nil,
-							"enabled":  cfg.Redis.Enabled,
-							"required": cfg.Redis.Required,
-						},
-						"pushWorker":   pushWorker,
-						"rtcRetention": rtcRetention,
-					},
+					"status":       "degraded",
+					"service":      "go-api",
+					"error":        "push worker cycle failed",
+					"dependencies": buildDependencies(true),
 				})
 				return
 			}
 
 			if cfg.Push.ReadyMaxQueue > 0 && pushWorkerSnapshot.Queue.Total > cfg.Push.ReadyMaxQueue {
 				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"status":  "degraded",
-					"service": "go-api",
-					"error":   "push queue too large",
-					"dependencies": gin.H{
-						"database": gin.H{"ok": true},
-						"redis": gin.H{
-							"ok":       !cfg.Redis.Enabled || rdb != nil,
-							"enabled":  cfg.Redis.Enabled,
-							"required": cfg.Redis.Required,
-						},
-						"pushWorker":   pushWorker,
-						"rtcRetention": rtcRetention,
-					},
+					"status":       "degraded",
+					"service":      "go-api",
+					"error":        "push queue too large",
+					"dependencies": buildDependencies(true),
 					"maxPushQueue": cfg.Push.ReadyMaxQueue,
 				})
 				return
@@ -548,19 +552,10 @@ func main() {
 			if cfg.Push.ReadyMaxQueueAge > 0 &&
 				pushWorkerSnapshot.Queue.OldestQueuedAgeSeconds > int64(cfg.Push.ReadyMaxQueueAge/time.Second) {
 				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"status":  "degraded",
-					"service": "go-api",
-					"error":   "push queue oldest age too large",
-					"dependencies": gin.H{
-						"database": gin.H{"ok": true},
-						"redis": gin.H{
-							"ok":       !cfg.Redis.Enabled || rdb != nil,
-							"enabled":  cfg.Redis.Enabled,
-							"required": cfg.Redis.Required,
-						},
-						"pushWorker":   pushWorker,
-						"rtcRetention": rtcRetention,
-					},
+					"status":                 "degraded",
+					"service":                "go-api",
+					"error":                  "push queue oldest age too large",
+					"dependencies":           buildDependencies(true),
 					"maxPushQueueAgeSeconds": int64(cfg.Push.ReadyMaxQueueAge / time.Second),
 				})
 				return
@@ -570,57 +565,51 @@ func main() {
 		if services.RTCCallAudit != nil && rtcRetentionSnapshot.Enabled {
 			if !rtcRetentionSnapshot.Running {
 				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"status":  "degraded",
-					"service": "go-api",
-					"error":   "rtc retention worker not running",
-					"dependencies": gin.H{
-						"database": gin.H{"ok": true},
-						"redis": gin.H{
-							"ok":       !cfg.Redis.Enabled || rdb != nil,
-							"enabled":  cfg.Redis.Enabled,
-							"required": cfg.Redis.Required,
-						},
-						"pushWorker":   pushWorker,
-						"rtcRetention": rtcRetention,
-					},
+					"status":       "degraded",
+					"service":      "go-api",
+					"error":        "rtc retention worker not running",
+					"dependencies": buildDependencies(true),
 				})
 				return
 			}
 			cleanupStatus := strings.ToLower(strings.TrimSpace(rtcRetentionSnapshot.LastCleanupStatus))
 			if strings.Contains(cleanupStatus, "error") {
 				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"status":  "degraded",
-					"service": "go-api",
-					"error":   "rtc retention cleanup failed",
-					"dependencies": gin.H{
-						"database": gin.H{"ok": true},
-						"redis": gin.H{
-							"ok":       !cfg.Redis.Enabled || rdb != nil,
-							"enabled":  cfg.Redis.Enabled,
-							"required": cfg.Redis.Required,
-						},
-						"pushWorker":   pushWorker,
-						"rtcRetention": rtcRetention,
-					},
+					"status":       "degraded",
+					"service":      "go-api",
+					"error":        "rtc retention cleanup failed",
+					"dependencies": buildDependencies(true),
+				})
+				return
+			}
+		}
+		if services.Wallet != nil && withdrawReconcileSnapshot.Enabled {
+			if !withdrawReconcileSnapshot.Running {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"status":       "degraded",
+					"service":      "go-api",
+					"error":        "withdraw reconcile worker not running",
+					"dependencies": buildDependencies(true),
+				})
+				return
+			}
+			cycleStatus := strings.ToLower(strings.TrimSpace(withdrawReconcileSnapshot.LastCycleStatus))
+			if strings.Contains(cycleStatus, "error") {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"status":       "degraded",
+					"service":      "go-api",
+					"error":        "withdraw reconcile worker cycle failed",
+					"dependencies": buildDependencies(true),
 				})
 				return
 			}
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"status":    "ready",
-			"service":   "go-api",
-			"timestamp": time.Now().Format(time.RFC3339),
-			"dependencies": gin.H{
-				"database": gin.H{"ok": true},
-				"redis": gin.H{
-					"ok":       !cfg.Redis.Enabled || rdb != nil,
-					"enabled":  cfg.Redis.Enabled,
-					"required": cfg.Redis.Required,
-				},
-				"pushWorker":   pushWorker,
-				"rtcRetention": rtcRetention,
-			},
+			"status":       "ready",
+			"service":      "go-api",
+			"timestamp":    time.Now().Format(time.RFC3339),
+			"dependencies": buildDependencies(true),
 		})
 	}
 	r.GET("/health", healthHandler)
@@ -1040,8 +1029,6 @@ func main() {
 		api.POST("/pay-config/wxpay", handlers.AdminSettings.UpdateWxpayConfig)
 		api.GET("/pay-config/alipay", handlers.AdminSettings.GetAlipayConfig)
 		api.POST("/pay-config/alipay", handlers.AdminSettings.UpdateAlipayConfig)
-		api.GET("/payment-notices", handlers.AdminSettings.GetPaymentNotices)
-		api.POST("/payment-notices", handlers.AdminSettings.UpdatePaymentNotices)
 		api.GET("/carousel-settings", handlers.AdminSettings.GetCarouselSettings)
 		api.POST("/carousel-settings", handlers.AdminSettings.UpdateCarouselSettings)
 
@@ -1283,6 +1270,13 @@ func main() {
 				c.JSON(400, gin.H{"error": "rider_id is required"})
 				return
 			}
+			if ok, reason, err := services.Wallet.CanRiderAcceptOrders(c.Request.Context(), riderID); err != nil {
+				c.JSON(500, gin.H{"error": err.Error()})
+				return
+			} else if !ok {
+				c.JSON(403, gin.H{"error": reason})
+				return
+			}
 
 			updates := map[string]interface{}{
 				"rider_id":    riderID,
@@ -1322,6 +1316,7 @@ func main() {
 				c.JSON(500, gin.H{"error": err.Error()})
 				return
 			}
+			_ = services.Wallet.MarkRiderAccepted(c.Request.Context(), riderID)
 			c.JSON(200, gin.H{"success": true, "data": order})
 		})
 		api.POST("/orders/:id/pickup", func(c *gin.Context) {
@@ -1396,8 +1391,13 @@ func main() {
 				if order.CompletedAt != nil {
 					completedAt = *order.CompletedAt
 				}
-				_, err := createRiderIncomeFreezeTransaction(tx, &order, completedAt)
-				return err
+				if _, err := createRiderIncomeFreezeTransaction(tx, &order, completedAt); err != nil {
+					return err
+				}
+				if err := services.Wallet.SettleCompletedOrderTx(c.Request.Context(), tx, &order, completedAt); err != nil {
+					return err
+				}
+				return nil
 			}); err != nil {
 				if errors.Is(err, errOrderNotDelivering) {
 					c.JSON(409, gin.H{"error": "order is not in delivering status"})
@@ -1599,10 +1599,23 @@ func main() {
 		{
 			wallet.GET("/balance", handlers.Wallet.GetBalance)
 			wallet.GET("/transactions", handlers.Wallet.ListTransactions)
+			wallet.GET("/transactions/:transactionId", handlers.Wallet.GetTransactionStatus)
+			wallet.GET("/payment-options", handlers.Wallet.GetPaymentOptions)
 			wallet.POST("/recharge", handlers.Wallet.Recharge)
+			wallet.GET("/recharge/status", handlers.Wallet.GetRechargeStatus)
 			wallet.POST("/payment", handlers.Wallet.Payment)
+			wallet.GET("/withdraw/options", handlers.Wallet.GetWithdrawOptions)
+			wallet.POST("/withdraw/fee-preview", handlers.Wallet.PreviewWithdrawFee)
 			wallet.POST("/withdraw", handlers.Wallet.Withdraw)
+			wallet.GET("/withdraw/status", handlers.Wallet.GetWithdrawStatus)
 			wallet.GET("/withdraw/records", handlers.Wallet.ListWithdrawRecords)
+		}
+
+		riderDeposit := api.Group("/rider/deposit")
+		{
+			riderDeposit.GET("/status", handlers.Wallet.GetRiderDepositStatus)
+			riderDeposit.POST("/pay-intent", handlers.Wallet.CreateRiderDepositPayIntent)
+			riderDeposit.POST("/withdraw", handlers.Wallet.WithdrawRiderDeposit)
 		}
 
 		// 支付回调
@@ -1632,6 +1645,11 @@ func main() {
 			adminWallet.GET("/operations", handlers.AdminWallet.ListOperations)
 			adminWallet.GET("/withdraw-requests", handlers.AdminWallet.ListWithdrawRequests)
 			adminWallet.POST("/withdraw-requests/review", handlers.AdminWallet.ReviewWithdraw)
+			adminWallet.GET("/pay-center/config", handlers.AdminWallet.GetPaymentCenterConfig)
+			adminWallet.POST("/pay-center/config", handlers.AdminWallet.SavePaymentCenterConfig)
+			adminWallet.POST("/settlement/rule-preview", handlers.AdminWallet.PreviewSettlement)
+			adminWallet.GET("/rider-deposit/overview", handlers.AdminWallet.GetRiderDepositOverview)
+			adminWallet.GET("/rider-deposit/records", handlers.AdminWallet.ListRiderDepositRecords)
 		}
 	}
 

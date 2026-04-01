@@ -482,10 +482,32 @@ export const fetchWalletBalance = (userId: string | number, userType: 'customer'
 export const fetchWalletTransactions = (params: Record<string, any>) =>
   apiGet('/api/wallet/transactions', params)
 
+export const fetchWalletTransactionStatus = (
+  transactionId: string | number,
+  params: Record<string, any> = {}
+) => apiGet(`/api/wallet/transactions/${encodeURIComponent(String(transactionId))}`, params)
+
 export const fetchWithdrawRecords = (params: Record<string, any>) =>
   apiGet('/api/wallet/withdraw/records', params)
 
+export const fetchWalletPaymentOptions = (params: Record<string, any>) =>
+  apiGet('/api/wallet/payment-options', params)
+
+export const fetchWalletWithdrawOptions = (params: Record<string, any>) =>
+  apiGet('/api/wallet/withdraw/options', params)
+
+export const previewWalletWithdrawFee = (payload: Record<string, any>) =>
+  apiPost('/api/wallet/withdraw/fee-preview', payload)
+
+export const createRecharge = (payload: Record<string, any>) => apiPost('/api/wallet/recharge', payload)
+
+export const fetchWalletRechargeStatus = (params: Record<string, any>) =>
+  apiGet('/api/wallet/recharge/status', params)
+
 export const createWithdraw = (payload: Record<string, any>) => apiPost('/api/wallet/withdraw', payload)
+
+export const fetchWalletWithdrawStatus = (params: Record<string, any>) =>
+  apiGet('/api/wallet/withdraw/status', params)
 
 // Message (Go 目前返回空数组，占位直连)
 export const fetchConversations = () => apiGet('/api/messages/conversations')

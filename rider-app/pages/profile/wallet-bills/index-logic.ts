@@ -267,6 +267,11 @@ export default {
     },
     statusLabel(status, type) {
       const statusText = String(status || '').toLowerCase()
+      if (statusText === 'pending_review') return '\u5f85\u5ba1\u6838'
+      if (statusText === 'pending_transfer') return '\u5f85\u6253\u6b3e'
+      if (statusText === 'transferring') return '\u8f6c\u8d26\u4e2d'
+      if (statusText === 'rejected') return '\u5df2\u9a73\u56de'
+      if (statusText === 'completed') return '\u6210\u529f'
       if (statusText === 'pending' && String(type || '').toLowerCase() === 'income') {
         return '冻结中'
       }
@@ -399,9 +404,59 @@ export default {
         this.loading = false
       }
     },
-    openDetail(tx) {
+    async fetchTransactionDetail(transactionId: string) {
+      const { userId, token } = this.getAuth()
+      if (!userId || !transactionId) return null
+      return await request({
+        url: this.withQuery(`/api/wallet/transactions/${encodeURIComponent(transactionId)}`, {
+          userId,
+          userType: 'rider'
+        }),
+        method: 'GET',
+        header: this.getAuthHeader(token)
+      })
+    },
+    mergeDetailTx(baseTx: Transaction, detail: any) {
+      if (!detail || typeof detail !== 'object') return baseTx
+      const recharge = detail.recharge || null
+      const withdraw = detail.withdraw || null
+      const detailNotes: string[] = []
+      if (recharge && recharge.thirdPartyOrderId) detailNotes.push(`TP_ORDER:${recharge.thirdPartyOrderId}`)
+      if (recharge && recharge.thirdPartyTransactionId) detailNotes.push(`TP_TX:${recharge.thirdPartyTransactionId}`)
+      if (withdraw && withdraw.arrivalText) detailNotes.push(`ARRIVAL:${withdraw.arrivalText}`)
+      if (withdraw && withdraw.transferResult) detailNotes.push(`TRANSFER:${withdraw.transferResult}`)
+      if (withdraw && withdraw.thirdPartyOrderId) detailNotes.push(`TP_ORDER:${withdraw.thirdPartyOrderId}`)
+      if (withdraw && withdraw.thirdPartyTransactionId) detailNotes.push(`TP_TX:${withdraw.thirdPartyTransactionId}`)
+      const mergedDescription = detailNotes.length > 0
+        ? detailNotes.join(' / ')
+        : (detail.description || baseTx.description || baseTx.remark || '')
+      return {
+        ...baseTx,
+        ...detail,
+        transaction_id: detail.transactionId || baseTx.transaction_id || baseTx.transactionId,
+        transactionId: detail.transactionId || baseTx.transactionId || baseTx.transaction_id,
+        payment_method: detail.paymentMethod || baseTx.payment_method || baseTx.paymentMethod,
+        paymentMethod: detail.paymentMethod || baseTx.paymentMethod || baseTx.payment_method,
+        created_at: detail.createdAt || baseTx.created_at || baseTx.createdAt,
+        createdAt: detail.createdAt || baseTx.createdAt || baseTx.created_at,
+        description: mergedDescription,
+        remark: mergedDescription
+      }
+    },
+    async openDetail(tx: Transaction) {
       this.detailTx = tx
       this.detailVisible = true
+      const transactionId = (tx && (tx.transaction_id || tx.transactionId)) ? String(tx.transaction_id || tx.transactionId) : ''
+      if (!transactionId) return
+      try {
+        uni.showLoading({ title: '姝ｅ湪鍔犺浇璇︽儏', mask: true })
+        const detail = await this.fetchTransactionDetail(transactionId)
+        this.detailTx = this.mergeDetailTx(tx, detail)
+      } catch (error: any) {
+        uni.showToast({ title: error?.error || '璇︽儏鍔犺浇澶辫触', icon: 'none' })
+      } finally {
+        uni.hideLoading()
+      }
     }
   }
 }

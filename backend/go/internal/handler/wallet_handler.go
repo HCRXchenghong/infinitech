@@ -75,6 +75,47 @@ func (h *WalletHandler) Recharge(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+func (h *WalletHandler) GetPaymentOptions(c *gin.Context) {
+	result, err := h.wallet.GetPaymentOptions(
+		c.Request.Context(),
+		firstNonEmptyQuery(c, "userType", "user_type"),
+		firstNonEmptyQuery(c, "platform"),
+		firstNonEmptyQuery(c, "scene"),
+	)
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *WalletHandler) GetWithdrawOptions(c *gin.Context) {
+	result, err := h.wallet.GetWithdrawOptions(
+		c.Request.Context(),
+		firstNonEmptyQuery(c, "userType", "user_type"),
+		firstNonEmptyQuery(c, "platform"),
+	)
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *WalletHandler) PreviewWithdrawFee(c *gin.Context) {
+	var req service.WithdrawFeePreviewRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		return
+	}
+	result, err := h.wallet.PreviewWithdrawFee(c.Request.Context(), req)
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
 func (h *WalletHandler) Withdraw(c *gin.Context) {
 	var req service.WithdrawRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -84,6 +125,46 @@ func (h *WalletHandler) Withdraw(c *gin.Context) {
 	req.IdempotencyKey = resolveIdempotencyKey(req.IdempotencyKey, c.GetHeader("Idempotency-Key"))
 
 	result, err := h.wallet.Withdraw(c.Request.Context(), req)
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *WalletHandler) GetRiderDepositStatus(c *gin.Context) {
+	riderID := firstNonEmptyQuery(c, "riderId", "rider_id", "userId", "user_id")
+	result, err := h.wallet.GetRiderDepositStatus(c.Request.Context(), riderID)
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *WalletHandler) CreateRiderDepositPayIntent(c *gin.Context) {
+	var req service.RiderDepositPayRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		return
+	}
+	req.IdempotencyKey = resolveIdempotencyKey(req.IdempotencyKey, c.GetHeader("Idempotency-Key"))
+	result, err := h.wallet.CreateRiderDepositPayIntent(c.Request.Context(), req)
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *WalletHandler) WithdrawRiderDeposit(c *gin.Context) {
+	var req service.RiderDepositWithdrawRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		return
+	}
+	req.IdempotencyKey = resolveIdempotencyKey(req.IdempotencyKey, c.GetHeader("Idempotency-Key"))
+	result, err := h.wallet.WithdrawRiderDeposit(c.Request.Context(), req)
 	if err != nil {
 		writeWalletServiceError(c, err)
 		return
@@ -118,6 +199,50 @@ func (h *WalletHandler) ListTransactions(c *gin.Context) {
 		StartAt:  startAt,
 		EndAt:    endAt,
 	})
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *WalletHandler) GetTransactionStatus(c *gin.Context) {
+	result, err := h.wallet.GetTransactionStatus(
+		c.Request.Context(),
+		firstNonEmptyQuery(c, "userId", "user_id"),
+		firstNonEmptyQuery(c, "userType", "user_type"),
+		strings.TrimSpace(c.Param("transactionId")),
+	)
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *WalletHandler) GetRechargeStatus(c *gin.Context) {
+	result, err := h.wallet.GetRechargeStatus(
+		c.Request.Context(),
+		firstNonEmptyQuery(c, "userId", "user_id"),
+		firstNonEmptyQuery(c, "userType", "user_type"),
+		firstNonEmptyQuery(c, "rechargeOrderId", "recharge_order_id"),
+		firstNonEmptyQuery(c, "transactionId", "transaction_id"),
+	)
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *WalletHandler) GetWithdrawStatus(c *gin.Context) {
+	result, err := h.wallet.GetWithdrawStatus(
+		c.Request.Context(),
+		firstNonEmptyQuery(c, "userId", "user_id"),
+		firstNonEmptyQuery(c, "userType", "user_type"),
+		firstNonEmptyQuery(c, "requestId", "request_id", "withdrawRequestId", "withdraw_request_id"),
+		firstNonEmptyQuery(c, "transactionId", "transaction_id"),
+	)
 	if err != nil {
 		writeWalletServiceError(c, err)
 		return

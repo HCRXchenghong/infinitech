@@ -137,6 +137,69 @@ func (h *AdminWalletHandler) ListWithdrawRequests(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+func (h *AdminWalletHandler) GetPaymentCenterConfig(c *gin.Context) {
+	result, err := h.wallet.GetPaymentCenterConfig(c.Request.Context())
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *AdminWalletHandler) SavePaymentCenterConfig(c *gin.Context) {
+	var req service.PaymentCenterConfigPayload
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		return
+	}
+	result, err := h.wallet.SavePaymentCenterConfig(c.Request.Context(), req)
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *AdminWalletHandler) PreviewSettlement(c *gin.Context) {
+	var req struct {
+		Amount      int64  `json:"amount"`
+		RuleSetName string `json:"ruleSetName"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		return
+	}
+	result, err := h.wallet.PreviewSettlement(c.Request.Context(), req.Amount, req.RuleSetName)
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *AdminWalletHandler) GetRiderDepositOverview(c *gin.Context) {
+	result, err := h.wallet.GetRiderDepositOverview(c.Request.Context())
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *AdminWalletHandler) ListRiderDepositRecords(c *gin.Context) {
+	result, err := h.wallet.ListRiderDepositRecords(
+		c.Request.Context(),
+		strings.TrimSpace(c.Query("status")),
+		parsePositiveInt(c.Query("page"), 1),
+		parsePositiveInt(c.Query("limit"), 20),
+	)
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
 func (h *AdminWalletHandler) AdminRecharge(c *gin.Context) {
 	var req struct {
 		UserID   string `json:"user_id"`

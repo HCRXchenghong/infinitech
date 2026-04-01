@@ -3,12 +3,18 @@
     <view class="header-card">
       <text class="balance-label">商户 IF-Pay 可用余额（元）</text>
       <text class="balance-value">{{ loading ? '--' : fen2yuan(balance) }}</text>
-      <text class="balance-sub">冻结金额：¥{{ loading ? '--' : fen2yuan(frozenBalance) }}</text>
+      <text class="balance-sub">冻结金额 ¥{{ loading ? '--' : fen2yuan(frozenBalance) }}</text>
 
       <view class="action-row">
-        <button class="action-btn primary" :disabled="loading || !walletUserId" @tap="applyWithdraw">申请提现</button>
-        <button class="action-btn" :disabled="loading || !walletUserId" @tap="refreshAll">刷新</button>
+        <button class="action-btn primary" :disabled="loading || !walletUserId" @tap="applyRecharge">余额充值</button>
+        <button class="action-btn" :disabled="loading || !walletUserId" @tap="applyWithdraw">申请提现</button>
+        <button class="action-btn minor" :disabled="loading || !walletUserId" @tap="refreshAll">刷新</button>
       </view>
+    </view>
+
+    <view class="notice-card">
+      <text class="notice-title">资金规则</text>
+      <text class="notice-text">商户端支持微信、支付宝、银行卡提现。银行卡提现到账时效为 24 小时 - 48 小时，所有提现渠道都会按后台配置收取手续费。</text>
     </view>
 
     <view class="filter-row">
@@ -51,7 +57,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { createWithdraw, fetchWalletBalance, fetchWalletTransactions } from '@/shared-ui/api'
+import {
+  createRecharge,
+  createWithdraw,
+  fetchWalletBalance,
+  fetchWalletPaymentOptions,
+  fetchWalletRechargeStatus,
+  fetchWalletTransactions,
+  fetchWalletWithdrawStatus,
+  fetchWalletWithdrawOptions,
+  previewWalletWithdrawFee,
+} from '@/shared-ui/api'
 
 const loading = ref(false)
 const refreshing = ref(false)
@@ -63,13 +79,18 @@ const merchantPhone = ref('')
 const balance = ref(0)
 const frozenBalance = ref(0)
 const transactions = ref<any[]>([])
+const rechargeOptions = ref<any[]>([])
+const withdrawOptions = ref<any[]>([])
 
 const activeType = ref('')
+const rechargeFinalStatuses = new Set(['success', 'completed', 'paid'])
+const flowFailureStatuses = new Set(['failed', 'rejected', 'cancelled', 'closed'])
+const withdrawFinalStatuses = new Set(['success', 'completed'])
 
 const typeFilters = [
   { label: '全部', value: '' },
   { label: '订单收入', value: 'payment' },
-  { label: '退款扣款', value: 'refund' },
+  { label: '退款扣减', value: 'refund' },
   { label: '提现', value: 'withdraw' },
   { label: '充值', value: 'recharge' },
 ]
@@ -90,13 +111,18 @@ function normalizeArray(payload: any, candidates: string[] = ['items', 'list', '
   return []
 }
 
+function normalizeOptions(payload: any) {
+  if (Array.isArray(payload?.options)) return payload.options
+  return normalizeArray(payload, ['options', 'items', 'list', 'data'])
+}
+
 function parseMerchantProfile() {
   const profile: any = uni.getStorageSync('merchantProfile') || {}
   const merchantId = String(profile.id || profile.role_id || profile.userId || '').trim()
-  const merchantPhone = String(profile.phone || '').trim()
-  walletUserId.value = merchantId || merchantPhone
+  const phone = String(profile.phone || '').trim()
+  walletUserId.value = merchantId || phone
   merchantName.value = String(profile.name || profile.shopName || '商户')
-  merchantPhone.value = merchantPhone
+  merchantPhone.value = phone
 }
 
 function fen2yuan(fen: any) {
@@ -123,7 +149,7 @@ function amountClass(tx: any) {
 function txTypeText(type: string) {
   const map: Record<string, string> = {
     payment: '订单收入',
-    refund: '退款扣款',
+    refund: '退款扣减',
     recharge: '余额充值',
     withdraw: '提现申请',
     compensation: '赔付',
@@ -134,12 +160,18 @@ function txTypeText(type: string) {
 }
 
 function txStatusText(status: string) {
+  const normalized = String(status || '').toLowerCase()
+  if (normalized === 'transferring') return '\u8f6c\u8d26\u4e2d'
   const map: Record<string, string> = {
     pending: '处理中',
+    pending_review: '待审核',
+    pending_transfer: '待打款',
+    processing: '处理中',
     success: '成功',
     completed: '成功',
     failed: '失败',
     cancelled: '已取消',
+    rejected: '已驳回',
   }
   return map[status] || status || '--'
 }
@@ -155,18 +187,127 @@ function formatTime(value: any) {
   return `${month}-${day} ${hour}:${minute}`
 }
 
+function createIdempotencyKey(prefix: string) {
+  return `${prefix}_${walletUserId.value}_${Date.now()}_${Math.floor(Math.random() * 100000)}`
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function normalizeFlowStatus(payload: any, nestedKey: string) {
+  return String(payload?.status || payload?.[nestedKey]?.status || payload?.transactionStatus || '')
+    .trim()
+    .toLowerCase()
+}
+
+function normalizeArrivalText(payload: any, nestedKey: string) {
+  return String(payload?.arrivalText || payload?.[nestedKey]?.arrivalText || '').trim()
+}
+
+function flowStatusText(status: string) {
+  const normalized = String(status || '').trim().toLowerCase()
+  const map: Record<string, string> = {
+    awaiting_client_pay: '待支付',
+    pending: '处理中',
+    pending_review: '待审核',
+    pending_transfer: '待打款',
+    processing: '处理中',
+    transferring: '转账中',
+    success: '成功',
+    completed: '成功',
+    paid: '已支付',
+    failed: '失败',
+    rejected: '已驳回',
+    cancelled: '已取消',
+    closed: '已关闭',
+  }
+  return map[normalized] || normalized || '处理中'
+}
+
+async function pollRechargeResult(rechargeOrderId: string, transactionId: string) {
+  let latest: any = null
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    latest = await fetchWalletRechargeStatus({
+      userId: walletUserId.value,
+      userType: 'merchant',
+      rechargeOrderId,
+      transactionId,
+    })
+    const status = normalizeFlowStatus(latest, 'recharge')
+    if (rechargeFinalStatuses.has(status) || flowFailureStatuses.has(status)) {
+      return latest
+    }
+    await sleep(1500)
+  }
+  return latest
+}
+
+async function pollWithdrawResult(withdrawRequestId: string, transactionId: string) {
+  let latest: any = null
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    latest = await fetchWalletWithdrawStatus({
+      userId: walletUserId.value,
+      userType: 'merchant',
+      requestId: withdrawRequestId,
+      transactionId,
+    })
+    const status = normalizeFlowStatus(latest, 'withdraw')
+    if (withdrawFinalStatuses.has(status) || flowFailureStatuses.has(status)) {
+      return latest
+    }
+    await sleep(1500)
+  }
+  return latest
+}
+
+function pickOption(options: any[], emptyMessage: string): Promise<any | null> {
+  return new Promise((resolve) => {
+    if (!options.length) {
+      uni.showToast({ title: emptyMessage, icon: 'none' })
+      resolve(null)
+      return
+    }
+    uni.showActionSheet({
+      itemList: options.map((item) => item.label || item.channel || '未命名渠道'),
+      success: (res: any) => resolve(options[res.tapIndex] || null),
+      fail: () => resolve(null),
+    })
+  })
+}
+
+function promptText(title: string, placeholderText: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    uni.showModal({
+      title,
+      editable: true,
+      placeholderText,
+      success: (res: any) => {
+        if (!res.confirm) {
+          resolve(null)
+          return
+        }
+        resolve(String(res.content || '').trim())
+      },
+      fail: () => resolve(null),
+    })
+  })
+}
+
 async function loadData() {
   parseMerchantProfile()
   if (!walletUserId.value) {
     transactions.value = []
     balance.value = 0
     frozenBalance.value = 0
+    rechargeOptions.value = []
+    withdrawOptions.value = []
     return
   }
 
   loading.value = true
   try {
-    const [balanceRes, txRes]: any[] = await Promise.all([
+    const [balanceRes, txRes, rechargeRes, withdrawRes]: any[] = await Promise.all([
       fetchWalletBalance(walletUserId.value, 'merchant'),
       fetchWalletTransactions({
         userId: walletUserId.value,
@@ -174,11 +315,21 @@ async function loadData() {
         limit: 100,
         page: 1,
       }),
+      fetchWalletPaymentOptions({
+        userType: 'merchant',
+        platform: 'app',
+        scene: 'wallet_recharge',
+      }),
+      fetchWalletWithdrawOptions({
+        userType: 'merchant',
+        platform: 'app',
+      }),
     ])
 
     balance.value = Number(balanceRes?.balance || 0)
     frozenBalance.value = Number(balanceRes?.frozenBalance || 0)
-
+    rechargeOptions.value = normalizeOptions(rechargeRes)
+    withdrawOptions.value = normalizeOptions(withdrawRes)
     transactions.value = normalizeArray(txRes).sort(
       (a: any, b: any) => new Date(b.created_at || b.createdAt).getTime() - new Date(a.created_at || a.createdAt).getTime()
     )
@@ -198,38 +349,220 @@ async function refreshAll() {
   }
 }
 
-function applyWithdraw() {
+async function applyRecharge() {
   if (!walletUserId.value) return
-  uni.showModal({
-    title: '申请提现',
-    editable: true,
-    placeholderText: '输入提现金额（元）',
-    success: async (res: any) => {
-      if (!res.confirm) return
-      const amountYuan = Number(res.content || 0)
-      if (!(amountYuan > 0)) {
-        uni.showToast({ title: '请输入正确金额', icon: 'none' })
-        return
-      }
+  const channel = await pickOption(rechargeOptions.value, '暂无可用充值渠道')
+  if (!channel) return
 
-      const amountFen = Math.round(amountYuan * 100)
+  const amountText = await promptText('余额充值', '输入充值金额（元）')
+  if (amountText == null) return
+  const amountFen = Math.round(Number(amountText || 0) * 100)
+  if (!(amountFen > 0)) {
+    uni.showToast({ title: '请输入正确金额', icon: 'none' })
+    return
+  }
+
+  try {
+    await createRecharge({
+      userId: walletUserId.value,
+      userType: 'merchant',
+      amount: amountFen,
+      platform: 'app',
+      paymentMethod: channel.channel,
+      paymentChannel: channel.channel,
+      idempotencyKey: createIdempotencyKey('merchant_recharge'),
+      description: '商户端余额充值',
+    })
+    uni.showToast({ title: '充值请求已提交', icon: 'success' })
+    await loadData()
+  } catch (err: any) {
+    uni.showToast({ title: err?.error || err?.message || '充值失败', icon: 'none' })
+  }
+}
+
+async function applyWithdraw() {
+  if (!walletUserId.value) return
+  const channel = await pickOption(withdrawOptions.value, '暂无可用提现渠道')
+  if (!channel) return
+
+  const amountText = await promptText('申请提现', '输入提现金额（元）')
+  if (amountText == null) return
+  const amountFen = Math.round(Number(amountText || 0) * 100)
+  if (!(amountFen > 0)) {
+    uni.showToast({ title: '请输入正确金额', icon: 'none' })
+    return
+  }
+
+  let withdrawAccount = merchantPhone.value || walletUserId.value
+  if (String(channel.channel || '') === 'bank_card') {
+    const bankAccount = await promptText('银行卡提现', '输入银行卡号')
+    if (!bankAccount) return
+    withdrawAccount = bankAccount
+  }
+
+  try {
+    const preview: any = await previewWalletWithdrawFee({
+      userId: walletUserId.value,
+      userType: 'merchant',
+      amount: amountFen,
+      withdrawMethod: channel.channel,
+      platform: 'app',
+    })
+    const confirmed = await new Promise<boolean>((resolve) => {
+      uni.showModal({
+        title: '确认提现',
+        content: `手续费 ¥${fen2yuan(preview?.fee)}，预计到账 ¥${fen2yuan(preview?.actualAmount)}，到账时效 ${preview?.arrivalText || '以通道处理为准'}`,
+        success: (res: any) => resolve(!!res.confirm),
+        fail: () => resolve(false),
+      })
+    })
+    if (!confirmed) return
+
+    await createWithdraw({
+      userId: walletUserId.value,
+      userType: 'merchant',
+      amount: amountFen,
+      platform: 'app',
+      withdrawMethod: channel.channel,
+      withdrawAccount,
+      withdrawName: merchantName.value || '商户',
+      remark: '商户端提现申请',
+      idempotencyKey: createIdempotencyKey('merchant_withdraw'),
+    })
+    uni.showToast({ title: '提现申请已提交', icon: 'success' })
+    await loadData()
+  } catch (err: any) {
+    uni.showToast({ title: err?.error || err?.message || '提现失败', icon: 'none' })
+  }
+}
+
+applyRecharge = async function applyRechargePatched() {
+  if (!walletUserId.value) return
+  const channel = await pickOption(rechargeOptions.value, '暂无可用充值渠道')
+  if (!channel) return
+
+  const amountText = await promptText('余额充值', '输入充值金额（元）')
+  if (amountText == null) return
+  const amountFen = Math.round(Number(amountText || 0) * 100)
+  if (!(amountFen > 0)) {
+    uni.showToast({ title: '请输入正确金额', icon: 'none' })
+    return
+  }
+
+  try {
+    const result: any = await createRecharge({
+      userId: walletUserId.value,
+      userType: 'merchant',
+      amount: amountFen,
+      platform: 'app',
+      paymentMethod: channel.channel,
+      paymentChannel: channel.channel,
+      idempotencyKey: createIdempotencyKey('merchant_recharge'),
+      description: '商户端余额充值',
+    })
+
+    let latest = result
+    let status = normalizeFlowStatus(latest, 'recharge')
+    if (!rechargeFinalStatuses.has(status) && !flowFailureStatuses.has(status) && (result?.rechargeOrderId || result?.transactionId)) {
+      uni.showLoading({ title: '正在确认充值状态', mask: true })
       try {
-        await createWithdraw({
-          userId: walletUserId.value,
-          userType: 'merchant',
-          amount: amountFen,
-          withdrawMethod: 'ifpay',
-          withdrawAccount: merchantPhone.value || walletUserId.value,
-          withdrawName: merchantName.value || '商户',
-          remark: '商户端提现申请',
-        })
-        uni.showToast({ title: '提现申请已提交', icon: 'success' })
-        await loadData()
-      } catch (err: any) {
-        uni.showToast({ title: err?.error || err?.message || '提现失败', icon: 'none' })
+        latest = await pollRechargeResult(String(result?.rechargeOrderId || ''), String(result?.transactionId || ''))
+      } finally {
+        uni.hideLoading()
       }
-    },
-  })
+      status = normalizeFlowStatus(latest, 'recharge')
+    }
+
+    if (rechargeFinalStatuses.has(status)) {
+      uni.showToast({ title: '充值成功', icon: 'success' })
+    } else if (flowFailureStatuses.has(status)) {
+      uni.showToast({ title: `充值失败：${flowStatusText(status)}`, icon: 'none' })
+    } else {
+      uni.showToast({ title: '充值请求已提交，可在钱包流水查看状态', icon: 'none' })
+    }
+    await loadData()
+  } catch (err: any) {
+    uni.showToast({ title: err?.error || err?.message || '充值失败', icon: 'none' })
+  }
+}
+
+applyWithdraw = async function applyWithdrawPatched() {
+  if (!walletUserId.value) return
+  const channel = await pickOption(withdrawOptions.value, '暂无可用提现渠道')
+  if (!channel) return
+
+  const amountText = await promptText('申请提现', '输入提现金额（元）')
+  if (amountText == null) return
+  const amountFen = Math.round(Number(amountText || 0) * 100)
+  if (!(amountFen > 0)) {
+    uni.showToast({ title: '请输入正确金额', icon: 'none' })
+    return
+  }
+
+  let withdrawAccount = merchantPhone.value || walletUserId.value
+  if (String(channel.channel || '') === 'bank_card') {
+    const bankAccount = await promptText('银行卡提现', '输入银行卡号')
+    if (!bankAccount) return
+    withdrawAccount = bankAccount
+  }
+
+  try {
+    const preview: any = await previewWalletWithdrawFee({
+      userId: walletUserId.value,
+      userType: 'merchant',
+      amount: amountFen,
+      withdrawMethod: channel.channel,
+      platform: 'app',
+    })
+    const confirmed = await new Promise<boolean>((resolve) => {
+      uni.showModal({
+        title: '确认提现',
+        content: `手续费 ¥${fen2yuan(preview?.fee)}，预计到账 ¥${fen2yuan(preview?.actualAmount)}，到账时效：${preview?.arrivalText || '以通道处理为准'}`,
+        success: (res: any) => resolve(!!res.confirm),
+        fail: () => resolve(false),
+      })
+    })
+    if (!confirmed) return
+
+    const result: any = await createWithdraw({
+      userId: walletUserId.value,
+      userType: 'merchant',
+      amount: amountFen,
+      platform: 'app',
+      withdrawMethod: channel.channel,
+      withdrawAccount,
+      withdrawName: merchantName.value || '商户',
+      remark: '商户端提现申请',
+      idempotencyKey: createIdempotencyKey('merchant_withdraw'),
+    })
+
+    let latest = result
+    let status = normalizeFlowStatus(latest, 'withdraw')
+    if (!withdrawFinalStatuses.has(status) && !flowFailureStatuses.has(status) && (result?.withdrawRequestId || result?.transactionId)) {
+      uni.showLoading({ title: '正在确认提现状态', mask: true })
+      try {
+        latest = await pollWithdrawResult(String(result?.withdrawRequestId || ''), String(result?.transactionId || ''))
+      } finally {
+        uni.hideLoading()
+      }
+      status = normalizeFlowStatus(latest, 'withdraw')
+    }
+
+    if (withdrawFinalStatuses.has(status)) {
+      uni.showToast({ title: '提现成功', icon: 'success' })
+    } else if (flowFailureStatuses.has(status)) {
+      uni.showToast({ title: `提现失败：${flowStatusText(status)}`, icon: 'none' })
+    } else {
+      const arrivalText = normalizeArrivalText(latest, 'withdraw')
+      uni.showToast({
+        title: arrivalText ? `提现处理中，${arrivalText}` : `提现已提交，当前状态：${flowStatusText(status)}`,
+        icon: 'none',
+      })
+    }
+    await loadData()
+  } catch (err: any) {
+    uni.showToast({ title: err?.error || err?.message || '提现失败', icon: 'none' })
+  }
 }
 
 onShow(async () => {
@@ -295,6 +628,31 @@ onShow(async () => {
     color: #0c5b95;
     border-color: #ffffff;
   }
+
+  &.minor {
+    flex: 0.8;
+  }
+}
+
+.notice-card {
+  margin: 0 24rpx 12rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 20rpx;
+  background: #fff7eb;
+  color: #9a5d00;
+}
+
+.notice-title {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.notice-text {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.7;
 }
 
 .filter-row {
@@ -339,60 +697,58 @@ onShow(async () => {
 }
 
 .tx-card {
-  border-radius: 14rpx;
-  border: 1rpx solid #e4edf8;
   background: #ffffff;
-  padding: 14rpx;
-  margin-bottom: 10rpx;
+  border-radius: 18rpx;
+  padding: 22rpx;
+  margin-bottom: 14rpx;
+  box-shadow: 0 8rpx 20rpx rgba(15, 23, 42, 0.05);
 }
 
 .tx-top,
 .tx-bottom {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
 }
 
 .tx-title {
-  font-size: 24rpx;
-  color: #1d446a;
+  font-size: 28rpx;
+  color: #162033;
   font-weight: 600;
 }
 
 .tx-amount {
-  font-size: 25rpx;
+  font-size: 30rpx;
   font-weight: 700;
 
   &.income {
-    color: #17a35c;
+    color: #1ea672;
   }
 
   &.expense {
-    color: #d34b4b;
+    color: #e55858;
   }
 
   &.flat {
-    color: #52708d;
+    color: #526072;
   }
 }
 
 .tx-bottom {
-  margin-top: 8rpx;
-}
-
-.tx-time,
-.tx-status,
-.tx-desc {
-  font-size: 21rpx;
-  color: #7e96ae;
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: #7b8794;
 }
 
 .tx-desc {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #526072;
+  line-height: 1.6;
 }
 
 .bottom-space {
-  height: calc(20rpx + env(safe-area-inset-bottom));
+  height: 24rpx;
 }
 </style>

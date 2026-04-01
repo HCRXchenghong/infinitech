@@ -47,6 +47,36 @@ async function listWithdrawRequests(req, res, next) {
   });
 }
 
+async function getPayCenterConfig(req, res, next) {
+  await proxyGet(req, res, next, '/admin/wallet/pay-center/config', {
+    headers: adminHeaders(req)
+  });
+}
+
+async function savePayCenterConfig(req, res, next) {
+  await proxyPost(req, res, next, '/admin/wallet/pay-center/config', {
+    headers: adminHeaders(req)
+  });
+}
+
+async function previewSettlement(req, res, next) {
+  await proxyPost(req, res, next, '/admin/wallet/settlement/rule-preview', {
+    headers: adminHeaders(req)
+  });
+}
+
+async function getRiderDepositOverview(req, res, next) {
+  await proxyGet(req, res, next, '/admin/wallet/rider-deposit/overview', {
+    headers: adminHeaders(req)
+  });
+}
+
+async function listRiderDepositRecords(req, res, next) {
+  await proxyGet(req, res, next, '/admin/wallet/rider-deposit/records', {
+    headers: adminHeaders(req)
+  });
+}
+
 async function reviewWithdraw(req, res, next) {
   await proxyPost(req, res, next, '/admin/wallet/withdraw-requests/review', {
     headers: adminHeaders(req)
@@ -66,6 +96,11 @@ module.exports = {
   unfreezeAccount,
   listOperations,
   listWithdrawRequests,
+  getPayCenterConfig,
+  savePayCenterConfig,
+  previewSettlement,
+  getRiderDepositOverview,
+  listRiderDepositRecords,
   reviewWithdraw,
   recharge,
 };

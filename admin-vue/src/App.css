@@ -151,8 +151,23 @@
 .menu-group-items {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  padding: 2px 0 0 8px;
+}
+
+.menu-section {
+  display: flex;
+  flex-direction: column;
   gap: 2px;
-  padding-left: 8px;
+}
+
+.menu-section-title {
+  padding: 2px 14px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.56);
 }
 
 .menu-item {
@@ -170,6 +185,7 @@
 .menu-item-child {
   font-size: 14px;
   padding: 11px 14px;
+  margin-left: 4px;
 }
 
 .menu-item:hover {
@@ -361,4 +377,3 @@
   position: relative;
   z-index: 1;
 }
-

@@ -7,10 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/yuexiang/go-api/internal/idkit"
 	"github.com/yuexiang/go-api/internal/repository"
 	"gorm.io/gorm"
 )
@@ -18,6 +20,7 @@ import (
 type PayOrderRequest struct {
 	UserID            string `json:"userId"`
 	UserType          string `json:"userType"`
+	Platform          string `json:"platform"`
 	OrderID           string `json:"orderId"`
 	Amount            int64  `json:"amount"`
 	PaymentMethod     string `json:"paymentMethod"`
@@ -45,15 +48,18 @@ type PaymentCallbackRequest struct {
 	TransactionID     string            `json:"transactionId"`
 	ThirdPartyOrderID string            `json:"thirdPartyOrderId"`
 	Headers           map[string]string `json:"headers"`
+	Params            map[string]string `json:"params"`
 	RawBody           string            `json:"rawBody"`
 	Verified          bool              `json:"verified"`
 	Response          string            `json:"response"`
+	HTTPRequest       *http.Request     `json:"-"`
 }
 
 type PaymentService struct {
 	walletRepo repository.WalletRepository
 	riskSvc    *RiskControlService
 	signSecret string
+	settlement *WalletService
 }
 
 func NewPaymentService(walletRepo repository.WalletRepository, riskSvc *RiskControlService, signSecret string) *PaymentService {
@@ -65,6 +71,10 @@ func NewPaymentService(walletRepo repository.WalletRepository, riskSvc *RiskCont
 		riskSvc:    riskSvc,
 		signSecret: signSecret,
 	}
+}
+
+func (s *PaymentService) SetSettlementWallet(wallet *WalletService) {
+	s.settlement = wallet
 }
 
 func (s *PaymentService) PayOrder(ctx context.Context, req PayOrderRequest) (map[string]interface{}, error) {
@@ -82,6 +92,7 @@ func (s *PaymentService) PayOrder(ctx context.Context, req PayOrderRequest) (map
 		return nil, err
 	}
 	req.UserType = normalizedType
+	req.Platform = normalizeClientPlatform(req.Platform)
 	method, channel, err := normalizePaymentMethod(req.PaymentMethod, req.PaymentChannel)
 	if err != nil {
 		return nil, err
@@ -115,6 +126,7 @@ func (s *PaymentService) PayOrder(ctx context.Context, req PayOrderRequest) (map
 	if err != nil {
 		return nil, err
 	}
+	var gatewayIntent *paymentIntentResult
 	var balanceAfter int64
 	var frozenAfter int64
 
@@ -162,6 +174,13 @@ func (s *PaymentService) PayOrder(ctx context.Context, req PayOrderRequest) (map
 				return err
 			}
 			balanceAfter = balanceBefore - req.Amount
+		} else {
+			intent, err := s.createThirdPartyIntent(ctx, req.PaymentMethod, "order_payment", transactionID, req.Amount, req.Description, req.UserID, req.UserType, req.Platform)
+			if err != nil {
+				return err
+			}
+			gatewayIntent = intent
+			req.ThirdPartyOrderID = intent.ThirdPartyOrderID
 		}
 
 		reqJSON, _ := json.Marshal(req)
@@ -186,6 +205,12 @@ func (s *PaymentService) PayOrder(ctx context.Context, req PayOrderRequest) (map
 			Signature:         signWalletTransaction(s.signSecret, transactionID, req.UserID, req.Amount, "payment", now),
 			RequestData:       string(reqJSON),
 		}
+		if gatewayIntent != nil {
+			transaction.Status = gatewayIntent.Status
+			if payload, err := json.Marshal(gatewayIntent.ResponseData); err == nil {
+				transaction.ResponseData = string(payload)
+			}
+		}
 		if err := s.walletRepo.CreateWalletTransactionTx(ctx, tx, transaction); err != nil {
 			return err
 		}
@@ -208,19 +233,42 @@ func (s *PaymentService) PayOrder(ctx context.Context, req PayOrderRequest) (map
 			return fmt.Errorf("%w: payment update conflict", ErrConcurrentBalanceUpdate)
 		}
 
-		if err := s.walletRepo.UpdateOrderPaymentStatusTx(ctx, tx, req.OrderID, transactionID, req.PaymentMethod, now); err != nil {
-			return err
-		}
+		if req.PaymentMethod == "ifpay" {
+			if err := s.walletRepo.UpdateOrderPaymentStatusTx(ctx, tx, req.OrderID, transactionID, req.PaymentMethod, now); err != nil {
+				return err
+			}
+			if s.settlement != nil {
+				if err := s.settlement.PrepareOrderSettlementTx(ctx, tx, order); err != nil {
+					return err
+				}
+			}
 
-		respJSON, _ := json.Marshal(map[string]interface{}{"status": "success", "balanceAfter": balanceAfter})
-		if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transactionID, "success", string(respJSON), &now); err != nil {
-			return err
+			respJSON, _ := json.Marshal(map[string]interface{}{"status": "success", "balanceAfter": balanceAfter})
+			if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transactionID, "success", string(respJSON), &now); err != nil {
+				return err
+			}
 		}
 
 		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if gatewayIntent != nil {
+		return map[string]interface{}{
+			"transactionId":     transactionID,
+			"orderId":           req.OrderID,
+			"paymentMethod":     req.PaymentMethod,
+			"status":            gatewayIntent.Status,
+			"thirdPartyOrderId": gatewayIntent.ThirdPartyOrderID,
+			"paymentPayload":    gatewayIntent.ClientPayload,
+			"integrationTarget": gatewayIntent.IntegrationTarget,
+			"gateway":           gatewayIntent.Gateway,
+			"requestedAt":       now,
+			"balance":           balanceAfter,
+			"frozenBalance":     frozenAfter,
+		}, nil
 	}
 
 	return map[string]interface{}{
@@ -274,6 +322,7 @@ func (s *PaymentService) RefundOrder(ctx context.Context, req RefundOrderRequest
 	}
 	var balanceAfter int64
 	var frozenAfter int64
+	var gatewayRefund *paymentRefundResult
 
 	err = s.walletRepo.WithTransaction(ctx, func(tx *gorm.DB) error {
 		order, err := s.findOrderTx(ctx, tx, req.OrderID)
@@ -290,7 +339,7 @@ func (s *PaymentService) RefundOrder(ctx context.Context, req RefundOrderRequest
 			}
 			req.Amount = amount
 		}
-		if err := s.riskSvc.ValidateAmount(req.Amount, "recharge"); err != nil {
+		if err := s.riskSvc.ValidateAmount(req.Amount, "refund"); err != nil {
 			return err
 		}
 
@@ -303,8 +352,25 @@ func (s *PaymentService) RefundOrder(ctx context.Context, req RefundOrderRequest
 		}
 
 		balanceBefore := account.Balance
-		balanceAfter = balanceBefore + req.Amount
+		balanceAfter = balanceBefore
 		frozenAfter = account.FrozenBalance
+
+		originalPaymentTransaction, err := s.findSuccessfulOrderPaymentTransactionTx(ctx, tx, order)
+		if err != nil {
+			return err
+		}
+		refundMethod := normalizeChannel(firstNonEmptyText(order.PaymentMethod, originalPaymentTransaction.PaymentMethod))
+		if refundMethod == "" {
+			refundMethod = "ifpay"
+		}
+		if refundMethod == "ifpay" {
+			balanceAfter = balanceBefore + req.Amount
+		} else {
+			gatewayRefund, err = s.createThirdPartyRefund(ctx, refundMethod, transactionID, originalPaymentTransaction, req.Amount, req.Reason)
+			if err != nil {
+				return err
+			}
+		}
 
 		reqJSON, _ := json.Marshal(req)
 		transaction := &repository.WalletTransaction{
@@ -320,42 +386,76 @@ func (s *PaymentService) RefundOrder(ctx context.Context, req RefundOrderRequest
 			Amount:            req.Amount,
 			BalanceBefore:     balanceBefore,
 			BalanceAfter:      balanceAfter,
-			PaymentMethod:     "ifpay",
+			PaymentMethod:     refundMethod,
+			PaymentChannel:    refundMethod,
 			Status:            "pending",
 			Description:       req.Reason,
 			Signature:         signWalletTransaction(s.signSecret, transactionID, req.UserID, req.Amount, "refund", now),
 			RequestData:       string(reqJSON),
 		}
+		if gatewayRefund != nil {
+			transaction.Status = gatewayRefund.Status
+			transaction.ThirdPartyOrderID = gatewayRefund.ThirdPartyOrderID
+			if payload, err := json.Marshal(gatewayRefund.ResponseData); err == nil {
+				transaction.ResponseData = string(payload)
+			}
+		}
 		if err := s.walletRepo.CreateWalletTransactionTx(ctx, tx, transaction); err != nil {
 			return err
 		}
 
-		updates := map[string]interface{}{
-			"balance":             balanceAfter,
-			"total_balance":       balanceAfter + frozenAfter,
-			"last_transaction_id": transactionID,
-			"last_transaction_at": now,
-		}
-		updated, err := s.walletRepo.UpdateWalletAccountWithVersionTx(ctx, tx, account.ID, account.Version, updates)
-		if err != nil {
-			return err
-		}
-		if !updated {
-			return fmt.Errorf("%w: refund update conflict", ErrConcurrentBalanceUpdate)
+		if gatewayRefund == nil {
+			updates := map[string]interface{}{
+				"balance":             balanceAfter,
+				"total_balance":       balanceAfter + frozenAfter,
+				"last_transaction_id": transactionID,
+				"last_transaction_at": now,
+			}
+			updated, err := s.walletRepo.UpdateWalletAccountWithVersionTx(ctx, tx, account.ID, account.Version, updates)
+			if err != nil {
+				return err
+			}
+			if !updated {
+				return fmt.Errorf("%w: refund update conflict", ErrConcurrentBalanceUpdate)
+			}
+
+			if err := s.walletRepo.UpdateOrderRefundStatusTx(ctx, tx, req.OrderID, transactionID, req.Amount, now); err != nil {
+				return err
+			}
+			if s.settlement != nil {
+				if err := s.settlement.ReverseOrderSettlementTx(ctx, tx, order, req.Amount, now, req.Reason); err != nil {
+					return err
+				}
+			}
+
+			respJSON, _ := json.Marshal(map[string]interface{}{"status": "success", "balanceAfter": balanceAfter})
+			if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transactionID, "success", string(respJSON), &now); err != nil {
+				return err
+			}
+			return nil
 		}
 
-		if err := s.walletRepo.UpdateOrderRefundStatusTx(ctx, tx, req.OrderID, transactionID, req.Amount, now); err != nil {
-			return err
-		}
-
-		respJSON, _ := json.Marshal(map[string]interface{}{"status": "success", "balanceAfter": balanceAfter})
-		if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transactionID, "success", string(respJSON), &now); err != nil {
+		if err := s.markOrderRefundPendingTx(ctx, tx, req.OrderID, transactionID, req.Amount); err != nil {
 			return err
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if gatewayRefund != nil {
+		return map[string]interface{}{
+			"transactionId":     transactionID,
+			"orderId":           req.OrderID,
+			"status":            gatewayRefund.Status,
+			"gateway":           gatewayRefund.Gateway,
+			"integrationTarget": gatewayRefund.IntegrationTarget,
+			"thirdPartyOrderId": gatewayRefund.ThirdPartyOrderID,
+			"requestedAt":       now,
+			"balance":           balanceAfter,
+			"frozenBalance":     frozenAfter,
+		}, nil
 	}
 
 	return map[string]interface{}{
@@ -370,14 +470,27 @@ func (s *PaymentService) RefundOrder(ctx context.Context, req RefundOrderRequest
 
 func (s *PaymentService) RecordCallback(ctx context.Context, req PaymentCallbackRequest) (map[string]interface{}, error) {
 	channel := strings.ToLower(strings.TrimSpace(req.Channel))
-	if channel != "wechat" && channel != "alipay" {
+	if channel != "wechat" && channel != "alipay" && channel != "bank_card" {
 		return nil, fmt.Errorf("%w: unsupported callback channel", ErrInvalidArgument)
+	}
+	if !req.Verified {
+		verifiedReq, verifyErr := s.verifyAndNormalizeCallback(ctx, req)
+		if verifyErr == nil {
+			req = verifiedReq
+		} else if strings.TrimSpace(req.Response) == "" {
+			req.Response = verifyErr.Error()
+		}
 	}
 
 	headersJSON, _ := json.Marshal(req.Headers)
 	fingerprintSeed := req.RawBody + "|" + req.Signature + "|" + req.Nonce
 	fingerprintSum := sha256.Sum256([]byte(fingerprintSeed))
 	fingerprint := hex.EncodeToString(fingerprintSum[:])
+	if duplicated, result, err := s.findDuplicatedProcessedCallback(ctx, channel, fingerprint); err != nil {
+		return nil, err
+	} else if duplicated {
+		return result, nil
+	}
 	now := time.Now()
 	status := "success"
 	if !req.Verified {
@@ -394,6 +507,7 @@ func (s *PaymentService) RecordCallback(ctx context.Context, req PaymentCallback
 	}
 
 	callback := repository.PaymentCallback{
+		UnifiedIdentity:   repository.UnifiedIdentity{},
 		CallbackID:        callbackID,
 		CallbackIDRaw:     callbackIDRaw,
 		Channel:           channel,
@@ -411,16 +525,560 @@ func (s *PaymentService) RecordCallback(ctx context.Context, req PaymentCallback
 		ResponseBody:      req.Response,
 		ProcessedAt:       &now,
 	}
+	if uid, tsid, idErr := idkit.NextIdentityForTable(ctx, s.walletRepo.DB(), callback.TableName(), now); idErr == nil {
+		callback.UID = uid
+		callback.TSID = tsid
+	} else {
+		return nil, idErr
+	}
 	if err := s.walletRepo.DB().WithContext(ctx).Create(&callback).Error; err != nil {
 		return nil, err
+	}
+
+	settlement := map[string]interface{}{
+		"handled": false,
+	}
+	if req.Verified {
+		settlementResult, err := s.applyVerifiedCallback(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		settlement = settlementResult
 	}
 
 	return map[string]interface{}{
 		"callbackId":  callback.CallbackID,
 		"status":      callback.Status,
 		"verified":    callback.Verified,
+		"settlement":  settlement,
 		"processedAt": now,
 	}, nil
+}
+
+func (s *PaymentService) findDuplicatedProcessedCallback(ctx context.Context, channel, fingerprint string) (bool, map[string]interface{}, error) {
+	if strings.TrimSpace(fingerprint) == "" {
+		return false, nil, nil
+	}
+
+	var callback repository.PaymentCallback
+	err := s.walletRepo.DB().WithContext(ctx).
+		Model(&repository.PaymentCallback{}).
+		Where("channel = ? AND replay_fingerprint = ? AND verified = ?", channel, fingerprint, true).
+		Order("id DESC").
+		First(&callback).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil, nil
+		}
+		return false, nil, err
+	}
+
+	result := map[string]interface{}{
+		"callbackId":  callback.CallbackID,
+		"status":      callback.Status,
+		"verified":    callback.Verified,
+		"duplicated":  true,
+		"settlement":  map[string]interface{}{"handled": false, "duplicated": true},
+		"processedAt": callback.ProcessedAt,
+	}
+	return true, result, nil
+}
+
+func (s *PaymentService) applyVerifiedCallback(ctx context.Context, req PaymentCallbackRequest) (map[string]interface{}, error) {
+	eventType := strings.ToLower(strings.TrimSpace(req.EventType))
+	if eventType != "" {
+		if strings.Contains(eventType, "wait") ||
+			strings.Contains(eventType, "pending") ||
+			strings.Contains(eventType, "process") ||
+			strings.Contains(eventType, "accept") ||
+			strings.Contains(eventType, "init") {
+			return map[string]interface{}{
+				"handled": false,
+				"status":  "pending",
+				"reason":  req.EventType,
+			}, nil
+		}
+		if strings.Contains(eventType, "fail") || strings.Contains(eventType, "close") || strings.Contains(eventType, "cancel") {
+			return s.markThirdPartyCallbackFailed(ctx, req)
+		}
+	}
+	return s.settleThirdPartyCallbackSuccess(ctx, req)
+}
+
+func (s *PaymentService) settleThirdPartyCallbackSuccess(ctx context.Context, req PaymentCallbackRequest) (map[string]interface{}, error) {
+	now := time.Now()
+	var result map[string]interface{}
+
+	err := s.walletRepo.WithTransaction(ctx, func(tx *gorm.DB) error {
+		transaction, err := s.findWalletTransactionForCallbackTx(ctx, tx, req)
+		if err != nil {
+			return err
+		}
+		if transaction.Status == "success" {
+			result = map[string]interface{}{
+				"handled":       true,
+				"duplicated":    true,
+				"transactionId": transaction.TransactionID,
+				"type":          transaction.Type,
+				"status":        transaction.Status,
+			}
+			return nil
+		}
+		if transaction.Status == "failed" {
+			result = map[string]interface{}{
+				"handled":       true,
+				"duplicated":    true,
+				"transactionId": transaction.TransactionID,
+				"type":          transaction.Type,
+				"status":        transaction.Status,
+				"ignored":       true,
+				"reason":        "transaction already failed",
+			}
+			return nil
+		}
+
+		switch transaction.Type {
+		case "payment":
+			respJSON, _ := json.Marshal(map[string]interface{}{
+				"status":            "success",
+				"callbackChannel":   req.Channel,
+				"thirdPartyOrderId": firstNonEmptyText(req.ThirdPartyOrderID, transaction.ThirdPartyOrderID),
+			})
+			if err := s.walletRepo.UpdateOrderPaymentStatusTx(ctx, tx, transaction.BusinessID, transaction.TransactionID, transaction.PaymentMethod, now); err != nil {
+				return err
+			}
+			if s.settlement != nil {
+				order, err := s.findOrderTx(ctx, tx, transaction.BusinessID)
+				if err != nil {
+					return err
+				}
+				if err := s.settlement.PrepareOrderSettlementTx(ctx, tx, order); err != nil {
+					return err
+				}
+			}
+			if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transaction.TransactionID, "success", string(respJSON), &now); err != nil {
+				return err
+			}
+			result = map[string]interface{}{
+				"handled":       true,
+				"transactionId": transaction.TransactionID,
+				"type":          transaction.Type,
+				"status":        "success",
+				"orderId":       transaction.BusinessID,
+			}
+			return nil
+		case "refund":
+			return s.completeRefundCallbackTx(ctx, tx, transaction, req, now, &result)
+		case "withdraw":
+			return s.completeWithdrawCallbackTx(ctx, tx, transaction, req, now, &result)
+		case "recharge":
+			return s.completeRechargeCallbackTx(ctx, tx, transaction, req, now, &result)
+		case "rider_deposit":
+			return s.completeRiderDepositCallbackTx(ctx, tx, transaction, req, now, &result)
+		default:
+			result = map[string]interface{}{
+				"handled":       false,
+				"transactionId": transaction.TransactionID,
+				"type":          transaction.Type,
+				"status":        transaction.Status,
+			}
+			return nil
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s *PaymentService) markThirdPartyCallbackFailed(ctx context.Context, req PaymentCallbackRequest) (map[string]interface{}, error) {
+	now := time.Now()
+	var result map[string]interface{}
+	err := s.walletRepo.WithTransaction(ctx, func(tx *gorm.DB) error {
+		transaction, err := s.findWalletTransactionForCallbackTx(ctx, tx, req)
+		if err != nil {
+			return err
+		}
+		if transaction.Status == "failed" {
+			result = map[string]interface{}{
+				"handled":       true,
+				"duplicated":    true,
+				"transactionId": transaction.TransactionID,
+				"type":          transaction.Type,
+				"status":        transaction.Status,
+			}
+			return nil
+		}
+		if transaction.Status == "success" {
+			result = map[string]interface{}{
+				"handled":       true,
+				"duplicated":    true,
+				"transactionId": transaction.TransactionID,
+				"type":          transaction.Type,
+				"status":        transaction.Status,
+				"ignored":       true,
+				"reason":        "transaction already succeeded",
+			}
+			return nil
+		}
+		respJSON, _ := json.Marshal(map[string]interface{}{
+			"status":            "failed",
+			"callbackChannel":   req.Channel,
+			"thirdPartyOrderId": firstNonEmptyText(req.ThirdPartyOrderID, transaction.ThirdPartyOrderID),
+			"eventType":         req.EventType,
+		})
+		if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transaction.TransactionID, "failed", string(respJSON), &now); err != nil {
+			return err
+		}
+		if transaction.Type == "refund" {
+			if err := s.resetOrderRefundPendingTx(ctx, tx, transaction.BusinessID); err != nil {
+				return err
+			}
+			if err := tx.WithContext(ctx).
+				Model(&repository.AfterSalesRequest{}).
+				Where("refund_transaction_id = ?", transaction.TransactionID).
+				Updates(map[string]interface{}{
+					"refund_transaction_id": "",
+					"refunded_at":           nil,
+					"processed_at":          now,
+				}).Error; err != nil {
+				return err
+			}
+		}
+		if transaction.Type == "withdraw" && s.settlement != nil {
+			if err := s.settlement.failWithdrawByCallbackTx(
+				ctx,
+				tx,
+				transaction,
+				firstNonEmptyText(req.ThirdPartyOrderID, transaction.ThirdPartyOrderID),
+				firstNonEmptyText(req.EventType, "callback marked transfer failed"),
+				now,
+			); err != nil {
+				return err
+			}
+		}
+		if transaction.Type == "recharge" || transaction.Type == "rider_deposit" {
+			if err := tx.WithContext(ctx).Model(&repository.RechargeOrder{}).
+				Where("order_id = ?", transaction.BusinessID).
+				Updates(map[string]interface{}{
+					"status":        "failed",
+					"callback_data": req.RawBody,
+					"callback_at":   now,
+				}).Error; err != nil {
+				return err
+			}
+		}
+		result = map[string]interface{}{
+			"handled":       true,
+			"transactionId": transaction.TransactionID,
+			"type":          transaction.Type,
+			"status":        "failed",
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s *PaymentService) completeWithdrawCallbackTx(
+	ctx context.Context,
+	tx *gorm.DB,
+	transaction *repository.WalletTransaction,
+	req PaymentCallbackRequest,
+	now time.Time,
+	result *map[string]interface{},
+) error {
+	if s.settlement == nil {
+		return fmt.Errorf("%w: withdraw callback settlement service is unavailable", ErrInvalidArgument)
+	}
+	if err := s.settlement.completeWithdrawByCallbackTx(
+		ctx,
+		tx,
+		transaction,
+		firstNonEmptyText(req.ThirdPartyOrderID, transaction.ThirdPartyOrderID),
+		firstNonEmptyText(req.EventType, "callback transfer completed"),
+		now,
+	); err != nil {
+		return err
+	}
+
+	*result = map[string]interface{}{
+		"handled":       true,
+		"transactionId": transaction.TransactionID,
+		"type":          transaction.Type,
+		"status":        "success",
+		"requestId":     transaction.BusinessID,
+		"completedAt":   now,
+	}
+	return nil
+}
+
+func (s *PaymentService) completeRefundCallbackTx(
+	ctx context.Context,
+	tx *gorm.DB,
+	transaction *repository.WalletTransaction,
+	req PaymentCallbackRequest,
+	now time.Time,
+	result *map[string]interface{},
+) error {
+	order, err := s.findOrderTx(ctx, tx, transaction.BusinessID)
+	if err != nil {
+		return err
+	}
+
+	respJSON, _ := json.Marshal(map[string]interface{}{
+		"status":            "success",
+		"callbackChannel":   req.Channel,
+		"thirdPartyOrderId": firstNonEmptyText(req.ThirdPartyOrderID, transaction.ThirdPartyOrderID),
+	})
+	if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transaction.TransactionID, "success", string(respJSON), &now); err != nil {
+		return err
+	}
+	if err := s.walletRepo.UpdateOrderRefundStatusTx(ctx, tx, transaction.BusinessID, transaction.TransactionID, transaction.Amount, now); err != nil {
+		return err
+	}
+	if s.settlement != nil {
+		if err := s.settlement.ReverseOrderSettlementTx(ctx, tx, order, transaction.Amount, now, transaction.Description); err != nil {
+			return err
+		}
+	}
+	if err := tx.WithContext(ctx).
+		Model(&repository.AfterSalesRequest{}).
+		Where("refund_transaction_id = ?", transaction.TransactionID).
+		Updates(map[string]interface{}{
+			"refunded_at": now,
+		}).Error; err != nil {
+		return err
+	}
+
+	*result = map[string]interface{}{
+		"handled":       true,
+		"transactionId": transaction.TransactionID,
+		"type":          transaction.Type,
+		"status":        "success",
+		"orderId":       transaction.BusinessID,
+		"refundAt":      now,
+	}
+	return nil
+}
+
+func (s *PaymentService) completeRechargeCallbackTx(
+	ctx context.Context,
+	tx *gorm.DB,
+	transaction *repository.WalletTransaction,
+	req PaymentCallbackRequest,
+	now time.Time,
+	result *map[string]interface{},
+) error {
+	account, err := s.walletRepo.GetOrCreateWalletAccountTx(ctx, tx, transaction.UserID, transaction.UserType)
+	if err != nil {
+		return err
+	}
+	accountResetForNewDay(account, now)
+
+	balanceAfter := account.Balance + transaction.Amount
+	updates := map[string]interface{}{
+		"balance":               balanceAfter,
+		"total_balance":         balanceAfter + account.FrozenBalance,
+		"daily_recharge_amount": account.DailyRechargeAmount + transaction.Amount,
+		"daily_recharge_count":  account.DailyRechargeCount + 1,
+		"last_transaction_id":   transaction.TransactionID,
+		"last_transaction_at":   now,
+		"last_daily_reset_at":   dayStart(now),
+	}
+	updated, err := s.walletRepo.UpdateWalletAccountWithVersionTx(ctx, tx, account.ID, account.Version, updates)
+	if err != nil {
+		return err
+	}
+	if !updated {
+		return fmt.Errorf("%w: recharge callback update conflict", ErrConcurrentBalanceUpdate)
+	}
+
+	respJSON, _ := json.Marshal(map[string]interface{}{
+		"status":            "success",
+		"balanceAfter":      balanceAfter,
+		"callbackChannel":   req.Channel,
+		"thirdPartyOrderId": firstNonEmptyText(req.ThirdPartyOrderID, transaction.ThirdPartyOrderID),
+	})
+	if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transaction.TransactionID, "success", string(respJSON), &now); err != nil {
+		return err
+	}
+	if err := tx.WithContext(ctx).Model(&repository.RechargeOrder{}).
+		Where("order_id = ?", transaction.BusinessID).
+		Updates(map[string]interface{}{
+			"status":               "success",
+			"paid_at":              now,
+			"callback_data":        req.RawBody,
+			"callback_at":          now,
+			"third_party_order_id": firstNonEmptyText(req.ThirdPartyOrderID, transaction.ThirdPartyOrderID),
+		}).Error; err != nil {
+		return err
+	}
+	*result = map[string]interface{}{
+		"handled":         true,
+		"transactionId":   transaction.TransactionID,
+		"type":            transaction.Type,
+		"status":          "success",
+		"rechargeOrderId": transaction.BusinessID,
+		"balanceAfter":    balanceAfter,
+	}
+	return nil
+}
+
+func (s *PaymentService) completeRiderDepositCallbackTx(
+	ctx context.Context,
+	tx *gorm.DB,
+	transaction *repository.WalletTransaction,
+	req PaymentCallbackRequest,
+	now time.Time,
+	result *map[string]interface{},
+) error {
+	respJSON, _ := json.Marshal(map[string]interface{}{
+		"status":            "success",
+		"callbackChannel":   req.Channel,
+		"thirdPartyOrderId": firstNonEmptyText(req.ThirdPartyOrderID, transaction.ThirdPartyOrderID),
+	})
+	if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transaction.TransactionID, "success", string(respJSON), &now); err != nil {
+		return err
+	}
+	if err := tx.WithContext(ctx).Model(&repository.RechargeOrder{}).
+		Where("order_id = ?", transaction.BusinessID).
+		Updates(map[string]interface{}{
+			"status":               "success",
+			"paid_at":              now,
+			"callback_data":        req.RawBody,
+			"callback_at":          now,
+			"third_party_order_id": firstNonEmptyText(req.ThirdPartyOrderID, transaction.ThirdPartyOrderID),
+		}).Error; err != nil {
+		return err
+	}
+	if err := tx.WithContext(ctx).Model(&repository.RiderDepositRecord{}).
+		Where("recharge_order_id = ?", transaction.BusinessID).
+		Updates(map[string]interface{}{
+			"status":     "paid_locked",
+			"locked_at":  now,
+			"updated_at": now,
+		}).Error; err != nil {
+		return err
+	}
+	*result = map[string]interface{}{
+		"handled":         true,
+		"transactionId":   transaction.TransactionID,
+		"type":            transaction.Type,
+		"status":          "success",
+		"rechargeOrderId": transaction.BusinessID,
+	}
+	return nil
+}
+
+func (s *PaymentService) findWalletTransactionForCallbackTx(
+	ctx context.Context,
+	tx *gorm.DB,
+	req PaymentCallbackRequest,
+) (*repository.WalletTransaction, error) {
+	var transaction repository.WalletTransaction
+	query := tx.WithContext(ctx).Model(&repository.WalletTransaction{})
+
+	transactionID := strings.TrimSpace(req.TransactionID)
+	thirdPartyOrderID := strings.TrimSpace(req.ThirdPartyOrderID)
+
+	switch {
+	case transactionID != "" && thirdPartyOrderID != "":
+		query = query.Where(
+			"transaction_id = ? OR transaction_id_raw = ? OR third_party_order_id = ?",
+			transactionID,
+			transactionID,
+			thirdPartyOrderID,
+		)
+	case transactionID != "":
+		query = query.Where("transaction_id = ? OR transaction_id_raw = ?", transactionID, transactionID)
+	case thirdPartyOrderID != "":
+		query = query.Where("third_party_order_id = ?", thirdPartyOrderID)
+	default:
+		return nil, fmt.Errorf("%w: callback transaction identifiers are required", ErrInvalidArgument)
+	}
+
+	if err := query.Order("id DESC").First(&transaction).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: callback target transaction not found", ErrInvalidArgument)
+		}
+		return nil, err
+	}
+	return &transaction, nil
+}
+
+func (s *PaymentService) findSuccessfulOrderPaymentTransactionTx(
+	ctx context.Context,
+	tx *gorm.DB,
+	order *repository.Order,
+) (*repository.WalletTransaction, error) {
+	if order == nil {
+		return nil, fmt.Errorf("%w: order is required", ErrInvalidArgument)
+	}
+	method := normalizeChannel(order.PaymentMethod)
+	if method == "ifpay" {
+		return &repository.WalletTransaction{
+			TransactionID:     strings.TrimSpace(order.PaymentTransactionID),
+			PaymentMethod:     "ifpay",
+			ThirdPartyOrderID: "",
+		}, nil
+	}
+
+	var transaction repository.WalletTransaction
+	query := tx.WithContext(ctx).
+		Model(&repository.WalletTransaction{}).
+		Where("type = ? AND business_type = ? AND business_id = ? AND status = ?", "payment", "order_payment", settlementOrderRef(order), "success").
+		Order("id DESC")
+	if err := query.First(&transaction).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: order payment transaction not found", ErrInvalidArgument)
+		}
+		return nil, err
+	}
+	return &transaction, nil
+}
+
+func (s *PaymentService) markOrderRefundPendingTx(ctx context.Context, tx *gorm.DB, orderID, transactionID string, refundAmount int64) error {
+	updates := map[string]interface{}{
+		"payment_status":        "refunding",
+		"refund_transaction_id": transactionID,
+		"refund_amount":         refundAmount,
+		"refund_time":           nil,
+	}
+	res := tx.WithContext(ctx).
+		Model(&repository.Order{}).
+		Where("id = ? OR daily_order_id = ?", orderID, orderID).
+		Updates(updates)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (s *PaymentService) resetOrderRefundPendingTx(ctx context.Context, tx *gorm.DB, orderID string) error {
+	updates := map[string]interface{}{
+		"payment_status":        "paid",
+		"refund_transaction_id": "",
+		"refund_amount":         int64(0),
+		"refund_time":           nil,
+	}
+	res := tx.WithContext(ctx).
+		Model(&repository.Order{}).
+		Where("id = ? OR daily_order_id = ?", orderID, orderID).
+		Updates(updates)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (s *PaymentService) findOrderTx(ctx context.Context, tx *gorm.DB, orderID string) (*repository.Order, error) {

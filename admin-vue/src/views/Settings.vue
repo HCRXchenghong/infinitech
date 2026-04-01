@@ -11,21 +11,19 @@
 
     <div class="grid">
 
-      <!-- 支付模式 -->
       <el-card class="card">
-        <div class="card-title">支付模式</div>
-        <el-form label-width="100px" size="small">
-          <el-form-item label="当前模式">
-            <el-switch
-              v-model="payMode.isProd"
-              active-text="生产模式"
-              inactive-text="开发模式"
-              :loading="savingPayMode"
-              @change="savePayMode"
-            />
-            <div class="form-tip">开发模式：模拟支付成功 / 生产模式：真实调用</div>
-          </el-form-item>
-        </el-form>
+        <div class="card-title">支付环境</div>
+        <div style="display:grid;gap:12px;">
+          <div style="font-size:14px;font-weight:600;color:#1f2937;">
+            支付环境切换也已统一迁移到支付中心。
+          </div>
+          <div class="form-tip">
+            生产模式、沙箱模式、微信支付和支付宝联调请统一在支付中心维护，避免系统设置与支付中心状态不一致。
+          </div>
+          <div style="display:flex;justify-content:flex-end;">
+            <el-button type="primary" @click="router.push('/payment-center')">前往支付中心</el-button>
+          </div>
+        </div>
       </el-card>
 
       <!-- 调试模式 -->
@@ -817,34 +815,19 @@
         </el-form>
       </el-card>
 
-      <!-- 微信支付配置 -->
       <el-card class="card">
-        <div class="card-title">微信支付配置</div>
-        <el-form :model="wxpay" label-width="110px" size="small">
-          <el-form-item label="AppID"><el-input v-model="wxpay.appId" placeholder="wx 开头的 AppID" /></el-form-item>
-          <el-form-item label="商户号"><el-input v-model="wxpay.mchId" placeholder="微信支付商户号" /></el-form-item>
-          <el-form-item label="API 密钥"><el-input v-model="wxpay.apiKey" type="password" show-password placeholder="32 位 API 密钥" /></el-form-item>
-          <el-form-item label="APIv3 密钥"><el-input v-model="wxpay.apiV3Key" type="password" show-password placeholder="32 位 APIv3 密钥" /></el-form-item>
-          <el-form-item label="证书序列号"><el-input v-model="wxpay.serialNo" placeholder="商户 API 证书序列号" /></el-form-item>
-          <el-form-item label="回调地址"><el-input v-model="wxpay.notifyUrl" placeholder="https://yourdomain.com/api/pay/wxpay/notify" /></el-form-item>
-          <el-form-item><el-button type="primary" :loading="savingWx" @click="saveWxpay">保存</el-button></el-form-item>
-        </el-form>
-      </el-card>
-
-      <!-- 支付宝配置 -->
-      <el-card class="card">
-        <div class="card-title">支付宝配置</div>
-        <el-form :model="alipay" label-width="110px" size="small">
-          <el-form-item label="AppID"><el-input v-model="alipay.appId" placeholder="支付宝 AppID" /></el-form-item>
-          <el-form-item label="应用私钥"><el-input v-model="alipay.privateKey" type="textarea" :rows="3" placeholder="RSA2 私钥（PKCS8 格式）" /></el-form-item>
-          <el-form-item label="支付宝公钥"><el-input v-model="alipay.alipayPublicKey" type="textarea" :rows="3" placeholder="支付宝公钥" /></el-form-item>
-          <el-form-item label="回调地址"><el-input v-model="alipay.notifyUrl" placeholder="https://yourdomain.com/api/pay/alipay/notify" /></el-form-item>
-          <el-form-item label="沙箱模式">
-            <el-switch v-model="alipay.sandbox" />
-            <div class="form-tip">开启后使用支付宝沙箱环境</div>
-          </el-form-item>
-          <el-form-item><el-button type="primary" :loading="savingAli" @click="saveAlipay">保存</el-button></el-form-item>
-        </el-form>
+        <div class="card-title">支付渠道配置</div>
+        <div style="display:grid;gap:12px;">
+          <div style="font-size:14px;font-weight:600;color:#1f2937;">
+            微信支付、支付宝、提现费、分账、保证金与银行卡提现配置已统一迁移到支付中心。
+          </div>
+          <div class="form-tip">
+            为避免系统设置和支付中心出现双份配置导致联调混乱，这里只保留说明入口，不再维护渠道密钥与回调参数。
+          </div>
+          <div style="display:flex;justify-content:flex-end;">
+            <el-button type="primary" @click="router.push('/payment-center')">前往支付中心</el-button>
+          </div>
+        </div>
       </el-card>
 
       <!-- 微信登录 -->

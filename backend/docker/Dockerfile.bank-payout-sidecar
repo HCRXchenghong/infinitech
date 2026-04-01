@@ -1,0 +1,12 @@
+ARG NODE_BASE_IMAGE=node:20-alpine
+
+FROM ${NODE_BASE_IMAGE}
+
+WORKDIR /app/backend/bank-payout-sidecar
+
+COPY backend/bank-payout-sidecar/package.json ./package.json
+COPY backend/bank-payout-sidecar/server.js ./server.js
+
+EXPOSE 10302
+
+CMD ["node", "server.js"]

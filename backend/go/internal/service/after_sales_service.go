@@ -550,11 +550,18 @@ func (s *AfterSalesService) UpdateStatus(ctx context.Context, id string, data in
 			if refundTransactionID == "" {
 				refundTransactionID = strings.TrimSpace(afterSalesToString(refundResult["transaction_id"]))
 			}
+			refundStatus := strings.ToLower(strings.TrimSpace(afterSalesToString(refundResult["status"])))
+			if refundStatus == "success" || refundStatus == "refunded" {
+				refundedAt = time.Now()
+			}
 		}
 
-		if entity.RefundedAt != nil {
+		if refundedAt == nil && entity.RefundedAt != nil {
 			refundedAt = *entity.RefundedAt
-		} else {
+		} else if refundedAt == nil && refundTransactionID != "" {
+			// Third-party refunds now enter refund_pending first and should only get refundedAt after callback success.
+			refundedAt = nil
+		} else if refundedAt == nil {
 			refundedAt = time.Now()
 		}
 	} else {

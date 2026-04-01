@@ -1,0 +1,21 @@
+ARG NODE_BASE_IMAGE=node:20-alpine
+
+FROM ${NODE_BASE_IMAGE}
+
+ARG ALPINE_MIRROR=
+
+WORKDIR /app/backend/alipay-sidecar
+
+RUN if [ -n "$ALPINE_MIRROR" ]; then sed -i "s|https\\?://dl-cdn.alpinelinux.org/alpine|${ALPINE_MIRROR}|g" /etc/apk/repositories; fi \
+  && apk add --no-cache wget
+
+COPY backend/alipay-sidecar/package.json ./package.json
+COPY backend/alipay-sidecar/package-lock.json ./package-lock.json
+RUN npm ci --omit=dev
+COPY backend/alipay-sidecar/server.js ./server.js
+
+EXPOSE 10301
+
+HEALTHCHECK --interval=15s --timeout=5s --retries=10 CMD wget -qO- http://127.0.0.1:10301/health >/dev/null || exit 1
+
+CMD ["node", "server.js"]

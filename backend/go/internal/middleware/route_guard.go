@@ -85,7 +85,6 @@ var routeGuardRules = []routeGuardRule{
 	{path: "/api/vip-settings", guard: guardAdminOnly},
 	{path: "/api/coin-ratio", guard: guardAdminOnly},
 	{path: "/api/pay-config", prefix: true, guard: guardAdminOnly},
-	{path: "/api/payment-notices", guard: guardAdminOnly},
 	{path: "/api/carousel-settings", guard: guardAdminOnly},
 	{path: "/api/carousel", prefix: true, guard: guardAdminOnly},
 	{path: "/api/push-messages", prefix: true, guard: guardAdminOnly},

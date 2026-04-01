@@ -46,6 +46,7 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 	riskControlService := NewRiskControlService(repos.Wallet)
 	paymentService := NewPaymentService(repos.Wallet, riskControlService, walletSignSecret)
 	walletService := NewWalletService(repos.Wallet, paymentService, riskControlService, walletSignSecret)
+	paymentService.SetSettlementWallet(walletService)
 	financialService := NewFinancialService(repos.Wallet)
 	groupbuyService := NewGroupbuyService(repos.DB, walletSignSecret)
 	opNotificationService := NewOpNotificationService(repos.DB)

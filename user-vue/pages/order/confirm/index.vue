@@ -66,7 +66,13 @@
         <text class="pay-method-title">支付方式</text>
         <text class="pay-method-current">{{ payMethodLabel(selectedPayMethod) }}</text>
       </view>
-      <view class="pay-method-list">
+      <view v-if="paymentOptionsLoading" class="pay-method-empty">
+        <text class="gray">正在加载支付方式...</text>
+      </view>
+      <view v-else-if="payMethods.length === 0" class="pay-method-empty">
+        <text class="gray">后台暂未开放当前端订单支付方式</text>
+      </view>
+      <view v-else class="pay-method-list">
         <view
           v-for="item in payMethods"
           :key="item.value"
@@ -104,11 +110,50 @@ import {
 } from '@/shared-ui/api.js'
 import { useUserOrderStore } from '@/shared-ui/userOrderStore.js'
 
-const PAY_METHODS = [
-  { value: 'ifpay', label: 'IF-Pay 余额支付', tip: '优先使用钱包余额' },
-  { value: 'wechat', label: '微信支付', tip: '推荐微信用户选择' },
-  { value: 'alipay', label: '支付宝支付', tip: '适合支付宝用户' }
-]
+const CLIENT_PLATFORM = 'mini_program'
+
+function normalizePayChannel(raw) {
+  const value = String(raw || '').trim().toLowerCase()
+  if (value === 'if-pay' || value === 'if_pay' || value === 'balance') return 'ifpay'
+  if (value === 'wxpay' || value === 'wechatpay') return 'wechat'
+  if (value === 'ali') return 'alipay'
+  return value
+}
+
+function fallbackPayMethods() {
+  return [
+    { value: 'ifpay', label: 'IF-Pay 余额支付', tip: '优先使用钱包余额' },
+    { value: 'wechat', label: '微信支付', tip: '小程序订单支付' }
+  ]
+}
+
+function normalizePayMethods(response) {
+  const rawOptions = Array.isArray(response?.options)
+    ? response.options
+    : Array.isArray(response?.data?.options)
+      ? response.data.options
+      : []
+
+  const normalized = rawOptions
+    .map((item) => {
+      const value = normalizePayChannel(item?.channel)
+      if (!value) return null
+      return {
+        value,
+        label: String(item?.label || '').trim() || (
+          value === 'ifpay'
+            ? 'IF-Pay 余额支付'
+            : value === 'wechat'
+              ? '微信支付'
+              : '支付宝支付'
+        ),
+        tip: String(item?.description || '').trim() || '由后台支付中心统一控制'
+      }
+    })
+    .filter(Boolean)
+
+  return normalized.length > 0 ? normalized : fallbackPayMethods()
+}
 
 function normalizeBizType(raw) {
   const value = String(raw || '').trim().toLowerCase()
@@ -149,13 +194,14 @@ export default {
       orderState: useUserOrderStore().state,
       submitting: false,
       loading: true,
+      paymentOptionsLoading: false,
       deliveryAddress: null,
       savedAddressCount: 0,
-      selectedPayMethod: 'ifpay',
+      selectedPayMethod: '',
       selectedCoupon: null,
       selectedUserCouponId: null,
       availableCoupons: [],
-      payMethods: PAY_METHODS
+      payMethods: []
     }
   },
   computed: {
@@ -292,6 +338,7 @@ export default {
         .filter(Boolean)
 
       await this.loadAvailableCoupons(shopId)
+      await this.loadPaymentOptions()
     } catch (error) {
       console.error('加载订单信息失败:', error)
       uni.showToast({ title: '加载失败', icon: 'none' })
@@ -307,13 +354,32 @@ export default {
     itemTotal(item) {
       return (((Number(item.price) || 0) * (Number(item.qty) || 0)) || 0).toFixed(2)
     },
-    payMethodLabel(value) {
-      const map = {
-        ifpay: 'IF-Pay 余额支付',
-        wechat: '微信支付',
-        alipay: '支付宝支付'
+    async loadPaymentOptions() {
+      this.paymentOptionsLoading = true
+      try {
+        const response = await request({
+          url: '/api/wallet/payment-options',
+          method: 'GET',
+          data: {
+            userType: 'customer',
+            platform: CLIENT_PLATFORM,
+            scene: 'order_payment'
+          }
+        })
+        this.payMethods = normalizePayMethods(response)
+      } catch (error) {
+        console.error('加载订单支付方式失败:', error)
+        this.payMethods = fallbackPayMethods()
+      } finally {
+        const availableValues = this.payMethods.map((item) => item.value)
+        if (!availableValues.includes(this.selectedPayMethod)) {
+          this.selectedPayMethod = availableValues[0] || ''
+        }
+        this.paymentOptionsLoading = false
       }
-      return map[value] || map.ifpay
+    },
+    payMethodLabel(value) {
+      return this.payMethods.find((item) => item.value === value)?.label || '未选择'
     },
     detailParts(detail) {
       const text = String(detail || '').trim()
@@ -423,6 +489,7 @@ export default {
         data: {
           userId,
           userType: 'customer',
+          platform: CLIENT_PLATFORM,
           orderId: String(orderId),
           amount: Math.round((Number(this.finalTotal) || 0) * 100),
           paymentMethod: this.selectedPayMethod,
@@ -449,6 +516,10 @@ export default {
       const profile = uni.getStorageSync('userProfile') || {}
       const userId = profile.phone || profile.id || profile.userId || ''
       const token = uni.getStorageSync('token') || ''
+      if (!this.selectedPayMethod) {
+        uni.showToast({ title: '当前没有可用支付方式', icon: 'none' })
+        return
+      }
       const payload = {
         shopId: this.shop ? String(this.shop.id || '').trim() : '',
         shopName: this.shop ? this.shop.name : 'Unknown Shop',
@@ -475,7 +546,15 @@ export default {
           throw new Error('订单创建失败')
         }
 
-        await this.payOrder(res.id, userId, token)
+        const paymentResult = await this.payOrder(res.id, userId, token)
+        const paymentStatus = String((paymentResult && paymentResult.status) || '').trim()
+        if (paymentStatus && paymentStatus !== 'success') {
+          uni.showToast({ title: '订单已创建，请继续完成支付', icon: 'none' })
+          setTimeout(() => {
+            uni.navigateTo({ url: `/pages/order/detail/index?id=${encodeURIComponent(res.id || '')}` })
+          }, 220)
+          return
+        }
 
         const multiplier = Number(uni.getStorageSync('vipPointsMultiplier')) || 1
         const orderTotal = Number(this.finalTotal) || 0

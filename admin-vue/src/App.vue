@@ -19,13 +19,25 @@
           </div>
           <div v-show="isGroupOpen(group.id)" class="menu-group-items">
             <div
-              v-for="item in group.children"
-              :key="item.path"
-              class="menu-item menu-item-child"
-              :class="{ active: isMenuActive(item.path) }"
-              @click="handleMenuClick(item.path)"
+              v-for="section in group.sections"
+              :key="section.id"
+              class="menu-section"
             >
-              <span>{{ item.name }}</span>
+              <div
+                v-if="section.name"
+                class="menu-section-title"
+              >
+                {{ section.name }}
+              </div>
+              <div
+                v-for="item in section.children"
+                :key="item.path"
+                class="menu-item menu-item-child"
+                :class="{ active: isMenuActive(item.path) }"
+                @click="handleMenuClick(item.path)"
+              >
+                <span>{{ item.name }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -200,11 +212,28 @@ const menuGroups = computed(() => {
     return [];
   }
 
-  return MENU_GROUPS;
+  return MENU_GROUPS.map((group) => {
+    if (Array.isArray(group.sections) && group.sections.length > 0) {
+      return group;
+    }
+
+    return {
+      ...group,
+      sections: [
+        {
+          id: `${group.id}-default`,
+          name: '',
+          children: Array.isArray(group.children) ? group.children : []
+        }
+      ]
+    };
+  });
 });
 
 const flatMenus = computed(() =>
-  menuGroups.value.flatMap((group) => group.children || [])
+  menuGroups.value.flatMap((group) =>
+    (group.sections || []).flatMap((section) => section.children || [])
+  )
 );
 
 function resolveActiveMenuPath(path = '') {
@@ -224,20 +253,45 @@ const activeMenuPath = computed(() => {
   return resolveActiveMenuPath(route.path);
 });
 
+function findMenuLocation(path) {
+  for (const group of menuGroups.value) {
+    for (const section of group.sections || []) {
+      for (const item of section.children || []) {
+        if (item.path === path) {
+          return { group, section, item };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function buildMenuTrail(location, leafName) {
+  if (!location) return leafName;
+  return [location.group?.name, location.section?.name, leafName]
+    .filter((item) => typeof item === 'string' && item.trim())
+    .join(' / ');
+}
+
 const activeGroupId = computed(() => {
   const group = menuGroups.value.find((item) =>
-    (item.children || []).some((child) => child.path === activeMenuPath.value)
+    (item.sections || []).some((section) =>
+      (section.children || []).some((child) => child.path === activeMenuPath.value)
+    )
   );
   return group?.id || '';
 });
 
 const currentName = computed(() => {
-  if (route.meta?.title) {
-    return route.meta.title;
+  const menuLocation = findMenuLocation(activeMenuPath.value);
+  const routeTitle = typeof route.meta?.title === 'string' ? route.meta.title.trim() : '';
+  if (menuLocation) {
+    return buildMenuTrail(menuLocation, routeTitle || menuLocation.item.name);
   }
 
-  const menuItem = flatMenus.value.find((m) => m.path === activeMenuPath.value);
-  if (menuItem) return menuItem.name;
+  if (routeTitle) {
+    return routeTitle;
+  }
 
   const nameMap = {
     '/api-management': 'API管理',
@@ -286,7 +340,9 @@ onBeforeUnmount(() => {
 
 function handleMenuClick(path) {
   const group = menuGroups.value.find((item) =>
-    (item.children || []).some((child) => child.path === path)
+    (item.sections || []).some((section) =>
+      (section.children || []).some((child) => child.path === path)
+    )
   );
   if (group && !openedMenuGroups.value.includes(group.id)) {
     openedMenuGroups.value.push(group.id);

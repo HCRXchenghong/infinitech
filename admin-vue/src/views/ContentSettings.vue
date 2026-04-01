@@ -35,18 +35,10 @@ const handleResize = () => {
 };
 
 const loading = ref(false);
-const saving = ref(false);
 const carouselLoading = ref(false);
 const loadError = ref('');
 const carouselError = ref('');
 const pageError = computed(() => carouselError.value || loadError.value || '');
-const paymentTab = ref('delivery');
-const paymentNotices = reactive({
-  delivery: '',
-  phone_film: '',
-  massage: '',
-  coffee: ''
-});
 const carouselList = ref([]);
 const carouselSettings = reactive({
   auto_play_seconds: 5
@@ -125,7 +117,6 @@ async function loadAll() {
   loading.value = true;
   try {
     const promises = [
-      loadPaymentNotices(),
       loadCarouselList(),
       loadCarouselSettings()
     ];
@@ -138,27 +129,6 @@ async function loadAll() {
     loadError.value = extractErrorMessage(error, '加载内容设置失败，请稍后重试');
   } finally {
     loading.value = false;
-  }
-}
-
-async function loadPaymentNotices() {
-  try {
-    const resp = await request.get('/api/payment-notices');
-    Object.assign(paymentNotices, resp?.data || {});
-  } catch (error) {
-    loadError.value = extractErrorMessage(error, '加载付款说明失败，请稍后重试');
-  }
-}
-
-async function savePaymentNotices() {
-  saving.value = true;
-  try {
-    await request.post('/api/payment-notices', paymentNotices);
-    ElMessage.success('付款说明保存成功');
-  } catch (error) {
-    ElMessage.error('保存失败');
-  } finally {
-    saving.value = false;
   }
 }
 

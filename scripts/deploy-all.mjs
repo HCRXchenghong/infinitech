@@ -366,6 +366,33 @@ function writeDeployEnvFile(config) {
       config.allowedOrigins ||
       currentValues.ALLOWED_ORIGINS ||
       'http://127.0.0.1:8888,http://localhost:8888,http://127.0.0.1:8080,http://localhost:8080',
+    ALIPAY_SIDECAR_URL:
+      currentValues.ALIPAY_SIDECAR_URL || 'http://alipay-sidecar:10301',
+    ALIPAY_SIDECAR_HOST_PORT:
+      currentValues.ALIPAY_SIDECAR_HOST_PORT || '10301',
+    BANK_PAYOUT_SIDECAR_URL:
+      currentValues.BANK_PAYOUT_SIDECAR_URL || 'http://bank-payout-sidecar:10302',
+    BANK_PAYOUT_SIDECAR_HOST_PORT:
+      currentValues.BANK_PAYOUT_SIDECAR_HOST_PORT || '10302',
+    BANK_PAYOUT_ALLOW_STUB:
+      currentValues.BANK_PAYOUT_ALLOW_STUB || 'true',
+    BANK_PAYOUT_STUB_QUERY_STATUS:
+      currentValues.BANK_PAYOUT_STUB_QUERY_STATUS || '',
+    ALIPAY_SANDBOX:
+      currentValues.ALIPAY_SANDBOX || 'true',
+    ALIPAY_APP_ID: currentValues.ALIPAY_APP_ID || '',
+    ALIPAY_PRIVATE_KEY: currentValues.ALIPAY_PRIVATE_KEY || '',
+    ALIPAY_PUBLIC_KEY: currentValues.ALIPAY_PUBLIC_KEY || '',
+    ALIPAY_NOTIFY_URL: currentValues.ALIPAY_NOTIFY_URL || '',
+    WXPAY_APP_ID: currentValues.WXPAY_APP_ID || '',
+    WXPAY_MCH_ID: currentValues.WXPAY_MCH_ID || '',
+    WXPAY_API_KEY: currentValues.WXPAY_API_KEY || '',
+    WXPAY_API_V3_KEY: currentValues.WXPAY_API_V3_KEY || '',
+    WXPAY_SERIAL_NO: currentValues.WXPAY_SERIAL_NO || '',
+    WXPAY_PRIVATE_KEY: currentValues.WXPAY_PRIVATE_KEY || '',
+    WXPAY_NOTIFY_URL: currentValues.WXPAY_NOTIFY_URL || '',
+    WXPAY_REFUND_NOTIFY_URL: currentValues.WXPAY_REFUND_NOTIFY_URL || '',
+    WXPAY_PAYOUT_NOTIFY_URL: currentValues.WXPAY_PAYOUT_NOTIFY_URL || '',
   }
 
   const lines = Object.entries(nextValues).map(([key, value]) => `${key}=${value}`)
@@ -472,6 +499,8 @@ function printUpSummary(flags) {
   console.log('  BFF:           http://127.0.0.1:25500/ready')
   console.log('  Socket Server: http://127.0.0.1:9898/ready')
   console.log('  Admin Web:     http://127.0.0.1:8080')
+  console.log('  Alipay Sidecar:http://127.0.0.1:10301/health')
+  console.log('  Bank Sidecar:  http://127.0.0.1:10302/health')
   console.log('  PostgreSQL:    127.0.0.1:5432')
   console.log('  Redis:         127.0.0.1:2550')
 

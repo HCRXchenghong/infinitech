@@ -2,20 +2,13 @@
   <view class="withdraw-page">
     <view class="top-shell" :style="{ paddingTop: topPadding + 'px' }">
       <view class="top-bar">
-        <view class="back-btn" @tap="goBack">‹</view>
-        <text class="top-title">提现</text>
+        <view class="back-btn" @tap="goBack"><</view>
+        <text class="top-title">余额提现吗</text>
         <view class="right-holder"></view>
       </view>
     </view>
 
     <view class="content-shell">
-      <view class="section-card">
-        <text class="section-title">到账账户</text>
-        <input class="normal-input" v-model="withdrawAccount" placeholder="输入银行卡或支付宝账号" />
-        <input class="normal-input" v-model="withdrawName" placeholder="收款人姓名（选填）" />
-        <text class="section-tip">预计 2 小时内到账，具体以通道处理结果为准</text>
-      </view>
-
       <view class="section-card amount-card">
         <text class="section-title">提现金额</text>
         <view class="amount-input-wrap">
@@ -24,7 +17,7 @@
         </view>
         <view class="amount-meta">
           <text class="meta-text">可用余额 ¥{{ loadingBalance ? '--' : fen2yuan(balance) }}</text>
-          <text class="meta-action" @tap="withdrawAll">全部提现</text>
+          <text class="meta-action" @tap="withdrawAll">全部提现吗</text>
         </view>
 
         <view class="preset-row">
@@ -39,15 +32,37 @@
         </view>
       </view>
 
-      <view class="tip-card">
-        <text class="tip-title">提现提示</text>
-        <text class="tip-text">仅保留必要功能：到账账户、提现金额、提交申请。提交后可在账单明细查看状态。</text>
+      <view class="section-card">
+        <text class="section-title">提现方式</text>
+        <view v-if="loadingOptions" class="state-text">正在加载提现渠道...</view>
+        <view v-else-if="withdrawOptions.length === 0" class="state-text">后台暂未开放当前端的提现吗渠道</view>
+        <view v-else class="method-list">
+          <view
+            v-for="method in withdrawOptions"
+            :key="method.channel"
+            class="method-item"
+            :class="{ active: selectedMethod === method.channel }"
+            @tap="selectedMethod = method.channel"
+          >
+            <view class="method-main">
+              <text class="method-name">{{ method.label || method.channel }}</text>
+              <text class="method-tip">{{ method.arrivalText || method.description || '到账时间以通道处理为准' }}</text>
+            </view>
+            <text class="method-check">{{ selectedMethod === method.channel ? '✓' : '' }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="section-card">
+        <text class="section-title">收款账户</text>
+        <input class="normal-input" v-model="withdrawAccount" :placeholder="accountPlaceholder" />
+        <input class="normal-input" v-model="withdrawName" placeholder="请输入收款人姓名（选填）" />
       </view>
     </view>
 
     <view class="bottom-bar">
       <button class="submit-btn" :loading="submitting" :disabled="!canSubmit" @tap="submitWithdraw">
-        提现
+        预览手续费并提交
       </button>
     </view>
   </view>
@@ -61,12 +76,15 @@ export default {
     return {
       statusBarHeight: 44,
       loadingBalance: false,
+      loadingOptions: false,
       submitting: false,
       balance: 0,
       withdrawAmount: '',
       withdrawAccount: '',
       withdrawName: '',
-      presets: [50, 100, 200]
+      selectedMethod: '',
+      withdrawOptions: [],
+      presets: [20, 50, 100, 200, 500],
     }
   },
   computed: {
@@ -81,9 +99,11 @@ export default {
       return Number(this.balance || 0) / 100
     },
     canSubmit() {
-      const accountOk = String(this.withdrawAccount || '').trim().length > 0
-      return accountOk && this.amountYuan > 0 && this.amountYuan <= this.balanceYuan && !this.submitting
-    }
+      return !!this.selectedMethod && !!String(this.withdrawAccount || '').trim() && this.amountYuan > 0 && this.amountYuan <= this.balanceYuan && !this.submitting
+    },
+    accountPlaceholder() {
+      return this.selectedMethod === 'alipay' ? '请输入支付宝账号' : '请输入微信收款账号'
+    },
   },
   onLoad() {
     try {
@@ -94,7 +114,7 @@ export default {
     }
   },
   onShow() {
-    this.loadBalance()
+    this.loadPageData()
   },
   methods: {
     normalizeText(value) {
@@ -110,8 +130,9 @@ export default {
         uni.getStorageSync('phone') ||
         ''
       )
+      const userName = this.normalizeText(profile.nickname || profile.name || '用户')
       const token = this.normalizeText(uni.getStorageSync('token') || uni.getStorageSync('access_token') || '')
-      return { userId, token }
+      return { userId, userName, token }
     },
     getAuthHeader(token) {
       if (!token) return {}
@@ -129,6 +150,12 @@ export default {
       if (data && data.data && data.data[key] !== undefined && data.data[key] !== null) return data.data[key]
       return fallback
     },
+    normalizeOptions(payload) {
+      if (Array.isArray(payload)) return payload
+      if (Array.isArray(payload && payload.options)) return payload.options
+      if (Array.isArray(payload && payload.data && payload.data.options)) return payload.data.options
+      return []
+    },
     fen2yuan(fen) {
       return (Math.abs(Number(fen || 0)) / 100).toFixed(2)
     },
@@ -145,52 +172,84 @@ export default {
     withdrawAll() {
       this.withdrawAmount = this.balanceYuan > 0 ? this.balanceYuan.toFixed(2) : ''
     },
-    async loadBalance() {
+    async loadPageData() {
       const { userId, token } = this.getAuth()
       if (!userId) return
 
+      const header = this.getAuthHeader(token)
       this.loadingBalance = true
+      this.loadingOptions = true
       try {
-        const res = await request({
-          url: this.withQuery('/api/wallet/balance', {
-            userId,
-            userType: 'customer',
-            user_id: userId,
-            user_type: 'customer'
+        const [balanceRes, optionsRes] = await Promise.all([
+          request({
+            url: this.withQuery('/api/wallet/balance', {
+              userId,
+              userType: 'customer',
+              user_id: userId,
+              user_type: 'customer',
+            }),
+            method: 'GET',
+            header,
           }),
-          method: 'GET',
-          header: this.getAuthHeader(token)
-        })
-        this.balance = Number(this.resolveField(res, 'balance', 0))
+          request({
+            url: this.withQuery('/api/wallet/withdraw/options', {
+              userType: 'customer',
+              platform: 'app',
+            }),
+            method: 'GET',
+            header,
+          }),
+        ])
+
+        this.balance = Number(this.resolveField(balanceRes, 'balance', 0))
+        this.withdrawOptions = this.normalizeOptions(optionsRes)
+        if (!this.selectedMethod && this.withdrawOptions.length > 0) {
+          this.selectedMethod = this.withdrawOptions[0].channel
+        }
       } catch (error) {
-        uni.showToast({ title: '余额加载失败', icon: 'none' })
+        uni.showToast({ title: error.error || '提现页面加载失败', icon: 'none' })
       } finally {
         this.loadingBalance = false
+        this.loadingOptions = false
       }
     },
     async submitWithdraw() {
-      const { userId, token } = this.getAuth()
+      const { userId, userName, token } = this.getAuth()
       if (!userId) {
         uni.showToast({ title: '请先登录', icon: 'none' })
         return
       }
-
-      if (!String(this.withdrawAccount || '').trim()) {
-        uni.showToast({ title: '请输入收款账号', icon: 'none' })
-        return
-      }
-      if (!this.amountYuan || this.amountYuan <= 0) {
-        uni.showToast({ title: '请输入提现金额', icon: 'none' })
-        return
-      }
-      if (this.amountYuan > this.balanceYuan) {
-        uni.showToast({ title: '提现金额不能超过可用余额', icon: 'none' })
+      if (!this.canSubmit) {
+        uni.showToast({ title: '请完整填写提现吗信息', icon: 'none' })
         return
       }
 
       this.submitting = true
       try {
-        const idempotencyKey = this.createIdempotencyKey('withdraw', userId)
+        const preview = await request({
+          url: '/api/wallet/withdraw/fee-preview',
+          method: 'POST',
+          data: {
+            userId,
+            userType: 'customer',
+            amount: Math.round(this.amountYuan * 100),
+            withdrawMethod: this.selectedMethod,
+            platform: 'app',
+          },
+          header: this.getAuthHeader(token),
+        })
+
+        const confirmed = await new Promise((resolve) => {
+          uni.showModal({
+            title: '确认提现吗',
+            content: `手续费 ¥${this.fen2yuan(preview.fee)}，预计到账 ¥${this.fen2yuan(preview.actualAmount)}，到账时效：${preview.arrivalText || '以通道处理为准'}`,
+            success: (res) => resolve(!!res.confirm),
+            fail: () => resolve(false),
+          })
+        })
+        if (!confirmed) return
+
+        const idempotencyKey = this.createIdempotencyKey('customer_app_withdraw', userId)
         await request({
           url: '/api/wallet/withdraw',
           method: 'POST',
@@ -198,27 +257,169 @@ export default {
             userId,
             userType: 'customer',
             amount: Math.round(this.amountYuan * 100),
-            withdrawMethod: 'bank',
+            platform: 'app',
+            withdrawMethod: this.selectedMethod,
             withdrawAccount: this.withdrawAccount,
-            withdrawName: this.withdrawName,
-            idempotencyKey
+            withdrawName: this.withdrawName || userName || '用户',
+            idempotencyKey,
           },
           header: Object.assign({}, this.getAuthHeader(token), {
-            'Idempotency-Key': idempotencyKey
-          })
+            'Idempotency-Key': idempotencyKey,
+          }),
         })
 
-        uni.showToast({ title: '提现申请已提交', icon: 'success' })
+        uni.showToast({ title: '提现吗申请已提交', icon: 'success' })
         setTimeout(() => {
           uni.navigateBack()
         }, 320)
+      } catch (error) {
+        uni.showToast({ title: error.error || '提现吗失败', icon: 'none' })
+      } finally {
+        this.submitting = false
+      }
+    },
+    sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms))
+    },
+    normalizeFlowStatus(payload, nestedKey) {
+      return String((payload && payload.status) || (payload && payload[nestedKey] && payload[nestedKey].status) || '').trim().toLowerCase()
+    },
+    normalizeArrivalText(payload, nestedKey) {
+      return String((payload && payload.arrivalText) || (payload && payload[nestedKey] && payload[nestedKey].arrivalText) || '').trim()
+    },
+    isWithdrawSuccessStatus(status) {
+      return ['success', 'completed'].includes(String(status || '').trim().toLowerCase())
+    },
+    isWithdrawFailureStatus(status) {
+      return ['failed', 'rejected', 'cancelled', 'closed'].includes(String(status || '').trim().toLowerCase())
+    },
+    flowStatusLabel(status) {
+      const normalized = String(status || '').trim().toLowerCase()
+      const map = {
+        pending: '处理中',
+        pending_review: '待审核',
+        pending_transfer: '待打款',
+        processing: '处理中',
+        transferring: '转账中',
+        success: '成功',
+        completed: '成功',
+        failed: '失败',
+        rejected: '已驳回',
+        cancelled: '已取消',
+        closed: '已关闭',
+      }
+      return map[normalized] || '处理中'
+    },
+    async pollWithdrawStatus(requestId, transactionId, token) {
+      const { userId } = this.getAuth()
+      let latest = null
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        latest = await request({
+          url: this.withQuery('/api/wallet/withdraw/status', {
+            userId,
+            userType: 'customer',
+            requestId,
+            transactionId,
+          }),
+          method: 'GET',
+          header: this.getAuthHeader(token),
+        })
+        const status = this.normalizeFlowStatus(latest, 'withdraw')
+        if (this.isWithdrawSuccessStatus(status) || this.isWithdrawFailureStatus(status)) {
+          return latest
+        }
+        await this.sleep(1500)
+      }
+      return latest
+    },
+    async submitWithdraw() {
+      const { userId, userName, token } = this.getAuth()
+      if (!userId) {
+        uni.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      if (!this.canSubmit) {
+        uni.showToast({ title: '请完整填写提现信息', icon: 'none' })
+        return
+      }
+
+      this.submitting = true
+      try {
+        const preview = await request({
+          url: '/api/wallet/withdraw/fee-preview',
+          method: 'POST',
+          data: {
+            userId,
+            userType: 'customer',
+            amount: Math.round(this.amountYuan * 100),
+            withdrawMethod: this.selectedMethod,
+            platform: 'app',
+          },
+          header: this.getAuthHeader(token),
+        })
+
+        const confirmed = await new Promise((resolve) => {
+          uni.showModal({
+            title: '确认提现',
+            content: `手续费 ¥${this.fen2yuan(preview.fee)}，预计到账 ¥${this.fen2yuan(preview.actualAmount)}，到账时效：${preview.arrivalText || '以通道处理为准'}`,
+            success: (res) => resolve(!!res.confirm),
+            fail: () => resolve(false),
+          })
+        })
+        if (!confirmed) return
+
+        const idempotencyKey = this.createIdempotencyKey('customer_app_withdraw', userId)
+        const result = await request({
+          url: '/api/wallet/withdraw',
+          method: 'POST',
+          data: {
+            userId,
+            userType: 'customer',
+            amount: Math.round(this.amountYuan * 100),
+            platform: 'app',
+            withdrawMethod: this.selectedMethod,
+            withdrawAccount: this.withdrawAccount,
+            withdrawName: this.withdrawName || userName || '用户',
+            idempotencyKey,
+          },
+          header: Object.assign({}, this.getAuthHeader(token), {
+            'Idempotency-Key': idempotencyKey,
+          }),
+        })
+
+        let latest = result
+        let status = this.normalizeFlowStatus(latest, 'withdraw')
+        if (!this.isWithdrawSuccessStatus(status) && !this.isWithdrawFailureStatus(status) && ((result && result.withdrawRequestId) || (result && result.transactionId))) {
+          uni.showLoading({ title: '正在确认提现状态', mask: true })
+          try {
+            latest = await this.pollWithdrawStatus(result && result.withdrawRequestId, result && result.transactionId, token)
+          } finally {
+            uni.hideLoading()
+          }
+          status = this.normalizeFlowStatus(latest, 'withdraw')
+        }
+
+        if (this.isWithdrawSuccessStatus(status)) {
+          uni.showToast({ title: '提现成功', icon: 'success' })
+        } else if (this.isWithdrawFailureStatus(status)) {
+          uni.showToast({ title: '提现失败，请稍后重试', icon: 'none' })
+        } else {
+          const arrivalText = this.normalizeArrivalText(latest, 'withdraw')
+          uni.showToast({
+            title: arrivalText ? `提现处理中，${arrivalText}` : `提现已提交，当前状态：${this.flowStatusLabel(status)}`,
+            icon: 'none',
+          })
+        }
+        setTimeout(() => {
+          uni.navigateBack()
+        }, 360)
       } catch (error) {
         uni.showToast({ title: error.error || '提现失败', icon: 'none' })
       } finally {
         this.submitting = false
       }
-    }
-  }
+    },
+  },
 }
 </script>
 
@@ -266,22 +467,24 @@ export default {
   padding: 10rpx 20rpx 0;
 }
 
-.section-card,
-.tip-card {
-  background: #ffffff;
-  border-radius: 22rpx;
-  box-shadow: 0 8rpx 20rpx rgba(15, 23, 42, 0.06);
-}
-
 .section-card {
   padding: 22rpx;
   margin-bottom: 14rpx;
+  border-radius: 22rpx;
+  background: #ffffff;
+  box-shadow: 0 8rpx 20rpx rgba(15, 23, 42, 0.06);
 }
 
 .section-title {
   font-size: 28rpx;
   font-weight: 600;
   color: #111827;
+}
+
+.state-text {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #6b7280;
 }
 
 .normal-input {
@@ -293,13 +496,6 @@ export default {
   padding: 0 20rpx;
   font-size: 27rpx;
   box-sizing: border-box;
-}
-
-.section-tip {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 22rpx;
-  color: #6b7280;
 }
 
 .amount-card {
@@ -348,6 +544,7 @@ export default {
   margin-top: 14rpx;
   display: flex;
   gap: 10rpx;
+  flex-wrap: wrap;
 }
 
 .preset-item {
@@ -363,23 +560,45 @@ export default {
   background: #ffffff;
 }
 
-.tip-card {
-  padding: 22rpx;
+.method-list {
+  margin-top: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
 }
 
-.tip-title {
+.method-item {
+  border-radius: 14rpx;
+  border: 1rpx solid #dbe2ec;
+  padding: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.method-item.active {
+  border-color: #1f6dff;
+  background: #edf4ff;
+}
+
+.method-name {
   display: block;
-  font-size: 26rpx;
+  font-size: 27rpx;
   font-weight: 600;
-  color: #1f2937;
+  color: #111827;
 }
 
-.tip-text {
+.method-tip {
   display: block;
-  margin-top: 10rpx;
-  font-size: 23rpx;
-  line-height: 1.65;
+  margin-top: 4rpx;
+  font-size: 22rpx;
   color: #6b7280;
+}
+
+.method-check {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1f6dff;
 }
 
 .bottom-bar {
@@ -399,18 +618,14 @@ export default {
   font-size: 30rpx;
   font-weight: 700;
   color: #ffffff;
-  background: linear-gradient(135deg, #6aa8ff 0%, #8cbcff 100%);
-}
-
-.submit-btn:not([disabled]) {
   background: linear-gradient(135deg, #1f6dff 0%, #3486ff 100%);
-}
-
-.submit-btn::after {
-  border: none;
 }
 
 .submit-btn[disabled] {
   opacity: 0.56;
+}
+
+.submit-btn::after {
+  border: none;
 }
 </style>

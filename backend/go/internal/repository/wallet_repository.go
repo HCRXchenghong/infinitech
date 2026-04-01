@@ -140,6 +140,18 @@ func (r *walletRepository) UpdateWalletAccountWithVersionTx(ctx context.Context,
 }
 
 func (r *walletRepository) CreateWalletTransactionTx(ctx context.Context, tx *gorm.DB, transaction *WalletTransaction) error {
+	if transaction != nil && (strings.TrimSpace(transaction.UID) == "" || strings.TrimSpace(transaction.TSID) == "") {
+		uid, tsid, err := idkit.NextIdentityForTable(ctx, tx, transaction.TableName(), time.Now())
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(transaction.UID) == "" {
+			transaction.UID = uid
+		}
+		if strings.TrimSpace(transaction.TSID) == "" {
+			transaction.TSID = tsid
+		}
+	}
 	if transaction != nil && strings.TrimSpace(transaction.IdempotencyKey) == "" {
 		// Defensive fallback: never persist empty idempotency_key.
 		if fallback := strings.TrimSpace(transaction.BusinessID); fallback != "" && idkit.UIDPattern.MatchString(fallback) {
@@ -244,14 +256,50 @@ func (r *walletRepository) ListWalletTransactions(ctx context.Context, params Wa
 }
 
 func (r *walletRepository) CreateRechargeOrderTx(ctx context.Context, tx *gorm.DB, rechargeOrder *RechargeOrder) error {
+	if rechargeOrder != nil && (strings.TrimSpace(rechargeOrder.UID) == "" || strings.TrimSpace(rechargeOrder.TSID) == "") {
+		uid, tsid, err := idkit.NextIdentityForTable(ctx, tx, rechargeOrder.TableName(), time.Now())
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(rechargeOrder.UID) == "" {
+			rechargeOrder.UID = uid
+		}
+		if strings.TrimSpace(rechargeOrder.TSID) == "" {
+			rechargeOrder.TSID = tsid
+		}
+	}
 	return tx.WithContext(ctx).Create(rechargeOrder).Error
 }
 
 func (r *walletRepository) CreateWithdrawRequestTx(ctx context.Context, tx *gorm.DB, withdrawRequest *WithdrawRequest) error {
+	if withdrawRequest != nil && (strings.TrimSpace(withdrawRequest.UID) == "" || strings.TrimSpace(withdrawRequest.TSID) == "") {
+		uid, tsid, err := idkit.NextIdentityForTable(ctx, tx, withdrawRequest.TableName(), time.Now())
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(withdrawRequest.UID) == "" {
+			withdrawRequest.UID = uid
+		}
+		if strings.TrimSpace(withdrawRequest.TSID) == "" {
+			withdrawRequest.TSID = tsid
+		}
+	}
 	return tx.WithContext(ctx).Create(withdrawRequest).Error
 }
 
 func (r *walletRepository) CreateAdminWalletOperationTx(ctx context.Context, tx *gorm.DB, operation *AdminWalletOperation) error {
+	if operation != nil && (strings.TrimSpace(operation.UID) == "" || strings.TrimSpace(operation.TSID) == "") {
+		uid, tsid, err := idkit.NextIdentityForTable(ctx, tx, operation.TableName(), time.Now())
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(operation.UID) == "" {
+			operation.UID = uid
+		}
+		if strings.TrimSpace(operation.TSID) == "" {
+			operation.TSID = tsid
+		}
+	}
 	return tx.WithContext(ctx).Create(operation).Error
 }
 

@@ -2,8 +2,8 @@
   <view class="recharge-page">
     <view class="top-shell" :style="{ paddingTop: topPadding + 'px' }">
       <view class="top-bar">
-        <view class="back-btn" @tap="goBack">‹</view>
-        <text class="top-title">充值</text>
+        <view class="back-btn" @tap="goBack"><</view>
+        <text class="top-title">余额充值</text>
         <view class="right-holder"></view>
       </view>
     </view>
@@ -20,23 +20,36 @@
           <text class="amount-prefix">¥</text>
           <input class="amount-input" type="digit" v-model="amountCustom" placeholder="输入充值金额" />
         </view>
+        <view class="preset-grid">
+          <view
+            v-for="amount in presets"
+            :key="amount"
+            class="preset-item"
+            :class="{ active: selectedAmount === amount && !amountCustom }"
+            @tap="selectPreset(amount)"
+          >
+            ¥{{ amount }}
+          </view>
+        </view>
       </view>
 
       <view class="section-card">
-        <text class="section-title">支付方式</text>
-        <view class="method-list">
+        <text class="section-title">充值方式</text>
+        <view v-if="loadingOptions" class="state-text">正在加载渠道...</view>
+        <view v-else-if="paymentOptions.length === 0" class="state-text">后台暂未开放当前端的充值渠道</view>
+        <view v-else class="method-list">
           <view
-            v-for="method in methods"
-            :key="method.value"
+            v-for="method in paymentOptions"
+            :key="method.channel"
             class="method-item"
-            :class="{ active: selectedMethod === method.value }"
-            @tap="selectedMethod = method.value"
+            :class="{ active: selectedMethod === method.channel }"
+            @tap="selectedMethod = method.channel"
           >
             <view class="method-main">
-              <text class="method-name">{{ method.label }}</text>
-              <text class="method-tip">{{ method.tip }}</text>
+              <text class="method-name">{{ method.label || method.channel }}</text>
+              <text class="method-tip">{{ method.description || '按后台支付中心配置动态生效' }}</text>
             </view>
-            <text class="method-check">{{ selectedMethod === method.value ? '✓' : '' }}</text>
+            <text class="method-check">{{ selectedMethod === method.channel ? '✓' : '' }}</text>
           </view>
         </view>
       </view>
@@ -58,14 +71,14 @@ export default {
     return {
       statusBarHeight: 44,
       loadingBalance: false,
+      loadingOptions: false,
       submitting: false,
       balance: 0,
       amountCustom: '',
-      selectedMethod: 'wechat',
-      methods: [
-        { value: 'wechat', label: '微信支付', tip: '推荐微信用户使用' },
-        { value: 'alipay', label: '支付宝', tip: '支付宝官方渠道' }
-      ]
+      selectedAmount: 100,
+      selectedMethod: '',
+      paymentOptions: [],
+      presets: [20, 50, 100, 200, 500, 1000],
     }
   },
   computed: {
@@ -74,11 +87,12 @@ export default {
     },
     amountYuan() {
       const custom = parseFloat(this.amountCustom)
-      return !Number.isNaN(custom) && custom > 0 ? custom : 0
+      if (!Number.isNaN(custom) && custom > 0) return custom
+      return Number(this.selectedAmount || 0)
     },
     canSubmit() {
-      return this.amountYuan > 0 && !this.submitting
-    }
+      return this.amountYuan > 0 && !!this.selectedMethod && !this.submitting
+    },
   },
   onLoad() {
     try {
@@ -89,7 +103,7 @@ export default {
     }
   },
   onShow() {
-    this.loadBalance()
+    this.loadPageData()
   },
   methods: {
     normalizeText(value) {
@@ -124,6 +138,12 @@ export default {
       if (data && data.data && data.data[key] !== undefined && data.data[key] !== null) return data.data[key]
       return fallback
     },
+    normalizeOptions(payload) {
+      if (Array.isArray(payload)) return payload
+      if (Array.isArray(payload && payload.options)) return payload.options
+      if (Array.isArray(payload && payload.data && payload.data.options)) return payload.data.options
+      return []
+    },
     fen2yuan(fen) {
       return (Math.abs(Number(fen || 0)) / 100).toFixed(2)
     },
@@ -134,27 +154,50 @@ export default {
     goBack() {
       uni.navigateBack()
     },
-    async loadBalance() {
+    selectPreset(amount) {
+      this.selectedAmount = amount
+      this.amountCustom = ''
+    },
+    async loadPageData() {
       const { userId, token } = this.getAuth()
       if (!userId) return
 
+      const header = this.getAuthHeader(token)
       this.loadingBalance = true
+      this.loadingOptions = true
       try {
-        const res = await request({
-          url: this.withQuery('/api/wallet/balance', {
-            userId,
-            userType: 'customer',
-            user_id: userId,
-            user_type: 'customer'
+        const [balanceRes, optionsRes] = await Promise.all([
+          request({
+            url: this.withQuery('/api/wallet/balance', {
+              userId,
+              userType: 'customer',
+              user_id: userId,
+              user_type: 'customer',
+            }),
+            method: 'GET',
+            header,
           }),
-          method: 'GET',
-          header: this.getAuthHeader(token)
-        })
-        this.balance = Number(this.resolveField(res, 'balance', 0))
+          request({
+            url: this.withQuery('/api/wallet/payment-options', {
+              userType: 'customer',
+              platform: 'app',
+              scene: 'wallet_recharge',
+            }),
+            method: 'GET',
+            header,
+          }),
+        ])
+
+        this.balance = Number(this.resolveField(balanceRes, 'balance', 0))
+        this.paymentOptions = this.normalizeOptions(optionsRes)
+        if (!this.selectedMethod && this.paymentOptions.length > 0) {
+          this.selectedMethod = this.paymentOptions[0].channel
+        }
       } catch (error) {
-        uni.showToast({ title: '余额加载失败', icon: 'none' })
+        uni.showToast({ title: error.error || '充值页面加载失败', icon: 'none' })
       } finally {
         this.loadingBalance = false
+        this.loadingOptions = false
       }
     },
     async submitRecharge() {
@@ -164,13 +207,13 @@ export default {
         return
       }
       if (!this.canSubmit) {
-        uni.showToast({ title: '请输入有效金额', icon: 'none' })
+        uni.showToast({ title: '请输入有效金额并选择充值渠道', icon: 'none' })
         return
       }
 
       this.submitting = true
       try {
-        const idempotencyKey = this.createIdempotencyKey('recharge', userId)
+        const idempotencyKey = this.createIdempotencyKey('customer_app_recharge', userId)
         const res = await request({
           url: '/api/wallet/recharge',
           method: 'POST',
@@ -178,18 +221,20 @@ export default {
             userId,
             userType: 'customer',
             amount: Math.round(this.amountYuan * 100),
+            platform: 'app',
             paymentMethod: this.selectedMethod,
-            paymentChannel: this.selectedMethod === 'wechat' ? 'wxpay' : this.selectedMethod,
-            idempotencyKey
+            paymentChannel: this.selectedMethod,
+            description: '用户 App 余额充值',
+            idempotencyKey,
           },
           header: Object.assign({}, this.getAuthHeader(token), {
-            'Idempotency-Key': idempotencyKey
-          })
+            'Idempotency-Key': idempotencyKey,
+          }),
         })
 
         const status = String((res && res.status) || '')
-        if (status === 'pending' || status === 'processing') {
-          uni.showToast({ title: '充值处理中', icon: 'none' })
+        if (status === 'pending' || status === 'processing' || status === 'awaiting_client_pay') {
+          uni.showToast({ title: '充值请求已提交', icon: 'none' })
         } else {
           uni.showToast({ title: '充值成功', icon: 'success' })
         }
@@ -201,8 +246,102 @@ export default {
       } finally {
         this.submitting = false
       }
-    }
-  }
+    },
+    sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms))
+    },
+    normalizeFlowStatus(payload, nestedKey) {
+      return String((payload && payload.status) || (payload && payload[nestedKey] && payload[nestedKey].status) || '').trim().toLowerCase()
+    },
+    isRechargeSuccessStatus(status) {
+      return ['success', 'completed', 'paid'].includes(String(status || '').trim().toLowerCase())
+    },
+    isRechargeFailureStatus(status) {
+      return ['failed', 'rejected', 'cancelled', 'closed'].includes(String(status || '').trim().toLowerCase())
+    },
+    async pollRechargeStatus(rechargeOrderId, transactionId, token) {
+      const { userId } = this.getAuth()
+      let latest = null
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        latest = await request({
+          url: this.withQuery('/api/wallet/recharge/status', {
+            userId,
+            userType: 'customer',
+            rechargeOrderId,
+            transactionId,
+          }),
+          method: 'GET',
+          header: this.getAuthHeader(token),
+        })
+        const status = this.normalizeFlowStatus(latest, 'recharge')
+        if (this.isRechargeSuccessStatus(status) || this.isRechargeFailureStatus(status)) {
+          return latest
+        }
+        await this.sleep(1500)
+      }
+      return latest
+    },
+    async submitRecharge() {
+      const { userId, token } = this.getAuth()
+      if (!userId) {
+        uni.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      if (!this.canSubmit) {
+        uni.showToast({ title: '请输入有效金额并选择充值渠道', icon: 'none' })
+        return
+      }
+
+      this.submitting = true
+      try {
+        const idempotencyKey = this.createIdempotencyKey('customer_app_recharge', userId)
+        const result = await request({
+          url: '/api/wallet/recharge',
+          method: 'POST',
+          data: {
+            userId,
+            userType: 'customer',
+            amount: Math.round(this.amountYuan * 100),
+            platform: 'app',
+            paymentMethod: this.selectedMethod,
+            paymentChannel: this.selectedMethod,
+            description: '用户 App 余额充值',
+            idempotencyKey,
+          },
+          header: Object.assign({}, this.getAuthHeader(token), {
+            'Idempotency-Key': idempotencyKey,
+          }),
+        })
+
+        let latest = result
+        let status = this.normalizeFlowStatus(latest, 'recharge')
+        if (!this.isRechargeSuccessStatus(status) && !this.isRechargeFailureStatus(status) && ((result && result.rechargeOrderId) || (result && result.transactionId))) {
+          uni.showLoading({ title: '正在确认充值状态', mask: true })
+          try {
+            latest = await this.pollRechargeStatus(result && result.rechargeOrderId, result && result.transactionId, token)
+          } finally {
+            uni.hideLoading()
+          }
+          status = this.normalizeFlowStatus(latest, 'recharge')
+        }
+
+        if (this.isRechargeSuccessStatus(status)) {
+          uni.showToast({ title: '充值成功', icon: 'success' })
+        } else if (this.isRechargeFailureStatus(status)) {
+          uni.showToast({ title: '充值失败，请稍后重试', icon: 'none' })
+        } else {
+          uni.showToast({ title: '充值请求已提交，可在钱包明细查看状态', icon: 'none' })
+        }
+        setTimeout(() => {
+          uni.navigateBack()
+        }, 360)
+      } catch (error) {
+        uni.showToast({ title: error.error || '充值失败', icon: 'none' })
+      } finally {
+        this.submitting = false
+      }
+    },
+  },
 }
 </script>
 
@@ -307,6 +446,36 @@ export default {
   font-size: 40rpx;
   color: #111827;
   font-weight: 600;
+}
+
+.preset-grid {
+  margin-top: 14rpx;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10rpx;
+}
+
+.preset-item {
+  height: 68rpx;
+  border-radius: 14rpx;
+  border: 1rpx solid #dbe2ec;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 25rpx;
+  color: #334155;
+}
+
+.preset-item.active {
+  border-color: #1f6dff;
+  background: #edf4ff;
+  color: #1f6dff;
+}
+
+.state-text {
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  color: #64748b;
 }
 
 .method-list {

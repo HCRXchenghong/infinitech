@@ -97,30 +97,37 @@ func (RechargeOrder) TableName() string {
 type WithdrawRequest struct {
 	ID uint `gorm:"primaryKey" json:"legacyId,omitempty"`
 	UnifiedIdentity
-	RequestID         string     `gorm:"size:64;uniqueIndex;not null" json:"request_id"`
-	RequestIDRaw      string     `gorm:"size:128;index" json:"request_id_raw,omitempty"`
-	TransactionID     string     `gorm:"size:64;index" json:"transaction_id"`
-	TransactionIDRaw  string     `gorm:"size:128;index" json:"transaction_id_raw,omitempty"`
-	UserID            string     `gorm:"size:50;index;not null" json:"user_id"`
-	UserType          string     `gorm:"size:20;not null" json:"user_type"`
-	Amount            int64      `gorm:"not null" json:"amount"`
-	Fee               int64      `gorm:"default:0" json:"fee"`
-	ActualAmount      int64      `gorm:"not null" json:"actual_amount"`
-	WithdrawMethod    string     `gorm:"size:20;not null" json:"withdraw_method"`
-	WithdrawAccount   string     `gorm:"size:128;not null" json:"withdraw_account"`
-	WithdrawName      string     `gorm:"size:100" json:"withdraw_name"`
-	BankName          string     `gorm:"size:100" json:"bank_name"`
-	BankBranch        string     `gorm:"size:200" json:"bank_branch"`
-	Status            string     `gorm:"size:20;index;default:'pending'" json:"status"`
-	ReviewerID        string     `gorm:"size:50" json:"reviewer_id"`
-	ReviewerName      string     `gorm:"size:100" json:"reviewer_name"`
-	ReviewRemark      string     `gorm:"type:text" json:"review_remark"`
-	ReviewedAt        *time.Time `json:"reviewed_at"`
-	ThirdPartyOrderID string     `gorm:"size:128" json:"third_party_order_id"`
-	TransferResult    string     `gorm:"type:text" json:"transfer_result"`
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
-	CompletedAt       *time.Time `json:"completed_at"`
+	RequestID               string     `gorm:"size:64;uniqueIndex;not null" json:"request_id"`
+	RequestIDRaw            string     `gorm:"size:128;index" json:"request_id_raw,omitempty"`
+	TransactionID           string     `gorm:"size:64;index" json:"transaction_id"`
+	TransactionIDRaw        string     `gorm:"size:128;index" json:"transaction_id_raw,omitempty"`
+	UserID                  string     `gorm:"size:50;index;not null" json:"user_id"`
+	UserType                string     `gorm:"size:20;not null" json:"user_type"`
+	Amount                  int64      `gorm:"not null" json:"amount"`
+	Fee                     int64      `gorm:"default:0" json:"fee"`
+	ActualAmount            int64      `gorm:"not null" json:"actual_amount"`
+	WithdrawMethod          string     `gorm:"size:20;not null" json:"withdraw_method"`
+	WithdrawAccount         string     `gorm:"size:128;not null" json:"withdraw_account"`
+	WithdrawName            string     `gorm:"size:100" json:"withdraw_name"`
+	BankName                string     `gorm:"size:100" json:"bank_name"`
+	BankBranch              string     `gorm:"size:200" json:"bank_branch"`
+	Status                  string     `gorm:"size:20;index;default:'pending'" json:"status"`
+	ReviewerID              string     `gorm:"size:50" json:"reviewer_id"`
+	ReviewerName            string     `gorm:"size:100" json:"reviewer_name"`
+	ReviewRemark            string     `gorm:"type:text" json:"review_remark"`
+	RejectReason            string     `gorm:"type:text" json:"reject_reason"`
+	ReviewedAt              *time.Time `json:"reviewed_at"`
+	ThirdPartyOrderID       string     `gorm:"size:128" json:"third_party_order_id"`
+	TransferResult          string     `gorm:"type:text" json:"transfer_result"`
+	PayoutVoucherURL        string     `gorm:"size:512" json:"payout_voucher_url"`
+	PayoutReferenceNo       string     `gorm:"size:128" json:"payout_reference_no"`
+	PayoutSourceBankName    string     `gorm:"size:100" json:"payout_source_bank_name"`
+	PayoutSourceBankBranch  string     `gorm:"size:200" json:"payout_source_bank_branch"`
+	PayoutSourceCardNo      string     `gorm:"size:128" json:"payout_source_card_no"`
+	PayoutSourceAccountName string     `gorm:"size:100" json:"payout_source_account_name"`
+	CreatedAt               time.Time  `json:"created_at"`
+	UpdatedAt               time.Time  `json:"updated_at"`
+	CompletedAt             *time.Time `json:"completed_at"`
 }
 
 func (WithdrawRequest) TableName() string {
