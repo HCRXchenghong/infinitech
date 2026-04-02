@@ -3,7 +3,7 @@
     <view class="top-shell" :style="{ paddingTop: topPadding + 'px' }">
       <view class="top-bar">
         <view class="back-btn" @tap="goBack"><</view>
-        <text class="top-title">余额提现吗</text>
+        <text class="top-title">余额提现</text>
         <view class="right-holder"></view>
       </view>
     </view>
@@ -17,16 +17,11 @@
         </view>
         <view class="amount-meta">
           <text class="meta-text">可用余额 ¥{{ loadingBalance ? '--' : fen2yuan(balance) }}</text>
-          <text class="meta-action" @tap="withdrawAll">全部提现吗</text>
+          <text class="meta-action" @tap="withdrawAll">全部提现</text>
         </view>
 
         <view class="preset-row">
-          <view
-            v-for="item in presets"
-            :key="item"
-            class="preset-item"
-            @tap="selectPreset(item)"
-          >
+          <view v-for="item in presets" :key="item" class="preset-item" @tap="selectPreset(item)">
             ¥{{ item }}
           </view>
         </view>
@@ -35,7 +30,7 @@
       <view class="section-card">
         <text class="section-title">提现方式</text>
         <view v-if="loadingOptions" class="state-text">正在加载提现渠道...</view>
-        <view v-else-if="withdrawOptions.length === 0" class="state-text">后台暂未开放骑手提现吗渠道</view>
+        <view v-else-if="withdrawOptions.length === 0" class="state-text">后台暂未开放骑手端提现渠道</view>
         <view v-else class="method-list">
           <view
             v-for="method in withdrawOptions"
@@ -56,9 +51,21 @@
       <view class="section-card">
         <text class="section-title">收款账户</text>
         <input class="normal-input" v-model="withdrawAccount" :placeholder="accountPlaceholder" />
-        <input class="normal-input" v-model="withdrawName" placeholder="请输入收款人姓名（选填）" />
-        <input v-if="selectedMethod === 'bank_card'" class="normal-input" v-model="bankName" placeholder="请输入开户银行（选填）" />
-        <input v-if="selectedMethod === 'bank_card'" class="normal-input" v-model="bankBranch" placeholder="请输入开户支行（选填）" />
+        <input class="normal-input" v-model="withdrawName" :placeholder="namePlaceholder" />
+        <input
+          v-if="requiresBankName"
+          class="normal-input"
+          v-model="bankName"
+          :placeholder="bankNamePlaceholder"
+        />
+        <input
+          v-if="requiresBankBranch"
+          class="normal-input"
+          v-model="bankBranch"
+          :placeholder="bankBranchPlaceholder"
+        />
+        <text v-if="selectedOption && selectedOption.accountHint" class="helper-text">{{ selectedOption.accountHint }}</text>
+        <text v-if="selectedOption && selectedOption.reviewNotice" class="notice-text">{{ selectedOption.reviewNotice }}</text>
       </view>
     </view>
 
@@ -102,20 +109,46 @@ export default {
     balanceYuan() {
       return Number(this.balance || 0) / 100
     },
-    canSubmit() {
-      return !!this.selectedMethod && !!String(this.withdrawAccount || '').trim() && this.amountYuan > 0 && this.amountYuan <= this.balanceYuan && !this.submitting
+    selectedOption() {
+      return this.withdrawOptions.find((item) => item.channel === this.selectedMethod) || null
+    },
+    requiresName() {
+      return !!(this.selectedOption && this.selectedOption.requiresName)
+    },
+    requiresBankName() {
+      return !!(this.selectedOption && this.selectedOption.requiresBankName)
+    },
+    requiresBankBranch() {
+      return !!(this.selectedOption && this.selectedOption.requiresBankBranch)
     },
     accountPlaceholder() {
-      if (this.selectedMethod === 'bank_card') return '请输入银行卡号'
-      if (this.selectedMethod === 'alipay') return '请输入支付宝账号'
-      return '请输入微信收款账号'
+      return (this.selectedOption && this.selectedOption.accountPlaceholder) || '请输入收款账号'
+    },
+    namePlaceholder() {
+      return (this.selectedOption && this.selectedOption.namePlaceholder) || '请输入收款人姓名（选填）'
+    },
+    bankNamePlaceholder() {
+      return (this.selectedOption && this.selectedOption.bankNamePlaceholder) || '请输入开户银行'
+    },
+    bankBranchPlaceholder() {
+      return (this.selectedOption && this.selectedOption.bankBranchPlaceholder) || '请输入开户支行'
+    },
+    canSubmit() {
+      if (!this.selectedMethod || this.amountYuan <= 0 || this.amountYuan > this.balanceYuan || this.submitting) {
+        return false
+      }
+      if (!String(this.withdrawAccount || '').trim()) return false
+      if (this.requiresName && !String(this.withdrawName || '').trim()) return false
+      if (this.requiresBankName && !String(this.bankName || '').trim()) return false
+      if (this.requiresBankBranch && !String(this.bankBranch || '').trim()) return false
+      return true
     },
   },
   onLoad() {
     try {
       const systemInfo = uni.getSystemInfoSync() || {}
       this.statusBarHeight = Number(systemInfo.statusBarHeight || 44)
-    } catch (error) {
+    } catch (_error) {
       this.statusBarHeight = 44
     }
   },
@@ -128,13 +161,7 @@ export default {
     },
     getAuth() {
       const profile = uni.getStorageSync('riderProfile') || {}
-      const userId = this.normalizeText(
-        profile.id ||
-        profile.userId ||
-        profile.riderId ||
-        uni.getStorageSync('riderId') ||
-        ''
-      )
+      const userId = this.normalizeText(profile.id || profile.userId || profile.riderId || uni.getStorageSync('riderId') || '')
       const riderName = this.normalizeText(profile.name || profile.realName || profile.nickname || '骑手')
       const token = this.normalizeText(uni.getStorageSync('token') || uni.getStorageSync('access_token') || '')
       return { userId, riderName, token }
@@ -225,81 +252,17 @@ export default {
         this.loadingOptions = false
       }
     },
-    async submitWithdraw() {
-      const { userId, riderName, token } = this.getAuth()
-      if (!userId) {
-        uni.showToast({ title: '请先登录', icon: 'none' })
-        return
-      }
-      if (!this.canSubmit) {
-        uni.showToast({ title: '请完整填写提现吗信息', icon: 'none' })
-        return
-      }
-
-      this.submitting = true
-      try {
-        const preview = await request({
-          url: '/api/wallet/withdraw/fee-preview',
-          method: 'POST',
-          data: {
-            userId,
-            userType: 'rider',
-            amount: Math.round(this.amountYuan * 100),
-            withdrawMethod: this.selectedMethod,
-            platform: 'app',
-          },
-          header: this.getAuthHeader(token),
-        })
-
-        const confirmed = await new Promise((resolve) => {
-          uni.showModal({
-            title: '确认提现吗',
-            content: `手续费 ¥${this.fen2yuan(preview.fee)}，预计到账 ¥${this.fen2yuan(preview.actualAmount)}，到账时效：${preview.arrivalText || '以通道处理为准'}`,
-            success: (res) => resolve(!!res.confirm),
-            fail: () => resolve(false),
-          })
-        })
-        if (!confirmed) return
-
-        const idempotencyKey = this.createIdempotencyKey('rider_withdraw', userId)
-        await request({
-          url: '/api/wallet/withdraw',
-          method: 'POST',
-          data: {
-            userId,
-            userType: 'rider',
-            amount: Math.round(this.amountYuan * 100),
-            platform: 'app',
-            withdrawMethod: this.selectedMethod,
-            withdrawAccount: this.withdrawAccount,
-            withdrawName: this.withdrawName || riderName || '骑手',
-            bankName: this.bankName,
-            bankBranch: this.bankBranch,
-            idempotencyKey,
-          },
-          header: Object.assign({}, this.getAuthHeader(token), {
-            'Idempotency-Key': idempotencyKey,
-          }),
-        })
-
-        uni.showToast({ title: '提现吗申请已提交', icon: 'success' })
-        setTimeout(() => {
-          uni.navigateBack()
-        }, 320)
-      } catch (error) {
-        uni.showToast({ title: error.error || '提现吗失败', icon: 'none' })
-      } finally {
-        this.submitting = false
-      }
-    },
     sleep(ms) {
       return new Promise((resolve) => setTimeout(resolve, ms))
     },
     normalizeFlowStatus(payload, nestedKey) {
-      return String((payload && payload.status) || (payload && payload[nestedKey] && payload[nestedKey].status) || '').trim().toLowerCase()
+      return String((payload && payload.status) || (payload && payload[nestedKey] && payload[nestedKey].status) || '')
+        .trim()
+        .toLowerCase()
     },
     normalizeArrivalText(payload, nestedKey) {
-      return String((payload && payload.arrivalText) || (payload && payload[nestedKey] && payload[nestedKey].arrivalText) || '').trim()
+      return String((payload && payload.arrivalText) || (payload && payload[nestedKey] && payload[nestedKey].arrivalText) || '')
+        .trim()
     },
     isWithdrawSuccessStatus(status) {
       return ['success', 'completed'].includes(String(status || '').trim().toLowerCase())
@@ -497,10 +460,18 @@ export default {
   color: #111827;
 }
 
-.state-text {
+.state-text,
+.helper-text,
+.notice-text {
+  display: block;
   margin-top: 12rpx;
   font-size: 24rpx;
+  line-height: 1.6;
   color: #6b7280;
+}
+
+.notice-text {
+  color: #b45309;
 }
 
 .normal-input {

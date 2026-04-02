@@ -90,7 +90,7 @@ func (h *WalletHandler) GetPaymentOptions(c *gin.Context) {
 }
 
 func (h *WalletHandler) GetWithdrawOptions(c *gin.Context) {
-	result, err := h.wallet.GetWithdrawOptions(
+	result, err := h.wallet.GetEnhancedWithdrawOptions(
 		c.Request.Context(),
 		firstNonEmptyQuery(c, "userType", "user_type"),
 		firstNonEmptyQuery(c, "platform"),
@@ -124,7 +124,7 @@ func (h *WalletHandler) Withdraw(c *gin.Context) {
 	}
 	req.IdempotencyKey = resolveIdempotencyKey(req.IdempotencyKey, c.GetHeader("Idempotency-Key"))
 
-	result, err := h.wallet.Withdraw(c.Request.Context(), req)
+	result, err := h.wallet.WithdrawValidated(c.Request.Context(), req)
 	if err != nil {
 		writeWalletServiceError(c, err)
 		return

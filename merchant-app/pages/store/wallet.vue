@@ -14,7 +14,9 @@
 
     <view class="notice-card">
       <text class="notice-title">资金规则</text>
-      <text class="notice-text">商户端支持微信、支付宝、银行卡提现。银行卡提现到账时效为 24 小时 - 48 小时，所有提现渠道都会按后台配置收取手续费。</text>
+      <text class="notice-text">
+        商户端支持微信提现、支付宝提现和银行卡提现。银行卡提现到账时效为 24 小时 - 48 小时，所有提现渠道都会按后台配置收取手续费，申请提交后金额会先冻结。
+      </text>
     </view>
 
     <view class="filter-row">
@@ -36,9 +38,7 @@
       <view v-for="tx in filteredTransactions" :key="tx.transaction_id || tx.transactionId || tx.id" class="tx-card">
         <view class="tx-top">
           <text class="tx-title">{{ txTypeText(tx.type) }}</text>
-          <text class="tx-amount" :class="amountClass(tx)">
-            {{ amountText(tx) }}
-          </text>
+          <text class="tx-amount" :class="amountClass(tx)">{{ amountText(tx) }}</text>
         </view>
 
         <view class="tx-bottom">
@@ -64,8 +64,8 @@ import {
   fetchWalletPaymentOptions,
   fetchWalletRechargeStatus,
   fetchWalletTransactions,
-  fetchWalletWithdrawStatus,
   fetchWalletWithdrawOptions,
+  fetchWalletWithdrawStatus,
   previewWalletWithdrawFee,
 } from '@/shared-ui/api'
 
@@ -121,7 +121,7 @@ function parseMerchantProfile() {
   const merchantId = String(profile.id || profile.role_id || profile.userId || '').trim()
   const phone = String(profile.phone || '').trim()
   walletUserId.value = merchantId || phone
-  merchantName.value = String(profile.name || profile.shopName || '商户')
+  merchantName.value = String(profile.name || profile.shopName || '商户').trim()
   merchantPhone.value = phone
 }
 
@@ -161,7 +161,7 @@ function txTypeText(type: string) {
 
 function txStatusText(status: string) {
   const normalized = String(status || '').toLowerCase()
-  if (normalized === 'transferring') return '\u8f6c\u8d26\u4e2d'
+  if (normalized === 'transferring') return '转账中'
   const map: Record<string, string> = {
     pending: '处理中',
     pending_review: '待审核',
@@ -173,7 +173,7 @@ function txStatusText(status: string) {
     cancelled: '已取消',
     rejected: '已驳回',
   }
-  return map[status] || status || '--'
+  return map[normalized] || status || '--'
 }
 
 function formatTime(value: any) {
@@ -294,6 +294,52 @@ function promptText(title: string, placeholderText: string): Promise<string | nu
   })
 }
 
+function optionText(channel: any, key: string, fallback = '') {
+  const value = channel?.[key]
+  if (value === undefined || value === null || value === '') return fallback
+  return String(value)
+}
+
+async function collectWithdrawPayload(channel: any) {
+  const method = String(channel?.channel || '').trim()
+  const withdrawAccount = await promptText(
+    '收款账户',
+    optionText(
+      channel,
+      'accountPlaceholder',
+      method === 'bank_card' ? '输入银行卡号' : method === 'alipay' ? '输入支付宝账号' : '输入微信收款账号'
+    )
+  )
+  if (!withdrawAccount) return null
+
+  let withdrawName = merchantName.value || '商户'
+  if (channel?.requiresName) {
+    const holderName = await promptText('收款人姓名', optionText(channel, 'namePlaceholder', '输入收款人姓名'))
+    if (!holderName) return null
+    withdrawName = holderName
+  }
+
+  let bankName = ''
+  let bankBranch = ''
+  if (channel?.requiresBankName) {
+    const bankNameInput = await promptText('开户银行', optionText(channel, 'bankNamePlaceholder', '输入开户银行'))
+    if (!bankNameInput) return null
+    bankName = bankNameInput
+  }
+  if (channel?.requiresBankBranch) {
+    const bankBranchInput = await promptText('开户支行', optionText(channel, 'bankBranchPlaceholder', '输入开户支行'))
+    if (!bankBranchInput) return null
+    bankBranch = bankBranchInput
+  }
+
+  return {
+    withdrawAccount: String(withdrawAccount).trim(),
+    withdrawName: String(withdrawName).trim(),
+    bankName: String(bankName).trim(),
+    bankBranch: String(bankBranch).trim(),
+  }
+}
+
 async function loadData() {
   parseMerchantProfile()
   if (!walletUserId.value) {
@@ -363,93 +409,6 @@ async function applyRecharge() {
   }
 
   try {
-    await createRecharge({
-      userId: walletUserId.value,
-      userType: 'merchant',
-      amount: amountFen,
-      platform: 'app',
-      paymentMethod: channel.channel,
-      paymentChannel: channel.channel,
-      idempotencyKey: createIdempotencyKey('merchant_recharge'),
-      description: '商户端余额充值',
-    })
-    uni.showToast({ title: '充值请求已提交', icon: 'success' })
-    await loadData()
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '充值失败', icon: 'none' })
-  }
-}
-
-async function applyWithdraw() {
-  if (!walletUserId.value) return
-  const channel = await pickOption(withdrawOptions.value, '暂无可用提现渠道')
-  if (!channel) return
-
-  const amountText = await promptText('申请提现', '输入提现金额（元）')
-  if (amountText == null) return
-  const amountFen = Math.round(Number(amountText || 0) * 100)
-  if (!(amountFen > 0)) {
-    uni.showToast({ title: '请输入正确金额', icon: 'none' })
-    return
-  }
-
-  let withdrawAccount = merchantPhone.value || walletUserId.value
-  if (String(channel.channel || '') === 'bank_card') {
-    const bankAccount = await promptText('银行卡提现', '输入银行卡号')
-    if (!bankAccount) return
-    withdrawAccount = bankAccount
-  }
-
-  try {
-    const preview: any = await previewWalletWithdrawFee({
-      userId: walletUserId.value,
-      userType: 'merchant',
-      amount: amountFen,
-      withdrawMethod: channel.channel,
-      platform: 'app',
-    })
-    const confirmed = await new Promise<boolean>((resolve) => {
-      uni.showModal({
-        title: '确认提现',
-        content: `手续费 ¥${fen2yuan(preview?.fee)}，预计到账 ¥${fen2yuan(preview?.actualAmount)}，到账时效 ${preview?.arrivalText || '以通道处理为准'}`,
-        success: (res: any) => resolve(!!res.confirm),
-        fail: () => resolve(false),
-      })
-    })
-    if (!confirmed) return
-
-    await createWithdraw({
-      userId: walletUserId.value,
-      userType: 'merchant',
-      amount: amountFen,
-      platform: 'app',
-      withdrawMethod: channel.channel,
-      withdrawAccount,
-      withdrawName: merchantName.value || '商户',
-      remark: '商户端提现申请',
-      idempotencyKey: createIdempotencyKey('merchant_withdraw'),
-    })
-    uni.showToast({ title: '提现申请已提交', icon: 'success' })
-    await loadData()
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '提现失败', icon: 'none' })
-  }
-}
-
-applyRecharge = async function applyRechargePatched() {
-  if (!walletUserId.value) return
-  const channel = await pickOption(rechargeOptions.value, '暂无可用充值渠道')
-  if (!channel) return
-
-  const amountText = await promptText('余额充值', '输入充值金额（元）')
-  if (amountText == null) return
-  const amountFen = Math.round(Number(amountText || 0) * 100)
-  if (!(amountFen > 0)) {
-    uni.showToast({ title: '请输入正确金额', icon: 'none' })
-    return
-  }
-
-  try {
     const result: any = await createRecharge({
       userId: walletUserId.value,
       userType: 'merchant',
@@ -486,7 +445,7 @@ applyRecharge = async function applyRechargePatched() {
   }
 }
 
-applyWithdraw = async function applyWithdrawPatched() {
+async function applyWithdraw() {
   if (!walletUserId.value) return
   const channel = await pickOption(withdrawOptions.value, '暂无可用提现渠道')
   if (!channel) return
@@ -499,12 +458,8 @@ applyWithdraw = async function applyWithdrawPatched() {
     return
   }
 
-  let withdrawAccount = merchantPhone.value || walletUserId.value
-  if (String(channel.channel || '') === 'bank_card') {
-    const bankAccount = await promptText('银行卡提现', '输入银行卡号')
-    if (!bankAccount) return
-    withdrawAccount = bankAccount
-  }
+  const accountPayload = await collectWithdrawPayload(channel)
+  if (!accountPayload) return
 
   try {
     const preview: any = await previewWalletWithdrawFee({
@@ -515,9 +470,10 @@ applyWithdraw = async function applyWithdrawPatched() {
       platform: 'app',
     })
     const confirmed = await new Promise<boolean>((resolve) => {
+      const notice = optionText(channel, 'reviewNotice', '')
       uni.showModal({
         title: '确认提现',
-        content: `手续费 ¥${fen2yuan(preview?.fee)}，预计到账 ¥${fen2yuan(preview?.actualAmount)}，到账时效：${preview?.arrivalText || '以通道处理为准'}`,
+        content: `${notice ? `${notice}\n` : ''}手续费 ¥${fen2yuan(preview?.fee)}，预计到账 ¥${fen2yuan(preview?.actualAmount)}，到账时效：${preview?.arrivalText || '以通道处理为准'}`,
         success: (res: any) => resolve(!!res.confirm),
         fail: () => resolve(false),
       })
@@ -530,8 +486,10 @@ applyWithdraw = async function applyWithdrawPatched() {
       amount: amountFen,
       platform: 'app',
       withdrawMethod: channel.channel,
-      withdrawAccount,
-      withdrawName: merchantName.value || '商户',
+      withdrawAccount: accountPayload.withdrawAccount,
+      withdrawName: accountPayload.withdrawName,
+      bankName: accountPayload.bankName,
+      bankBranch: accountPayload.bankBranch,
       remark: '商户端提现申请',
       idempotencyKey: createIdempotencyKey('merchant_withdraw'),
     })
