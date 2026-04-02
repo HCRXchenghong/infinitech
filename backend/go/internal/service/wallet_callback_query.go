@@ -196,6 +196,7 @@ func (s *WalletService) buildPaymentCallbackItems(ctx context.Context, records [
 	items := make([]map[string]interface{}, 0, len(records))
 	for i := range records {
 		record := records[i]
+		replayMeta := parseAdminReplayMetadata(record.RequestHeaders)
 		item := map[string]interface{}{
 			"callback_id":           record.CallbackID,
 			"channel":               record.Channel,
@@ -211,6 +212,18 @@ func (s *WalletService) buildPaymentCallbackItems(ctx context.Context, records [
 			"updated_at":            record.UpdatedAt,
 			"request_body_preview":  previewLongText(record.RequestBody, 180),
 			"response_body_preview": previewLongText(record.ResponseBody, 180),
+		}
+		if replayMeta["is_admin_replay"] != false {
+			item["is_admin_replay"] = replayMeta["is_admin_replay"]
+		}
+		if replayedFrom := strings.TrimSpace(fmt.Sprint(replayMeta["replayed_from_callback_id"])); replayedFrom != "" {
+			item["replayed_from_callback_id"] = replayedFrom
+		}
+		if replayAdminID := strings.TrimSpace(fmt.Sprint(replayMeta["replay_admin_id"])); replayAdminID != "" {
+			item["replay_admin_id"] = replayAdminID
+		}
+		if replayAdminName := strings.TrimSpace(fmt.Sprint(replayMeta["replay_admin_name"])); replayAdminName != "" {
+			item["replay_admin_name"] = replayAdminName
 		}
 
 		if signature := strings.TrimSpace(record.Signature); signature != "" {
@@ -270,6 +283,41 @@ func (s *WalletService) buildPaymentCallbackItems(ctx context.Context, records [
 	}
 
 	return items, nil
+}
+
+func parseAdminReplayMetadata(rawHeaders string) map[string]interface{} {
+	headers, ok := parseWalletResponsePayload(rawHeaders).(map[string]interface{})
+	if !ok || len(headers) == 0 {
+		return map[string]interface{}{}
+	}
+	isReplay := false
+	for _, key := range []string{"X-Admin-Replay", "x-admin-replay"} {
+		if value, exists := headers[key]; exists && strings.EqualFold(strings.TrimSpace(fmt.Sprint(value)), "true") {
+			isReplay = true
+			break
+		}
+	}
+	result := map[string]interface{}{
+		"is_admin_replay": isReplay,
+	}
+	for _, pair := range []struct {
+		field string
+		keys  []string
+	}{
+		{field: "replayed_from_callback_id", keys: []string{"X-Admin-Replay-Of", "x-admin-replay-of"}},
+		{field: "replay_admin_id", keys: []string{"X-Admin-ID", "x-admin-id"}},
+		{field: "replay_admin_name", keys: []string{"X-Admin-Name", "x-admin-name"}},
+	} {
+		for _, key := range pair.keys {
+			if value, exists := headers[key]; exists {
+				if normalized := strings.TrimSpace(fmt.Sprint(value)); normalized != "" {
+					result[pair.field] = normalized
+					break
+				}
+			}
+		}
+	}
+	return result
 }
 
 func previewLongText(value string, limit int) string {

@@ -872,7 +872,12 @@
               <template #default="{ row }">{{ row.third_party_order_id || row.transaction?.third_party_order_id || '-' }}</template>
             </el-table-column>
             <el-table-column label="请求摘要" min-width="220" show-overflow-tooltip>
-              <template #default="{ row }">{{ row.request_body_preview || '-' }}</template>
+              <template #default="{ row }">
+                <div class="callback-preview-cell">
+                  <span>{{ row.request_body_preview || '-' }}</span>
+                  <el-tag v-if="row.is_admin_replay" size="small" type="warning">后台重放</el-tag>
+                </div>
+              </template>
             </el-table-column>
             <el-table-column label="创建时间" width="170">
               <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
@@ -953,6 +958,9 @@
           <el-descriptions-item label="第三方单号">{{ callbackDetail.third_party_order_id || '-' }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDateTime(callbackDetail.created_at) }}</el-descriptions-item>
           <el-descriptions-item label="处理时间">{{ formatDateTime(callbackDetail.processed_at) }}</el-descriptions-item>
+          <el-descriptions-item label="来源">{{ callbackDetail.is_admin_replay ? '后台重放' : '原始回调' }}</el-descriptions-item>
+          <el-descriptions-item label="来源回调">{{ callbackDetail.replayed_from_callback_id || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="重放管理员">{{ callbackDetail.replay_admin_name || callbackDetail.replay_admin_id || '-' }}</el-descriptions-item>
           <el-descriptions-item label="验签指纹" :span="2">{{ callbackDetail.replay_fingerprint || '-' }}</el-descriptions-item>
         </el-descriptions>
         <div class="callback-actions">
@@ -2068,6 +2076,12 @@ onMounted(loadAll)
   gap: 12px;
   margin-bottom: 16px;
   flex-wrap: wrap;
+}
+
+.callback-preview-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .callback-detail {
