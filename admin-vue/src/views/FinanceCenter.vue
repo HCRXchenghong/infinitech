@@ -424,7 +424,7 @@ async function doRecharge() {
   if (!rechargeForm.value.userId) return ElMessage.warning('请输入账号ID');
   recharging.value = true;
   try {
-    await request.post('/api/wallet/recharge', {
+    await request.post('/api/admin/wallet/recharge', {
       user_id: String(rechargeForm.value.userId),
       user_type: rechargeForm.value.userType,
       amount: Math.round(rechargeForm.value.amountYuan * 100),
@@ -448,7 +448,7 @@ async function doDeduct() {
   if (!deductForm.value.userId) return ElMessage.warning('请输入账号ID');
   deducting.value = true;
   try {
-    await request.post('/api/wallet/deduct-balance', {
+    await request.post('/api/admin/wallet/deduct-balance', {
       targetUserId: String(deductForm.value.userId),
       targetUserType: deductForm.value.userType,
       amount: Math.round(deductForm.value.amountYuan * 100),

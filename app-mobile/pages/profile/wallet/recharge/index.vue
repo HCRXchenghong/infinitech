@@ -178,7 +178,7 @@ export default {
             header,
           }),
           request({
-            url: this.withQuery('/api/wallet/payment-options', {
+            url: this.withQuery('/api/wallet/recharge/options', {
               userType: 'customer',
               platform: 'app',
               scene: 'wallet_recharge',
@@ -215,7 +215,7 @@ export default {
       try {
         const idempotencyKey = this.createIdempotencyKey('customer_app_recharge', userId)
         const res = await request({
-          url: '/api/wallet/recharge',
+          url: '/api/wallet/recharge/intent',
           method: 'POST',
           data: {
             userId,
@@ -296,7 +296,7 @@ export default {
       try {
         const idempotencyKey = this.createIdempotencyKey('customer_app_recharge', userId)
         const result = await request({
-          url: '/api/wallet/recharge',
+          url: '/api/wallet/recharge/intent',
           method: 'POST',
           data: {
             userId,

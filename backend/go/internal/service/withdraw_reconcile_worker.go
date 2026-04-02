@@ -25,6 +25,7 @@ type WithdrawGatewayReconcileWorkerStatus struct {
 	PendingTotal         int64  `json:"pendingTotal"`
 	PendingTransferCount int64  `json:"pendingTransferCount"`
 	TransferringCount    int64  `json:"transferringCount"`
+	RetryPendingCount    int64  `json:"retryPendingCount"`
 }
 
 func (s *WalletService) setWithdrawGatewayReconcileRunning(running bool) {
@@ -86,7 +87,7 @@ func (s *WalletService) WithdrawGatewayReconcileStatusSnapshot(ctx context.Conte
 		}
 	}
 
-	pendingTotal, pendingTransferCount, transferringCount := s.withdrawGatewayPendingCounts(ctx)
+	pendingTotal, pendingTransferCount, transferringCount, retryPendingCount := s.withdrawGatewayPendingCounts(ctx)
 	snapshot := WithdrawGatewayReconcileWorkerStatus{
 		Enabled:              s.withdrawReconcileEnabled,
 		Running:              running,
@@ -99,6 +100,7 @@ func (s *WalletService) WithdrawGatewayReconcileStatusSnapshot(ctx context.Conte
 		PendingTotal:         pendingTotal,
 		PendingTransferCount: pendingTransferCount,
 		TransferringCount:    transferringCount,
+		RetryPendingCount:    retryPendingCount,
 	}
 	if !lastCycleAt.IsZero() {
 		snapshot.LastCycleAt = lastCycleAt.Format(time.RFC3339)
@@ -162,9 +164,6 @@ func (s *WalletService) RunWithdrawGatewayReconcileCycle(ctx context.Context, li
 	if err != nil {
 		return 0, err
 	}
-	if len(records) == 0 {
-		return 0, nil
-	}
 
 	processed := 0
 	errorCount := 0
@@ -184,6 +183,36 @@ func (s *WalletService) RunWithdrawGatewayReconcileCycle(ctx context.Context, li
 		if err := s.refreshWithdrawGatewayStatus(ctx, &record, transaction); err != nil {
 			errorCount++
 			lastErr = fmt.Errorf("refresh withdraw %s failed: %w", strings.TrimSpace(record.RequestID), err)
+			continue
+		}
+		processed++
+	}
+
+	retryCandidates, err := s.listFailedGatewayWithdrawRequests(ctx, limit)
+	if err != nil {
+		return processed, err
+	}
+	now := time.Now()
+	for i := range retryCandidates {
+		if ctx.Err() != nil {
+			return processed, ctx.Err()
+		}
+		record := retryCandidates[i]
+		transaction, err := s.walletRepo.GetWalletTransactionByID(ctx, record.TransactionID)
+		if err != nil {
+			errorCount++
+			lastErr = fmt.Errorf("load retry transaction for withdraw %s failed: %w", strings.TrimSpace(record.RequestID), err)
+			continue
+		}
+		if !shouldAutoRetryWithdraw(&record, transaction, now) {
+			continue
+		}
+		if !s.isWithdrawPayoutGatewayReady(ctx, record.WithdrawMethod) {
+			continue
+		}
+		if _, err := s.retryWithdrawPayout(ctx, &record, transaction, "system-withdraw-retry-worker", "Withdraw Retry Worker", "自动重试打款"); err != nil {
+			errorCount++
+			lastErr = fmt.Errorf("auto retry withdraw %s failed: %w", strings.TrimSpace(record.RequestID), err)
 			continue
 		}
 		processed++
@@ -210,9 +239,39 @@ func (s *WalletService) listPendingGatewayWithdrawRequests(ctx context.Context, 
 	return records, err
 }
 
-func (s *WalletService) withdrawGatewayPendingCounts(ctx context.Context) (int64, int64, int64) {
+func (s *WalletService) listFailedGatewayWithdrawRequests(ctx context.Context, limit int) ([]repository.WithdrawRequest, error) {
+	records := make([]repository.WithdrawRequest, 0, limit)
+	err := s.walletRepo.DB().WithContext(ctx).
+		Model(&repository.WithdrawRequest{}).
+		Where("status = ?", "failed").
+		Where("LOWER(withdraw_method) IN ?", []string{"wechat", "alipay"}).
+		Order("updated_at ASC, id ASC").
+		Limit(limit).
+		Find(&records).Error
+	return records, err
+}
+
+func (s *WalletService) isWithdrawPayoutGatewayReady(ctx context.Context, withdrawMethod string) bool {
+	cfg, err := loadPaymentGatewayRuntimeConfig(ctx, s.walletRepo)
+	if err != nil {
+		return false
+	}
+	summary := buildPaymentGatewaySummary(cfg)
+	switch normalizeChannel(withdrawMethod) {
+	case "wechat":
+		wechat, _ := summary["wechat"].(map[string]interface{})
+		return toBool(wechat["ready"]) && firstTrimmed(cfg.Wechat.PayoutNotifyURL, cfg.Wechat.NotifyURL) != ""
+	case "alipay":
+		alipay, _ := summary["alipay"].(map[string]interface{})
+		return toBool(alipay["ready"])
+	default:
+		return false
+	}
+}
+
+func (s *WalletService) withdrawGatewayPendingCounts(ctx context.Context) (int64, int64, int64, int64) {
 	if s == nil || s.walletRepo == nil || s.walletRepo.DB() == nil {
-		return 0, 0, 0
+		return 0, 0, 0, 0
 	}
 	if ctx == nil {
 		ctx = context.Background()
@@ -232,7 +291,26 @@ func (s *WalletService) withdrawGatewayPendingCounts(ctx context.Context) (int64
 		Where("status = ?", "transferring").
 		Count(&transferringCount).Error
 
-	return pendingTransferCount + transferringCount, pendingTransferCount, transferringCount
+	var failedRecords []repository.WithdrawRequest
+	_ = s.walletRepo.DB().WithContext(ctx).
+		Model(&repository.WithdrawRequest{}).
+		Where("LOWER(withdraw_method) IN ?", []string{"wechat", "alipay"}).
+		Where("status = ?", "failed").
+		Find(&failedRecords).Error
+
+	retryPendingCount := int64(0)
+	now := time.Now()
+	for i := range failedRecords {
+		transaction, err := s.walletRepo.GetWalletTransactionByID(ctx, failedRecords[i].TransactionID)
+		if err != nil {
+			continue
+		}
+		if shouldAutoRetryWithdraw(&failedRecords[i], transaction, now) {
+			retryPendingCount++
+		}
+	}
+
+	return pendingTransferCount + transferringCount, pendingTransferCount, transferringCount, retryPendingCount
 }
 
 func statusForWithdrawReconcileErr(err error) string {

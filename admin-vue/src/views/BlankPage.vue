@@ -12,6 +12,7 @@
           <span>最近检查：{{ formatTime(serviceStatus.checkedAt) }}</span>
           <span>整体状态：{{ overallStatusLabel }}</span>
           <span>待处理提现：{{ pendingWithdrawCount }}</span>
+          <span>待自动重试：{{ autoRetryPendingCount }}</span>
         </div>
       </div>
       <div class="hero-actions">
@@ -178,9 +179,14 @@
           </el-table-column>
           <el-table-column label="状态" width="100">
             <template #default="{ row }">
-              <el-tag size="small" :type="withdrawStatusTag(row.status)">
-                {{ withdrawStatusLabel(row.status) }}
-              </el-tag>
+              <div class="withdraw-status-cell">
+                <el-tag size="small" :type="withdrawStatusTag(row.status)">
+                  {{ withdrawStatusLabel(row.status) }}
+                </el-tag>
+                <span v-if="getWithdrawAutoRetry(row)" class="muted-text">
+                  {{ withdrawAutoRetryLabel(row) }}
+                </span>
+              </div>
             </template>
           </el-table-column>
           <el-table-column label="创建时间" width="170">
@@ -264,6 +270,12 @@ const gatewayReadyCount = computed(() => {
 const gatewayModeLabel = computed(() => gatewaySummary.value.mode?.isProd ? '生产模式' : '开发 / 沙箱模式')
 const pendingWithdrawCount = computed(() => {
   return withdrawRequests.value.filter((item) => ['pending', 'pending_review', 'pending_transfer', 'transferring'].includes(String(item?.status || ''))).length
+})
+const autoRetryPendingCount = computed(() => {
+  return withdrawRequests.value.filter((item) => {
+    const retry = getWithdrawAutoRetry(item)
+    return String(item?.status || '') === 'failed' && Boolean(retry?.eligible) && String(retry?.nextRetryAt || '').trim() !== ''
+  }).length
 })
 const recentWithdrawRequests = computed(() => {
   return withdrawRequests.value
@@ -369,15 +381,33 @@ function withdrawStatusTag(status) {
   return 'info'
 }
 
+function getWithdrawAutoRetry(row) {
+  const retry = row?.auto_retry || row?.autoRetry
+  if (!retry || typeof retry !== 'object') return null
+  return retry
+}
+
+function withdrawAutoRetryLabel(row) {
+  const retry = getWithdrawAutoRetry(row)
+  if (!retry?.eligible) return ''
+  if (retry.retryExhausted) return '自动重试已耗尽'
+  if (String(retry.nextRetryAt || '').trim()) {
+    return `待自动重试：${formatTime(retry.nextRetryAt)}`
+  }
+  if (Number(retry.retryCount || 0) > 0) {
+    return `已重试 ${Number(retry.retryCount || 0)}/${Number(retry.maxRetryCount || 0) || 3}`
+  }
+  return '自动重试已启用'
+}
+
 async function loadWorkbench() {
   loading.value = true
   pageError.value = ''
   try {
-    const [healthRes, payCenterRes, depositRes, withdrawRes] = await Promise.all([
-      request.get('/api/admin/system-health'),
-      request.get('/api/admin/wallet/pay-center/config'),
-      request.get('/api/admin/wallet/rider-deposit/overview'),
-      request.get('/api/admin/wallet/withdraw-requests', { params: { page: 1, limit: 20 } }),
+    const [healthRes, depositRes, withdrawRes] = await Promise.all([
+      request.get('/api/pay-center/health'),
+      request.get('/api/rider-deposit/overview'),
+      request.get('/api/pay-center/withdraw-requests', { params: { page: 1, limit: 20 } }),
     ])
 
     const nextHealth = healthRes.data?.serviceStatus || {}
@@ -385,7 +415,7 @@ async function loadWorkbench() {
     serviceStatus.overall = String(nextHealth.overall || 'unknown')
     serviceStatus.services = Array.isArray(nextHealth.services) ? nextHealth.services : []
     serviceStatus.journeys = Array.isArray(nextHealth.journeys) ? nextHealth.journeys : []
-    gatewaySummary.value = payCenterRes.data?.gateway_summary || { mode: { isProd: false }, wechat: {}, alipay: {}, bankCard: {} }
+    gatewaySummary.value = healthRes.data?.gateway_summary || { mode: { isProd: false }, wechat: {}, alipay: {}, bankCard: {} }
     riderDepositOverview.value = depositRes.data || {}
     withdrawRequests.value = normalizeListPayload(withdrawRes.data)
   } catch (error) {
@@ -577,6 +607,17 @@ onMounted(loadWorkbench)
   margin-top: 12px;
   color: #4b5563;
   line-height: 1.7;
+}
+
+.withdraw-status-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.muted-text {
+  font-size: 12px;
+  color: #6b7280;
 }
 
 .gateway-list {

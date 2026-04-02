@@ -1180,6 +1180,7 @@ func buildWithdrawStatusMap(record *repository.WithdrawRequest, transaction *rep
 	if record == nil {
 		return map[string]interface{}{}
 	}
+	autoRetry := withdrawAutoRetrySummary(transaction, record.WithdrawMethod)
 	return map[string]interface{}{
 		"requestId":               record.RequestID,
 		"transactionId":           record.TransactionID,
@@ -1203,6 +1204,7 @@ func buildWithdrawStatusMap(record *repository.WithdrawRequest, transaction *rep
 		"completedAt":             record.CompletedAt,
 		"createdAt":               record.CreatedAt,
 		"updatedAt":               record.UpdatedAt,
+		"autoRetry":               autoRetry,
 		"responseData":            walletTransactionResponseData(transaction),
 	}
 }
@@ -1460,6 +1462,15 @@ func (s *WalletService) ReviewWithdraw(ctx context.Context, req WithdrawReviewRe
 			if err != nil {
 				return err
 			}
+			if execution.Status == "failed" {
+				newStatus = "failed"
+				return s.failWithdrawByCallbackTxWithPayload(ctx, tx, transaction,
+					firstTrimmed(strings.TrimSpace(req.ThirdPartyOrderID), execution.ThirdPartyOrderID),
+					firstTrimmed(strings.TrimSpace(req.TransferResult), execution.TransferResult),
+					now,
+					execution.ResponseData,
+				)
+			}
 			newStatus = execution.Status
 			requestUpdates["status"] = newStatus
 			requestUpdates["third_party_order_id"] = firstTrimmed(strings.TrimSpace(req.ThirdPartyOrderID), execution.ThirdPartyOrderID)
@@ -1469,12 +1480,11 @@ func (s *WalletService) ReviewWithdraw(ctx context.Context, req WithdrawReviewRe
 			responsePayload["integrationTarget"] = execution.IntegrationTarget
 			responsePayload["thirdPartyOrderId"] = requestUpdates["third_party_order_id"]
 			responsePayload["transferResult"] = requestUpdates["transfer_result"]
-			respJSON, _ := json.Marshal(responsePayload)
+			executionPayload := buildWithdrawRetryExecutionPayload(transaction, record.WithdrawMethod, responsePayload)
 			if execution.ResponseData != nil {
-				if payload, err := json.Marshal(execution.ResponseData); err == nil {
-					respJSON = payload
-				}
+				executionPayload = buildWithdrawRetryExecutionPayload(transaction, record.WithdrawMethod, execution.ResponseData)
 			}
+			respJSON, _ := json.Marshal(executionPayload)
 			if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transaction.TransactionID, "processing", string(respJSON), nil); err != nil {
 				return err
 			}
@@ -1550,36 +1560,19 @@ func (s *WalletService) ReviewWithdraw(ctx context.Context, req WithdrawReviewRe
 				return fmt.Errorf("%w: withdraw request is not in transfer flow", ErrInvalidArgument)
 			}
 			newStatus = "failed"
-			account, err := s.walletRepo.GetOrCreateWalletAccountTx(ctx, tx, record.UserID, record.UserType)
-			if err != nil {
+			if err := s.failWithdrawByCallbackTxWithPayload(ctx, tx, transaction,
+				strings.TrimSpace(req.ThirdPartyOrderID),
+				firstTrimmed(strings.TrimSpace(req.TransferResult), strings.TrimSpace(req.Remark)),
+				now,
+				map[string]interface{}{
+					"remark":       req.Remark,
+					"reviewerId":   reviewerID,
+					"reviewerName": reviewerName,
+				},
+			); err != nil {
 				return err
 			}
-			if account.FrozenBalance < record.Amount {
-				return fmt.Errorf("%w: frozen balance is not enough to fail withdraw", ErrConcurrentBalanceUpdate)
-			}
-			updated, err := s.walletRepo.UpdateWalletAccountWithVersionTx(ctx, tx, account.ID, account.Version, map[string]interface{}{
-				"balance":             account.Balance + record.Amount,
-				"frozen_balance":      account.FrozenBalance - record.Amount,
-				"total_balance":       account.Balance + record.Amount + account.FrozenBalance - record.Amount,
-				"last_transaction_id": transaction.TransactionID,
-				"last_transaction_at": now,
-			})
-			if err != nil {
-				return err
-			}
-			if !updated {
-				return fmt.Errorf("%w: withdraw fail update conflict", ErrConcurrentBalanceUpdate)
-			}
-			requestUpdates["status"] = newStatus
-			requestUpdates["completed_at"] = now
-			requestUpdates["third_party_order_id"] = strings.TrimSpace(req.ThirdPartyOrderID)
-			requestUpdates["transfer_result"] = strings.TrimSpace(req.TransferResult)
-			responsePayload["status"] = newStatus
-			respJSON, _ := json.Marshal(responsePayload)
-			if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transaction.TransactionID, "failed", string(respJSON), &now); err != nil {
-				return err
-			}
-			transitionErr = s.updateRiderDepositWithdrawStateTx(ctx, tx, req.RequestID, newStatus, req.Remark, nil)
+			return nil
 		}
 		if transitionErr != nil {
 			return transitionErr
@@ -1815,14 +1808,14 @@ func (s *WalletService) retryWithdrawPayout(
 			return fmt.Errorf("%w: withdraw retry update conflict", ErrConcurrentBalanceUpdate)
 		}
 
-		responsePayload := map[string]interface{}{
+		responsePayload := buildWithdrawRetrySubmittedPayload(&lockedTransaction, lockedRecord.WithdrawMethod, map[string]interface{}{
 			"status":         "pending_transfer",
 			"remark":         remark,
 			"reviewerId":     reviewerID,
 			"reviewerName":   reviewerName,
 			"retryRequested": true,
 			"retryAt":        now,
-		}
+		}, now, map[bool]string{true: "auto", false: "manual"}[strings.EqualFold(strings.TrimSpace(reviewerID), "system-withdraw-retry-worker")])
 		respJSON, _ := json.Marshal(responsePayload)
 		if err := tx.WithContext(ctx).
 			Model(&repository.WalletTransaction{}).
@@ -1869,15 +1862,99 @@ func (s *WalletService) retryWithdrawPayout(
 		AdminName: reviewerName,
 	})
 	if execErr != nil {
+		if revertErr := s.restoreFailedWithdrawRetry(ctx, record.RequestID, reviewerID, reviewerName, remark, execErr.Error()); revertErr != nil {
+			return nil, revertErr
+		}
 		return map[string]interface{}{
 			"success":   true,
 			"requestId": record.RequestID,
-			"status":    "pending_transfer",
+			"status":    "failed",
 			"warning":   execErr.Error(),
 		}, nil
 	}
 	result["retrySubmitted"] = true
 	return result, nil
+}
+
+func (s *WalletService) restoreFailedWithdrawRetry(
+	ctx context.Context,
+	requestID string,
+	reviewerID string,
+	reviewerName string,
+	remark string,
+	failureReason string,
+) error {
+	failedAt := time.Now()
+	return s.walletRepo.WithTransaction(ctx, func(tx *gorm.DB) error {
+		var lockedRecord repository.WithdrawRequest
+		if err := tx.WithContext(ctx).
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("request_id = ? OR request_id_raw = ?", requestID, requestID).
+			First(&lockedRecord).Error; err != nil {
+			return err
+		}
+		if lockedRecord.Status != "pending_transfer" && lockedRecord.Status != "transferring" {
+			return nil
+		}
+
+		var lockedTransaction repository.WalletTransaction
+		if err := tx.WithContext(ctx).
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("transaction_id = ? OR transaction_id_raw = ?", lockedRecord.TransactionID, lockedRecord.TransactionID).
+			First(&lockedTransaction).Error; err != nil {
+			return fmt.Errorf("withdraw transaction not found: %w", err)
+		}
+
+		account, err := s.walletRepo.GetOrCreateWalletAccountTx(ctx, tx, lockedRecord.UserID, lockedRecord.UserType)
+		if err != nil {
+			return err
+		}
+		if account.FrozenBalance < lockedRecord.Amount {
+			return fmt.Errorf("%w: frozen balance is not enough to restore failed retry", ErrConcurrentBalanceUpdate)
+		}
+		updated, err := s.walletRepo.UpdateWalletAccountWithVersionTx(ctx, tx, account.ID, account.Version, map[string]interface{}{
+			"balance":             account.Balance + lockedRecord.Amount,
+			"frozen_balance":      account.FrozenBalance - lockedRecord.Amount,
+			"total_balance":       account.Balance + lockedRecord.Amount + account.FrozenBalance - lockedRecord.Amount,
+			"last_transaction_id": lockedTransaction.TransactionID,
+			"last_transaction_at": failedAt,
+		})
+		if err != nil {
+			return err
+		}
+		if !updated {
+			return fmt.Errorf("%w: restore failed retry update conflict", ErrConcurrentBalanceUpdate)
+		}
+
+		responsePayload := buildWithdrawRetryFailurePayload(&lockedTransaction, lockedRecord.WithdrawMethod, map[string]interface{}{
+			"status":         "failed",
+			"reviewerId":     reviewerID,
+			"reviewerName":   reviewerName,
+			"remark":         remark,
+			"transferResult": strings.TrimSpace(failureReason),
+			"retryRollback":  true,
+		}, failedAt, strings.TrimSpace(failureReason))
+		respJSON, _ := json.Marshal(responsePayload)
+		if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, lockedTransaction.TransactionID, "failed", string(respJSON), &failedAt); err != nil {
+			return err
+		}
+		if err := tx.WithContext(ctx).
+			Model(&repository.WithdrawRequest{}).
+			Where("request_id = ? OR request_id_raw = ?", lockedRecord.RequestID, lockedRecord.RequestID).
+			Updates(map[string]interface{}{
+				"status":               "failed",
+				"reviewer_id":          reviewerID,
+				"reviewer_name":        reviewerName,
+				"review_remark":        remark,
+				"completed_at":         failedAt,
+				"third_party_order_id": strings.TrimSpace(lockedRecord.ThirdPartyOrderID),
+				"transfer_result":      strings.TrimSpace(failureReason),
+				"updated_at":           failedAt,
+			}).Error; err != nil {
+			return err
+		}
+		return s.updateRiderDepositWithdrawStateTx(ctx, tx, lockedRecord.RequestID, "failed", failureReason, nil)
+	})
 }
 
 func (s *WalletService) completeWithdrawByCallbackTx(
@@ -1955,6 +2032,18 @@ func (s *WalletService) failWithdrawByCallbackTx(
 	transferResult string,
 	failedAt time.Time,
 ) error {
+	return s.failWithdrawByCallbackTxWithPayload(ctx, tx, transaction, thirdPartyOrderID, transferResult, failedAt, nil)
+}
+
+func (s *WalletService) failWithdrawByCallbackTxWithPayload(
+	ctx context.Context,
+	tx *gorm.DB,
+	transaction *repository.WalletTransaction,
+	thirdPartyOrderID string,
+	transferResult string,
+	failedAt time.Time,
+	extraPayload map[string]interface{},
+) error {
 	if transaction == nil {
 		return fmt.Errorf("%w: withdraw transaction is nil", ErrInvalidArgument)
 	}
@@ -1995,6 +2084,8 @@ func (s *WalletService) failWithdrawByCallbackTx(
 		"thirdPartyOrderId": strings.TrimSpace(thirdPartyOrderID),
 		"transferResult":    strings.TrimSpace(transferResult),
 	}
+	responsePayload = mergeWalletResponseData(responsePayload, extraPayload)
+	responsePayload = buildWithdrawRetryFailurePayload(transaction, record.WithdrawMethod, responsePayload, failedAt, strings.TrimSpace(transferResult))
 	respJSON, _ := json.Marshal(responsePayload)
 	if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transaction.TransactionID, "failed", string(respJSON), &failedAt); err != nil {
 		return err

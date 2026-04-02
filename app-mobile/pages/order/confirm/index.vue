@@ -359,7 +359,7 @@ export default {
       this.paymentOptionsLoading = true
       try {
         const response = await request({
-          url: '/api/wallet/payment-options',
+          url: '/api/payment/options',
           method: 'GET',
           data: {
             userType: 'customer',
@@ -485,7 +485,7 @@ export default {
     async payOrder(orderId, userId, token) {
       const idempotencyKey = this.createIdempotencyKey('orderpay', userId)
       return request({
-        url: '/api/wallet/payment',
+        url: '/api/payment/intent',
         method: 'POST',
         data: {
           userId,

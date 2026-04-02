@@ -1,6 +1,6 @@
 # Infinitech
 
-中文（默认） | [English](./README.en.md)
+中文（默认） | [English](#english)
 
 Infinitech 是一个面向本地生活服务场景的多端一体化平台仓库。这个仓库不是单一业务站点，也不是纯演示项目，而是把以下能力放进同一套工程基线里持续收口：
 
@@ -15,70 +15,6 @@ Infinitech 是一个面向本地生活服务场景的多端一体化平台仓库
 - 推送通知
 - `App / H5` 站内 RTC 联系能力
 
-如果你是第一次打开这个仓库，可以把它理解成一套“本地生活平台的工程化底座”：
-
-- 后端事实源尽量统一
-- 实时服务尽量单一
-- 多端尽量共享 schema 和运行时工具
-- 发布前必须有可执行的检查、演练和签署链
-
-
-## 快速开始
-
-如果你只是想尽快把系统拉起来，优先走这两条路径：
-
-### 从 GitHub 直接拉起
-
-不带 `--target-dir` 时，bootstrap 脚本会先询问本地安装目录；也可以直接通过参数指定。
-
-Linux / macOS：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.sh | bash
-```
-
-Windows：
-
-PowerShell（推荐）：
-
-```powershell
-irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex
-```
-
-CMD：
-
-```cmd
-powershell -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1' | iex"
-```
-
-说明：
-
-- `PowerShell` 和 `CMD` 都可以直接复制对应代码块运行
-- 从 GitHub 直接拉起时，Windows 两种终端都统一走 raw 的 `bootstrap-install.ps1`
-- 这样最稳，也最接近 Linux / macOS 上 `curl | bash` 的体验
-
-### 仓库已在本地，直接安装并部署
-
-Windows：
-
-PowerShell（推荐）：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install-all.ps1
-```
-
-CMD：
-
-```cmd
-scripts\install-all.cmd
-```
-
-Ubuntu / Debian / macOS：
-
-```bash
-bash scripts/install-all.sh
-```
-
 ## 项目定位
 
 从业务上看，Infinitech 是一个“多个履约域共用同一平台底座”的项目，而不是几套互相隔离的系统拼在一起。
@@ -90,24 +26,6 @@ bash scripts/install-all.sh
 - `socket-server` 是唯一实时网关，不再保留第二套 socket 服务
 - 前端本地缓存只做加速层和失败兜底，不再回升为业务事实源
 - 生产基线固定为 `PostgreSQL + Redis`
-
-## 当前状态
-
-这个仓库已经完成了一轮比较彻底的工程整治，核心结果包括：
-
-- 生产数据库基线已经固定为 `PostgreSQL`
-- `Redis` 已经进入限流、会话、实时共享状态等关键链路
-- 核心业务事实源收口到 `backend/go`
-- `socket-server` 已经收成单一实时网关
-- 主要消息链路已经转成 `server-first`
-- 上传链已经支持本地 HEIC 转换，不再默认依赖独立转换端口
-- 发布前已经具备 `preflight / smoke / drill / evidence / signoff` 脚本链
-
-还需要在真实环境执行、不能只靠本地改代码就宣称“全部结束”的事项仍然有：
-
-1. 真设备 push 实投切换与验收  
-2. `App / H5` RTC 真机联调验收  
-3. 真故障注入后的恢复 / 回滚演练
 
 ## 功能范围
 
@@ -194,16 +112,10 @@ bash scripts/install-all.sh
 - 聚合 / 上传代理 / 管理健康视图：`backend/bff`
 - 前端本地缓存：加速层与失败兜底，不再承担长期事实
 
-### 不再推荐的旧路径
-
-- `SQLite` 作为生产主库
-- 第二套 socket 服务
-- 本地消息缓存充当长期事实源
-- 默认要求单独启动 HEIC HTTP 微服务
 
 ## HEIC 图片处理
 
-`tools/heic-converter` 已经从“独立服务”收成“仓库内本地转换模块”。
+`tools/heic-converter` 仓库内本地转换模块。
 
 现在默认行为是：
 
@@ -252,7 +164,7 @@ cd socket-server
 cmd /c npm run check
 ```
 
-## 零到一安装与部署
+## 傻瓜式一键安装与部署
 
 如果目标机器是新装系统，优先用安装器，而不是先手动配依赖。
 
@@ -305,41 +217,15 @@ curl -fsSL https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scrip
 
 ### Windows
 
-PowerShell（推荐）：
-
 ```powershell
-irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex
-```
-
-CMD：
-
-```cmd
-powershell -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1' | iex"
-```
-
-指定目录示例：
-
-```powershell
-& ([scriptblock]::Create((irm 'https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1'))) -TargetDir 'D:\infinitech'
-```
-
-```cmd
-powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm 'https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1'))) -TargetDir 'D:\infinitech'"
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/HCRXchenghong/infinitech/main/scripts/bootstrap-install.ps1 | iex"
 ```
 
 ## 本地安装器入口
 
 Windows：
 
-PowerShell（推荐）：
-
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install-all.ps1
-```
-
-CMD：
-
-```cmd
 scripts\install-all.cmd
 ```
 
@@ -481,11 +367,3 @@ backend/docker/.deploy.runtime.env
 - `scripts/release-live-cutover.mjs`
 - `scripts/release-evidence-gate.mjs`
 - `scripts/release-final-signoff.mjs`
-
-## 上线前仍需真实环境执行的事项
-
-代码和脚本层面已经基本收口，但真正上线前仍然必须做：
-
-1. 真设备 push 实投切换和验收  
-2. `App / H5` RTC 真机联调验收  
-3. 真故障注入后的恢复 / 回滚演练  

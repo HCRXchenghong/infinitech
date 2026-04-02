@@ -4,6 +4,13 @@
 
 const { proxyGet, proxyPost } = require('../utils/goProxy');
 
+function mergeQuery(req, defaults = {}) {
+  return {
+    ...defaults,
+    ...(req.query || {}),
+  };
+}
+
 async function getBalance(req, res, next) {
   await proxyGet(req, res, next, '/wallet/balance');
 }
@@ -18,6 +25,12 @@ async function getTransactionStatus(req, res, next) {
 
 async function getPaymentOptions(req, res, next) {
   await proxyGet(req, res, next, '/wallet/payment-options');
+}
+
+async function getRechargeOptions(req, res, next) {
+  await proxyGet(req, res, next, '/wallet/payment-options', {
+    params: mergeQuery(req, { scene: 'wallet_recharge' }),
+  });
 }
 
 async function recharge(req, res, next) {
@@ -64,6 +77,18 @@ async function getWithdrawStatus(req, res, next) {
   await proxyGet(req, res, next, '/wallet/withdraw/status');
 }
 
+async function getWithdrawStatusById(req, res, next) {
+  const requestId = String(req.params.requestId || '').trim();
+  await proxyGet(req, res, next, '/wallet/withdraw/status', {
+    params: mergeQuery(req, {
+      requestId,
+      request_id: requestId,
+      withdrawRequestId: requestId,
+      withdraw_request_id: requestId,
+    }),
+  });
+}
+
 async function getRiderDepositStatus(req, res, next) {
   await proxyGet(req, res, next, '/rider/deposit/status');
 }
@@ -89,6 +114,7 @@ module.exports = {
   getTransactions,
   getTransactionStatus,
   getPaymentOptions,
+  getRechargeOptions,
   recharge,
   getRechargeStatus,
   payment,
@@ -96,6 +122,7 @@ module.exports = {
   previewWithdrawFee,
   withdraw,
   getWithdrawStatus,
+  getWithdrawStatusById,
   getWithdrawRecords,
   getRiderDepositStatus,
   createRiderDepositPayIntent,

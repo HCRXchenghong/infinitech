@@ -254,7 +254,7 @@ export default {
             header,
           }),
           request({
-            url: this.withQuery('/api/wallet/payment-options', {
+            url: this.withQuery('/api/payment/options', {
               userType: 'rider',
               platform: 'app',
               scene: 'rider_deposit',

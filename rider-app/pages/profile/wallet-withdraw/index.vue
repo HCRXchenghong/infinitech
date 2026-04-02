@@ -291,13 +291,19 @@ export default {
       const { userId } = this.getAuth()
       let latest = null
       for (let attempt = 0; attempt < 5; attempt += 1) {
+        const statusUrl = requestId
+          ? this.withQuery(`/api/wallet/withdraw/status/${encodeURIComponent(String(requestId))}`, {
+              userId,
+              userType: 'rider',
+              transactionId,
+            })
+          : this.withQuery('/api/wallet/withdraw/status', {
+              userId,
+              userType: 'rider',
+              transactionId,
+            })
         latest = await request({
-          url: this.withQuery('/api/wallet/withdraw/status', {
-            userId,
-            userType: 'rider',
-            requestId,
-            transactionId,
-          }),
+          url: statusUrl,
           method: 'GET',
           header: this.getAuthHeader(token),
         })
@@ -347,7 +353,7 @@ export default {
 
         const idempotencyKey = this.createIdempotencyKey('rider_withdraw', userId)
         const result = await request({
-          url: '/api/wallet/withdraw',
+          url: '/api/wallet/withdraw/apply',
           method: 'POST',
           data: {
             userId,

@@ -491,7 +491,7 @@ export const fetchWithdrawRecords = (params: Record<string, any>) =>
   apiGet('/api/wallet/withdraw/records', params)
 
 export const fetchWalletPaymentOptions = (params: Record<string, any>) =>
-  apiGet('/api/wallet/payment-options', params)
+  apiGet('/api/payment/options', params)
 
 export const fetchWalletWithdrawOptions = (params: Record<string, any>) =>
   apiGet('/api/wallet/withdraw/options', params)
@@ -499,15 +499,31 @@ export const fetchWalletWithdrawOptions = (params: Record<string, any>) =>
 export const previewWalletWithdrawFee = (payload: Record<string, any>) =>
   apiPost('/api/wallet/withdraw/fee-preview', payload)
 
-export const createRecharge = (payload: Record<string, any>) => apiPost('/api/wallet/recharge', payload)
+export const createRecharge = (payload: Record<string, any>) => apiPost('/api/wallet/recharge/intent', payload)
 
 export const fetchWalletRechargeStatus = (params: Record<string, any>) =>
   apiGet('/api/wallet/recharge/status', params)
 
-export const createWithdraw = (payload: Record<string, any>) => apiPost('/api/wallet/withdraw', payload)
+export const createWithdraw = (payload: Record<string, any>) => apiPost('/api/wallet/withdraw/apply', payload)
 
-export const fetchWalletWithdrawStatus = (params: Record<string, any>) =>
-  apiGet('/api/wallet/withdraw/status', params)
+export const fetchWalletWithdrawStatus = (params: Record<string, any> = {}) => {
+  const requestId =
+    params.requestId ??
+    params.request_id ??
+    params.withdrawRequestId ??
+    params.withdraw_request_id
+
+  if (requestId !== undefined && requestId !== null && String(requestId).trim()) {
+    const nextParams = { ...params }
+    delete nextParams.requestId
+    delete nextParams.request_id
+    delete nextParams.withdrawRequestId
+    delete nextParams.withdraw_request_id
+    return apiGet(`/api/wallet/withdraw/status/${encodeURIComponent(String(requestId).trim())}`, nextParams)
+  }
+
+  return apiGet('/api/wallet/withdraw/status', params)
+}
 
 // Message (Go 目前返回空数组，占位直连)
 export const fetchConversations = () => apiGet('/api/messages/conversations')

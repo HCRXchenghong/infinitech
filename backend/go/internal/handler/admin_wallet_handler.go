@@ -137,6 +137,33 @@ func (h *AdminWalletHandler) ListWithdrawRequests(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+func (h *AdminWalletHandler) ListPaymentCallbacks(c *gin.Context) {
+	result, err := h.wallet.ListPaymentCallbacks(c.Request.Context(), service.PaymentCallbackListQuery{
+		Channel:           strings.TrimSpace(c.Query("channel")),
+		EventType:         strings.TrimSpace(c.Query("eventType")),
+		Status:            strings.TrimSpace(c.Query("status")),
+		Verified:          strings.TrimSpace(c.Query("verified")),
+		ThirdPartyOrderID: strings.TrimSpace(c.Query("thirdPartyOrderId")),
+		TransactionID:     strings.TrimSpace(c.Query("transactionId")),
+		Page:              parsePositiveInt(c.Query("page"), 1),
+		Limit:             parsePositiveInt(c.Query("limit"), 20),
+	})
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *AdminWalletHandler) GetPaymentCallbackDetail(c *gin.Context) {
+	result, err := h.wallet.GetPaymentCallbackDetail(c.Request.Context(), strings.TrimSpace(c.Param("id")))
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
 func (h *AdminWalletHandler) GetPaymentCenterConfig(c *gin.Context) {
 	result, err := h.wallet.GetPaymentCenterConfig(c.Request.Context())
 	if err != nil {
@@ -170,6 +197,15 @@ func (h *AdminWalletHandler) PreviewSettlement(c *gin.Context) {
 		return
 	}
 	result, err := h.wallet.PreviewSettlement(c.Request.Context(), req.Amount, req.RuleSetName)
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *AdminWalletHandler) GetSettlementOrder(c *gin.Context) {
+	result, err := h.wallet.GetOrderSettlement(c.Request.Context(), strings.TrimSpace(c.Param("id")))
 	if err != nil {
 		writeWalletServiceError(c, err)
 		return

@@ -789,3 +789,91 @@ func TestRecordCallbackIgnoresFailureAfterWithdrawAlreadySucceeded(t *testing.T)
 		t.Fatalf("expected withdraw request to remain success, got %q", reloadedRequest.Status)
 	}
 }
+
+func TestRecordCallbackFailedWithdrawSchedulesAutoRetryMetadata(t *testing.T) {
+	paymentSvc, _, db := newPaymentAndWalletServicesForTest(t)
+
+	account := &repository.WalletAccount{
+		UnifiedIdentity: testIdentity("WA", 720),
+		UserID:          "merchant-72",
+		UserType:        "merchant",
+		Balance:         5000,
+		FrozenBalance:   2000,
+		TotalBalance:    7000,
+		Status:          "active",
+	}
+	if err := db.Create(account).Error; err != nil {
+		t.Fatalf("create account failed: %v", err)
+	}
+
+	withdrawTx := &repository.WalletTransaction{
+		UnifiedIdentity:   testIdentity("WD", 720),
+		TransactionID:     "WITHDRAW-TXN-720",
+		IdempotencyKey:    "idem-withdraw-720",
+		UserID:            "merchant-72",
+		UserType:          "merchant",
+		Type:              "withdraw",
+		BusinessType:      "withdraw_request",
+		BusinessID:        "WITHDRAW-REQ-720",
+		Amount:            2000,
+		BalanceBefore:     7000,
+		BalanceAfter:      5000,
+		PaymentMethod:     "alipay",
+		PaymentChannel:    "alipay",
+		ThirdPartyOrderID: "ALI-PAYOUT-720",
+		Status:            "processing",
+		ResponseData:      `{"status":"transferring","gateway":"alipay"}`,
+		CreatedAt:         time.Now(),
+		UpdatedAt:         time.Now(),
+	}
+	if err := db.Create(withdrawTx).Error; err != nil {
+		t.Fatalf("create withdraw transaction failed: %v", err)
+	}
+
+	withdrawRequest := &repository.WithdrawRequest{
+		UnifiedIdentity:   testIdentity("WR", 720),
+		RequestID:         "WITHDRAW-REQ-720",
+		TransactionID:     withdrawTx.TransactionID,
+		UserID:            "merchant-72",
+		UserType:          "merchant",
+		Amount:            2000,
+		Fee:               20,
+		ActualAmount:      1980,
+		WithdrawMethod:    "alipay",
+		WithdrawAccount:   "merchant-72@example.com",
+		Status:            "transferring",
+		ThirdPartyOrderID: "ALI-PAYOUT-720",
+	}
+	if err := db.Create(withdrawRequest).Error; err != nil {
+		t.Fatalf("create withdraw request failed: %v", err)
+	}
+
+	if _, err := paymentSvc.RecordCallback(context.Background(), PaymentCallbackRequest{
+		Channel:           "alipay",
+		EventType:         "payout.fail",
+		ThirdPartyOrderID: "ALI-PAYOUT-720",
+		Verified:          true,
+		RawBody:           `{"status":"FAILED"}`,
+		Response:          "gateway failed",
+	}); err != nil {
+		t.Fatalf("record callback failed: %v", err)
+	}
+
+	var latestTx repository.WalletTransaction
+	if err := db.Where("transaction_id = ?", "WITHDRAW-TXN-720").First(&latestTx).Error; err != nil {
+		t.Fatalf("reload withdraw transaction failed: %v", err)
+	}
+	payload, ok := parseWalletResponsePayload(latestTx.ResponseData).(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected response data payload map, got %T", parseWalletResponsePayload(latestTx.ResponseData))
+	}
+	if !toBool(payload["autoRetryEligible"]) {
+		t.Fatalf("expected auto retry eligible payload, got %#v", payload["autoRetryEligible"])
+	}
+	if got := toInt(payload["retryCount"]); got != 0 {
+		t.Fatalf("expected retryCount 0 after initial failure, got %d", got)
+	}
+	if nextRetryAt := firstTrimmed(fmt.Sprint(payload["nextRetryAt"])); nextRetryAt == "" {
+		t.Fatalf("expected nextRetryAt to be scheduled, got payload %#v", payload)
+	}
+}

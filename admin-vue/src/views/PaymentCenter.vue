@@ -430,6 +430,71 @@
           </el-table>
           <div v-else class="empty-note">输入金额后可以在这里预览实际分账结果。</div>
         </el-card>
+
+        <el-card class="panel">
+          <template #header>订单分账查询</template>
+          <div class="preview-toolbar">
+            <el-input
+              v-model="settlementLookupForm.orderId"
+              clearable
+              placeholder="输入订单 ID / UID / TSID / 日订单号"
+              @keyup.enter="loadSettlementOrder"
+            />
+            <el-button type="primary" :loading="settlementLookupLoading" @click="loadSettlementOrder">查询订单分账</el-button>
+            <el-button @click="resetSettlementOrder">清空</el-button>
+          </div>
+          <div v-if="settlementOrderDetail" class="settlement-order-detail">
+            <div class="two-col settlement-order-grid">
+              <el-card class="panel detail-panel">
+                <template #header>清分快照</template>
+                <el-descriptions :column="2" border>
+                  <el-descriptions-item label="订单标识">{{ settlementOrderDetail.order_id || '-' }}</el-descriptions-item>
+                  <el-descriptions-item label="快照状态">{{ settlementSnapshotStatusLabel(settlementOrderDetail.status) }}</el-descriptions-item>
+                  <el-descriptions-item label="规则集 UID">{{ settlementOrderDetail.snapshot?.rule_set_uid || '-' }}</el-descriptions-item>
+                  <el-descriptions-item label="订单金额">{{ formatFenOrDash(settlementOrderDetail.snapshot?.order_amount) }}</el-descriptions-item>
+                  <el-descriptions-item label="生成时间">{{ formatDateTime(settlementOrderDetail.snapshot?.created_at) }}</el-descriptions-item>
+                  <el-descriptions-item label="结算时间">{{ formatDateTime(settlementOrderDetail.snapshot?.settled_at || settlementOrderDetail.snapshot?.reversed_at) }}</el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+
+              <el-card class="panel detail-panel">
+                <template #header>订单概览</template>
+                <el-descriptions :column="2" border>
+                  <el-descriptions-item label="订单状态">{{ settlementOrderDetail.order?.status || '-' }}</el-descriptions-item>
+                  <el-descriptions-item label="支付状态">{{ settlementOrderDetail.order?.payment_status || '-' }}</el-descriptions-item>
+                  <el-descriptions-item label="商户">{{ settlementOrderDetail.order?.merchant_id || '-' }}</el-descriptions-item>
+                  <el-descriptions-item label="骑手">{{ settlementOrderDetail.order?.rider_id || '-' }}</el-descriptions-item>
+                  <el-descriptions-item label="用户">{{ settlementOrderDetail.order?.user_id || '-' }}</el-descriptions-item>
+                  <el-descriptions-item label="店铺">{{ settlementOrderDetail.order?.shop_name || '-' }}</el-descriptions-item>
+                  <el-descriptions-item label="创建时间">{{ formatDateTime(settlementOrderDetail.order?.created_at) }}</el-descriptions-item>
+                  <el-descriptions-item label="完成时间">{{ formatDateTime(settlementOrderDetail.order?.completed_at) }}</el-descriptions-item>
+                </el-descriptions>
+              </el-card>
+            </div>
+
+            <el-card class="panel detail-panel">
+              <template #header>分账分录</template>
+              <el-table :data="settlementOrderDetail.ledger_entries || []" size="small" stripe>
+                <el-table-column prop="settlement_subject_uid" label="对象 UID" min-width="170" />
+                <el-table-column prop="subject_type" label="对象类型" width="120" />
+                <el-table-column prop="entry_type" label="分录类型" width="140" />
+                <el-table-column label="金额(元)" width="120">
+                  <template #default="{ row }">{{ formatFen(row.amount) }}</template>
+                </el-table-column>
+                <el-table-column prop="status" label="状态" width="140" />
+                <el-table-column label="发生时间" width="170">
+                  <template #default="{ row }">{{ formatDateTime(row.occurred_at || row.updated_at) }}</template>
+                </el-table-column>
+              </el-table>
+            </el-card>
+
+            <el-card class="panel detail-panel">
+              <template #header>快照 JSON</template>
+              <pre class="json-block">{{ prettyJson(settlementOrderDetail.snapshot_data) }}</pre>
+            </el-card>
+          </div>
+          <div v-else class="empty-note">输入订单号后可以查看实际清分快照和分录。</div>
+        </el-card>
       </el-tab-pane>
 
       <el-tab-pane label="保证金与提现" name="deposit">
@@ -473,6 +538,7 @@
             <div class="header-row">
               <span>提现处理队列</span>
               <div class="header-actions">
+                <span class="bank-pending-count">自动重试待执行：{{ autoRetryWithdrawCount }}</span>
                 <el-select v-model="withdrawFilter.status" clearable placeholder="状态" style="width: 120px">
                   <el-option label="待审核" value="pending_review" />
                   <el-option label="待打款" value="pending_transfer" />
@@ -513,7 +579,17 @@
               <template #default="{ row }">¥{{ formatFen(row.actual_amount) }}</template>
             </el-table-column>
             <el-table-column label="状态" width="100">
-              <template #default="{ row }">{{ withdrawStatusLabel(row.status) }}</template>
+              <template #default="{ row }">
+                <div class="retry-cell">
+                  <span>{{ withdrawStatusLabel(row.status) }}</span>
+                  <template v-if="getWithdrawAutoRetry(row)">
+                    <el-tag size="small" :type="withdrawAutoRetryTag(row)">
+                      {{ withdrawAutoRetryLabel(row) }}
+                    </el-tag>
+                    <span class="muted-text">{{ withdrawAutoRetryHint(row) }}</span>
+                  </template>
+                </div>
+              </template>
             </el-table-column>
             <el-table-column prop="withdraw_account" label="收款账号" min-width="180" show-overflow-tooltip />
             <el-table-column label="创建时间" width="170">
@@ -738,6 +814,80 @@
           </el-table>
         </el-card>
       </el-tab-pane>
+      <el-tab-pane label="回调日志" name="callback-logs">
+        <el-card class="panel">
+          <template #header>
+            <div class="header-row">
+              <span>支付回调与出款日志</span>
+              <div class="header-actions">
+                <el-button size="small" :loading="callbackLoading" @click="loadPaymentCallbacks">刷新</el-button>
+              </div>
+            </div>
+          </template>
+          <div class="filter-row">
+            <el-select v-model="callbackFilter.channel" clearable placeholder="渠道" style="width: 140px">
+              <el-option label="微信" value="wechat" />
+              <el-option label="支付宝" value="alipay" />
+              <el-option label="银行卡" value="bank_card" />
+            </el-select>
+            <el-select v-model="callbackFilter.eventType" clearable placeholder="事件" style="width: 180px">
+              <el-option label="支付成功" value="payment.success" />
+              <el-option label="支付失败" value="payment.fail" />
+              <el-option label="退款成功" value="refund.success" />
+              <el-option label="退款失败" value="refund.fail" />
+              <el-option label="出款成功" value="payout.success" />
+              <el-option label="出款失败" value="payout.fail" />
+              <el-option label="处理中" value="payout.processing" />
+            </el-select>
+            <el-select v-model="callbackFilter.status" clearable placeholder="处理状态" style="width: 160px">
+              <el-option label="已处理" value="success" />
+              <el-option label="待处理" value="pending" />
+              <el-option label="处理失败" value="failed" />
+              <el-option label="已忽略" value="ignored" />
+            </el-select>
+            <el-select v-model="callbackFilter.verified" clearable placeholder="验签" style="width: 140px">
+              <el-option label="通过" value="true" />
+              <el-option label="失败" value="false" />
+            </el-select>
+            <el-input v-model="callbackFilter.transactionId" clearable placeholder="关联交易号" style="width: 220px" />
+            <el-input v-model="callbackFilter.thirdPartyOrderId" clearable placeholder="第三方单号" style="width: 220px" />
+            <el-button type="primary" :loading="callbackLoading" @click="loadPaymentCallbacks">筛选</el-button>
+            <el-button @click="resetCallbackFilters">重置</el-button>
+          </div>
+          <el-table :data="state.paymentCallbacks" size="small" stripe v-loading="callbackLoading">
+            <el-table-column prop="callback_id" label="回调号" min-width="180" />
+            <el-table-column label="渠道" width="100">
+              <template #default="{ row }">{{ paymentCallbackChannelLabel(row.channel) }}</template>
+            </el-table-column>
+            <el-table-column prop="event_type" label="事件" min-width="140" />
+            <el-table-column label="处理状态" width="120">
+              <template #default="{ row }">
+                <el-tag :type="paymentCallbackStatusTag(row)" size="small">{{ paymentCallbackStatusLabel(row) }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="关联交易" min-width="160">
+              <template #default="{ row }">{{ row.transaction_id || row.transaction?.transaction_id || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="第三方单号" min-width="180" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.third_party_order_id || row.transaction?.third_party_order_id || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="请求摘要" min-width="220" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.request_body_preview || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="创建时间" width="170">
+              <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+            </el-table-column>
+            <el-table-column label="处理时间" width="170">
+              <template #default="{ row }">{{ formatDateTime(row.processed_at) }}</template>
+            </el-table-column>
+            <el-table-column label="操作" width="100" fixed="right">
+              <template #default="{ row }">
+                <el-button link type="primary" @click="openPaymentCallbackDetail(row)">详情</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </el-tab-pane>
     </el-tabs>
 
     <el-dialog
@@ -778,6 +928,63 @@
         <el-button type="primary" :loading="bankPayoutSubmitting" @click="submitBankPayoutComplete">确认已打款</el-button>
       </template>
     </el-dialog>
+    <el-drawer
+      v-model="callbackDetailVisible"
+      title="回调详情"
+      size="720px"
+      destroy-on-close
+    >
+      <div v-if="callbackDetail" v-loading="callbackDetailLoading" class="callback-detail">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="回调号">{{ callbackDetail.callback_id || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="渠道">{{ paymentCallbackChannelLabel(callbackDetail.channel) }}</el-descriptions-item>
+          <el-descriptions-item label="事件">{{ callbackDetail.event_type || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="处理状态">{{ paymentCallbackStatusLabel(callbackDetail) }}</el-descriptions-item>
+          <el-descriptions-item label="关联交易">{{ callbackDetail.transaction_id || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="第三方单号">{{ callbackDetail.third_party_order_id || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ formatDateTime(callbackDetail.created_at) }}</el-descriptions-item>
+          <el-descriptions-item label="处理时间">{{ formatDateTime(callbackDetail.processed_at) }}</el-descriptions-item>
+          <el-descriptions-item label="验签指纹" :span="2">{{ callbackDetail.replay_fingerprint || '-' }}</el-descriptions-item>
+        </el-descriptions>
+
+        <el-card class="panel detail-panel" v-if="callbackDetail.transaction">
+          <template #header>关联交易</template>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="交易号">{{ callbackDetail.transaction.transaction_id || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="状态">{{ callbackDetail.transaction.status || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="业务类型">{{ callbackDetail.transaction.business_type || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="支付渠道">{{ callbackDetail.transaction.payment_channel || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="用户">{{ callbackDetail.transaction.user_id || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="端类型">{{ withdrawUserTypeLabel(callbackDetail.transaction.user_type) }}</el-descriptions-item>
+          </el-descriptions>
+        </el-card>
+
+        <el-card class="panel detail-panel" v-if="callbackDetail.withdraw">
+          <template #header>关联提现单</template>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="提现单号">{{ callbackDetail.withdraw.request_id || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="提现状态">{{ withdrawStatusLabel(callbackDetail.withdraw.status) }}</el-descriptions-item>
+            <el-descriptions-item label="提现渠道">{{ withdrawMethodLabel(callbackDetail.withdraw.withdraw_method) }}</el-descriptions-item>
+            <el-descriptions-item label="申请到账">{{ formatFen(callbackDetail.withdraw.actual_amount) }}</el-descriptions-item>
+            <el-descriptions-item label="手续费">{{ formatFen(callbackDetail.withdraw.fee) }}</el-descriptions-item>
+            <el-descriptions-item label="处理说明">{{ callbackDetail.withdraw.transfer_result || '-' }}</el-descriptions-item>
+          </el-descriptions>
+        </el-card>
+
+        <el-card class="panel detail-panel">
+          <template #header>请求头</template>
+          <pre class="json-block">{{ prettyJson(callbackDetail.request_headers_raw || callbackDetail.request_headers) }}</pre>
+        </el-card>
+        <el-card class="panel detail-panel">
+          <template #header>请求体</template>
+          <pre class="json-block">{{ prettyJson(callbackDetail.request_body_raw || callbackDetail.request_body) }}</pre>
+        </el-card>
+        <el-card class="panel detail-panel">
+          <template #header>响应体</template>
+          <pre class="json-block">{{ prettyJson(callbackDetail.response_body_raw || callbackDetail.response_body) }}</pre>
+        </el-card>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -795,10 +1002,16 @@ const previewing = ref(false)
 const pageError = ref('')
 const riderDepositOverview = ref({})
 const settlementPreviewEntries = ref([])
+const settlementLookupLoading = ref(false)
+const settlementOrderDetail = ref(null)
 const gatewaySummary = ref({})
 const withdrawActionLoading = ref('')
 const bankPayoutDialogVisible = ref(false)
 const bankPayoutSubmitting = ref(false)
+const callbackLoading = ref(false)
+const callbackDetailLoading = ref(false)
+const callbackDetailVisible = ref(false)
+const callbackDetail = ref(null)
 
 const state = reactive({
   pay_mode: { isProd: false },
@@ -820,6 +1033,7 @@ const state = reactive({
   },
   riderDepositRecords: [],
   withdrawRequests: [],
+  paymentCallbacks: [],
 })
 
 const bankPayoutForm = reactive({
@@ -838,10 +1052,23 @@ const previewForm = reactive({
   ruleSetName: '',
 })
 
+const settlementLookupForm = reactive({
+  orderId: '',
+})
+
 const withdrawFilter = reactive({
   status: '',
   userType: '',
   withdrawMethod: '',
+})
+
+const callbackFilter = reactive({
+  channel: '',
+  eventType: '',
+  status: '',
+  verified: '',
+  transactionId: '',
+  thirdPartyOrderId: '',
 })
 
 function cloneValue(value, fallback) {
@@ -867,6 +1094,13 @@ const filteredWithdrawRequests = computed(() => {
     if (withdrawFilter.withdrawMethod && item.withdraw_method !== withdrawFilter.withdrawMethod) return false
     return true
   })
+})
+
+const autoRetryWithdrawCount = computed(() => {
+  return (state.withdrawRequests || []).filter((item) => {
+    const retry = getWithdrawAutoRetry(item)
+    return String(item?.status || '') === 'failed' && Boolean(retry?.eligible) && String(retry?.nextRetryAt || '').trim() !== ''
+  }).length
 })
 
 const bankWithdrawRequests = computed(() => {
@@ -942,21 +1176,57 @@ async function loadAll() {
   loading.value = true
   pageError.value = ''
   try {
-    const [configRes, overviewRes, recordsRes, withdrawRes] = await Promise.all([
-      request.get('/api/admin/wallet/pay-center/config'),
-      request.get('/api/admin/wallet/rider-deposit/overview'),
-      request.get('/api/admin/wallet/rider-deposit/records', { params: { page: 1, limit: 20 } }),
-      request.get('/api/admin/wallet/withdraw-requests', { params: { page: 1, limit: 50 } }),
+    const [configRes, overviewRes, recordsRes, withdrawRes, callbackRes] = await Promise.all([
+      request.get('/api/pay-center/config'),
+      request.get('/api/rider-deposit/overview'),
+      request.get('/api/rider-deposit/records', { params: { page: 1, limit: 20 } }),
+      request.get('/api/pay-center/withdraw-requests', { params: { page: 1, limit: 50 } }),
+      request.get('/api/admin/wallet/payment-callbacks', { params: { page: 1, limit: 50 } }),
     ])
     normalizeConfig(configRes.data || {})
     riderDepositOverview.value = overviewRes.data || {}
     state.riderDepositRecords = normalizeListPayload(recordsRes.data)
     state.withdrawRequests = normalizeListPayload(withdrawRes.data)
+    state.paymentCallbacks = normalizeListPayload(callbackRes.data)
   } catch (error) {
     pageError.value = error?.response?.data?.error || error?.message || '加载支付中心失败'
   } finally {
     loading.value = false
   }
+}
+
+async function loadPaymentCallbacks() {
+  callbackLoading.value = true
+  pageError.value = ''
+  try {
+    const { data } = await request.get('/api/admin/wallet/payment-callbacks', {
+      params: {
+        page: 1,
+        limit: 50,
+        channel: callbackFilter.channel || undefined,
+        eventType: callbackFilter.eventType || undefined,
+        status: callbackFilter.status || undefined,
+        verified: callbackFilter.verified || undefined,
+        transactionId: callbackFilter.transactionId || undefined,
+        thirdPartyOrderId: callbackFilter.thirdPartyOrderId || undefined,
+      },
+    })
+    state.paymentCallbacks = normalizeListPayload(data)
+  } catch (error) {
+    pageError.value = error?.response?.data?.error || error?.message || '加载回调日志失败'
+  } finally {
+    callbackLoading.value = false
+  }
+}
+
+function resetCallbackFilters() {
+  callbackFilter.channel = ''
+  callbackFilter.eventType = ''
+  callbackFilter.status = ''
+  callbackFilter.verified = ''
+  callbackFilter.transactionId = ''
+  callbackFilter.thirdPartyOrderId = ''
+  loadPaymentCallbacks()
 }
 
 function addChannelRow() {
@@ -1009,12 +1279,61 @@ function formatFen(value) {
   return (Number(value || 0) / 100).toFixed(2)
 }
 
+function formatFenOrDash(value) {
+  if (value === null || value === undefined || value === '') return '-'
+  return formatFen(value)
+}
+
 function formatDateTime(value) {
   if (!value) return '-'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return String(value)
   const pad = (part) => String(part).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function getWithdrawAutoRetry(row) {
+  const retry = row?.auto_retry || row?.autoRetry
+  if (!retry || typeof retry !== 'object') return null
+  return retry
+}
+
+function withdrawAutoRetryTag(row) {
+  const retry = getWithdrawAutoRetry(row)
+  if (!retry?.eligible) return 'info'
+  if (retry.retryExhausted) return 'danger'
+  if (String(retry.nextRetryAt || '').trim()) return 'warning'
+  if (Number(retry.retryCount || 0) > 0) return 'success'
+  return 'info'
+}
+
+function withdrawAutoRetryLabel(row) {
+  const retry = getWithdrawAutoRetry(row)
+  if (!retry?.eligible) return '未启用'
+  if (retry.retryExhausted) return '已耗尽'
+  if (String(retry.nextRetryAt || '').trim()) return '待自动重试'
+  if (Number(retry.retryCount || 0) > 0) {
+    return `已重试 ${Number(retry.retryCount || 0)}/${Number(retry.maxRetryCount || 0) || 3}`
+  }
+  return '自动重试已启用'
+}
+
+function withdrawAutoRetryHint(row) {
+  const retry = getWithdrawAutoRetry(row)
+  if (!retry?.eligible) return '-'
+  if (String(retry.nextRetryAt || '').trim()) {
+    return `下次重试：${formatDateTime(retry.nextRetryAt)}`
+  }
+  if (retry.retryExhausted) {
+    return String(retry.lastFailureReason || '').trim() || '已达到最大重试次数'
+  }
+  if (String(retry.lastRetryAt || '').trim()) {
+    return `最近重试：${formatDateTime(retry.lastRetryAt)}`
+  }
+  if (Number(retry.retryCount || 0) > 0) {
+    return `累计重试 ${Number(retry.retryCount || 0)} 次`
+  }
+  return '等待网关回调或人工处理'
 }
 
 function withdrawStatusLabel(status) {
@@ -1043,6 +1362,99 @@ function withdrawUserTypeLabel(userType) {
     rider: '骑手',
     merchant: '商户',
   }[String(userType || '')] || userType || '-'
+}
+
+function paymentCallbackStatusTag(row) {
+  if (row?.verified && String(row?.status || '') === 'success') return 'success'
+  if (!row?.verified) return 'danger'
+  if (String(row?.status || '') === 'pending') return 'warning'
+  if (String(row?.status || '') === 'ignored') return 'info'
+  return 'info'
+}
+
+function paymentCallbackStatusLabel(row) {
+  if (!row) return '-'
+  const status = String(row.status || '')
+  if (!row.verified) return '验签失败'
+  if (status === 'success') return '已处理'
+  if (status === 'pending') return '待处理'
+  if (status === 'ignored') return '已忽略'
+  if (status === 'failed') return '处理失败'
+  return status || '-'
+}
+
+function paymentCallbackChannelLabel(channel) {
+  return {
+    wechat: '微信',
+    alipay: '支付宝',
+    bank_card: '银行卡',
+  }[String(channel || '')] || channel || '-'
+}
+
+function settlementSnapshotStatusLabel(status) {
+  return {
+    pending_settlement: '待结算',
+    settled: '已结算',
+    reversed: '已冲销',
+    missing: '未生成',
+  }[String(status || '')] || status || '-'
+}
+
+function prettyJson(value) {
+  if (value == null || value === '') return '-'
+  if (typeof value === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2)
+    } catch (_) {
+      return value
+    }
+  }
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch (_) {
+    return String(value)
+  }
+}
+
+async function loadSettlementOrder() {
+  const orderId = String(settlementLookupForm.orderId || '').trim()
+  if (!orderId) {
+    ElMessage.warning('请先输入订单号')
+    return
+  }
+  settlementLookupLoading.value = true
+  pageError.value = ''
+  try {
+    const { data } = await request.get(`/api/settlement/orders/${encodeURIComponent(orderId)}`)
+    settlementOrderDetail.value = data || null
+  } catch (error) {
+    settlementOrderDetail.value = null
+    pageError.value = error?.response?.data?.error || error?.message || '查询订单分账失败'
+    ElMessage.error(pageError.value)
+  } finally {
+    settlementLookupLoading.value = false
+  }
+}
+
+function resetSettlementOrder() {
+  settlementLookupForm.orderId = ''
+  settlementOrderDetail.value = null
+}
+
+async function openPaymentCallbackDetail(row) {
+  const callbackId = row?.callback_id || row?.callbackId
+  if (!callbackId) return
+  callbackDetailLoading.value = true
+  pageError.value = ''
+  try {
+    const { data } = await request.get(`/api/admin/wallet/payment-callbacks/${encodeURIComponent(callbackId)}`)
+    callbackDetail.value = data || null
+    callbackDetailVisible.value = true
+  } catch (error) {
+    pageError.value = error?.response?.data?.error || error?.message || '加载回调详情失败'
+  } finally {
+    callbackDetailLoading.value = false
+  }
 }
 
 function maskCardNo(value) {
@@ -1150,7 +1562,7 @@ async function submitWithdrawAction(row, action) {
   withdrawActionLoading.value = `${requestId}:${action}`
   pageError.value = ''
   try {
-    await request.post('/api/admin/wallet/withdraw-requests/review', {
+    await request.post('/api/pay-center/withdraw-requests/review', {
       requestId,
       action,
       remark: note,
@@ -1194,7 +1606,7 @@ async function submitBankPayoutComplete() {
   withdrawActionLoading.value = `${bankPayoutForm.requestId}:complete`
   pageError.value = ''
   try {
-    await request.post('/api/admin/wallet/withdraw-requests/review', {
+    await request.post('/api/pay-center/withdraw-requests/review', {
       requestId: bankPayoutForm.requestId,
       action: 'complete',
       remark: String(bankPayoutForm.transferResult || '').trim(),
@@ -1226,7 +1638,7 @@ async function syncWithdrawStatus(row) {
   withdrawActionLoading.value = `${requestId}:sync_gateway_status`
   pageError.value = ''
   try {
-    const { data } = await request.post('/api/admin/wallet/withdraw-requests/review', {
+    const { data } = await request.post('/api/pay-center/withdraw-requests/review', {
       requestId,
       action: 'sync_gateway_status',
     })
@@ -1253,7 +1665,7 @@ async function retryWithdrawPayout(row) {
   withdrawActionLoading.value = `${requestId}:retry_payout`
   pageError.value = ''
   try {
-    const { data } = await request.post('/api/admin/wallet/withdraw-requests/review', {
+    const { data } = await request.post('/api/pay-center/withdraw-requests/review', {
       requestId,
       action: 'retry_payout',
       remark: '后台重试打款',
@@ -1301,7 +1713,7 @@ async function supplementWithdraw(row, action) {
   withdrawActionLoading.value = `${requestId}:${action}`
   pageError.value = ''
   try {
-    const { data } = await request.post('/api/admin/wallet/withdraw-requests/review', {
+    const { data } = await request.post('/api/pay-center/withdraw-requests/review', {
       requestId,
       action,
       remark: String(prompt.value || defaultRemark).trim() || defaultRemark,
@@ -1343,7 +1755,7 @@ async function saveAll() {
       rider_deposit_policy: state.rider_deposit_policy,
       bank_card_config: state.bank_card_config,
     }
-    const { data } = await request.post('/api/admin/wallet/pay-center/config', payload)
+    const { data } = await request.post('/api/pay-center/config', payload)
     normalizeConfig(data || {})
     ElMessage.success('支付中心配置已保存')
   } catch (error) {
@@ -1357,7 +1769,7 @@ async function saveAll() {
 async function runPreview() {
   previewing.value = true
   try {
-    const { data } = await request.post('/api/admin/wallet/settlement/rule-preview', {
+    const { data } = await request.post('/api/settlement/rule-preview', {
       amount: previewForm.amount,
       ruleSetName: previewForm.ruleSetName,
     })
@@ -1517,6 +1929,16 @@ onMounted(loadAll)
   align-items: start;
 }
 
+.settlement-order-grid {
+  align-items: start;
+}
+
+.settlement-order-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .panel {
   border-radius: 18px;
 }
@@ -1566,6 +1988,12 @@ onMounted(loadAll)
   gap: 4px;
 }
 
+.retry-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .muted-text {
   font-size: 12px;
   color: #6b7280;
@@ -1574,6 +2002,37 @@ onMounted(loadAll)
 .bank-pending-count {
   font-size: 13px;
   color: #6b7280;
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.callback-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-panel {
+  margin-top: 4px;
+}
+
+.json-block {
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  line-height: 1.7;
 }
 
 @media (max-width: 1100px) {

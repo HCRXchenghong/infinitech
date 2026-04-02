@@ -1648,10 +1648,13 @@ func main() {
 			adminWallet.POST("/recharge", handlers.AdminWallet.AdminRecharge)
 			adminWallet.GET("/operations", handlers.AdminWallet.ListOperations)
 			adminWallet.GET("/withdraw-requests", handlers.AdminWallet.ListWithdrawRequests)
+			adminWallet.GET("/payment-callbacks", handlers.AdminWallet.ListPaymentCallbacks)
+			adminWallet.GET("/payment-callbacks/:id", handlers.AdminWallet.GetPaymentCallbackDetail)
 			adminWallet.POST("/withdraw-requests/review", handlers.AdminWallet.ReviewWithdraw)
 			adminWallet.GET("/pay-center/config", handlers.AdminWallet.GetPaymentCenterConfig)
 			adminWallet.POST("/pay-center/config", handlers.AdminWallet.SavePaymentCenterConfig)
 			adminWallet.POST("/settlement/rule-preview", handlers.AdminWallet.PreviewSettlement)
+			adminWallet.GET("/settlement/orders/:id", handlers.AdminWallet.GetSettlementOrder)
 			adminWallet.GET("/rider-deposit/overview", handlers.AdminWallet.GetRiderDepositOverview)
 			adminWallet.GET("/rider-deposit/records", handlers.AdminWallet.ListRiderDepositRecords)
 		}
