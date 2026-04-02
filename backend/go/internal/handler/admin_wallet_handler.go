@@ -94,6 +94,7 @@ func (h *AdminWalletHandler) UnfreezeAccount(c *gin.Context) {
 
 func (h *AdminWalletHandler) ListOperations(c *gin.Context) {
 	result, err := h.wallet.ListAdminOperations(c.Request.Context(), service.AdminOperationListQuery{
+		TransactionID:  strings.TrimSpace(c.Query("transactionId")),
 		TargetUserID:   strings.TrimSpace(c.Query("targetUserId")),
 		TargetUserType: strings.TrimSpace(c.Query("targetUserType")),
 		OperationType:  strings.TrimSpace(c.Query("operationType")),

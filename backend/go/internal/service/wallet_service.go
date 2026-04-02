@@ -102,6 +102,7 @@ type AdminFreezeRequest struct {
 }
 
 type AdminOperationListQuery struct {
+	TransactionID  string
 	TargetUserID   string
 	TargetUserType string
 	OperationType  string
@@ -973,6 +974,7 @@ func (s *WalletService) ListAdminOperations(ctx context.Context, query AdminOper
 	offset := (query.Page - 1) * query.Limit
 
 	operations, total, err := s.walletRepo.ListAdminWalletOperations(ctx, repository.AdminWalletOperationListParams{
+		TransactionID:  query.TransactionID,
 		TargetUserID:   query.TargetUserID,
 		TargetUserType: query.TargetUserType,
 		OperationType:  query.OperationType,
@@ -992,6 +994,108 @@ func (s *WalletService) ListAdminOperations(ctx context.Context, query AdminOper
 			"total": total,
 		},
 	}, nil
+}
+
+func withdrawAdminOperationType(action string) string {
+	switch strings.TrimSpace(action) {
+	case "approve":
+		return "withdraw_approve"
+	case "reject":
+		return "withdraw_reject"
+	case "execute":
+		return "withdraw_execute"
+	case "mark_processing":
+		return "withdraw_mark_processing"
+	case "complete":
+		return "withdraw_complete"
+	case "fail":
+		return "withdraw_fail"
+	case "sync_gateway_status":
+		return "withdraw_sync_gateway_status"
+	case "retry_payout":
+		return "withdraw_retry_payout"
+	case "supplement_success":
+		return "withdraw_supplement_success"
+	case "supplement_fail":
+		return "withdraw_supplement_fail"
+	default:
+		return "withdraw_operation"
+	}
+}
+
+func withdrawAdminOperationReason(action string) string {
+	switch strings.TrimSpace(action) {
+	case "approve":
+		return "后台审核通过提现申请"
+	case "reject":
+		return "后台驳回提现申请"
+	case "execute":
+		return "后台发起提现打款"
+	case "mark_processing":
+		return "后台标记提现转账中"
+	case "complete":
+		return "后台确认提现打款成功"
+	case "fail":
+		return "后台标记提现打款失败"
+	case "sync_gateway_status":
+		return "后台同步提现网关状态"
+	case "retry_payout":
+		return "后台重试提现打款"
+	case "supplement_success":
+		return "后台补记提现成功"
+	case "supplement_fail":
+		return "后台补记提现失败"
+	default:
+		return "后台处理提现单"
+	}
+}
+
+func (s *WalletService) createWithdrawAdminOperationTx(
+	ctx context.Context,
+	tx *gorm.DB,
+	record *repository.WithdrawRequest,
+	transaction *repository.WalletTransaction,
+	action string,
+	actor AdminWalletActor,
+	reason string,
+	remark string,
+) error {
+	if record == nil {
+		return fmt.Errorf("%w: withdraw request is required", ErrInvalidArgument)
+	}
+
+	operationID, operationIDRaw, err := normalizeUnifiedRefID(ctx, tx, bucketAdminOperation, "")
+	if err != nil {
+		return err
+	}
+
+	transactionID := ""
+	transactionIDRaw := ""
+	if transaction != nil {
+		transactionID = transaction.TransactionID
+		transactionIDRaw = transaction.TransactionIDRaw
+	}
+	if transactionID == "" {
+		transactionID = strings.TrimSpace(record.TransactionID)
+		transactionIDRaw = strings.TrimSpace(record.TransactionIDRaw)
+	}
+
+	operation := &repository.AdminWalletOperation{
+		OperationID:      operationID,
+		OperationIDRaw:   operationIDRaw,
+		TransactionID:    transactionID,
+		TransactionIDRaw: transactionIDRaw,
+		TargetUserID:     strings.TrimSpace(record.UserID),
+		TargetUserType:   strings.TrimSpace(record.UserType),
+		OperationType:    withdrawAdminOperationType(action),
+		Amount:           record.Amount,
+		AdminID:          strings.TrimSpace(actor.AdminID),
+		AdminName:        strings.TrimSpace(actor.AdminName),
+		AdminIP:          strings.TrimSpace(actor.AdminIP),
+		Reason:           firstTrimmed(strings.TrimSpace(reason), withdrawAdminOperationReason(action)),
+		Remark:           strings.TrimSpace(remark),
+	}
+	return s.walletRepo.CreateAdminWalletOperationTx(ctx, tx, operation)
 }
 
 func (s *WalletService) ensureWalletAccount(ctx context.Context, userID, userType string) (*repository.WalletAccount, error) {
@@ -1371,14 +1475,19 @@ func (s *WalletService) ReviewWithdraw(ctx context.Context, req WithdrawReviewRe
 	if reviewerName == "" {
 		reviewerName = actor.AdminName
 	}
+	reviewActor := AdminWalletActor{
+		AdminID:   reviewerID,
+		AdminName: reviewerName,
+		AdminIP:   actor.AdminIP,
+	}
 	if req.Action == "sync_gateway_status" {
-		return s.syncWithdrawGatewayStatus(ctx, record, transaction)
+		return s.syncWithdrawGatewayStatus(ctx, record, transaction, reviewActor)
 	}
 	if req.Action == "retry_payout" {
-		return s.retryWithdrawPayout(ctx, record, transaction, reviewerID, reviewerName, req.Remark)
+		return s.retryWithdrawPayout(ctx, record, transaction, reviewActor, req.Remark)
 	}
 	if req.Action == "supplement_success" || req.Action == "supplement_fail" {
-		return s.supplementWithdrawByCallback(ctx, record, transaction, req, reviewerID, reviewerName)
+		return s.supplementWithdrawByCallback(ctx, record, transaction, req, reviewActor)
 	}
 
 	now := time.Now()
@@ -1572,14 +1681,35 @@ func (s *WalletService) ReviewWithdraw(ctx context.Context, req WithdrawReviewRe
 			); err != nil {
 				return err
 			}
-			return nil
+			return s.createWithdrawAdminOperationTx(
+				ctx,
+				tx,
+				record,
+				transaction,
+				req.Action,
+				reviewActor,
+				withdrawAdminOperationReason(req.Action),
+				firstTrimmed(strings.TrimSpace(req.TransferResult), strings.TrimSpace(req.Remark), rejectReason),
+			)
 		}
 		if transitionErr != nil {
 			return transitionErr
 		}
-		return tx.WithContext(ctx).Model(&repository.WithdrawRequest{}).
+		if err := tx.WithContext(ctx).Model(&repository.WithdrawRequest{}).
 			Where("request_id = ? OR request_id_raw = ?", req.RequestID, req.RequestID).
-			Updates(requestUpdates).Error
+			Updates(requestUpdates).Error; err != nil {
+			return err
+		}
+		return s.createWithdrawAdminOperationTx(
+			ctx,
+			tx,
+			record,
+			transaction,
+			req.Action,
+			reviewActor,
+			withdrawAdminOperationReason(req.Action),
+			firstTrimmed(strings.TrimSpace(req.TransferResult), rejectReason, strings.TrimSpace(req.Remark)),
+		)
 	})
 	if err != nil {
 		return nil, err
@@ -1622,8 +1752,7 @@ func (s *WalletService) supplementWithdrawByCallback(
 	record *repository.WithdrawRequest,
 	transaction *repository.WalletTransaction,
 	req WithdrawReviewRequest,
-	reviewerID string,
-	reviewerName string,
+	actor AdminWalletActor,
 ) (map[string]interface{}, error) {
 	if record == nil || transaction == nil {
 		return nil, fmt.Errorf("%w: withdraw request is required", ErrInvalidArgument)
@@ -1648,6 +1777,8 @@ func (s *WalletService) supplementWithdrawByCallback(
 		eventType = "payout.fail"
 		defaultRemark = "后台补记失败"
 	}
+	reviewerID := strings.TrimSpace(actor.AdminID)
+	reviewerName := strings.TrimSpace(actor.AdminName)
 	remark := firstTrimmed(strings.TrimSpace(req.Remark), defaultRemark)
 	thirdPartyOrderID := firstTrimmed(
 		strings.TrimSpace(req.ThirdPartyOrderID),
@@ -1698,6 +1829,20 @@ func (s *WalletService) supplementWithdrawByCallback(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.walletRepo.WithTransaction(ctx, func(tx *gorm.DB) error {
+		return s.createWithdrawAdminOperationTx(
+			ctx,
+			tx,
+			latestRecord,
+			latestTransaction,
+			req.Action,
+			actor,
+			withdrawAdminOperationReason(req.Action),
+			remark,
+		)
+	}); err != nil {
+		return nil, err
+	}
 	status := deriveWalletFlowStatus(latestTransaction.Status, latestRecord.Status)
 	return map[string]interface{}{
 		"success":           true,
@@ -1725,7 +1870,12 @@ func (s *WalletService) getWithdrawRequestAndTransaction(ctx context.Context, re
 	return record, &transaction, nil
 }
 
-func (s *WalletService) syncWithdrawGatewayStatus(ctx context.Context, record *repository.WithdrawRequest, transaction *repository.WalletTransaction) (map[string]interface{}, error) {
+func (s *WalletService) syncWithdrawGatewayStatus(
+	ctx context.Context,
+	record *repository.WithdrawRequest,
+	transaction *repository.WalletTransaction,
+	actor AdminWalletActor,
+) (map[string]interface{}, error) {
 	if record == nil || transaction == nil {
 		return nil, fmt.Errorf("%w: withdraw request is required", ErrInvalidArgument)
 	}
@@ -1738,6 +1888,20 @@ func (s *WalletService) syncWithdrawGatewayStatus(ctx context.Context, record *r
 
 	latestRecord, latestTransaction, err := s.getWithdrawRequestAndTransaction(ctx, record.RequestID)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.walletRepo.WithTransaction(ctx, func(tx *gorm.DB) error {
+		return s.createWithdrawAdminOperationTx(
+			ctx,
+			tx,
+			latestRecord,
+			latestTransaction,
+			"sync_gateway_status",
+			actor,
+			withdrawAdminOperationReason("sync_gateway_status"),
+			firstTrimmed(strings.TrimSpace(latestRecord.TransferResult), "同步网关状态"),
+		)
+	}); err != nil {
 		return nil, err
 	}
 	status := deriveWalletFlowStatus(latestTransaction.Status, latestRecord.Status)
@@ -1754,8 +1918,7 @@ func (s *WalletService) retryWithdrawPayout(
 	ctx context.Context,
 	record *repository.WithdrawRequest,
 	transaction *repository.WalletTransaction,
-	reviewerID string,
-	reviewerName string,
+	actor AdminWalletActor,
 	remark string,
 ) (map[string]interface{}, error) {
 	if record == nil || transaction == nil {
@@ -1765,7 +1928,9 @@ func (s *WalletService) retryWithdrawPayout(
 		return nil, fmt.Errorf("%w: withdraw request is not failed", ErrInvalidArgument)
 	}
 
-	remark = firstTrimmed(strings.TrimSpace(remark), "后台重试打款")
+	reviewerID := strings.TrimSpace(actor.AdminID)
+	reviewerName := strings.TrimSpace(actor.AdminName)
+	remark = firstTrimmed(strings.TrimSpace(remark), "后台重试提现打款")
 	now := time.Now()
 	if err := s.walletRepo.WithTransaction(ctx, func(tx *gorm.DB) error {
 		var lockedRecord repository.WithdrawRequest
@@ -1845,7 +2010,19 @@ func (s *WalletService) retryWithdrawPayout(
 			}).Error; err != nil {
 			return err
 		}
-		return s.updateRiderDepositWithdrawStateTx(ctx, tx, lockedRecord.RequestID, "pending_transfer", remark, nil)
+		if err := s.updateRiderDepositWithdrawStateTx(ctx, tx, lockedRecord.RequestID, "pending_transfer", remark, nil); err != nil {
+			return err
+		}
+		return s.createWithdrawAdminOperationTx(
+			ctx,
+			tx,
+			&lockedRecord,
+			&lockedTransaction,
+			"retry_payout",
+			actor,
+			withdrawAdminOperationReason("retry_payout"),
+			remark,
+		)
 	}); err != nil {
 		return nil, err
 	}
@@ -1860,6 +2037,7 @@ func (s *WalletService) retryWithdrawPayout(
 	}, AdminWalletActor{
 		AdminID:   reviewerID,
 		AdminName: reviewerName,
+		AdminIP:   actor.AdminIP,
 	})
 	if execErr != nil {
 		if revertErr := s.restoreFailedWithdrawRetry(ctx, record.RequestID, reviewerID, reviewerName, remark, execErr.Error()); revertErr != nil {

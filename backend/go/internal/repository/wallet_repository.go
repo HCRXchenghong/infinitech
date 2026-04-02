@@ -23,6 +23,7 @@ type WalletTransactionListParams struct {
 }
 
 type AdminWalletOperationListParams struct {
+	TransactionID  string
 	TargetUserID   string
 	TargetUserType string
 	OperationType  string
@@ -308,6 +309,9 @@ func (r *walletRepository) ListAdminWalletOperations(ctx context.Context, params
 	var total int64
 
 	query := r.db.WithContext(ctx).Model(&AdminWalletOperation{})
+	if params.TransactionID != "" {
+		query = query.Where("transaction_id = ? OR transaction_id_raw = ?", params.TransactionID, params.TransactionID)
+	}
 	if params.TargetUserID != "" {
 		query = query.Where("target_user_id = ?", params.TargetUserID)
 	}

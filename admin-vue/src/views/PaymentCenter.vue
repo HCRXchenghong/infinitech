@@ -602,6 +602,12 @@
               <template #default="{ row }">
                 <div class="withdraw-actions">
                   <el-button
+                    link
+                    @click="openWithdrawHistory(row)"
+                  >
+                    处理轨迹
+                  </el-button>
+                  <el-button
                     v-if="canWithdrawAction(row, 'approve')"
                     link
                     type="primary"
@@ -746,6 +752,12 @@
             <el-table-column label="操作" min-width="300" fixed="right">
               <template #default="{ row }">
                 <div class="withdraw-actions">
+                  <el-button
+                    link
+                    @click="openWithdrawHistory(row)"
+                  >
+                    处理轨迹
+                  </el-button>
                   <el-button
                     v-if="canWithdrawAction(row, 'approve')"
                     link
@@ -942,6 +954,37 @@
         <el-button type="primary" :loading="bankPayoutSubmitting" @click="submitBankPayoutComplete">确认已打款</el-button>
       </template>
     </el-dialog>
+    <el-dialog
+      v-model="withdrawHistoryDialogVisible"
+      title="提现处理轨迹"
+      width="820px"
+      destroy-on-close
+      @closed="resetWithdrawHistory"
+    >
+      <div v-if="withdrawHistoryTarget.requestId" class="history-header">
+        <el-tag size="small" type="info">{{ withdrawHistoryTarget.requestId }}</el-tag>
+        <span>{{ withdrawMethodLabel(withdrawHistoryTarget.method) }}</span>
+        <span class="muted-text">{{ withdrawUserTypeLabel(withdrawHistoryTarget.userType) }}</span>
+        <span class="muted-text">申请金额：{{ formatFen(withdrawHistoryTarget.amount) }}</span>
+      </div>
+      <el-table :data="withdrawActionHistory" size="small" stripe v-loading="withdrawHistoryLoading">
+        <el-table-column label="处理时间" width="170">
+          <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+        </el-table-column>
+        <el-table-column label="动作" width="170">
+          <template #default="{ row }">{{ withdrawOperationTypeLabel(row.operation_type) }}</template>
+        </el-table-column>
+        <el-table-column label="处理人" min-width="160">
+          <template #default="{ row }">{{ formatAdminOperationActor(row) }}</template>
+        </el-table-column>
+        <el-table-column prop="reason" label="处理说明" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="remark" label="备注" min-width="220" show-overflow-tooltip />
+      </el-table>
+      <el-empty v-if="!withdrawHistoryLoading && !withdrawActionHistory.length" description="暂无处理轨迹" />
+      <template #footer>
+        <el-button @click="withdrawHistoryDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
     <el-drawer
       v-model="callbackDetailVisible"
       title="回调详情"
@@ -1037,6 +1080,9 @@ const gatewaySummary = ref({})
 const withdrawActionLoading = ref('')
 const bankPayoutDialogVisible = ref(false)
 const bankPayoutSubmitting = ref(false)
+const withdrawHistoryDialogVisible = ref(false)
+const withdrawHistoryLoading = ref(false)
+const withdrawActionHistory = ref([])
 const callbackLoading = ref(false)
 const callbackReplayLoading = ref('')
 const callbackDetailLoading = ref(false)
@@ -1075,6 +1121,13 @@ const bankPayoutForm = reactive({
   payoutSourceCardNo: '',
   payoutSourceAccountName: '',
   transferResult: '',
+})
+
+const withdrawHistoryTarget = reactive({
+  requestId: '',
+  method: '',
+  userType: '',
+  amount: 0,
 })
 
 const previewForm = reactive({
@@ -1528,6 +1581,66 @@ function maskCardNo(value) {
   if (!raw) return '-'
   if (raw.length <= 8) return raw
   return `${raw.slice(0, 4)} **** **** ${raw.slice(-4)}`
+}
+
+function resetWithdrawHistory() {
+  withdrawActionHistory.value = []
+  withdrawHistoryTarget.requestId = ''
+  withdrawHistoryTarget.method = ''
+  withdrawHistoryTarget.userType = ''
+  withdrawHistoryTarget.amount = 0
+}
+
+function withdrawOperationTypeLabel(value) {
+  return {
+    withdraw_approve: '审核通过',
+    withdraw_reject: '审核驳回',
+    withdraw_execute: '发起打款',
+    withdraw_mark_processing: '标记转账中',
+    withdraw_complete: '确认打款成功',
+    withdraw_fail: '标记打款失败',
+    withdraw_sync_gateway_status: '同步网关状态',
+    withdraw_retry_payout: '重试打款',
+    withdraw_supplement_success: '补记成功',
+    withdraw_supplement_fail: '补记失败',
+  }[String(value || '').trim()] || String(value || '-')
+}
+
+function formatAdminOperationActor(row) {
+  const name = String(row?.admin_name || '').trim()
+  const id = String(row?.admin_id || '').trim()
+  if (name && id) return `${name} / ${id}`
+  return name || id || '-'
+}
+
+async function openWithdrawHistory(row) {
+  const transactionId = String(row?.transaction_id || row?.transactionId || '').trim()
+  if (!transactionId) {
+    ElMessage.warning('当前提现单缺少关联交易号，暂时无法加载处理轨迹')
+    return
+  }
+  withdrawHistoryDialogVisible.value = true
+  withdrawHistoryLoading.value = true
+  resetWithdrawHistory()
+  withdrawHistoryTarget.requestId = String(row?.request_id || row?.requestId || '').trim()
+  withdrawHistoryTarget.method = String(row?.withdraw_method || row?.withdrawMethod || '').trim()
+  withdrawHistoryTarget.userType = String(row?.user_type || row?.userType || '').trim()
+  withdrawHistoryTarget.amount = Number(row?.amount || 0)
+  try {
+    const { data } = await request.get('/api/pay-center/operations', {
+      params: {
+        transactionId,
+        page: 1,
+        limit: 50,
+      },
+    })
+    withdrawActionHistory.value = normalizeListPayload(data)
+  } catch (error) {
+    pageError.value = error?.response?.data?.error || error?.message || '加载提现处理轨迹失败'
+    ElMessage.error(pageError.value)
+  } finally {
+    withdrawHistoryLoading.value = false
+  }
 }
 
 function openBankVoucher(url) {
@@ -2082,6 +2195,14 @@ onMounted(loadAll)
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
 .callback-detail {

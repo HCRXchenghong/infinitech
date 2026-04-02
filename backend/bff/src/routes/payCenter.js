@@ -10,6 +10,7 @@ router.get('/config', adminWalletController.getPayCenterConfig);
 router.post('/config', adminWalletController.savePayCenterConfig);
 router.get('/channel-matrix', adminWalletController.getChannelMatrix);
 router.get('/health', adminWalletController.getPayCenterHealth);
+router.get('/operations', adminWalletController.listOperations);
 router.get('/withdraw-requests', adminWalletController.listWithdrawRequests);
 router.post('/withdraw-requests/review', adminWalletController.reviewWithdraw);
 

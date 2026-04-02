@@ -77,6 +77,7 @@ func newPaymentAndWalletServicesForTest(t *testing.T) (*PaymentService, *WalletS
 		&repository.PaymentCallback{},
 		&repository.AfterSalesRequest{},
 		&repository.WithdrawRequest{},
+		&repository.AdminWalletOperation{},
 		&repository.RiderDepositRecord{},
 		&repository.SettlementSubject{},
 		&repository.SettlementRuleSet{},

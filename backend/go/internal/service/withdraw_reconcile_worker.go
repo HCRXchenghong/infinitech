@@ -210,7 +210,10 @@ func (s *WalletService) RunWithdrawGatewayReconcileCycle(ctx context.Context, li
 		if !s.isWithdrawPayoutGatewayReady(ctx, record.WithdrawMethod) {
 			continue
 		}
-		if _, err := s.retryWithdrawPayout(ctx, &record, transaction, "system-withdraw-retry-worker", "Withdraw Retry Worker", "自动重试打款"); err != nil {
+		if _, err := s.retryWithdrawPayout(ctx, &record, transaction, AdminWalletActor{
+			AdminID:   "system-withdraw-retry-worker",
+			AdminName: "Withdraw Retry Worker",
+		}, "自动重试打款"); err != nil {
 			errorCount++
 			lastErr = fmt.Errorf("auto retry withdraw %s failed: %w", strings.TrimSpace(record.RequestID), err)
 			continue
