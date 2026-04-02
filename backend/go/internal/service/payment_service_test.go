@@ -78,6 +78,12 @@ func newPaymentAndWalletServicesForTest(t *testing.T) (*PaymentService, *WalletS
 		&repository.AfterSalesRequest{},
 		&repository.WithdrawRequest{},
 		&repository.RiderDepositRecord{},
+		&repository.SettlementSubject{},
+		&repository.SettlementRuleSet{},
+		&repository.SettlementRuleStep{},
+		&repository.OrderSettlementSnapshot{},
+		&repository.SettlementLedgerEntry{},
+		&repository.WithdrawFeeRule{},
 	); err != nil {
 		t.Fatalf("auto migrate failed: %v", err)
 	}
