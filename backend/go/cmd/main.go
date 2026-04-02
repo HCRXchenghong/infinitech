@@ -1650,6 +1650,7 @@ func main() {
 			adminWallet.GET("/withdraw-requests", handlers.AdminWallet.ListWithdrawRequests)
 			adminWallet.GET("/payment-callbacks", handlers.AdminWallet.ListPaymentCallbacks)
 			adminWallet.GET("/payment-callbacks/:id", handlers.AdminWallet.GetPaymentCallbackDetail)
+			adminWallet.POST("/payment-callbacks/:id/replay", handlers.AdminWallet.ReplayPaymentCallback)
 			adminWallet.POST("/withdraw-requests/review", handlers.AdminWallet.ReviewWithdraw)
 			adminWallet.GET("/pay-center/config", handlers.AdminWallet.GetPaymentCenterConfig)
 			adminWallet.POST("/pay-center/config", handlers.AdminWallet.SavePaymentCenterConfig)

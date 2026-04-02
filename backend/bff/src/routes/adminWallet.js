@@ -14,6 +14,7 @@ router.get('/operations', adminWalletController.listOperations);
 router.get('/withdraw-requests', adminWalletController.listWithdrawRequests);
 router.get('/payment-callbacks', adminWalletController.listPaymentCallbacks);
 router.get('/payment-callbacks/:id', adminWalletController.getPaymentCallbackDetail);
+router.post('/payment-callbacks/:id/replay', adminWalletController.replayPaymentCallback);
 router.get('/pay-center/config', adminWalletController.getPayCenterConfig);
 router.post('/pay-center/config', adminWalletController.savePayCenterConfig);
 router.post('/settlement/rule-preview', adminWalletController.previewSettlement);

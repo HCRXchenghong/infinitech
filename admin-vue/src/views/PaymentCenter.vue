@@ -880,9 +880,18 @@
             <el-table-column label="处理时间" width="170">
               <template #default="{ row }">{{ formatDateTime(row.processed_at) }}</template>
             </el-table-column>
-            <el-table-column label="操作" width="100" fixed="right">
+            <el-table-column label="操作" width="160" fixed="right">
               <template #default="{ row }">
                 <el-button link type="primary" @click="openPaymentCallbackDetail(row)">详情</el-button>
+                <el-button
+                  v-if="canReplayPaymentCallback(row)"
+                  link
+                  type="warning"
+                  :loading="callbackReplayLoading === (row.callback_id || row.callbackId)"
+                  @click="replayPaymentCallback(row)"
+                >
+                  重放
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -946,6 +955,18 @@
           <el-descriptions-item label="处理时间">{{ formatDateTime(callbackDetail.processed_at) }}</el-descriptions-item>
           <el-descriptions-item label="验签指纹" :span="2">{{ callbackDetail.replay_fingerprint || '-' }}</el-descriptions-item>
         </el-descriptions>
+        <div class="callback-actions">
+          <el-button
+            v-if="canReplayPaymentCallback(callbackDetail)"
+            type="warning"
+            plain
+            :loading="callbackReplayLoading === (callbackDetail.callback_id || callbackDetail.callbackId)"
+            @click="replayPaymentCallback(callbackDetail)"
+          >
+            重放这条已验签回调
+          </el-button>
+          <span class="hint">适用于异步回调已入库但业务链未正确推进时的后台补偿处理。</span>
+        </div>
 
         <el-card class="panel detail-panel" v-if="callbackDetail.transaction">
           <template #header>关联交易</template>
@@ -1009,6 +1030,7 @@ const withdrawActionLoading = ref('')
 const bankPayoutDialogVisible = ref(false)
 const bankPayoutSubmitting = ref(false)
 const callbackLoading = ref(false)
+const callbackReplayLoading = ref('')
 const callbackDetailLoading = ref(false)
 const callbackDetailVisible = ref(false)
 const callbackDetail = ref(null)
@@ -1454,6 +1476,42 @@ async function openPaymentCallbackDetail(row) {
     pageError.value = error?.response?.data?.error || error?.message || '加载回调详情失败'
   } finally {
     callbackDetailLoading.value = false
+  }
+}
+
+function canReplayPaymentCallback(row) {
+  if (!row || !row.verified) return false
+  const channel = String(row.channel || '').trim()
+  return channel === 'wechat' || channel === 'alipay' || channel === 'bank_card'
+}
+
+async function replayPaymentCallback(row) {
+  const callbackId = row?.callback_id || row?.callbackId
+  if (!callbackId || !canReplayPaymentCallback(row)) return
+
+  const prompt = await ElMessageBox.prompt('请输入这次重放的备注，方便后续审计追踪。', '重放已验签回调', {
+    inputPlaceholder: '后台重放已验签回调',
+    inputValue: '后台重放已验签回调',
+    confirmButtonText: '确认重放',
+    cancelButtonText: '取消',
+  }).catch(() => null)
+  if (!prompt) return
+
+  callbackReplayLoading.value = callbackId
+  pageError.value = ''
+  try {
+    const { data } = await request.post(`/api/admin/wallet/payment-callbacks/${encodeURIComponent(callbackId)}/replay`, {
+      remark: String(prompt.value || '').trim(),
+    })
+    ElMessage.success(data?.duplicated ? '回调已被处理过，已按当前状态回填' : '回调已重放处理')
+    await loadPaymentCallbacks()
+    const nextCallbackId = data?.callbackId || callbackId
+    await openPaymentCallbackDetail({ callback_id: nextCallbackId })
+  } catch (error) {
+    pageError.value = error?.response?.data?.error || error?.message || '重放回调失败'
+    ElMessage.error(pageError.value)
+  } finally {
+    callbackReplayLoading.value = ''
   }
 }
 
@@ -2016,6 +2074,13 @@ onMounted(loadAll)
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.callback-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .detail-panel {

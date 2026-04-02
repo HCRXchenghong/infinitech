@@ -136,6 +136,12 @@ async function getPaymentCallbackDetail(req, res, next) {
   });
 }
 
+async function replayPaymentCallback(req, res, next) {
+  await proxyPost(req, res, next, `/admin/wallet/payment-callbacks/${encodeURIComponent(req.params.id)}/replay`, {
+    headers: adminHeaders(req)
+  });
+}
+
 async function getPayCenterConfig(req, res, next) {
   await proxyGet(req, res, next, '/admin/wallet/pay-center/config', {
     headers: adminHeaders(req)
@@ -263,6 +269,7 @@ module.exports = {
   listWithdrawRequests,
   listPaymentCallbacks,
   getPaymentCallbackDetail,
+  replayPaymentCallback,
   getPayCenterConfig,
   savePayCenterConfig,
   getChannelMatrix,

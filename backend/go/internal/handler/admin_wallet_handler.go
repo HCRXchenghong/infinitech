@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"errors"
+	"io"
 	"net/http"
 	"strings"
 
@@ -157,6 +159,21 @@ func (h *AdminWalletHandler) ListPaymentCallbacks(c *gin.Context) {
 
 func (h *AdminWalletHandler) GetPaymentCallbackDetail(c *gin.Context) {
 	result, err := h.wallet.GetPaymentCallbackDetail(c.Request.Context(), strings.TrimSpace(c.Param("id")))
+	if err != nil {
+		writeWalletServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *AdminWalletHandler) ReplayPaymentCallback(c *gin.Context) {
+	var req service.PaymentCallbackReplayRequest
+	if err := c.ShouldBindJSON(&req); err != nil && !errors.Is(err, io.EOF) {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		return
+	}
+	actor := extractAdminActor(c)
+	result, err := h.wallet.ReplayPaymentCallback(c.Request.Context(), strings.TrimSpace(c.Param("id")), actor, req)
 	if err != nil {
 		writeWalletServiceError(c, err)
 		return
