@@ -169,7 +169,15 @@
         </view>
         
         <!-- 操作按钮 -->
-        <view v-if="order.bizType === 'groupbuy' && order.status === 'paid_unused'" class="action-buttons">
+        <view v-if="order.status === 'pending_payment'" class="action-buttons">
+          <button
+            class="action-btn primary"
+            @tap="handleAction('pay', order)"
+          >
+            继续支付
+          </button>
+        </view>
+        <view v-else-if="order.bizType === 'groupbuy' && order.status === 'paid_unused'" class="action-buttons">
           <button
             class="action-btn primary"
             @tap="handleAction('voucher', order)"

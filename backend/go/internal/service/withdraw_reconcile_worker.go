@@ -180,6 +180,9 @@ func (s *WalletService) RunWithdrawGatewayReconcileCycle(ctx context.Context, li
 			lastErr = fmt.Errorf("load transaction for withdraw %s failed: %w", strings.TrimSpace(record.RequestID), err)
 			continue
 		}
+		if !canRefreshWithdrawGatewayStatus(&record, transaction) {
+			continue
+		}
 		if err := s.refreshWithdrawGatewayStatus(ctx, &record, transaction); err != nil {
 			errorCount++
 			lastErr = fmt.Errorf("refresh withdraw %s failed: %w", strings.TrimSpace(record.RequestID), err)

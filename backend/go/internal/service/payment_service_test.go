@@ -610,6 +610,317 @@ func TestRecordCallbackFailsWithdrawTransferAndReturnsFrozenBalance(t *testing.T
 	}
 }
 
+func TestRecordCallbackKeepsVerifiedAlipayDealingStatusPending(t *testing.T) {
+	paymentSvc, _, db := newPaymentAndWalletServicesForTest(t)
+
+	account := &repository.WalletAccount{
+		UnifiedIdentity: testIdentity("WA", 605),
+		UserID:          "merchant-605",
+		UserType:        "merchant",
+		Balance:         3000,
+		FrozenBalance:   2000,
+		TotalBalance:    5000,
+		Status:          "active",
+	}
+	if err := db.Create(account).Error; err != nil {
+		t.Fatalf("create account failed: %v", err)
+	}
+
+	withdrawTx := &repository.WalletTransaction{
+		UnifiedIdentity: testIdentity("WD", 605),
+		TransactionID:   "WITHDRAW-TXN-605",
+		IdempotencyKey:  "idem-withdraw-605",
+		UserID:          "merchant-605",
+		UserType:        "merchant",
+		Type:            "withdraw",
+		BusinessType:    "withdraw_request",
+		BusinessID:      "WITHDRAW-REQ-605",
+		Amount:          2000,
+		BalanceBefore:   5000,
+		BalanceAfter:    3000,
+		PaymentMethod:   "alipay",
+		PaymentChannel:  "alipay",
+		Status:          "processing",
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+	if err := db.Create(withdrawTx).Error; err != nil {
+		t.Fatalf("create withdraw transaction failed: %v", err)
+	}
+
+	withdrawRequest := &repository.WithdrawRequest{
+		UnifiedIdentity: testIdentity("WR", 605),
+		RequestID:       "WITHDRAW-REQ-605",
+		TransactionID:   withdrawTx.TransactionID,
+		UserID:          "merchant-605",
+		UserType:        "merchant",
+		Amount:          2000,
+		Fee:             20,
+		ActualAmount:    1980,
+		WithdrawMethod:  "alipay",
+		WithdrawAccount: "merchant-605@example.com",
+		Status:          "transferring",
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+	if err := db.Create(withdrawRequest).Error; err != nil {
+		t.Fatalf("create withdraw request failed: %v", err)
+	}
+
+	result, err := paymentSvc.RecordCallback(context.Background(), PaymentCallbackRequest{
+		Channel:           "alipay",
+		EventType:         "DEALING",
+		TransactionID:     "WITHDRAW-REQ-605",
+		ThirdPartyOrderID: "ALI-PAYOUT-605",
+		Verified:          true,
+		RawBody:           `{"status":"DEALING"}`,
+		Response:          "ok",
+	})
+	if err != nil {
+		t.Fatalf("record callback failed: %v", err)
+	}
+	settlement, ok := result["settlement"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected settlement payload map, got %T", result["settlement"])
+	}
+	if handled, _ := settlement["handled"].(bool); handled {
+		t.Fatalf("expected dealing callback to stay pending, got %#v", settlement)
+	}
+	if got := settlement["status"]; got != "pending" {
+		t.Fatalf("expected pending settlement status, got %v", got)
+	}
+
+	var latestTx repository.WalletTransaction
+	if err := db.Where("transaction_id = ?", "WITHDRAW-TXN-605").First(&latestTx).Error; err != nil {
+		t.Fatalf("reload withdraw transaction failed: %v", err)
+	}
+	if latestTx.Status != "processing" {
+		t.Fatalf("expected withdraw transaction to remain processing, got %q", latestTx.Status)
+	}
+
+	var latestRequest repository.WithdrawRequest
+	if err := db.Where("request_id = ?", "WITHDRAW-REQ-605").First(&latestRequest).Error; err != nil {
+		t.Fatalf("reload withdraw request failed: %v", err)
+	}
+	if latestRequest.Status != "transferring" {
+		t.Fatalf("expected withdraw request to remain transferring, got %q", latestRequest.Status)
+	}
+}
+
+func TestRecordCallbackCanResolveWithdrawByRequestIDAndPersistThirdPartyOrderID(t *testing.T) {
+	paymentSvc, _, db := newPaymentAndWalletServicesForTest(t)
+
+	account := &repository.WalletAccount{
+		UnifiedIdentity: testIdentity("WA", 730),
+		UserID:          "merchant-730",
+		UserType:        "merchant",
+		Balance:         3000,
+		FrozenBalance:   2000,
+		TotalBalance:    5000,
+		Status:          "active",
+	}
+	if err := db.Create(account).Error; err != nil {
+		t.Fatalf("create account failed: %v", err)
+	}
+
+	withdrawTx := &repository.WalletTransaction{
+		UnifiedIdentity: testIdentity("WD", 730),
+		TransactionID:   "WITHDRAW-TXN-730",
+		IdempotencyKey:  "idem-withdraw-730",
+		UserID:          "merchant-730",
+		UserType:        "merchant",
+		Type:            "withdraw",
+		BusinessType:    "withdraw_request",
+		BusinessID:      "WITHDRAW-REQ-730",
+		Amount:          2000,
+		BalanceBefore:   5000,
+		BalanceAfter:    3000,
+		PaymentMethod:   "alipay",
+		PaymentChannel:  "alipay",
+		Status:          "processing",
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+	if err := db.Create(withdrawTx).Error; err != nil {
+		t.Fatalf("create withdraw transaction failed: %v", err)
+	}
+
+	withdrawRequest := &repository.WithdrawRequest{
+		UnifiedIdentity: testIdentity("WR", 730),
+		RequestID:       "WITHDRAW-REQ-730",
+		TransactionID:   withdrawTx.TransactionID,
+		UserID:          "merchant-730",
+		UserType:        "merchant",
+		Amount:          2000,
+		Fee:             20,
+		ActualAmount:    1980,
+		WithdrawMethod:  "alipay",
+		WithdrawAccount: "merchant-730@example.com",
+		Status:          "transferring",
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+	if err := db.Create(withdrawRequest).Error; err != nil {
+		t.Fatalf("create withdraw request failed: %v", err)
+	}
+
+	result, err := paymentSvc.RecordCallback(context.Background(), PaymentCallbackRequest{
+		Channel:           "alipay",
+		EventType:         "payout.success",
+		TransactionID:     "WITHDRAW-REQ-730",
+		ThirdPartyOrderID: "ALI-PAYOUT-730",
+		Verified:          true,
+		RawBody:           `{"status":"SUCCESS","out_biz_no":"WITHDRAW-REQ-730","pay_fund_order_id":"ALI-PAYOUT-730"}`,
+		Response:          "ok",
+	})
+	if err != nil {
+		t.Fatalf("record callback failed: %v", err)
+	}
+	if got := result["status"]; got != "success" {
+		t.Fatalf("expected callback status success, got %v", got)
+	}
+
+	var latestTx repository.WalletTransaction
+	if err := db.Where("transaction_id = ?", "WITHDRAW-TXN-730").First(&latestTx).Error; err != nil {
+		t.Fatalf("reload withdraw transaction failed: %v", err)
+	}
+	if latestTx.Status != "success" {
+		t.Fatalf("expected wallet transaction success, got %q", latestTx.Status)
+	}
+	if latestTx.ThirdPartyOrderID != "ALI-PAYOUT-730" {
+		t.Fatalf("expected wallet transaction third party order id updated, got %q", latestTx.ThirdPartyOrderID)
+	}
+
+	var latestRequest repository.WithdrawRequest
+	if err := db.Where("request_id = ?", "WITHDRAW-REQ-730").First(&latestRequest).Error; err != nil {
+		t.Fatalf("reload withdraw request failed: %v", err)
+	}
+	if latestRequest.Status != "success" {
+		t.Fatalf("expected withdraw request success, got %q", latestRequest.Status)
+	}
+	if latestRequest.ThirdPartyOrderID != "ALI-PAYOUT-730" {
+		t.Fatalf("expected withdraw request third party order id updated, got %q", latestRequest.ThirdPartyOrderID)
+	}
+
+	var callback repository.PaymentCallback
+	if err := db.Where("third_party_order_id = ?", "ALI-PAYOUT-730").Order("id DESC").First(&callback).Error; err != nil {
+		t.Fatalf("load callback record failed: %v", err)
+	}
+	if callback.TransactionID != "WITHDRAW-TXN-730" {
+		t.Fatalf("expected callback record to store resolved transaction id, got %q", callback.TransactionID)
+	}
+}
+
+func TestRecordCallbackCompletesRiderDepositWithdrawByRequestID(t *testing.T) {
+	paymentSvc, _, db := newPaymentAndWalletServicesForTest(t)
+
+	now := time.Now()
+	account := &repository.WalletAccount{
+		UnifiedIdentity: testIdentity("WA", 740),
+		UserID:          "rider-740",
+		UserType:        "rider",
+		Balance:         3000,
+		FrozenBalance:   2000,
+		TotalBalance:    5000,
+		Status:          "active",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := db.Create(account).Error; err != nil {
+		t.Fatalf("create account failed: %v", err)
+	}
+
+	withdrawTx := &repository.WalletTransaction{
+		UnifiedIdentity: testIdentity("WD", 740),
+		TransactionID:   "WITHDRAW-TXN-740",
+		IdempotencyKey:  "idem-withdraw-740",
+		UserID:          "rider-740",
+		UserType:        "rider",
+		Type:            "rider_deposit_withdraw",
+		BusinessType:    "rider_deposit_refund",
+		BusinessID:      "WITHDRAW-REQ-740",
+		Amount:          2000,
+		BalanceBefore:   5000,
+		BalanceAfter:    3000,
+		PaymentMethod:   "wechat",
+		PaymentChannel:  "wechat",
+		Status:          "processing",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := db.Create(withdrawTx).Error; err != nil {
+		t.Fatalf("create withdraw transaction failed: %v", err)
+	}
+
+	withdrawRequest := &repository.WithdrawRequest{
+		UnifiedIdentity: testIdentity("WR", 740),
+		RequestID:       "WITHDRAW-REQ-740",
+		TransactionID:   withdrawTx.TransactionID,
+		UserID:          "rider-740",
+		UserType:        "rider",
+		Amount:          2000,
+		Fee:             20,
+		ActualAmount:    1980,
+		WithdrawMethod:  "wechat",
+		WithdrawAccount: "wx-openid-rider-740",
+		Status:          "transferring",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := db.Create(withdrawRequest).Error; err != nil {
+		t.Fatalf("create withdraw request failed: %v", err)
+	}
+
+	depositRecord := &repository.RiderDepositRecord{
+		UnifiedIdentity:   testIdentity("RD", 740),
+		RiderID:           "rider-740",
+		Amount:            2000,
+		PaymentMethod:     "wechat",
+		Status:            "withdrawing",
+		WithdrawRequestID: "WITHDRAW-REQ-740",
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := db.Create(depositRecord).Error; err != nil {
+		t.Fatalf("create rider deposit record failed: %v", err)
+	}
+
+	result, err := paymentSvc.RecordCallback(context.Background(), PaymentCallbackRequest{
+		Channel:           "wechat",
+		EventType:         "payout.success",
+		TransactionID:     "WITHDRAW-REQ-740",
+		ThirdPartyOrderID: "WX-PAYOUT-740",
+		Verified:          true,
+		RawBody:           `{"status":"SUCCESS","out_batch_no":"WITHDRAW-REQ-740","batch_id":"WX-PAYOUT-740"}`,
+		Response:          "ok",
+	})
+	if err != nil {
+		t.Fatalf("record callback failed: %v", err)
+	}
+	if got := result["status"]; got != "success" {
+		t.Fatalf("expected callback status success, got %v", got)
+	}
+
+	var latestTx repository.WalletTransaction
+	if err := db.Where("transaction_id = ?", "WITHDRAW-TXN-740").First(&latestTx).Error; err != nil {
+		t.Fatalf("reload withdraw transaction failed: %v", err)
+	}
+	if latestTx.Status != "success" {
+		t.Fatalf("expected rider deposit withdraw transaction success, got %q", latestTx.Status)
+	}
+	if latestTx.ThirdPartyOrderID != "WX-PAYOUT-740" {
+		t.Fatalf("expected rider deposit withdraw transaction third party order id updated, got %q", latestTx.ThirdPartyOrderID)
+	}
+
+	var latestDeposit repository.RiderDepositRecord
+	if err := db.Where("withdraw_request_id = ?", "WITHDRAW-REQ-740").First(&latestDeposit).Error; err != nil {
+		t.Fatalf("reload rider deposit record failed: %v", err)
+	}
+	if latestDeposit.Status != "refunded" {
+		t.Fatalf("expected rider deposit record refunded after callback, got %q", latestDeposit.Status)
+	}
+}
+
 func TestRecordCallbackDeduplicatesVerifiedReplay(t *testing.T) {
 	paymentSvc, _, db := newPaymentAndWalletServicesForTest(t)
 

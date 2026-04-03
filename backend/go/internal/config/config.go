@@ -24,6 +24,7 @@ type Config struct {
 	Invite   InviteConfig
 	Map      MapConfig
 	Push     PushConfig
+	Socket   SocketConfig
 	RTC      RTCConfig
 	HTTP     HTTPConfig
 }
@@ -90,6 +91,12 @@ type PushConfig struct {
 	RetryBackoff      time.Duration
 	ReadyMaxQueue     int64
 	ReadyMaxQueueAge  time.Duration
+}
+
+type SocketConfig struct {
+	ServerURL      string
+	APISecret      string
+	RequestTimeout time.Duration
 }
 
 type RTCConfig struct {
@@ -183,6 +190,11 @@ func Load() *Config {
 			RetryBackoff:      time.Duration(getEnvInt("PUSH_DISPATCH_RETRY_BACKOFF_SECONDS", 60)) * time.Second,
 			ReadyMaxQueue:     int64(getEnvInt("PUSH_READY_MAX_QUEUE", 5000)),
 			ReadyMaxQueueAge:  time.Duration(getEnvInt("PUSH_READY_MAX_QUEUE_AGE_SECONDS", 1800)) * time.Second,
+		},
+		Socket: SocketConfig{
+			ServerURL:      strings.TrimSpace(getEnv("SOCKET_SERVER_URL", "http://127.0.0.1:9898")),
+			APISecret:      strings.TrimSpace(getEnv("SOCKET_SERVER_API_SECRET", getEnv("TOKEN_API_SECRET", ""))),
+			RequestTimeout: time.Duration(getEnvInt("SOCKET_SERVER_REQUEST_TIMEOUT_SECONDS", 5)) * time.Second,
 		},
 		RTC: RTCConfig{
 			RecordingRetention:      time.Duration(getEnvInt("RTC_RECORDING_RETENTION_HOURS", 24)) * time.Hour,

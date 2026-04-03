@@ -13,6 +13,7 @@ import { setupRequestInterceptor, forceLogout, manualRefreshToken } from '@/shar
 import { checkAndClearCacheIfNeeded } from '@/shared-ui/cache-cleaner'
 import { registerCurrentPushDevice, clearPushRegistrationState } from '@/shared-ui/push-registration'
 import { startPushEventBridge } from '@/shared-ui/push-events'
+import { connectCurrentRealtimeChannel, clearRealtimeState } from '@/shared-ui/realtime-notify'
 import { ensureUserRTCInviteBridge, disconnectUserRTCInviteBridge } from '@/shared-ui/rtc-contact.js'
 
 export default Vue.extend({
@@ -79,6 +80,16 @@ export default Vue.extend({
       }
     },
 
+    async syncRealtimeNotifyBridge() {
+      const token = uni.getStorageSync('token')
+      const authMode = uni.getStorageSync('authMode')
+      if (!token || authMode !== 'user') {
+        clearRealtimeState()
+        return
+      }
+      await connectCurrentRealtimeChannel()
+    },
+
     async validateAuth() {
       const token = uni.getStorageSync('token')
       const refreshToken = uni.getStorageSync('refreshToken')
@@ -115,6 +126,7 @@ export default Vue.extend({
         } else {
           // login state verified
           void this.syncPushRegistration()
+          void this.syncRealtimeNotifyBridge()
           void this.syncRTCInviteBridge()
         }
       } catch (err) {
@@ -129,11 +141,13 @@ export default Vue.extend({
       uni.removeStorageSync('userProfile')
       uni.removeStorageSync('authMode')
       clearPushRegistrationState()
+      clearRealtimeState()
       disconnectUserRTCInviteBridge()
     }
   },
   onShow() {
     void this.syncPushRegistration()
+    void this.syncRealtimeNotifyBridge()
     void this.syncRTCInviteBridge()
   },
   onHide() {

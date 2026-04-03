@@ -2,6 +2,11 @@ import { ackPushMessage } from './api'
 import { startPushEventBridge as startBridge } from '../../shared/mobile-common/push-events'
 
 function resolveClickUrl(envelope) {
+  const routeByUserType = envelope?.payload?.routeByUserType || {}
+  const typedRoute = routeByUserType.customer || routeByUserType.user
+  if (typedRoute) {
+    return typedRoute
+  }
   const route = envelope.route
   if (route) {
     return route

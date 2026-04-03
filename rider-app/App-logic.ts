@@ -3,6 +3,7 @@ import riderOrderStore, { loadRiderData } from './shared-ui/riderOrderStore'
 import { heartbeatRiderStatus, fetchRiderOrders } from './shared-ui/api'
 import { registerCurrentPushDevice, clearPushRegistrationState } from './shared-ui/push-registration'
 import { startPushEventBridge } from './shared-ui/push-events'
+import { connectCurrentRealtimeChannel, clearRealtimeState } from './shared-ui/realtime-notify'
 import messageManager from './utils/message-manager'
 import createSocket from './utils/socket-io'
 import config from './shared-ui/config'
@@ -110,6 +111,7 @@ export default Vue.extend({
 
       if (!token || authMode !== 'rider') {
         clearPushRegistrationState()
+        clearRealtimeState()
         return
       }
 
@@ -216,6 +218,7 @@ export default Vue.extend({
         return
       }
 
+      void connectCurrentRealtimeChannel()
       this.connectSupportSocket(String(socketToken))
       this.connectRiderSocket(String(socketToken))
     },

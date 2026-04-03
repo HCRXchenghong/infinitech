@@ -1,11 +1,61 @@
-import { fetchGroupbuyVouchers, fetchOrderDetail, fetchVoucherQRCode, recordPhoneContactClick } from '@/shared-ui/api.js'
+import { fetchGroupbuyVouchers, fetchOrderDetail, fetchVoucherQRCode, recordPhoneContactClick, request } from '@/shared-ui/api.js'
 import { canUseUserRTCContact, loadRTCRuntimeSettings } from '@/shared-ui/rtc-contact.js'
+import {
+  getClientPaymentErrorMessage,
+  invokeClientPayment,
+  isClientPaymentCancelled,
+  shouldLaunchClientPayment
+} from '@/shared-ui/client-payment.js'
 import ContactModal from '@/components/ContactModal.vue'
 import PhoneWarningModal from '@/components/PhoneWarningModal.vue'
 
 import { createPhoneContactHelper } from '../../../../shared/mobile-common/phone-contact.js'
 
 const phoneContactHelper = createPhoneContactHelper({ recordPhoneContactClick })
+const CLIENT_PLATFORM = 'mini_program'
+
+function normalizePayChannel(raw) {
+  const value = String(raw || '').trim().toLowerCase()
+  if (value === 'if-pay' || value === 'if_pay' || value === 'balance') return 'ifpay'
+  if (value === 'wxpay' || value === 'wechatpay') return 'wechat'
+  if (value === 'ali') return 'alipay'
+  return value
+}
+
+function fallbackPayMethods() {
+  return [
+    { value: 'ifpay', label: 'IF-Pay 余额支付', tip: '优先使用钱包余额' },
+    { value: 'wechat', label: '微信支付', tip: '小程序订单支付' }
+  ]
+}
+
+function normalizePayMethods(response) {
+  const rawOptions = Array.isArray(response?.options)
+    ? response.options
+    : Array.isArray(response?.data?.options)
+      ? response.data.options
+      : []
+
+  const normalized = rawOptions
+    .map((item) => {
+      const value = normalizePayChannel(item?.channel)
+      if (!value) return null
+      return {
+        value,
+        label: String(item?.label || '').trim() || (
+          value === 'ifpay'
+            ? 'IF-Pay 余额支付'
+            : value === 'wechat'
+              ? '微信支付'
+              : '支付宝支付'
+        ),
+        tip: String(item?.description || '').trim() || '由后台支付中心统一控制'
+      }
+    })
+    .filter(Boolean)
+
+  return normalized.length > 0 ? normalized : fallbackPayMethods()
+}
 
 function normalizePhoneNumber(value) {
   const text = String(value || '').trim()
@@ -86,6 +136,7 @@ export default {
         reviewedAt: '',
         payTime: '',
         payMethod: '',
+        payMethodRaw: '',
         deliveryInfo: null,
         productList: []
       }
@@ -95,18 +146,7 @@ export default {
     void this.syncRTCContactAvailability()
     const id = query && query.id
     if (id) {
-      fetchOrderDetail(id)
-        .then((data) => {
-          if (data && data.id) {
-            this.order = this.formatOrderData(data)
-          } else {
-            uni.showToast({ title: '订单不存在', icon: 'none' })
-          }
-        })
-        .catch((error) => {
-          console.error('加载订单详情失败:', error)
-          uni.showToast({ title: '加载失败', icon: 'none' })
-        })
+      void this.loadOrderDetail(id)
     } else {
       uni.showToast({ title: '订单ID不存在', icon: 'none' })
     }
@@ -118,6 +158,19 @@ export default {
         await loadRTCRuntimeSettings()
       } catch (_err) {}
       this.showRtcContact = canUseUserRTCContact()
+    },
+    async loadOrderDetail(id) {
+      try {
+        const data = await fetchOrderDetail(id)
+        if (data && data.id) {
+          this.order = this.formatOrderData(data)
+          return
+        }
+        uni.showToast({ title: '订单不存在', icon: 'none' })
+      } catch (error) {
+        console.error('加载订单详情失败:', error)
+        uni.showToast({ title: '加载失败', icon: 'none' })
+      }
     },
     formatOrderData(data) {
       // 格式化后端返回的订单数据
@@ -215,6 +268,7 @@ export default {
         discount: Number(data.discount || 0),
         payTime: formatTime(data.payTime || data.paid_at),
         payMethod: this.formatPayMethod(data.payMethod || data.pay_method),
+        payMethodRaw: normalizePayChannel(data.payMethod || data.pay_method),
         riderId: riderId,
         riderRating: riderRating,
         riderRatingCount: riderRatingCount,
@@ -247,6 +301,7 @@ export default {
           if (s.includes('过期')) return 'expired'
           return 'paid_unused'
         }
+        if (s === 'pending_payment') return 'pending_payment'
         if (s === 'completed' || s.includes('送达') || s.includes('完成')) return 'completed'
         if (s === 'cancelled' || s.includes('取消')) return 'cancelled'
         if (s === 'accepted' || s === 'priced' || s.includes('配送') || s.includes('进行') || s.includes('接单')) return 'delivering'
@@ -255,6 +310,7 @@ export default {
       return status || 'pending'
     },
     getStatusIcon(status) {
+      if (status === 'pending_payment') return '⏱'
       if (status === 'paid_unused') return '🎟'
       if (status === 'redeemed') return '✓'
       if (status === 'refunding') return '↺'
@@ -266,6 +322,7 @@ export default {
       return '🚴'
     },
     getStatusIconClass(status) {
+      if (status === 'pending_payment') return 'icon-pending'
       if (status === 'paid_unused') return 'icon-delivering'
       if (status === 'redeemed') return 'icon-completed'
       if (status === 'refunding') return 'icon-pending'
@@ -313,6 +370,150 @@ export default {
       }
       return status === 'completed' || status === 'cancelled'
     },
+    getAuth() {
+      const profile = uni.getStorageSync('userProfile') || {}
+      const userId = String(profile.phone || profile.id || profile.userId || '').trim()
+      const token = String(uni.getStorageSync('token') || '').trim()
+      return { userId, token }
+    },
+    getAuthHeader(token) {
+      if (!token) return {}
+      return { Authorization: `Bearer ${token}` }
+    },
+    createIdempotencyKey(prefix, userId) {
+      const seed = `${Date.now()}${Math.floor(Math.random() * 1000000)}`
+      return `${prefix}_${String(userId || 'guest')}_${seed}`
+    },
+    payChannelByMethod(method) {
+      if (method === 'wechat') return 'wxpay'
+      if (method === 'alipay') return 'alipay'
+      return 'ifpay'
+    },
+    sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms))
+    },
+    normalizePaymentStatus(payload) {
+      return String((payload && payload.status) || '').trim().toLowerCase()
+    },
+    isPaymentSuccessStatus(status) {
+      return ['success', 'completed', 'paid'].includes(String(status || '').trim().toLowerCase())
+    },
+    isPaymentFailureStatus(status) {
+      return ['failed', 'rejected', 'cancelled', 'closed'].includes(String(status || '').trim().toLowerCase())
+    },
+    async pollOrderPaymentStatus(transactionId, userId, token) {
+      let latest = null
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        latest = await request({
+          url: `/api/wallet/transactions/${encodeURIComponent(String(transactionId || ''))}`,
+          method: 'GET',
+          data: {
+            userId,
+            userType: 'customer'
+          },
+          header: this.getAuthHeader(token)
+        })
+        const status = this.normalizePaymentStatus(latest)
+        if (this.isPaymentSuccessStatus(status) || this.isPaymentFailureStatus(status)) {
+          return latest
+        }
+        await this.sleep(1500)
+      }
+      return latest
+    },
+    async pickPaymentMethod(defaultMethod) {
+      const response = await request({
+        url: '/api/payment/options',
+        method: 'GET',
+        data: {
+          userType: 'customer',
+          platform: CLIENT_PLATFORM,
+          scene: 'order_payment'
+        }
+      })
+      const methods = normalizePayMethods(response)
+      if (!methods.length) {
+        throw new Error('当前没有可用支付方式')
+      }
+      const current = normalizePayChannel(defaultMethod)
+      methods.sort((left, right) => (left.value === current ? -1 : right.value === current ? 1 : 0))
+      if (methods.length === 1) {
+        return methods[0]
+      }
+      return new Promise((resolve) => {
+        uni.showActionSheet({
+          itemList: methods.map((item) => item.label),
+          success: (res) => resolve(methods[res.tapIndex] || null),
+          fail: () => resolve(null)
+        })
+      })
+    },
+    async continuePayOrder(order) {
+      const { userId, token } = this.getAuth()
+      if (!userId) {
+        uni.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      const selected = await this.pickPaymentMethod(order && order.payMethodRaw)
+      if (!selected) return
+      try {
+        const idempotencyKey = this.createIdempotencyKey('orderpay_resume', userId)
+        let result = await request({
+          url: '/api/payment/intent',
+          method: 'POST',
+          data: {
+            userId,
+            userType: 'customer',
+            platform: CLIENT_PLATFORM,
+            orderId: String(order?.id || ''),
+            paymentMethod: selected.value,
+            paymentChannel: this.payChannelByMethod(selected.value),
+            idempotencyKey
+          },
+          header: Object.assign({}, this.getAuthHeader(token), {
+            'Idempotency-Key': idempotencyKey
+          })
+        })
+
+        if (shouldLaunchClientPayment(result)) {
+          uni.showLoading({ title: '正在拉起支付', mask: true })
+          try {
+            await invokeClientPayment(result, CLIENT_PLATFORM)
+          } finally {
+            uni.hideLoading()
+          }
+        }
+
+        let status = this.normalizePaymentStatus(result)
+        if (!this.isPaymentSuccessStatus(status) && !this.isPaymentFailureStatus(status) && result?.transactionId) {
+          uni.showLoading({ title: '正在确认支付状态', mask: true })
+          try {
+            result = await this.pollOrderPaymentStatus(result.transactionId, userId, token)
+          } finally {
+            uni.hideLoading()
+          }
+          status = this.normalizePaymentStatus(result)
+        }
+
+        if (this.isPaymentSuccessStatus(status)) {
+          await this.loadOrderDetail(order?.id)
+          uni.navigateTo({ url: `/pages/pay/success/index?orderId=${encodeURIComponent(String(order?.id || ''))}` })
+          return
+        }
+
+        await this.loadOrderDetail(order?.id)
+        uni.showToast({
+          title: this.isPaymentFailureStatus(status) ? '支付失败，请稍后重试' : '支付请求已提交，请稍后刷新订单状态',
+          icon: 'none'
+        })
+      } catch (error) {
+        if (isClientPaymentCancelled(error)) {
+          uni.showToast({ title: '已取消支付', icon: 'none' })
+          return
+        }
+        uni.showToast({ title: getClientPaymentErrorMessage(error), icon: 'none' })
+      }
+    },
     getOtherActionButtons(order) {
       const status = order && typeof order === 'object' ? order.status : order
       if (order && order.bizType === 'groupbuy') {
@@ -342,6 +543,8 @@ export default {
     handleAction(action, order) {
       if (action === 'reorder') {
         this.handleReorder(order)
+      } else if (action === 'pay') {
+        this.continuePayOrder(order)
       } else if (action === 'review') {
         uni.navigateTo({ url: '/pages/order/review/index?id=' + order.id })
       } else if (action === 'location') {

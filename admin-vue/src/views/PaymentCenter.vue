@@ -1682,7 +1682,10 @@ function canWithdrawAction(row, action) {
     return status === 'pending' || status === 'pending_review'
   }
   if (action === 'sync_gateway_status') {
-    return (status === 'pending_transfer' || status === 'transferring') && (method === 'wechat' || method === 'alipay' || method === 'bank_card')
+    if (method !== 'wechat' && method !== 'alipay' && method !== 'bank_card') return false
+    if (status === 'transferring') return true
+    if (status !== 'pending_transfer') return false
+    return isWithdrawGatewaySubmitted(row)
   }
   if (action === 'execute') {
     return status === 'pending_transfer'
@@ -1700,6 +1703,24 @@ function canWithdrawAction(row, action) {
     return (status === 'pending_transfer' || status === 'transferring') && (method === 'wechat' || method === 'alipay' || method === 'bank_card')
   }
   return false
+}
+
+function isWithdrawGatewaySubmitted(row) {
+  if (row?.gateway_submitted === true || row?.gatewaySubmitted === true) return true
+  if (String(row?.third_party_order_id || row?.thirdPartyOrderId || '').trim()) return true
+  const responseData = row?.response_data || row?.responseData
+  if (!responseData || typeof responseData !== 'object') return false
+  return [
+    'gateway',
+    'integrationTarget',
+    'submittedAt',
+    'sidecarUrl',
+    'outBatchNo',
+    'outDetailNo',
+    'batchId',
+    'processingMode',
+    'notifyUrl',
+  ].some((key) => String(responseData[key] ?? '').trim())
 }
 
 async function submitWithdrawAction(row, action) {

@@ -108,6 +108,12 @@ import {
   fetchUserAddresses,
   request
 } from '@/shared-ui/api.js'
+import {
+  getClientPaymentErrorMessage,
+  invokeClientPayment,
+  isClientPaymentCancelled,
+  shouldLaunchClientPayment
+} from '@/shared-ui/client-payment.js'
 import { useUserOrderStore } from '@/shared-ui/userOrderStore.js'
 
 const CLIENT_PLATFORM = 'app'
@@ -449,6 +455,41 @@ export default {
       const rawMessage = err?.data?.error || err?.error || err?.message || ''
       return typeof rawMessage === 'string' ? rawMessage.trim() : ''
     },
+    sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms))
+    },
+    normalizePaymentStatus(payload) {
+      return String((payload && payload.status) || '').trim().toLowerCase()
+    },
+    isPaymentSuccessStatus(status) {
+      return ['success', 'completed', 'paid'].includes(String(status || '').trim().toLowerCase())
+    },
+    isPaymentFailureStatus(status) {
+      return ['failed', 'rejected', 'cancelled', 'closed'].includes(String(status || '').trim().toLowerCase())
+    },
+    orderDetailUrl(orderId) {
+      return `/pages/order/detail/index?id=${encodeURIComponent(String(orderId || ''))}`
+    },
+    async pollOrderPaymentStatus(transactionId, userId, token) {
+      let latest = null
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        latest = await request({
+          url: `/api/wallet/transactions/${encodeURIComponent(String(transactionId || ''))}`,
+          method: 'GET',
+          data: {
+            userId,
+            userType: 'customer'
+          },
+          header: token ? { Authorization: `Bearer ${token}` } : {}
+        })
+        const status = this.normalizePaymentStatus(latest)
+        if (this.isPaymentSuccessStatus(status) || this.isPaymentFailureStatus(status)) {
+          return latest
+        }
+        await this.sleep(1500)
+      }
+      return latest
+    },
     async loadAvailableCoupons(shopId) {
       try {
         const profile = uni.getStorageSync('userProfile') || {}
@@ -541,18 +582,42 @@ export default {
 
       this.submitting = true
       uni.showLoading({ title: '提交中...' })
+      let createdOrderId = ''
       try {
         const res = await createOrder(payload)
         if (!res || !res.id) {
           throw new Error('订单创建失败')
         }
+        createdOrderId = String(res.id)
 
-        const paymentResult = await this.payOrder(res.id, userId, token)
-        const paymentStatus = String((paymentResult && paymentResult.status) || '').trim()
-        if (paymentStatus && paymentStatus !== 'success') {
-          uni.showToast({ title: '订单已创建，请继续完成支付', icon: 'none' })
+        let paymentResult = await this.payOrder(res.id, userId, token)
+        if (shouldLaunchClientPayment(paymentResult)) {
+          uni.showLoading({ title: '正在拉起支付', mask: true })
+          try {
+            await invokeClientPayment(paymentResult, CLIENT_PLATFORM)
+          } finally {
+            uni.hideLoading()
+          }
+        }
+
+        let paymentStatus = this.normalizePaymentStatus(paymentResult)
+        if (!this.isPaymentSuccessStatus(paymentStatus) && !this.isPaymentFailureStatus(paymentStatus) && paymentResult?.transactionId) {
+          uni.showLoading({ title: '正在确认支付状态', mask: true })
+          try {
+            paymentResult = await this.pollOrderPaymentStatus(paymentResult.transactionId, userId, token)
+          } finally {
+            uni.hideLoading()
+          }
+          paymentStatus = this.normalizePaymentStatus(paymentResult)
+        }
+
+        if (!this.isPaymentSuccessStatus(paymentStatus)) {
+          uni.showToast({
+            title: this.isPaymentFailureStatus(paymentStatus) ? '支付失败，请稍后重试' : '订单已创建，可在订单详情继续支付',
+            icon: 'none'
+          })
           setTimeout(() => {
-            uni.navigateTo({ url: `/pages/order/detail/index?id=${encodeURIComponent(res.id || '')}` })
+            uni.navigateTo({ url: this.orderDetailUrl(createdOrderId) })
           }, 220)
           return
         }
@@ -574,16 +639,33 @@ export default {
             .catch(() => {})
         }
 
-        uni.navigateTo({ url: `/pages/pay/success/index?orderId=${encodeURIComponent(res.id || '')}` })
+        uni.navigateTo({ url: `/pages/pay/success/index?orderId=${encodeURIComponent(createdOrderId)}` })
       } catch (error) {
+        if (createdOrderId && isClientPaymentCancelled(error)) {
+          uni.showToast({ title: '已取消支付，可在订单详情继续支付', icon: 'none' })
+          setTimeout(() => {
+            uni.navigateTo({ url: this.orderDetailUrl(createdOrderId) })
+          }, 220)
+          return
+        }
         const message = this.extractErrorMessage(error)
         const isInsufficientBalance = /insufficient balance|available balance is not enough|余额不足/i.test(message)
         if (isInsufficientBalance && this.selectedPayMethod === 'ifpay') {
-          uni.showToast({ title: '余额不足，请先充值', icon: 'none' })
+          uni.showToast({ title: '余额不足，请先充值或改用其他支付方式', icon: 'none' })
+          if (createdOrderId) {
+            setTimeout(() => {
+              uni.navigateTo({ url: this.orderDetailUrl(createdOrderId) })
+            }, 220)
+          }
           return
         }
         console.error('支付失败:', error)
-        uni.showToast({ title: message || '支付失败，请重试', icon: 'none' })
+        uni.showToast({ title: message || getClientPaymentErrorMessage(error), icon: 'none' })
+        if (createdOrderId) {
+          setTimeout(() => {
+            uni.navigateTo({ url: this.orderDetailUrl(createdOrderId) })
+          }, 220)
+        }
       } finally {
         uni.hideLoading()
         this.submitting = false

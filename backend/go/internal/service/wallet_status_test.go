@@ -216,6 +216,249 @@ func TestGetWithdrawStatusIncludesAutoRetryMetadata(t *testing.T) {
 	}
 }
 
+func TestListWithdrawRecordsIncludesEnhancedAutoRetryAndGatewaySubmission(t *testing.T) {
+	_, walletSvc, db := newPaymentAndWalletServicesForTest(t)
+
+	now := time.Now()
+	nextRetryAt := now.Add(10 * time.Minute).UTC().Format(time.RFC3339)
+	records := []struct {
+		tx     *repository.WalletTransaction
+		record *repository.WithdrawRequest
+	}{
+		{
+			tx: &repository.WalletTransaction{
+				UnifiedIdentity:   testIdentity("WT", 223),
+				TransactionID:     "WITHDRAW-TXN-223",
+				IdempotencyKey:    "idem-withdraw-status-223",
+				UserID:            "merchant-223",
+				UserType:          "merchant",
+				Type:              "withdraw",
+				BusinessType:      "withdraw_request",
+				BusinessID:        "WITHDRAW-REQ-223",
+				Amount:            5000,
+				BalanceBefore:     12000,
+				BalanceAfter:      7000,
+				PaymentMethod:     "alipay",
+				PaymentChannel:    "alipay",
+				ThirdPartyOrderID: "ALI-PAYOUT-223",
+				Status:            "failed",
+				ResponseData:      `{"status":"failed","autoRetryEligible":true,"retryCount":1,"maxRetryCount":3,"nextRetryAt":"` + nextRetryAt + `","lastFailureReason":"gateway timeout"}`,
+				CreatedAt:         now.Add(2 * time.Minute),
+				UpdatedAt:         now.Add(2 * time.Minute),
+			},
+			record: &repository.WithdrawRequest{
+				UnifiedIdentity:   testIdentity("WR", 223),
+				RequestID:         "WITHDRAW-REQ-223",
+				TransactionID:     "WITHDRAW-TXN-223",
+				UserID:            "merchant-223",
+				UserType:          "merchant",
+				Amount:            5000,
+				Fee:               50,
+				ActualAmount:      4950,
+				WithdrawMethod:    "alipay",
+				WithdrawAccount:   "merchant-223@example.com",
+				Status:            "failed",
+				ThirdPartyOrderID: "ALI-PAYOUT-223",
+				TransferResult:    "gateway timeout",
+				CreatedAt:         now.Add(2 * time.Minute),
+				UpdatedAt:         now.Add(2 * time.Minute),
+			},
+		},
+		{
+			tx: &repository.WalletTransaction{
+				UnifiedIdentity: testIdentity("WT", 224),
+				TransactionID:   "WITHDRAW-TXN-224",
+				IdempotencyKey:  "idem-withdraw-status-224",
+				UserID:          "merchant-224",
+				UserType:        "merchant",
+				Type:            "withdraw",
+				BusinessType:    "withdraw_request",
+				BusinessID:      "WITHDRAW-REQ-224",
+				Amount:          2600,
+				BalanceBefore:   7600,
+				BalanceAfter:    5000,
+				PaymentMethod:   "alipay",
+				PaymentChannel:  "alipay",
+				Status:          "processing",
+				ResponseData:    `{"status":"pending_transfer","gateway":"alipay","integrationTarget":"official-sidecar-sdk","submittedAt":"` + now.UTC().Format(time.RFC3339) + `"}`,
+				CreatedAt:       now.Add(time.Minute),
+				UpdatedAt:       now.Add(time.Minute),
+			},
+			record: &repository.WithdrawRequest{
+				UnifiedIdentity: testIdentity("WR", 224),
+				RequestID:       "WITHDRAW-REQ-224",
+				TransactionID:   "WITHDRAW-TXN-224",
+				UserID:          "merchant-224",
+				UserType:        "merchant",
+				Amount:          2600,
+				Fee:             26,
+				ActualAmount:    2574,
+				WithdrawMethod:  "alipay",
+				WithdrawAccount: "merchant-224@example.com",
+				Status:          "pending_transfer",
+				CreatedAt:       now.Add(time.Minute),
+				UpdatedAt:       now.Add(time.Minute),
+			},
+		},
+		{
+			tx: &repository.WalletTransaction{
+				UnifiedIdentity: testIdentity("WT", 225),
+				TransactionID:   "WITHDRAW-TXN-225",
+				IdempotencyKey:  "idem-withdraw-status-225",
+				UserID:          "merchant-225",
+				UserType:        "merchant",
+				Type:            "withdraw",
+				BusinessType:    "withdraw_request",
+				BusinessID:      "WITHDRAW-REQ-225",
+				Amount:          1800,
+				BalanceBefore:   6800,
+				BalanceAfter:    5000,
+				PaymentMethod:   "alipay",
+				PaymentChannel:  "alipay",
+				Status:          "processing",
+				ResponseData:    `{"status":"pending_transfer","reviewerId":"admin-225"}`,
+				CreatedAt:       now,
+				UpdatedAt:       now,
+			},
+			record: &repository.WithdrawRequest{
+				UnifiedIdentity: testIdentity("WR", 225),
+				RequestID:       "WITHDRAW-REQ-225",
+				TransactionID:   "WITHDRAW-TXN-225",
+				UserID:          "merchant-225",
+				UserType:        "merchant",
+				Amount:          1800,
+				Fee:             18,
+				ActualAmount:    1782,
+				WithdrawMethod:  "alipay",
+				WithdrawAccount: "merchant-225@example.com",
+				Status:          "pending_transfer",
+				CreatedAt:       now,
+				UpdatedAt:       now,
+			},
+		},
+		{
+			tx: &repository.WalletTransaction{
+				UnifiedIdentity:   testIdentity("WT", 226),
+				TransactionID:     "WITHDRAW-TXN-226",
+				IdempotencyKey:    "idem-withdraw-status-226",
+				UserID:            "merchant-226",
+				UserType:          "merchant",
+				Type:              "withdraw",
+				BusinessType:      "withdraw_request",
+				BusinessID:        "WITHDRAW-REQ-226",
+				Amount:            3200,
+				BalanceBefore:     9000,
+				BalanceAfter:      5800,
+				PaymentMethod:     "alipay",
+				PaymentChannel:    "alipay",
+				ThirdPartyOrderID: "ALI-PAYOUT-226",
+				Status:            "processing",
+				ResponseData:      `{"status":"pending_transfer","gateway":"alipay","submittedAt":"` + now.Add(3*time.Minute).UTC().Format(time.RFC3339) + `"}`,
+				CreatedAt:         now.Add(-time.Minute),
+				UpdatedAt:         now.Add(-time.Minute),
+			},
+			record: &repository.WithdrawRequest{
+				UnifiedIdentity: testIdentity("WR", 226),
+				RequestID:       "WITHDRAW-REQ-226",
+				UserID:          "merchant-226",
+				UserType:        "merchant",
+				Amount:          3200,
+				Fee:             32,
+				ActualAmount:    3168,
+				WithdrawMethod:  "alipay",
+				WithdrawAccount: "merchant-226@example.com",
+				Status:          "pending_transfer",
+				CreatedAt:       now.Add(-time.Minute),
+				UpdatedAt:       now.Add(-time.Minute),
+			},
+		},
+	}
+	for _, item := range records {
+		if err := db.Create(item.tx).Error; err != nil {
+			t.Fatalf("create withdraw transaction failed: %v", err)
+		}
+		if err := db.Create(item.record).Error; err != nil {
+			t.Fatalf("create withdraw request failed: %v", err)
+		}
+	}
+
+	result, err := walletSvc.ListWithdrawRecords(context.Background(), "", "", "", 1, 20)
+	if err != nil {
+		t.Fatalf("list withdraw records failed: %v", err)
+	}
+
+	items, ok := result["records"].([]map[string]interface{})
+	if !ok {
+		t.Fatalf("expected withdraw record items slice, got %T", result["records"])
+	}
+	indexed := map[string]map[string]interface{}{}
+	for _, item := range items {
+		indexed[firstTrimmed(fmt.Sprint(item["request_id"]))] = item
+	}
+
+	failedItem := indexed["WITHDRAW-REQ-223"]
+	if failedItem == nil {
+		t.Fatal("expected failed withdraw record in list")
+	}
+	autoRetry, ok := failedItem["auto_retry"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected auto_retry payload map, got %T", failedItem["auto_retry"])
+	}
+	if !toBool(autoRetry["eligible"]) {
+		t.Fatalf("expected auto retry metadata on withdraw list item, got %#v", autoRetry)
+	}
+	if got := firstTrimmed(fmt.Sprint(failedItem["transaction_status"])); got != "failed" {
+		t.Fatalf("expected transaction_status failed, got %q", got)
+	}
+
+	submittedItem := indexed["WITHDRAW-REQ-224"]
+	if submittedItem == nil {
+		t.Fatal("expected submitted pending_transfer record in list")
+	}
+	if !toBool(submittedItem["gateway_submitted"]) {
+		t.Fatalf("expected submitted pending_transfer to expose gateway_submitted=true, got %#v", submittedItem["gateway_submitted"])
+	}
+	if got := firstTrimmed(fmt.Sprint(submittedItem["arrival_text"])); got == "" {
+		t.Fatalf("expected arrival_text to be exposed, got %q", got)
+	}
+	responseData, ok := submittedItem["response_data"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected response_data payload map, got %T", submittedItem["response_data"])
+	}
+	if got := firstTrimmed(fmt.Sprint(responseData["submittedAt"])); got == "" {
+		t.Fatalf("expected submittedAt in response_data, got %#v", responseData)
+	}
+
+	unsubmittedItem := indexed["WITHDRAW-REQ-225"]
+	if unsubmittedItem == nil {
+		t.Fatal("expected unsubmitted pending_transfer record in list")
+	}
+	if toBool(unsubmittedItem["gateway_submitted"]) {
+		t.Fatalf("expected unsubmitted pending_transfer to expose gateway_submitted=false, got %#v", unsubmittedItem["gateway_submitted"])
+	}
+
+	historyItem := indexed["WITHDRAW-REQ-226"]
+	if historyItem == nil {
+		t.Fatal("expected historical withdraw record in list")
+	}
+	if got := firstTrimmed(fmt.Sprint(historyItem["transaction_status"])); got != "processing" {
+		t.Fatalf("expected historical withdraw record to resolve transaction_status processing, got %q", got)
+	}
+	if got := firstTrimmed(fmt.Sprint(historyItem["third_party_order_id"])); got != "ALI-PAYOUT-226" {
+		t.Fatalf("expected historical withdraw record to resolve third_party_order_id, got %q", got)
+	}
+	if !toBool(historyItem["gateway_submitted"]) {
+		t.Fatalf("expected historical withdraw record to expose gateway_submitted=true, got %#v", historyItem["gateway_submitted"])
+	}
+	historyResponseData, ok := historyItem["response_data"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected historical withdraw response_data payload map, got %T", historyItem["response_data"])
+	}
+	if got := firstTrimmed(fmt.Sprint(historyResponseData["submittedAt"])); got == "" {
+		t.Fatalf("expected historical withdraw record to expose submittedAt, got %#v", historyResponseData)
+	}
+}
+
 func TestGetTransactionStatusReturnsLinkedWithdrawSummary(t *testing.T) {
 	_, walletSvc, db := newPaymentAndWalletServicesForTest(t)
 
@@ -503,6 +746,9 @@ func TestReviewWithdrawExecuteFailedPayoutRestoresBalanceAndSchedulesRetry(t *te
 	if latestTx.Status != "failed" {
 		t.Fatalf("expected wallet transaction failed, got %s", latestTx.Status)
 	}
+	if latestTx.ThirdPartyOrderID != "ALI-EXEC-FAIL-23" {
+		t.Fatalf("expected wallet transaction to persist third party order id after execute failure, got %q", latestTx.ThirdPartyOrderID)
+	}
 	payload, ok := parseWalletResponsePayload(latestTx.ResponseData).(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected response data payload map, got %T", parseWalletResponsePayload(latestTx.ResponseData))
@@ -512,6 +758,111 @@ func TestReviewWithdrawExecuteFailedPayoutRestoresBalanceAndSchedulesRetry(t *te
 	}
 	if nextRetryAt := firstTrimmed(fmt.Sprint(payload["nextRetryAt"])); nextRetryAt == "" {
 		t.Fatalf("expected nextRetryAt to be scheduled after failed execute, got %#v", payload)
+	}
+}
+
+func TestReviewWithdrawExecutePersistsGatewayReferenceOnTransaction(t *testing.T) {
+	_, walletSvc, db := newPaymentAndWalletServicesForTest(t)
+
+	sidecar := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true,"status":"transferring","gateway":"alipay","integrationTarget":"official-sidecar-sdk","thirdPartyOrderId":"ALI-EXEC-REF-24","transferResult":"alipay payout submitted","responseData":{"status":"transferring","gateway":"alipay","integrationTarget":"official-sidecar-sdk","thirdPartyOrderId":"ALI-EXEC-REF-24"}}`))
+	}))
+	defer sidecar.Close()
+
+	t.Setenv("ALIPAY_APP_ID", "app-test")
+	t.Setenv("ALIPAY_PRIVATE_KEY", "private-key")
+	t.Setenv("ALIPAY_PUBLIC_KEY", "public-key")
+	t.Setenv("ALIPAY_NOTIFY_URL", "https://example.com/alipay/notify")
+	t.Setenv("ALIPAY_PAYOUT_NOTIFY_URL", "https://example.com/alipay/payout-notify")
+	t.Setenv("ALIPAY_SIDECAR_URL", sidecar.URL)
+
+	account := &repository.WalletAccount{
+		UnifiedIdentity: testIdentity("WA", 24),
+		UserID:          "merchant-24",
+		UserType:        "merchant",
+		Balance:         7000,
+		FrozenBalance:   5000,
+		TotalBalance:    12000,
+		Status:          "active",
+	}
+	if err := db.Create(account).Error; err != nil {
+		t.Fatalf("create wallet account failed: %v", err)
+	}
+
+	now := time.Now()
+	tx := &repository.WalletTransaction{
+		UnifiedIdentity: testIdentity("WT", 24),
+		TransactionID:   "WITHDRAW-TXN-24",
+		IdempotencyKey:  "idem-withdraw-status-24",
+		UserID:          "merchant-24",
+		UserType:        "merchant",
+		Type:            "withdraw",
+		BusinessType:    "withdraw_request",
+		BusinessID:      "WITHDRAW-REQ-24",
+		Amount:          5000,
+		BalanceBefore:   12000,
+		BalanceAfter:    7000,
+		PaymentMethod:   "alipay",
+		PaymentChannel:  "alipay",
+		Status:          "processing",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := db.Create(tx).Error; err != nil {
+		t.Fatalf("create withdraw transaction failed: %v", err)
+	}
+
+	record := &repository.WithdrawRequest{
+		UnifiedIdentity: testIdentity("WR", 24),
+		RequestID:       "WITHDRAW-REQ-24",
+		TransactionID:   tx.TransactionID,
+		UserID:          "merchant-24",
+		UserType:        "merchant",
+		Amount:          5000,
+		Fee:             50,
+		ActualAmount:    4950,
+		WithdrawMethod:  "alipay",
+		WithdrawAccount: "merchant-24@example.com",
+		Status:          "pending_transfer",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := db.Create(record).Error; err != nil {
+		t.Fatalf("create withdraw request failed: %v", err)
+	}
+
+	result, err := walletSvc.ReviewWithdraw(context.Background(), WithdrawReviewRequest{
+		RequestID:    "WITHDRAW-REQ-24",
+		Action:       "execute",
+		ReviewerID:   "admin-24",
+		ReviewerName: "Admin",
+		Remark:       "execute payout",
+	}, AdminWalletActor{})
+	if err != nil {
+		t.Fatalf("execute withdraw payout failed: %v", err)
+	}
+	if got := result["status"]; got != "transferring" {
+		t.Fatalf("expected transferring status after execute, got %v", got)
+	}
+
+	var latestRecord repository.WithdrawRequest
+	if err := db.Where("request_id = ?", "WITHDRAW-REQ-24").First(&latestRecord).Error; err != nil {
+		t.Fatalf("reload withdraw request failed: %v", err)
+	}
+	if latestRecord.ThirdPartyOrderID != "ALI-EXEC-REF-24" {
+		t.Fatalf("expected withdraw request third party order id persisted, got %q", latestRecord.ThirdPartyOrderID)
+	}
+
+	var latestTx repository.WalletTransaction
+	if err := db.Where("transaction_id = ?", "WITHDRAW-TXN-24").First(&latestTx).Error; err != nil {
+		t.Fatalf("reload wallet transaction failed: %v", err)
+	}
+	if latestTx.Status != "processing" {
+		t.Fatalf("expected wallet transaction to remain processing after execute, got %q", latestTx.Status)
+	}
+	if latestTx.ThirdPartyOrderID != "ALI-EXEC-REF-24" {
+		t.Fatalf("expected wallet transaction third party order id persisted, got %q", latestTx.ThirdPartyOrderID)
 	}
 }
 
@@ -1187,5 +1538,209 @@ func TestRunWithdrawGatewayReconcileCycleAutoRetriesDueFailedAlipayWithdraw(t *t
 	}
 	if next := firstTrimmed(fmt.Sprint(payload["nextRetryAt"])); next != "" {
 		t.Fatalf("expected nextRetryAt cleared after retry submission, got %q", next)
+	}
+}
+
+func TestRunWithdrawGatewayReconcileCycleSkipsPendingTransferBeforeGatewaySubmission(t *testing.T) {
+	_, walletSvc, db := newPaymentAndWalletServicesForTest(t)
+
+	sidecarHits := 0
+	sidecar := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sidecarHits++
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true,"status":"transferring","gateway":"alipay","integrationTarget":"official-sidecar-sdk","thirdPartyOrderId":"ALI-SHOULD-NOT-HIT"}`))
+	}))
+	defer sidecar.Close()
+
+	t.Setenv("ALIPAY_APP_ID", "app-test")
+	t.Setenv("ALIPAY_PRIVATE_KEY", "private-key")
+	t.Setenv("ALIPAY_PUBLIC_KEY", "public-key")
+	t.Setenv("ALIPAY_NOTIFY_URL", "https://example.com/alipay/notify")
+	t.Setenv("ALIPAY_PAYOUT_NOTIFY_URL", "https://example.com/alipay/payout-notify")
+	t.Setenv("ALIPAY_SIDECAR_URL", sidecar.URL)
+
+	now := time.Now()
+	tx := &repository.WalletTransaction{
+		UnifiedIdentity: testIdentity("WT", 811),
+		TransactionID:   "WITHDRAW-TXN-811",
+		IdempotencyKey:  "idem-withdraw-status-811",
+		UserID:          "merchant-811",
+		UserType:        "merchant",
+		Type:            "withdraw",
+		BusinessType:    "withdraw_request",
+		BusinessID:      "WITHDRAW-REQ-811",
+		Amount:          2000,
+		BalanceBefore:   9000,
+		BalanceAfter:    7000,
+		PaymentMethod:   "alipay",
+		PaymentChannel:  "alipay",
+		Status:          "processing",
+		ResponseData:    `{"status":"pending_transfer","reviewerId":"admin-811","reviewerName":"Admin"}`,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := db.Create(tx).Error; err != nil {
+		t.Fatalf("create withdraw transaction failed: %v", err)
+	}
+
+	record := &repository.WithdrawRequest{
+		UnifiedIdentity: testIdentity("WR", 811),
+		RequestID:       "WITHDRAW-REQ-811",
+		TransactionID:   tx.TransactionID,
+		UserID:          "merchant-811",
+		UserType:        "merchant",
+		Amount:          2000,
+		Fee:             20,
+		ActualAmount:    1980,
+		WithdrawMethod:  "alipay",
+		WithdrawAccount: "merchant-811@example.com",
+		Status:          "pending_transfer",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := db.Create(record).Error; err != nil {
+		t.Fatalf("create withdraw request failed: %v", err)
+	}
+
+	processed, err := walletSvc.RunWithdrawGatewayReconcileCycle(context.Background(), 20)
+	if err != nil {
+		t.Fatalf("run withdraw reconcile cycle failed: %v", err)
+	}
+	if processed != 0 {
+		t.Fatalf("expected reconcile cycle to skip unsubmitted withdraw, got %d processed", processed)
+	}
+	if sidecarHits != 0 {
+		t.Fatalf("expected no sidecar query before payout submission, got %d hits", sidecarHits)
+	}
+}
+
+func TestReviewWithdrawSyncGatewayStatusPromotesPendingTransferAndMergesGatewayMetadata(t *testing.T) {
+	_, walletSvc, db := newPaymentAndWalletServicesForTest(t)
+
+	sidecar := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true,"status":"transferring","gateway":"alipay","integrationTarget":"official-sidecar-sdk","thirdPartyOrderId":"ALI-SYNC-812","transferResult":"gateway accepted","responseData":{"queryTradeNo":"ALIQUERY812","detailStatus":"TRANSFERRING"}}`))
+	}))
+	defer sidecar.Close()
+
+	t.Setenv("ALIPAY_APP_ID", "app-test")
+	t.Setenv("ALIPAY_PRIVATE_KEY", "private-key")
+	t.Setenv("ALIPAY_PUBLIC_KEY", "public-key")
+	t.Setenv("ALIPAY_NOTIFY_URL", "https://example.com/alipay/notify")
+	t.Setenv("ALIPAY_PAYOUT_NOTIFY_URL", "https://example.com/alipay/payout-notify")
+	t.Setenv("ALIPAY_SIDECAR_URL", sidecar.URL)
+
+	now := time.Now()
+	submittedAt := now.Add(-3 * time.Minute).Format(time.RFC3339)
+	tx := &repository.WalletTransaction{
+		UnifiedIdentity: testIdentity("WT", 812),
+		TransactionID:   "WITHDRAW-TXN-812",
+		IdempotencyKey:  "idem-withdraw-status-812",
+		UserID:          "merchant-812",
+		UserType:        "merchant",
+		Type:            "withdraw",
+		BusinessType:    "withdraw_request",
+		BusinessID:      "WITHDRAW-REQ-812",
+		Amount:          2200,
+		BalanceBefore:   9200,
+		BalanceAfter:    7000,
+		PaymentMethod:   "alipay",
+		PaymentChannel:  "alipay",
+		Status:          "processing",
+		ResponseData:    `{"status":"pending_transfer","gateway":"alipay","integrationTarget":"official-sidecar-sdk","submittedAt":"` + submittedAt + `","autoRetryEligible":true,"retryCount":1}`,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := db.Create(tx).Error; err != nil {
+		t.Fatalf("create withdraw transaction failed: %v", err)
+	}
+
+	record := &repository.WithdrawRequest{
+		UnifiedIdentity: testIdentity("WR", 812),
+		RequestID:       "WITHDRAW-REQ-812",
+		TransactionID:   tx.TransactionID,
+		UserID:          "merchant-812",
+		UserType:        "merchant",
+		Amount:          2200,
+		Fee:             22,
+		ActualAmount:    2178,
+		WithdrawMethod:  "alipay",
+		WithdrawAccount: "merchant-812@example.com",
+		Status:          "pending_transfer",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := db.Create(record).Error; err != nil {
+		t.Fatalf("create withdraw request failed: %v", err)
+	}
+
+	result, err := walletSvc.ReviewWithdraw(context.Background(), WithdrawReviewRequest{
+		RequestID:    "WITHDRAW-REQ-812",
+		Action:       "sync_gateway_status",
+		ReviewerID:   "admin-812",
+		ReviewerName: "Admin",
+	}, AdminWalletActor{
+		AdminID:   "admin-812",
+		AdminName: "Admin",
+	})
+	if err != nil {
+		t.Fatalf("sync gateway status failed: %v", err)
+	}
+	if got := result["status"]; got != "transferring" {
+		t.Fatalf("expected transferring status after sync, got %v", got)
+	}
+
+	var latestRecord repository.WithdrawRequest
+	if err := db.Where("request_id = ?", "WITHDRAW-REQ-812").First(&latestRecord).Error; err != nil {
+		t.Fatalf("reload withdraw request failed: %v", err)
+	}
+	if latestRecord.Status != "transferring" {
+		t.Fatalf("expected withdraw request transferring after sync, got %s", latestRecord.Status)
+	}
+	if latestRecord.ThirdPartyOrderID != "ALI-SYNC-812" {
+		t.Fatalf("expected synced third party order id, got %q", latestRecord.ThirdPartyOrderID)
+	}
+	if latestRecord.TransferResult != "gateway accepted" {
+		t.Fatalf("expected synced transfer result, got %q", latestRecord.TransferResult)
+	}
+
+	var latestTx repository.WalletTransaction
+	if err := db.Where("transaction_id = ?", "WITHDRAW-TXN-812").First(&latestTx).Error; err != nil {
+		t.Fatalf("reload wallet transaction failed: %v", err)
+	}
+	payload, ok := parseWalletResponsePayload(latestTx.ResponseData).(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected response data payload map, got %T", parseWalletResponsePayload(latestTx.ResponseData))
+	}
+	if got := firstTrimmed(fmt.Sprint(payload["status"])); got != "transferring" {
+		t.Fatalf("expected merged response status transferring, got %q", got)
+	}
+	if got := firstTrimmed(fmt.Sprint(payload["thirdPartyOrderId"])); got != "ALI-SYNC-812" {
+		t.Fatalf("expected merged thirdPartyOrderId, got %q", got)
+	}
+	if got := firstTrimmed(fmt.Sprint(payload["transferResult"])); got != "gateway accepted" {
+		t.Fatalf("expected merged transferResult, got %q", got)
+	}
+	if got := firstTrimmed(fmt.Sprint(payload["submittedAt"])); got != submittedAt {
+		t.Fatalf("expected submittedAt to be preserved, got %q", got)
+	}
+	if !toBool(payload["autoRetryEligible"]) {
+		t.Fatalf("expected auto retry metadata to be preserved, got %#v", payload)
+	}
+	if got := toInt(payload["retryCount"]); got != 1 {
+		t.Fatalf("expected retryCount 1 to be preserved, got %d", got)
+	}
+	if got := firstTrimmed(fmt.Sprint(payload["integrationTarget"])); got != "official-sidecar-sdk" {
+		t.Fatalf("expected integrationTarget to be preserved, got %q", got)
+	}
+	if got := firstTrimmed(fmt.Sprint(payload["gatewayStatus"])); got != "transferring" {
+		t.Fatalf("expected gatewayStatus transferring, got %q", got)
+	}
+	responseData, ok := payload["responseData"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected nested responseData map, got %T", payload["responseData"])
+	}
+	if got := firstTrimmed(fmt.Sprint(responseData["queryTradeNo"])); got != "ALIQUERY812" {
+		t.Fatalf("expected query response data to be preserved, got %q", got)
 	}
 }

@@ -65,6 +65,12 @@
 
 <script>
 import { request } from '../../../shared-ui/api'
+import {
+  getClientPaymentErrorMessage,
+  invokeClientPayment,
+  isClientPaymentCancelled,
+  shouldLaunchClientPayment,
+} from '../../../shared-ui/client-payment'
 
 export default {
   data() {
@@ -199,53 +205,6 @@ export default {
         this.loadingOptions = false
       }
     },
-    async submitRecharge() {
-      const { userId, token } = this.getAuth()
-      if (!userId) {
-        uni.showToast({ title: '请先登录', icon: 'none' })
-        return
-      }
-      if (!this.canSubmit) {
-        uni.showToast({ title: '请输入有效金额并选择充值渠道', icon: 'none' })
-        return
-      }
-
-      this.submitting = true
-      try {
-        const idempotencyKey = this.createIdempotencyKey('rider_recharge', userId)
-        const res = await request({
-          url: '/api/wallet/recharge/intent',
-          method: 'POST',
-          data: {
-            userId,
-            userType: 'rider',
-            amount: Math.round(this.amountYuan * 100),
-            platform: 'app',
-            paymentMethod: this.selectedMethod,
-            paymentChannel: this.selectedMethod,
-            description: '骑手钱包充值',
-            idempotencyKey,
-          },
-          header: Object.assign({}, this.getAuthHeader(token), {
-            'Idempotency-Key': idempotencyKey,
-          }),
-        })
-
-        const status = String((res && res.status) || '')
-        if (status === 'pending' || status === 'processing' || status === 'awaiting_client_pay') {
-          uni.showToast({ title: '充值请求已提交', icon: 'none' })
-        } else {
-          uni.showToast({ title: '充值成功', icon: 'success' })
-        }
-        setTimeout(() => {
-          uni.navigateBack()
-        }, 320)
-      } catch (error) {
-        uni.showToast({ title: error.error || '充值失败', icon: 'none' })
-      } finally {
-        this.submitting = false
-      }
-    },
     sleep(ms) {
       return new Promise((resolve) => setTimeout(resolve, ms))
     },
@@ -312,6 +271,15 @@ export default {
           }),
         })
 
+        if (shouldLaunchClientPayment(result)) {
+          uni.showLoading({ title: '正在拉起支付', mask: true })
+          try {
+            await invokeClientPayment(result, 'app')
+          } finally {
+            uni.hideLoading()
+          }
+        }
+
         let latest = result
         let status = this.normalizeFlowStatus(latest, 'recharge')
         if (!this.isRechargeSuccessStatus(status) && !this.isRechargeFailureStatus(status) && ((result && result.rechargeOrderId) || (result && result.transactionId))) {
@@ -335,7 +303,10 @@ export default {
           uni.navigateBack()
         }, 360)
       } catch (error) {
-        uni.showToast({ title: error.error || '充值失败', icon: 'none' })
+        uni.showToast({
+          title: isClientPaymentCancelled(error) ? '已取消支付' : (error.error || getClientPaymentErrorMessage(error, '充值失败')),
+          icon: 'none'
+        })
       } finally {
         this.submitting = false
       }

@@ -2,6 +2,7 @@
 import { defineComponent } from 'vue'
 import { registerCurrentPushDevice, clearPushRegistrationState } from '@/shared-ui/push-registration'
 import { startPushEventBridge } from '@/shared-ui/push-events'
+import { connectCurrentRealtimeChannel, clearRealtimeState } from '@/shared-ui/realtime-notify'
 
 export default defineComponent({
   onLaunch() {
@@ -30,6 +31,16 @@ export default defineComponent({
       }
     },
 
+    async syncRealtimeNotifyBridge() {
+      const token = uni.getStorageSync('token')
+      const authMode = uni.getStorageSync('authMode')
+      if (!token || authMode !== 'merchant') {
+        clearRealtimeState()
+        return
+      }
+      await connectCurrentRealtimeChannel()
+    },
+
     checkAuth() {
       const token = uni.getStorageSync('token')
       const authMode = uni.getStorageSync('authMode')
@@ -46,14 +57,17 @@ export default defineComponent({
       if (publicRoutes.has(route)) {
         if (!token || authMode !== 'merchant') {
           clearPushRegistrationState()
+          clearRealtimeState()
         } else {
           void this.syncPushRegistration()
+          void this.syncRealtimeNotifyBridge()
         }
         return
       }
 
       if (!token || authMode !== 'merchant') {
         clearPushRegistrationState()
+        clearRealtimeState()
         uni.reLaunch({
           url: '/pages/login/index'
         })
@@ -61,6 +75,7 @@ export default defineComponent({
       }
 
       void this.syncPushRegistration()
+      void this.syncRealtimeNotifyBridge()
     }
   }
 })

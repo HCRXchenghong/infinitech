@@ -127,17 +127,41 @@ func (s *WalletService) buildPaymentCallbackItems(ctx context.Context, records [
 	withdrawMap := make(map[string]*repository.WithdrawRequest)
 	rechargeMap := make(map[string]*repository.RechargeOrder)
 
-	transactionIDs := make([]string, 0, len(records))
+	transactionRefs := make([]string, 0, len(records)*2)
+	thirdPartyOrderIDs := make([]string, 0, len(records))
 	for i := range records {
 		if transactionID := strings.TrimSpace(records[i].TransactionID); transactionID != "" {
-			transactionIDs = append(transactionIDs, transactionID)
+			transactionRefs = append(transactionRefs, transactionID)
+		}
+		if transactionIDRaw := strings.TrimSpace(records[i].TransactionIDRaw); transactionIDRaw != "" {
+			transactionRefs = append(transactionRefs, transactionIDRaw)
+		}
+		if thirdPartyOrderID := strings.TrimSpace(records[i].ThirdPartyOrderID); thirdPartyOrderID != "" {
+			thirdPartyOrderIDs = append(thirdPartyOrderIDs, thirdPartyOrderID)
 		}
 	}
-	if len(transactionIDs) > 0 {
+
+	if len(transactionRefs) > 0 || len(thirdPartyOrderIDs) > 0 {
 		var transactions []repository.WalletTransaction
-		if err := s.walletRepo.DB().WithContext(ctx).
-			Where("transaction_id IN ? OR transaction_id_raw IN ?", transactionIDs, transactionIDs).
-			Find(&transactions).Error; err != nil {
+		query := s.walletRepo.DB().WithContext(ctx).Model(&repository.WalletTransaction{})
+		hasCondition := false
+		if len(transactionRefs) > 0 {
+			query = query.Where(
+				"transaction_id IN ? OR transaction_id_raw IN ? OR business_id IN ?",
+				transactionRefs,
+				transactionRefs,
+				transactionRefs,
+			)
+			hasCondition = true
+		}
+		if len(thirdPartyOrderIDs) > 0 {
+			if hasCondition {
+				query = query.Or("third_party_order_id IN ?", thirdPartyOrderIDs)
+			} else {
+				query = query.Where("third_party_order_id IN ?", thirdPartyOrderIDs)
+			}
+		}
+		if err := query.Find(&transactions).Error; err != nil {
 			return nil, err
 		}
 		withdrawIDs := make([]string, 0, len(transactions))
@@ -150,6 +174,12 @@ func (s *WalletService) buildPaymentCallbackItems(ctx context.Context, records [
 			}
 			if strings.TrimSpace(tx.TransactionIDRaw) != "" {
 				transactionMap[strings.TrimSpace(tx.TransactionIDRaw)] = &txCopy
+			}
+			if strings.TrimSpace(tx.BusinessID) != "" {
+				transactionMap[strings.TrimSpace(tx.BusinessID)] = &txCopy
+			}
+			if strings.TrimSpace(tx.ThirdPartyOrderID) != "" {
+				transactionMap[strings.TrimSpace(tx.ThirdPartyOrderID)] = &txCopy
 			}
 			switch strings.TrimSpace(tx.BusinessType) {
 			case "withdraw_request":
@@ -229,7 +259,14 @@ func (s *WalletService) buildPaymentCallbackItems(ctx context.Context, records [
 		if signature := strings.TrimSpace(record.Signature); signature != "" {
 			item["signature_preview"] = previewLongText(signature, 80)
 		}
-		if transaction := transactionMap[strings.TrimSpace(record.TransactionID)]; transaction != nil {
+		transaction := transactionMap[strings.TrimSpace(record.TransactionID)]
+		if transaction == nil {
+			transaction = transactionMap[strings.TrimSpace(record.TransactionIDRaw)]
+		}
+		if transaction == nil {
+			transaction = transactionMap[strings.TrimSpace(record.ThirdPartyOrderID)]
+		}
+		if transaction != nil {
 			item["transaction"] = map[string]interface{}{
 				"transaction_id":       transaction.TransactionID,
 				"type":                 transaction.Type,

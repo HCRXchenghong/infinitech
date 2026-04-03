@@ -111,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import {
   createMerchantGroupbuyRefund,
@@ -389,6 +389,22 @@ onShow(async () => {
   } catch (err: any) {
     uni.showToast({ title: err?.error || err?.message || '加载失败', icon: 'none' })
   }
+})
+
+function handleRealtimeOrdersRefresh() {
+  void loadOrders().catch(() => {})
+}
+
+onMounted(() => {
+  uni.$off('realtime:refresh:orders', handleRealtimeOrdersRefresh)
+  uni.$off('realtime:refresh:after_sales', handleRealtimeOrdersRefresh)
+  uni.$on('realtime:refresh:orders', handleRealtimeOrdersRefresh)
+  uni.$on('realtime:refresh:after_sales', handleRealtimeOrdersRefresh)
+})
+
+onUnmounted(() => {
+  uni.$off('realtime:refresh:orders', handleRealtimeOrdersRefresh)
+  uni.$off('realtime:refresh:after_sales', handleRealtimeOrdersRefresh)
 })
 </script>
 

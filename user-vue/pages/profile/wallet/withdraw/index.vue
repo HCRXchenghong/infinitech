@@ -271,6 +271,24 @@ export default {
       return String((payload && payload.arrivalText) || (payload && payload[nestedKey] && payload[nestedKey].arrivalText) || '')
         .trim()
     },
+    normalizeWithdrawFailureReason(payload, nestedKey) {
+      return String(
+        (payload && payload.rejectReason) ||
+        (payload && payload.reason) ||
+        (payload && payload.transferResult) ||
+        (payload && payload[nestedKey] && (
+          payload[nestedKey].rejectReason ||
+          payload[nestedKey].reason ||
+          payload[nestedKey].transferResult ||
+          (payload[nestedKey].responseData && (
+            payload[nestedKey].responseData.rejectReason ||
+            payload[nestedKey].responseData.reason ||
+            payload[nestedKey].responseData.transferResult
+          ))
+        )) ||
+        ''
+      ).trim()
+    },
     isWithdrawSuccessStatus(status) {
       return ['success', 'completed'].includes(String(status || '').trim().toLowerCase())
     },
@@ -394,7 +412,20 @@ export default {
         if (this.isWithdrawSuccessStatus(status)) {
           uni.showToast({ title: '提现成功', icon: 'success' })
         } else if (this.isWithdrawFailureStatus(status)) {
-          uni.showToast({ title: '提现失败，请稍后重试', icon: 'none' })
+          const reason = this.normalizeWithdrawFailureReason(latest, 'withdraw')
+          if (status === 'rejected') {
+            await new Promise((resolve) => {
+              uni.showModal({
+                title: '提现已驳回',
+                content: reason || '可重新申请或联系客服处理',
+                showCancel: false,
+                success: () => resolve(true),
+                fail: () => resolve(true),
+              })
+            })
+          } else {
+            uni.showToast({ title: reason ? `提现失败：${reason}` : '提现失败，请稍后重试', icon: 'none' })
+          }
         } else {
           const arrivalText = this.normalizeArrivalText(latest, 'withdraw')
           uni.showToast({

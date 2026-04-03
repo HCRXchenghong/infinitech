@@ -50,11 +50,12 @@ func (s *WalletService) ReplayPaymentCallback(ctx context.Context, callbackID st
 	}
 
 	result, err := s.paymentSvc.RecordCallback(ctx, PaymentCallbackRequest{
-		Channel:           record.Channel,
-		EventType:         record.EventType,
-		Signature:         firstTrimmed(record.Signature, fmt.Sprintf("admin-replay:%s", callbackID)),
-		Nonce:             replayNonce,
-		TransactionID:     firstTrimmed(record.TransactionID, record.TransactionIDRaw),
+		Channel:   record.Channel,
+		EventType: record.EventType,
+		Signature: firstTrimmed(record.Signature, fmt.Sprintf("admin-replay:%s", callbackID)),
+		Nonce:     replayNonce,
+		// Historical callback rows may keep the business/request id in the raw field.
+		TransactionID:     firstTrimmed(record.TransactionIDRaw, record.TransactionID),
 		ThirdPartyOrderID: record.ThirdPartyOrderID,
 		Headers:           headers,
 		RawBody:           record.RequestBody,

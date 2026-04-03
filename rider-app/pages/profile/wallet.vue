@@ -92,6 +92,12 @@
 
 <script>
 import { request } from '../../shared-ui/api'
+import {
+  getClientPaymentErrorMessage,
+  invokeClientPayment,
+  isClientPaymentCancelled,
+  shouldLaunchClientPayment,
+} from '../../shared-ui/client-payment'
 
 export default {
   data() {
@@ -223,6 +229,40 @@ export default {
       const seed = `${Date.now()}${Math.floor(Math.random() * 1000000)}`
       return `${prefix}_${String(riderId || 'guest')}_${seed}`
     },
+    sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms))
+    },
+    normalizeFlowStatus(payload, nestedKey) {
+      return String((payload && payload.status) || (payload && payload[nestedKey] && payload[nestedKey].status) || '').trim().toLowerCase()
+    },
+    isRechargeSuccessStatus(status) {
+      return ['success', 'completed', 'paid'].includes(String(status || '').trim().toLowerCase())
+    },
+    isRechargeFailureStatus(status) {
+      return ['failed', 'rejected', 'cancelled', 'closed'].includes(String(status || '').trim().toLowerCase())
+    },
+    async pollDepositPaymentStatus(rechargeOrderId, transactionId, token) {
+      const { riderId } = this.getAuth()
+      let latest = null
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        latest = await request({
+          url: this.withQuery('/api/wallet/recharge/status', {
+            userId: riderId,
+            userType: 'rider',
+            rechargeOrderId,
+            transactionId,
+          }),
+          method: 'GET',
+          header: this.getAuthHeader(token),
+        })
+        const status = this.normalizeFlowStatus(latest, 'recharge')
+        if (this.isRechargeSuccessStatus(status) || this.isRechargeFailureStatus(status)) {
+          return latest
+        }
+        await this.sleep(1500)
+      }
+      return latest
+    },
     async loadAll() {
       const { riderId, token } = this.getAuth()
       if (!riderId) {
@@ -349,16 +389,42 @@ export default {
           }),
         })
 
+        let latest = res
+        let status = this.normalizeFlowStatus(latest, 'recharge')
+        if (shouldLaunchClientPayment(res)) {
+          uni.showLoading({ title: '正在拉起支付', mask: true })
+          try {
+            await invokeClientPayment(res, 'app')
+          } finally {
+            uni.hideLoading()
+          }
+        }
+
+        if (!this.isRechargeSuccessStatus(status) && !this.isRechargeFailureStatus(status) && ((res && res.rechargeOrderId) || (res && res.transactionId))) {
+          uni.showLoading({ title: '正在确认保证金状态', mask: true })
+          try {
+            latest = await this.pollDepositPaymentStatus(res && res.rechargeOrderId, res && res.transactionId, token)
+          } finally {
+            uni.hideLoading()
+          }
+          status = this.normalizeFlowStatus(latest, 'recharge')
+        }
+
         if (res && res.duplicated) {
           uni.showToast({ title: '当前已有有效保证金', icon: 'none' })
-        } else if (String((res && res.status) || '') === 'awaiting_client_pay') {
-          uni.showToast({ title: '保证金缴纳请求已提交，请继续完成支付', icon: 'none' })
-        } else {
+        } else if (this.isRechargeSuccessStatus(status)) {
           uni.showToast({ title: '保证金已缴纳', icon: 'success' })
+        } else if (this.isRechargeFailureStatus(status)) {
+          uni.showToast({ title: '保证金缴纳失败，请稍后重试', icon: 'none' })
+        } else {
+          uni.showToast({ title: '保证金缴纳请求已提交，可在钱包页继续查看状态', icon: 'none' })
         }
         await this.loadAll()
       } catch (error) {
-        uni.showToast({ title: error.error || '保证金缴纳失败', icon: 'none' })
+        uni.showToast({
+          title: isClientPaymentCancelled(error) ? '已取消支付' : (error.error || getClientPaymentErrorMessage(error, '保证金缴纳失败')),
+          icon: 'none'
+        })
       }
     },
     async withdrawDeposit() {

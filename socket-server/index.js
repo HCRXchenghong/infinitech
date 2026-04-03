@@ -10,6 +10,7 @@ import crypto from 'crypto';
 import { logger } from './logger.js';
 import { getSupportHistoryFallbackConfig, setupSupportNamespaces } from './supportNamespaces.js';
 import { setupRiderNamespace } from './riderNamespace.js';
+import { publishRealtimeEvent, setupNotifyNamespace } from './notifyNamespace.js';
 import { setupRTCNamespace } from './rtcNamespace.js';
 import { validateSocketIdentity } from './socketIdentity.js';
 import { REQUEST_ID_HEADER, attachRequestId, resolveRequestId } from './requestId.js';
@@ -46,6 +47,7 @@ const SOCKET_RTC_RING_TIMEOUT_SECONDS = toPositiveInt(process.env.SOCKET_RTC_RIN
 
 let monitorNamespace;
 let supportNamespace;
+let notifyNamespace;
 initRedisState();
 
 const UPLOAD_DIR = join(__dirname, 'uploads');
@@ -520,6 +522,31 @@ const httpServer = createServer(async (req, res) => {
     return;
   }
 
+  if (pathname === '/api/realtime/publish' && req.method === 'POST') {
+    if (!isTrustedSocketApiRequest(req)) {
+      writeJson(res, 403, { error: '未授权访问' });
+      return;
+    }
+    try {
+      const body = await readJsonBody(req, SOCKET_JSON_BODY_LIMIT_BYTES);
+      const result = publishRealtimeEvent(
+        notifyNamespace,
+        body?.eventName,
+        Array.isArray(body?.recipients) ? body.recipients : [],
+        body?.payload && typeof body.payload === 'object' ? body.payload : {}
+      );
+      writeJson(res, 200, {
+        success: true,
+        ...result
+      });
+    } catch (err) {
+      writeJson(res, Number(err?.statusCode || 500), {
+        error: err?.message || 'Failed to publish realtime notification'
+      });
+    }
+    return;
+  }
+
   res.writeHead(404);
   res.end();
 });
@@ -543,6 +570,15 @@ await attachSocketIoRedisAdapter(io);
   monitorNamespace,
   supportNamespace
 } = setupSupportNamespaces({
+  io,
+  authMiddleware,
+  addOnlineUser,
+  removeOnlineUser
+}));
+
+({
+  notifyNamespace
+} = setupNotifyNamespace({
   io,
   authMiddleware,
   addOnlineUser,
@@ -582,4 +618,5 @@ httpServer.listen(PORT, () => {
   logger.info('Socket auth now requires validated business auth or TOKEN_API_SECRET');
   logger.info('监控端点: /api/stats');
   logger.info('生成 token: POST /api/generate-token');
+  logger.info('实时广播: POST /api/realtime/publish');
 });

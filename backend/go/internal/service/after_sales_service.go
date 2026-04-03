@@ -21,6 +21,7 @@ type AfterSalesService struct {
 	db             *gorm.DB
 	paymentSvc     *PaymentService
 	opNotification *OpNotificationService
+	notifier       *RealtimeNotificationService
 }
 
 var afterSalesNoSeq atomic.Uint32
@@ -39,6 +40,10 @@ func NewAfterSalesService(
 		paymentSvc:     paymentSvc,
 		opNotification: opNotification,
 	}
+}
+
+func (s *AfterSalesService) SetRealtimeNotifier(notifier *RealtimeNotificationService) {
+	s.notifier = notifier
 }
 
 func (s *AfterSalesService) Create(ctx context.Context, data interface{}) (interface{}, error) {
@@ -211,6 +216,9 @@ func (s *AfterSalesService) Create(ctx context.Context, data interface{}) (inter
 	}
 	if s.opNotification != nil {
 		_ = s.opNotification.NotifyAfterSalesCreated(ctx, entity)
+	}
+	if s.notifier != nil {
+		s.notifier.NotifyAfterSalesStatus(ctx, entity, "售后申请已提交", fmt.Sprintf("售后单 %s 已提交，请及时查看处理进度。", entity.RequestNo))
 	}
 
 	return s.toResponse(entity), nil
@@ -603,6 +611,9 @@ func (s *AfterSalesService) UpdateStatus(ctx context.Context, id string, data in
 	}
 	if s.opNotification != nil {
 		_ = s.opNotification.NotifyAfterSalesUpdated(ctx, entity)
+	}
+	if s.notifier != nil {
+		s.notifier.NotifyAfterSalesStatus(ctx, entity, "售后状态更新", fmt.Sprintf("售后单 %s 状态已更新为 %s。", entity.RequestNo, entity.Status))
 	}
 	return s.toResponse(entity), nil
 }

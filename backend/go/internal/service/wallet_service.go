@@ -30,6 +30,7 @@ type WalletService struct {
 	paymentSvc                       *PaymentService
 	riskSvc                          *RiskControlService
 	signSecret                       string
+	notifier                         *RealtimeNotificationService
 	withdrawReconcileEnabled         bool
 	withdrawReconcileInterval        time.Duration
 	withdrawReconcileBatchSize       int
@@ -41,6 +42,10 @@ type WalletService struct {
 	withdrawReconcileLastProcessed   int
 	withdrawReconcileFailureCount    int
 	withdrawReconcileLastError       string
+}
+
+func (s *WalletService) SetRealtimeNotifier(notifier *RealtimeNotificationService) {
+	s.notifier = notifier
 }
 
 type RechargeRequest struct {
@@ -582,7 +587,7 @@ func (s *WalletService) GetWithdrawStatus(ctx context.Context, userID, userType,
 		}
 	}
 
-	if transaction != nil {
+	if transaction != nil && canRefreshWithdrawGatewayStatus(record, transaction) {
 		if refreshErr := s.refreshWithdrawGatewayStatus(ctx, record, transaction); refreshErr == nil {
 			if latestRecord, latestErr := s.getWithdrawRequestByIdentifiers(ctx, requestID, transactionID); latestErr == nil {
 				record = latestRecord
@@ -1159,6 +1164,62 @@ func (s *WalletService) getWithdrawRequestByIdentifiers(ctx context.Context, req
 	}
 }
 
+func (s *WalletService) findWithdrawTransactionForRecord(ctx context.Context, record *repository.WithdrawRequest) (*repository.WalletTransaction, error) {
+	if record == nil {
+		return nil, nil
+	}
+
+	findOne := func(apply func(query *gorm.DB) *gorm.DB) (*repository.WalletTransaction, error) {
+		var transaction repository.WalletTransaction
+		query := s.walletRepo.DB().WithContext(ctx).
+			Model(&repository.WalletTransaction{}).
+			Where("type IN ?", []string{"withdraw", "rider_deposit_withdraw"}).
+			Where("user_id = ? AND user_type = ?", strings.TrimSpace(record.UserID), strings.TrimSpace(record.UserType))
+		if apply != nil {
+			query = apply(query)
+		}
+		if err := query.Order("id DESC").First(&transaction).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, nil
+			}
+			return nil, err
+		}
+		return &transaction, nil
+	}
+
+	if transactionID := firstTrimmed(record.TransactionID, record.TransactionIDRaw); transactionID != "" {
+		transaction, err := findOne(func(query *gorm.DB) *gorm.DB {
+			return query.Where("transaction_id = ? OR transaction_id_raw = ?", transactionID, transactionID)
+		})
+		if err != nil {
+			return nil, err
+		}
+		if transaction != nil {
+			return transaction, nil
+		}
+	}
+
+	if thirdPartyOrderID := strings.TrimSpace(record.ThirdPartyOrderID); thirdPartyOrderID != "" {
+		transaction, err := findOne(func(query *gorm.DB) *gorm.DB {
+			return query.Where("third_party_order_id = ?", thirdPartyOrderID)
+		})
+		if err != nil {
+			return nil, err
+		}
+		if transaction != nil {
+			return transaction, nil
+		}
+	}
+
+	if businessID := firstTrimmed(record.RequestID, record.RequestIDRaw); businessID != "" {
+		return findOne(func(query *gorm.DB) *gorm.DB {
+			return query.Where("business_id = ?", businessID)
+		})
+	}
+
+	return nil, nil
+}
+
 func (s *WalletService) getWithdrawArrivalText(ctx context.Context, withdrawMethod string) string {
 	if normalizeChannel(withdrawMethod) == "bank_card" {
 		cfg, err := s.loadBankCardConfig(ctx)
@@ -1303,6 +1364,7 @@ func buildWithdrawStatusMap(record *repository.WithdrawRequest, transaction *rep
 		"arrivalText":             arrivalText,
 		"thirdPartyOrderId":       firstTrimmed(record.ThirdPartyOrderID, walletTransactionThirdPartyOrderID(transaction)),
 		"thirdPartyTransactionId": walletTransactionThirdPartyTransactionID(transaction),
+		"rejectReason":            strings.TrimSpace(record.RejectReason),
 		"transferResult":          firstTrimmed(record.TransferResult, walletTransactionTransferResult(transaction)),
 		"reviewedAt":              record.ReviewedAt,
 		"completedAt":             record.CompletedAt,
@@ -1311,6 +1373,58 @@ func buildWithdrawStatusMap(record *repository.WithdrawRequest, transaction *rep
 		"autoRetry":               autoRetry,
 		"responseData":            walletTransactionResponseData(transaction),
 	}
+}
+
+func buildWithdrawRecordListItem(record *repository.WithdrawRequest, transaction *repository.WalletTransaction, arrivalText string) map[string]interface{} {
+	item := cloneJSONObject(record)
+	if item == nil {
+		item = map[string]interface{}{}
+	}
+
+	autoRetry := withdrawAutoRetrySummary(transaction, record.WithdrawMethod)
+	responseData := walletTransactionResponseData(transaction)
+	thirdPartyOrderID := firstTrimmed(record.ThirdPartyOrderID, walletTransactionThirdPartyOrderID(transaction))
+	transferResult := firstTrimmed(record.TransferResult, walletTransactionTransferResult(transaction))
+	rejectReason := strings.TrimSpace(record.RejectReason)
+	transactionStatus := walletTransactionStatusValue(transaction)
+	gatewaySubmitted := canRefreshWithdrawGatewayStatus(record, transaction)
+
+	item["third_party_order_id"] = thirdPartyOrderID
+	item["transfer_result"] = transferResult
+	item["reject_reason"] = rejectReason
+	item["transaction_status"] = transactionStatus
+	item["arrival_text"] = arrivalText
+	item["response_data"] = responseData
+	item["auto_retry"] = autoRetry
+	item["gateway_submitted"] = gatewaySubmitted
+
+	item["thirdPartyOrderId"] = thirdPartyOrderID
+	item["transferResult"] = transferResult
+	item["rejectReason"] = rejectReason
+	item["transactionStatus"] = transactionStatus
+	item["arrivalText"] = arrivalText
+	item["responseData"] = responseData
+	item["autoRetry"] = autoRetry
+	item["gatewaySubmitted"] = gatewaySubmitted
+	if transaction != nil {
+		item["transaction"] = buildWalletTransactionStatusMap(transaction)
+	}
+	return item
+}
+
+func cloneJSONObject(value interface{}) map[string]interface{} {
+	if value == nil {
+		return map[string]interface{}{}
+	}
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return map[string]interface{}{}
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return map[string]interface{}{}
+	}
+	return result
 }
 
 func walletTransactionStatusValue(transaction *repository.WalletTransaction) string {
@@ -1427,11 +1541,20 @@ func (s *WalletService) ListWithdrawRecords(ctx context.Context, userID, userTyp
 	if err != nil {
 		return nil, err
 	}
+	items := make([]map[string]interface{}, 0, len(records))
+	for i := range records {
+		record := records[i]
+		transaction, err := s.findWithdrawTransactionForRecord(ctx, &record)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, buildWithdrawRecordListItem(&record, transaction, s.getWithdrawArrivalText(ctx, record.WithdrawMethod)))
+	}
 	return map[string]interface{}{
 		"total":   total,
 		"page":    page,
 		"limit":   limit,
-		"records": records,
+		"records": items,
 	}, nil
 }
 
@@ -1581,13 +1704,14 @@ func (s *WalletService) ReviewWithdraw(ctx context.Context, req WithdrawReviewRe
 				)
 			}
 			newStatus = execution.Status
+			thirdPartyOrderID := firstTrimmed(strings.TrimSpace(req.ThirdPartyOrderID), execution.ThirdPartyOrderID)
 			requestUpdates["status"] = newStatus
-			requestUpdates["third_party_order_id"] = firstTrimmed(strings.TrimSpace(req.ThirdPartyOrderID), execution.ThirdPartyOrderID)
+			requestUpdates["third_party_order_id"] = thirdPartyOrderID
 			requestUpdates["transfer_result"] = firstTrimmed(strings.TrimSpace(req.TransferResult), execution.TransferResult)
 			responsePayload["status"] = newStatus
 			responsePayload["gateway"] = execution.Gateway
 			responsePayload["integrationTarget"] = execution.IntegrationTarget
-			responsePayload["thirdPartyOrderId"] = requestUpdates["third_party_order_id"]
+			responsePayload["thirdPartyOrderId"] = thirdPartyOrderID
 			responsePayload["transferResult"] = requestUpdates["transfer_result"]
 			executionPayload := buildWithdrawRetryExecutionPayload(transaction, record.WithdrawMethod, responsePayload)
 			if execution.ResponseData != nil {
@@ -1597,18 +1721,25 @@ func (s *WalletService) ReviewWithdraw(ctx context.Context, req WithdrawReviewRe
 			if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transaction.TransactionID, "processing", string(respJSON), nil); err != nil {
 				return err
 			}
+			if err := s.updateWalletTransactionThirdPartyOrderIDTx(ctx, tx, transaction.TransactionID, thirdPartyOrderID, false); err != nil {
+				return err
+			}
 			transitionErr = s.updateRiderDepositWithdrawStateTx(ctx, tx, req.RequestID, newStatus, req.Remark, nil)
 		case "mark_processing":
 			if record.Status != "pending_transfer" {
 				return fmt.Errorf("%w: withdraw request is not pending transfer", ErrInvalidArgument)
 			}
 			newStatus = "transferring"
+			thirdPartyOrderID := strings.TrimSpace(req.ThirdPartyOrderID)
 			requestUpdates["status"] = newStatus
-			requestUpdates["third_party_order_id"] = strings.TrimSpace(req.ThirdPartyOrderID)
+			requestUpdates["third_party_order_id"] = thirdPartyOrderID
 			requestUpdates["transfer_result"] = strings.TrimSpace(req.TransferResult)
 			responsePayload["status"] = newStatus
 			respJSON, _ := json.Marshal(responsePayload)
 			if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transaction.TransactionID, "processing", string(respJSON), nil); err != nil {
+				return err
+			}
+			if err := s.updateWalletTransactionThirdPartyOrderIDTx(ctx, tx, transaction.TransactionID, thirdPartyOrderID, false); err != nil {
 				return err
 			}
 			transitionErr = s.updateRiderDepositWithdrawStateTx(ctx, tx, req.RequestID, newStatus, req.Remark, nil)
@@ -1642,7 +1773,8 @@ func (s *WalletService) ReviewWithdraw(ctx context.Context, req WithdrawReviewRe
 			requestUpdates["status"] = newStatus
 			requestUpdates["reject_reason"] = ""
 			requestUpdates["completed_at"] = now
-			requestUpdates["third_party_order_id"] = strings.TrimSpace(req.ThirdPartyOrderID)
+			thirdPartyOrderID := strings.TrimSpace(req.ThirdPartyOrderID)
+			requestUpdates["third_party_order_id"] = thirdPartyOrderID
 			requestUpdates["transfer_result"] = strings.TrimSpace(req.TransferResult)
 			requestUpdates["payout_voucher_url"] = strings.TrimSpace(req.PayoutVoucherURL)
 			requestUpdates["payout_reference_no"] = strings.TrimSpace(req.PayoutReferenceNo)
@@ -1661,6 +1793,9 @@ func (s *WalletService) ReviewWithdraw(ctx context.Context, req WithdrawReviewRe
 			}
 			respJSON, _ := json.Marshal(responsePayload)
 			if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transaction.TransactionID, "success", string(respJSON), &now); err != nil {
+				return err
+			}
+			if err := s.updateWalletTransactionThirdPartyOrderIDTx(ctx, tx, transaction.TransactionID, thirdPartyOrderID, false); err != nil {
 				return err
 			}
 			transitionErr = s.updateRiderDepositWithdrawStateTx(ctx, tx, req.RequestID, newStatus, req.Remark, &now)
@@ -1713,6 +1848,12 @@ func (s *WalletService) ReviewWithdraw(ctx context.Context, req WithdrawReviewRe
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if s.notifier != nil {
+		if latestRecord, latestErr := s.getWithdrawRequestByIdentifiers(ctx, req.RequestID, transaction.TransactionID); latestErr == nil && latestRecord != nil {
+			s.notifier.NotifyWithdrawStatus(ctx, latestRecord, latestRecord.Status, firstTrimmed(rejectReason, strings.TrimSpace(req.TransferResult), strings.TrimSpace(req.Remark)))
+		}
 	}
 
 	return map[string]interface{}{
@@ -1882,6 +2023,9 @@ func (s *WalletService) syncWithdrawGatewayStatus(
 	if record.Status != "pending_transfer" && record.Status != "transferring" {
 		return nil, fmt.Errorf("%w: withdraw request is not in transfer flow", ErrInvalidArgument)
 	}
+	if !canRefreshWithdrawGatewayStatus(record, transaction) {
+		return nil, fmt.Errorf("%w: withdraw request has not been submitted to gateway", ErrInvalidArgument)
+	}
 	if err := s.refreshWithdrawGatewayStatus(ctx, record, transaction); err != nil {
 		return nil, err
 	}
@@ -1991,6 +2135,9 @@ func (s *WalletService) retryWithdrawPayout(
 				"completed_at":  nil,
 				"updated_at":    now,
 			}).Error; err != nil {
+			return err
+		}
+		if err := s.updateWalletTransactionThirdPartyOrderIDTx(ctx, tx, lockedTransaction.TransactionID, "", true); err != nil {
 			return err
 		}
 
@@ -2135,6 +2282,41 @@ func (s *WalletService) restoreFailedWithdrawRetry(
 	})
 }
 
+func (s *WalletService) updateWalletTransactionThirdPartyOrderIDTx(
+	ctx context.Context,
+	tx *gorm.DB,
+	transactionID string,
+	thirdPartyOrderID string,
+	allowClear bool,
+) error {
+	transactionID = strings.TrimSpace(transactionID)
+	thirdPartyOrderID = strings.TrimSpace(thirdPartyOrderID)
+	if transactionID == "" || (thirdPartyOrderID == "" && !allowClear) {
+		return nil
+	}
+	return tx.WithContext(ctx).
+		Model(&repository.WalletTransaction{}).
+		Where("transaction_id = ? OR transaction_id_raw = ?", transactionID, transactionID).
+		Update("third_party_order_id", thirdPartyOrderID).Error
+}
+
+func (s *WalletService) updateWalletTransactionThirdPartyOrderID(
+	ctx context.Context,
+	transactionID string,
+	thirdPartyOrderID string,
+	allowClear bool,
+) error {
+	transactionID = strings.TrimSpace(transactionID)
+	thirdPartyOrderID = strings.TrimSpace(thirdPartyOrderID)
+	if transactionID == "" || (thirdPartyOrderID == "" && !allowClear) {
+		return nil
+	}
+	return s.walletRepo.DB().WithContext(ctx).
+		Model(&repository.WalletTransaction{}).
+		Where("transaction_id = ? OR transaction_id_raw = ?", transactionID, transactionID).
+		Update("third_party_order_id", thirdPartyOrderID).Error
+}
+
 func (s *WalletService) completeWithdrawByCallbackTx(
 	ctx context.Context,
 	tx *gorm.DB,
@@ -2177,15 +2359,18 @@ func (s *WalletService) completeWithdrawByCallbackTx(
 		return fmt.Errorf("%w: withdraw complete update conflict", ErrConcurrentBalanceUpdate)
 	}
 
-	responsePayload := map[string]interface{}{
+	responsePayload := mergeWalletResponseData(walletTransactionResponseMap(transaction), map[string]interface{}{
 		"status":            "success",
 		"actualAmount":      record.ActualAmount,
 		"fee":               record.Fee,
 		"thirdPartyOrderId": strings.TrimSpace(thirdPartyOrderID),
 		"transferResult":    strings.TrimSpace(transferResult),
-	}
+	})
 	respJSON, _ := json.Marshal(responsePayload)
 	if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transaction.TransactionID, "success", string(respJSON), &completedAt); err != nil {
+		return err
+	}
+	if err := s.updateWalletTransactionThirdPartyOrderIDTx(ctx, tx, transaction.TransactionID, thirdPartyOrderID, false); err != nil {
 		return err
 	}
 	if err := tx.WithContext(ctx).
@@ -2266,6 +2451,9 @@ func (s *WalletService) failWithdrawByCallbackTxWithPayload(
 	responsePayload = buildWithdrawRetryFailurePayload(transaction, record.WithdrawMethod, responsePayload, failedAt, strings.TrimSpace(transferResult))
 	respJSON, _ := json.Marshal(responsePayload)
 	if err := s.walletRepo.UpdateWalletTransactionStatusTx(ctx, tx, transaction.TransactionID, "failed", string(respJSON), &failedAt); err != nil {
+		return err
+	}
+	if err := s.updateWalletTransactionThirdPartyOrderIDTx(ctx, tx, transaction.TransactionID, thirdPartyOrderID, false); err != nil {
 		return err
 	}
 	if err := tx.WithContext(ctx).

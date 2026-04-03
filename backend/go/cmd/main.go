@@ -1243,6 +1243,9 @@ func main() {
 				c.JSON(500, gin.H{"error": err.Error()})
 				return
 			}
+			if services.RealtimeNotify != nil {
+				services.RealtimeNotify.NotifyOrderEvent(c.Request.Context(), &order, "order.dispatched", "订单已分配骑手", "你的订单已分配骑手，配送即将开始。", true, true, true)
+			}
 
 			c.JSON(200, gin.H{
 				"success": true,
@@ -1317,6 +1320,9 @@ func main() {
 				return
 			}
 			_ = services.Wallet.MarkRiderAccepted(c.Request.Context(), riderID)
+			if services.RealtimeNotify != nil {
+				services.RealtimeNotify.NotifyOrderEvent(c.Request.Context(), &order, "order.accepted", "订单已接单", "你的订单已有骑手接单，商家正在准备。", true, true, true)
+			}
 			c.JSON(200, gin.H{"success": true, "data": order})
 		})
 		api.POST("/orders/:id/pickup", func(c *gin.Context) {
@@ -1351,6 +1357,9 @@ func main() {
 			if err := db.Where("id = ?", orderID).First(&order).Error; err != nil {
 				c.JSON(500, gin.H{"error": err.Error()})
 				return
+			}
+			if services.RealtimeNotify != nil {
+				services.RealtimeNotify.NotifyOrderEvent(c.Request.Context(), &order, "order.delivering", "订单配送中", "你的订单已出餐并进入配送中。", true, true, true)
 			}
 			c.JSON(200, gin.H{"success": true, "data": order})
 		})
@@ -1405,6 +1414,9 @@ func main() {
 				}
 				c.JSON(500, gin.H{"error": err.Error()})
 				return
+			}
+			if services.RealtimeNotify != nil {
+				services.RealtimeNotify.NotifyOrderEvent(c.Request.Context(), &order, "order.completed", "订单已完成", "你的订单已送达完成，欢迎回来评价。", true, true, true)
 			}
 			c.JSON(200, gin.H{"success": true, "data": order})
 		})

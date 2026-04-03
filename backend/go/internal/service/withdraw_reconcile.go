@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -19,6 +20,9 @@ func (s *WalletService) refreshWithdrawGatewayStatus(ctx context.Context, record
 
 	status := strings.ToLower(strings.TrimSpace(record.Status))
 	if status != "pending_transfer" && status != "transferring" {
+		return nil
+	}
+	if !canRefreshWithdrawGatewayStatus(record, transaction) {
 		return nil
 	}
 
@@ -74,12 +78,12 @@ func (s *WalletService) refreshWechatWithdrawGatewayStatus(ctx context.Context, 
 		})
 	default:
 		return s.updateWithdrawProgressMetadata(ctx, record, transaction, thirdPartyOrderID, transferResult, map[string]interface{}{
-			"gateway":        "wechat",
-			"gatewayStatus":  eventType,
-			"outBatchNo":     outBatchNo,
-			"outDetailNo":    outDetailNo,
-			"lastQueryAt":    time.Now(),
-			"integrationTag": "official-go-sdk",
+			"gateway":           "wechat",
+			"gatewayStatus":     eventType,
+			"outBatchNo":        outBatchNo,
+			"outDetailNo":       outDetailNo,
+			"lastQueryAt":       time.Now(),
+			"integrationTarget": "official-go-sdk",
 		})
 	}
 }
@@ -110,11 +114,11 @@ func (s *WalletService) refreshAlipayWithdrawGatewayStatus(ctx context.Context, 
 		})
 	default:
 		return s.updateWithdrawProgressMetadata(ctx, record, transaction, thirdPartyOrderID, transferResult, map[string]interface{}{
-			"gateway":        "alipay",
-			"gatewayStatus":  eventType,
-			"lastQueryAt":    time.Now(),
-			"integrationTag": "official-sidecar-sdk",
-			"responseData":   envelope.ResponseData,
+			"gateway":           "alipay",
+			"gatewayStatus":     eventType,
+			"lastQueryAt":       time.Now(),
+			"integrationTarget": "official-sidecar-sdk",
+			"responseData":      envelope.ResponseData,
 		})
 	}
 }
@@ -151,11 +155,11 @@ func (s *WalletService) refreshBankCardWithdrawGatewayStatus(ctx context.Context
 		})
 	default:
 		return s.updateWithdrawProgressMetadata(ctx, record, transaction, thirdPartyOrderID, transferResult, map[string]interface{}{
-			"gateway":        "bank_card",
-			"gatewayStatus":  eventType,
-			"lastQueryAt":    time.Now(),
-			"integrationTag": "bank-payout-sidecar",
-			"responseData":   envelope.ResponseData,
+			"gateway":           "bank_card",
+			"gatewayStatus":     eventType,
+			"lastQueryAt":       time.Now(),
+			"integrationTarget": "bank-payout-sidecar",
+			"responseData":      envelope.ResponseData,
 		})
 	}
 }
@@ -173,6 +177,11 @@ func (s *WalletService) updateWithdrawProgressMetadata(
 	}
 
 	updates := map[string]interface{}{}
+	latestStatus := strings.TrimSpace(record.Status)
+	if latestStatus == "pending_transfer" {
+		latestStatus = "transferring"
+		updates["status"] = latestStatus
+	}
 	if strings.TrimSpace(thirdPartyOrderID) != "" {
 		updates["third_party_order_id"] = strings.TrimSpace(thirdPartyOrderID)
 	}
@@ -187,23 +196,95 @@ func (s *WalletService) updateWithdrawProgressMetadata(
 			return err
 		}
 	}
+	if err := s.updateWalletTransactionThirdPartyOrderID(ctx, transaction.TransactionID, thirdPartyOrderID, false); err != nil {
+		return err
+	}
 
-	if len(responseData) == 0 {
+	payload := mergeWalletResponseData(walletTransactionResponseMap(transaction), responseData)
+	if strings.TrimSpace(latestStatus) != "" {
+		payload["status"] = strings.TrimSpace(latestStatus)
+	}
+	if strings.TrimSpace(thirdPartyOrderID) != "" {
+		payload["thirdPartyOrderId"] = strings.TrimSpace(thirdPartyOrderID)
+	}
+	if strings.TrimSpace(transferResult) != "" {
+		payload["transferResult"] = strings.TrimSpace(transferResult)
+	}
+	if len(payload) == 0 {
 		return nil
 	}
-	payload, err := json.Marshal(responseData)
+	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
 		return nil
 	}
 	return s.walletRepo.DB().WithContext(ctx).
 		Model(&repository.WalletTransaction{}).
 		Where("transaction_id = ? OR transaction_id_raw = ?", transaction.TransactionID, transaction.TransactionID).
-		Update("response_data", string(payload)).Error
+		Update("response_data", string(payloadJSON)).Error
+}
+
+func canRefreshWithdrawGatewayStatus(record *repository.WithdrawRequest, transaction *repository.WalletTransaction) bool {
+	if record == nil || transaction == nil {
+		return false
+	}
+	status := strings.ToLower(strings.TrimSpace(record.Status))
+	if status == "transferring" {
+		return true
+	}
+	if status != "pending_transfer" {
+		return false
+	}
+	if strings.TrimSpace(record.ThirdPartyOrderID) != "" || strings.TrimSpace(transaction.ThirdPartyOrderID) != "" {
+		return true
+	}
+	payload := walletTransactionResponseMap(transaction)
+	return walletResponseHasText(payload,
+		"gateway",
+		"integrationTarget",
+		"submittedAt",
+		"sidecarUrl",
+		"outBatchNo",
+		"outDetailNo",
+		"batchId",
+		"processingMode",
+		"notifyUrl",
+	)
+}
+
+func walletResponseHasText(payload map[string]interface{}, keys ...string) bool {
+	for _, key := range keys {
+		value, ok := payload[key]
+		if !ok || value == nil {
+			continue
+		}
+		if strings.TrimSpace(fmt.Sprint(value)) != "" && !strings.EqualFold(strings.TrimSpace(fmt.Sprint(value)), "<nil>") {
+			return true
+		}
+	}
+	return false
 }
 
 func isGatewaySuccessStatus(eventType string) bool {
 	status := strings.ToLower(strings.TrimSpace(eventType))
-	return strings.Contains(status, "success") || strings.Contains(status, "finish")
+	return strings.Contains(status, "success") ||
+		strings.Contains(status, "finish") ||
+		strings.Contains(status, "complete")
+}
+
+func isGatewayPendingStatus(eventType string) bool {
+	status := strings.ToLower(strings.TrimSpace(eventType))
+	if status == "" {
+		return false
+	}
+	return strings.Contains(status, "wait") ||
+		strings.Contains(status, "pending") ||
+		strings.Contains(status, "process") ||
+		strings.Contains(status, "accept") ||
+		strings.Contains(status, "init") ||
+		strings.Contains(status, "review") ||
+		strings.Contains(status, "dealing") ||
+		strings.Contains(status, "paying") ||
+		strings.Contains(status, "transferring")
 }
 
 func isGatewayFailureStatus(eventType string) bool {
@@ -211,5 +292,8 @@ func isGatewayFailureStatus(eventType string) bool {
 	return strings.Contains(status, "fail") ||
 		strings.Contains(status, "close") ||
 		strings.Contains(status, "cancel") ||
-		strings.Contains(status, "reject")
+		strings.Contains(status, "reject") ||
+		strings.Contains(status, "error") ||
+		strings.Contains(status, "deny") ||
+		strings.Contains(status, "timeout")
 }

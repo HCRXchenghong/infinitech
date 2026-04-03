@@ -32,6 +32,7 @@ type Services struct {
 	Wallet            *WalletService
 	Financial         *FinancialService
 	MobilePush        *MobilePushService
+	RealtimeNotify    *RealtimeNotificationService
 	MobileMap         *MobileMapService
 	HomeFeed          *HomeFeedService
 	PhoneContactAudit *PhoneContactAuditService
@@ -52,16 +53,21 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 	opNotificationService := NewOpNotificationService(repos.DB)
 	adminService := NewAdminService(repos.DB, repos.Redis, cfg.JWT.Secret)
 	mobilePushService := NewMobilePushService(repos.DB, cfg, adminService)
+	realtimeNotifyService := NewRealtimeNotificationService(repos.DB, cfg, mobilePushService)
+	paymentService.SetRealtimeNotifier(realtimeNotifyService)
+	walletService.SetRealtimeNotifier(realtimeNotifyService)
 	mobileMapService := NewMobileMapService(cfg, adminService)
 	captchaService := NewCaptchaService(repos.DB)
 	phoneContactAuditService := NewPhoneContactAuditService(repos.DB)
 	rtcCallAuditService := NewRTCCallAuditService(repos.DB, cfg)
+	afterSalesService := NewAfterSalesService(repos.AfterSales, repos.Order, repos.DB, paymentService, opNotificationService)
+	afterSalesService.SetRealtimeNotifier(realtimeNotifyService)
 
 	return &Services{
 		Shop:              NewShopService(repos.Shop, repos.Redis),
 		Order:             NewOrderService(repos.Order, repos.DB, groupbuyService),
 		Groupbuy:          groupbuyService,
-		AfterSales:        NewAfterSalesService(repos.AfterSales, repos.Order, repos.DB, paymentService, opNotificationService),
+		AfterSales:        afterSalesService,
 		OpNotification:    opNotificationService,
 		User:              NewUserService(repos.User, authService),
 		Auth:              authService,
@@ -84,6 +90,7 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 		Wallet:            walletService,
 		Financial:         financialService,
 		MobilePush:        mobilePushService,
+		RealtimeNotify:    realtimeNotifyService,
 		MobileMap:         mobileMapService,
 		HomeFeed:          NewHomeFeedService(repos.DB, repos.Shop, repos.FeaturedProduct),
 		PhoneContactAudit: phoneContactAuditService,

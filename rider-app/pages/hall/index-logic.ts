@@ -78,6 +78,8 @@ export default Vue.extend({
     this.measureLayout()
   },
   async onShow() {
+    uni.$off('realtime:refresh:orders', this.onRealtimeOrdersRefresh)
+    uni.$on('realtime:refresh:orders', this.onRealtimeOrdersRefresh)
     this.getLocation()
     // 页面展示前先从服务端同步在线状态，避免默认休息中的假象
     await loadRiderData()
@@ -88,8 +90,13 @@ export default Vue.extend({
   async onPullDownRefresh() {
     await this.refreshOrders('page')
   },
-  onUnload() {},
+  onUnload() {
+    uni.$off('realtime:refresh:orders', this.onRealtimeOrdersRefresh)
+  },
   methods: {
+    onRealtimeOrdersRefresh() {
+      void this.refreshOrders('scroll')
+    },
     measureLayout() {
       this.$nextTick(() => {
         const query = uni.createSelectorQuery().in(this)

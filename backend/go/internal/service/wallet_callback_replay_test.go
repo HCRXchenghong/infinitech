@@ -142,6 +142,121 @@ func TestReplayPaymentCallbackReprocessesVerifiedWithdrawSuccess(t *testing.T) {
 	}
 }
 
+func TestReplayPaymentCallbackPrefersRawBusinessIDForHistoricalWithdraw(t *testing.T) {
+	_, walletSvc, db := newPaymentAndWalletServicesForTest(t)
+
+	now := time.Now()
+	account := &repository.WalletAccount{
+		UnifiedIdentity: testIdentity("WA", 952),
+		UserID:          "merchant-replay-raw-1",
+		UserType:        "merchant",
+		Balance:         5000,
+		FrozenBalance:   1500,
+		TotalBalance:    6500,
+		Status:          "active",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := db.Create(account).Error; err != nil {
+		t.Fatalf("create account failed: %v", err)
+	}
+
+	withdrawTx := &repository.WalletTransaction{
+		UnifiedIdentity: testIdentity("WD", 952),
+		TransactionID:   "WITHDRAW-TXN-952",
+		IdempotencyKey:  "idem-withdraw-952",
+		UserID:          "merchant-replay-raw-1",
+		UserType:        "merchant",
+		Type:            "withdraw",
+		BusinessType:    "withdraw_request",
+		BusinessID:      "WITHDRAW-REQ-952",
+		Amount:          1500,
+		BalanceBefore:   6500,
+		BalanceAfter:    5000,
+		PaymentMethod:   "alipay",
+		PaymentChannel:  "alipay",
+		Status:          "processing",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := db.Create(withdrawTx).Error; err != nil {
+		t.Fatalf("create withdraw transaction failed: %v", err)
+	}
+
+	withdrawRequest := &repository.WithdrawRequest{
+		UnifiedIdentity: testIdentity("WR", 952),
+		RequestID:       "WITHDRAW-REQ-952",
+		TransactionID:   withdrawTx.TransactionID,
+		UserID:          "merchant-replay-raw-1",
+		UserType:        "merchant",
+		Amount:          1500,
+		Fee:             15,
+		ActualAmount:    1485,
+		WithdrawMethod:  "alipay",
+		WithdrawAccount: "merchant-replay-raw@example.com",
+		Status:          "transferring",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if err := db.Create(withdrawRequest).Error; err != nil {
+		t.Fatalf("create withdraw request failed: %v", err)
+	}
+
+	processedAt := now
+	callback := &repository.PaymentCallback{
+		UnifiedIdentity:   testIdentity("CB", 952),
+		CallbackID:        "CALLBACK-REPLAY-952",
+		Channel:           "alipay",
+		EventType:         "payout.success",
+		TransactionID:     "LEGACY-CALLBACK-TXN-952",
+		TransactionIDRaw:  withdrawRequest.RequestID,
+		Signature:         "alipay-signature-952",
+		Verified:          true,
+		ReplayFingerprint: "fingerprint-original-952",
+		Status:            "success",
+		RequestHeaders:    `{"Alipay-Signature":"alipay-signature-952"}`,
+		RequestBody:       `{"trade_status":"SUCCESS"}`,
+		ResponseBody:      "ok",
+		ProcessedAt:       &processedAt,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := db.Create(callback).Error; err != nil {
+		t.Fatalf("create payment callback failed: %v", err)
+	}
+
+	result, err := walletSvc.ReplayPaymentCallback(context.Background(), "CALLBACK-REPLAY-952", AdminWalletActor{
+		AdminID:   "admin-952",
+		AdminName: "Admin Replay",
+	}, PaymentCallbackReplayRequest{
+		Remark: "admin replay historical request id callback",
+	})
+	if err != nil {
+		t.Fatalf("replay payment callback failed: %v", err)
+	}
+
+	replayedCallbackID, _ := result["callbackId"].(string)
+	if strings.TrimSpace(replayedCallbackID) == "" {
+		t.Fatalf("expected replay callback id, got %#v", result["callbackId"])
+	}
+
+	var latestRequest repository.WithdrawRequest
+	if err := db.Where("request_id = ?", "WITHDRAW-REQ-952").First(&latestRequest).Error; err != nil {
+		t.Fatalf("reload withdraw request failed: %v", err)
+	}
+	if latestRequest.Status != "success" {
+		t.Fatalf("expected withdraw request success after replay, got %q", latestRequest.Status)
+	}
+
+	var replayedCallback repository.PaymentCallback
+	if err := db.Where("callback_id = ? OR callback_id_raw = ?", replayedCallbackID, replayedCallbackID).First(&replayedCallback).Error; err != nil {
+		t.Fatalf("load replay callback record failed: %v", err)
+	}
+	if replayedCallback.TransactionID != withdrawTx.TransactionID {
+		t.Fatalf("expected replay callback to bind real transaction id %q, got %q", withdrawTx.TransactionID, replayedCallback.TransactionID)
+	}
+}
+
 func TestReplayPaymentCallbackRejectsUnverifiedRecords(t *testing.T) {
 	_, walletSvc, db := newPaymentAndWalletServicesForTest(t)
 

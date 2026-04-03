@@ -236,3 +236,109 @@ func TestGetPaymentCallbackDetailReturnsParsedPayloadsAndWithdrawContext(t *test
 		t.Fatalf("expected replay admin name, got %v", result["replay_admin_name"])
 	}
 }
+
+func TestListPaymentCallbacksLinksHistoricalCallbackByBusinessIDRaw(t *testing.T) {
+	_, walletSvc, db := newPaymentAndWalletServicesForTest(t)
+
+	now := time.Now()
+	withdrawTx := &repository.WalletTransaction{
+		UnifiedIdentity:   testIdentity("WD", 903),
+		TransactionID:     "WITHDRAW-TXN-903",
+		IdempotencyKey:    "idem-withdraw-903",
+		UserID:            "merchant-903",
+		UserType:          "merchant",
+		Type:              "withdraw",
+		BusinessType:      "withdraw_request",
+		BusinessID:        "WITHDRAW-REQ-903",
+		Amount:            1800,
+		BalanceBefore:     6800,
+		BalanceAfter:      5000,
+		PaymentMethod:     "wechat",
+		PaymentChannel:    "wechat",
+		ThirdPartyOrderID: "WX-PAYOUT-903",
+		Status:            "processing",
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := db.Create(withdrawTx).Error; err != nil {
+		t.Fatalf("create withdraw transaction failed: %v", err)
+	}
+
+	withdrawRequest := &repository.WithdrawRequest{
+		UnifiedIdentity:   testIdentity("WR", 903),
+		RequestID:         "WITHDRAW-REQ-903",
+		TransactionID:     withdrawTx.TransactionID,
+		UserID:            "merchant-903",
+		UserType:          "merchant",
+		Amount:            1800,
+		Fee:               18,
+		ActualAmount:      1782,
+		WithdrawMethod:    "wechat",
+		WithdrawAccount:   "openid-merchant-903",
+		Status:            "transferring",
+		ThirdPartyOrderID: "WX-PAYOUT-903",
+		TransferResult:    "queued",
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := db.Create(withdrawRequest).Error; err != nil {
+		t.Fatalf("create withdraw request failed: %v", err)
+	}
+
+	callback := &repository.PaymentCallback{
+		UnifiedIdentity:   testIdentity("CB", 903),
+		CallbackID:        "CALLBACK-903",
+		Channel:           "wechat",
+		EventType:         "payout.success",
+		ThirdPartyOrderID: "WX-PAYOUT-903",
+		TransactionID:     "76000000000003",
+		TransactionIDRaw:  "WITHDRAW-REQ-903",
+		Nonce:             "nonce-903",
+		Signature:         "signature-903",
+		Verified:          true,
+		ReplayFingerprint: "fingerprint-903",
+		Status:            "success",
+		RequestHeaders:    `{"wechatpay-signature":"signature-903"}`,
+		RequestBody:       `{"status":"SUCCESS","out_batch_no":"WITHDRAW-REQ-903"}`,
+		ResponseBody:      `{"ok":true}`,
+		ProcessedAt:       &now,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := db.Create(callback).Error; err != nil {
+		t.Fatalf("create callback failed: %v", err)
+	}
+
+	result, err := walletSvc.ListPaymentCallbacks(context.Background(), PaymentCallbackListQuery{
+		Channel:  "wechat",
+		Page:     1,
+		Limit:    20,
+		Verified: "true",
+	})
+	if err != nil {
+		t.Fatalf("list payment callbacks failed: %v", err)
+	}
+
+	items, ok := result["items"].([]map[string]interface{})
+	if !ok {
+		t.Fatalf("expected callback items, got %T", result["items"])
+	}
+	if len(items) == 0 {
+		t.Fatal("expected callback items")
+	}
+	item := items[0]
+	transaction, ok := item["transaction"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected linked transaction summary, got %T", item["transaction"])
+	}
+	if transaction["transaction_id"] != "WITHDRAW-TXN-903" {
+		t.Fatalf("expected linked transaction id WITHDRAW-TXN-903, got %v", transaction["transaction_id"])
+	}
+	withdraw, ok := item["withdraw"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected linked withdraw summary, got %T", item["withdraw"])
+	}
+	if withdraw["request_id"] != "WITHDRAW-REQ-903" {
+		t.Fatalf("expected linked withdraw request id WITHDRAW-REQ-903, got %v", withdraw["request_id"])
+	}
+}

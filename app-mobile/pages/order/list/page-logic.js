@@ -109,11 +109,17 @@ export default {
     // 监听切换tab事件
     uni.$off('switchToRefundTab', this.switchToRefundTab)
     uni.$on('switchToRefundTab', this.switchToRefundTab)
+    uni.$off('realtime:refresh:orders', this.loadOrders)
+    uni.$off('realtime:refresh:after_sales', this.loadOrders)
+    uni.$on('realtime:refresh:orders', this.loadOrders)
+    uni.$on('realtime:refresh:after_sales', this.loadOrders)
     // Tab页会复用，回到订单页时主动刷新最新订单
     this.loadOrders()
   },
   onUnload() {
     uni.$off('switchToRefundTab', this.switchToRefundTab)
+    uni.$off('realtime:refresh:orders', this.loadOrders)
+    uni.$off('realtime:refresh:after_sales', this.loadOrders)
   },
   methods: {
     async syncRTCContactAvailability() {
@@ -217,6 +223,11 @@ export default {
         return []
       }
       const status = order && typeof order === 'object' ? order.status : order
+      if (status === 'pending_payment') {
+        return [
+          { text: '继续支付', primary: true, action: 'pay' }
+        ]
+      }
       if (order && order.bizType === 'groupbuy') {
         if (status === 'paid_unused') {
           return [
@@ -255,6 +266,8 @@ export default {
     handleAction(action, order) {
       if (action === 'reorder') {
         this.handleReorder(order)
+      } else if (action === 'pay') {
+        uni.navigateTo({ url: '/pages/order/detail/index?id=' + order.id })
       } else if (action === 'review') {
         uni.navigateTo({ url: '/pages/order/review/index?id=' + order.id })
       } else if (action === 'refund') {

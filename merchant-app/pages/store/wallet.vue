@@ -55,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import {
   createRecharge,
@@ -68,6 +68,12 @@ import {
   fetchWalletWithdrawStatus,
   previewWalletWithdrawFee,
 } from '@/shared-ui/api'
+import {
+  getClientPaymentErrorMessage,
+  invokeClientPayment,
+  isClientPaymentCancelled,
+  shouldLaunchClientPayment,
+} from '@/shared-ui/client-payment'
 
 const loading = ref(false)
 const refreshing = ref(false)
@@ -203,6 +209,21 @@ function normalizeFlowStatus(payload: any, nestedKey: string) {
 
 function normalizeArrivalText(payload: any, nestedKey: string) {
   return String(payload?.arrivalText || payload?.[nestedKey]?.arrivalText || '').trim()
+}
+
+function normalizeWithdrawFailureReason(payload: any, nestedKey: string) {
+  return String(
+    payload?.rejectReason ||
+      payload?.reason ||
+      payload?.transferResult ||
+      payload?.[nestedKey]?.rejectReason ||
+      payload?.[nestedKey]?.reason ||
+      payload?.[nestedKey]?.transferResult ||
+      payload?.[nestedKey]?.responseData?.rejectReason ||
+      payload?.[nestedKey]?.responseData?.reason ||
+      payload?.[nestedKey]?.responseData?.transferResult ||
+      ''
+  ).trim()
 }
 
 function flowStatusText(status: string) {
@@ -420,6 +441,15 @@ async function applyRecharge() {
       description: '商户端余额充值',
     })
 
+    if (shouldLaunchClientPayment(result)) {
+      uni.showLoading({ title: '正在拉起支付', mask: true })
+      try {
+        await invokeClientPayment(result, 'app')
+      } finally {
+        uni.hideLoading()
+      }
+    }
+
     let latest = result
     let status = normalizeFlowStatus(latest, 'recharge')
     if (!rechargeFinalStatuses.has(status) && !flowFailureStatuses.has(status) && (result?.rechargeOrderId || result?.transactionId)) {
@@ -441,7 +471,10 @@ async function applyRecharge() {
     }
     await loadData()
   } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '充值失败', icon: 'none' })
+    uni.showToast({
+      title: isClientPaymentCancelled(err) ? '已取消支付' : (err?.error || getClientPaymentErrorMessage(err, '充值失败')),
+      icon: 'none',
+    })
   }
 }
 
@@ -509,7 +542,20 @@ async function applyWithdraw() {
     if (withdrawFinalStatuses.has(status)) {
       uni.showToast({ title: '提现成功', icon: 'success' })
     } else if (flowFailureStatuses.has(status)) {
-      uni.showToast({ title: `提现失败：${flowStatusText(status)}`, icon: 'none' })
+      const reason = normalizeWithdrawFailureReason(latest, 'withdraw')
+      if (status === 'rejected') {
+        await new Promise<boolean>((resolve) => {
+          uni.showModal({
+            title: '提现已驳回',
+            content: reason || '可重新申请或联系平台处理',
+            showCancel: false,
+            success: () => resolve(true),
+            fail: () => resolve(true),
+          })
+        })
+      } else {
+        uni.showToast({ title: reason ? `提现失败：${reason}` : `提现失败：${flowStatusText(status)}`, icon: 'none' })
+      }
     } else {
       const arrivalText = normalizeArrivalText(latest, 'withdraw')
       uni.showToast({
@@ -525,6 +571,25 @@ async function applyWithdraw() {
 
 onShow(async () => {
   await loadData()
+})
+
+function handleRealtimeWalletRefresh() {
+  void loadData().catch(() => {})
+}
+
+onMounted(() => {
+  uni.$off('realtime:refresh:wallet', handleRealtimeWalletRefresh)
+  uni.$off('realtime:refresh:withdraw', handleRealtimeWalletRefresh)
+  uni.$off('realtime:refresh:recharge', handleRealtimeWalletRefresh)
+  uni.$on('realtime:refresh:wallet', handleRealtimeWalletRefresh)
+  uni.$on('realtime:refresh:withdraw', handleRealtimeWalletRefresh)
+  uni.$on('realtime:refresh:recharge', handleRealtimeWalletRefresh)
+})
+
+onUnmounted(() => {
+  uni.$off('realtime:refresh:wallet', handleRealtimeWalletRefresh)
+  uni.$off('realtime:refresh:withdraw', handleRealtimeWalletRefresh)
+  uni.$off('realtime:refresh:recharge', handleRealtimeWalletRefresh)
 })
 </script>
 
