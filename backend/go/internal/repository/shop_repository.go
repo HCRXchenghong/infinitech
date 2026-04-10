@@ -47,10 +47,51 @@ func NewShopRepository(db *gorm.DB) ShopRepository {
 	return &shopRepository{db: db}
 }
 
+func normalizeShopBusinessCategoryKey(raw string) string {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case "", "food", "美食":
+		return "food"
+	case "groupbuy", "团购":
+		return "groupbuy"
+	case "dessert_drinks", "dessert-drinks", "甜点饮品":
+		return "dessert_drinks"
+	case "supermarket_convenience", "supermarket-convenience", "超市便利":
+		return "supermarket_convenience"
+	case "leisure_entertainment", "leisure-entertainment", "休闲娱乐", "休闲玩乐":
+		return "leisure_entertainment"
+	case "life_services", "life-services", "生活服务":
+		return "life_services"
+	default:
+		return "food"
+	}
+}
+
+func businessCategoryLabelByKey(key string) string {
+	switch normalizeShopBusinessCategoryKey(key) {
+	case "groupbuy":
+		return "团购"
+	case "dessert_drinks":
+		return "甜点饮品"
+	case "supermarket_convenience":
+		return "超市便利"
+	case "leisure_entertainment":
+		return "休闲娱乐"
+	case "life_services":
+		return "生活服务"
+	default:
+		return "美食"
+	}
+}
+
 func (r *shopRepository) CountShopsByCategory(ctx context.Context, category string) (int64, error) {
 	var count int64
-	// 支持按business_category筛选
-	if err := r.db.WithContext(ctx).Model(&Shop{}).Where("business_category = ? AND is_active = ?", category, true).Count(&count).Error; err != nil {
+	key := normalizeShopBusinessCategoryKey(category)
+	label := businessCategoryLabelByKey(key)
+	if err := r.db.WithContext(ctx).
+		Model(&Shop{}).
+		Where("is_active = ?", true).
+		Where("(business_category_key = ? OR business_category = ?)", key, label).
+		Count(&count).Error; err != nil {
 		return 0, err
 	}
 	return count, nil
@@ -60,8 +101,9 @@ func (r *shopRepository) GetShops(ctx context.Context, category string, todayRec
 	var shops []Shop
 	query := r.db.WithContext(ctx).Where("is_active = ?", true)
 	if category != "" {
-		// 支持按business_category筛选
-		query = query.Where("business_category = ?", category)
+		key := normalizeShopBusinessCategoryKey(category)
+		label := businessCategoryLabelByKey(key)
+		query = query.Where("(business_category_key = ? OR business_category = ?)", key, label)
 	}
 	if todayRecommendedOnly {
 		query = query.Where("is_today_recommended = ?", true)
@@ -330,23 +372,24 @@ func (r *shopRepository) GetShopReviews(ctx context.Context, shopID string, page
 
 func (r *shopRepository) GetUserFavorites(ctx context.Context, userID string, page, pageSize int) (interface{}, error) {
 	type favoriteRow struct {
-		FavoriteID        uint      `gorm:"column:favorite_id"`
-		FavoriteCreatedAt time.Time `gorm:"column:favorite_created_at"`
-		ShopID            uint      `gorm:"column:shop_id"`
-		ShopUID           string    `gorm:"column:shop_uid"`
-		ShopTSID          string    `gorm:"column:shop_tsid"`
-		Name              string    `gorm:"column:name"`
-		OrderType         string    `gorm:"column:order_type"`
-		MerchantType      string    `gorm:"column:merchant_type"`
-		BusinessCategory  string    `gorm:"column:business_category"`
-		CoverImage        string    `gorm:"column:cover_image"`
-		Logo              string    `gorm:"column:logo"`
-		Rating            float64   `gorm:"column:rating"`
-		MonthlySales      int       `gorm:"column:monthly_sales"`
-		MinPrice          float64   `gorm:"column:min_price"`
-		DeliveryPrice     float64   `gorm:"column:delivery_price"`
-		DeliveryTime      string    `gorm:"column:delivery_time"`
-		Distance          string    `gorm:"column:distance"`
+		FavoriteID          uint      `gorm:"column:favorite_id"`
+		FavoriteCreatedAt   time.Time `gorm:"column:favorite_created_at"`
+		ShopID              uint      `gorm:"column:shop_id"`
+		ShopUID             string    `gorm:"column:shop_uid"`
+		ShopTSID            string    `gorm:"column:shop_tsid"`
+		Name                string    `gorm:"column:name"`
+		OrderType           string    `gorm:"column:order_type"`
+		MerchantType        string    `gorm:"column:merchant_type"`
+		BusinessCategory    string    `gorm:"column:business_category"`
+		CoverImage          string    `gorm:"column:cover_image"`
+		Logo                string    `gorm:"column:logo"`
+		Rating              float64   `gorm:"column:rating"`
+		MonthlySales        int       `gorm:"column:monthly_sales"`
+		MinPrice            float64   `gorm:"column:min_price"`
+		DeliveryPrice       float64   `gorm:"column:delivery_price"`
+		DeliveryTime        string    `gorm:"column:delivery_time"`
+		Distance            string    `gorm:"column:distance"`
+		BusinessCategoryKey string    `gorm:"column:business_category_key"`
 	}
 
 	offset := (page - 1) * pageSize
@@ -365,7 +408,7 @@ func (r *shopRepository) GetUserFavorites(ctx context.Context, userID string, pa
 	if err := baseQuery.
 		Select(`uf.id AS favorite_id, uf.created_at AS favorite_created_at,
 			s.id AS shop_id, s.uid AS shop_uid, s.tsid AS shop_tsid,
-			s.name, s.order_type, s.merchant_type, s.business_category, s.cover_image, s.logo,
+			s.name, s.order_type, s.merchant_type, s.business_category, s.business_category_key, s.cover_image, s.logo,
 			s.rating, s.monthly_sales, s.min_price, s.delivery_price, s.delivery_time, s.distance`).
 		Order("uf.created_at DESC").
 		Limit(pageSize).
@@ -381,27 +424,28 @@ func (r *shopRepository) GetUserFavorites(ctx context.Context, userID string, pa
 			shopID = strconv.FormatUint(uint64(row.ShopID), 10)
 		}
 		list = append(list, map[string]interface{}{
-			"id":                shopID,
-			"legacyId":          row.ShopID,
-			"tsid":              row.ShopTSID,
-			"name":              row.Name,
-			"orderType":         row.OrderType,
-			"merchantType":      row.MerchantType,
-			"merchant_type":     row.MerchantType,
-			"businessCategory":  row.BusinessCategory,
-			"coverImage":        row.CoverImage,
-			"logo":              row.Logo,
-			"rating":            row.Rating,
-			"monthlySales":      row.MonthlySales,
-			"minPrice":          row.MinPrice,
-			"deliveryPrice":     row.DeliveryPrice,
-			"deliveryTime":      row.DeliveryTime,
-			"distance":          row.Distance,
-			"favoriteId":        row.FavoriteID,
-			"favoriteCreatedAt": row.FavoriteCreatedAt,
-			"isCollected":       true,
-			"isFavorited":       true,
-			"isFavorite":        true,
+			"id":                  shopID,
+			"legacyId":            row.ShopID,
+			"tsid":                row.ShopTSID,
+			"name":                row.Name,
+			"orderType":           row.OrderType,
+			"merchantType":        row.MerchantType,
+			"merchant_type":       row.MerchantType,
+			"businessCategory":    row.BusinessCategory,
+			"businessCategoryKey": normalizeShopBusinessCategoryKey(row.BusinessCategoryKey),
+			"coverImage":          row.CoverImage,
+			"logo":                row.Logo,
+			"rating":              row.Rating,
+			"monthlySales":        row.MonthlySales,
+			"minPrice":            row.MinPrice,
+			"deliveryPrice":       row.DeliveryPrice,
+			"deliveryTime":        row.DeliveryTime,
+			"distance":            row.Distance,
+			"favoriteId":          row.FavoriteID,
+			"favoriteCreatedAt":   row.FavoriteCreatedAt,
+			"isCollected":         true,
+			"isFavorited":         true,
+			"isFavorite":          true,
 		})
 	}
 
@@ -620,6 +664,7 @@ func (r *shopRepository) shopToMap(shop Shop) map[string]interface{} {
 		"merchant_type":              shop.MerchantType,
 		"category":                   shop.BusinessCategory, // 兼容旧客户端字段
 		"businessCategory":           shop.BusinessCategory,
+		"businessCategoryKey":        normalizeShopBusinessCategoryKey(shop.BusinessCategoryKey),
 		"coverImage":                 shop.CoverImage,
 		"backgroundImage":            shop.BackgroundImage,
 		"logo":                       shop.Logo,

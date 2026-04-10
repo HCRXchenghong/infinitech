@@ -541,7 +541,7 @@ export function useSettingsPage() {
     { label: '骑手数据', exporting: exportingRiders.value, importing: importingRiders.value, onExport: exportRiders, onImport: handleImportRiders },
     { label: '订单数据', exporting: exportingOrders.value, importing: importingOrders.value, onExport: exportOrders, onImport: handleImportOrders },
     { label: '商户数据', exporting: exportingMerchants.value, importing: importingMerchants.value, onExport: exportMerchants, onImport: handleImportMerchants },
-    { label: '全部数据', exporting: exportingAll.value, importing: importingAll.value, onExport: exportAllData, onImport: handleImportAllData },
+    { label: '平台备份', exporting: exportingAll.value, importing: importingAll.value, onExport: exportAllData, onImport: handleImportAllData },
   ]);
 
   const apiManagement = useSettingsApiManagement({
@@ -581,7 +581,7 @@ export function useSettingsPage() {
     downloadApiDoc,
   } = apiManagement;
 
-  const pageError = computed(() => apiListError.value || loadError.value || '');
+  const pageError = computed(() => loadError.value || '');
 
   const handleResize = () => {
     isMobile.value = window.innerWidth <= 768;
@@ -673,7 +673,6 @@ export function useSettingsPage() {
       loading.value = false;
     }
 
-    loadApiList();
   }
 
   const {

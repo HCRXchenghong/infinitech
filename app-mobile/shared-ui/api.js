@@ -190,6 +190,12 @@ export const sendDiningBuddyMessage = (partyId, payload) => request({
   data: payload
 })
 
+export const createDiningBuddyReport = (payload) => request({
+  url: '/api/dining-buddy/reports',
+  method: 'POST',
+  data: payload
+})
+
 export const createAfterSales = (payload) => request({
   url: '/api/after-sales',
   method: 'POST',

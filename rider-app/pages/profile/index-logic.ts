@@ -2,6 +2,11 @@ import Vue from 'vue'
 import riderOrderStore from '../../shared-ui/riderOrderStore'
 import { getRiderRank, fetchRiderStats } from '../../shared-ui/api'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '../../shared-ui/support-runtime'
+import {
+  findRiderRankLevel,
+  getCachedPlatformRuntimeSettings,
+  loadPlatformRuntimeSettings
+} from '../../shared-ui/platform-runtime'
 import { formatRoleId } from '../../shared-ui/utils'
 
 const RANK_NAME_MAP: Record<number, string> = {
@@ -23,6 +28,7 @@ export default Vue.extend({
       riderId: '',
       riderLevel: 1,
       rankName: '青铜骑士',
+      rankLevels: getCachedPlatformRuntimeSettings().riderRankSettings?.levels || [],
       supportChatTitle: getCachedSupportRuntimeSettings().title,
       riderRating: 5,
       riderRatingCount: 0,
@@ -64,6 +70,7 @@ export default Vue.extend({
     }
 
     this.loadSupportRuntimeConfig()
+    this.loadPlatformRuntimeConfig()
   },
   onShow() {
     const profile = uni.getStorageSync('riderProfile')
@@ -77,8 +84,29 @@ export default Vue.extend({
     }
 
     this.loadSupportRuntimeConfig()
+    this.loadPlatformRuntimeConfig()
   },
   methods: {
+    resolveRankName(level: number) {
+      const runtimeLevel = findRiderRankLevel({
+        riderRankSettings: {
+          levels: Array.isArray(this.rankLevels) ? this.rankLevels : []
+        }
+      }, level)
+      return runtimeLevel?.name || RANK_NAME_MAP[level] || RANK_NAME_MAP[1]
+    },
+
+    async loadPlatformRuntimeConfig() {
+      try {
+        const runtime = await loadPlatformRuntimeSettings()
+        this.rankLevels = Array.isArray(runtime?.riderRankSettings?.levels) ? runtime.riderRankSettings.levels : []
+        this.rankName = this.resolveRankName(Number(this.riderLevel || 1))
+      } catch (error) {
+        console.error('加载骑手等级 runtime 失败:', error)
+        this.rankName = this.resolveRankName(Number(this.riderLevel || 1))
+      }
+    },
+
     async loadSupportRuntimeConfig() {
       const supportRuntime = await loadSupportRuntimeSettings()
       this.supportChatTitle = supportRuntime.title
@@ -96,7 +124,7 @@ export default Vue.extend({
           this.riderLevel = level
           this.riderRating = Number(rankRes.data.rating || 5)
           this.riderRatingCount = Number(rankRes.data.ratingCount || rankRes.data.rating_count || 0)
-          this.rankName = RANK_NAME_MAP[level] || RANK_NAME_MAP[1]
+          this.rankName = this.resolveRankName(level)
         }
 
         if (statsRes) {

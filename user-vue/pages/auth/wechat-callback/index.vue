@@ -11,6 +11,7 @@
 
 <script>
 import { consumeWechatSession } from '@/shared-ui/api.js'
+import { normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
 import { saveTokenInfo } from '@/shared-ui/request-interceptor'
 
 const DEFAULT_NICKNAME = '悦享e食用户'
@@ -59,7 +60,7 @@ export default {
         const res = await consumeWechatSession(sessionToken)
         const result = res && res.success !== false ? res.data : null
         if (!result) {
-          throw new Error(res?.error || res?.message || '微信登录处理失败')
+          throw new Error(normalizeErrorMessage(res, '微信登录处理失败'))
         }
 
         if (result.type === 'login') {
@@ -74,7 +75,7 @@ export default {
 
         throw new Error(result.message || '微信登录失败')
       } catch (error) {
-        this.failWith(error.message || '微信登录失败，请稍后重试')
+        this.failWith(normalizeErrorMessage(error, '微信登录失败，请稍后重试'))
       }
     },
     finishLogin(result) {

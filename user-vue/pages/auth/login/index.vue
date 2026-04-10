@@ -77,6 +77,7 @@
 <script>
 import { login as loginApi, requestSMSCode, wechatBindLogin } from '@/shared-ui/api.js'
 import { saveTokenInfo } from '@/shared-ui/request-interceptor'
+import { normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
 import {
   getCachedConsumerAuthRuntimeSettings,
   loadConsumerAuthRuntimeSettings
@@ -312,7 +313,7 @@ export default {
         this.startCodeCooldown()
       } catch (err) {
         uni.showToast({
-          title: err.data?.error || err.error || err.message || '验证码发送失败',
+          title: normalizeErrorMessage(err, '验证码发送失败'),
           icon: 'none'
         })
       } finally {
@@ -361,14 +362,14 @@ export default {
           return
         }
 
-        uni.showToast({ title: res?.error || res?.message || '登录失败', icon: 'none' })
+        uni.showToast({ title: normalizeErrorMessage(res, '登录失败'), icon: 'none' })
       } catch (err) {
         if (err.data && err.data.needRegister) {
           this.showNeedRegisterModal()
           return
         }
         uni.showToast({
-          title: err.data?.error || err.error || err.message || '登录失败',
+          title: normalizeErrorMessage(err, '登录失败'),
           icon: 'none'
         })
       } finally {

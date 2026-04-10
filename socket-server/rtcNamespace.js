@@ -28,6 +28,42 @@ function normalizeCallId(raw) {
   return String(raw || '').trim();
 }
 
+function resolveCallId(...sources) {
+  for (const source of sources) {
+    if (source === null || source === undefined) {
+      continue;
+    }
+    if (typeof source === 'string' || typeof source === 'number') {
+      const normalized = normalizeCallId(source);
+      if (normalized) {
+        return normalized;
+      }
+      continue;
+    }
+    if (typeof source !== 'object') {
+      continue;
+    }
+
+    const candidates = [
+      source.callId,
+      source.callID,
+      source.call_id,
+      source.uid,
+      source.id,
+      source.callIdRaw,
+      source.call_id_raw
+    ];
+    for (const candidate of candidates) {
+      const normalized = normalizeCallId(candidate);
+      if (normalized) {
+        return normalized;
+      }
+    }
+  }
+
+  return '';
+}
+
 function normalizeIdentityId(raw) {
   return String(raw || '').trim();
 }
@@ -197,7 +233,7 @@ function emitToRTCParticipants(namespace, callRecord, eventName, payload, option
   const callerID = normalizeIdentityId(callRecord.caller_id || callRecord.callerId);
   const calleeRole = normalizeParticipantRole(callRecord.callee_role || callRecord.calleeRole);
   const calleeID = normalizeIdentityId(callRecord.callee_id || callRecord.calleeId);
-  const callId = normalizeCallId(callRecord.uid || callRecord.callId || callRecord.call_id_raw || '');
+  const callId = resolveCallId(callRecord);
   const excludeSocketId = String(options.excludeSocketId || '').trim();
 
   const targetRooms = [
@@ -229,7 +265,7 @@ function emitRTCError(socket, action, err) {
 function buildSignalPayload(socket, callRecord, data) {
   const actor = getSocketActor(socket);
   return {
-    callId: normalizeCallId(callRecord?.uid || data?.callId),
+    callId: resolveCallId(callRecord, data),
     signalType: String(data?.signalType || '').trim() || 'unknown',
     signal: data?.signal ?? null,
     fromRole: actor.role,
@@ -240,7 +276,7 @@ function buildSignalPayload(socket, callRecord, data) {
 
 async function joinCallRoom(socket, namespace, callId) {
   const callRecord = await fetchCallRecord(socket, callId);
-  const normalizedCallId = normalizeCallId(callRecord?.uid || callId);
+  const normalizedCallId = resolveCallId(callRecord, callId);
   if (!normalizedCallId) {
     throw new Error('invalid rtc call record');
   }
@@ -277,11 +313,11 @@ async function handleStatusUpdate(socket, namespace, status, data = {}) {
 
   const updatedCall = await updateCallRecord(socket, callId, payload);
   if (status === 'accepted') {
-    socket.join(buildCallRoom(normalizeCallId(updatedCall?.uid || callId)));
+    socket.join(buildCallRoom(resolveCallId(updatedCall, callId)));
   }
 
   emitToRTCParticipants(namespace, updatedCall, 'rtc_status', {
-    callId: normalizeCallId(updatedCall?.uid || callId),
+    callId: resolveCallId(updatedCall, callId),
     status,
     call: updatedCall,
     failureReason: String(data?.failureReason || '').trim() || undefined,
@@ -336,7 +372,7 @@ export function setupRTCNamespace({
           failureReason: 'no_answer_timeout'
         });
         emitToRTCParticipants(rtcNamespace, updatedCall, 'rtc_status', {
-          callId: normalizeCallId(updatedCall?.uid || normalizedCallId),
+          callId: resolveCallId(updatedCall, normalizedCallId),
           status: 'timeout',
           call: updatedCall,
           failureReason: 'no_answer_timeout'
@@ -364,7 +400,11 @@ export function setupRTCNamespace({
     socket.on('rtc_start_call', async (data = {}) => {
       try {
         let callRecord = await createCallRecord(socket, data);
-        const callId = normalizeCallId(callRecord?.uid || callRecord?.callIdRaw || '');
+        const callId = resolveCallId(callRecord, data);
+        if (!callId) {
+          logger.warn('rtc_start_call missing callId in call record:', callRecord);
+          throw new Error('rtc callId missing from backend record');
+        }
         const peer = resolvePeerParticipant(callRecord, actor);
         socket.join(buildCallRoom(callId));
 

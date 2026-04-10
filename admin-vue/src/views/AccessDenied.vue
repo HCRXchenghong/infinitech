@@ -1,17 +1,40 @@
 <template>
   <div class="access-page">
     <div class="access-card">
-      <el-result
-        :title="title"
-        :sub-title="subtitle"
-        icon="warning"
-      >
+      <el-result :title="title" :sub-title="subtitle" icon="warning">
         <template #extra>
           <div class="action-row">
-            <el-button v-if="mode === 'invite-only'" type="primary" @click="openDownloadHome">返回下载首页</el-button>
-            <el-button v-if="mode === 'invite-only'" @click="openInviteExample">邀请链接示例</el-button>
-            <el-button v-if="mode === 'invite-only'" @click="openCouponExample">领券链接示例</el-button>
-            <el-button v-if="mode === 'admin-only'" type="primary" @click="goAdminLogin">前往管理端登录</el-button>
+            <el-button
+              v-if="mode === 'invite-only' || mode === 'admin-only'"
+              type="primary"
+              @click="openDownloadHome"
+            >
+              前往下载页
+            </el-button>
+            <el-button
+              v-if="mode === 'download-only' || mode === 'admin-only'"
+              @click="openInviteExample"
+            >
+              邀请链接示例
+            </el-button>
+            <el-button
+              v-if="mode === 'download-only' || mode === 'admin-only'"
+              @click="openCouponExample"
+            >
+              领券链接示例
+            </el-button>
+            <el-button
+              v-if="mode === 'invite-only' || mode === 'download-only'"
+              @click="goAdminLogin"
+            >
+              前往管理端
+            </el-button>
+            <el-button
+              v-if="mode === 'admin-only'"
+              @click="goAdminLogin"
+            >
+              管理端登录
+            </el-button>
           </div>
         </template>
       </el-result>
@@ -22,50 +45,56 @@
 <script setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
+import { buildRuntimeUrl } from '@/utils/runtime';
 
 const route = useRoute();
 
-const mode = computed(() => route.query.mode === 'invite-only' ? 'invite-only' : 'admin-only');
-
-const host = computed(() => {
-  if (typeof window === 'undefined' || !window.location) {
-    return '127.0.0.1';
+const mode = computed(() => {
+  const currentMode = String(route.query.mode || '').trim();
+  if (currentMode === 'invite-only' || currentMode === 'download-only') {
+    return currentMode;
   }
-  return window.location.hostname || '127.0.0.1';
+  return 'admin-only';
 });
 
 const title = computed(() => {
   if (mode.value === 'invite-only') {
-    return '1788 仅开放邀请/领券页';
+    return '1788 仅开放邀请 / 领券页';
   }
-  return '8888 不开放邀请页';
+  if (mode.value === 'download-only') {
+    return '1798 仅开放下载页';
+  }
+  return '8888 仅用于管理端';
 });
 
 const subtitle = computed(() => {
   if (mode.value === 'invite-only') {
-    return '当前端口仅开放下载首页、/invite/:token 邀请链接和 /coupon/:token 领券链接。';
+    return '当前端口仅开放 /invite/:token 邀请链接和 /coupon/:token 领券链接；下载页请使用 1798。';
   }
-  return '请使用 1788 打开邀请/领券链接，8888 仅用于管理端。';
+  if (mode.value === 'download-only') {
+    return '当前端口仅开放 /download 下载页；邀请 / 领券请使用 1788。';
+  }
+  return '当前端口只用于管理端登录和后台操作；邀请 / 领券请使用 1788，下载页请使用 1798。';
 });
 
 function openDownloadHome() {
   if (typeof window === 'undefined') return;
-  window.open(`http://${host.value}:1788/download`, '_self');
+  window.open(buildRuntimeUrl('download', '/download'), '_self');
 }
 
 function openInviteExample() {
   if (typeof window === 'undefined') return;
-  window.open(`http://${host.value}:1788/invite/你的邀请token`, '_self');
+  window.open(buildRuntimeUrl('invite', '/invite/你的邀请token'), '_self');
 }
 
 function openCouponExample() {
   if (typeof window === 'undefined') return;
-  window.open(`http://${host.value}:1788/coupon/你的领券token`, '_self');
+  window.open(buildRuntimeUrl('invite', '/coupon/你的领券token'), '_self');
 }
 
 function goAdminLogin() {
   if (typeof window === 'undefined') return;
-  window.open(`http://${host.value}:8888/login`, '_self');
+  window.open(buildRuntimeUrl('admin', '/login'), '_self');
 }
 </script>
 
@@ -96,5 +125,7 @@ function goAdminLogin() {
 .action-row {
   display: flex;
   justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 </style>

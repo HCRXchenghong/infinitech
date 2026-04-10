@@ -54,7 +54,7 @@ function request(options: RequestOptions): Promise<any> {
           return
         }
         reject({
-          error: res.data?.error || `Request failed: ${res.statusCode}`,
+          error: (res.data && res.data.error) || `Request failed: ${res.statusCode}`,
           statusCode: res.statusCode
         })
       },
@@ -69,9 +69,10 @@ function request(options: RequestOptions): Promise<any> {
 }
 
 function isNetworkError(error: any) {
-  const errorText = String(error?.error || '')
-  const messageText = String(error?.message || '')
-  const errMsgText = String(error?.errMsg || '')
+  const safeError = error && typeof error === 'object' ? error : {}
+  const errorText = String(safeError.error || '')
+  const messageText = String(safeError.message || '')
+  const errMsgText = String(safeError.errMsg || '')
   return errorText.includes('fail') ||
     errorText.includes('connect') ||
     messageText.includes('Network') ||

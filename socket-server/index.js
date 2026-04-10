@@ -4,7 +4,7 @@ import { authMiddleware, generateToken } from './auth.js';
 import { getServerStats, addOnlineUser, removeOnlineUser, getOnlineCount, getOnlineUsers } from './monitor.js';
 import Busboy from 'busboy';
 import { mkdirSync, existsSync, createReadStream, createWriteStream, unlinkSync } from 'fs';
-import { join, dirname, extname } from 'path';
+import { basename, join, dirname, extname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import { logger } from './logger.js';
@@ -51,6 +51,7 @@ let notifyNamespace;
 initRedisState();
 
 const UPLOAD_DIR = join(__dirname, 'uploads');
+const UPLOAD_DIR_REALPATH = resolve(UPLOAD_DIR);
 if (!existsSync(UPLOAD_DIR)) {
   mkdirSync(UPLOAD_DIR, { recursive: true });
 }
@@ -65,6 +66,33 @@ function createBadRequestError(message) {
   const error = new Error(message);
   error.statusCode = 400;
   return error;
+}
+
+function resolveUploadFilePath(pathname) {
+  const rawName = String(pathname || '').replace(/^\/uploads\//, '');
+  if (!rawName) {
+    return null;
+  }
+
+  let decodedName = rawName;
+  try {
+    decodedName = decodeURIComponent(rawName);
+  } catch (_err) {
+    return null;
+  }
+
+  const safeName = basename(decodedName);
+  if (!safeName || safeName !== decodedName || safeName === '.' || safeName === '..') {
+    return null;
+  }
+
+  const filePath = resolve(UPLOAD_DIR_REALPATH, safeName);
+  const expectedPrefix = `${UPLOAD_DIR_REALPATH}/`;
+  if (filePath !== UPLOAD_DIR_REALPATH && !filePath.startsWith(expectedPrefix)) {
+    return null;
+  }
+
+  return { filename: safeName, filePath };
 }
 
 function resolveUploadExtension(filename, mimeType = '') {
@@ -185,10 +213,10 @@ function parseMultipart(req, maxBytes) {
 const DEFAULT_ALLOWED_ORIGINS = [
   'http://127.0.0.1:8888',
   'http://localhost:8888',
-  'http://127.0.0.1:5173',
-  'http://localhost:5173',
-  'http://127.0.0.1:8080',
-  'http://localhost:8080'
+  'http://127.0.0.1:1788',
+  'http://localhost:1788',
+  'http://127.0.0.1:1798',
+  'http://localhost:1798'
 ];
 
 const ALLOWED_ORIGINS = Array.from(new Set(
@@ -424,15 +452,20 @@ const httpServer = createServer(async (req, res) => {
       const url = `http://${host}/uploads/${finalFilename}`;
       writeJson(res, 200, { url, filename: finalFilename });
     } catch (err) {
-      logger.error('涓婁紶澶辫触:', err);
-      writeJson(res, Number(err?.statusCode || 500), { error: err?.message || '涓婁紶澶辫触' });
+      logger.error('上传失败:', err);
+      writeJson(res, Number(err?.statusCode || 500), { error: err?.message || '上传失败' });
     }
     return;
   }
 
   if (pathname.startsWith('/uploads/') && req.method === 'GET') {
-    const filename = pathname.replace('/uploads/', '');
-    const filePath = join(UPLOAD_DIR, filename);
+    const uploadTarget = resolveUploadFilePath(pathname);
+    if (!uploadTarget) {
+      writeJson(res, 400, { error: 'Invalid upload path' });
+      return;
+    }
+
+    const { filename, filePath } = uploadTarget;
     if (existsSync(filePath)) {
       const ext = extname(filename).toLowerCase();
       const mimeTypes = {

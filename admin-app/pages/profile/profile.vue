@@ -283,7 +283,8 @@ async function clearAppCache() {
 		SETTING_KEYS.BIO_AUTH,
 		SETTING_KEYS.NOTIFY,
 		SETTING_KEYS.AUTO_REFRESH,
-		'socket_token'
+		'socket_token',
+		'socket_token_account_key'
 	]);
 
 	try {

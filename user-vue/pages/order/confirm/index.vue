@@ -114,6 +114,7 @@ import {
   isClientPaymentCancelled,
   shouldLaunchClientPayment
 } from '@/shared-ui/client-payment.js'
+import { isHtmlDocumentPayload, normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
 import { useUserOrderStore } from '@/shared-ui/userOrderStore.js'
 
 const CLIENT_PLATFORM = 'mini_program'
@@ -134,26 +135,29 @@ function fallbackPayMethods() {
 }
 
 function normalizePayMethods(response) {
-  const rawOptions = Array.isArray(response?.options)
-    ? response.options
-    : Array.isArray(response?.data?.options)
-      ? response.data.options
+  const safeResponse = response && typeof response === 'object' ? response : {}
+  const responseData = safeResponse.data && typeof safeResponse.data === 'object' ? safeResponse.data : {}
+  const rawOptions = Array.isArray(safeResponse.options)
+    ? safeResponse.options
+    : Array.isArray(responseData.options)
+      ? responseData.options
       : []
 
   const normalized = rawOptions
     .map((item) => {
-      const value = normalizePayChannel(item?.channel)
+      const safeItem = item && typeof item === 'object' ? item : {}
+      const value = normalizePayChannel(safeItem.channel)
       if (!value) return null
       return {
         value,
-        label: String(item?.label || '').trim() || (
+        label: String(safeItem.label || '').trim() || (
           value === 'ifpay'
             ? 'IF-Pay 余额支付'
             : value === 'wechat'
               ? '微信支付'
               : '支付宝支付'
         ),
-        tip: String(item?.description || '').trim() || '由后台支付中心统一控制'
+        tip: String(safeItem.description || '').trim() || '由后台支付中心统一控制'
       }
     })
     .filter(Boolean)
@@ -215,7 +219,8 @@ export default {
       return this.items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 0), 0)
     },
     bizType() {
-      return normalizeBizType(this.shop?.merchantType || this.shop?.merchant_type || this.shop?.orderType)
+      const shop = this.shop && typeof this.shop === 'object' ? this.shop : {}
+      return normalizeBizType(shop.merchantType || shop.merchant_type || shop.orderType)
     },
     packagingFee() {
       return 1
@@ -302,8 +307,9 @@ export default {
 
     await this.syncDeliveryAddress()
 
-    const shopId = String(query?.shopId || '').trim()
-    const cartStr = query?.cart
+    const safeQuery = query && typeof query === 'object' ? query : {}
+    const shopId = String(safeQuery.shopId || '').trim()
+    const cartStr = safeQuery.cart
     if (!shopId || !cartStr) {
       uni.showToast({ title: '参数错误', icon: 'none' })
       setTimeout(() => uni.navigateBack(), 1500)
@@ -385,7 +391,8 @@ export default {
       }
     },
     payMethodLabel(value) {
-      return this.payMethods.find((item) => item.value === value)?.label || '未选择'
+      const matched = this.payMethods.find((item) => item.value === value)
+      return (matched && matched.label) || '未选择'
     },
     detailParts(detail) {
       const text = String(detail || '').trim()
@@ -448,10 +455,10 @@ export default {
       uni.navigateTo({ url: '/pages/profile/address-list/index?select=1' })
     },
     isHtmlErrorPayload(payload) {
-      return typeof payload === 'string' && payload.includes('<!DOCTYPE html>')
+      return isHtmlDocumentPayload(payload)
     },
     extractErrorMessage(err) {
-      const rawMessage = err?.data?.error || err?.error || err?.message || ''
+      const rawMessage = normalizeErrorMessage(err, '')
       return typeof rawMessage === 'string' ? rawMessage.trim() : ''
     },
     sleep(ms) {
@@ -505,9 +512,9 @@ export default {
           }
         })
 
-        this.availableCoupons = Array.isArray(res?.data) ? res.data : []
+        this.availableCoupons = res && Array.isArray(res.data) ? res.data : []
       } catch (error) {
-        const htmlPayload = error?.data?.data || error?.data
+        const htmlPayload = (error && error.data && error.data.data) || (error && error.data)
         if (!this.isHtmlErrorPayload(htmlPayload)) {
           console.error('加载优惠券失败:', error)
         }
@@ -600,7 +607,7 @@ export default {
         }
 
         let paymentStatus = this.normalizePaymentStatus(paymentResult)
-        if (!this.isPaymentSuccessStatus(paymentStatus) && !this.isPaymentFailureStatus(paymentStatus) && paymentResult?.transactionId) {
+        if (!this.isPaymentSuccessStatus(paymentStatus) && !this.isPaymentFailureStatus(paymentStatus) && paymentResult && paymentResult.transactionId) {
           uni.showLoading({ title: '正在确认支付状态', mask: true })
           try {
             paymentResult = await this.pollOrderPaymentStatus(paymentResult.transactionId, userId, token)

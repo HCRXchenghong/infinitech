@@ -1,433 +1,395 @@
 <template>
   <div class="page">
-    <div class="header-bar">
-      <el-button size="small" @click="goBack" :icon="ArrowLeft">返回</el-button>
-      <span class="page-title">API权限说明</span>
+    <div class="title-row">
+      <div>
+        <div class="title">API 权限管理</div>
+        <div class="title-subtitle">为每个调用方配置主要 API URL、API Key 和可访问的数据权限。</div>
+      </div>
+      <div class="title-actions">
+        <el-button @click="goToDocumentation">API 文档</el-button>
+        <el-button @click="loadApiList" :loading="apiListLoading">刷新</el-button>
+        <el-button type="primary" @click="showAddApiDialog">新建 Key</el-button>
+      </div>
     </div>
 
-    <div class="content-wrapper">
-      <div class="intro-section">
-        <p>不同的API权限决定了该接口可以访问哪些数据。请根据实际需求选择合适的权限组合。</p>
-      </div>
+    <PageStateAlert :message="apiListError" />
 
-      <div class="permissions-list">
-        <div 
-          class="permission-item" 
-          v-for="permission in permissions" 
-          :key="permission.key"
-        >
-          <div class="permission-header">
-            <div class="header-info">
-              <el-tag :type="permission.tagType" size="default">{{ permission.label }}</el-tag>
-              <span class="permission-key">{{ permission.key }}</span>
-              <span v-if="permission.apis && permission.apis.length > 0" class="status-badge">已实现</span>
-            </div>
+    <div class="summary-grid">
+      <el-card class="summary-card">
+        <span class="summary-label">Key 总数</span>
+        <strong>{{ summary.total }}</strong>
+        <small>当前登记的全部调用方</small>
+      </el-card>
+      <el-card class="summary-card">
+        <span class="summary-label">启用中</span>
+        <strong>{{ summary.active }}</strong>
+        <small>可正常调用对外接口</small>
+      </el-card>
+      <el-card class="summary-card">
+        <span class="summary-label">全权限</span>
+        <strong>{{ summary.allScoped }}</strong>
+        <small>拥有 `all` 权限的 Key</small>
+      </el-card>
+      <el-card class="summary-card">
+        <span class="summary-label">已填 API URL</span>
+        <strong>{{ summary.withPath }}</strong>
+        <small>记录了主要入口或用途路径</small>
+      </el-card>
+    </div>
+
+    <div class="content-grid">
+      <el-card class="card management-card">
+        <template #header>
+          <div class="card-header">
+            <span>Key 与权限分配</span>
+            <el-tag size="small" type="info">主入口 + Key + 权限</el-tag>
           </div>
-          
-          <div class="permission-body">
-            <div class="desc-text">{{ permission.description }}</div>
-            
-            <div class="data-section">
-              <div class="section-label">可访问的数据：</div>
-              <ul class="data-list">
-                <li v-for="item in permission.data" :key="item">{{ item }}</li>
-              </ul>
-            </div>
-            
-            <div class="api-section" v-if="permission.apis && permission.apis.length > 0">
-              <div class="section-label">可访问的API端点：</div>
-              <div class="api-list">
-                <div class="api-item" v-for="api in permission.apis" :key="api.path">
-                  <span class="api-method">{{ api.method }}</span>
-                  <code class="api-path">{{ api.path }}</code>
-                  <span class="api-desc">{{ api.description }}</span>
+        </template>
+
+        <div v-if="!isMobile" class="table-wrap">
+          <el-table :data="apiList" stripe size="small" v-loading="apiListLoading">
+            <el-table-column prop="name" label="调用方 / Key 名称" min-width="150" />
+            <el-table-column label="主要 API URL / 路径" min-width="220">
+              <template #default="{ row }">
+                <code class="mono-text">{{ row.path || '未填写' }}</code>
+              </template>
+            </el-table-column>
+            <el-table-column prop="description" label="用途说明" min-width="200" show-overflow-tooltip>
+              <template #default="{ row }">
+                <span>{{ row.description || '—' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="权限分配" min-width="220">
+              <template #default="{ row }">
+                <div class="permission-tags">
+                  <el-tag
+                    v-for="perm in normalizePermissions(row.permissions)"
+                    :key="`${row.id}-${perm}`"
+                    size="small"
+                  >
+                    {{ getPermissionLabel(perm) }}
+                  </el-tag>
                 </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="API Key" min-width="240">
+              <template #default="{ row }">
+                <div class="key-cell">
+                  <code class="mono-text key-text">{{ row.api_key }}</code>
+                  <el-button link type="primary" @click="copyApiKey(row.api_key)">复制</el-button>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" width="90">
+              <template #default="{ row }">
+                <el-tag :type="row.is_active ? 'success' : 'danger'" size="small">
+                  {{ row.is_active ? '启用' : '禁用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="220" fixed="right">
+              <template #default="{ row }">
+                <div class="row-actions">
+                  <el-button size="small" type="primary" @click="editApi(row)">编辑</el-button>
+                  <el-button size="small" @click="downloadKeyDoc(row)">下载说明</el-button>
+                  <el-button size="small" type="danger" @click="deleteApi(row)">删除</el-button>
+                </div>
+              </template>
+            </el-table-column>
+            <template #empty>
+              <el-empty :description="apiListError ? '加载失败，暂无可显示数据' : '还没有配置任何 API Key'" :image-size="90" />
+            </template>
+          </el-table>
+        </div>
+
+        <div v-else class="mobile-list" v-loading="apiListLoading">
+          <div v-if="apiList.length === 0" class="mobile-empty">
+            <el-empty :description="apiListError ? '加载失败，暂无可显示数据' : '还没有配置任何 API Key'" :image-size="90" />
+          </div>
+          <div v-for="row in apiList" :key="row.id" class="mobile-card">
+            <div class="mobile-card-header">
+              <div>
+                <div class="mobile-card-title">{{ row.name }}</div>
+                <div class="mobile-card-subtitle">{{ row.path || '未填写主要 API URL / 路径' }}</div>
+              </div>
+              <el-tag :type="row.is_active ? 'success' : 'danger'" size="small">
+                {{ row.is_active ? '启用' : '禁用' }}
+              </el-tag>
+            </div>
+            <div class="mobile-card-body">
+              <div class="mobile-label">用途说明</div>
+              <div class="mobile-value">{{ row.description || '—' }}</div>
+              <div class="mobile-label">权限分配</div>
+              <div class="permission-tags">
+                <el-tag
+                  v-for="perm in normalizePermissions(row.permissions)"
+                  :key="`${row.id}-${perm}`"
+                  size="small"
+                >
+                  {{ getPermissionLabel(perm) }}
+                </el-tag>
+              </div>
+              <div class="mobile-label">API Key</div>
+              <div class="mobile-key-wrap">
+                <code class="mono-text key-text">{{ row.api_key }}</code>
+                <el-button size="small" @click="copyApiKey(row.api_key)">复制</el-button>
               </div>
             </div>
-            
-            <div class="note-section" v-if="permission.note">
-              <el-alert 
-                :title="permission.note" 
-                :type="permission.note.includes('已实现') ? 'success' : 'warning'" 
-                :closable="false"
-                show-icon
-              />
+            <div class="mobile-card-actions">
+              <el-button size="small" type="primary" @click="editApi(row)">编辑</el-button>
+              <el-button size="small" @click="downloadKeyDoc(row)">下载说明</el-button>
+              <el-button size="small" type="danger" @click="deleteApi(row)">删除</el-button>
             </div>
           </div>
         </div>
-      </div>
+      </el-card>
 
-      <div class="usage-section">
-        <div class="section-title">使用说明</div>
-        <div class="usage-list">
-          <div class="usage-item">
-            <strong>1. 权限组合：</strong>
-            <p>可以为同一个API接口选择多个权限，例如同时选择"订单数据"和"用户数据"。</p>
+      <el-card class="card guide-card">
+        <template #header>
+          <div class="card-header">
+            <span>权限选择指引</span>
+            <el-button link type="primary" @click="goToDocumentation">查看完整 API 文档</el-button>
           </div>
-          <div class="usage-item">
-            <strong>2. 全部数据权限：</strong>
-            <p>选择"全部数据"权限后，将自动包含所有其他权限，可以访问所有已实现的API端点。</p>
-          </div>
-          <div class="usage-item">
-            <strong>3. API Key验证：</strong>
-            <p>所有公开API请求都需要在请求头中提供有效的API Key：</p>
-            <div class="code-example">X-API-Key: YOUR_API_KEY</div>
-          </div>
-          <div class="usage-item">
-            <strong>4. 权限检查：</strong>
-            <p>系统会根据API Key对应的权限配置，验证是否有权限访问请求的数据。</p>
+        </template>
+
+        <div class="guide-intro">
+          这里负责“谁拿什么 Key，可以访问哪些接口”。如果要看接口参数、返回值和代码示例，请去 API 文档页。
+        </div>
+
+        <div class="permission-guide-list">
+          <div v-for="permission in permissionCatalog" :key="permission.key" class="permission-guide-item">
+            <div class="permission-guide-top">
+              <el-tag :type="permission.type" size="small">{{ permission.label }}</el-tag>
+              <code class="mono-text">{{ permission.key }}</code>
+            </div>
+            <div class="permission-guide-desc">{{ permission.description }}</div>
+            <div class="permission-guide-example">典型接口：{{ permission.examples.join('、') }}</div>
           </div>
         </div>
-      </div>
-
-      <div class="usage-section">
-        <div class="section-title">快速开始指南</div>
-        <div class="guide-content">
-          <div class="guide-step">
-            <div class="step-number">1</div>
-            <div class="step-content">
-              <h3>创建API接口配置</h3>
-              <p>在"系统设置" → "对外API接口管理"中，点击"添加API接口"按钮：</p>
-              <ul>
-                <li>填写接口名称（如：我的网站API）</li>
-                <li>填写接口路径（如：/api/public/orders）</li>
-                <li>选择需要的权限（如：订单数据、用户数据等）</li>
-                <li>系统会自动生成API Key，请保存好这个Key</li>
-              </ul>
-              <p class="tip">⚠️ 重要：API Key相当于密码，请妥善保管，不要泄露给他人！</p>
-            </div>
-          </div>
-
-          <div class="guide-step">
-            <div class="step-number">2</div>
-            <div class="step-content">
-              <h3>在其他网站中使用API</h3>
-              <p>使用说明里的API端点，不需要自己创建新的API端点。你只需要：</p>
-              <ul>
-                <li>使用你在步骤1中创建的API Key</li>
-                <li>调用说明中列出的API端点（如：/api/public/orders）</li>
-                <li>在请求头中添加你的API Key</li>
-              </ul>
-              <div class="code-example">
-                <div class="code-title">示例：获取订单列表</div>
-                <code>GET https://your-domain.com/api/public/orders?page=1&limit=10</code>
-                <div class="code-title">请求头：</div>
-                <code>X-API-Key: 你的API_KEY</code>
-              </div>
-            </div>
-          </div>
-
-          <div class="guide-step">
-            <div class="step-number">3</div>
-            <div class="step-content">
-              <h3>部署到服务器后使用</h3>
-              <p>部署到域名服务器后，API仍然可以正常使用：</p>
-              <ul>
-                <li>将代码中的域名改为你的实际域名</li>
-                <li>确保服务器可以访问数据库</li>
-                <li>API Key和权限配置都保存在数据库中，部署后仍然有效</li>
-              </ul>
-              <div class="code-example">
-                <div class="code-title">本地开发：</div>
-                <code>/api/public/orders</code>
-                <div class="code-title">部署后：</div>
-                <code>https://your-domain.com/api/public/orders</code>
-              </div>
-            </div>
-          </div>
-
-          <div class="guide-step">
-            <div class="step-number">4</div>
-            <div class="step-content">
-              <h3>实际代码示例</h3>
-              <div class="code-example">
-                <div class="code-title">JavaScript (fetch)：</div>
-                <pre><code>fetch('https://your-domain.com/api/public/orders?page=1&limit=10', {
-  method: 'GET',
-  headers: {
-    'X-API-Key': '你的API_KEY'
-  }
-})
-.then(response => response.json())
-.then(data => {
-  console.log('订单列表:', data.data.orders);
-});</code></pre>
-              </div>
-              <div class="code-example">
-                <div class="code-title">PHP (cURL)：</div>
-                <pre><code>$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, 'https://your-domain.com/api/public/orders?page=1&limit=10');
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'X-API-Key: 你的API_KEY'
-]);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-$response = curl_exec($ch);
-curl_close($ch);
-$data = json_decode($response, true);
-print_r($data['data']['orders']);</code></pre>
-              </div>
-              <div class="code-example">
-                <div class="code-title">Python (requests)：</div>
-                <pre><code>import requests
-
-headers = {
-    'X-API-Key': '你的API_KEY'
-}
-response = requests.get(
-    'https://your-domain.com/api/public/orders',
-    params={'page': 1, 'limit': 10},
-    headers=headers
-)
-data = response.json()
-print(data['data']['orders'])</code></pre>
-              </div>
-            </div>
-          </div>
-
-          <div class="guide-step">
-            <div class="step-number">5</div>
-            <div class="step-content">
-              <h3>常见问题</h3>
-              <div class="faq-item">
-                <strong>Q: 我需要自己创建API端点吗？</strong>
-                <p>A: 不需要！你只需要在后台创建API接口配置，然后使用说明中列出的API端点即可。这些端点已经由系统提供。</p>
-              </div>
-              <div class="faq-item">
-                <strong>Q: 自己创建的API接口配置能用吗？</strong>
-                <p>A: 可以！你在后台创建的每个API接口配置都会生成一个唯一的API Key，这个Key可以用来访问对应的API端点。</p>
-              </div>
-              <div class="faq-item">
-                <strong>Q: 部署到服务器后还能用吗？</strong>
-                <p>A: 可以！部署后只需要将API请求的域名改为你的实际域名即可。API Key和权限配置都保存在数据库中，会一起部署。</p>
-              </div>
-              <div class="faq-item">
-                <strong>Q: 一个API Key可以访问所有接口吗？</strong>
-                <p>A: 取决于你创建API接口时选择的权限。如果选择了"全部数据"权限，就可以访问所有接口；如果只选择了"订单数据"，就只能访问订单相关的接口。</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      </el-card>
     </div>
+
+    <el-dialog
+      v-model="apiDialogVisible"
+      :title="editingApi ? '编辑 API Key 权限' : '新建 API Key 权限'"
+      :width="isMobile ? '94%' : '720px'"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="apiForm" label-width="120px" size="small">
+        <el-form-item label="调用方名称" required>
+          <el-input v-model="apiForm.name" placeholder="如：合作伙伴官网 / BI 报表服务" />
+          <div class="form-tip">用于区分不同的调用方或不同用途的 Key。</div>
+        </el-form-item>
+        <el-form-item label="主要 API URL / 路径">
+          <el-input
+            v-model="apiForm.path"
+            placeholder="如：/api/public/orders 或 /api/v1/query"
+          />
+          <div class="form-tip">记录该 Key 主要使用的接口入口，便于后续排查与审计。</div>
+        </el-form-item>
+        <el-form-item label="权限分配" required>
+          <el-checkbox-group v-model="apiForm.permissions" @change="handleApiPermissionChange">
+            <el-checkbox label="orders">订单数据</el-checkbox>
+            <el-checkbox label="users">用户数据</el-checkbox>
+            <el-checkbox label="riders">骑手数据</el-checkbox>
+            <el-checkbox label="merchants">商户数据</el-checkbox>
+            <el-checkbox label="products">商品数据</el-checkbox>
+            <el-checkbox label="categories">分类数据</el-checkbox>
+            <el-checkbox label="dashboard">仪表盘数据</el-checkbox>
+            <el-checkbox label="all">全部数据</el-checkbox>
+          </el-checkbox-group>
+          <div class="form-tip">勾选后系统会按权限校验该 Key 能访问的公开接口。</div>
+        </el-form-item>
+        <el-form-item label="API Key" required>
+          <el-input v-model="apiForm.api_key" readonly placeholder="点击生成新的 API Key">
+            <template #append>
+              <el-button @click="generateApiKey">生成</el-button>
+            </template>
+          </el-input>
+          <div class="form-tip">API Key 相当于访问凭证，建议一个调用方分配一个独立 Key。</div>
+        </el-form-item>
+        <el-form-item label="用途说明">
+          <el-input
+            v-model="apiForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="补充说明这个 Key 的业务用途、调用频率或责任人"
+          />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-switch v-model="apiForm.is_active" />
+          <span class="switch-text">{{ apiForm.is_active ? '启用' : '禁用' }}</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="apiDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveApi" :loading="savingApi">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { ArrowLeft } from '@element-plus/icons-vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import PageStateAlert from '@/components/PageStateAlert.vue';
+import request from '@/utils/request';
+import { useSettingsApiManagement } from './settingsApiManagementHelpers';
 
 const router = useRouter();
+const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
 
-onMounted(() => {
-  // 页面加载时滚动到顶部
-  window.scrollTo(0, 0);
-});
-
-const permissions = ref([
+const permissionCatalog = [
   {
     key: 'orders',
     label: '订单数据',
-    tagType: 'primary',
-    description: '允许访问订单相关的所有数据，包括订单列表、订单详情、订单统计等。',
-    data: [
-      '订单列表（支持分页、搜索、状态筛选）',
-      '订单详情（订单ID、用户信息、骑手信息、订单状态、价格、时间等）',
-      '订单状态信息（pending待接单、priced已报价、accepted已接单、completed已完成等）',
-      '订单统计信息'
-    ],
-    apis: [
-      {
-        method: 'GET',
-        path: '/api/public/orders?page=1&limit=15&search=&status=',
-        description: '获取订单列表，支持分页、搜索、状态筛选'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/orders/:id',
-        description: '获取订单详情，包含完整的订单信息'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/orders/stats',
-        description: '获取订单统计信息，包含各状态订单数量'
-      }
-    ],
-    note: '该权限的公开API端点已实现，可以直接使用。'
+    type: 'primary',
+    description: '适合订单列表、订单详情、订单统计类调用。',
+    examples: ['/api/public/orders', '/api/public/orders/:id', '/api/public/orders/stats'],
   },
   {
     key: 'users',
     label: '用户数据',
-    tagType: 'success',
-    description: '允许访问用户（客户）相关的所有数据，包括用户列表、用户信息、用户统计等。',
-    data: [
-      '用户列表（客户列表）',
-      '用户基本信息（ID、姓名、手机号、注册时间等）',
-      '用户统计信息（总用户数等）'
-    ],
-    apis: [
-      {
-        method: 'GET',
-        path: '/api/public/users?page=1&limit=20&search=',
-        description: '获取用户列表，支持分页和搜索'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/users/:id',
-        description: '获取用户详情，包含用户基本信息'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/users/stats',
-        description: '获取用户统计信息，包含总用户数'
-      }
-    ],
-    note: '该权限的公开API端点已实现，可以直接使用。'
+    type: 'success',
+    description: '适合用户列表、用户详情、用户统计类调用。',
+    examples: ['/api/public/users', '/api/public/users/:id', '/api/public/users/stats'],
   },
   {
     key: 'riders',
     label: '骑手数据',
-    tagType: 'warning',
-    description: '允许访问骑手相关的所有数据，包括骑手列表、骑手信息、骑手统计等。',
-    data: [
-      '骑手列表',
-      '骑手基本信息（ID、姓名、手机号、注册时间、在线状态等）',
-      '骑手统计信息（总骑手数、在线骑手数等）'
-    ],
-    apis: [
-      {
-        method: 'GET',
-        path: '/api/public/riders?page=1&limit=15&search=',
-        description: '获取骑手列表，支持分页和搜索'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/riders/:id',
-        description: '获取骑手详情，包含骑手基本信息'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/riders/stats',
-        description: '获取骑手统计信息，包含总骑手数、在线骑手数等'
-      }
-    ],
-    note: '该权限的公开API端点已实现，可以直接使用。'
+    type: 'warning',
+    description: '适合骑手列表、骑手详情、骑手统计类调用。',
+    examples: ['/api/public/riders', '/api/public/riders/:id', '/api/public/riders/stats'],
+  },
+  {
+    key: 'merchants',
+    label: '商户数据',
+    type: 'success',
+    description: '适合商户列表、商户详情和商户基础信息查询。',
+    examples: ['/api/public/merchants', '/api/public/merchants/:id'],
+  },
+  {
+    key: 'products',
+    label: '商品数据',
+    type: 'primary',
+    description: '适合商品列表、商品详情和商品筛选类调用。',
+    examples: ['/api/public/products', '/api/public/products/:id'],
+  },
+  {
+    key: 'categories',
+    label: '分类数据',
+    type: 'info',
+    description: '适合商品分类树、分类筛选和导航类调用。',
+    examples: ['/api/public/categories', '/api/public/categories/tree'],
   },
   {
     key: 'dashboard',
     label: '仪表盘数据',
-    tagType: 'info',
-    description: '允许访问仪表盘统计数据和排名信息，包括订单统计、用户排名、骑手排名等。',
-    data: [
-      '注册客户数 (customerCount)',
-      '总订单数 (totalOrders)',
-      '今日订单数 (todayOrders)',
-      '员工总数 (riderCount)',
-      '在线骑手数 (onlineRiderCount)',
-      '待接单数 (pendingOrdersCount)',
-      '总收入 (totalRevenue)',
-      '用户下单排名（周榜/月榜前10名）',
-      '骑手送单排名（周榜/月榜前10名）'
-    ],
-    apis: [
-      {
-        method: 'GET',
-        path: '/api/public/dashboard/stats',
-        description: '获取仪表盘统计数据，包含所有统计指标'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/dashboard/user-ranks?period=week|month',
-        description: '获取用户下单排名，支持周榜(week)和月榜(month)'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/dashboard/rider-ranks?period=week|month',
-        description: '获取骑手送单排名，支持周榜(week)和月榜(month)'
-      }
-    ],
-    note: '该权限的公开API端点已实现，可以直接使用。'
+    type: 'info',
+    description: '适合平台统计、用户排行、骑手排行类调用。',
+    examples: ['/api/public/dashboard/stats', '/api/public/dashboard/user-ranks', '/api/public/dashboard/rider-ranks'],
   },
   {
     key: 'all',
     label: '全部数据',
-    tagType: 'danger',
-    description: '包含所有权限，可以访问所有已实现的公开API端点。',
-    data: [
-      '订单数据（orders权限）',
-      '用户数据（users权限）',
-      '骑手数据（riders权限）',
-      '仪表盘数据（dashboard权限）'
-    ],
-    apis: [
-      {
-        method: 'GET',
-        path: '/api/public/orders',
-        description: '获取订单列表'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/orders/:id',
-        description: '获取订单详情'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/orders/stats',
-        description: '获取订单统计'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/users',
-        description: '获取用户列表'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/users/:id',
-        description: '获取用户详情'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/users/stats',
-        description: '获取用户统计'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/riders',
-        description: '获取骑手列表'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/riders/:id',
-        description: '获取骑手详情'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/riders/stats',
-        description: '获取骑手统计'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/dashboard/stats',
-        description: '获取仪表盘统计数据'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/dashboard/user-ranks?period=week|month',
-        description: '获取用户下单排名'
-      },
-      {
-        method: 'GET',
-        path: '/api/public/dashboard/rider-ranks?period=week|month',
-        description: '获取骑手送单排名'
-      }
-    ],
-    note: '选择此权限后，将自动包含所有其他权限，可以访问所有API端点。'
-  }
-]);
+    type: 'danger',
+    description: '包含全部权限，适合内部系统或统一数据中台使用。',
+    examples: ['包含以上全部公开接口'],
+  },
+];
 
-function goBack() {
-  router.push('/settings');
+function extractErrorMessage(error, fallback) {
+  return error?.response?.data?.error || error?.response?.data?.message || error?.message || fallback;
 }
+
+const {
+  apiListError,
+  apiList,
+  apiListLoading,
+  apiDialogVisible,
+  editingApi,
+  apiForm,
+  savingApi,
+  loadApiList,
+  showAddApiDialog,
+  editApi,
+  deleteApi,
+  saveApi,
+  generateApiKey,
+  copyApiKey,
+  getPermissionLabel,
+  handleApiPermissionChange,
+  generateMarkdownDoc,
+} = useSettingsApiManagement({
+  request,
+  router,
+  ElMessage,
+  ElMessageBox,
+  extractErrorMessage,
+});
+
+const summary = computed(() => {
+  const rows = Array.isArray(apiList.value) ? apiList.value : [];
+  return {
+    total: rows.length,
+    active: rows.filter((item) => Boolean(item?.is_active)).length,
+    allScoped: rows.filter((item) => normalizePermissions(item?.permissions).includes('all')).length,
+    withPath: rows.filter((item) => String(item?.path || '').trim()).length,
+  };
+});
+
+function normalizePermissions(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) return [];
+    try {
+      const parsed = JSON.parse(text);
+      return Array.isArray(parsed) ? parsed : [text];
+    } catch (_error) {
+      return [text];
+    }
+  }
+  return [];
+}
+
+function handleResize() {
+  isMobile.value = window.innerWidth <= 768;
+}
+
+function goToDocumentation() {
+  router.push('/api-documentation');
+}
+
+function downloadKeyDoc(row) {
+  try {
+    const content = generateMarkdownDoc(row);
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${row.name || 'api-key'}_说明.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    ElMessage.success('Key 说明已下载');
+  } catch (error) {
+    ElMessage.error(error?.message || '下载失败');
+  }
+}
+
+onMounted(() => {
+  loadApiList();
+  window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
+});
 </script>
 
 <style scoped lang="css" src="./ApiPermissions.css"></style>

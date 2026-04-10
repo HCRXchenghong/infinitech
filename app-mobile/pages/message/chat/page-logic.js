@@ -14,6 +14,8 @@ const MESSAGE_CACHE_MAX_AGE = 12 * 60 * 60 * 1000
 const MESSAGE_CACHE_MAX_ITEMS = 60
 const MESSAGE_VISIBLE_MAX_AGE = 3 * 24 * 60 * 60 * 1000
 const DEFAULT_EMOJIS = ['😀', '😁', '😂', '🤣', '😊', '😍', '👍', '👏', '🎉', '❤️', '🔥', '🙏', '😎', '😄', '😭', '💪', '✨', '🍔', '🍜', '☕']
+const SOCKET_TOKEN_KEY = 'socket_token'
+const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key'
 
 const nowTime = () => {
   const d = new Date()
@@ -549,7 +551,14 @@ export default {
     async initSocket() {
       if (!this.userId) return
 
-      let token = uni.getStorageSync('socket_token')
+      const socketAccountKey = this.userId ? `user:${String(this.userId).trim()}` : ''
+      let token = String(uni.getStorageSync(SOCKET_TOKEN_KEY) || '').trim()
+      const cachedAccountKey = String(uni.getStorageSync(SOCKET_TOKEN_ACCOUNT_KEY) || '').trim()
+      if (token && cachedAccountKey !== socketAccountKey) {
+        uni.removeStorageSync(SOCKET_TOKEN_KEY)
+        uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
+        token = ''
+      }
       if (!token) {
         try {
           const res = await new Promise((resolve, reject) => {
@@ -568,7 +577,8 @@ export default {
           const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
           token = data && data.token ? data.token : ''
           if (token) {
-            uni.setStorageSync('socket_token', token)
+            uni.setStorageSync(SOCKET_TOKEN_KEY, token)
+            uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, socketAccountKey)
           }
         } catch (err) {
           console.error('获取 socket token 失败:', err)
@@ -668,14 +678,19 @@ export default {
         this.isConnected = false
       })
 
-      sock.on('connect_error', () => {
+      sock.on('connect_error', (err) => {
         this.isConnected = false
+        if (/认证失败|auth/i.test(String(err && err.message || ''))) {
+          uni.removeStorageSync(SOCKET_TOKEN_KEY)
+          uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
+        }
         this.scheduleReconnect()
       })
 
       sock.on('auth_error', () => {
         this.isConnected = false
-        uni.removeStorageSync('socket_token')
+        uni.removeStorageSync(SOCKET_TOKEN_KEY)
+        uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
         this.scheduleReconnect()
       })
 

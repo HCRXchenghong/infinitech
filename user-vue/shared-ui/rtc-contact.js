@@ -48,10 +48,11 @@ function getCurrentPageInfo() {
 }
 
 function buildIncomingCallUrl(payload) {
-  const call = payload?.call || payload || {}
-  const callId = normalizeCallId(call) || trimValue(payload?.callId)
-  const callerRole = trimValue(call.callerRole || call.caller_role || payload?.fromRole)
-  const callerId = trimValue(call.callerId || call.caller_id || payload?.fromId)
+  const safePayload = payload && typeof payload === 'object' ? payload : {}
+  const call = safePayload.call || safePayload || {}
+  const callId = normalizeCallId(call) || trimValue(safePayload.callId)
+  const callerRole = trimValue(call.callerRole || call.caller_role || safePayload.fromRole)
+  const callerId = trimValue(call.callerId || call.caller_id || safePayload.fromId)
   const orderId = trimValue(call.orderId || call.order_id)
   const conversationId = trimValue(call.conversationId || call.conversation_id)
   const targetName =
@@ -69,14 +70,22 @@ function buildIncomingCallUrl(payload) {
 }
 
 let inviteBridgeSocket = null
+const SOCKET_TOKEN_KEY = 'socket_token'
+const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key'
 
 async function ensureSocketToken() {
-  const cached = trimValue(uni.getStorageSync('socket_token'))
-  if (cached) return cached
-
   const userId = resolveCurrentUserId()
   if (!userId) {
     throw new Error('missing current user id')
+  }
+
+  const accountKey = `user:${userId}`
+  const cached = trimValue(uni.getStorageSync(SOCKET_TOKEN_KEY))
+  const cachedAccountKey = trimValue(uni.getStorageSync(SOCKET_TOKEN_ACCOUNT_KEY))
+  if (cached && cachedAccountKey === accountKey) return cached
+  if (cached && cachedAccountKey !== accountKey) {
+    uni.removeStorageSync(SOCKET_TOKEN_KEY)
+    uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
   }
 
   const res = await new Promise((resolve, reject) => {
@@ -95,7 +104,8 @@ async function ensureSocketToken() {
   if (!token) {
     throw new Error('failed to generate socket token')
   }
-  uni.setStorageSync('socket_token', token)
+  uni.setStorageSync(SOCKET_TOKEN_KEY, token)
+  uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, accountKey)
   return token
 }
 
@@ -160,12 +170,14 @@ export async function ensureUserRTCInviteBridge() {
   })
 
   socket.on('rtc_invite', (payload = {}) => {
-    const callId = normalizeCallId(payload?.call || payload) || trimValue(payload?.callId)
+    const safePayload = payload && typeof payload === 'object' ? payload : {}
+    const callId = normalizeCallId(safePayload.call || safePayload) || trimValue(safePayload.callId)
     if (!callId) return
 
     const currentPage = getCurrentPageInfo()
     const currentRoute = currentPage && currentPage.route ? `/${currentPage.route}` : ''
-    const currentCallId = trimValue(currentPage?.options?.callId)
+    const currentOptions = currentPage && currentPage.options ? currentPage.options : {}
+    const currentCallId = trimValue(currentOptions.callId)
     if (currentRoute === '/pages/rtc/call/index' && currentCallId === callId) {
       return
     }

@@ -12,11 +12,15 @@ import (
 )
 
 type NotificationService struct {
-	repo repository.NotificationRepository
+	repo     repository.NotificationRepository
+	notifier *RealtimeNotificationService
 }
 
-func NewNotificationService(repo repository.NotificationRepository) *NotificationService {
-	return &NotificationService{repo: repo}
+func NewNotificationService(repo repository.NotificationRepository, notifier *RealtimeNotificationService) *NotificationService {
+	return &NotificationService{
+		repo:     repo,
+		notifier: notifier,
+	}
 }
 
 type NotificationListItem struct {
@@ -273,11 +277,20 @@ func (s *NotificationService) CreateNotification(ctx context.Context, title, con
 		return nil, err
 	}
 
+	if notification.IsPublished {
+		s.dispatchPublishedNotification(ctx, notification, "notification.published")
+	}
+
 	return notification, nil
 }
 
 func (s *NotificationService) UpdateNotification(ctx context.Context, id string, title, content, cover, source string, isPublished *bool) error {
 	resolvedID, err := resolveEntityID(ctx, s.repo.DB(), "notifications", id)
+	if err != nil {
+		return err
+	}
+
+	existing, err := s.repo.GetNotificationByIDAnyStatus(ctx, resolvedID)
 	if err != nil {
 		return err
 	}
@@ -293,7 +306,23 @@ func (s *NotificationService) UpdateNotification(ctx context.Context, id string,
 		notification.IsPublished = *isPublished
 	}
 
-	return s.repo.UpdateNotification(ctx, resolvedID, notification)
+	if err := s.repo.UpdateNotification(ctx, resolvedID, notification); err != nil {
+		return err
+	}
+
+	updated, err := s.repo.GetNotificationByIDAnyStatus(ctx, resolvedID)
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case !existing.IsPublished && updated.IsPublished:
+		s.dispatchPublishedNotification(ctx, updated, "notification.published")
+	case existing.IsPublished && updated.IsPublished:
+		s.dispatchPublishedNotification(ctx, updated, "notification.updated")
+	}
+
+	return nil
 }
 
 func (s *NotificationService) DeleteNotification(ctx context.Context, id string) error {
@@ -302,6 +331,36 @@ func (s *NotificationService) DeleteNotification(ctx context.Context, id string)
 		return err
 	}
 	return s.repo.DeleteNotification(ctx, resolvedID)
+}
+
+func (s *NotificationService) dispatchPublishedNotification(ctx context.Context, notification *repository.Notification, eventType string) {
+	if s == nil || s.notifier == nil || notification == nil || !notification.IsPublished {
+		return
+	}
+
+	notificationID := strings.TrimSpace(notification.UID)
+	if notificationID == "" {
+		notificationID = fmt.Sprintf("%d", notification.ID)
+	}
+
+	envelope := RealtimeNotificationEnvelope{
+		EventType: eventType,
+		Title:     firstNonEmptyText(strings.TrimSpace(notification.Title), "官方通知"),
+		Content:   s.extractSummary(notification.Content),
+		Route:     "/pages/message/notification-list/index",
+		Payload: map[string]interface{}{
+			"notificationId": notificationID,
+			"source":         firstNonEmptyText(strings.TrimSpace(notification.Source), "悦享e食"),
+		},
+		RefreshTargets: []string{"notifications"},
+	}
+
+	s.notifier.BroadcastPlatformEventBestEffort(ctx, []RealtimeBroadcastRecipient{
+		{Role: "user"},
+		{Role: "rider"},
+		{Role: "merchant"},
+		{Role: "admin"},
+	}, envelope)
 }
 
 func (s *NotificationService) resolveActor(ctx context.Context) (string, string, error) {

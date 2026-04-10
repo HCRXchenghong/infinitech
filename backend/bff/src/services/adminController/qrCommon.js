@@ -181,37 +181,44 @@ function normalizeOrigin(raw) {
   }
 }
 
-function normalizeWebHost(rawHost) {
+function normalizeDownloadWebHost(rawHost) {
   let host = String(rawHost || "").trim();
   if (!host) {
     return "";
   }
+  if (host.endsWith(":8888")) {
+    host = `${host.slice(0, -5)}:1798`;
+  }
   if (host.endsWith(":25500")) {
-    host = `${host.slice(0, -6)}:8888`;
+    host = `${host.slice(0, -6)}:1798`;
   }
   return host;
 }
 
 function resolveWebBaseUrl(req) {
-  const configuredOrigin = normalizeOrigin(config.adminWebBaseUrl);
+  const configuredOrigin = normalizeOrigin(config.downloadWebBaseUrl || config.adminWebBaseUrl);
   if (configuredOrigin) {
     return configuredOrigin;
   }
 
-  const bodyOrigin = normalizeOrigin(req.body?.webOrigin || req.body?.origin || "");
+  const bodyOrigin = normalizeOrigin(
+    req.body?.downloadOrigin || req.body?.publicOrigin || req.body?.webOrigin || req.body?.origin || ""
+  );
   if (bodyOrigin) {
-    return bodyOrigin;
+    return normalizeOrigin(bodyOrigin.replace(/:(8888|25500)(?=\/|$)/, ":1798")) || bodyOrigin;
   }
 
-  const headerOrigin = normalizeOrigin(req.headers["x-web-origin"] || req.headers.origin || "");
+  const headerOrigin = normalizeOrigin(
+    req.headers["x-download-origin"] || req.headers["x-web-origin"] || req.headers.origin || ""
+  );
   if (headerOrigin) {
-    return headerOrigin;
+    return normalizeOrigin(headerOrigin.replace(/:(8888|25500)(?=\/|$)/, ":1798")) || headerOrigin;
   }
 
   const protoRaw = String(req.headers["x-forwarded-proto"] || req.protocol || "http");
   const protocol = protoRaw.split(",")[0].trim() === "https" ? "https" : "http";
-  const hostRaw = String(req.headers["x-forwarded-host"] || req.headers.host || "localhost:8888");
-  const host = normalizeWebHost(hostRaw.split(",")[0].trim()) || "localhost:8888";
+  const hostRaw = String(req.headers["x-forwarded-host"] || req.headers.host || "localhost:1798");
+  const host = normalizeDownloadWebHost(hostRaw.split(",")[0].trim()) || "localhost:1798";
   return `${protocol}://${host}`;
 }
 

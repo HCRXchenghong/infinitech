@@ -5,6 +5,9 @@ import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/s
 import OrderDetailPopup from '@/components/OrderDetailPopup.vue'
 import { normalizeIncomingMessage as normalizeIncomingMessagePayload, normalizeOrder as normalizeOrderPayload, formatOrderNo as formatOrderNoValue, formatOrderAmount as formatOrderAmountValue, getOrderStatusText as getOrderStatusTextValue, resolveMessageTimestamp as resolveIncomingMessageTimestamp } from './chat-utils'
 
+const SOCKET_TOKEN_KEY = 'socket_token'
+const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key'
+
 export default {
   components: {
     OrderDetailPopup
@@ -75,6 +78,14 @@ export default {
     this.disconnectSocket()
   },
   methods: {
+    buildSocketTokenAccountKey() {
+      const userId = String(this.userId || '').trim()
+      return userId ? `user:${userId}` : ''
+    },
+    clearCachedSocketToken() {
+      uni.removeStorageSync(SOCKET_TOKEN_KEY)
+      uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
+    },
     async loadSupportRuntimeConfig() {
       const supportRuntime = await loadSupportRuntimeSettings()
       this.supportTitle = supportRuntime.title
@@ -141,7 +152,13 @@ export default {
       this.socketInitializing = true
 
       // 获取或生成 socket token
-      let socketToken = uni.getStorageSync('socket_token')
+      const socketAccountKey = this.buildSocketTokenAccountKey()
+      let socketToken = String(uni.getStorageSync(SOCKET_TOKEN_KEY) || '').trim()
+      const cachedAccountKey = String(uni.getStorageSync(SOCKET_TOKEN_ACCOUNT_KEY) || '').trim()
+      if (socketToken && cachedAccountKey !== socketAccountKey) {
+        this.clearCachedSocketToken()
+        socketToken = ''
+      }
       if (!socketToken) {
         try {
           const res = await new Promise((resolve, reject) => {
@@ -165,7 +182,8 @@ export default {
 
           if (resData && resData.token) {
             socketToken = resData.token
-            uni.setStorageSync('socket_token', socketToken)
+            uni.setStorageSync(SOCKET_TOKEN_KEY, socketToken)
+            uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, socketAccountKey)
           } else {
             console.error('获取 socket token 失败: 无 token 返回')
             uni.showToast({ title: '连接失败', icon: 'none' })
@@ -203,7 +221,7 @@ export default {
       })
 
       sock.on('new_message', (payload) => {
-        if (payload?.chatId && String(payload.chatId) !== String(this.chatId)) return
+        if (payload && payload.chatId && String(payload.chatId) !== String(this.chatId)) return
         const senderId = payload && payload.senderId != null ? String(payload.senderId) : ''
         const isFromSelf = senderId === String(this.userId) && payload.senderRole === 'user'
         const normalizedMessage = this.normalizeIncomingMessage(payload, false)
@@ -221,7 +239,7 @@ export default {
       })
 
       sock.on('message_sent', (data) => {
-        if (data?.chatId && String(data.chatId) !== String(this.chatId)) return
+        if (data && data.chatId && String(data.chatId) !== String(this.chatId)) return
         const msg = this.messages.find(m => m.id === data.tempId)
         if (msg) {
           msg.id = data.messageId
@@ -239,15 +257,16 @@ export default {
       })
 
       sock.on('message_read', (data) => {
-        if (data?.chatId && String(data.chatId) !== String(this.chatId)) return
-        const msg = this.messages.find((item) => item.id === data?.messageId)
+        if (data && data.chatId && String(data.chatId) !== String(this.chatId)) return
+        const messageId = data && data.messageId
+        const msg = this.messages.find((item) => item.id === messageId)
         if (msg) {
           msg.status = 'read'
         }
       })
 
       sock.on('all_messages_read', (data) => {
-        if (data?.chatId && String(data.chatId) !== String(this.chatId)) return
+        if (data && data.chatId && String(data.chatId) !== String(this.chatId)) return
         this.messages.forEach((item) => {
           if (item.isSelf && item.status !== 'failed' && item.status !== 'read') {
             item.status = 'read'
@@ -263,6 +282,9 @@ export default {
         console.error('Socket.IO 连接错误:', err)
         this.isConnected = false
         uni.showToast({ title: '连接异常', icon: 'none' })
+        if (/认证失败|auth/i.test(String(err && err.message || ''))) {
+          this.clearCachedSocketToken()
+        }
         this.scheduleReconnect()
       })
 
@@ -271,7 +293,7 @@ export default {
         this.isConnected = false
         uni.showToast({ title: '认证失败', icon: 'none' })
 
-        uni.removeStorageSync('socket_token')
+        this.clearCachedSocketToken()
         this.scheduleReconnect()
       })
 

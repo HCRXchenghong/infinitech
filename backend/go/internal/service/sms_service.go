@@ -35,6 +35,13 @@ var allowedSMSScenes = map[string]struct{}{
 	"rider_change_password": {},
 }
 
+const (
+	smsTargetConsumer = "consumer"
+	smsTargetMerchant = "merchant"
+	smsTargetRider    = "rider"
+	smsTargetAdmin    = "admin"
+)
+
 func NewSMSService(db *gorm.DB, redis *redis.Client, captcha *CaptchaService, admin *AdminService) *SMSService {
 	return &SMSService{
 		db:      db,
@@ -108,6 +115,20 @@ func (s *SMSService) RequestCode(ctx context.Context, req *RequestCodeRequest) (
 		}, err
 	}
 
+	cfg, err := s.loadSMSProviderConfig(ctx)
+	if err != nil {
+		return &RequestCodeResponse{
+			Success: false,
+			Message: "短信服务暂不可用，请稍后重试",
+		}, err
+	}
+	if err := validateSMSRequestTargetEnabled(cfg, req.Scene, req.TargetType); err != nil {
+		return &RequestCodeResponse{
+			Success: false,
+			Message: err.Error(),
+		}, err
+	}
+
 	captchaRequired, err := s.shouldRequireCaptcha(ctx, req.Scene, req.Phone)
 	if err != nil {
 		return &RequestCodeResponse{
@@ -167,7 +188,7 @@ func (s *SMSService) RequestCode(ctx context.Context, req *RequestCodeRequest) (
 	}
 
 	code := generateCode(6)
-	if err := s.sendVerificationCode(ctx, req.Phone, req.Scene, code); err != nil {
+	if err := s.sendVerificationCodeWithConfig(ctx, cfg, req.Phone, req.Scene, code); err != nil {
 		log.Printf("[sms] send failed scene=%s phone=%s err=%v", req.Scene, maskPhone(req.Phone), err)
 		return &RequestCodeResponse{
 			Success: false,
@@ -183,7 +204,7 @@ func (s *SMSService) RequestCode(ctx context.Context, req *RequestCodeRequest) (
 		}, fmt.Errorf("store sms code failed: %w", err)
 	}
 
-	s.logSMSIssued(req.Phone, req.Scene, code)
+	s.logSMSIssued(req.Phone, req.Scene)
 
 	response := &RequestCodeResponse{
 		Success: true,
@@ -229,6 +250,16 @@ func (s *SMSService) validateScenePhoneState(ctx context.Context, scene, phone, 
 	target := strings.ToLower(strings.TrimSpace(targetType))
 	switch scene {
 	case "login", "reset":
+		if target == smsTargetAdmin {
+			exists, err := s.phoneExistsInTable(ctx, "admins", phone)
+			if err != nil {
+				return newSMSResponseError("短信服务暂不可用，请稍后重试", fmt.Errorf("db query failed: %w", err))
+			}
+			if !exists {
+				return newSMSResponseError("管理员账号不存在，请联系超级管理员", fmt.Errorf("admin not found"))
+			}
+			return nil
+		}
 		exists, err := s.phoneExistsInTable(ctx, "users", phone)
 		if err != nil {
 			return newSMSResponseError("短信服务暂不可用，请稍后重试", fmt.Errorf("db query failed: %w", err))
@@ -264,11 +295,15 @@ func (s *SMSService) validateScenePhoneState(ctx context.Context, scene, phone, 
 		table := "users"
 		notFoundMessage := "该手机号未注册，请先注册"
 		notFoundError := "user not found"
-		if target == "rider" {
+		if target == smsTargetAdmin {
+			table = "admins"
+			notFoundMessage = "管理员账号不存在，请联系超级管理员"
+			notFoundError = "admin not found"
+		} else if target == smsTargetRider {
 			table = "riders"
 			notFoundMessage = "骑手账号不存在，请联系管理员开通"
 			notFoundError = "rider not found"
-		} else if target == "merchant" {
+		} else if target == smsTargetMerchant {
 			table = "merchants"
 			notFoundMessage = "商户账号不存在，请联系管理员开通"
 			notFoundError = "merchant not found"
@@ -282,9 +317,11 @@ func (s *SMSService) validateScenePhoneState(ctx context.Context, scene, phone, 
 		}
 	case "change_phone_new":
 		table := "users"
-		if target == "rider" {
+		if target == smsTargetAdmin {
+			table = "admins"
+		} else if target == smsTargetRider {
 			table = "riders"
-		} else if target == "merchant" {
+		} else if target == smsTargetMerchant {
 			table = "merchants"
 		}
 		exists, err := s.phoneExistsInTable(ctx, table, phone)
@@ -297,6 +334,49 @@ func (s *SMSService) validateScenePhoneState(ctx context.Context, scene, phone, 
 	}
 
 	return nil
+}
+
+func resolveSMSRequestTarget(scene, targetType string) string {
+	target := strings.ToLower(strings.TrimSpace(targetType))
+	if target == smsTargetAdmin {
+		return smsTargetAdmin
+	}
+	if target == smsTargetMerchant {
+		return smsTargetMerchant
+	}
+	if target == smsTargetRider {
+		return smsTargetRider
+	}
+
+	switch strings.TrimSpace(scene) {
+	case "merchant_login", "merchant_reset":
+		return smsTargetMerchant
+	case "rider_login", "rider_reset", "rider_change_password":
+		return smsTargetRider
+	default:
+		return smsTargetConsumer
+	}
+}
+
+func getSMSRequestTargetLabel(target string) string {
+	switch strings.ToLower(strings.TrimSpace(target)) {
+	case smsTargetAdmin:
+		return "管理端"
+	case smsTargetMerchant:
+		return "商户端"
+	case smsTargetRider:
+		return "骑手端"
+	default:
+		return "用户端"
+	}
+}
+
+func validateSMSRequestTargetEnabled(cfg SMSProviderConfig, scene, targetType string) error {
+	target := resolveSMSRequestTarget(scene, targetType)
+	if cfg.IsTargetEnabled(target) {
+		return nil
+	}
+	return fmt.Errorf("%s短信验证码已关闭", getSMSRequestTargetLabel(target))
 }
 
 func (s *SMSService) phoneExistsInTable(ctx context.Context, table, phone string) (bool, error) {
@@ -407,6 +487,10 @@ func (s *SMSService) sendVerificationCode(ctx context.Context, phone, scene, cod
 	if err != nil {
 		return err
 	}
+	return s.sendVerificationCodeWithConfig(ctx, cfg, phone, scene, code)
+}
+
+func (s *SMSService) sendVerificationCodeWithConfig(ctx context.Context, cfg SMSProviderConfig, phone, scene, code string) error {
 	if !cfg.IsConfigured() {
 		return fmt.Errorf("sms provider is not configured")
 	}
@@ -500,10 +584,10 @@ func shouldExposeSMSCode() bool {
 	return value == "1" || value == "true" || value == "yes" || value == "on"
 }
 
-func (s *SMSService) logSMSIssued(phone, scene, code string) {
+func (s *SMSService) logSMSIssued(phone, scene string) {
 	maskedPhone := maskPhone(phone)
 	if shouldExposeSMSCode() {
-		log.Printf("[sms] code issued scene=%s phone=%s code=%s", scene, maskedPhone, code)
+		log.Printf("[sms] code issued scene=%s phone=%s debug_response=%t", scene, maskedPhone, true)
 		return
 	}
 	log.Printf("[sms] code issued scene=%s phone=%s", scene, maskedPhone)

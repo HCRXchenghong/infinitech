@@ -23,8 +23,9 @@ function extractErrorMessage(error, fallback) {
   return error?.response?.data?.error || error?.response?.data?.message || error?.message || fallback;
 }
 
-export function useApiManagementPage() {
+export function useApiManagementPage(options = {}) {
   const router = useRouter();
+  const includeExternalApiManagement = options.includeExternalApiManagement !== false;
 
   const isMobile = ref(window.innerWidth <= 768);
   const handleResize = () => {
@@ -110,7 +111,9 @@ export function useApiManagementPage() {
       loading.value = false;
     }
 
-    loadApiList(forceRefresh);
+    if (includeExternalApiManagement) {
+      loadApiList(forceRefresh);
+    }
   }
 
   async function saveSms() {

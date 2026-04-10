@@ -12,7 +12,7 @@
         </el-radio-group>
         <el-date-picker v-model="statDate" type="date" value-format="YYYY-MM-DD"
           placeholder="选择日期" size="small" style="width:140px" @change="loadAll" />
-        <el-button size="small" type="primary" :loading="exporting" @click="doExport">导出</el-button>
+        <el-button size="small" type="primary" :loading="exporting" @click="doExport">下载报表</el-button>
       </div>
     </div>
 
@@ -476,7 +476,7 @@ async function doExport() {
     const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
     const a = Object.assign(document.createElement('a'), {
       href: URL.createObjectURL(blob),
-      download: `finance-${periodType.value}-${statDate.value || 'latest'}.json`,
+      download: `finance-report-${periodType.value}-${statDate.value || 'latest'}.json`,
     });
     a.click(); URL.revokeObjectURL(a.href);
   } catch { /* ignore */ }

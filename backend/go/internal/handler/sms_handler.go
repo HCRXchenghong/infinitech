@@ -3,6 +3,7 @@ package handler
 import (
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +16,11 @@ type SMSHandler struct {
 
 func NewSMSHandler(service *service.SMSService) *SMSHandler {
 	return &SMSHandler{service: service}
+}
+
+func isSMSCodeListEnabled() bool {
+	value := strings.TrimSpace(strings.ToLower(os.Getenv("SMS_DEBUG_ALLOW_CODE_LIST")))
+	return value == "1" || value == "true" || value == "yes" || value == "on"
 }
 
 func (h *SMSHandler) RequestCode(c *gin.Context) {
@@ -51,7 +57,7 @@ func (h *SMSHandler) RequestCode(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[sms handler] request code succeeded phone=%s scene=%s exposed=%t", req.Phone, req.Scene, strings.TrimSpace(result.Code) != "")
+	log.Printf("[sms handler] request code succeeded phone=%s scene=%s exposed=%t", maskPhoneForLog(req.Phone), req.Scene, strings.TrimSpace(result.Code) != "")
 	c.JSON(http.StatusOK, result)
 }
 
@@ -104,6 +110,14 @@ func (h *SMSHandler) VerifyCodeCheck(c *gin.Context) {
 }
 
 func (h *SMSHandler) ListVerificationCodes(c *gin.Context) {
+	if !isSMSCodeListEnabled() {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "验证码调试接口未启用",
+		})
+		return
+	}
+
 	codes, err := h.service.ListVerificationCodes(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

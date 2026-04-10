@@ -76,7 +76,6 @@ func TestRTCCallAuditServiceUpsertCall(t *testing.T) {
 	endedAt := time.Now()
 	updated, err := svc.UpsertCall(ctx, RTCCallAuditUpsertInput{
 		CallID:          record.UID,
-		CalleeRole:      "merchant",
 		Status:          "ended",
 		AnsweredAt:      &endedAt,
 		EndedAt:         &endedAt,
@@ -91,6 +90,12 @@ func TestRTCCallAuditServiceUpsertCall(t *testing.T) {
 	}
 	if updated.DurationSeconds != 32 {
 		t.Fatalf("expected duration 32, got %d", updated.DurationSeconds)
+	}
+	if updated.CalleeRole != "merchant" || updated.CalleeID != "26032900000088" {
+		t.Fatalf("expected callee identity to be preserved, got role=%q id=%q", updated.CalleeRole, updated.CalleeID)
+	}
+	if updated.ConversationID != "support_26032900000001" {
+		t.Fatalf("expected conversation id to be preserved, got %q", updated.ConversationID)
 	}
 	if updated.ComplaintStatus != "reported" {
 		t.Fatalf("expected complaint status reported, got %q", updated.ComplaintStatus)

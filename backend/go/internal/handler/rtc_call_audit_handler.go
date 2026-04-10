@@ -17,6 +17,23 @@ func NewRTCCallAuditHandler(svc *service.RTCCallAuditService) *RTCCallAuditHandl
 	return &RTCCallAuditHandler{service: svc}
 }
 
+func resolveRTCCallID(c *gin.Context) string {
+	if c == nil {
+		return ""
+	}
+	if raw, exists := c.Get("entity_uid"); exists {
+		if text, ok := raw.(string); ok && strings.TrimSpace(text) != "" {
+			return strings.TrimSpace(text)
+		}
+	}
+	if raw, exists := c.Get("entity_tsid"); exists {
+		if text, ok := raw.(string); ok && strings.TrimSpace(text) != "" {
+			return strings.TrimSpace(text)
+		}
+	}
+	return strings.TrimSpace(c.Param("callId"))
+}
+
 func (h *RTCCallAuditHandler) UpsertCall(c *gin.Context) {
 	if h == nil || h.service == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "rtc call audit service unavailable"})
@@ -59,7 +76,7 @@ func (h *RTCCallAuditHandler) UpdateCallStatus(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "message": err.Error()})
 		return
 	}
-	req.CallID = strings.TrimSpace(c.Param("callId"))
+	req.CallID = resolveRTCCallID(c)
 
 	record, err := h.service.UpsertCall(c.Request.Context(), req)
 	if err != nil {
@@ -128,7 +145,7 @@ func (h *RTCCallAuditHandler) AdminReview(c *gin.Context) {
 		return
 	}
 
-	record, err := h.service.AdminReviewCall(c.Request.Context(), strings.TrimSpace(c.Param("callId")), req)
+	record, err := h.service.AdminReviewCall(c.Request.Context(), resolveRTCCallID(c), req)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUnauthorized):
@@ -185,7 +202,7 @@ func (h *RTCCallAuditHandler) GetCall(c *gin.Context) {
 		return
 	}
 
-	record, err := h.service.GetCall(c.Request.Context(), strings.TrimSpace(c.Param("callId")))
+	record, err := h.service.GetCall(c.Request.Context(), resolveRTCCallID(c))
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUnauthorized):

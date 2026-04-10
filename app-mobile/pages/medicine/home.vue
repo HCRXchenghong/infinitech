@@ -63,6 +63,7 @@
 
 <script>
 import { fetchPublicRuntimeSettings, recordPhoneContactClick } from '@/shared-ui/api.js'
+import { ensureRuntimeFeatureOpen } from '@/shared-ui/feature-runtime.js'
 import { createPhoneContactHelper } from '../../../shared/mobile-common/phone-contact.js'
 
 const phoneContactHelper = createPhoneContactHelper({ recordPhoneContactClick })
@@ -148,7 +149,11 @@ export default {
       return `\u5373\u5c06\u62e8\u6253 ${this.hotlinePhone}\n${this.runtimeSettings.medicine_support_subtitle}`
     }
   },
-  onLoad() {
+  async onLoad() {
+    const enabled = await ensureRuntimeFeatureOpen('medicine', 'app-mobile')
+    if (!enabled) {
+      return
+    }
     void this.loadRuntimeSettings()
   },
   methods: {

@@ -69,6 +69,7 @@
 
 <script>
 import { fetchUserAddresses, deleteUserAddress, setDefaultUserAddress } from '@/shared-ui/api.js'
+import { normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
 
 function buildCacheAddress(addr) {
   const fullAddress = String(addr.fullAddress || addr.detail || addr.address || '').trim()
@@ -191,7 +192,7 @@ export default {
       } catch (error) {
         this.addresses = this.normalizeAddresses(uni.getStorageSync('addresses'))
         this.syncSelectedAddress(this.addresses)
-        uni.showToast({ title: error?.error || error?.message || '加载地址失败', icon: 'none' })
+        uni.showToast({ title: normalizeErrorMessage(error, '加载地址失败'), icon: 'none' })
       } finally {
         this.loading = false
       }
@@ -235,7 +236,7 @@ export default {
         await this.loadAddresses()
         uni.showToast({ title: '已设为默认地址', icon: 'success' })
       } catch (error) {
-        uni.showToast({ title: error?.error || error?.message || '设置默认失败', icon: 'none' })
+        uni.showToast({ title: normalizeErrorMessage(error, '设置默认失败'), icon: 'none' })
       }
     },
     async deleteAddress(id) {
@@ -252,7 +253,7 @@ export default {
             await this.loadAddresses()
             uni.showToast({ title: '删除成功', icon: 'success' })
           } catch (error) {
-            uni.showToast({ title: error?.error || error?.message || '删除失败', icon: 'none' })
+            uni.showToast({ title: normalizeErrorMessage(error, '删除失败'), icon: 'none' })
           }
         }
       })

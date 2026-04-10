@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { randomBytes } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { createInterface } from 'node:readline/promises'
 import { stdin as input, stdout as output } from 'node:process'
@@ -13,9 +14,58 @@ const composeFile = path.join(repoRoot, 'backend', 'docker', 'docker-compose.yml
 const deployEnvFile = path.join(repoRoot, 'backend', 'docker', '.deploy.runtime.env')
 const isWindows = process.platform === 'win32'
 const isLinux = process.platform === 'linux'
-const bootstrapAdminPhone = '13800138000'
-const bootstrapAdminPassword = '123456'
-const bootstrapAdminName = 'Bootstrap Admin'
+const defaultBootstrapAdminPhone = '13800138000'
+const defaultBootstrapAdminName = 'Bootstrap Admin'
+const defaultSystemLogVerifyAccount = 'syslog_admin'
+
+function generateSecret(bytes = 12) {
+  return randomBytes(bytes).toString('base64url')
+}
+
+function resolveEnvValue(...candidates) {
+  for (const candidate of candidates) {
+    const value = String(candidate || '').trim()
+    if (value) {
+      return value
+    }
+  }
+  return ''
+}
+
+function resolveDeploymentCredentials(targetValues = {}, sharedValues = {}) {
+  return {
+    bootstrapAdminPhone: resolveEnvValue(
+      process.env.BOOTSTRAP_ADMIN_PHONE,
+      targetValues.BOOTSTRAP_ADMIN_PHONE,
+      sharedValues.BOOTSTRAP_ADMIN_PHONE,
+      defaultBootstrapAdminPhone,
+    ),
+    bootstrapAdminName: resolveEnvValue(
+      process.env.BOOTSTRAP_ADMIN_NAME,
+      targetValues.BOOTSTRAP_ADMIN_NAME,
+      sharedValues.BOOTSTRAP_ADMIN_NAME,
+      defaultBootstrapAdminName,
+    ),
+    bootstrapAdminPassword: resolveEnvValue(
+      process.env.BOOTSTRAP_ADMIN_PASSWORD,
+      targetValues.BOOTSTRAP_ADMIN_PASSWORD,
+      sharedValues.BOOTSTRAP_ADMIN_PASSWORD,
+      generateSecret(10),
+    ),
+    systemLogDeleteAccount: resolveEnvValue(
+      process.env.SYSTEM_LOG_DELETE_ACCOUNT,
+      targetValues.SYSTEM_LOG_DELETE_ACCOUNT,
+      sharedValues.SYSTEM_LOG_DELETE_ACCOUNT,
+      defaultSystemLogVerifyAccount,
+    ),
+    systemLogDeletePassword: resolveEnvValue(
+      process.env.SYSTEM_LOG_DELETE_PASSWORD,
+      targetValues.SYSTEM_LOG_DELETE_PASSWORD,
+      sharedValues.SYSTEM_LOG_DELETE_PASSWORD,
+      generateSecret(12),
+    ),
+  }
+}
 
 function getCredentialHelperCandidates() {
   if (!isWindows) {
@@ -347,25 +397,38 @@ function buildAllowedOrigins(publicDomain, adminDomain) {
 
   origins.add('http://127.0.0.1:8888')
   origins.add('http://localhost:8888')
-  origins.add('http://127.0.0.1:8080')
-  origins.add('http://localhost:8080')
+  origins.add('http://127.0.0.1:1788')
+  origins.add('http://localhost:1788')
+  origins.add('http://127.0.0.1:1798')
+  origins.add('http://localhost:1798')
 
   return Array.from(origins).join(',')
 }
 
-function writeDeployEnvFile(config) {
-  const currentValues = readEnvFile(deployEnvFile)
+function writeDeployEnvFile(config, filePath = deployEnvFile) {
+  const currentValues = readEnvFile(filePath)
   const nextValues = {
     ...currentValues,
+    ADMIN_WEB_HOST_PORT: currentValues.ADMIN_WEB_HOST_PORT || '8888',
+    INVITE_WEB_HOST_PORT: currentValues.INVITE_WEB_HOST_PORT || '1788',
+    DOWNLOAD_WEB_HOST_PORT: currentValues.DOWNLOAD_WEB_HOST_PORT || '1798',
     PUBLIC_DOMAIN: config.publicDomain || currentValues.PUBLIC_DOMAIN || 'localhost',
     ADMIN_DOMAIN: config.adminDomain || currentValues.ADMIN_DOMAIN || 'admin.localhost',
     CADDY_EMAIL: config.caddyEmail || currentValues.CADDY_EMAIL || 'ops@example.com',
     ADMIN_WEB_BASE_URL:
-      config.adminWebBaseUrl || currentValues.ADMIN_WEB_BASE_URL || 'http://127.0.0.1:8080',
+      config.adminWebBaseUrl || currentValues.ADMIN_WEB_BASE_URL || 'http://127.0.0.1:8888',
+    DOWNLOAD_WEB_BASE_URL:
+      config.downloadWebBaseUrl || currentValues.DOWNLOAD_WEB_BASE_URL || 'http://127.0.0.1:1798',
+    PUBLIC_LANDING_BASE_URL:
+      config.publicLandingBaseUrl || currentValues.PUBLIC_LANDING_BASE_URL || 'http://127.0.0.1:1788',
+    ONBOARDING_INVITE_BASE_URL:
+      config.onboardingInviteBaseUrl || currentValues.ONBOARDING_INVITE_BASE_URL || 'http://127.0.0.1:1788',
+    COUPON_CLAIM_LINK_BASE_URL:
+      config.couponClaimLinkBaseUrl || currentValues.COUPON_CLAIM_LINK_BASE_URL || 'http://127.0.0.1:1788',
     ALLOWED_ORIGINS:
       config.allowedOrigins ||
       currentValues.ALLOWED_ORIGINS ||
-      'http://127.0.0.1:8888,http://localhost:8888,http://127.0.0.1:8080,http://localhost:8080',
+      'http://127.0.0.1:8888,http://localhost:8888,http://127.0.0.1:1788,http://localhost:1788,http://127.0.0.1:1798,http://localhost:1798',
     ALIPAY_SIDECAR_URL:
       currentValues.ALIPAY_SIDECAR_URL || 'http://alipay-sidecar:10301',
     ALIPAY_SIDECAR_HOST_PORT:
@@ -393,12 +456,25 @@ function writeDeployEnvFile(config) {
     WXPAY_NOTIFY_URL: currentValues.WXPAY_NOTIFY_URL || '',
     WXPAY_REFUND_NOTIFY_URL: currentValues.WXPAY_REFUND_NOTIFY_URL || '',
     WXPAY_PAYOUT_NOTIFY_URL: currentValues.WXPAY_PAYOUT_NOTIFY_URL || '',
+    BOOTSTRAP_ADMIN_PHONE:
+      config.bootstrapAdminPhone || currentValues.BOOTSTRAP_ADMIN_PHONE || defaultBootstrapAdminPhone,
+    BOOTSTRAP_ADMIN_NAME:
+      config.bootstrapAdminName || currentValues.BOOTSTRAP_ADMIN_NAME || defaultBootstrapAdminName,
+    BOOTSTRAP_ADMIN_PASSWORD:
+      config.bootstrapAdminPassword || currentValues.BOOTSTRAP_ADMIN_PASSWORD || '',
+    SYSTEM_LOG_DELETE_ACCOUNT:
+      config.systemLogDeleteAccount ||
+      currentValues.SYSTEM_LOG_DELETE_ACCOUNT ||
+      defaultSystemLogVerifyAccount,
+    SYSTEM_LOG_DELETE_PASSWORD:
+      config.systemLogDeletePassword || currentValues.SYSTEM_LOG_DELETE_PASSWORD || '',
   }
 
   const lines = Object.entries(nextValues).map(([key, value]) => `${key}=${value}`)
 
-  fs.writeFileSync(deployEnvFile, `${lines.join('\n')}\n`, 'utf8')
-  return deployEnvFile
+  fs.mkdirSync(path.dirname(filePath), { recursive: true })
+  fs.writeFileSync(filePath, `${lines.join('\n')}\n`, 'utf8')
+  return filePath
 }
 
 function parseArgs(argv) {
@@ -493,12 +569,14 @@ function printUsage() {
 `)
 }
 
-function printUpSummary(flags) {
+function printUpSummary(flags, deploymentCredentials) {
   console.log('\nServices are starting. Key endpoints:')
   console.log('  Go API:        http://127.0.0.1:1029/ready')
   console.log('  BFF:           http://127.0.0.1:25500/ready')
   console.log('  Socket Server: http://127.0.0.1:9898/ready')
-  console.log('  Admin Web:     http://127.0.0.1:8080')
+  console.log('  Admin Web:     http://127.0.0.1:8888')
+  console.log('  Invite Web:    http://127.0.0.1:1788/invite/<token>')
+  console.log('  Download Web:  http://127.0.0.1:1798/download')
   console.log('  Alipay Sidecar:http://127.0.0.1:10301/health')
   console.log('  Bank Sidecar:  http://127.0.0.1:10302/health')
   console.log('  PostgreSQL:    127.0.0.1:5432')
@@ -509,11 +587,17 @@ function printUpSummary(flags) {
     console.log(`  Admin Domain:  https://${flags.adminDomain}`)
   }
 
-  console.log('\n首次部署提示：如果当前数据库里还没有管理员账号，可先使用下面这组临时后台信息登录')
-  console.log(`  首次登录账号: ${bootstrapAdminPhone}`)
-  console.log(`  首次登录密码: ${bootstrapAdminPassword}`)
-  console.log(`  初始管理员名: ${bootstrapAdminName}`)
+  console.log('\n空库首次管理端初始化信息：如果当前数据库里还没有管理员账号，可先使用下面这组信息登录')
+  console.log(`  初始化账号:   ${deploymentCredentials.bootstrapAdminPhone}`)
+  console.log(`  初始化密码:   ${deploymentCredentials.bootstrapAdminPassword}`)
+  console.log(`  初始管理员名: ${deploymentCredentials.bootstrapAdminName}`)
   console.log('  第一次登录后，后台会强制要求你改成真实的管理员名称、手机号和密码。')
+
+  console.log('\n系统日志 / 清空类敏感操作二次验证信息：')
+  console.log(`  验证账号: ${deploymentCredentials.systemLogDeleteAccount}`)
+  console.log(`  验证密码: ${deploymentCredentials.systemLogDeletePassword}`)
+  console.log(`  配置文件: ${flags.envFile || deployEnvFile}`)
+  console.log('  重复执行部署会沿用同一份 env 文件中的现有口令，不会自动重置。')
 
   console.log('\nUse `node scripts/deploy-all.mjs logs` to inspect startup logs.')
 }
@@ -615,18 +699,6 @@ function ensureProxyConfig(flags) {
 
   const adminDomain = normalizeDomain(flags.adminDomain || `admin.${publicDomain}`)
   const caddyEmail = String(flags.caddyEmail || '').trim() || 'ops@example.com'
-  const adminWebBaseUrl = `https://${adminDomain}`
-  const allowedOrigins = buildAllowedOrigins(publicDomain, adminDomain)
-
-  writeDeployEnvFile({
-    publicDomain,
-    adminDomain,
-    caddyEmail,
-    adminWebBaseUrl,
-    allowedOrigins,
-  })
-
-  flags.envFile = deployEnvFile
   flags.adminDomain = adminDomain
   flags.publicDomain = publicDomain
   flags.caddyEmail = caddyEmail
@@ -638,9 +710,40 @@ function ensureProxyConfig(flags) {
   return flags
 }
 
+function prepareRuntimeDeployConfig(flags) {
+  const targetEnvFile = flags.envFile || deployEnvFile
+  const targetValues = readEnvFile(targetEnvFile)
+  const sharedValues = targetEnvFile === deployEnvFile ? targetValues : readEnvFile(deployEnvFile)
+  const deploymentCredentials = resolveDeploymentCredentials(targetValues, sharedValues)
+
+  const nextConfig = {
+    adminWebBaseUrl: 'http://127.0.0.1:8888',
+    downloadWebBaseUrl: 'http://127.0.0.1:1798',
+    publicLandingBaseUrl: 'http://127.0.0.1:1788',
+    onboardingInviteBaseUrl: 'http://127.0.0.1:1788',
+    couponClaimLinkBaseUrl: 'http://127.0.0.1:1788',
+    bootstrapAdminPhone: deploymentCredentials.bootstrapAdminPhone,
+    bootstrapAdminName: deploymentCredentials.bootstrapAdminName,
+    bootstrapAdminPassword: deploymentCredentials.bootstrapAdminPassword,
+    systemLogDeleteAccount: deploymentCredentials.systemLogDeleteAccount,
+    systemLogDeletePassword: deploymentCredentials.systemLogDeletePassword,
+  }
+
+  if (flags.withProxy) {
+    nextConfig.publicDomain = flags.publicDomain
+    nextConfig.adminDomain = flags.adminDomain
+    nextConfig.caddyEmail = flags.caddyEmail
+    nextConfig.allowedOrigins = buildAllowedOrigins(flags.publicDomain, flags.adminDomain)
+  }
+
+  flags.envFile = writeDeployEnvFile(nextConfig, targetEnvFile)
+  return deploymentCredentials
+}
+
 async function main() {
   const parsed = parseArgs(process.argv.slice(2))
   const needsInteractive = parsed.flags.interactive || (!parsed.action && input.isTTY)
+  let deploymentCredentials = null
 
   if (parsed.action === 'help' || parsed.action === '--help' || parsed.action === '-h') {
     printUsage()
@@ -657,6 +760,14 @@ async function main() {
   }
 
   ensureProxyConfig(parsed.flags)
+
+  if (
+    parsed.action === 'up' ||
+    parsed.action === 'restart' ||
+    (parsed.action === 'config' && parsed.flags.withProxy)
+  ) {
+    deploymentCredentials = prepareRuntimeDeployConfig(parsed.flags)
+  }
 
   const compose = detectComposeCommand()
   printDockerCompatHint()
@@ -734,7 +845,7 @@ async function main() {
   }
 
   if (parsed.action === 'up' || parsed.action === 'restart') {
-    printUpSummary(parsed.flags)
+    printUpSummary(parsed.flags, deploymentCredentials || resolveDeploymentCredentials())
   }
 }
 

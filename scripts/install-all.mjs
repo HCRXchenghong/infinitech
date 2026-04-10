@@ -312,8 +312,10 @@ function buildAllowedOrigins(publicDomain, adminDomain) {
   const origins = new Set([
     'http://127.0.0.1:8888',
     'http://localhost:8888',
-    'http://127.0.0.1:8080',
-    'http://localhost:8080',
+    'http://127.0.0.1:1788',
+    'http://localhost:1788',
+    'http://127.0.0.1:1798',
+    'http://localhost:1798',
   ])
 
   for (const domain of domains) {
@@ -578,18 +580,29 @@ function normalizeProxyConfig(config) {
 
 function writeRuntimeEnv(profileKey, deployMode) {
   const mirrorEnv = buildMirrorEnv(profileKey)
+  const fixedPortEnv = {
+    ADMIN_WEB_HOST_PORT: '8888',
+    INVITE_WEB_HOST_PORT: '1788',
+    DOWNLOAD_WEB_HOST_PORT: '1798',
+    ADMIN_WEB_BASE_URL: 'http://127.0.0.1:8888',
+    DOWNLOAD_WEB_BASE_URL: 'http://127.0.0.1:1798',
+    PUBLIC_LANDING_BASE_URL: 'http://127.0.0.1:1788',
+    ONBOARDING_INVITE_BASE_URL: 'http://127.0.0.1:1788',
+    COUPON_CLAIM_LINK_BASE_URL: 'http://127.0.0.1:1788',
+    ALLOWED_ORIGINS: buildAllowedOrigins('', ''),
+  }
   const extraEnv = deployMode.withProxy
     ? {
         PUBLIC_DOMAIN: deployMode.publicDomain,
         ADMIN_DOMAIN: deployMode.adminDomain,
         CADDY_EMAIL: deployMode.caddyEmail,
-        ADMIN_WEB_BASE_URL: `https://${deployMode.adminDomain}`,
         ALLOWED_ORIGINS: buildAllowedOrigins(deployMode.publicDomain, deployMode.adminDomain),
       }
     : {}
 
   return writeEnvFile(deployEnvFile, {
     ...mirrorEnv,
+    ...fixedPortEnv,
     ...extraEnv,
   })
 }

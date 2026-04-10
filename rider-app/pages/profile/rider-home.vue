@@ -56,9 +56,37 @@
 <script lang="ts">
 import Vue from 'vue'
 import { getRiderRank, getRankList } from '../../shared-ui/api'
+import { getCachedPlatformRuntimeSettings, loadPlatformRuntimeSettings } from '../../shared-ui/platform-runtime'
+
+const DEFAULT_RANK_CONFIG = {
+  1: { name: '青铜骑士', icon: '🥉', desc: '新手上路', progressTemplate: '累计{{totalOrders}}/100单，升级白银骑士' },
+  2: { name: '白银骑士', icon: '🥈', desc: '稳定履约', progressTemplate: '累计{{totalOrders}}/300单，升级黄金骑士' },
+  3: { name: '黄金骑士', icon: '🥇', desc: '高频骑手', progressTemplate: '本周{{weekOrders}}/100单，升级钻石骑士' },
+  4: { name: '钻石骑士', icon: '💎', desc: '高质量履约', progressTemplate: '本周{{weekOrders}}/150单，升级王者骑士' },
+  5: { name: '王者骑士', icon: '👑', desc: '稳定冲榜', progressTemplate: '保持高评分与连续周表现，升级传奇骑士' },
+  6: { name: '传奇骑士', icon: '🌟', desc: '平台顶尖骑手', progressTemplate: '保持传奇骑士段位' }
+}
+
+function buildRankConfig(levels: any[] = []) {
+  const source = Array.isArray(levels) && levels.length ? levels : []
+  const nextConfig: Record<number, any> = {}
+  source.forEach((item, index) => {
+    const level = Number(item?.level || index + 1)
+    if (!level) return
+    const fallback = DEFAULT_RANK_CONFIG[level] || DEFAULT_RANK_CONFIG[1]
+    nextConfig[level] = {
+      name: String(item?.name || fallback.name),
+      icon: String(item?.icon || fallback.icon),
+      desc: String(item?.desc || fallback.desc),
+      progressTemplate: String(item?.progress_template || fallback.progressTemplate)
+    }
+  })
+  return Object.keys(nextConfig).length ? nextConfig : { ...DEFAULT_RANK_CONFIG }
+}
 
 export default Vue.extend({
   data() {
+    const cachedRuntime = getCachedPlatformRuntimeSettings()
     return {
       activeTab: 'day',
       riderData: {
@@ -69,14 +97,7 @@ export default Vue.extend({
         rating: 5,
         ratingCount: 0
       },
-      rankConfig: {
-        1: { name: '青铜骑士', icon: '🥉', desc: '新手上路' },
-        2: { name: '白银骑士', icon: '🥈', desc: '累计100单' },
-        3: { name: '黄金骑士', icon: '🥇', desc: '周100单' },
-        4: { name: '钻石骑士', icon: '💎', desc: '周150单' },
-        5: { name: '王者骑士', icon: '👑', desc: '连续3周钻石' },
-        6: { name: '传奇大佬', icon: '🌟', desc: '王者无售后' }
-      },
+      rankConfig: buildRankConfig(cachedRuntime?.riderRankSettings?.levels),
       rankList: []
     }
   },
@@ -94,16 +115,11 @@ export default Vue.extend({
       return 100
     },
     progressText() {
-      const { level, totalOrders, weekOrders } = this.riderData
-      if (level === 1) return `累计${totalOrders}/100单，升级白银`
-      if (level === 2) return `累计${totalOrders}/100单`
-      if (level === 3) return `本周${weekOrders}/100单`
-      if (level === 4) return `本周${weekOrders}/150单`
-      if (level === 5) return '保持王者段位'
-      return '传奇大佬'
+      return this.renderProgressText()
     }
   },
   onLoad() {
+    this.loadRuntimeConfig()
     this.loadRiderData()
     this.loadRankList()
   },
@@ -115,6 +131,31 @@ export default Vue.extend({
     rankName(level: any) {
       const key = this.toNumber(level, 1)
       return (this.rankConfig as any)[key]?.name || (this.rankConfig as any)[1].name
+    },
+    renderProgressText() {
+      const { level, totalOrders, weekOrders } = this.riderData
+      const current = (this.rankConfig as any)[this.toNumber(level, 1)] || (this.rankConfig as any)[1]
+      const template = String(current?.progressTemplate || '').trim()
+      if (template) {
+        return template
+          .replace(/\{\{\s*totalOrders\s*\}\}/g, String(totalOrders || 0))
+          .replace(/\{\{\s*weekOrders\s*\}\}/g, String(weekOrders || 0))
+      }
+      if (level === 1) return `累计${totalOrders}/100单，升级白银骑士`
+      if (level === 2) return `累计${totalOrders}/300单，升级黄金骑士`
+      if (level === 3) return `本周${weekOrders}/100单，升级钻石骑士`
+      if (level === 4) return `本周${weekOrders}/150单，升级王者骑士`
+      if (level === 5) return '保持王者骑士段位'
+      return '保持传奇骑士段位'
+    },
+    async loadRuntimeConfig() {
+      try {
+        const runtime = await loadPlatformRuntimeSettings()
+        this.rankConfig = buildRankConfig(runtime?.riderRankSettings?.levels)
+      } catch (error) {
+        console.error('加载骑手等级 runtime 失败:', error)
+        this.rankConfig = buildRankConfig()
+      }
     },
     async loadRiderData() {
       try {

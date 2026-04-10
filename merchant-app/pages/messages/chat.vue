@@ -64,6 +64,9 @@ import { fetchHistory, markConversationRead, upsertConversation } from '@/shared
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/shared-ui/support-runtime'
 import { getMerchantId, getMerchantProfile } from '@/shared-ui/merchantContext'
 
+const SOCKET_TOKEN_KEY = 'socket_token'
+const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key'
+
 type ChatRole = 'user' | 'rider' | 'admin'
 
 interface ViewMessage {
@@ -305,12 +308,30 @@ function buildSocketAuthHeader() {
   }
 }
 
+function buildSocketTokenAccountKey(userId: string, role: string) {
+  const normalizedUserId = String(userId || '').trim()
+  const normalizedRole = String(role || '').trim().toLowerCase()
+  if (!normalizedUserId || !normalizedRole) return ''
+  return `${normalizedRole}:${normalizedUserId}`
+}
+
+function clearCachedSocketToken() {
+  uni.removeStorageSync(SOCKET_TOKEN_KEY)
+  uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
+}
+
 async function fetchSocketToken() {
-  let token = uni.getStorageSync('socket_token')
-  if (token) return String(token)
+  const accountKey = buildSocketTokenAccountKey(merchantId.value, 'merchant')
+  const cachedToken = String(uni.getStorageSync(SOCKET_TOKEN_KEY) || '').trim()
+  const cachedAccountKey = String(uni.getStorageSync(SOCKET_TOKEN_ACCOUNT_KEY) || '').trim()
+  if (cachedToken && cachedAccountKey === accountKey) return cachedToken
+  if (cachedToken && cachedAccountKey !== accountKey) {
+    clearCachedSocketToken()
+  }
 
   const authHeader = buildSocketAuthHeader()
   if (!authHeader.Authorization) {
+    clearCachedSocketToken()
     throw new Error('请先登录后再连接聊天')
   }
 
@@ -326,9 +347,10 @@ async function fetchSocketToken() {
   })
 
   const payload = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
-  token = payload?.token || ''
+  const token = payload?.token || ''
   if (!token) throw new Error('获取 socket token 失败')
-  uni.setStorageSync('socket_token', token)
+  uni.setStorageSync(SOCKET_TOKEN_KEY, token)
+  uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, accountKey)
   return String(token)
 }
 
@@ -395,14 +417,14 @@ function connectSocket(token: string) {
   sock.on('connect_error', (err: any) => {
     isConnected.value = false
     if (/认证失败|auth/i.test(String(err?.message || ''))) {
-      uni.removeStorageSync('socket_token')
+      clearCachedSocketToken()
     }
     scheduleReconnect()
   })
 
   sock.on('auth_error', () => {
     isConnected.value = false
-    uni.removeStorageSync('socket_token')
+    clearCachedSocketToken()
     scheduleReconnect()
   })
 

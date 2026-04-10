@@ -1,19 +1,20 @@
 const {
-  INVITE_RUNTIME_PORT,
   extractSourcePort,
+  getPublicRuntimeGuardMessage,
+  isPublicRuntimeAllowedApiRequest,
+  isPublicRuntimePort,
   normalizeRequestPath,
-  isInviteRuntimeAllowedApiRequest,
 } = require("../utils/requestMeta");
 
 function createInviteRuntimeGuard({ logger }) {
   return function inviteRuntimeGuard(req, res, next) {
     const sourcePort = extractSourcePort(req);
-    if (sourcePort !== INVITE_RUNTIME_PORT) {
+    if (!isPublicRuntimePort(sourcePort)) {
       next();
       return;
     }
 
-    if (isInviteRuntimeAllowedApiRequest(req.method, req.path)) {
+    if (isPublicRuntimeAllowedApiRequest(sourcePort, req.method, req.path)) {
       next();
       return;
     }
@@ -27,7 +28,7 @@ function createInviteRuntimeGuard({ logger }) {
     });
     res.status(403).json({
       success: false,
-      error: "1788 仅开放邀请页相关接口"
+      error: getPublicRuntimeGuardMessage(sourcePort)
     });
   };
 }

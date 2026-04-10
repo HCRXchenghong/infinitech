@@ -47,7 +47,18 @@
                 {{ selectedChat.phone }}
               </div>
             </div>
-            <el-button size="small" type="danger" @click="clearMessages" :loading="clearingMessages">清空聊天记录</el-button>
+            <div class="chat-header-actions">
+              <el-button
+                size="small"
+                type="primary"
+                plain
+                :disabled="!canStartRTC"
+                @click="startRTC"
+              >
+                RTC 语音
+              </el-button>
+              <el-button size="small" type="danger" @click="clearMessages" :loading="clearingMessages">清空聊天记录</el-button>
+            </div>
           </div>
 
           <div class="chat-messages" ref="messagesContainer">
@@ -155,8 +166,11 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { Picture, Ticket } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { getCurrentAdminSocketIdentity } from '@/utils/runtime';
+import { canStartAdminRTCCall, startAdminRTCCall } from '@/utils/adminRtc';
 import { useChatConsole } from './useChatConsole';
 
 const {
@@ -193,7 +207,7 @@ const {
 } = useChatConsole({
   namespace: '/monitor',
   beforeInitLoad: (socket) => {
-    socket.emit('join_monitor', { userId: 'admin' });
+    socket.emit('join_monitor', { userId: getCurrentAdminSocketIdentity()?.userId || '' });
   },
   defaultChatName: (data) => `聊天 #${data.chatId}`,
   awaitIncomingSave: true,
@@ -247,6 +261,29 @@ const {
     }
   }
 });
+
+const canStartRTC = computed(() => {
+  return canStartAdminRTCCall(selectedChat.value || {});
+});
+
+async function startRTC() {
+  if (!selectedChat.value) return;
+
+  try {
+    await startAdminRTCCall({
+      chatId: selectedChat.value.id,
+      role: selectedChat.value.role,
+      targetId: selectedChat.value.targetId,
+      phone: selectedChat.value.phone,
+      name: selectedChat.value.name,
+      orderId: selectedChat.value.orderId,
+      entryPoint: 'admin_monitor_chat',
+      scene: 'admin_monitor',
+    });
+  } catch (error) {
+    ElMessage.error(error?.message || '发起 RTC 通话失败');
+  }
+}
 </script>
 
 <style scoped lang="css" src="./MonitorChat.css"></style>

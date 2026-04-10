@@ -67,6 +67,9 @@ export const MENU_GROUPS = [
         name: '活动与投放',
         children: [
           { path: '/operations-center', name: '运营管理' },
+          { path: '/home-entry-settings', name: '首页入口配置' },
+          { path: '/errand-settings', name: '跑腿配置' },
+          { path: '/dining-buddy-governance', name: '同频饭友治理' },
           { path: '/featured-products', name: '今日推荐' },
           { path: '/home-campaigns', name: '首页推广' },
           { path: '/coupon-management', name: '优惠券管理' },
@@ -129,9 +132,11 @@ export const MENU_GROUPS = [
     sections: [
       {
         id: 'system-settings',
-        name: '基础配置',
+        name: '基础与平台配置',
         children: [
           { path: '/settings', name: '系统设置' },
+          { path: '/merchant-taxonomy-settings', name: '商户业务字典' },
+          { path: '/rider-rank-settings', name: '骑手等级配置' },
           { path: '/data-management', name: '数据管理' },
         ],
       },

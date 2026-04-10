@@ -69,14 +69,22 @@ function buildIncomingCallUrl(payload) {
 }
 
 let inviteBridgeSocket = null
+const SOCKET_TOKEN_KEY = 'socket_token'
+const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key'
 
 async function ensureSocketToken() {
-  const cached = trimValue(uni.getStorageSync('socket_token'))
-  if (cached) return cached
-
   const userId = resolveCurrentUserId()
   if (!userId) {
     throw new Error('missing current user id')
+  }
+
+  const accountKey = `user:${userId}`
+  const cached = trimValue(uni.getStorageSync(SOCKET_TOKEN_KEY))
+  const cachedAccountKey = trimValue(uni.getStorageSync(SOCKET_TOKEN_ACCOUNT_KEY))
+  if (cached && cachedAccountKey === accountKey) return cached
+  if (cached && cachedAccountKey !== accountKey) {
+    uni.removeStorageSync(SOCKET_TOKEN_KEY)
+    uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
   }
 
   const res = await new Promise((resolve, reject) => {
@@ -95,7 +103,8 @@ async function ensureSocketToken() {
   if (!token) {
     throw new Error('failed to generate socket token')
   }
-  uni.setStorageSync('socket_token', token)
+  uni.setStorageSync(SOCKET_TOKEN_KEY, token)
+  uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, accountKey)
   return token
 }
 

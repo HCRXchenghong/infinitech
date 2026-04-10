@@ -90,6 +90,14 @@ exports.getAvailableOrders = async (req, res, next) => {
   await proxyGet(req, res, next, '/riders/orders/available', withRiderProxyOptions());
 };
 
+exports.getRiderPreferences = async (req, res, next) => {
+  await proxyGet(req, res, next, '/rider/preferences', withRiderProxyOptions());
+};
+
+exports.updateRiderPreferences = async (req, res, next) => {
+  await proxyPost(req, res, next, '/rider/preferences', withRiderProxyOptions());
+};
+
 // 更新头像
 exports.updateAvatar = async (req, res, next) => {
   const { riderId } = req.params;

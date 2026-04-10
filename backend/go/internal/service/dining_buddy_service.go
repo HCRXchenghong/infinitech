@@ -42,6 +42,7 @@ type DiningBuddyPartyView struct {
 	Category    string `json:"category"`
 	Title       string `json:"title"`
 	Host        string `json:"host"`
+	HostUserID  string `json:"hostUserId,omitempty"`
 	HostAvatar  string `json:"hostAvatar,omitempty"`
 	Location    string `json:"location"`
 	Time        string `json:"time"`
@@ -55,12 +56,13 @@ type DiningBuddyPartyView struct {
 }
 
 type DiningBuddyMessageView struct {
-	ID         string `json:"id"`
-	TSID       string `json:"tsid,omitempty"`
-	Sender     string `json:"sender"`
-	SenderName string `json:"senderName,omitempty"`
-	Text       string `json:"text"`
-	Time       string `json:"time"`
+	ID           string `json:"id"`
+	TSID         string `json:"tsid,omitempty"`
+	Sender       string `json:"sender"`
+	SenderUserID string `json:"senderUserId,omitempty"`
+	SenderName   string `json:"senderName,omitempty"`
+	Text         string `json:"text"`
+	Time         string `json:"time"`
 }
 
 type diningBuddyUserSummary struct {
@@ -78,6 +80,11 @@ func (s *DiningBuddyService) ListParties(ctx context.Context, viewerUserID uint,
 	if s.db == nil {
 		return []DiningBuddyPartyView{}, nil
 	}
+	if err := s.ensureDiningBuddyFeatureEnabled(ctx); err != nil {
+		return nil, err
+	}
+
+	settings := s.loadDiningBuddySettings(ctx)
 
 	if limit <= 0 {
 		limit = 50
@@ -105,7 +112,11 @@ func (s *DiningBuddyService) ListParties(ctx context.Context, viewerUserID uint,
 
 	result := make([]DiningBuddyPartyView, 0, len(parties))
 	for _, party := range parties {
-		result = append(result, buildDiningBuddyPartyView(&party, viewerUserID))
+		view := buildDiningBuddyPartyView(&party, viewerUserID)
+		categorySettings, ok := FindDiningBuddyCategory(settings, view.Category)
+		if ok && (categorySettings.Enabled || view.Joined) {
+			result = append(result, view)
+		}
 	}
 	return result, nil
 }
@@ -122,9 +133,18 @@ func (s *DiningBuddyService) CreateParty(ctx context.Context, viewerUserID uint,
 	if err != nil {
 		return nil, err
 	}
-
-	normalized, err := validateDiningBuddyCreateInput(input)
+	settings := s.loadDiningBuddySettings(ctx)
+	normalized, err := validateDiningBuddyCreateInput(input, settings)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureDiningBuddyJoinable(ctx, viewerUserID, normalized.Category); err != nil {
+		return nil, err
+	}
+	if err := s.ensureDiningBuddyPublishLimit(ctx, viewerUserID, settings); err != nil {
+		return nil, err
+	}
+	if err := s.validateDiningBuddyContentAgainstSensitiveWords(ctx, strings.Join([]string{normalized.Title, normalized.Location, normalized.Description}, " ")); err != nil {
 		return nil, err
 	}
 
@@ -203,6 +223,9 @@ func (s *DiningBuddyService) JoinParty(ctx context.Context, viewerUserID uint, p
 		loadedParty, loadErr := s.resolveDiningBuddyParty(ctx, tx, partyID)
 		if loadErr != nil {
 			return loadErr
+		}
+		if err := s.ensureDiningBuddyJoinableWithDB(ctx, tx, viewerUserID, loadedParty.Category); err != nil {
+			return err
 		}
 		if strings.EqualFold(strings.TrimSpace(loadedParty.Status), diningBuddyStatusClosed) {
 			return fmt.Errorf("%w: party is closed", ErrForbidden)
@@ -285,6 +308,9 @@ func (s *DiningBuddyService) ListMessages(ctx context.Context, viewerUserID uint
 	if s.db == nil {
 		return []DiningBuddyMessageView{}, nil
 	}
+	if err := s.ensureDiningBuddyFeatureEnabled(ctx); err != nil {
+		return nil, err
+	}
 	if viewerUserID == 0 {
 		return nil, fmt.Errorf("%w: missing current user", ErrUnauthorized)
 	}
@@ -333,6 +359,7 @@ func (s *DiningBuddyService) SendMessage(ctx context.Context, viewerUserID uint,
 	if err != nil {
 		return nil, err
 	}
+	settings := s.loadDiningBuddySettings(ctx)
 
 	var created repository.DiningBuddyMessage
 	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -340,7 +367,16 @@ func (s *DiningBuddyService) SendMessage(ctx context.Context, viewerUserID uint,
 		if partyErr != nil {
 			return partyErr
 		}
+		if err := s.ensureDiningBuddySendableWithDB(ctx, tx, viewerUserID, party); err != nil {
+			return err
+		}
 		if err := s.ensureDiningBuddyMember(ctx, tx, party.ID, actor.ID); err != nil {
+			return err
+		}
+		if err := s.ensureDiningBuddyMessageLimitWithDB(ctx, tx, viewerUserID, settings); err != nil {
+			return err
+		}
+		if err := s.validateDiningBuddyContentAgainstSensitiveWordsWithDB(ctx, tx, content); err != nil {
 			return err
 		}
 
@@ -379,7 +415,7 @@ func (s *DiningBuddyService) SendMessage(ctx context.Context, viewerUserID uint,
 	return &view, nil
 }
 
-func validateDiningBuddyCreateInput(input DiningBuddyCreatePartyInput) (DiningBuddyCreatePartyInput, error) {
+func validateDiningBuddyCreateInput(input DiningBuddyCreatePartyInput, settings DiningBuddySettings) (DiningBuddyCreatePartyInput, error) {
 	normalized := DiningBuddyCreatePartyInput{
 		Category:    "food",
 		Title:       strings.TrimSpace(input.Title),
@@ -410,10 +446,10 @@ func validateDiningBuddyCreateInput(input DiningBuddyCreatePartyInput) (DiningBu
 		return normalized, fmt.Errorf("description too long")
 	}
 	if normalized.MaxPeople < 2 {
-		normalized.MaxPeople = 2
+		normalized.MaxPeople = settings.DefaultMaxPeople
 	}
-	if normalized.MaxPeople > 6 {
-		normalized.MaxPeople = 6
+	if normalized.MaxPeople > settings.MaxMaxPeople {
+		normalized.MaxPeople = settings.MaxMaxPeople
 	}
 	return normalized, nil
 }
@@ -569,6 +605,7 @@ func buildDiningBuddyPartyView(party *repository.DiningBuddyParty, viewerUserID 
 		Category:    party.Category,
 		Title:       party.Title,
 		Host:        firstNonEmpty(strings.TrimSpace(party.HostName), "匿名用户"),
+		HostUserID:  firstNonEmpty(strings.TrimSpace(party.HostUserUID), fmt.Sprintf("%d", party.HostUserID)),
 		HostAvatar:  strings.TrimSpace(party.HostAvatar),
 		Location:    party.Location,
 		Time:        displayDiningBuddyPartyTime(party),
@@ -591,12 +628,13 @@ func buildDiningBuddyMessageView(message *repository.DiningBuddyMessage, viewerU
 	}
 
 	return DiningBuddyMessageView{
-		ID:         publicDiningBuddyMessageID(message),
-		TSID:       strings.TrimSpace(message.TSID),
-		Sender:     sender,
-		SenderName: strings.TrimSpace(message.SenderName),
-		Text:       strings.TrimSpace(message.Content),
-		Time:       formatClock(message.CreatedAt),
+		ID:           publicDiningBuddyMessageID(message),
+		TSID:         strings.TrimSpace(message.TSID),
+		Sender:       sender,
+		SenderUserID: firstNonEmpty(strings.TrimSpace(message.SenderUserUID), fmt.Sprintf("%d", message.SenderUserID)),
+		SenderName:   strings.TrimSpace(message.SenderName),
+		Text:         strings.TrimSpace(message.Content),
+		Time:         formatClock(message.CreatedAt),
 	}
 }
 

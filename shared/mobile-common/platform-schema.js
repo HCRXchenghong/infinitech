@@ -9,6 +9,21 @@ export const BUSINESS_CATEGORY_OPTIONS = [
   '生活服务',
 ]
 
+export const MERCHANT_TYPE_OPTION_DETAILS = [
+  { key: 'takeout', label: '外卖', aliases: ['外卖', '外卖类'] },
+  { key: 'groupbuy', label: '团购', aliases: ['团购', '团购类', '到店团购'] },
+  { key: 'hybrid', label: '混合', aliases: ['混合', '混合类'] },
+]
+
+export const BUSINESS_CATEGORY_OPTION_DETAILS = [
+  { key: 'food', label: '美食', aliases: ['美食'] },
+  { key: 'groupbuy', label: '团购', aliases: ['团购'] },
+  { key: 'dessert_drinks', label: '甜点饮品', aliases: ['甜点饮品'] },
+  { key: 'supermarket_convenience', label: '超市便利', aliases: ['超市便利'] },
+  { key: 'leisure_entertainment', label: '休闲娱乐', aliases: ['休闲娱乐', '休闲玩乐'] },
+  { key: 'life_services', label: '生活服务', aliases: ['生活服务'] },
+]
+
 const GROUPBUY_STATUSES = new Set([
   'pending_payment',
   'paid_unused',
@@ -74,9 +89,106 @@ export function merchantTypeFromOrderType(value) {
   return normalizeMerchantType(value)
 }
 
-export function normalizeBusinessCategory(value) {
-  const category = normalizeText(value)
-  return BUSINESS_CATEGORY_OPTIONS.includes(category) ? category : BUSINESS_CATEGORY_OPTIONS[0]
+function normalizeAliasList(value) {
+  return (Array.isArray(value) ? value : [])
+    .map((item) => normalizeText(item))
+    .filter(Boolean)
+}
+
+function normalizeTaxonomyOptions(source, fallbackItems) {
+  const items = Array.isArray(source) && source.length ? source : fallbackItems
+  return items
+    .map((item, index) => {
+      const sourceItem = item && typeof item === 'object' ? item : {}
+      const fallback = fallbackItems.find((candidate) => normalizeText(candidate.key) === normalizeText(sourceItem.key)) || {}
+      return {
+        key: normalizeText(sourceItem.key || fallback.key),
+        label: normalizeText(sourceItem.label || fallback.label),
+        enabled: sourceItem.enabled !== false,
+        sort_order: Number(sourceItem.sort_order || fallback.sort_order || (index + 1) * 10),
+        aliases: normalizeAliasList(sourceItem.aliases).length
+          ? normalizeAliasList(sourceItem.aliases)
+          : normalizeAliasList(fallback.aliases)
+      }
+    })
+    .filter((item) => item.key && item.label)
+    .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
+}
+
+function legacyOrderTypeLabelForKey(key) {
+  const normalized = normalizeText(key).toLowerCase()
+  if (normalized === 'groupbuy') return '团购类'
+  if (normalized === 'hybrid') return '混合类'
+  return '外卖类'
+}
+
+export function buildMerchantTypeOptions(taxonomySettings = null) {
+  const runtimeSettings = taxonomySettings && typeof taxonomySettings === 'object' ? taxonomySettings : {}
+  const source = normalizeTaxonomyOptions(runtimeSettings.merchant_types, MERCHANT_TYPE_OPTION_DETAILS)
+  return source
+    .filter((item) => item.enabled !== false)
+    .map((item) => {
+      const orderTypeLabel = item.label.endsWith('类') ? item.label : `${item.label}类`
+      const legacyOrderTypeLabel = legacyOrderTypeLabelForKey(item.key)
+      return {
+        ...item,
+        orderTypeLabel,
+        legacyOrderTypeLabel,
+        matchValues: [
+          item.key,
+          item.label,
+          orderTypeLabel,
+          legacyOrderTypeLabel,
+          ...normalizeAliasList(item.aliases)
+        ].map((entry) => normalizeText(entry).toLowerCase())
+      }
+    })
+}
+
+export function buildBusinessCategoryOptions(taxonomySettings = null) {
+  const runtimeSettings = taxonomySettings && typeof taxonomySettings === 'object' ? taxonomySettings : {}
+  return normalizeTaxonomyOptions(runtimeSettings.business_categories, BUSINESS_CATEGORY_OPTION_DETAILS)
+    .filter((item) => item.enabled !== false)
+    .map((item) => ({
+      ...item,
+      matchValues: [
+        item.key,
+        item.label,
+        ...normalizeAliasList(item.aliases)
+      ].map((entry) => normalizeText(entry).toLowerCase())
+    }))
+}
+
+export function resolveMerchantTypeOption(value, taxonomySettings = null) {
+  const normalizedValue = normalizeText(value).toLowerCase()
+  const options = buildMerchantTypeOptions(taxonomySettings)
+  return options.find((item) => item.matchValues.includes(normalizedValue)) || options[0] || {
+    ...MERCHANT_TYPE_OPTION_DETAILS[0],
+    orderTypeLabel: ORDER_TYPE_OPTIONS[0],
+    legacyOrderTypeLabel: ORDER_TYPE_OPTIONS[0],
+    matchValues: []
+  }
+}
+
+export function resolveBusinessCategoryOption(value, taxonomySettings = null) {
+  const normalizedValue = normalizeText(value).toLowerCase()
+  const options = buildBusinessCategoryOptions(taxonomySettings)
+  return options.find((item) => item.matchValues.includes(normalizedValue)) || options[0] || {
+    ...BUSINESS_CATEGORY_OPTION_DETAILS[0],
+    matchValues: []
+  }
+}
+
+export function normalizeBusinessCategoryKey(value, taxonomySettings = null) {
+  return resolveBusinessCategoryOption(value, taxonomySettings).key
+}
+
+export function getBusinessCategoryLabelByKey(value, taxonomySettings = null) {
+  return resolveBusinessCategoryOption(value, taxonomySettings).label
+}
+
+export function normalizeBusinessCategory(value, taxonomySettings = null) {
+  return resolveBusinessCategoryOption(value, taxonomySettings).label
 }
 
 export function normalizeOrderStatus(status, bizType = 'takeout', options = {}) {
@@ -311,15 +423,16 @@ export function normalizeFeaturedProductProjection(item = {}) {
 }
 
 export function normalizeOrderListItem(order = {}) {
+  const shop = order.shop && typeof order.shop === 'object' ? order.shop : {}
   const bizType = normalizeBizType(order.bizType || order.biz_type)
   const status = normalizeOrderStatus(order.status, bizType)
   const { productList, itemCount } = parseOrderProductList(order)
 
   return {
     id: order.id || order.daily_order_id,
-    shopId: order.shopId || order.shop_id || order.shop?.id || '',
-    shopName: order.shopName || order.shop_name || order.shop?.name || '未知商家',
-    shopLogo: order.shopLogo || order.shop?.logo || '/static/images/default-shop.svg',
+    shopId: order.shopId || order.shop_id || shop.id || '',
+    shopName: order.shopName || order.shop_name || shop.name || '未知商家',
+    shopLogo: order.shopLogo || shop.logo || '/static/images/default-shop.svg',
     bizType,
     status,
     statusClass: getOrderStatusClass(status, bizType),

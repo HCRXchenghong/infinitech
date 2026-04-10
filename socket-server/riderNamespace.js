@@ -239,6 +239,14 @@ export function setupRiderNamespace({
     logger.info('Rider connected:', socket.userId, 'Role:', socket.userRole);
     addOnlineUser(socket.id, socket.userId, socket.userRole);
 
+    const normalizedRole = String(socket.userRole || '').trim().toLowerCase();
+    const normalizedUserId = String(socket.userId || '').trim();
+    if (normalizedUserId && ['rider', 'merchant', 'user'].includes(normalizedRole)) {
+      const personalRoom = `${normalizedRole}_${normalizedUserId}`;
+      socket.join(personalRoom);
+      logger.info(`${normalizedRole} ${normalizedUserId} joined room ${personalRoom}`);
+    }
+
     socket.on('join_rider', () => {
       if (!ensureSocketRole(socket, 'rider', 'join_rider')) {
         return;

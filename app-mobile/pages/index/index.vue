@@ -44,13 +44,14 @@ import FeaturedSection from '@/components/FeaturedSection.vue'
 import HomeShopCard from '@/components/HomeShopCard.vue'
 import LocationModal from '@/components/LocationModal.vue'
 import WeatherModal from '@/components/WeatherModal.vue'
-import { fetchWeather, fetchHomeFeed, fetchShopCategories } from '@/shared-ui/api.js'
+import { fetchWeather, fetchHomeFeed } from '@/shared-ui/api.js'
 import { getCurrentLocation } from '@/shared-ui/location.js'
 import {
   normalizeFeaturedProductProjection,
   normalizeShopProjection,
 } from '@/shared-ui/platform-schema.js'
 import { buildHomeCategories } from '@/shared-ui/home-categories.js'
+import { buildHomeCategoriesForClient, loadPlatformRuntimeSettings } from '@/shared-ui/platform-runtime.js'
 
 function normalizeSelectedAddress(value) {
   if (!value) return ''
@@ -200,40 +201,61 @@ export default {
       this.closeLocationModal()
     },
     goCategory(cat) {
-      if (!cat || !cat.name) {
+      if (!cat || !(cat.name || cat.label)) {
         uni.showToast({ title: '分类信息错误', icon: 'none' })
         return
       }
+      const routeType = String(cat.routeType || cat.route_type || '').trim()
+      const routeValue = String(cat.routeValue || cat.route_value || '').trim()
+      const label = String(cat.label || cat.name || '').trim()
 
-      if (cat.name === '跑腿代购') {
-        uni.navigateTo({ url: '/pages/errand/home/index' })
-        return
-      }
-      if (cat.name === '看病买药') {
-        uni.navigateTo({ url: '/pages/medicine/home' })
-        return
-      }
-      if (cat.name === '同频饭友') {
-        uni.navigateTo({ url: '/pages/dining-buddy/index' })
-        return
-      }
-      if (cat.name === '悦享公益') {
-        uni.navigateTo({ url: '/pages/charity/index' })
-        return
-      }
-
-      const directMap = {
-        美食: '/pages/category/food/index',
-        甜点饮品: '/pages/category/dessert/index',
-        超市便利: '/pages/category/market/index',
-      }
-      const direct = directMap[cat.name]
-      if (direct) {
-        uni.navigateTo({ url: direct })
-        return
+      if (routeType === 'feature') {
+        const featureRoutes = {
+          errand: '/pages/errand/home/index',
+          medicine: '/pages/medicine/home',
+          dining_buddy: '/pages/dining-buddy/index',
+          charity: '/pages/charity/index'
+        }
+        const target = featureRoutes[routeValue]
+        if (target) {
+          uni.navigateTo({ url: target })
+          return
+        }
       }
 
-      uni.navigateTo({ url: `/pages/category/index/index?category=${encodeURIComponent(cat.name)}` })
+      if (routeType === 'category') {
+        const categoryRoutes = {
+          food: '/pages/category/food/index',
+          groupbuy: '/pages/category/index/index?category=团购',
+          dessert_drinks: '/pages/category/dessert/index',
+          supermarket_convenience: '/pages/category/market/index',
+          leisure_entertainment: '/pages/category/index/index?category=休闲娱乐',
+          life_services: '/pages/category/index/index?category=生活服务'
+        }
+        const target = categoryRoutes[routeValue]
+        if (target) {
+          uni.navigateTo({ url: target })
+          return
+        }
+      }
+
+      if (routeType === 'page' && routeValue) {
+        uni.navigateTo({ url: routeValue })
+        return
+      }
+
+      if (routeType === 'external' && routeValue) {
+        if (typeof window !== 'undefined' && typeof window.open === 'function') {
+          window.open(routeValue, '_blank')
+          return
+        }
+        if (typeof plus !== 'undefined' && plus?.runtime?.openURL) {
+          plus.runtime.openURL(routeValue)
+          return
+        }
+      }
+
+      uni.navigateTo({ url: `/pages/category/index/index?category=${encodeURIComponent(label)}` })
     },
     goProductDetail(item) {
       if (!item || !item.id) {
@@ -276,13 +298,14 @@ export default {
     },
     async loadCategories() {
       try {
-        const data = await fetchShopCategories()
-        if (Array.isArray(data) && data.length > 0) {
-          this.categories = buildHomeCategories(data)
+        const runtime = await loadPlatformRuntimeSettings()
+        const categories = buildHomeCategoriesForClient(runtime, 'app-mobile')
+        if (Array.isArray(categories) && categories.length > 0) {
+          this.categories = buildHomeCategories(categories)
           return
         }
       } catch (error) {
-        console.error('加载首页分类失败:', error)
+        console.error('加载首页入口失败:', error)
       }
 
       this.categories = buildHomeCategories()

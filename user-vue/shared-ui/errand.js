@@ -161,9 +161,20 @@ export function mapErrandOrderDetail(order = {}) {
     serviceType === 'errand_do' ? '' : order.address
   )
   const item = pickText(order.items, request.itemDescription, request.taskDescription, meta.name)
-  const amount = Math.max(0, toNumber(request.estimatedAmount, toNumber(order.productPrice ?? order.product_price, 0)))
-  const deliveryFee = Math.max(0, toNumber(order.deliveryFee ?? order.delivery_fee))
-  const totalPrice = Math.max(0, toNumber(order.totalPrice ?? order.total_price ?? order.price))
+  const productPrice = order.productPrice !== undefined && order.productPrice !== null
+    ? order.productPrice
+    : order.product_price
+  const deliveryFeeValue = order.deliveryFee !== undefined && order.deliveryFee !== null
+    ? order.deliveryFee
+    : order.delivery_fee
+  const totalPriceValue = order.totalPrice !== undefined && order.totalPrice !== null
+    ? order.totalPrice
+    : order.total_price !== undefined && order.total_price !== null
+      ? order.total_price
+      : order.price
+  const amount = Math.max(0, toNumber(request.estimatedAmount, toNumber(productPrice, 0)))
+  const deliveryFee = Math.max(0, toNumber(deliveryFeeValue))
+  const totalPrice = Math.max(0, toNumber(totalPriceValue))
   const preferredTime = pickText(
     requirements.preferredTime,
     order.preferredTime,

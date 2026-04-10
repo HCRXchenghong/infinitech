@@ -87,6 +87,7 @@ type Shop struct {
 	OrderType              string     `gorm:"size:20;default:'外卖类'" json:"orderType"`
 	MerchantType           string     `gorm:"size:20;default:'takeout';index" json:"merchantType"`
 	BusinessCategory       string     `gorm:"size:50;default:'美食'" json:"businessCategory"`
+	BusinessCategoryKey    string     `gorm:"size:64;default:'food';index" json:"businessCategoryKey"`
 	CoverImage             string     `gorm:"size:500" json:"coverImage"`
 	BackgroundImage        string     `gorm:"size:500" json:"backgroundImage"`
 	Logo                   string     `gorm:"size:500" json:"logo"`

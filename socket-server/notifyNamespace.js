@@ -13,8 +13,8 @@ function buildNotifyRoom(role, userId) {
   const normalizedRole = normalizeNotifyRole(role);
   const normalizedUserId = String(userId || '').trim();
   if (!normalizedRole) return '';
-  if (normalizedRole === 'admin' && (normalizedUserId === '*' || normalizedUserId === 'all')) {
-    return 'admin_all';
+  if (normalizedUserId === '*' || normalizedUserId === 'all') {
+    return `${normalizedRole}_all`;
   }
   if (!normalizedUserId) return '';
   return `${normalizedRole}_${normalizedUserId}`;
@@ -55,8 +55,9 @@ export function setupNotifyNamespace({ io, authMiddleware, addOnlineUser, remove
     if (selfRoom) {
       socket.join(selfRoom);
     }
-    if (normalizeNotifyRole(socket.userRole) === 'admin') {
-      socket.join('admin_all');
+    const normalizedRole = normalizeNotifyRole(socket.userRole);
+    if (normalizedRole) {
+      socket.join(`${normalizedRole}_all`);
     }
 
     socket.emit('notify_ready', {

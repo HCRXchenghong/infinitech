@@ -1,5 +1,5 @@
 import config from './config'
-import { registerPushDevice, unregisterPushDevice, ackPushMessage } from './api'
+import { registerPushDevice, unregisterPushDevice, ackPushMessage as ackPushMessageApi } from './api'
 import { createPushRegistrationManager } from '../../shared/mobile-common/push-registration'
 
 function resolveUserIdentity() {
@@ -45,6 +45,6 @@ export const {
   resolveAuthIdentity: resolveUserIdentity,
   registerPushDevice,
   unregisterPushDevice,
-  ackPushMessage,
+  ackPushMessage: ackPushMessageApi,
   getAppEnv: () => (config.isDev ? 'dev' : 'prod'),
 })

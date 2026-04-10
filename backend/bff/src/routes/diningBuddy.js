@@ -8,5 +8,6 @@ router.post('/parties', controller.createParty);
 router.post('/parties/:id/join', controller.joinParty);
 router.get('/parties/:id/messages', controller.listMessages);
 router.post('/parties/:id/messages', controller.sendMessage);
+router.post('/reports', controller.createReport);
 
 module.exports = router;

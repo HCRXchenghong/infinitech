@@ -71,7 +71,9 @@
 
         <view class="form-item">
           <text class="form-label">主营类目</text>
-          <input v-model="form.businessCategory" class="input" placeholder="如：快餐便当" />
+          <picker :range="categoryOptions" :value="categoryIndex" @change="onCategoryChange">
+            <view class="picker">{{ form.businessCategory || categoryOptions[0] || '美食' }}</view>
+          </picker>
         </view>
 
         <view class="form-item">
@@ -159,15 +161,19 @@ import { computed, reactive, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { fetchShopDetail, updateShop, uploadImage } from '@/shared-ui/api'
 import { ensureMerchantShops, getCurrentShopId, setCurrentShopId } from '@/shared-ui/merchantContext'
+import { buildBusinessCategoryOptions, resolveBusinessCategoryOption } from '@/shared-ui/platform-schema'
+import { loadPlatformRuntimeSettings } from '@/shared-ui/platform-runtime'
 
 const saving = ref(false)
 const uploadingLogo = ref(false)
 const uploadingCover = ref(false)
 const shops = ref<any[]>([])
 const currentShop = ref<any>(null)
+const businessCategoryOptions = ref(buildBusinessCategoryOptions())
 
 const form = reactive({
   name: '',
+  businessCategoryKey: businessCategoryOptions.value[0]?.key || 'food',
   businessCategory: '',
   announcement: '',
   phone: '',
@@ -183,6 +189,11 @@ const form = reactive({
 })
 
 const uploadingAny = computed(() => uploadingLogo.value || uploadingCover.value)
+const categoryOptions = computed(() => businessCategoryOptions.value.map((item) => item.label))
+const categoryIndex = computed(() => {
+  const index = businessCategoryOptions.value.findIndex((item) => item.key === form.businessCategoryKey)
+  return index >= 0 ? index : 0
+})
 
 function toText(value: any) {
   return String(value ?? '').trim()
@@ -200,12 +211,29 @@ function parseHours(text: any) {
   }
 }
 
+function applyBusinessCategorySelection(value: any) {
+  const selected = resolveBusinessCategoryOption(value, {
+    business_categories: businessCategoryOptions.value
+  })
+  form.businessCategoryKey = selected.key
+  form.businessCategory = selected.label
+}
+
+async function loadRuntimeTaxonomy() {
+  try {
+    const runtime = await loadPlatformRuntimeSettings()
+    businessCategoryOptions.value = buildBusinessCategoryOptions(runtime?.merchantTaxonomySettings || {})
+  } catch (_error) {
+    businessCategoryOptions.value = buildBusinessCategoryOptions()
+  }
+}
+
 function fillForm(source: any) {
   const s = source || {}
   const hour = parseHours(s.businessHours || s.business_hours)
 
   form.name = toText(s.name)
-  form.businessCategory = toText(s.businessCategory || s.category)
+  applyBusinessCategorySelection(s.businessCategoryKey || s.business_category_key || s.businessCategory || s.category)
   form.announcement = toText(s.announcement)
   form.phone = toText(s.phone)
   form.address = toText(s.address)
@@ -250,6 +278,11 @@ function selectShop() {
 
 function onStatusChange(e: any) {
   form.isActive = !!e.detail.value
+}
+
+function onCategoryChange(e: any) {
+  const selected = businessCategoryOptions.value[Number(e.detail.value) || 0] || businessCategoryOptions.value[0]
+  applyBusinessCategorySelection(selected?.key || form.businessCategoryKey)
 }
 
 function onTimeChange(field: 'openTime' | 'closeTime', e: any) {
@@ -311,6 +344,7 @@ async function saveSettings() {
   try {
     await updateShop(currentShop.value.id, {
       name: toText(form.name),
+      businessCategoryKey: toText(form.businessCategoryKey),
       businessCategory: toText(form.businessCategory),
       announcement: toText(form.announcement),
       phone: toText(form.phone),
@@ -335,6 +369,7 @@ async function saveSettings() {
 
 onShow(async () => {
   try {
+    await loadRuntimeTaxonomy()
     await loadData()
   } catch (err: any) {
     uni.showToast({ title: err?.error || err?.message || '加载失败', icon: 'none' })

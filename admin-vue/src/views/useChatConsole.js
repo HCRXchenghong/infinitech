@@ -1,6 +1,7 @@
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import socketService, { SOCKET_HTTP_BASE } from '@/utils/socket';
+import { getCurrentAdminSocketIdentity } from '@/utils/runtime';
 import {
   fetchMessageConversations,
   fetchMessageHistory,
@@ -64,6 +65,15 @@ export function useChatConsole(options = {}) {
 
   function getSocket() {
     return socketRef;
+  }
+
+  function buildAdminJoinPayload(chatId) {
+    const identity = getCurrentAdminSocketIdentity();
+    return {
+      chatId,
+      userId: identity?.userId || '',
+      role: 'admin'
+    };
   }
 
   function createLocalMessageId(prefix = 'local') {
@@ -166,7 +176,7 @@ export function useChatConsole(options = {}) {
     };
     void loadMessages(chatId);
 
-    socket.emit('join_chat', { chatId, userId: 'admin', role: 'admin' });
+    socket.emit('join_chat', buildAdminJoinPayload(chatId));
     void syncReadState(chatId).then((synced) => {
       if (!synced) return;
       socket.emit('mark_all_read', { chatId });
@@ -383,7 +393,7 @@ export function useChatConsole(options = {}) {
       void refreshChats();
 
       if (selectedChat.value) {
-        socket.emit('join_chat', { chatId: selectedChat.value.id, userId: 'admin', role: 'admin' });
+        socket.emit('join_chat', buildAdminJoinPayload(selectedChat.value.id));
         void loadMessages(selectedChat.value.id);
       }
     }
@@ -502,5 +512,4 @@ export function useChatConsole(options = {}) {
     deleteChat
   };
 }
-
 

@@ -31,7 +31,7 @@
           <view class="tag-list">
             <view
               v-for="(item, index) in searchHistory"
-              :key="'history-' + index"
+              :key="item"
               class="tag-item"
               @tap="searchByHistory(item)"
             >
@@ -47,7 +47,7 @@
           <view class="tag-list">
             <view
               v-for="(item, index) in hotKeywords"
-              :key="'hot-' + index"
+              :key="item"
               class="tag-item"
               :class="{ 'tag-item-hot': index < 3 }"
               @tap="searchByHistory(item)"
@@ -154,7 +154,8 @@ export default {
     },
 
     onInput(event) {
-      this.keyword = event?.detail?.value || ''
+      const detail = event && typeof event === 'object' ? event.detail : null
+      this.keyword = (detail && detail.value) || ''
       if (this.keyword.trim()) {
         this.doSearch()
       } else {
@@ -174,11 +175,12 @@ export default {
       const needle = keyword.toLowerCase()
       this.searching = true
       this.searchResults = this.allShops.filter((shop) => {
+        const safeShop = shop && typeof shop === 'object' ? shop : {}
         const tags = this.normalizeTags(shop).join(' ')
         const source = [
-          shop?.name || '',
-          shop?.category || '',
-          shop?.description || '',
+          safeShop.name || '',
+          safeShop.category || '',
+          safeShop.description || '',
           tags
         ].join(' ').toLowerCase()
         return source.includes(needle)
@@ -223,11 +225,12 @@ export default {
     },
 
     normalizeTags(shop) {
-      if (Array.isArray(shop?.tags)) {
-        return shop.tags.filter(Boolean).slice(0, 3)
+      const safeShop = shop && typeof shop === 'object' ? shop : {}
+      if (Array.isArray(safeShop.tags)) {
+        return safeShop.tags.filter(Boolean).slice(0, 3)
       }
-      if (typeof shop?.tags === 'string' && shop.tags.trim()) {
-        return shop.tags.split(/[、，,]/).map((item) => item.trim()).filter(Boolean).slice(0, 3)
+      if (typeof safeShop.tags === 'string' && safeShop.tags.trim()) {
+        return safeShop.tags.split(/[、，,]/).map((item) => item.trim()).filter(Boolean).slice(0, 3)
       }
       return []
     },

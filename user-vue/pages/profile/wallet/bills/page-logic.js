@@ -419,11 +419,11 @@ export default {
       const transactionId = tx && (tx.transaction_id || tx.transactionId)
       if (!transactionId) return
       try {
-        uni.showLoading({ title: '姝ｅ湪鍔犺浇璇︽儏', mask: true })
+        uni.showLoading({ title: '正在加载详情', mask: true })
         const detail = await this.fetchTransactionDetail(transactionId)
         this.detailTx = this.mergeDetailTx(tx, detail)
       } catch (error) {
-        uni.showToast({ title: error.error || '璇︽儏鍔犺浇澶辫触', icon: 'none' })
+        uni.showToast({ title: error.error || '详情加载失败', icon: 'none' })
       } finally {
         uni.hideLoading()
       }

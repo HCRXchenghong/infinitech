@@ -34,10 +34,15 @@ func newDiningBuddyServiceForTest(t *testing.T) (*DiningBuddyService, *gorm.DB) 
 		&repository.IDCodebook{},
 		&repository.IDSequence{},
 		&repository.IDLegacyMapping{},
+		&repository.Setting{},
 		&repository.User{},
 		&repository.DiningBuddyParty{},
 		&repository.DiningBuddyPartyMember{},
 		&repository.DiningBuddyMessage{},
+		&repository.DiningBuddyReport{},
+		&repository.DiningBuddySensitiveWord{},
+		&repository.DiningBuddyUserRestriction{},
+		&repository.DiningBuddyAuditLog{},
 	); err != nil {
 		t.Fatalf("auto migrate failed: %v", err)
 	}

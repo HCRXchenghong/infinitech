@@ -6,6 +6,7 @@ import {
   isClientPaymentCancelled,
   shouldLaunchClientPayment
 } from '@/shared-ui/client-payment.js'
+import { normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
 import ContactModal from '@/components/ContactModal.vue'
 import PhoneWarningModal from '@/components/PhoneWarningModal.vue'
 
@@ -30,26 +31,29 @@ function fallbackPayMethods() {
 }
 
 function normalizePayMethods(response) {
-  const rawOptions = Array.isArray(response?.options)
-    ? response.options
-    : Array.isArray(response?.data?.options)
-      ? response.data.options
+  const safeResponse = response && typeof response === 'object' ? response : {}
+  const responseData = safeResponse.data && typeof safeResponse.data === 'object' ? safeResponse.data : {}
+  const rawOptions = Array.isArray(safeResponse.options)
+    ? safeResponse.options
+    : Array.isArray(responseData.options)
+      ? responseData.options
       : []
 
   const normalized = rawOptions
     .map((item) => {
-      const value = normalizePayChannel(item?.channel)
+      const safeItem = item && typeof item === 'object' ? item : {}
+      const value = normalizePayChannel(safeItem.channel)
       if (!value) return null
       return {
         value,
-        label: String(item?.label || '').trim() || (
+        label: String(safeItem.label || '').trim() || (
           value === 'ifpay'
             ? 'IF-Pay 余额支付'
             : value === 'wechat'
               ? '微信支付'
               : '支付宝支付'
         ),
-        tip: String(item?.description || '').trim() || '由后台支付中心统一控制'
+        tip: String(safeItem.description || '').trim() || '由后台支付中心统一控制'
       }
     })
     .filter(Boolean)
@@ -65,39 +69,44 @@ function normalizePhoneNumber(value) {
 }
 
 function buildOrderPhoneAuditPayload(order, contactType, phoneNumber) {
+  const safeOrder = order && typeof order === 'object' ? order : {}
   const targetRole = contactType === 'rider' ? 'rider' : 'merchant'
   return {
     targetRole,
-    targetId: String(contactType === 'rider' ? (order?.riderId || '') : (order?.shopId || '')),
+    targetId: String(contactType === 'rider' ? (safeOrder.riderId || '') : (safeOrder.shopId || '')),
     targetPhone: normalizePhoneNumber(phoneNumber),
     entryPoint: 'order_detail',
     scene: 'order_contact',
-    orderId: String(order?.id || ''),
-    roomId: contactType === 'rider' ? `rider_${order?.id || ''}` : `shop_${order?.id || ''}`,
+    orderId: String(safeOrder.id || ''),
+    roomId: contactType === 'rider' ? `rider_${safeOrder.id || ''}` : `shop_${safeOrder.id || ''}`,
     pagePath: '/pages/order/detail/index',
     metadata: {
-      bizType: order?.bizType || '',
-      status: order?.status || '',
-      shopId: String(order?.shopId || ''),
-      riderId: String(order?.riderId || ''),
+      bizType: safeOrder.bizType || '',
+      status: safeOrder.status || '',
+      shopId: String(safeOrder.shopId || ''),
+      riderId: String(safeOrder.riderId || ''),
       contactType,
     }
   }
 }
 
 function buildOrderRTCContext(order, contactType) {
+  const safeOrder = order && typeof order === 'object' ? order : {}
+  const deliveryInfo = safeOrder.deliveryInfo && typeof safeOrder.deliveryInfo === 'object'
+    ? safeOrder.deliveryInfo
+    : {}
   const isRider = contactType === 'rider'
-  const riderInfo = String((order?.deliveryInfo && order.deliveryInfo.rider) || '')
+  const riderInfo = String(deliveryInfo.rider || '')
   const riderPhone = riderInfo.match(/1[3-9]\d{9}/)
   return {
     targetRole: isRider ? 'rider' : 'merchant',
-    targetId: String(isRider ? (order?.riderId || '') : (order?.shopId || '')),
-    targetName: isRider ? (riderInfo.split(' ')[0] || '骑手') : String(order?.shopName || '商家'),
+    targetId: String(isRider ? (safeOrder.riderId || '') : (safeOrder.shopId || '')),
+    targetName: isRider ? (riderInfo.split(' ')[0] || '骑手') : String(safeOrder.shopName || '商家'),
     targetPhone: normalizePhoneNumber(
-      isRider ? ((riderPhone && riderPhone[0]) || (order?.deliveryInfo && order.deliveryInfo.contact) || '') : (order?.shopPhone || '')
+      isRider ? ((riderPhone && riderPhone[0]) || deliveryInfo.contact || '') : (safeOrder.shopPhone || '')
     ),
-    conversationId: isRider ? `rider_${order?.id || ''}` : `shop_${order?.id || ''}`,
-    orderId: String(order?.id || ''),
+    conversationId: isRider ? `rider_${safeOrder.id || ''}` : `shop_${safeOrder.id || ''}`,
+    orderId: String(safeOrder.id || ''),
   }
 }
 
@@ -465,7 +474,7 @@ export default {
             userId,
             userType: 'customer',
             platform: CLIENT_PLATFORM,
-            orderId: String(order?.id || ''),
+            orderId: String((order && order.id) || ''),
             paymentMethod: selected.value,
             paymentChannel: this.payChannelByMethod(selected.value),
             idempotencyKey
@@ -485,7 +494,7 @@ export default {
         }
 
         let status = this.normalizePaymentStatus(result)
-        if (!this.isPaymentSuccessStatus(status) && !this.isPaymentFailureStatus(status) && result?.transactionId) {
+        if (!this.isPaymentSuccessStatus(status) && !this.isPaymentFailureStatus(status) && result && result.transactionId) {
           uni.showLoading({ title: '正在确认支付状态', mask: true })
           try {
             result = await this.pollOrderPaymentStatus(result.transactionId, userId, token)
@@ -496,12 +505,13 @@ export default {
         }
 
         if (this.isPaymentSuccessStatus(status)) {
-          await this.loadOrderDetail(order?.id)
-          uni.navigateTo({ url: `/pages/pay/success/index?orderId=${encodeURIComponent(String(order?.id || ''))}` })
+          const orderId = String((order && order.id) || '')
+          await this.loadOrderDetail(orderId)
+          uni.navigateTo({ url: `/pages/pay/success/index?orderId=${encodeURIComponent(orderId)}` })
           return
         }
 
-        await this.loadOrderDetail(order?.id)
+        await this.loadOrderDetail((order && order.id) || '')
         uni.showToast({
           title: this.isPaymentFailureStatus(status) ? '支付失败，请稍后重试' : '支付请求已提交，请稍后刷新订单状态',
           icon: 'none'
@@ -511,7 +521,7 @@ export default {
           uni.showToast({ title: '已取消支付', icon: 'none' })
           return
         }
-        uni.showToast({ title: getClientPaymentErrorMessage(error), icon: 'none' })
+        uni.showToast({ title: normalizeErrorMessage(error, getClientPaymentErrorMessage(error)), icon: 'none' })
       }
     },
     getOtherActionButtons(order) {

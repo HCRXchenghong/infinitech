@@ -111,6 +111,7 @@ const PRESERVED_STORAGE_KEYS = [
   'access_token',
   'refreshToken',
   'socket_token',
+  'socket_token_account_key',
   'riderId',
   'riderName',
   'riderProfile',

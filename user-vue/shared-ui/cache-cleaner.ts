@@ -71,7 +71,7 @@ function clearTablesFromOpenDatabase() {
 export function clearSQLiteCache() {
   // #ifdef APP-PLUS
   try {
-    if (typeof plus !== 'undefined' && plus?.sqlite) {
+    if (typeof plus !== 'undefined' && plus && plus.sqlite) {
       const isOpen =
         typeof plus.sqlite.isOpenDatabase === 'function' &&
         plus.sqlite.isOpenDatabase({ name: DB_NAME, path: DB_PATH })

@@ -41,6 +41,10 @@ type RealtimeNotificationEnvelope struct {
 	Payload        map[string]interface{}
 }
 
+type RealtimeBroadcastRecipient struct {
+	Role string
+}
+
 func NewRealtimeNotificationService(db *gorm.DB, cfg *config.Config, mobilePush *MobilePushService) *RealtimeNotificationService {
 	timeout := 5 * time.Second
 	socketURL := ""
@@ -70,6 +74,32 @@ func (s *RealtimeNotificationService) NotifyBestEffort(ctx context.Context, reci
 	if err := s.Notify(ctx, recipients, envelope); err != nil {
 		log.Printf("⚠️ realtime notification dispatch failed: %v", err)
 	}
+}
+
+func (s *RealtimeNotificationService) BroadcastPlatformEventBestEffort(ctx context.Context, recipients []RealtimeBroadcastRecipient, envelope RealtimeNotificationEnvelope) {
+	if s == nil {
+		return
+	}
+	if err := s.BroadcastPlatformEvent(ctx, recipients, envelope); err != nil {
+		log.Printf("⚠️ platform realtime broadcast failed: %v", err)
+	}
+}
+
+func (s *RealtimeNotificationService) BroadcastPlatformEvent(ctx context.Context, recipients []RealtimeBroadcastRecipient, envelope RealtimeNotificationEnvelope) error {
+	if s == nil {
+		return nil
+	}
+	normalizedRecipients := normalizeRealtimeBroadcastRecipients(recipients)
+	if len(normalizedRecipients) == 0 {
+		return nil
+	}
+
+	envelope = normalizeRealtimeEnvelope(envelope, nil)
+	if envelope.EventType == "" {
+		return fmt.Errorf("%w: eventType is required", ErrInvalidArgument)
+	}
+
+	return s.publishSocketBroadcastEvent(ctx, normalizedRecipients, envelope)
 }
 
 func (s *RealtimeNotificationService) Notify(ctx context.Context, recipients []RealtimeRecipient, envelope RealtimeNotificationEnvelope) error {
@@ -120,6 +150,26 @@ func normalizeRealtimeRecipients(recipients []RealtimeRecipient) []RealtimeRecip
 			UserType: userType,
 			UserID:   userID,
 		})
+	}
+	return normalized
+}
+
+func normalizeRealtimeBroadcastRecipients(recipients []RealtimeBroadcastRecipient) []RealtimeBroadcastRecipient {
+	if len(recipients) == 0 {
+		return nil
+	}
+	normalized := make([]RealtimeBroadcastRecipient, 0, len(recipients))
+	seen := make(map[string]struct{}, len(recipients))
+	for _, recipient := range recipients {
+		role := normalizeRealtimeSocketRole(recipient.Role)
+		if role == "" {
+			continue
+		}
+		if _, ok := seen[role]; ok {
+			continue
+		}
+		seen[role] = struct{}{}
+		normalized = append(normalized, RealtimeBroadcastRecipient{Role: role})
 	}
 	return normalized
 }
@@ -362,6 +412,62 @@ func (s *RealtimeNotificationService) publishSocketEvent(ctx context.Context, re
 		return nil
 	}
 	return fmt.Errorf("socket realtime publish failed with status %d", resp.StatusCode)
+}
+
+func (s *RealtimeNotificationService) publishSocketBroadcastEvent(ctx context.Context, recipients []RealtimeBroadcastRecipient, envelope RealtimeNotificationEnvelope) error {
+	if s == nil || s.socketURL == "" || s.socketSecret == "" || s.requestClient == nil {
+		return nil
+	}
+
+	type socketRecipient struct {
+		Role   string `json:"role"`
+		UserID string `json:"userId"`
+	}
+
+	socketRecipients := make([]socketRecipient, 0, len(recipients))
+	for _, recipient := range recipients {
+		role := normalizeRealtimeSocketRole(recipient.Role)
+		if role == "" {
+			continue
+		}
+		socketRecipients = append(socketRecipients, socketRecipient{
+			Role:   role,
+			UserID: "*",
+		})
+	}
+	if len(socketRecipients) == 0 {
+		return nil
+	}
+
+	body, err := json.Marshal(map[string]interface{}{
+		"eventName":  "business_notification",
+		"recipients": socketRecipients,
+		"payload":    envelope.Payload,
+	})
+	if err != nil {
+		return err
+	}
+
+	requestCtx := ctx
+	if requestCtx == nil {
+		requestCtx = context.Background()
+	}
+	req, err := http.NewRequestWithContext(requestCtx, http.MethodPost, s.socketURL+"/api/realtime/publish", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Authorization", "Bearer "+s.socketSecret)
+
+	resp, err := s.requestClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return nil
+	}
+	return fmt.Errorf("socket realtime broadcast failed with status %d", resp.StatusCode)
 }
 
 func normalizeRealtimeSocketRole(userType string) string {

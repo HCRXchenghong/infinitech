@@ -1,6 +1,11 @@
 import { io } from 'socket.io-client';
 import { ElMessage } from 'element-plus';
-import { getToken as getAdminToken } from './runtime';
+import {
+  clearCachedSocketToken,
+  getAdminSessionStorage,
+  getCurrentAdminSocketIdentity,
+  getToken as getAdminToken
+} from './runtime';
 
 const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
 const envSocketUrl =
@@ -26,12 +31,50 @@ function buildSocketAuthHeader() {
   return /^bearer\s+/i.test(token) ? token : `Bearer ${token}`;
 }
 
+function readCachedSocketToken() {
+  const storage = getAdminSessionStorage();
+  return {
+    token: String(
+      storage?.getItem('socket_token')
+        || localStorage.getItem('socket_token')
+        || sessionStorage.getItem('socket_token')
+        || ''
+    ).trim(),
+    accountKey: String(
+      storage?.getItem('socket_token_account_key')
+        || localStorage.getItem('socket_token_account_key')
+        || sessionStorage.getItem('socket_token_account_key')
+        || ''
+    ).trim()
+  };
+}
+
+function writeCachedSocketToken(token, accountKey) {
+  const storage = getAdminSessionStorage() || localStorage;
+  clearCachedSocketToken();
+  storage.setItem('socket_token', token);
+  storage.setItem('socket_token_account_key', accountKey);
+}
+
 async function getSocketToken() {
-  let token = localStorage.getItem('socket_token');
-  if (token) return token;
+  const identity = getCurrentAdminSocketIdentity();
+  if (!identity) {
+    clearCachedSocketToken();
+    return null;
+  }
+
+  let { token, accountKey } = readCachedSocketToken();
+  if (token && accountKey === identity.cacheKey) return token;
+  if (token && accountKey !== identity.cacheKey) {
+    clearCachedSocketToken();
+    token = '';
+  }
 
   const authHeader = buildSocketAuthHeader();
-  if (!authHeader) return null;
+  if (!authHeader) {
+    clearCachedSocketToken();
+    return null;
+  }
 
   try {
     const res = await fetch(`${SOCKET_HTTP_BASE}/api/generate-token`, {
@@ -40,7 +83,7 @@ async function getSocketToken() {
         'Content-Type': 'application/json',
         Authorization: authHeader
       },
-      body: JSON.stringify({ userId: 'admin', role: 'admin' })
+      body: JSON.stringify({ userId: identity.userId, role: identity.role })
     });
 
     if (!res.ok) {
@@ -50,7 +93,7 @@ async function getSocketToken() {
     const data = await res.json();
     token = data.token;
     if (token) {
-      localStorage.setItem('socket_token', token);
+      writeCachedSocketToken(token, identity.cacheKey);
     }
     return token || null;
   } catch (_err) {
@@ -92,7 +135,7 @@ class SocketService {
     socket.on('connect_error', (error) => {
       const message = String(error?.message || '');
       if (/\u8ba4\u8bc1\u5931\u8d25/.test(message)) {
-        localStorage.removeItem('socket_token');
+        clearCachedSocketToken();
         socket.disconnect();
         this.sockets.delete(namespace);
       }

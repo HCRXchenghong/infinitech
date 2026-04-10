@@ -12,6 +12,7 @@ const onboardingInviteController = require('../controllers/onboardingInviteContr
 const homeController = require('../controllers/homeController');
 const contactController = require('../controllers/contactController');
 const rtcController = require('../controllers/rtcController');
+const diningBuddyController = require('../controllers/diningBuddyController');
 const financialRoutes = require('./financial');
 const adminWalletRoutes = require('./adminWallet');
 
@@ -118,16 +119,17 @@ router.post('/admins/complete-bootstrap', adminController.completeBootstrapSetup
 router.post('/admins/change-password', adminController.changeOwnPassword);
 
 router.get('/users', adminDataController.getUsers);
+router.get('/users/export', adminDataController.exportData);
 router.get('/users/:id', adminDataController.getUserById);
 router.post('/users', adminDataController.createUser);
 router.delete('/users/:id', adminDataController.deleteUser);
 router.post('/users/:id/reset-password', adminOperationsController.resetUserPassword);
 router.post('/users/:id/delete-orders', adminOperationsController.deleteUserOrders);
 router.post('/users/delete-all', adminOperationsController.deleteAllUsers);
-router.get('/users/export', adminDataController.exportData);
 router.post('/users/import', adminDataController.importData);
 
 router.get('/riders', adminDataController.getRiders);
+router.get('/riders/export', adminDataController.exportData);
 router.get('/riders/:id', adminDataController.getRiderById);
 router.post('/riders', adminDataController.createRider);
 router.put('/riders/:id', adminDataController.updateRider);
@@ -135,7 +137,6 @@ router.delete('/riders/:id', adminOperationsController.deleteRider);
 router.post('/riders/:id/reset-password', adminOperationsController.resetRiderPassword);
 router.post('/riders/:id/delete-orders', adminOperationsController.deleteRiderOrders);
 router.post('/riders/delete-all', adminOperationsController.deleteAllRiders);
-router.get('/riders/export', adminDataController.exportData);
 router.post('/riders/import', adminDataController.importData);
 
 router.get('/orders', adminDataController.getOrders);
@@ -163,11 +164,30 @@ router.post('/reorganize-role-ids/:type', adminOperationsController.reorganizeRo
 router.get('/stats', adminDataController.getStats);
 router.get('/user-ranks', adminDataController.getUserRanks);
 router.get('/rider-ranks', adminDataController.getRiderRanks);
+router.get('/dining-buddy/parties', diningBuddyController.adminListParties);
+router.get('/dining-buddy/parties/:id', diningBuddyController.adminGetParty);
+router.post('/dining-buddy/parties/:id/close', diningBuddyController.adminCloseParty);
+router.post('/dining-buddy/parties/:id/reopen', diningBuddyController.adminReopenParty);
+router.get('/dining-buddy/parties/:id/messages', diningBuddyController.adminListMessages);
+router.delete('/dining-buddy/messages/:id', diningBuddyController.adminDeleteMessage);
+router.get('/dining-buddy/reports', diningBuddyController.adminListReports);
+router.post('/dining-buddy/reports/:id/resolve', diningBuddyController.adminResolveReport);
+router.post('/dining-buddy/reports/:id/reject', diningBuddyController.adminRejectReport);
+router.get('/dining-buddy/sensitive-words', diningBuddyController.adminListSensitiveWords);
+router.post('/dining-buddy/sensitive-words', diningBuddyController.adminCreateSensitiveWord);
+router.put('/dining-buddy/sensitive-words/:id', diningBuddyController.adminUpdateSensitiveWord);
+router.delete('/dining-buddy/sensitive-words/:id', diningBuddyController.adminDeleteSensitiveWord);
+router.get('/dining-buddy/user-restrictions', diningBuddyController.adminListUserRestrictions);
+router.post('/dining-buddy/user-restrictions', diningBuddyController.adminCreateUserRestriction);
+router.put('/dining-buddy/user-restrictions/:id', diningBuddyController.adminUpdateUserRestriction);
+router.get('/dining-buddy/audit-logs', diningBuddyController.adminListAuditLogs);
 
 router.get('/carousel', adminSettingsController.getCarousel);
 router.post('/carousel', adminSettingsController.createCarousel);
 router.put('/carousel/:id', adminSettingsController.updateCarousel);
 router.delete('/carousel/:id', adminSettingsController.deleteCarousel);
+router.get('/carousel-settings', adminSettingsController.getCarouselSettings);
+router.post('/carousel-settings', adminSettingsController.updateCarouselSettings);
 
 router.get('/push-messages', adminSettingsController.getPushMessages);
 router.post('/push-messages', adminSettingsController.createPushMessage);
@@ -176,6 +196,10 @@ router.get('/push-messages/:id/stats', adminSettingsController.getPushMessageSta
 router.get('/push-messages/:id/deliveries', adminSettingsController.getPushMessageDeliveries);
 router.put('/push-messages/:id', adminSettingsController.updatePushMessage);
 router.delete('/push-messages/:id', adminSettingsController.deletePushMessage);
+router.get('/public-apis', adminSettingsController.getPublicAPIs);
+router.post('/public-apis', adminSettingsController.createPublicAPI);
+router.put('/public-apis/:id', adminSettingsController.updatePublicAPI);
+router.delete('/public-apis/:id', adminSettingsController.deletePublicAPI);
 
 router.get('/debug-mode', adminSettingsController.getDebugMode);
 router.post('/debug-mode', adminSettingsController.updateDebugMode);
@@ -187,10 +211,28 @@ router.get('/wechat-login-config', adminSettingsController.getWechatLoginConfig)
 router.post('/wechat-login-config', adminSettingsController.updateWechatLoginConfig);
 router.get('/service-settings', adminSettingsController.getServiceSettings);
 router.post('/service-settings', adminSettingsController.updateServiceSettings);
+router.get('/home-entry-settings', adminSettingsController.getHomeEntrySettings);
+router.post('/home-entry-settings', adminSettingsController.updateHomeEntrySettings);
+router.get('/errand-settings', adminSettingsController.getErrandSettings);
+router.post('/errand-settings', adminSettingsController.updateErrandSettings);
+router.get('/merchant-taxonomy-settings', adminSettingsController.getMerchantTaxonomySettings);
+router.post('/merchant-taxonomy-settings', adminSettingsController.updateMerchantTaxonomySettings);
+router.get('/rider-rank-settings', adminSettingsController.getRiderRankSettings);
+router.post('/rider-rank-settings', adminSettingsController.updateRiderRankSettings);
+router.get('/dining-buddy-settings', adminSettingsController.getDiningBuddySettings);
+router.post('/dining-buddy-settings', adminSettingsController.updateDiningBuddySettings);
 router.get('/charity-settings', adminSettingsController.getCharitySettings);
 router.post('/charity-settings', adminSettingsController.updateCharitySettings);
 router.get('/vip-settings', adminSettingsController.getVIPSettings);
 router.post('/vip-settings', adminSettingsController.updateVIPSettings);
+router.get('/data-exports/system-settings', adminSettingsController.exportSystemSettings);
+router.get('/data-exports/content-config', adminSettingsController.exportContentConfig);
+router.get('/data-exports/api-config', adminSettingsController.exportAPIConfig);
+router.get('/data-exports/payment-config', adminSettingsController.exportPaymentConfig);
+router.post('/data-imports/system-settings', adminSettingsController.importSystemSettings);
+router.post('/data-imports/content-config', adminSettingsController.importContentConfig);
+router.post('/data-imports/api-config', adminSettingsController.importAPIConfig);
+router.post('/data-imports/payment-config', adminSettingsController.importPaymentConfig);
 router.post('/settings/clear-all-data', adminSettingsController.clearAllData);
 router.get('/app-download-config', adminSettingsController.getAppDownloadConfig);
 router.post('/app-download-config', adminSettingsController.updateAppDownloadConfig);

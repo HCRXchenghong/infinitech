@@ -55,7 +55,6 @@ function verifyMutationCredential(req, action) {
   if (!verified.ok) {
     logger.warn(`POST /api/admin/financial/transaction-logs/${action}`, {
       action: `financial_log_${action}_verify_failed`,
-      verifyAccount,
       operatorId,
       operatorName,
       ip: req.ip,

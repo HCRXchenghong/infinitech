@@ -30,6 +30,7 @@
 
 <script>
 import { requestSMSCode, verifySMSCodeCheck } from '@/shared-ui/api.js'
+import { normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
 import {
   getCachedConsumerAuthRuntimeSettings,
   loadConsumerAuthRuntimeSettings
@@ -102,7 +103,7 @@ export default {
           }
         }, 1000)
       } catch (err) {
-        const message = err.data?.error || err.error || err.message || '发送验证码失败'
+        const message = normalizeErrorMessage(err, '发送验证码失败')
         uni.showToast({ title: message, icon: 'none', duration: 2000 })
       } finally {
         this.loading = false
@@ -132,7 +133,7 @@ export default {
           url: `/pages/auth/set-password/index?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(code)}`
         })
       } catch (err) {
-        uni.showToast({ title: err.error || err.message || '验证失败', icon: 'none' })
+        uni.showToast({ title: normalizeErrorMessage(err, '验证失败'), icon: 'none' })
       } finally {
         this.loading = false
       }

@@ -71,6 +71,7 @@ class SocketIO {
       // 清除过期的 socket_token
       try {
         uni.removeStorageSync('socket_token')
+        uni.removeStorageSync('socket_token_account_key')
       } catch(e) {
         console.error('[Socket] 清除 token 失败:', e)
       }

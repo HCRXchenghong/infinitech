@@ -33,11 +33,12 @@ function normalizePlatform(value) {
 }
 
 function extractPaymentPayload(result) {
+  const safeResult = asObject(result)
   return asObject(
-    result?.paymentPayload ||
-      result?.payment_payload ||
-      result?.clientPayload ||
-      result?.client_payload
+    safeResult.paymentPayload ||
+      safeResult.payment_payload ||
+      safeResult.clientPayload ||
+      safeResult.client_payload
   )
 }
 
@@ -103,30 +104,38 @@ function buildAlipayOrderString(payload) {
 }
 
 export function shouldLaunchClientPayment(result) {
-  const status = normalizeLower(result?.status)
+  const safeResult = asObject(result)
+  const status = normalizeLower(safeResult.status)
   if (status !== 'awaiting_client_pay') return false
   const payload = extractPaymentPayload(result)
-  const gateway = normalizeGateway(payload.gateway || result?.gateway || result?.paymentMethod || result?.payment_method)
+  const gateway = normalizeGateway(
+    payload.gateway || safeResult.gateway || safeResult.paymentMethod || safeResult.payment_method
+  )
   return gateway === 'wechat' || gateway === 'alipay'
 }
 
 export function isClientPaymentCancelled(error) {
-  const text = normalizeLower(error?.errMsg || error?.message || error?.error)
+  const safeError = asObject(error)
+  const text = normalizeLower(safeError.errMsg || safeError.message || safeError.error)
   return text.includes('cancel')
 }
 
 export function getClientPaymentErrorMessage(error, fallback = '支付拉起失败，请稍后重试') {
   if (!error) return fallback
   if (isClientPaymentCancelled(error)) return '已取消支付'
-  const text = normalizeText(error?.message || error?.errMsg || error?.error)
+  const safeError = asObject(error)
+  const text = normalizeText(safeError.message || safeError.errMsg || safeError.error)
   if (!text) return fallback
   return text.replace(/^requestpayment:fail\s*/i, '').trim() || fallback
 }
 
 export async function invokeClientPayment(result, platform) {
   const payload = extractPaymentPayload(result)
-  const gateway = normalizeGateway(payload.gateway || result?.gateway || result?.paymentMethod || result?.payment_method)
-  const normalizedPlatform = normalizePlatform(platform || payload.platform || result?.platform)
+  const safeResult = asObject(result)
+  const gateway = normalizeGateway(
+    payload.gateway || safeResult.gateway || safeResult.paymentMethod || safeResult.payment_method
+  )
+  const normalizedPlatform = normalizePlatform(platform || payload.platform || safeResult.platform)
 
   if (gateway === 'wechat') {
     if (normalizedPlatform === 'mini_program') {

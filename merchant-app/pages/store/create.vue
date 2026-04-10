@@ -18,7 +18,7 @@
           <view class="half-item">
             <text class="label">订单类型</text>
             <picker :range="orderTypeOptions" :value="orderTypeIndex" @change="onOrderTypeChange">
-              <view class="picker">{{ form.orderType || orderTypeOptions[0] }}</view>
+              <view class="picker">{{ currentOrderTypeLabel }}</view>
             </picker>
           </view>
           <view class="half-item">
@@ -250,26 +250,29 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { createShop, uploadImage } from '@/shared-ui/api'
 import { clearMerchantContext, setCurrentShopId } from '@/shared-ui/merchantContext'
 import {
-  BUSINESS_CATEGORY_OPTIONS,
-  ORDER_TYPE_OPTIONS,
-  merchantTypeFromOrderType,
-  normalizeBusinessCategory,
-  normalizeOrderTypeLabel,
+  buildBusinessCategoryOptions,
+  buildMerchantTypeOptions,
+  resolveBusinessCategoryOption,
+  resolveMerchantTypeOption,
 } from '@/shared-ui/platform-schema'
+import { loadPlatformRuntimeSettings } from '@/shared-ui/platform-runtime'
 
 const submitting = ref(false)
 const uploading = ref(false)
 
-const orderTypeOptions = ORDER_TYPE_OPTIONS
-const categoryOptions = BUSINESS_CATEGORY_OPTIONS
+const merchantTypeOptions = ref(buildMerchantTypeOptions())
+const businessCategoryOptions = ref(buildBusinessCategoryOptions())
 
 const form = reactive({
   name: '',
-  orderType: ORDER_TYPE_OPTIONS[0],
-  businessCategory: BUSINESS_CATEGORY_OPTIONS[0],
+  merchantType: merchantTypeOptions.value[0]?.key || 'takeout',
+  orderType: merchantTypeOptions.value[0]?.orderTypeLabel || '外卖类',
+  businessCategoryKey: businessCategoryOptions.value[0]?.key || 'food',
+  businessCategory: businessCategoryOptions.value[0]?.label || '美食',
   phone: '',
   address: '',
   announcement: '',
@@ -299,17 +302,59 @@ const form = reactive({
   healthCertExpireAt: '',
 })
 
-const orderTypeIndex = computed(() => Math.max(orderTypeOptions.indexOf(form.orderType), 0))
-const categoryIndex = computed(() => Math.max(categoryOptions.indexOf(form.businessCategory), 0))
+const orderTypeOptions = computed(() => merchantTypeOptions.value.map((item) => item.orderTypeLabel))
+const categoryOptions = computed(() => businessCategoryOptions.value.map((item) => item.label))
+const currentOrderTypeLabel = computed(() => {
+  const option = merchantTypeOptions.value.find((item) => item.key === form.merchantType) || merchantTypeOptions.value[0]
+  return option?.orderTypeLabel || orderTypeOptions.value[0] || '外卖类'
+})
+const orderTypeIndex = computed(() => {
+  const index = merchantTypeOptions.value.findIndex((item) => item.key === form.merchantType)
+  return index >= 0 ? index : 0
+})
+const categoryIndex = computed(() => {
+  const index = businessCategoryOptions.value.findIndex((item) => item.key === form.businessCategoryKey)
+  return index >= 0 ? index : 0
+})
+
+function applyMerchantTypeSelection(value: string) {
+  const selected = resolveMerchantTypeOption(value, {
+    merchant_types: merchantTypeOptions.value
+  })
+  form.merchantType = selected.key
+  form.orderType = selected.legacyOrderTypeLabel
+}
+
+function applyBusinessCategorySelection(value: string) {
+  const selected = resolveBusinessCategoryOption(value, {
+    business_categories: businessCategoryOptions.value
+  })
+  form.businessCategoryKey = selected.key
+  form.businessCategory = selected.label
+}
+
+async function loadRuntimeTaxonomy() {
+  try {
+    const runtime = await loadPlatformRuntimeSettings()
+    const taxonomy = runtime?.merchantTaxonomySettings || {}
+    merchantTypeOptions.value = buildMerchantTypeOptions(taxonomy)
+    businessCategoryOptions.value = buildBusinessCategoryOptions(taxonomy)
+  } catch (_error) {
+    merchantTypeOptions.value = buildMerchantTypeOptions()
+    businessCategoryOptions.value = buildBusinessCategoryOptions()
+  }
+  applyMerchantTypeSelection(form.merchantType || form.orderType)
+  applyBusinessCategorySelection(form.businessCategoryKey || form.businessCategory)
+}
 
 function onOrderTypeChange(e: any) {
-  const value = orderTypeOptions[Number(e.detail.value) || 0] || orderTypeOptions[0]
-  form.orderType = normalizeOrderTypeLabel(value)
+  const option = merchantTypeOptions.value[Number(e.detail.value) || 0] || merchantTypeOptions.value[0]
+  applyMerchantTypeSelection(option?.key || form.merchantType)
 }
 
 function onCategoryChange(e: any) {
-  const value = categoryOptions[Number(e.detail.value) || 0] || categoryOptions[0]
-  form.businessCategory = normalizeBusinessCategory(value)
+  const option = businessCategoryOptions.value[Number(e.detail.value) || 0] || businessCategoryOptions.value[0]
+  applyBusinessCategorySelection(option?.key || form.businessCategoryKey)
 }
 
 function onTimeChange(field: 'openTime' | 'closeTime', e: any) {
@@ -375,9 +420,10 @@ async function submitCreate() {
     const payload: Record<string, any> = {
       merchant_id: toMerchantId(),
       name,
-      orderType: normalizeOrderTypeLabel(form.orderType),
-      merchantType: merchantTypeFromOrderType(form.orderType),
-      businessCategory: normalizeBusinessCategory(form.businessCategory),
+      orderType: form.orderType,
+      merchantType: form.merchantType,
+      businessCategoryKey: form.businessCategoryKey,
+      businessCategory: form.businessCategory,
       phone: String(form.phone || '').trim(),
       address: String(form.address || '').trim(),
       announcement: String(form.announcement || '').trim(),
@@ -424,6 +470,10 @@ async function submitCreate() {
     submitting.value = false
   }
 }
+
+onLoad(() => {
+  void loadRuntimeTaxonomy()
+})
 </script>
 
 <style scoped lang="scss" src="./create.scss"></style>

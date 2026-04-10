@@ -26,8 +26,12 @@ const {
 const { collectServiceStatus } = require("./systemLogs/healthStatus");
 const { loadEntries } = require("./systemLogs/parsing");
 
-const LOG_DELETE_VERIFY_ACCOUNT = process.env.SYSTEM_LOG_DELETE_ACCOUNT || "infinitech";
-const LOG_DELETE_VERIFY_PASSWORD = process.env.SYSTEM_LOG_DELETE_PASSWORD || "20250724";
+const LOG_DELETE_VERIFY_ACCOUNT = String(process.env.SYSTEM_LOG_DELETE_ACCOUNT || "").trim();
+const LOG_DELETE_VERIFY_PASSWORD = String(process.env.SYSTEM_LOG_DELETE_PASSWORD || "");
+
+function isSystemLogMutationCredentialConfigured() {
+  return Boolean(LOG_DELETE_VERIFY_ACCOUNT && LOG_DELETE_VERIFY_PASSWORD);
+}
 
 function handleControllerError(res, error, context, message) {
   logger.error(context, {
@@ -129,6 +133,20 @@ async function getSystemHealth(req, res) {
 }
 
 function verifySystemLogMutation(req, action) {
+  if (!isSystemLogMutationCredentialConfigured()) {
+    logger.error("POST /api/system-logs/" + action, {
+      action: `system_log_${action}_verify_unconfigured`,
+    });
+    return {
+      ok: false,
+      status: 503,
+      error: "系统日志敏感操作未配置二次校验口令，请联系管理员",
+      lockedUntil: null,
+      operatorId: String(req.operator?.operatorId || ""),
+      operatorName: String(req.operator?.operatorName || ""),
+    };
+  }
+
   const verifyAccount = String(req.body?.verifyAccount || "").trim();
   const verifyPassword = String(req.body?.verifyPassword || "");
   const operatorId = String(req.operator?.operatorId || "");
@@ -147,7 +165,6 @@ function verifySystemLogMutation(req, action) {
     const actionKey = action === "clear" ? "clear_system_logs" : "delete_system_log";
     logger.warn("POST /api/system-logs/" + route, {
       action: actionKey + "_verify_failed",
-      verifyAccount,
       operatorId,
       operatorName,
       ip: req.ip,

@@ -47,7 +47,7 @@
       </div>
     </aside>
 
-    <div class="main" :class="{ 'welcome-mode': openedTabs.length === 0 && route.path === '/' && !isPublicRoute }">
+    <div class="main">
       <header class="header">
         <div class="header-left">
           <div class="bread">{{ currentName }}</div>
@@ -71,17 +71,21 @@
         </el-tabs>
       </div>
       <main class="content">
-        <router-view v-if="openedTabs.length > 0" :key="route.path" />
+        <router-view :key="route.fullPath" />
       </main>
     </div>
   </div>
+  <AdminRTCCallDialog />
 </template>
 
 <script setup>
 import { computed, ref, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import NetworkStatus from '@/components/NetworkStatus.vue';
+import AdminRTCCallDialog from '@/components/AdminRTCCallDialog.vue';
 import { MENU_GROUPS } from '@/config/menuGroups';
+import { clearAdminSessionStorage, getToken } from '@/utils/runtime';
+import { disconnectAdminRTCBridge, ensureAdminRTCBridge } from '@/utils/adminRtc';
 
 const router = useRouter();
 const route = useRoute();
@@ -90,6 +94,7 @@ const logoUrl = new URL('/logo.png', import.meta.url).href;
 const OPENED_TABS_STORAGE_KEY = 'admin_opened_tabs_v1';
 const ACTIVE_TAB_STORAGE_KEY = 'admin_active_tab_v1';
 const OPENED_MENU_GROUPS_KEY = 'admin_opened_menu_groups_v1';
+const PINNED_TAB_PATHS = new Set(['/dashboard']);
 
 const adminUser = ref(null);
 const openedTabs = ref([]);
@@ -114,7 +119,7 @@ function sanitizeTabs(rawTabs) {
     result.push({
       fullPath: tab.fullPath,
       title: typeof tab.title === 'string' && tab.title.trim() ? tab.title : tab.fullPath,
-      closable: true
+      closable: !isPinnedTab(tab.fullPath)
     });
   });
   return result;
@@ -172,7 +177,7 @@ function ensureCurrentRouteTab() {
     openedTabs.value.unshift({
       fullPath,
       title: resolveTabTitle(route),
-      closable: true
+      closable: !isPinnedTab(fullPath)
     });
   }
   activeTab.value = fullPath;
@@ -243,6 +248,14 @@ function resolveActiveMenuPath(path = '') {
   if (path.startsWith('/notifications/')) return '/notifications';
   if (path.startsWith('/merchants/')) return '/merchants';
   return path;
+}
+
+function normalizeTabPath(path = '') {
+  return String(path || '').split('?')[0];
+}
+
+function isPinnedTab(path = '') {
+  return PINNED_TAB_PATHS.has(normalizeTabPath(path));
 }
 
 const activeMenuPath = computed(() => {
@@ -336,7 +349,24 @@ watch(
 
 onBeforeUnmount(() => {
   applyPublicScrollLock(false);
+  disconnectAdminRTCBridge();
 });
+
+const shouldEnableAdminRTC = computed(() => {
+  return Boolean(adminUser.value) && !isPublicRoute.value && Boolean(getToken());
+});
+
+watch(
+  shouldEnableAdminRTC,
+  (enabled) => {
+    if (enabled) {
+      void ensureAdminRTCBridge();
+      return;
+    }
+    disconnectAdminRTCBridge();
+  },
+  { immediate: true }
+);
 
 function handleMenuClick(path) {
   const group = menuGroups.value.find((item) =>
@@ -401,7 +431,7 @@ function syncOpenedTabs(targetRoute) {
   const fullPath = targetRoute.fullPath;
   const existing = openedTabs.value.find((item) => item.fullPath === fullPath);
   const title = resolveTabTitle(targetRoute);
-  const closable = true;
+  const closable = !isPinnedTab(fullPath);
 
   if (existing) {
     existing.title = title;
@@ -424,6 +454,8 @@ function handleTabChange(tabFullPath) {
 }
 
 function handleTabRemove(tabFullPath) {
+  if (isPinnedTab(tabFullPath)) return;
+
   const currentIndex = openedTabs.value.findIndex((item) => item.fullPath === tabFullPath);
   if (currentIndex < 0) return;
 
@@ -433,7 +465,7 @@ function handleTabRemove(tabFullPath) {
   if (openedTabs.value.length === 0) {
     activeTab.value = '';
     if (isCurrent) {
-      router.push('/');
+      router.push('/dashboard');
     }
     persistTabs();
     return;
@@ -452,10 +484,8 @@ function logout() {
   localStorage.removeItem(OPENED_TABS_STORAGE_KEY);
   localStorage.removeItem(ACTIVE_TAB_STORAGE_KEY);
   localStorage.removeItem(OPENED_MENU_GROUPS_KEY);
-  localStorage.removeItem('admin_token');
-  localStorage.removeItem('admin_user');
-  sessionStorage.removeItem('admin_token');
-  sessionStorage.removeItem('admin_user');
+  disconnectAdminRTCBridge();
+  clearAdminSessionStorage();
   router.push('/login');
 }
 

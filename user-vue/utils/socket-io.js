@@ -66,6 +66,7 @@ class SocketIO {
       console.error('Socket 认证失败:', msg)
       try {
         uni.removeStorageSync('socket_token')
+        uni.removeStorageSync('socket_token_account_key')
       } catch (e) {
         console.error('[Socket] 清除 token 失败:', e)
       }

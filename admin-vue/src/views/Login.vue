@@ -228,6 +228,7 @@ import { ElMessage } from 'element-plus'
 import QRCode from 'qrcode'
 
 import request from '@/utils/request'
+import { buildRuntimeUrl, clearAdminSessionStorage } from '@/utils/runtime'
 import {
   createDefaultLoginForm,
   getQrFlowErrorMessage,
@@ -344,10 +345,7 @@ function startQrPolling() {
 }
 
 function clearLoginSession() {
-  localStorage.removeItem('admin_token')
-  localStorage.removeItem('admin_user')
-  sessionStorage.removeItem('admin_token')
-  sessionStorage.removeItem('admin_user')
+  clearAdminSessionStorage()
 }
 
 function readStoredAdminUser() {
@@ -468,6 +466,7 @@ async function refreshQrCode(showMessage = false) {
   try {
     const { data } = await request.post('/api/qr-login/session', {
       webOrigin: typeof window !== 'undefined' && window.location ? window.location.origin : '',
+      downloadOrigin: buildRuntimeUrl('download', '').replace(/\/$/, ''),
     })
     const payload = data?.data || data
     if (!payload?.ticket || !payload?.qrText) {

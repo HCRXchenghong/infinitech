@@ -292,15 +292,17 @@ func (s *ShopService) CreateShop(ctx context.Context, data map[string]interface{
 	currentMerchantID := authContextInt64(ctx, "merchant_id")
 
 	shop := &repository.Shop{
-		OrderType:        "外卖类",
-		MerchantType:     "takeout",
-		BusinessCategory: "美食",
-		BusinessHours:    "09:00-22:00",
-		IsActive:         true,
-		Tags:             "[]",
-		Discounts:        "[]",
+		OrderType:           "外卖类",
+		MerchantType:        "takeout",
+		BusinessCategory:    "美食",
+		BusinessCategoryKey: "food",
+		BusinessHours:       "09:00-22:00",
+		IsActive:            true,
+		Tags:                "[]",
+		Discounts:           "[]",
 	}
 	merchantTypeProvided := false
+	taxonomy := DefaultMerchantTaxonomySettings()
 
 	if v, ok := data["merchant_id"]; ok {
 		if merchantID := toInt(v); merchantID > 0 {
@@ -324,12 +326,29 @@ func (s *ShopService) CreateShop(ctx context.Context, data map[string]interface{
 		shop.MerchantType = normalizeShopMerchantType(toString(v))
 		merchantTypeProvided = true
 	}
+	businessCategoryLabel := ""
 	if v, ok := data["businessCategory"]; ok && toString(v) != "" {
-		shop.BusinessCategory = toString(v)
+		businessCategoryLabel = toString(v)
 	}
-	// 兼容旧的 category 字段
 	if v, ok := data["category"]; ok && toString(v) != "" {
-		shop.BusinessCategory = toString(v)
+		businessCategoryLabel = toString(v)
+	}
+	businessCategoryKey := ""
+	if v, ok := data["businessCategoryKey"]; ok && toString(v) != "" {
+		businessCategoryKey = toString(v)
+	}
+	if v, ok := data["business_category_key"]; ok && toString(v) != "" {
+		businessCategoryKey = toString(v)
+	}
+	if strings.TrimSpace(businessCategoryKey) != "" {
+		shop.BusinessCategoryKey = CanonicalBusinessCategoryKey(businessCategoryKey)
+		if strings.TrimSpace(businessCategoryLabel) != "" && strings.TrimSpace(businessCategoryLabel) != "休闲玩乐" {
+			shop.BusinessCategory = strings.TrimSpace(businessCategoryLabel)
+		} else {
+			shop.BusinessCategory = BusinessCategoryLabel(taxonomy, shop.BusinessCategoryKey)
+		}
+	} else if strings.TrimSpace(businessCategoryLabel) != "" {
+		shop.BusinessCategoryKey, shop.BusinessCategory = NormalizeBusinessCategoryInput(businessCategoryLabel, taxonomy)
 	}
 	if v, ok := data["coverImage"]; ok {
 		shop.CoverImage = toString(v)
@@ -548,6 +567,10 @@ func (s *ShopService) UpdateShop(ctx context.Context, shopID string, data map[st
 	orderTypeValue := ""
 	merchantTypeProvided := false
 	merchantTypeValue := ""
+	businessCategoryLabel := ""
+	businessCategoryKey := ""
+	businessCategoryChanged := false
+	taxonomy := DefaultMerchantTaxonomySettings()
 
 	for key, value := range data {
 		switch key {
@@ -565,7 +588,11 @@ func (s *ShopService) UpdateShop(ctx context.Context, shopID string, data map[st
 			merchantTypeProvided = true
 			merchantTypeValue = toString(value)
 		case "businessCategory", "category":
-			updates["business_category"] = toString(value)
+			businessCategoryChanged = true
+			businessCategoryLabel = toString(value)
+		case "businessCategoryKey", "business_category_key":
+			businessCategoryChanged = true
+			businessCategoryKey = toString(value)
 		case "coverImage":
 			updates["cover_image"] = toString(value)
 		case "backgroundImage":
@@ -682,6 +709,21 @@ func (s *ShopService) UpdateShop(ctx context.Context, shopID string, data map[st
 		}
 		if !merchantTypeProvided {
 			updates["merchant_type"] = normalizeShopMerchantType(orderTypeValue)
+		}
+	}
+	if businessCategoryChanged {
+		if strings.TrimSpace(businessCategoryKey) != "" {
+			canonicalKey := CanonicalBusinessCategoryKey(businessCategoryKey)
+			updates["business_category_key"] = canonicalKey
+			if strings.TrimSpace(businessCategoryLabel) != "" && strings.TrimSpace(businessCategoryLabel) != "休闲玩乐" {
+				updates["business_category"] = strings.TrimSpace(businessCategoryLabel)
+			} else {
+				updates["business_category"] = BusinessCategoryLabel(taxonomy, canonicalKey)
+			}
+		} else if strings.TrimSpace(businessCategoryLabel) != "" {
+			canonicalKey, canonicalLabel := NormalizeBusinessCategoryInput(businessCategoryLabel, taxonomy)
+			updates["business_category_key"] = canonicalKey
+			updates["business_category"] = canonicalLabel
 		}
 	}
 

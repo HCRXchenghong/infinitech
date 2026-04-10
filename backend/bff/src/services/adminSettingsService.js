@@ -10,6 +10,7 @@ const { verifyCriticalCredential } = require("../utils/criticalActionVerify");
 const {
   CLEAR_ALL_VERIFY_ACCOUNT,
   CLEAR_ALL_VERIFY_PASSWORD,
+  isClearAllVerifyConfigured,
   BFF_COMBINED_LOG_PATH,
   BFF_ERROR_LOG_PATH,
   GO_COMBINED_LOG_PATH,
@@ -35,6 +36,8 @@ const getCarousel = createProxyHandler("get", "/api/carousel", (req) => ({ param
 const createCarousel = createProxyHandler("post", "/api/carousel", (req) => ({ body: req.body }));
 const updateCarousel = createProxyHandler("put", (req) => `/api/carousel/${req.params.id}`, (req) => ({ body: req.body }));
 const deleteCarousel = createProxyHandler("delete", (req) => `/api/carousel/${req.params.id}`);
+const getCarouselSettings = createProxyHandler("get", "/api/carousel-settings");
+const updateCarouselSettings = createProxyHandler("post", "/api/carousel-settings", (req) => ({ body: req.body }));
 
 const getPushMessages = createProxyHandler("get", "/api/push-messages", (req) => ({ params: req.query }));
 const createPushMessage = createProxyHandler("post", "/api/push-messages", (req) => ({ body: req.body }));
@@ -43,6 +46,10 @@ const getPushMessageStats = createProxyHandler("get", (req) => `/api/push-messag
 const getPushMessageDeliveries = createProxyHandler("get", (req) => `/api/push-messages/${req.params.id}/deliveries`, (req) => ({ params: req.query }));
 const updatePushMessage = createProxyHandler("put", (req) => `/api/push-messages/${req.params.id}`, (req) => ({ body: req.body }));
 const deletePushMessage = createProxyHandler("delete", (req) => `/api/push-messages/${req.params.id}`);
+const getPublicAPIs = createProxyHandler("get", "/api/public-apis", (req) => ({ params: req.query }));
+const createPublicAPI = createProxyHandler("post", "/api/public-apis", (req) => ({ body: req.body }));
+const updatePublicAPI = createProxyHandler("put", (req) => `/api/public-apis/${req.params.id}`, (req) => ({ body: req.body }));
+const deletePublicAPI = createProxyHandler("delete", (req) => `/api/public-apis/${req.params.id}`);
 
 const getDebugMode = createProxyHandler("get", "/api/debug-mode");
 const updateDebugMode = createProxyHandler("post", "/api/debug-mode", (req) => ({ body: req.body }));
@@ -58,6 +65,16 @@ const updateWechatLoginConfig = createProxyHandler("post", "/api/wechat-login-co
 
 const getServiceSettings = createProxyHandler("get", "/api/service-settings");
 const updateServiceSettings = createProxyHandler("post", "/api/service-settings", (req) => ({ body: req.body }));
+const getHomeEntrySettings = createProxyHandler("get", "/api/home-entry-settings");
+const updateHomeEntrySettings = createProxyHandler("post", "/api/home-entry-settings", (req) => ({ body: req.body }));
+const getErrandSettings = createProxyHandler("get", "/api/errand-settings");
+const updateErrandSettings = createProxyHandler("post", "/api/errand-settings", (req) => ({ body: req.body }));
+const getMerchantTaxonomySettings = createProxyHandler("get", "/api/merchant-taxonomy-settings");
+const updateMerchantTaxonomySettings = createProxyHandler("post", "/api/merchant-taxonomy-settings", (req) => ({ body: req.body }));
+const getRiderRankSettings = createProxyHandler("get", "/api/rider-rank-settings");
+const updateRiderRankSettings = createProxyHandler("post", "/api/rider-rank-settings", (req) => ({ body: req.body }));
+const getDiningBuddySettings = createProxyHandler("get", "/api/dining-buddy-settings");
+const updateDiningBuddySettings = createProxyHandler("post", "/api/dining-buddy-settings", (req) => ({ body: req.body }));
 const getPublicRuntimeSettings = createProxyHandler("get", "/api/public/runtime-settings");
 const getCharitySettings = createProxyHandler("get", "/api/charity-settings");
 const updateCharitySettings = createProxyHandler("post", "/api/charity-settings", (req) => ({ body: req.body }));
@@ -65,6 +82,14 @@ const getPublicCharitySettings = createProxyHandler("get", "/api/public/charity-
 const getVIPSettings = createProxyHandler("get", "/api/vip-settings");
 const updateVIPSettings = createProxyHandler("post", "/api/vip-settings", (req) => ({ body: req.body }));
 const getPublicVIPSettings = createProxyHandler("get", "/api/public/vip-settings");
+const exportSystemSettings = createProxyHandler("get", "/api/data-exports/system-settings");
+const exportContentConfig = createProxyHandler("get", "/api/data-exports/content-config");
+const exportAPIConfig = createProxyHandler("get", "/api/data-exports/api-config");
+const exportPaymentConfig = createProxyHandler("get", "/api/data-exports/payment-config");
+const importSystemSettings = createProxyHandler("post", "/api/data-imports/system-settings", (req) => ({ body: req.body }));
+const importContentConfig = createProxyHandler("post", "/api/data-imports/content-config", (req) => ({ body: req.body }));
+const importAPIConfig = createProxyHandler("post", "/api/data-imports/api-config", (req) => ({ body: req.body }));
+const importPaymentConfig = createProxyHandler("post", "/api/data-imports/payment-config", (req) => ({ body: req.body }));
 
 const getPayMode = createProxyHandler("get", "/api/pay-config/mode");
 const updatePayMode = createProxyHandler("post", "/api/pay-config/mode", (req) => ({ body: req.body }));
@@ -148,6 +173,38 @@ async function uploadImage(req, res) {
   }
 }
 
+async function uploadEditorImage(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: "没有上传文件" });
+  }
+
+  const tempFilePath = req.file.path;
+  try {
+    const form = new FormData();
+    form.append("file", fs.createReadStream(tempFilePath), req.file.originalname);
+    const response = await requestSettingsRaw(req, "post", "/api/upload/image", {
+      body: form,
+      headers: form.getHeaders(),
+      validateStatus(status) {
+        return status < 500;
+      }
+    });
+
+    const data = response.data && typeof response.data === "object"
+      ? { ...response.data }
+      : response.data;
+    if (data && data.url) {
+      data.url = normalizePublicAssetUrl(req, data.url);
+    }
+
+    return res.status(response.status).json(data);
+  } catch (error) {
+    return handleProxyError(res, error, "uploadEditorImage", { success: false, error: error.message });
+  } finally {
+    safeUnlinkTempFile(tempFilePath);
+  }
+}
+
 async function uploadPackage(req, res) {
   if (!req.file) {
     return res.status(400).json({ success: false, error: "没有上传文件" });
@@ -181,6 +238,16 @@ async function uploadPackage(req, res) {
 }
 
 async function clearAllData(req, res) {
+  if (!isClearAllVerifyConfigured()) {
+    logger.error("POST /api/settings/clear-all-data", {
+      action: "clear_all_data_verify_unconfigured"
+    });
+    return res.status(503).json({
+      success: false,
+      error: "清空全量数据未配置二次校验口令，请联系管理员"
+    });
+  }
+
   const verifyAccount = String(req.body?.verifyAccount || "").trim();
   const verifyPassword = String(req.body?.verifyPassword || "");
   const operatorId = String(req.operator?.operatorId || "");
@@ -197,7 +264,6 @@ async function clearAllData(req, res) {
   if (!verified.ok) {
     logger.warn("POST /api/settings/clear-all-data", {
       action: "clear_all_data_verify_failed",
-      verifyAccount,
       operatorId,
       operatorName,
       ip: req.ip,
@@ -260,6 +326,8 @@ module.exports = {
   createCarousel,
   updateCarousel,
   deleteCarousel,
+  getCarouselSettings,
+  updateCarouselSettings,
   getPushMessages,
   createPushMessage,
   runPushDispatchCycle,
@@ -267,6 +335,10 @@ module.exports = {
   getPushMessageDeliveries,
   updatePushMessage,
   deletePushMessage,
+  getPublicAPIs,
+  createPublicAPI,
+  updatePublicAPI,
+  deletePublicAPI,
   getDebugMode,
   updateDebugMode,
   getSMSConfig,
@@ -277,6 +349,16 @@ module.exports = {
   updateWechatLoginConfig,
   getServiceSettings,
   updateServiceSettings,
+  getHomeEntrySettings,
+  updateHomeEntrySettings,
+  getErrandSettings,
+  updateErrandSettings,
+  getMerchantTaxonomySettings,
+  updateMerchantTaxonomySettings,
+  getRiderRankSettings,
+  updateRiderRankSettings,
+  getDiningBuddySettings,
+  updateDiningBuddySettings,
   getPublicRuntimeSettings,
   getCharitySettings,
   updateCharitySettings,
@@ -284,6 +366,14 @@ module.exports = {
   getVIPSettings,
   updateVIPSettings,
   getPublicVIPSettings,
+  exportSystemSettings,
+  exportContentConfig,
+  exportAPIConfig,
+  exportPaymentConfig,
+  importSystemSettings,
+  importContentConfig,
+  importAPIConfig,
+  importPaymentConfig,
   getAppDownloadConfig,
   updateAppDownloadConfig,
   getPayMode,
@@ -293,6 +383,7 @@ module.exports = {
   getAlipayConfig,
   updateAlipayConfig,
   uploadImage,
+  uploadEditorImage,
   uploadPackage,
   getWeather,
   getCoinRatio,

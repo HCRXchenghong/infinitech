@@ -2,6 +2,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import request from '@/utils/request';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { formatRoleId } from '@/utils/format';
+import { getCachedRiderRankSettings } from '@/utils/platform-settings';
 import { useResponsiveListPage } from '@/composables/useResponsiveListPage';
 import { useRiderActionHelpers } from './ridersActionHelpers';
 
@@ -66,6 +67,7 @@ export function useRidersPage() {
   const riderReviewSaving = ref(false);
   const uploadingRiderReviewImage = ref(false);
   const riderReviewForm = ref(buildEmptyRiderReviewForm());
+  const riderRankSettings = ref(getCachedRiderRankSettings());
   let refreshTimer = null;
 
   function buildEmptyRiderReviewForm() {
@@ -206,6 +208,7 @@ export function useRidersPage() {
     riderReviewSaving,
     uploadingRiderReviewImage,
     riderReviewForm,
+    riderRankSettings,
     clearing,
     dataCache,
     loadRiders,

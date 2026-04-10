@@ -1,16 +1,23 @@
 const UNIFIED_ID_PREFIX = "250724";
 const BFF_LOG_BUCKET = "98";
 const INVITE_RUNTIME_PORT = "1788";
-const INVITE_RUNTIME_ALLOWED_API_RULES = [
-  { method: "GET", pattern: /^\/api\/onboarding\/invites\/[^/]+$/ },
-  { method: "POST", pattern: /^\/api\/onboarding\/invites\/[^/]+\/submit$/ },
-  { method: "GET", pattern: /^\/api\/coupons\/link\/[^/]+$/ },
-  { method: "POST", pattern: /^\/api\/coupons\/link\/[^/]+\/claim$/ },
-  { method: "POST", pattern: /^\/api\/upload$/ },
-  { method: "GET", pattern: /^\/api\/public\/app-download-config$/ },
-  { method: "GET", pattern: /^\/api\/health$/ },
-  { method: "GET", pattern: /^\/api\/ready$/ }
-];
+const DOWNLOAD_RUNTIME_PORT = "1798";
+const PUBLIC_RUNTIME_ALLOWED_API_RULES = {
+  [INVITE_RUNTIME_PORT]: [
+    { method: "GET", pattern: /^\/api\/onboarding\/invites\/[^/]+$/ },
+    { method: "POST", pattern: /^\/api\/onboarding\/invites\/[^/]+\/submit$/ },
+    { method: "GET", pattern: /^\/api\/coupons\/link\/[^/]+$/ },
+    { method: "POST", pattern: /^\/api\/coupons\/link\/[^/]+\/claim$/ },
+    { method: "POST", pattern: /^\/api\/upload$/ },
+    { method: "GET", pattern: /^\/api\/health$/ },
+    { method: "GET", pattern: /^\/api\/ready$/ }
+  ],
+  [DOWNLOAD_RUNTIME_PORT]: [
+    { method: "GET", pattern: /^\/api\/public\/app-download-config$/ },
+    { method: "GET", pattern: /^\/api\/health$/ },
+    { method: "GET", pattern: /^\/api\/ready$/ }
+  ]
+};
 
 let bffLogMinute = "";
 let bffLogCounter = 0;
@@ -146,7 +153,18 @@ function extractSubject(req, actionScene) {
   return String(raw || "").trim();
 }
 
-function isInviteRuntimeAllowedApiRequest(method, path) {
+function isPublicRuntimePort(port) {
+  return Boolean(PUBLIC_RUNTIME_ALLOWED_API_RULES[String(port || "").trim()]);
+}
+
+function getPublicRuntimeGuardMessage(port) {
+  return String(port || "").trim() === DOWNLOAD_RUNTIME_PORT
+    ? "1798 仅开放下载页相关接口"
+    : "1788 仅开放邀请 / 领券页相关接口";
+}
+
+function isPublicRuntimeAllowedApiRequest(port, method, path) {
+  const rules = PUBLIC_RUNTIME_ALLOWED_API_RULES[String(port || "").trim()] || [];
   const normalizedMethod = String(method || "").toUpperCase();
   const normalizedPath = normalizeRequestPath(path);
   if (!normalizedPath.startsWith("/api/")) {
@@ -154,10 +172,10 @@ function isInviteRuntimeAllowedApiRequest(method, path) {
   }
 
   if (normalizedMethod === "OPTIONS") {
-    return INVITE_RUNTIME_ALLOWED_API_RULES.some((rule) => rule.pattern.test(normalizedPath));
+    return rules.some((rule) => rule.pattern.test(normalizedPath));
   }
 
-  return INVITE_RUNTIME_ALLOWED_API_RULES.some((rule) => {
+  return rules.some((rule) => {
     const ruleMethod = String(rule.method || "").toUpperCase();
     const methodMatched = normalizedMethod === ruleMethod || (normalizedMethod === "HEAD" && ruleMethod === "GET");
     return methodMatched && rule.pattern.test(normalizedPath);
@@ -166,6 +184,7 @@ function isInviteRuntimeAllowedApiRequest(method, path) {
 
 module.exports = {
   INVITE_RUNTIME_PORT,
+  DOWNLOAD_RUNTIME_PORT,
   nextLogTsid,
   extractClientIp,
   extractSourcePort,
@@ -173,5 +192,7 @@ module.exports = {
   inferActorTypeByPath,
   inferActionScene,
   extractSubject,
-  isInviteRuntimeAllowedApiRequest,
+  isPublicRuntimePort,
+  getPublicRuntimeGuardMessage,
+  isPublicRuntimeAllowedApiRequest,
 };

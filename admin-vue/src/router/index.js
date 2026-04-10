@@ -4,7 +4,7 @@ import InviteLanding from '@/views/InviteLanding.vue'
 import CouponLanding from '@/views/CouponLanding.vue'
 import AccessDenied from '@/views/AccessDenied.vue'
 import AppDownloadLanding from '@/views/AppDownloadLanding.vue'
-import { getToken, isInviteRuntime } from '@/utils/runtime'
+import { getAppRuntime, getToken } from '@/utils/runtime'
 
 const protectedRoutes = [
   { path: '/dashboard', name: 'dashboard', title: '仪表盘' },
@@ -16,6 +16,9 @@ const protectedRoutes = [
   { path: '/support-chat', name: 'support-chat', title: '客服工作台' },
   { path: '/monitor-chat', name: 'monitor-chat', title: '平台监控' },
   { path: '/blank-page', name: 'blank-page', title: '联调工作台' },
+  { path: '/home-entry-settings', name: 'home-entry-settings', title: '首页入口配置' },
+  { path: '/errand-settings', name: 'errand-settings', title: '跑腿配置' },
+  { path: '/dining-buddy-governance', name: 'dining-buddy-governance', title: '同频饭友治理' },
   { path: '/featured-products', name: 'featured-products', title: '今日推荐' },
   { path: '/home-campaigns', name: 'home-campaigns', title: '首页推广' },
   { path: '/contact-phone-audits', name: 'contact-phone-audits', title: '电话联系审计' },
@@ -28,6 +31,8 @@ const protectedRoutes = [
   { path: '/management-center', name: 'management-center', title: '管理中心' },
   { path: '/coupon-management', name: 'coupon-management', title: '优惠券管理' },
   { path: '/settings', name: 'settings', title: '系统设置' },
+  { path: '/merchant-taxonomy-settings', name: 'merchant-taxonomy-settings', title: '商户业务字典' },
+  { path: '/rider-rank-settings', name: 'rider-rank-settings', title: '骑手等级配置' },
   { path: '/system-logs', name: 'system-logs', title: '系统日志' },
   { path: '/content-settings', name: 'content-settings', title: '内容设置' },
   { path: '/api-management', name: 'api-management', title: 'API 管理' },
@@ -45,6 +50,9 @@ const protectedViewMap = {
   'support-chat': () => import('@/views/SupportChat.vue'),
   'monitor-chat': () => import('@/views/MonitorChat.vue'),
   'blank-page': () => import('@/views/BlankPage.vue'),
+  'home-entry-settings': () => import('@/views/HomeEntrySettings.vue'),
+  'errand-settings': () => import('@/views/ErrandSettings.vue'),
+  'dining-buddy-governance': () => import('@/views/DiningBuddyGovernance.vue'),
   'featured-products': () => import('@/views/FeaturedProducts.vue'),
   'home-campaigns': () => import('@/views/HomeCampaigns.vue'),
   'contact-phone-audits': () => import('@/views/ContactPhoneAudits.vue'),
@@ -57,6 +65,8 @@ const protectedViewMap = {
   'management-center': () => import('@/views/ManagementCenter.vue'),
   'coupon-management': () => import('@/views/CouponManagement.vue'),
   settings: () => import('@/views/Settings.vue'),
+  'merchant-taxonomy-settings': () => import('@/views/MerchantTaxonomySettings.vue'),
+  'rider-rank-settings': () => import('@/views/RiderRankSettings.vue'),
   'system-logs': () => import('@/views/SystemLogs.vue'),
   'content-settings': () => import('@/views/ContentSettings.vue'),
   'api-management': () => import('@/views/ApiManagement.vue'),
@@ -73,7 +83,7 @@ const routes = [
   {
     path: '/',
     name: 'home',
-    component: () => import('@/views/BlankPage.vue'),
+    redirect: '/dashboard',
     meta: { requiresAuth: true, title: '首页' },
   },
   {
@@ -151,9 +161,9 @@ function isCouponClaimPath(path) {
 }
 
 function resolveDocumentTitle(route) {
-  const inviteOnlyRuntime = isInviteRuntime()
+  const runtime = getAppRuntime()
   const routeTitle = typeof route?.meta?.title === 'string' ? route.meta.title.trim() : ''
-  if (inviteOnlyRuntime) {
+  if (runtime === 'invite' || runtime === 'download') {
     if (routeTitle) {
       return `悦享e食 - ${routeTitle}`
     }
@@ -166,28 +176,37 @@ function resolveDocumentTitle(route) {
 }
 
 router.beforeEach((to, from, next) => {
-  const inviteOnlyRuntime = isInviteRuntime()
+  const runtime = getAppRuntime()
   const invitePath = isInvitePath(to.path)
   const downloadPath = isDownloadPath(to.path)
   const couponClaimPath = isCouponClaimPath(to.path)
   const accessDeniedRoute = to.name === 'access-denied'
+  const publicRuntime = runtime === 'invite' || runtime === 'download'
 
-  if (inviteOnlyRuntime && to.path === '/') {
+  if (runtime === 'invite' && to.path === '/') {
+    next({ name: 'access-denied', query: { mode: 'invite-only' }, replace: true })
+    return
+  }
+  if (runtime === 'invite' && (downloadPath || (!invitePath && !couponClaimPath && !accessDeniedRoute))) {
+    next({ name: 'access-denied', query: { mode: 'invite-only' }, replace: true })
+    return
+  }
+  if (runtime === 'download' && to.path === '/') {
     next({ name: 'download-landing', replace: true })
     return
   }
-  if (inviteOnlyRuntime && !invitePath && !downloadPath && !couponClaimPath && !accessDeniedRoute) {
-    next({ name: 'download-landing', replace: true })
+  if (runtime === 'download' && (invitePath || couponClaimPath || (!downloadPath && !accessDeniedRoute))) {
+    next({ name: 'access-denied', query: { mode: 'download-only' }, replace: true })
     return
   }
 
-  if (!inviteOnlyRuntime && (invitePath || couponClaimPath)) {
+  if (runtime === 'admin' && (invitePath || couponClaimPath || downloadPath)) {
     next({ name: 'access-denied', query: { mode: 'admin-only' }, replace: true })
     return
   }
 
   const token = getToken()
-  if (to.meta.requiresAuth && !token) {
+  if (!publicRuntime && to.meta.requiresAuth && !token) {
     next({ name: 'login', replace: true })
     return
   }

@@ -37,6 +37,35 @@ class Database {
     this.db = null;
   }
 
+  toSqlLiteral(value) {
+    if (value === null || value === undefined) {
+      return 'NULL';
+    }
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? String(value) : 'NULL';
+    }
+    if (typeof value === 'boolean') {
+      return value ? '1' : '0';
+    }
+    return `'${String(value).replace(/'/g, "''")}'`;
+  }
+
+  interpolateSql(sql, params = []) {
+    if (!Array.isArray(params) || params.length === 0) {
+      return String(sql || '');
+    }
+
+    let paramIndex = 0;
+    return String(sql || '').replace(/\?/g, () => {
+      if (paramIndex >= params.length) {
+        return '?';
+      }
+      const nextValue = this.toSqlLiteral(params[paramIndex]);
+      paramIndex += 1;
+      return nextValue;
+    });
+  }
+
   // 打开数据库
   open() {
     return new Promise((resolve, reject) => {
@@ -78,15 +107,16 @@ class Database {
   // 执行 SQL
   executeSql(sql, params = []) {
     return new Promise((resolve, reject) => {
+      const finalSql = this.interpolateSql(sql, params);
       // #ifdef APP-PLUS
       plus.sqlite.executeSql({
         name: DB_NAME,
-        sql: sql,
+        sql: finalSql,
         success: (res) => {
           resolve(res);
         },
         fail: (err) => {
-          console.error('SQL执行失败:', sql, err);
+          console.error('SQL执行失败:', finalSql, err);
           reject(err);
         }
       });
@@ -101,15 +131,16 @@ class Database {
   // 查询
   selectSql(sql, params = []) {
     return new Promise((resolve, reject) => {
+      const finalSql = this.interpolateSql(sql, params);
       // #ifdef APP-PLUS
       plus.sqlite.selectSql({
         name: DB_NAME,
-        sql: sql,
+        sql: finalSql,
         success: (res) => {
           resolve(res);
         },
         fail: (err) => {
-          console.error('查询失败:', sql, err);
+          console.error('查询失败:', finalSql, err);
           reject(err);
         }
       });
@@ -151,16 +182,21 @@ class Database {
   // 保存消息
   async saveMessages(chatId, messages) {
     for (const msg of messages) {
-      const id = String(msg.id || '').replace(/'/g, "''");
-      const senderId = String(msg.senderId || '').replace(/'/g, "''");
-      const senderName = String(msg.sender || msg.senderName || '').replace(/'/g, "''");
-      const content = String(msg.content || msg.text || '').replace(/'/g, "''");
-      const messageType = String(msg.messageType || msg.type || 'text');
-      const timestamp = msg.timestamp || Date.now();
-      const isSelf = msg.self || msg.isSelf ? 1 : 0;
-      const avatar = String(msg.avatar || '').replace(/'/g, "''");
-      const sql = `INSERT OR REPLACE INTO messages (id, chatId, senderId, senderName, content, messageType, timestamp, isSelf, avatar) VALUES ('${id}', '${chatId}', '${senderId}', '${senderName}', '${content}', '${messageType}', ${timestamp}, ${isSelf}, '${avatar}')`;
-      await this.executeSql(sql);
+      const sql = `
+        INSERT OR REPLACE INTO messages (id, chatId, senderId, senderName, content, messageType, timestamp, isSelf, avatar)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      await this.executeSql(sql, [
+        String(msg.id || ''),
+        String(chatId || ''),
+        String(msg.senderId || ''),
+        String(msg.sender || msg.senderName || ''),
+        String(msg.content || msg.text || ''),
+        String(msg.messageType || msg.type || 'text'),
+        Number.isFinite(Number(msg.timestamp)) ? Number(msg.timestamp) : Date.now(),
+        msg.self || msg.isSelf ? 1 : 0,
+        String(msg.avatar || '')
+      ]);
     }
   }
 

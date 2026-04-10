@@ -299,6 +299,20 @@ func (d *pushLogDispatcher) Name() string {
 	return "log"
 }
 
+func maskDeviceTokenForLog(token string) string {
+	raw := strings.TrimSpace(token)
+	if raw == "" {
+		return ""
+	}
+	if len(raw) <= 4 {
+		return strings.Repeat("*", len(raw))
+	}
+	if len(raw) <= 8 {
+		return raw[:2] + strings.Repeat("*", len(raw)-2)
+	}
+	return raw[:4] + "****" + raw[len(raw)-4:]
+}
+
 func (d *pushLogDispatcher) Send(ctx context.Context, req PushDispatchRequest) (*PushDispatchResult, error) {
 	log.Printf(
 		"[push-dispatch] simulated provider=log delivery=%s message=%s user=%s/%s token=%s title=%s",
@@ -306,7 +320,7 @@ func (d *pushLogDispatcher) Send(ctx context.Context, req PushDispatchRequest) (
 		req.MessageID,
 		req.UserType,
 		req.UserID,
-		req.DeviceToken,
+		maskDeviceTokenForLog(req.DeviceToken),
 		req.Title,
 	)
 	return &PushDispatchResult{

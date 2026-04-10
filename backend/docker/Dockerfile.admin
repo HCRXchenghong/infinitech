@@ -12,6 +12,7 @@ RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi 
   && npm ci
 
 COPY admin-vue ./
+COPY shared ../shared
 RUN npm run build
 
 FROM ${NGINX_BASE_IMAGE}

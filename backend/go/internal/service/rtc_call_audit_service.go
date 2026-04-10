@@ -295,10 +295,6 @@ func (s *RTCCallAuditService) UpsertCall(ctx context.Context, input RTCCallAudit
 	}
 
 	calleeRole := normalizeContactAuditRole(input.CalleeRole)
-	if calleeRole == "" {
-		return nil, fmt.Errorf("calleeRole is required")
-	}
-
 	callType := normalizeRTCCallType(input.CallType)
 	status := normalizeRTCCallStatus(input.Status)
 	complaintStatus := normalizeRTCCallComplaintStatus(input.ComplaintStatus)
@@ -329,6 +325,9 @@ func (s *RTCCallAuditService) UpsertCall(ctx context.Context, input RTCCallAudit
 			return nil, err
 		}
 	} else {
+		if calleeRole == "" {
+			return nil, fmt.Errorf("calleeRole is required")
+		}
 		record.UID = uid
 		record.CallIDRaw = rawCallID
 		record.CallType = callType
@@ -337,21 +336,54 @@ func (s *RTCCallAuditService) UpsertCall(ctx context.Context, input RTCCallAudit
 		record.CallerPhone = truncateString(callerPhone, 20)
 	}
 
-	record.CallType = callType
-	record.CalleeRole = calleeRole
-	record.CalleeID = truncateString(strings.TrimSpace(input.CalleeID), 32)
-	record.CalleePhone = truncateString(normalizeContactPhone(input.CalleePhone), 20)
-	record.ConversationID = truncateString(strings.TrimSpace(input.ConversationID), 64)
-	record.OrderID = truncateString(strings.TrimSpace(input.OrderID), 32)
-	record.EntryPoint = truncateString(strings.TrimSpace(input.EntryPoint), 64)
-	record.Scene = truncateString(strings.TrimSpace(input.Scene), 64)
-	record.ClientPlatform = truncateString(strings.TrimSpace(input.ClientPlatform), 32)
-	record.ClientKind = truncateString(strings.TrimSpace(input.ClientKind), 20)
-	record.Status = status
-	record.FailureReason = truncateString(strings.TrimSpace(input.FailureReason), 128)
-	record.ComplaintStatus = complaintStatus
-	record.RecordingRetention = recordingRetention
-	record.Metadata = metadata
+	if strings.TrimSpace(input.CallType) != "" || strings.TrimSpace(record.CallType) == "" {
+		record.CallType = callType
+	}
+	if calleeRole != "" {
+		record.CalleeRole = calleeRole
+	}
+	if record.CalleeRole == "" {
+		return nil, fmt.Errorf("calleeRole is required")
+	}
+	if calleeID := strings.TrimSpace(input.CalleeID); calleeID != "" || findErr == gorm.ErrRecordNotFound {
+		record.CalleeID = truncateString(calleeID, 32)
+	}
+	if calleePhone := normalizeContactPhone(input.CalleePhone); calleePhone != "" || findErr == gorm.ErrRecordNotFound {
+		record.CalleePhone = truncateString(calleePhone, 20)
+	}
+	if conversationID := strings.TrimSpace(input.ConversationID); conversationID != "" || findErr == gorm.ErrRecordNotFound {
+		record.ConversationID = truncateString(conversationID, 64)
+	}
+	if orderID := strings.TrimSpace(input.OrderID); orderID != "" || findErr == gorm.ErrRecordNotFound {
+		record.OrderID = truncateString(orderID, 32)
+	}
+	if entryPoint := strings.TrimSpace(input.EntryPoint); entryPoint != "" || findErr == gorm.ErrRecordNotFound {
+		record.EntryPoint = truncateString(entryPoint, 64)
+	}
+	if scene := strings.TrimSpace(input.Scene); scene != "" || findErr == gorm.ErrRecordNotFound {
+		record.Scene = truncateString(scene, 64)
+	}
+	if clientPlatform := strings.TrimSpace(input.ClientPlatform); clientPlatform != "" || findErr == gorm.ErrRecordNotFound {
+		record.ClientPlatform = truncateString(clientPlatform, 32)
+	}
+	if clientKind := strings.TrimSpace(input.ClientKind); clientKind != "" || findErr == gorm.ErrRecordNotFound {
+		record.ClientKind = truncateString(clientKind, 20)
+	}
+	if strings.TrimSpace(input.Status) != "" || strings.TrimSpace(record.Status) == "" {
+		record.Status = status
+	}
+	if failureReason := strings.TrimSpace(input.FailureReason); failureReason != "" || findErr == gorm.ErrRecordNotFound {
+		record.FailureReason = truncateString(failureReason, 128)
+	}
+	if strings.TrimSpace(input.ComplaintStatus) != "" || strings.TrimSpace(record.ComplaintStatus) == "" {
+		record.ComplaintStatus = complaintStatus
+	}
+	if strings.TrimSpace(input.RecordingRetention) != "" || strings.TrimSpace(record.RecordingRetention) == "" {
+		record.RecordingRetention = recordingRetention
+	}
+	if input.Metadata != nil || findErr == gorm.ErrRecordNotFound {
+		record.Metadata = metadata
+	}
 	record.StartedAt = normalizeRTCCallStartedAt(record.StartedAt, input.StartedAt, status, now)
 	record.AnsweredAt = normalizeRTCCallAnsweredAt(record.AnsweredAt, input.AnsweredAt, status, now)
 	record.EndedAt = normalizeRTCCallEndedAt(record.EndedAt, input.EndedAt, status, now)

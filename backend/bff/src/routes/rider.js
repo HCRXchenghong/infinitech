@@ -10,6 +10,8 @@ router.get('/:riderId/stats', riderController.getRiderStats)
 router.get('/:riderId/earnings', riderController.getRiderEarnings)
 router.get('/:riderId/orders', riderController.getRiderOrders)
 router.get('/orders/available', riderController.getAvailableOrders)
+router.get('/preferences', riderController.getRiderPreferences)
+router.post('/preferences', riderController.updateRiderPreferences)
 
 // 个人信息管理
 router.put('/:riderId/avatar', riderController.updateAvatar)

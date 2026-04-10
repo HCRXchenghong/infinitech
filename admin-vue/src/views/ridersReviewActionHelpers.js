@@ -1,3 +1,5 @@
+import { getRiderRankName, loadRiderRankSettings } from '@/utils/platform-settings';
+
 export function useRiderReviewActionHelpers(ctx) {
   const {
     request,
@@ -12,11 +14,19 @@ export function useRiderReviewActionHelpers(ctx) {
     riderReviewSaving,
     uploadingRiderReviewImage,
     riderReviewForm,
+    riderRankSettings,
     riders,
     detail,
     buildEmptyRiderReviewForm,
     normalizeImageArray,
   } = ctx;
+
+  async function loadRiderRankDictionary(forceRefresh = false) {
+    if (!riderRankSettings) return;
+    riderRankSettings.value = await loadRiderRankSettings(forceRefresh);
+  }
+
+  void loadRiderRankDictionary();
 
   async function openRiderReviewManage(rider) {
     if (!rider?.id) return;
@@ -186,15 +196,7 @@ export function useRiderReviewActionHelpers(ctx) {
   }
 
   function getRankName(level) {
-    const ranks = {
-      1: '青铜骑士',
-      2: '白银骑士',
-      3: '黄金骑士',
-      4: '钻石骑士',
-      5: '王者骑士',
-      6: '传奇大佬'
-    };
-    return ranks[level] || '青铜骑士';
+    return getRiderRankName(level, riderRankSettings?.value);
   }
 
   function getRankType(level) {

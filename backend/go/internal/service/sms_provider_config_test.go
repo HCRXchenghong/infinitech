@@ -31,20 +31,25 @@ func TestNormalizeSMSProviderConfigMapSupportsLegacyKeys(t *testing.T) {
 }
 
 func TestBuildSMSProviderConfigAdminViewMasksSecret(t *testing.T) {
-	view := BuildSMSProviderConfigAdminView(SMSProviderConfig{
-		Provider:        defaultSMSProvider,
-		AccessKeyID:     "ak",
-		AccessKeySecret: "secret",
-		SignName:        "test-sign",
-		TemplateCode:    "SMS_123",
-		RegionID:        defaultAliyunSMSRegion,
-	})
+	cfg := DefaultSMSProviderConfig()
+	cfg.AccessKeyID = "ak"
+	cfg.AccessKeySecret = "secret"
+	cfg.SignName = "test-sign"
+	cfg.TemplateCode = "SMS_123"
+
+	view := BuildSMSProviderConfigAdminView(cfg)
 
 	if got, _ := view["access_key_secret"].(string); got != "" {
 		t.Fatalf("expected masked secret in admin view, got %q", got)
 	}
 	if got, _ := view["has_access_key_secret"].(bool); !got {
 		t.Fatalf("expected has_access_key_secret to be true")
+	}
+	if got, _ := view["consumer_enabled"].(bool); !got {
+		t.Fatalf("expected consumer_enabled to default to true")
+	}
+	if got, _ := view["admin_enabled"].(bool); !got {
+		t.Fatalf("expected admin_enabled to default to true")
 	}
 }
 
@@ -73,5 +78,61 @@ func TestValidateSMSProviderConfigAllowsEmptyButRequiresCompleteAliyunConfig(t *
 	})
 	if err != nil {
 		t.Fatalf("expected complete config to pass validation, got %v", err)
+	}
+}
+
+func TestMergeSMSProviderConfigPreservesExistingTargetTogglesWhenRawKeysMissing(t *testing.T) {
+	existing := SMSProviderConfig{
+		Provider:        defaultSMSProvider,
+		AccessKeyID:     "ak",
+		AccessKeySecret: "secret",
+		SignName:        "sign",
+		TemplateCode:    "SMS_123",
+		RegionID:        defaultAliyunSMSRegion,
+		ConsumerEnabled: false,
+		MerchantEnabled: false,
+		RiderEnabled:    true,
+		AdminEnabled:    false,
+	}
+	incoming := NormalizeSMSProviderConfigMap(map[string]interface{}{
+		"access_key_id": "ak-new",
+	})
+
+	merged := MergeSMSProviderConfig(incoming, existing, map[string]interface{}{
+		"access_key_id": "ak-new",
+	})
+
+	if merged.ConsumerEnabled {
+		t.Fatalf("expected consumer_enabled to preserve existing false")
+	}
+	if merged.MerchantEnabled {
+		t.Fatalf("expected merchant_enabled to preserve existing false")
+	}
+	if !merged.RiderEnabled {
+		t.Fatalf("expected rider_enabled to preserve existing true")
+	}
+	if merged.AdminEnabled {
+		t.Fatalf("expected admin_enabled to preserve existing false")
+	}
+}
+
+func TestSMSProviderConfigIsTargetEnabled(t *testing.T) {
+	cfg := DefaultSMSProviderConfig()
+	cfg.ConsumerEnabled = false
+	cfg.MerchantEnabled = true
+	cfg.RiderEnabled = false
+	cfg.AdminEnabled = true
+
+	if cfg.IsTargetEnabled("consumer") {
+		t.Fatalf("expected consumer target to be disabled")
+	}
+	if !cfg.IsTargetEnabled("merchant") {
+		t.Fatalf("expected merchant target to be enabled")
+	}
+	if cfg.IsTargetEnabled("rider") {
+		t.Fatalf("expected rider target to be disabled")
+	}
+	if !cfg.IsTargetEnabled("admin") {
+		t.Fatalf("expected admin target to be enabled")
 	}
 }

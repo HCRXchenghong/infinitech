@@ -112,28 +112,34 @@ function dedupeList(items = []) {
 function normalizeBenefits(items = [], fallback = []) {
   const source = Array.isArray(items) && items.length ? items : fallback
   return source
-    .map((item) => ({
-      icon: normalizeText(item?.icon, '/static/icons/star.svg'),
-      title: normalizeText(item?.title),
-      desc: normalizeText(item?.desc),
-      detail: normalizeText(item?.detail)
-    }))
+    .map((item) => {
+      const safeItem = item && typeof item === 'object' ? item : {}
+      return {
+        icon: normalizeText(safeItem.icon, '/static/icons/star.svg'),
+        title: normalizeText(safeItem.title),
+        desc: normalizeText(safeItem.desc),
+        detail: normalizeText(safeItem.detail)
+      }
+    })
     .filter((item) => item.title || item.desc || item.detail || item.icon)
 }
 
 function normalizeLevels(items = [], fallback = []) {
   const source = Array.isArray(items) && items.length ? items : fallback
   return source
-    .map((item, index) => ({
-      name: normalizeText(item?.name),
-      style_class: normalizeText(item?.style_class, index === 0 ? 'level-quality' : 'level-gold'),
-      tagline: normalizeText(item?.tagline),
-      threshold_label: normalizeText(item?.threshold_label),
-      threshold_value: Math.max(1, Number(item?.threshold_value || 0)),
-      multiplier: Math.max(1, Number(item?.multiplier || 1)),
-      is_black_gold: Boolean(item?.is_black_gold),
-      benefits: normalizeBenefits(item?.benefits, [])
-    }))
+    .map((item, index) => {
+      const safeItem = item && typeof item === 'object' ? item : {}
+      return {
+        name: normalizeText(safeItem.name),
+        style_class: normalizeText(safeItem.style_class, index === 0 ? 'level-quality' : 'level-gold'),
+        tagline: normalizeText(safeItem.tagline),
+        threshold_label: normalizeText(safeItem.threshold_label),
+        threshold_value: Math.max(1, Number(safeItem.threshold_value || 0)),
+        multiplier: Math.max(1, Number(safeItem.multiplier || 1)),
+        is_black_gold: Boolean(safeItem.is_black_gold),
+        benefits: normalizeBenefits(safeItem.benefits, [])
+      }
+    })
     .filter((item) => item.name || item.threshold_value || item.benefits.length)
     .sort((left, right) => left.threshold_value - right.threshold_value)
 }
@@ -141,12 +147,15 @@ function normalizeLevels(items = [], fallback = []) {
 function normalizeTasks(items = [], fallback = []) {
   const source = Array.isArray(items) && items.length ? items : fallback
   return source
-    .map((item) => ({
-      title: normalizeText(item?.title),
-      description: normalizeText(item?.description),
-      reward_text: normalizeText(item?.reward_text),
-      action_label: normalizeText(item?.action_label, '去完成')
-    }))
+    .map((item) => {
+      const safeItem = item && typeof item === 'object' ? item : {}
+      return {
+        title: normalizeText(safeItem.title),
+        description: normalizeText(safeItem.description),
+        reward_text: normalizeText(safeItem.reward_text),
+        action_label: normalizeText(safeItem.action_label, '去完成')
+      }
+    })
     .filter((item) => item.title || item.description || item.reward_text || item.action_label)
 }
 

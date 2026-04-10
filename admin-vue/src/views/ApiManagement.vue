@@ -1,13 +1,25 @@
 <template>
   <div class="page">
     <div class="title-row">
-      <span class="title">API 管理</span>
+      <div>
+        <div class="title">API 管理</div>
+        <div class="title-subtitle">这里只维护第三方服务对接配置，对外 API Key 与权限分配已迁移到专门页面。</div>
+      </div>
       <el-button size="small" @click="loadAll(true)" :loading="loading">刷新</el-button>
     </div>
+
     <PageStateAlert :message="pageError" />
 
+    <el-card class="card full-span-card">
+      <div class="card-title">对外 API 能力导航</div>
+      <p class="route-tip">API 文档负责说明接口怎么调用；API 权限管理负责配置主要 API URL、API Key 和对应权限。</p>
+      <div class="route-actions">
+        <el-button type="primary" @click="go('/api-permissions')">打开 API 权限管理</el-button>
+        <el-button @click="go('/api-documentation')">查看 API 文档</el-button>
+      </div>
+    </el-card>
+
     <div class="settings-grid">
-      <!-- 短信 API 对接 -->
       <el-card class="card">
         <div class="card-title">短信 API 对接</div>
         <el-form :model="sms" :label-width="isMobile ? '80px' : '140px'" size="small">
@@ -36,13 +48,33 @@
           <el-form-item label="Endpoint">
             <el-input v-model="sms.endpoint" placeholder="可选，如 dysmsapi.aliyuncs.com" />
           </el-form-item>
+          <el-form-item label="适用端">
+            <div class="sms-target-grid">
+              <div class="sms-target-item">
+                <span class="sms-target-label">用户端</span>
+                <el-switch v-model="sms.consumer_enabled" />
+              </div>
+              <div class="sms-target-item">
+                <span class="sms-target-label">商户端</span>
+                <el-switch v-model="sms.merchant_enabled" />
+              </div>
+              <div class="sms-target-item">
+                <span class="sms-target-label">骑手端</span>
+                <el-switch v-model="sms.rider_enabled" />
+              </div>
+              <div class="sms-target-item">
+                <span class="sms-target-label">管理端</span>
+                <el-switch v-model="sms.admin_enabled" />
+              </div>
+            </div>
+            <div class="form-tip">默认全开。关闭某个端后，该端将无法再发送登录、注册、找回密码等短信验证码。</div>
+          </el-form-item>
           <el-form-item>
             <el-button type="primary" :loading="saving" @click="saveSms">保存</el-button>
           </el-form-item>
         </el-form>
       </el-card>
 
-      <!-- 天气 API 管理 -->
       <el-card class="card">
         <div class="card-title">天气 API 管理</div>
         <el-form :model="weather" :label-width="isMobile ? '80px' : '140px'" size="small">
@@ -89,179 +121,16 @@
           </el-form-item>
         </el-form>
       </el-card>
-
-      <!-- 对外API接口管理 -->
-      <el-card class="card api-management-card">
-        <div class="card-title">对外API接口管理</div>
-        
-        <!-- PC端操作和表格 -->
-        <template v-if="!isMobile">
-          <div class="api-actions">
-            <el-button size="small" type="primary" @click="showAddApiDialog">添加API接口</el-button>
-            <el-button size="small" type="info" @click="goToApiPermissions">API权限说明</el-button>
-            <el-button size="small" @click="loadApiList(true)" :loading="apiListLoading">刷新</el-button>
-          </div>
-          
-          <el-table :data="apiList" stripe size="small" v-loading="apiListLoading">
-          <el-table-column prop="id" label="ID" width="60" />
-          <el-table-column prop="name" label="接口名称" min-width="120" />
-          <el-table-column prop="path" label="接口说明" min-width="150">
-            <template #default="{ row }">
-              <span v-if="row.path" style="color: #606266;">{{ row.path }}</span>
-              <span v-else style="color: #c0c4cc;">无说明</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="permissions" label="访问权限" min-width="150">
-            <template #default="{ row }">
-              <el-tag 
-                v-for="perm in row.permissions" 
-                :key="perm" 
-                size="small" 
-                style="margin-right: 4px;"
-              >
-                {{ getPermissionLabel(perm) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="api_key" label="API Key" min-width="120">
-            <template #default="{ row }">
-              <el-input 
-                :value="row.api_key" 
-                readonly 
-                size="small"
-                style="width: 200px;"
-              >
-                <template #append>
-                  <el-button @click="copyApiKey(row.api_key)" size="small">复制</el-button>
-                </template>
-              </el-input>
-            </template>
-          </el-table-column>
-          <el-table-column prop="is_active" label="状态" width="80">
-            <template #default="{ row }">
-              <el-tag :type="row.is_active ? 'success' : 'danger'" size="small">
-                {{ row.is_active ? '启用' : '禁用' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="240" fixed="right">
-            <template #default="{ row }">
-              <div style="display: flex; gap: 4px; flex-wrap: nowrap;">
-                <el-button size="small" type="primary" @click="editApi(row)">编辑</el-button>
-                <el-button size="small" type="success" @click="showDownloadDialog(row)">下载文档</el-button>
-                <el-button size="small" type="danger" @click="deleteApi(row)">删除</el-button>
-              </div>
-            </template>
-          </el-table-column>
-          <template #empty>
-            <el-empty :description="apiListError ? '加载失败，暂无可显示数据' : '暂无API接口数据'" :image-size="90" />
-          </template>
-        </el-table>
-        </template>
-
-        <!-- 移动端提示 -->
-        <div v-else class="mobile-pc-only-tip">
-          <div class="tip-icon">💻</div>
-          <div class="tip-text">请移步电脑端使用此功能</div>
-          <div class="tip-desc">API接口管理功能需要在PC端进行操作</div>
-        </div>
-      </el-card>
     </div>
-
-    <!-- 下载文档对话框 -->
-    <el-dialog
-      v-model="downloadDialogVisible"
-      title="下载API接口文档"
-      width="500px"
-      :close-on-click-modal="false"
-    >
-      <el-form label-width="120px" size="small">
-        <el-form-item label="选择语言">
-          <el-radio-group v-model="downloadLanguage">
-            <el-radio value="java">Java</el-radio>
-            <el-radio value="python">Python</el-radio>
-            <el-radio value="javascript">JavaScript</el-radio>
-            <el-radio value="php">PHP</el-radio>
-            <el-radio value="go">Go</el-radio>
-            <el-radio value="markdown">Markdown</el-radio>
-          </el-radio-group>
-          <div class="form-tip">选择要生成的接口文档语言格式</div>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="downloadDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="downloadApiDoc" :loading="downloadingApi">下载</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 添加/编辑API接口对话框 -->
-    <el-dialog
-      v-model="apiDialogVisible"
-      :title="editingApi ? '编辑API接口' : '添加API接口'"
-      width="700px"
-      :close-on-click-modal="false"
-    >
-      <el-form :model="apiForm" label-width="120px" size="small">
-        <el-form-item label="接口名称" required>
-          <el-input v-model="apiForm.name" placeholder="如：获取订单列表" />
-          <div class="form-tip">用于标识此API接口的用途</div>
-        </el-form-item>
-        <el-form-item label="接口说明">
-          <el-input 
-            v-model="apiForm.path" 
-            placeholder="可选：填写此API Key的主要用途说明（如：用于合作伙伴网站获取订单数据）"
-            type="textarea"
-            :rows="2"
-          />
-          <div class="form-tip">可选字段，仅用于备注说明，不影响API功能</div>
-        </el-form-item>
-        <el-form-item label="访问权限" required>
-          <el-checkbox-group v-model="apiForm.permissions" @change="handleApiPermissionChange">
-            <el-checkbox label="orders">订单数据</el-checkbox>
-            <el-checkbox label="users">用户数据</el-checkbox>
-            <el-checkbox label="riders">骑手数据</el-checkbox>
-            <el-checkbox label="dashboard">仪表盘数据</el-checkbox>
-            <el-checkbox label="all">全部数据</el-checkbox>
-          </el-checkbox-group>
-        </el-form-item>
-        <el-form-item label="API Key">
-          <el-input 
-            v-model="apiForm.api_key" 
-            placeholder="自动生成或手动输入"
-            readonly
-          >
-            <template #append>
-              <el-button @click="generateApiKey">生成</el-button>
-            </template>
-          </el-input>
-          <div class="form-tip">用于API访问认证的密钥，其他网站调用时需要提供此Key</div>
-        </el-form-item>
-        <el-form-item label="接口描述">
-          <el-input 
-            v-model="apiForm.description" 
-            type="textarea" 
-            :rows="3"
-            placeholder="请输入接口的详细描述和使用说明" 
-          />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-switch v-model="apiForm.is_active" />
-          <span style="margin-left: 10px; color: #909399; font-size: 12px;">
-            {{ apiForm.is_active ? '启用' : '禁用' }}
-          </span>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="apiDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveApi" :loading="savingApi">保存</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 import { useApiManagementPage } from './apiManagementHelpers';
+
+const router = useRouter();
 
 const {
   isMobile,
@@ -270,31 +139,14 @@ const {
   pageError,
   sms,
   weather,
-  apiList,
-  apiListLoading,
-  apiDialogVisible,
-  editingApi,
-  apiForm,
-  savingApi,
-  downloadDialogVisible,
-  downloadLanguage,
-  downloadingApi,
   loadAll,
   saveSms,
   saveWeather,
-  loadApiList,
-  showAddApiDialog,
-  editApi,
-  deleteApi,
-  saveApi,
-  generateApiKey,
-  copyApiKey,
-  getPermissionLabel,
-  handleApiPermissionChange,
-  goToApiPermissions,
-  showDownloadDialog,
-  downloadApiDoc
-} = useApiManagementPage();
+} = useApiManagementPage({ includeExternalApiManagement: false });
+
+function go(path) {
+  router.push(path);
+}
 </script>
 
 <style scoped lang="css" src="./ApiManagement.css"></style>

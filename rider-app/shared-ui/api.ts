@@ -161,6 +161,17 @@ export const fetchRiderOrders = (status?: string) => {
   })
 }
 
+export const fetchRiderPreferences = () => request({
+  url: '/api/riders/preferences',
+  method: 'GET'
+})
+
+export const saveRiderPreferences = (payload: Record<string, any>) => request({
+  url: '/api/riders/preferences',
+  method: 'POST',
+  data: payload
+})
+
 const riderPayload = () => {
   const riderId = uni.getStorageSync('riderId')
   if (!riderId) return {}
@@ -315,4 +326,3 @@ export const getRankList = (type: string) => {
     method: 'GET'
   })
 }
-

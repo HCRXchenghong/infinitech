@@ -10,22 +10,37 @@ function stripApiSuffix(value: string) {
   return stripTrailingSlash(value).replace(/\/api$/, '');
 }
 
+function normalizeRuntime(value: string) {
+  const runtime = String(value || '').trim().toLowerCase();
+  if (runtime === 'invite' || runtime === 'download' || runtime === 'admin') {
+    return runtime;
+  }
+  return '';
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
   const apiTarget = stripApiSuffix(env.VITE_ADMIN_API_BASE_URL || 'http://127.0.0.1:25500');
   const socketTarget = stripTrailingSlash(env.VITE_SOCKET_URL || 'http://127.0.0.1:9898');
-  const inviteOnlyRuntime = env.VITE_INVITE_ONLY === 'true';
   const webPort = Number(env.VITE_ADMIN_WEB_PORT || 8888);
+  const runtimeMode =
+    normalizeRuntime(env.VITE_APP_RUNTIME)
+    || (env.VITE_INVITE_ONLY === 'true' ? 'invite' : '')
+    || (webPort === 1788 ? 'invite' : (webPort === 1798 ? 'download' : 'admin'));
 
   const inviteGuardPlugin = {
-    name: 'invite-only-dev-guard',
+    name: 'fixed-runtime-dev-guard',
     configureServer(server: any) {
       server.middlewares.use((req: any, res: any, next: any) => {
         const rawUrl = String(req?.url || '/');
         const pathname = rawUrl.split('?')[0] || '/';
 
-        if (!inviteOnlyRuntime) {
-          if (pathname.startsWith('/invite/') || pathname.startsWith('/coupon/')) {
+        if (runtimeMode === 'admin') {
+          if (
+            pathname.startsWith('/invite/')
+            || pathname.startsWith('/coupon/')
+            || pathname === '/download'
+          ) {
             res.statusCode = 302;
             res.setHeader('Location', '/access-denied?mode=admin-only');
             res.end();
@@ -35,11 +50,14 @@ export default defineConfig(({ mode }) => {
           return;
         }
 
-        const allowedPublicPath = pathname === '/' ||
-          pathname === '/download' ||
-          pathname === '/access-denied' ||
-          pathname.startsWith('/invite/') ||
-          pathname.startsWith('/coupon/');
+        const allowedPublicPath = runtimeMode === 'invite'
+          ? pathname === '/' ||
+            pathname === '/access-denied' ||
+            pathname.startsWith('/invite/') ||
+            pathname.startsWith('/coupon/')
+          : pathname === '/' ||
+            pathname === '/download' ||
+            pathname === '/access-denied';
 
         const isFrameworkAsset = pathname.startsWith('/@vite') ||
           pathname.startsWith('/@id/') ||
@@ -63,7 +81,10 @@ export default defineConfig(({ mode }) => {
         }
 
         res.statusCode = 302;
-        res.setHeader('Location', '/download');
+        res.setHeader(
+          'Location',
+          runtimeMode === 'invite' ? '/access-denied?mode=invite-only' : '/access-denied?mode=download-only'
+        );
         res.end();
       });
     }
@@ -113,7 +134,7 @@ export default defineConfig(({ mode }) => {
       port: Number.isFinite(webPort) && webPort > 0 ? webPort : 8888,
       strictPort: true,
       proxy: {
-        '/api': {
+        '^/api(?:/|$)': {
           target: apiTarget,
           changeOrigin: true
         },

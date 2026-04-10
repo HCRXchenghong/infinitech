@@ -6,6 +6,7 @@ import {
   reverseGeocode,
   upsertConversation
 } from '@/shared-ui/api.js'
+import { pickFirstDefined } from '@/shared-ui/foundation/safe.js'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/shared-ui/support-runtime.js'
 
 const DEFAULT_SELF_AVATAR = '/static/images/my-avatar.svg'
@@ -14,6 +15,8 @@ const MESSAGE_CACHE_MAX_AGE = 12 * 60 * 60 * 1000
 const MESSAGE_CACHE_MAX_ITEMS = 60
 const MESSAGE_VISIBLE_MAX_AGE = 3 * 24 * 60 * 60 * 1000
 const DEFAULT_EMOJIS = ['😀', '😁', '😂', '🤣', '😊', '😍', '👍', '👏', '🎉', '❤️', '🔥', '🙏', '😎', '😄', '😭', '💪', '✨', '🍔', '🍜', '☕']
+const SOCKET_TOKEN_KEY = 'socket_token'
+const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key'
 
 const nowTime = () => {
   const d = new Date()
@@ -68,8 +71,8 @@ const formatAudioDuration = (value) => {
 const normalizeLocationContent = (content) => {
   const parsed = safeParseJson(content)
   if (parsed) {
-    const latitude = Number(parsed.latitude ?? parsed.lat)
-    const longitude = Number(parsed.longitude ?? parsed.lng ?? parsed.lon)
+    const latitude = Number(pickFirstDefined(parsed.latitude, parsed.lat))
+    const longitude = Number(pickFirstDefined(parsed.longitude, parsed.lng, parsed.lon))
     if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
       const address =
         String(parsed.address || parsed.name || '').trim() ||
@@ -369,16 +372,17 @@ export default {
     },
 
     resolveMessageId(payload, fallback) {
+      const safePayload = payload && typeof payload === 'object' ? payload : {}
       const explicitId =
-        payload && (payload.id ?? payload.uid ?? payload.tsid ?? payload.messageId ?? payload.mid)
+        pickFirstDefined(safePayload.id, safePayload.uid, safePayload.tsid, safePayload.messageId, safePayload.mid)
       if (explicitId !== undefined && explicitId !== null && String(explicitId).trim()) {
         return String(explicitId)
       }
-      const timestamp = this.resolveMessageTimestamp(payload?.timestamp || payload?.createdAt, Date.now())
-      const senderRole = String(payload?.senderRole || 'unknown').trim() || 'unknown'
-      const senderId = String(payload?.senderId || 'unknown').trim() || 'unknown'
-      const messageType = String(payload?.messageType || payload?.type || 'text').trim() || 'text'
-      const contentSeed = String(payload?.content || payload?.text || '')
+      const timestamp = this.resolveMessageTimestamp(safePayload.timestamp || safePayload.createdAt, Date.now())
+      const senderRole = String(safePayload.senderRole || 'unknown').trim() || 'unknown'
+      const senderId = String(safePayload.senderId || 'unknown').trim() || 'unknown'
+      const messageType = String(safePayload.messageType || safePayload.type || 'text').trim() || 'text'
+      const contentSeed = String(safePayload.content || safePayload.text || '')
         .trim()
         .slice(0, 24)
         .replace(/\s+/g, '_')
@@ -549,7 +553,14 @@ export default {
     async initSocket() {
       if (!this.userId) return
 
-      let token = uni.getStorageSync('socket_token')
+      const socketAccountKey = this.userId ? `user:${String(this.userId).trim()}` : ''
+      let token = String(uni.getStorageSync(SOCKET_TOKEN_KEY) || '').trim()
+      const cachedAccountKey = String(uni.getStorageSync(SOCKET_TOKEN_ACCOUNT_KEY) || '').trim()
+      if (token && cachedAccountKey !== socketAccountKey) {
+        uni.removeStorageSync(SOCKET_TOKEN_KEY)
+        uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
+        token = ''
+      }
       if (!token) {
         try {
           const res = await new Promise((resolve, reject) => {
@@ -568,7 +579,8 @@ export default {
           const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
           token = data && data.token ? data.token : ''
           if (token) {
-            uni.setStorageSync('socket_token', token)
+            uni.setStorageSync(SOCKET_TOKEN_KEY, token)
+            uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, socketAccountKey)
           }
         } catch (err) {
           console.error('获取 socket token 失败:', err)
@@ -620,7 +632,7 @@ export default {
       })
 
       sock.on('message_sent', (data) => {
-        if (data?.chatId && String(data.chatId) !== String(this.roomId)) return
+        if (data && data.chatId && String(data.chatId) !== String(this.roomId)) return
         const msg = this.messages.find((item) => item.mid === data.tempId)
         if (msg) {
           msg.mid = data.messageId
@@ -637,8 +649,9 @@ export default {
       })
 
       sock.on('message_read', (data) => {
-        if (data?.chatId && String(data.chatId) !== String(this.roomId)) return
-        const msg = this.messages.find((item) => item.mid === data?.messageId)
+        if (data && data.chatId && String(data.chatId) !== String(this.roomId)) return
+        const messageId = data && data.messageId
+        const msg = this.messages.find((item) => item.mid === messageId)
         if (msg && msg.status !== 'read') {
           msg.status = 'read'
           this.persistLocalMessages()
@@ -646,7 +659,7 @@ export default {
       })
 
       sock.on('all_messages_read', (data) => {
-        if (data?.chatId && String(data.chatId) !== String(this.roomId)) return
+        if (data && data.chatId && String(data.chatId) !== String(this.roomId)) return
         let changed = false
         this.messages.forEach((item) => {
           if (item.from === 'me' && item.status !== 'failed' && item.status !== 'read') {
@@ -667,14 +680,19 @@ export default {
         this.isConnected = false
       })
 
-      sock.on('connect_error', () => {
+      sock.on('connect_error', (err) => {
         this.isConnected = false
+        if (/认证失败|auth/i.test(String(err && err.message || ''))) {
+          uni.removeStorageSync(SOCKET_TOKEN_KEY)
+          uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
+        }
         this.scheduleReconnect()
       })
 
       sock.on('auth_error', () => {
         this.isConnected = false
-        uni.removeStorageSync('socket_token')
+        uni.removeStorageSync(SOCKET_TOKEN_KEY)
+        uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
         this.scheduleReconnect()
       })
 

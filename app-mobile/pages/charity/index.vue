@@ -120,6 +120,7 @@
 
 <script>
 import { fetchPublicCharitySettings } from '@/shared-ui/api.js'
+import { ensureRuntimeFeatureOpen } from '@/shared-ui/feature-runtime.js'
 
 const DEFAULT_SETTINGS = {
   enabled: true,
@@ -157,9 +158,9 @@ function normalizeLeaderboard(items = []) {
   }
   return items
     .map((item) => ({
-      name: normalizeText(item?.name),
-      amount: Math.max(0, Number(item?.amount || 0)),
-      time_label: normalizeText(item?.time_label)
+      name: normalizeText(item && item.name),
+      amount: Math.max(0, Number((item && item.amount) || 0)),
+      time_label: normalizeText(item && item.time_label)
     }))
     .filter((item) => item.name || item.amount > 0 || item.time_label)
 }
@@ -170,18 +171,18 @@ function normalizeNewsList(items = []) {
   }
   return items
     .map((item) => ({
-      title: normalizeText(item?.title),
-      summary: normalizeText(item?.summary),
-      source: normalizeText(item?.source),
-      time_label: normalizeText(item?.time_label),
-      image_url: normalizeText(item?.image_url)
+      title: normalizeText(item && item.title),
+      summary: normalizeText(item && item.summary),
+      source: normalizeText(item && item.source),
+      time_label: normalizeText(item && item.time_label),
+      image_url: normalizeText(item && item.image_url)
     }))
     .filter((item) => item.title || item.summary || item.source || item.time_label || item.image_url)
 }
 
 function normalizeSettings(payload = {}) {
   return {
-    enabled: Boolean(payload.enabled ?? DEFAULT_SETTINGS.enabled),
+    enabled: payload.enabled === undefined ? Boolean(DEFAULT_SETTINGS.enabled) : Boolean(payload.enabled),
     page_title: normalizeText(payload.page_title, DEFAULT_SETTINGS.page_title),
     page_subtitle: normalizeText(payload.page_subtitle, DEFAULT_SETTINGS.page_subtitle),
     hero_image_url: normalizeText(payload.hero_image_url, DEFAULT_SETTINGS.hero_image_url),
@@ -221,7 +222,11 @@ export default {
       return this.settings.leaderboard.slice(0, 5)
     }
   },
-  onLoad() {
+  async onLoad() {
+    const enabled = await ensureRuntimeFeatureOpen('charity', 'app-mobile')
+    if (!enabled) {
+      return
+    }
     this.loadSettings()
   },
   methods: {

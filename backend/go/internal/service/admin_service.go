@@ -105,37 +105,37 @@ type PushMessageDeliveryList struct {
 
 func (s *AdminService) Login(ctx context.Context, req AdminLoginRequest) (*AdminLoginResponse, int, error) {
 	if !isValidPhone(req.Phone) {
-		return &AdminLoginResponse{Success: false, Error: "????????????"}, 400, fmt.Errorf("invalid phone")
+		return &AdminLoginResponse{Success: false, Error: "请输入正确的管理员手机号"}, 400, fmt.Errorf("invalid phone")
 	}
 	useCode := req.LoginType == "code" || req.Code != ""
 	usePassword := req.LoginType == "password" || req.Password != ""
 	var admin repository.Admin
 	if useCode {
 		if err := s.verifySMSCode(ctx, req.Phone, req.Code); err != nil {
-			return &AdminLoginResponse{Success: false, Error: "?????????"}, 400, err
+			return &AdminLoginResponse{Success: false, Error: "验证码错误或已失效"}, 400, err
 		}
 		if err := s.db.WithContext(ctx).Where("phone = ?", req.Phone).First(&admin).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return &AdminLoginResponse{Success: false, Error: "??????"}, 404, err
+				return &AdminLoginResponse{Success: false, Error: "管理员账号不存在"}, 404, err
 			}
-			return &AdminLoginResponse{Success: false, Error: "???????"}, 500, err
+			return &AdminLoginResponse{Success: false, Error: "查询管理员账号失败"}, 500, err
 		}
 	} else if usePassword {
 		if err := s.db.WithContext(ctx).Where("phone = ?", req.Phone).First(&admin).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return &AdminLoginResponse{Success: false, Error: "??????"}, 404, err
+				return &AdminLoginResponse{Success: false, Error: "管理员账号不存在"}, 404, err
 			}
-			return &AdminLoginResponse{Success: false, Error: "???????"}, 500, err
+			return &AdminLoginResponse{Success: false, Error: "查询管理员账号失败"}, 500, err
 		}
 		if !checkPassword(admin.PasswordHash, req.Password) {
-			return &AdminLoginResponse{Success: false, Error: "?????????????"}, 403, fmt.Errorf("invalid password")
+			return &AdminLoginResponse{Success: false, Error: "管理员密码错误"}, 403, fmt.Errorf("invalid password")
 		}
 	} else {
-		return &AdminLoginResponse{Success: false, Error: "?????????"}, 400, fmt.Errorf("missing credentials")
+		return &AdminLoginResponse{Success: false, Error: "请填写登录凭证"}, 400, fmt.Errorf("missing credentials")
 	}
 	token, err := s.generateToken(admin)
 	if err != nil {
-		return &AdminLoginResponse{Success: false, Error: "???? Token ??"}, 500, err
+		return &AdminLoginResponse{Success: false, Error: "生成登录凭证失败"}, 500, err
 	}
 	mustChangeBootstrap := s.AdminRequiresBootstrapSetup(admin)
 	return &AdminLoginResponse{
@@ -296,16 +296,16 @@ func (s *AdminService) ListAdmins(ctx context.Context) ([]repository.Admin, erro
 
 func (s *AdminService) CreateAdmin(ctx context.Context, phone, name, password, adminType string) error {
 	if !isValidPhone(phone) {
-		return fmt.Errorf("鎵嬫満鍙锋牸寮忎笉姝ｇ‘")
+		return fmt.Errorf("手机号格式不正确")
 	}
 	if password == "" {
-		return fmt.Errorf("瀵嗙爜涓嶈兘涓虹┖")
+		return fmt.Errorf("密码不能为空")
 	}
 
 	var count int64
 	s.db.WithContext(ctx).Model(&repository.Admin{}).Where("phone = ?", phone).Count(&count)
 	if count > 0 {
-		return fmt.Errorf("鎵嬫満鍙峰凡瀛樺湪")
+		return fmt.Errorf("手机号已存在")
 	}
 
 	hash, err := hashPassword(password)
@@ -358,7 +358,7 @@ func (s *AdminService) ChangeOwnPassword(ctx context.Context, adminID uint, curr
 		return fmt.Errorf("%w: admin identity is missing", ErrUnauthorized)
 	}
 	if strings.TrimSpace(currentPassword) == "" {
-		return fmt.Errorf("褰撳墠瀵嗙爜涓嶈兘涓虹┖")
+		return fmt.Errorf("当前密码不能为空")
 	}
 	if len(strings.TrimSpace(newPassword)) < 6 {
 		return fmt.Errorf("新密码至少需要 6 位")
@@ -376,7 +376,7 @@ func (s *AdminService) ChangeOwnPassword(ctx context.Context, adminID uint, curr
 		return fmt.Errorf("当前密码不正确")
 	}
 	if checkPassword(admin.PasswordHash, newPassword) {
-		return fmt.Errorf("鏂板瘑鐮佷笉鑳戒笌褰撳墠瀵嗙爜鐩稿悓")
+		return fmt.Errorf("新密码不能与当前密码相同")
 	}
 
 	hash, err := hashPassword(newPassword)
@@ -441,10 +441,10 @@ func (s *AdminService) ListUsers(ctx context.Context, search, userType string, l
 
 func (s *AdminService) CreateUser(ctx context.Context, phone, name, password, userType string) error {
 	if !isValidPhone(phone) {
-		return fmt.Errorf("鎵嬫満鍙锋牸寮忎笉姝ｇ‘")
+		return fmt.Errorf("手机号格式不正确")
 	}
 	if password == "" {
-		return fmt.Errorf("瀵嗙爜涓嶈兘涓虹┖")
+		return fmt.Errorf("密码不能为空")
 	}
 	if userType == "" {
 		userType = "customer"
@@ -452,7 +452,7 @@ func (s *AdminService) CreateUser(ctx context.Context, phone, name, password, us
 	var count int64
 	s.db.WithContext(ctx).Model(&repository.User{}).Where("phone = ?", phone).Count(&count)
 	if count > 0 {
-		return fmt.Errorf("鎵嬫満鍙峰凡瀛樺湪")
+		return fmt.Errorf("手机号已存在")
 	}
 	hash, err := hashPassword(password)
 	if err != nil {
@@ -609,7 +609,7 @@ func riderOrderIdentities(rider repository.Rider) []string {
 func (s *AdminService) GetRider(ctx context.Context, id string) (map[string]interface{}, error) {
 	resolvedID, err := resolveEntityID(ctx, s.db, "riders", id)
 	if err != nil {
-		return nil, fmt.Errorf("鏃犳晥鐨勯獞鎵婭D")
+		return nil, fmt.Errorf("无效的骑手ID")
 	}
 
 	var rider repository.Rider
@@ -641,15 +641,15 @@ func (s *AdminService) GetRider(ctx context.Context, id string) (map[string]inte
 
 func (s *AdminService) CreateRider(ctx context.Context, phone, name, password string) error {
 	if !isValidPhone(phone) {
-		return fmt.Errorf("鎵嬫満鍙锋牸寮忎笉姝ｇ‘")
+		return fmt.Errorf("手机号格式不正确")
 	}
 	if password == "" {
-		return fmt.Errorf("瀵嗙爜涓嶈兘涓虹┖")
+		return fmt.Errorf("密码不能为空")
 	}
 	var count int64
 	s.db.WithContext(ctx).Model(&repository.Rider{}).Where("phone = ?", phone).Count(&count)
 	if count > 0 {
-		return fmt.Errorf("鎵嬫満鍙峰凡瀛樺湪")
+		return fmt.Errorf("手机号已存在")
 	}
 	hash, err := hashPassword(password)
 	if err != nil {
@@ -673,13 +673,13 @@ func (s *AdminService) CreateRider(ctx context.Context, phone, name, password st
 func (s *AdminService) UpdateRider(ctx context.Context, id string, phone, name, idCardFront, emergencyContactName, emergencyContactPhone string) error {
 	resolvedID, err := resolveEntityID(ctx, s.db, "riders", id)
 	if err != nil {
-		return fmt.Errorf("鏃犳晥鐨勯獞鎵婭D")
+		return fmt.Errorf("无效的骑手ID")
 	}
 	if strings.TrimSpace(name) == "" {
-		return fmt.Errorf("濮撳悕涓嶈兘涓虹┖")
+		return fmt.Errorf("姓名不能为空")
 	}
 	if phone == "" || !isValidPhone(phone) {
-		return fmt.Errorf("鎵嬫満鍙锋牸寮忎笉姝ｇ‘")
+		return fmt.Errorf("手机号格式不正确")
 	}
 	if emergencyContactPhone != "" && !isValidPhone(emergencyContactPhone) {
 		return fmt.Errorf("紧急联系人电话格式不正确")
@@ -695,7 +695,7 @@ func (s *AdminService) UpdateRider(ctx context.Context, id string, phone, name, 
 		Where("phone = ? AND id <> ?", phone, resolvedID).
 		Count(&count)
 	if count > 0 {
-		return fmt.Errorf("鎵嬫満鍙峰凡瀛樺湪")
+		return fmt.Errorf("手机号已存在")
 	}
 
 	if strings.TrimSpace(idCardFront) == "" {
@@ -819,7 +819,7 @@ func (s *AdminService) ListMerchants(ctx context.Context, search string, limit, 
 func (s *AdminService) GetMerchant(ctx context.Context, id string) (map[string]interface{}, error) {
 	resolvedID, err := resolveEntityID(ctx, s.db, "merchants", id)
 	if err != nil {
-		return nil, fmt.Errorf("鏃犳晥鐨勫晢鎴稩D")
+		return nil, fmt.Errorf("无效的商户ID")
 	}
 
 	var merchant repository.Merchant
@@ -844,10 +844,10 @@ func (s *AdminService) GetMerchant(ctx context.Context, id string) (map[string]i
 
 func (s *AdminService) CreateMerchant(ctx context.Context, phone, name, ownerName, password string) error {
 	if !isValidPhone(phone) {
-		return fmt.Errorf("鎵嬫満鍙锋牸寮忎笉姝ｇ‘")
+		return fmt.Errorf("手机号格式不正确")
 	}
 	if password == "" {
-		return fmt.Errorf("瀵嗙爜涓嶈兘涓虹┖")
+		return fmt.Errorf("密码不能为空")
 	}
 	if ownerName == "" {
 		ownerName = name
@@ -855,7 +855,7 @@ func (s *AdminService) CreateMerchant(ctx context.Context, phone, name, ownerNam
 	var count int64
 	s.db.WithContext(ctx).Model(&repository.Merchant{}).Where("phone = ?", phone).Count(&count)
 	if count > 0 {
-		return fmt.Errorf("鎵嬫満鍙峰凡瀛樺湪")
+		return fmt.Errorf("手机号已存在")
 	}
 	hash, err := hashPassword(password)
 	if err != nil {
@@ -880,13 +880,13 @@ func (s *AdminService) CreateMerchant(ctx context.Context, phone, name, ownerNam
 func (s *AdminService) UpdateMerchant(ctx context.Context, id string, phone, name, ownerName, businessLicenseImage string) error {
 	resolvedID, err := resolveEntityID(ctx, s.db, "merchants", id)
 	if err != nil {
-		return fmt.Errorf("鏃犳晥鐨勫晢鎴稩D")
+		return fmt.Errorf("无效的商户ID")
 	}
 	if phone == "" || !isValidPhone(phone) {
-		return fmt.Errorf("鎵嬫満鍙锋牸寮忎笉姝ｇ‘")
+		return fmt.Errorf("手机号格式不正确")
 	}
 	if name == "" {
-		return fmt.Errorf("鍟嗘埛鍚嶇О涓嶈兘涓虹┖")
+		return fmt.Errorf("商户名称不能为空")
 	}
 	if ownerName == "" {
 		ownerName = name
@@ -902,7 +902,7 @@ func (s *AdminService) UpdateMerchant(ctx context.Context, id string, phone, nam
 		Where("phone = ? AND id <> ?", phone, resolvedID).
 		Count(&count)
 	if count > 0 {
-		return fmt.Errorf("鎵嬫満鍙峰凡瀛樺湪")
+		return fmt.Errorf("手机号已存在")
 	}
 
 	if strings.TrimSpace(businessLicenseImage) == "" {
@@ -1176,16 +1176,7 @@ func (s *AdminService) ExportUsers(ctx context.Context) ([]map[string]interface{
 	}
 	results := make([]map[string]interface{}, 0, len(users))
 	for _, user := range users {
-		results = append(results, map[string]interface{}{
-			"id":            user.UID,
-			"role_id":       user.RoleID,
-			"phone":         user.Phone,
-			"name":          user.Name,
-			"type":          user.Type,
-			"password_hash": user.PasswordHash,
-			"created_at":    formatTime(user.CreatedAt),
-			"updated_at":    formatTime(user.UpdatedAt),
-		})
+		results = append(results, exportUserRecord(user))
 	}
 	return results, nil
 }
@@ -1194,33 +1185,100 @@ func (s *AdminService) ImportUsers(ctx context.Context, items []map[string]inter
 	successCount := 0
 	errorCount := 0
 	for _, item := range items {
-		user := repository.User{}
-		if id := parseInt64(item["id"]); id > 0 {
-			user.ID = uint(id)
-		}
-		user.RoleID = int(parseInt64(item["role_id"]))
-		user.Phone = parseString(item["phone"])
-		user.Name = parseString(item["name"])
-		user.Type = parseString(item["type"])
-		if user.Type == "" {
-			user.Type = "customer"
-		}
-		if hash := parseString(item["password_hash"]); hash != "" {
-			user.PasswordHash = hash
-		} else if pw := parseString(item["password"]); pw != "" {
-			if hash, err := hashPassword(pw); err == nil {
-				user.PasswordHash = hash
+		if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			uid := parseImportString(item, "id", "uid")
+			tsid := parseImportString(item, "tsid")
+			legacyID := parseImportLegacyID(item)
+			existingID, err := findImportedRecordID(ctx, tx, "users", uid, tsid, legacyID)
+			if err != nil {
+				return err
 			}
-		} else if hash, err := hashPassword(defaultAdminPassword); err == nil {
-			user.PasswordHash = hash
-		}
 
-		if err := s.db.WithContext(ctx).Save(&user).Error; err != nil {
+			user := repository.User{}
+			if existingID > 0 {
+				if err := tx.WithContext(ctx).Where("id = ?", existingID).First(&user).Error; err != nil {
+					return err
+				}
+			}
+
+			user.CreatedAt = importRecordCreatedAt(item, user.CreatedAt)
+			user.UpdatedAt = importRecordUpdatedAt(item, user.CreatedAt, user.UpdatedAt)
+			uid, tsid, err = ensureImportedIdentity(ctx, tx, "users", uid, tsid, user.CreatedAt, user.UpdatedAt)
+			if err != nil {
+				return err
+			}
+			if existingID > 0 {
+				user.ID = existingID
+			} else if legacyID > 0 {
+				user.ID = legacyID
+			}
+			user.UID = uid
+			user.TSID = tsid
+
+			if hasImportKey(item, "role_id") {
+				user.RoleID = int(parseInt64(item["role_id"]))
+			}
+			if hasImportKey(item, "phone") {
+				user.Phone = parseImportString(item, "phone")
+			}
+			if hasImportKey(item, "name") {
+				user.Name = parseImportString(item, "name")
+			}
+			if hasImportKey(item, "avatar_url", "avatarUrl") {
+				user.AvatarURL = parseImportString(item, "avatar_url", "avatarUrl")
+			}
+			if hasImportKey(item, "header_bg", "headerBg") {
+				user.HeaderBg = parseImportString(item, "header_bg", "headerBg")
+			}
+			if hasImportKey(item, "wechat_open_id") {
+				user.WechatOpenID = parseImportString(item, "wechat_open_id")
+			}
+			if hasImportKey(item, "wechat_union_id") {
+				user.WechatUnionID = parseImportString(item, "wechat_union_id")
+			}
+			if hasImportKey(item, "wechat_nickname") {
+				user.WechatNickname = parseImportString(item, "wechat_nickname")
+			}
+			if hasImportKey(item, "wechat_avatar") {
+				user.WechatAvatar = parseImportString(item, "wechat_avatar")
+			}
+			if hasImportKey(item, "type") {
+				user.Type = parseImportString(item, "type")
+			}
+			if user.Type == "" {
+				user.Type = "customer"
+			}
+			if hasImportKey(item, "password_hash") {
+				user.PasswordHash = parseImportString(item, "password_hash")
+			} else if hasImportKey(item, "password") {
+				if hash, err := hashPassword(parseImportString(item, "password")); err == nil {
+					user.PasswordHash = hash
+				}
+			}
+			if user.PasswordHash == "" {
+				hash, err := hashPassword(defaultAdminPassword)
+				if err == nil {
+					user.PasswordHash = hash
+				}
+			}
+
+			if err := saveImportedModel(ctx, tx, "users", &user, user.ID, user.UID, user.TSID); err != nil {
+				return err
+			}
+			if !hasImportKey(item, "role_id") && user.RoleID == 0 {
+				user.RoleID = int(user.ID)
+				if err := tx.WithContext(ctx).
+					Session(&gorm.Session{SkipHooks: true}).
+					Model(&repository.User{}).
+					Where("id = ?", user.ID).
+					Update("role_id", user.RoleID).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
 			errorCount++
 			continue
-		}
-		if user.RoleID == 0 {
-			s.db.Model(&user).Update("role_id", int(user.ID))
 		}
 		successCount++
 	}
@@ -1234,16 +1292,7 @@ func (s *AdminService) ExportRiders(ctx context.Context) ([]map[string]interface
 	}
 	results := make([]map[string]interface{}, 0, len(riders))
 	for _, rider := range riders {
-		results = append(results, map[string]interface{}{
-			"id":            rider.UID,
-			"role_id":       rider.RoleID,
-			"phone":         rider.Phone,
-			"name":          rider.Name,
-			"is_online":     rider.IsOnline,
-			"password_hash": rider.PasswordHash,
-			"created_at":    formatTime(rider.CreatedAt),
-			"updated_at":    formatTime(rider.UpdatedAt),
-		})
+		results = append(results, exportRiderRecord(rider))
 	}
 	return results, nil
 }
@@ -1252,30 +1301,139 @@ func (s *AdminService) ImportRiders(ctx context.Context, items []map[string]inte
 	successCount := 0
 	errorCount := 0
 	for _, item := range items {
-		rider := repository.Rider{}
-		if id := parseInt64(item["id"]); id > 0 {
-			rider.ID = uint(id)
-		}
-		rider.RoleID = int(parseInt64(item["role_id"]))
-		rider.Phone = parseString(item["phone"])
-		rider.Name = parseString(item["name"])
-		rider.IsOnline = parseBool(item["is_online"])
-		if hash := parseString(item["password_hash"]); hash != "" {
-			rider.PasswordHash = hash
-		} else if pw := parseString(item["password"]); pw != "" {
-			if hash, err := hashPassword(pw); err == nil {
-				rider.PasswordHash = hash
+		if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			uid := parseImportString(item, "id", "uid")
+			tsid := parseImportString(item, "tsid")
+			legacyID := parseImportLegacyID(item)
+			existingID, err := findImportedRecordID(ctx, tx, "riders", uid, tsid, legacyID)
+			if err != nil {
+				return err
 			}
-		} else if hash, err := hashPassword(defaultAdminPassword); err == nil {
-			rider.PasswordHash = hash
-		}
 
-		if err := s.db.WithContext(ctx).Save(&rider).Error; err != nil {
+			rider := repository.Rider{}
+			if existingID > 0 {
+				if err := tx.WithContext(ctx).Where("id = ?", existingID).First(&rider).Error; err != nil {
+					return err
+				}
+			}
+
+			rider.CreatedAt = importRecordCreatedAt(item, rider.CreatedAt)
+			rider.UpdatedAt = importRecordUpdatedAt(item, rider.CreatedAt, rider.UpdatedAt)
+			uid, tsid, err = ensureImportedIdentity(ctx, tx, "riders", uid, tsid, rider.CreatedAt, rider.UpdatedAt)
+			if err != nil {
+				return err
+			}
+			if existingID > 0 {
+				rider.ID = existingID
+			} else if legacyID > 0 {
+				rider.ID = legacyID
+			}
+			rider.UID = uid
+			rider.TSID = tsid
+
+			if hasImportKey(item, "role_id") {
+				rider.RoleID = int(parseInt64(item["role_id"]))
+			}
+			if hasImportKey(item, "phone") {
+				rider.Phone = parseImportString(item, "phone")
+			}
+			if hasImportKey(item, "name") {
+				rider.Name = parseImportString(item, "name")
+			}
+			if hasImportKey(item, "is_online") {
+				rider.IsOnline = parseBool(item["is_online"])
+			}
+			if hasImportKey(item, "rating") {
+				rider.Rating = parseFloat(item["rating"])
+			}
+			if hasImportKey(item, "rating_count") {
+				rider.RatingCount = int(parseInt64(item["rating_count"]))
+			}
+			if hasImportKey(item, "avatar") {
+				rider.Avatar = parseImportString(item, "avatar")
+			}
+			if hasImportKey(item, "nickname") {
+				rider.Nickname = parseImportString(item, "nickname")
+			}
+			if hasImportKey(item, "real_name") {
+				rider.RealName = parseImportString(item, "real_name")
+			}
+			if hasImportKey(item, "id_card_number") {
+				rider.IDCardNumber = parseImportString(item, "id_card_number")
+			}
+			if hasImportKey(item, "emergency_contact_name") {
+				rider.EmergencyContactName = parseImportString(item, "emergency_contact_name")
+			}
+			if hasImportKey(item, "emergency_contact_phone") {
+				rider.EmergencyContactPhone = parseImportString(item, "emergency_contact_phone")
+			}
+			if hasImportKey(item, "id_card_front") {
+				rider.IDCardFront = parseImportString(item, "id_card_front")
+			}
+			if hasImportKey(item, "id_card_back") {
+				rider.IDCardBack = parseImportString(item, "id_card_back")
+			}
+			if hasImportKey(item, "health_cert") {
+				rider.HealthCert = parseImportString(item, "health_cert")
+			}
+			if hasImportKey(item, "health_cert_expiry") {
+				rider.HealthCertExpiry = parseImportTimePtr(item, "health_cert_expiry")
+			}
+			if hasImportKey(item, "is_verified") {
+				rider.IsVerified = parseBool(item["is_verified"])
+			}
+			if hasImportKey(item, "level") {
+				rider.Level = int(parseInt64(item["level"]))
+			}
+			if hasImportKey(item, "total_orders") {
+				rider.TotalOrders = int(parseInt64(item["total_orders"]))
+			}
+			if hasImportKey(item, "week_orders") {
+				rider.WeekOrders = int(parseInt64(item["week_orders"]))
+			}
+			if hasImportKey(item, "consecutive_weeks") {
+				rider.ConsecutiveWeeks = int(parseInt64(item["consecutive_weeks"]))
+			}
+			if hasImportKey(item, "today_online_minutes") {
+				rider.TodayOnlineMinutes = int(parseInt64(item["today_online_minutes"]))
+			}
+			if hasImportKey(item, "online_start_time") {
+				rider.OnlineStartTime = parseImportTimePtr(item, "online_start_time")
+			}
+			if hasImportKey(item, "last_online_date") {
+				rider.LastOnlineDate = parseImportString(item, "last_online_date")
+			}
+			if hasImportKey(item, "password_hash") {
+				rider.PasswordHash = parseImportString(item, "password_hash")
+			} else if hasImportKey(item, "password") {
+				if hash, err := hashPassword(parseImportString(item, "password")); err == nil {
+					rider.PasswordHash = hash
+				}
+			}
+			if rider.PasswordHash == "" {
+				hash, err := hashPassword(defaultAdminPassword)
+				if err == nil {
+					rider.PasswordHash = hash
+				}
+			}
+
+			if err := saveImportedModel(ctx, tx, "riders", &rider, rider.ID, rider.UID, rider.TSID); err != nil {
+				return err
+			}
+			if !hasImportKey(item, "role_id") && rider.RoleID == 0 {
+				rider.RoleID = int(rider.ID)
+				if err := tx.WithContext(ctx).
+					Session(&gorm.Session{SkipHooks: true}).
+					Model(&repository.Rider{}).
+					Where("id = ?", rider.ID).
+					Update("role_id", rider.RoleID).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
 			errorCount++
 			continue
-		}
-		if rider.RoleID == 0 {
-			s.db.Model(&rider).Update("role_id", int(rider.ID))
 		}
 		successCount++
 	}
@@ -1289,16 +1447,7 @@ func (s *AdminService) ExportMerchants(ctx context.Context) ([]map[string]interf
 	}
 	results := make([]map[string]interface{}, 0, len(merchants))
 	for _, merchant := range merchants {
-		results = append(results, map[string]interface{}{
-			"id":            merchant.UID,
-			"role_id":       merchant.RoleID,
-			"phone":         merchant.Phone,
-			"name":          merchant.Name,
-			"is_online":     merchant.IsOnline,
-			"password_hash": merchant.PasswordHash,
-			"created_at":    formatTime(merchant.CreatedAt),
-			"updated_at":    formatTime(merchant.UpdatedAt),
-		})
+		results = append(results, exportMerchantRecord(merchant))
 	}
 	return results, nil
 }
@@ -1307,30 +1456,85 @@ func (s *AdminService) ImportMerchants(ctx context.Context, items []map[string]i
 	successCount := 0
 	errorCount := 0
 	for _, item := range items {
-		merchant := repository.Merchant{}
-		if id := parseInt64(item["id"]); id > 0 {
-			merchant.ID = uint(id)
-		}
-		merchant.RoleID = int(parseInt64(item["role_id"]))
-		merchant.Phone = parseString(item["phone"])
-		merchant.Name = parseString(item["name"])
-		merchant.IsOnline = parseBool(item["is_online"])
-		if hash := parseString(item["password_hash"]); hash != "" {
-			merchant.PasswordHash = hash
-		} else if pw := parseString(item["password"]); pw != "" {
-			if hash, err := hashPassword(pw); err == nil {
-				merchant.PasswordHash = hash
+		if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			uid := parseImportString(item, "id", "uid")
+			tsid := parseImportString(item, "tsid")
+			legacyID := parseImportLegacyID(item)
+			existingID, err := findImportedRecordID(ctx, tx, "merchants", uid, tsid, legacyID)
+			if err != nil {
+				return err
 			}
-		} else if hash, err := hashPassword(defaultAdminPassword); err == nil {
-			merchant.PasswordHash = hash
-		}
 
-		if err := s.db.WithContext(ctx).Save(&merchant).Error; err != nil {
+			merchant := repository.Merchant{}
+			if existingID > 0 {
+				if err := tx.WithContext(ctx).Where("id = ?", existingID).First(&merchant).Error; err != nil {
+					return err
+				}
+			}
+
+			merchant.CreatedAt = importRecordCreatedAt(item, merchant.CreatedAt)
+			merchant.UpdatedAt = importRecordUpdatedAt(item, merchant.CreatedAt, merchant.UpdatedAt)
+			uid, tsid, err = ensureImportedIdentity(ctx, tx, "merchants", uid, tsid, merchant.CreatedAt, merchant.UpdatedAt)
+			if err != nil {
+				return err
+			}
+			if existingID > 0 {
+				merchant.ID = existingID
+			} else if legacyID > 0 {
+				merchant.ID = legacyID
+			}
+			merchant.UID = uid
+			merchant.TSID = tsid
+
+			if hasImportKey(item, "role_id") {
+				merchant.RoleID = int(parseInt64(item["role_id"]))
+			}
+			if hasImportKey(item, "phone") {
+				merchant.Phone = parseImportString(item, "phone")
+			}
+			if hasImportKey(item, "name") {
+				merchant.Name = parseImportString(item, "name")
+			}
+			if hasImportKey(item, "owner_name") {
+				merchant.OwnerName = parseImportString(item, "owner_name")
+			}
+			if hasImportKey(item, "business_license_image") {
+				merchant.BusinessLicenseImage = parseImportString(item, "business_license_image")
+			}
+			if hasImportKey(item, "is_online") {
+				merchant.IsOnline = parseBool(item["is_online"])
+			}
+			if hasImportKey(item, "password_hash") {
+				merchant.PasswordHash = parseImportString(item, "password_hash")
+			} else if hasImportKey(item, "password") {
+				if hash, err := hashPassword(parseImportString(item, "password")); err == nil {
+					merchant.PasswordHash = hash
+				}
+			}
+			if merchant.PasswordHash == "" {
+				hash, err := hashPassword(defaultAdminPassword)
+				if err == nil {
+					merchant.PasswordHash = hash
+				}
+			}
+
+			if err := saveImportedModel(ctx, tx, "merchants", &merchant, merchant.ID, merchant.UID, merchant.TSID); err != nil {
+				return err
+			}
+			if !hasImportKey(item, "role_id") && merchant.RoleID == 0 {
+				merchant.RoleID = int(merchant.ID)
+				if err := tx.WithContext(ctx).
+					Session(&gorm.Session{SkipHooks: true}).
+					Model(&repository.Merchant{}).
+					Where("id = ?", merchant.ID).
+					Update("role_id", merchant.RoleID).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
 			errorCount++
 			continue
-		}
-		if merchant.RoleID == 0 {
-			s.db.Model(&merchant).Update("role_id", int(merchant.ID))
 		}
 		successCount++
 	}
@@ -1344,38 +1548,7 @@ func (s *AdminService) ExportOrders(ctx context.Context) ([]map[string]interface
 	}
 	results := make([]map[string]interface{}, 0, len(orders))
 	for _, order := range orders {
-		results = append(results, map[string]interface{}{
-			"id":                  order.UID,
-			"daily_order_id":      order.DailyOrderID,
-			"daily_order_number":  order.DailyOrderNumber,
-			"user_id":             order.UserID,
-			"customer_name":       order.CustomerName,
-			"customer_phone":      order.CustomerPhone,
-			"rider_id":            order.RiderID,
-			"rider_name":          order.RiderName,
-			"rider_phone":         order.RiderPhone,
-			"shop_id":             order.ShopID,
-			"shop_name":           order.ShopName,
-			"status":              order.Status,
-			"service_type":        order.ServiceType,
-			"service_description": order.ServiceDescription,
-			"package_name":        order.PackageName,
-			"package_price":       order.PackagePrice,
-			"phone_model":         order.PhoneModel,
-			"special_notes":       order.SpecialNotes,
-			"preferred_time":      order.PreferredTime,
-			"food_request":        order.FoodRequest,
-			"food_shop":           order.FoodShop,
-			"drink_request":       order.DrinkRequest,
-			"delivery_request":    order.DeliveryRequest,
-			"errand_request":      order.ErrandRequest,
-			"dorm_number":         order.DormNumber,
-			"address":             order.Address,
-			"total_price":         order.TotalPrice,
-			"items":               order.Items,
-			"created_at":          formatTime(order.CreatedAt),
-			"updated_at":          formatTime(order.UpdatedAt),
-		})
+		results = append(results, exportOrderRecord(order))
 	}
 	return results, nil
 }
@@ -1384,39 +1557,240 @@ func (s *AdminService) ImportOrders(ctx context.Context, items []map[string]inte
 	successCount := 0
 	errorCount := 0
 	for _, item := range items {
-		order := repository.Order{}
-		if id := parseInt64(item["id"]); id > 0 {
-			order.ID = uint(id)
-		}
-		order.DailyOrderID = parseString(item["daily_order_id"])
-		order.DailyOrderNumber = int(parseInt64(item["daily_order_number"]))
-		order.UserID = parseString(item["user_id"])
-		order.CustomerName = parseString(item["customer_name"])
-		order.CustomerPhone = parseString(item["customer_phone"])
-		order.RiderID = parseString(item["rider_id"])
-		order.RiderName = parseString(item["rider_name"])
-		order.RiderPhone = parseString(item["rider_phone"])
-		order.ShopID = parseString(item["shop_id"])
-		order.ShopName = parseString(item["shop_name"])
-		order.Status = parseString(item["status"])
-		order.ServiceType = parseString(item["service_type"])
-		order.ServiceDescription = parseString(item["service_description"])
-		order.PackageName = parseString(item["package_name"])
-		order.PackagePrice = parseFloat(item["package_price"])
-		order.PhoneModel = parseString(item["phone_model"])
-		order.SpecialNotes = parseString(item["special_notes"])
-		order.PreferredTime = parseString(item["preferred_time"])
-		order.FoodRequest = parseString(item["food_request"])
-		order.FoodShop = parseString(item["food_shop"])
-		order.DrinkRequest = parseString(item["drink_request"])
-		order.DeliveryRequest = parseString(item["delivery_request"])
-		order.ErrandRequest = parseString(item["errand_request"])
-		order.DormNumber = parseString(item["dorm_number"])
-		order.Address = parseString(item["address"])
-		order.TotalPrice = parseFloat(item["total_price"])
-		order.Items = parseString(item["items"])
+		if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			uid := parseImportString(item, "id", "uid")
+			tsid := parseImportString(item, "tsid")
+			legacyID := parseImportLegacyID(item)
+			existingID, err := findImportedRecordID(ctx, tx, "orders", uid, tsid, legacyID)
+			if err != nil {
+				return err
+			}
 
-		if err := s.db.WithContext(ctx).Save(&order).Error; err != nil {
+			order := repository.Order{}
+			if existingID > 0 {
+				if err := tx.WithContext(ctx).Where("id = ?", existingID).First(&order).Error; err != nil {
+					return err
+				}
+			}
+
+			order.CreatedAt = importRecordCreatedAt(item, order.CreatedAt)
+			order.UpdatedAt = importRecordUpdatedAt(item, order.CreatedAt, order.UpdatedAt)
+			uid, tsid, err = ensureImportedIdentity(ctx, tx, "orders", uid, tsid, order.CreatedAt, order.UpdatedAt)
+			if err != nil {
+				return err
+			}
+			if existingID > 0 {
+				order.ID = existingID
+			} else if legacyID > 0 {
+				order.ID = legacyID
+			}
+			order.UID = uid
+			order.TSID = tsid
+
+			if hasImportKey(item, "daily_order_id") {
+				order.DailyOrderID = parseImportString(item, "daily_order_id")
+			}
+			if hasImportKey(item, "daily_order_number") {
+				order.DailyOrderNumber = int(parseInt64(item["daily_order_number"]))
+			}
+			if hasImportKey(item, "user_id") {
+				order.UserID = parseImportString(item, "user_id")
+			}
+			if hasImportKey(item, "customer_name") {
+				order.CustomerName = parseImportString(item, "customer_name")
+			}
+			if hasImportKey(item, "customer_phone") {
+				order.CustomerPhone = parseImportString(item, "customer_phone")
+			}
+			if hasImportKey(item, "rider_id") {
+				order.RiderID = parseImportString(item, "rider_id")
+			}
+			if hasImportKey(item, "rider_name") {
+				order.RiderName = parseImportString(item, "rider_name")
+			}
+			if hasImportKey(item, "rider_phone") {
+				order.RiderPhone = parseImportString(item, "rider_phone")
+			}
+			if hasImportKey(item, "merchant_id") {
+				order.MerchantID = parseImportString(item, "merchant_id")
+			}
+			if hasImportKey(item, "shop_id") {
+				order.ShopID = parseImportString(item, "shop_id")
+			}
+			if hasImportKey(item, "shop_name") {
+				order.ShopName = parseImportString(item, "shop_name")
+			}
+			if hasImportKey(item, "biz_type") {
+				order.BizType = parseImportString(item, "biz_type")
+			}
+			if hasImportKey(item, "status") {
+				order.Status = parseImportString(item, "status")
+			}
+			if hasImportKey(item, "service_type") {
+				order.ServiceType = parseImportString(item, "service_type")
+			}
+			if hasImportKey(item, "service_description") {
+				order.ServiceDescription = parseImportString(item, "service_description")
+			}
+			if hasImportKey(item, "package_name") {
+				order.PackageName = parseImportString(item, "package_name")
+			}
+			if hasImportKey(item, "package_price") {
+				order.PackagePrice = parseFloat(item["package_price"])
+			}
+			if hasImportKey(item, "phone_model") {
+				order.PhoneModel = parseImportString(item, "phone_model")
+			}
+			if hasImportKey(item, "special_notes") {
+				order.SpecialNotes = parseImportString(item, "special_notes")
+			}
+			if hasImportKey(item, "preferred_time") {
+				order.PreferredTime = parseImportString(item, "preferred_time")
+			}
+			if hasImportKey(item, "food_request") {
+				order.FoodRequest = parseImportString(item, "food_request")
+			}
+			if hasImportKey(item, "food_shop") {
+				order.FoodShop = parseImportString(item, "food_shop")
+			}
+			if hasImportKey(item, "food_allergies") {
+				order.FoodAllergies = parseImportString(item, "food_allergies")
+			}
+			if hasImportKey(item, "taste_notes") {
+				order.TasteNotes = parseImportString(item, "taste_notes")
+			}
+			if hasImportKey(item, "drink_request") {
+				order.DrinkRequest = parseImportString(item, "drink_request")
+			}
+			if hasImportKey(item, "drink_pickup_code") {
+				order.DrinkPickupCode = parseImportString(item, "drink_pickup_code")
+			}
+			if hasImportKey(item, "drink_sugar") {
+				order.DrinkSugar = parseImportString(item, "drink_sugar")
+			}
+			if hasImportKey(item, "drink_pickup_qr_image") {
+				order.DrinkPickupQRImage = parseImportString(item, "drink_pickup_qr_image")
+			}
+			if hasImportKey(item, "delivery_request") {
+				order.DeliveryRequest = parseImportString(item, "delivery_request")
+			}
+			if hasImportKey(item, "delivery_name") {
+				order.DeliveryName = parseImportString(item, "delivery_name")
+			}
+			if hasImportKey(item, "delivery_phone") {
+				order.DeliveryPhone = parseImportString(item, "delivery_phone")
+			}
+			if hasImportKey(item, "delivery_codes") {
+				order.DeliveryCodes = parseImportString(item, "delivery_codes")
+			}
+			if hasImportKey(item, "delivery_photo") {
+				order.DeliveryPhoto = parseImportString(item, "delivery_photo")
+			}
+			if hasImportKey(item, "delivery_message") {
+				order.DeliveryMessage = parseImportString(item, "delivery_message")
+			}
+			if hasImportKey(item, "delivery_photo_time") {
+				order.DeliveryPhotoTime = parseImportString(item, "delivery_photo_time")
+			}
+			if hasImportKey(item, "errand_request") {
+				order.ErrandRequest = parseImportString(item, "errand_request")
+			}
+			if hasImportKey(item, "errand_location") {
+				order.ErrandLocation = parseImportString(item, "errand_location")
+			}
+			if hasImportKey(item, "errand_requirements") {
+				order.ErrandRequirements = parseImportString(item, "errand_requirements")
+			}
+			if hasImportKey(item, "dorm_number") {
+				order.DormNumber = parseImportString(item, "dorm_number")
+			}
+			if hasImportKey(item, "address") {
+				order.Address = parseImportString(item, "address")
+			}
+			if hasImportKey(item, "total_price") {
+				order.TotalPrice = parseFloat(item["total_price"])
+			}
+			if hasImportKey(item, "rider_quoted_price") {
+				order.RiderQuotedPrice = parseFloat(item["rider_quoted_price"])
+			}
+			if hasImportKey(item, "delivery_fee") {
+				order.DeliveryFee = parseFloat(item["delivery_fee"])
+			}
+			if hasImportKey(item, "product_price") {
+				order.ProductPrice = parseFloat(item["product_price"])
+			}
+			if hasImportKey(item, "items") {
+				order.Items = parseImportString(item, "items")
+			}
+			if hasImportKey(item, "raw_payload") {
+				order.RawPayload = parseImportString(item, "raw_payload")
+			}
+			if hasImportKey(item, "payment_method") {
+				order.PaymentMethod = parseImportString(item, "payment_method")
+			}
+			if hasImportKey(item, "payment_status") {
+				order.PaymentStatus = parseImportString(item, "payment_status")
+			}
+			if hasImportKey(item, "payment_transaction_id") {
+				order.PaymentTransactionID = parseImportString(item, "payment_transaction_id")
+			}
+			if hasImportKey(item, "payment_time") {
+				order.PaymentTime = parseImportTimePtr(item, "payment_time")
+			}
+			if hasImportKey(item, "refund_transaction_id") {
+				order.RefundTransactionID = parseImportString(item, "refund_transaction_id")
+			}
+			if hasImportKey(item, "refund_amount") {
+				order.RefundAmount = parseInt64(item["refund_amount"])
+			}
+			if hasImportKey(item, "refund_time") {
+				order.RefundTime = parseImportTimePtr(item, "refund_time")
+			}
+			if hasImportKey(item, "platform_commission") {
+				order.PlatformCommission = parseInt64(item["platform_commission"])
+			}
+			if hasImportKey(item, "rider_income") {
+				order.RiderIncome = parseInt64(item["rider_income"])
+			}
+			if hasImportKey(item, "merchant_income") {
+				order.MerchantIncome = parseInt64(item["merchant_income"])
+			}
+			if hasImportKey(item, "accepted_at") {
+				order.AcceptedAt = parseImportTimePtr(item, "accepted_at")
+			}
+			if hasImportKey(item, "paid_at") {
+				order.PaidAt = parseImportTimePtr(item, "paid_at")
+			}
+			if hasImportKey(item, "completed_at") {
+				order.CompletedAt = parseImportTimePtr(item, "completed_at")
+			}
+			if hasImportKey(item, "latest_exception_reason") {
+				order.LatestExceptionReason = parseImportString(item, "latest_exception_reason")
+			}
+			if hasImportKey(item, "latest_exception_reporter_id") {
+				order.LatestExceptionReporterID = parseImportString(item, "latest_exception_reporter_id")
+			}
+			if hasImportKey(item, "latest_exception_reporter_role") {
+				order.LatestExceptionReporterRole = parseImportString(item, "latest_exception_reporter_role")
+			}
+			if hasImportKey(item, "latest_exception_reported_at") {
+				order.LatestExceptionReportedAt = parseImportTimePtr(item, "latest_exception_reported_at")
+			}
+			if hasImportKey(item, "exception_reports") {
+				order.ExceptionReports = parseImportString(item, "exception_reports")
+			}
+			if hasImportKey(item, "is_reviewed") {
+				order.IsReviewed = parseBool(item["is_reviewed"])
+			}
+			if hasImportKey(item, "reviewed_at") {
+				order.ReviewedAt = parseImportTimePtr(item, "reviewed_at")
+			}
+
+			if err := saveImportedModel(ctx, tx, "orders", &order, order.ID, order.UID, order.TSID); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
 			errorCount++
 			continue
 		}
@@ -1537,8 +1911,19 @@ func (s *AdminService) SaveSetting(ctx context.Context, key string, value interf
 	if err != nil {
 		return err
 	}
-	setting := repository.Setting{Key: key, Value: string(payload)}
-	return s.db.WithContext(ctx).Save(&setting).Error
+
+	var setting repository.Setting
+	err = s.db.WithContext(ctx).Where("key = ?", key).Limit(1).Find(&setting).Error
+	if err != nil {
+		return err
+	}
+	if setting.Key != "" {
+		setting.Value = string(payload)
+		return s.db.WithContext(ctx).Save(&setting).Error
+	}
+
+	setting = repository.Setting{Key: key, Value: string(payload)}
+	return s.db.WithContext(ctx).Create(&setting).Error
 }
 
 func (s *AdminService) ListCarousel(ctx context.Context) ([]repository.Carousel, error) {
@@ -2085,6 +2470,8 @@ func (s *AdminService) ListPublicAPIs(ctx context.Context) ([]map[string]interfa
 		}
 		results = append(results, map[string]interface{}{
 			"id":          item.UID,
+			"tsid":        item.TSID,
+			"legacy_id":   item.ID,
 			"name":        item.Name,
 			"path":        item.Path,
 			"permissions": perms,
@@ -2092,6 +2479,7 @@ func (s *AdminService) ListPublicAPIs(ctx context.Context) ([]map[string]interfa
 			"description": item.Description,
 			"is_active":   item.IsActive,
 			"created_at":  formatTime(item.CreatedAt),
+			"updated_at":  formatTime(item.UpdatedAt),
 		})
 	}
 	return results, nil
@@ -2309,6 +2697,10 @@ func parseFloat(v interface{}) float64 {
 		return float64(t)
 	case int:
 		return float64(t)
+	case uint:
+		return float64(t)
+	case uint64:
+		return float64(t)
 	case string:
 		f, _ := strconv.ParseFloat(t, 64)
 		return f
@@ -2322,6 +2714,10 @@ func parseInt64(v interface{}) int64 {
 	case int64:
 		return t
 	case int:
+		return int64(t)
+	case uint:
+		return int64(t)
+	case uint64:
 		return int64(t)
 	case float64:
 		return int64(t)
@@ -2345,6 +2741,10 @@ func parseString(v interface{}) string {
 		return strconv.Itoa(t)
 	case int64:
 		return strconv.FormatInt(t, 10)
+	case uint:
+		return strconv.FormatUint(uint64(t), 10)
+	case uint64:
+		return strconv.FormatUint(t, 10)
 	default:
 		return ""
 	}
@@ -2367,7 +2767,7 @@ func parseBool(v interface{}) bool {
 	}
 }
 
-// GetUsers 鑾峰彇鐢ㄦ埛鍒楄〃锛堝甫鍒嗛〉鍜屾悳绱級
+// GetUsers 获取用户列表（带分页和搜索）
 func (s *AdminService) GetUsers(ctx context.Context, page, limit int, search, userType string) (map[string]interface{}, error) {
 	offset := (page - 1) * limit
 	var users []repository.User
@@ -2395,7 +2795,7 @@ func (s *AdminService) GetUsers(ctx context.Context, page, limit int, search, us
 	}, nil
 }
 
-// GetRiders 鑾峰彇楠戞墜鍒楄〃锛堝甫鍒嗛〉鍜屾悳绱級
+// GetRiders 获取骑手列表（带分页和搜索）
 func (s *AdminService) GetRiders(ctx context.Context, page, limit int, search string) (map[string]interface{}, error) {
 	offset := (page - 1) * limit
 	var riders []repository.Rider
@@ -2426,7 +2826,7 @@ func (s *AdminService) GetRiders(ctx context.Context, page, limit int, search st
 	}, nil
 }
 
-// GetMerchants 鑾峰彇鍟嗘埛鍒楄〃锛堝甫鍒嗛〉鍜屾悳绱級
+// GetMerchants 获取商户列表（带分页和搜索）
 func (s *AdminService) GetMerchants(ctx context.Context, page, limit int, search string) (map[string]interface{}, error) {
 	offset := (page - 1) * limit
 	var merchants []repository.Merchant
@@ -2451,7 +2851,7 @@ func (s *AdminService) GetMerchants(ctx context.Context, page, limit int, search
 	}, nil
 }
 
-// ReorganizeRoleIds 閲嶇粍瑙掕壊ID
+// ReorganizeRoleIds 重组角色 ID
 func (s *AdminService) ReorganizeRoleIds(ctx context.Context, userType string) error {
 	switch userType {
 	case "customer":

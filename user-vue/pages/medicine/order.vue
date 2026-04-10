@@ -78,6 +78,7 @@
 
 <script>
 import { createOrder, uploadCommonImage } from '@/shared-ui/api.js'
+import { normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
 import { buildErrandOrderPayload, requireCurrentUserIdentity } from '@/shared-ui/errand.js'
 
 const DEFAULT_ADDRESS = '请选择送药地址'
@@ -206,7 +207,7 @@ export default {
         }
         uni.navigateTo({ url: `/pages/medicine/tracking?id=${encodeURIComponent(result.id)}` })
       } catch (error) {
-        const message = error?.data?.error || error?.error || error?.message || '提交失败'
+        const message = normalizeErrorMessage(error, '提交失败')
         uni.showToast({ title: message, icon: 'none' })
       } finally {
         uni.hideLoading()

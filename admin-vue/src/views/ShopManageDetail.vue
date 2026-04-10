@@ -7,6 +7,13 @@ import request from '@/utils/request';
 import ImageUpload from '@/components/ImageUpload.vue';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 import {
+  buildBusinessCategoryOptions,
+  buildMerchantTypeOptions,
+  loadMerchantTaxonomySettings,
+  resolveBusinessCategoryOption,
+  resolveMerchantTypeOption
+} from '@/utils/platform-settings';
+import {
   toArray,
   commaTextToArray,
   parseImages,
@@ -44,6 +51,9 @@ const imageDialogVisible = ref(false);
 const tagDialogVisible = ref(false);
 const menuDialogVisible = ref(false);
 const staffDialogVisible = ref(false);
+const merchantTaxonomySettings = ref(null);
+const merchantTypeOptions = ref(buildMerchantTypeOptions());
+const businessCategoryOptions = ref(buildBusinessCategoryOptions());
 
 const basicForm = ref({});
 const imageForm = ref({});
@@ -101,8 +111,26 @@ const merchantQualificationImage = computed(() => getMerchantQualification(shop.
 const foodBusinessLicenseImage = computed(() => getFoodBusinessLicense(shop.value));
 
 onMounted(async () => {
+  await loadTaxonomySettings();
   await Promise.all([loadShop(), loadReviews()]);
 });
+
+async function loadTaxonomySettings(forceRefresh = false) {
+  const settings = await loadMerchantTaxonomySettings(forceRefresh);
+  merchantTaxonomySettings.value = settings;
+  merchantTypeOptions.value = buildMerchantTypeOptions(settings);
+  businessCategoryOptions.value = buildBusinessCategoryOptions(settings);
+}
+
+function applyBasicBusinessCategorySelection(value) {
+  const selected = resolveBusinessCategoryOption(value, merchantTaxonomySettings.value);
+  basicForm.value.businessCategoryKey = selected.key;
+  basicForm.value.businessCategory = selected.label;
+}
+
+function handleBasicBusinessCategoryChange(value) {
+  applyBasicBusinessCategorySelection(value);
+}
 
 function goBackMerchant() {
   router.push(`/merchants/${merchantId}`);
@@ -174,11 +202,18 @@ async function loadReviews() {
 }
 
 function openBasicDialog() {
+  const merchantTypeOption = resolveMerchantTypeOption(shop.value.merchantType || shop.value.orderType, merchantTaxonomySettings.value);
+  const businessCategoryOption = resolveBusinessCategoryOption(
+    shop.value.businessCategoryKey || shop.value.business_category_key || shop.value.businessCategory || shop.value.category,
+    merchantTaxonomySettings.value
+  );
   basicForm.value = {
     name: shop.value.name || '',
     phone: shop.value.phone || '',
-    orderType: shop.value.orderType || '外卖类',
-    businessCategory: shop.value.businessCategory || shop.value.category || '美食',
+    orderType: shop.value.orderType || merchantTypeOption.legacyOrderTypeLabel || '外卖类',
+    merchantType: merchantTypeOption.key || 'takeout',
+    businessCategoryKey: businessCategoryOption.key || 'food',
+    businessCategory: businessCategoryOption.label || '美食',
     rating: Number(shop.value.rating || 0),
     monthlySales: Number(shop.value.monthlySales || 0),
     businessHours: shop.value.businessHours || '',
@@ -378,7 +413,21 @@ async function saveBasicInfo() {
     ElMessage.warning('店铺名称不能为空');
     return;
   }
-  const ok = await updateShop(basicForm.value);
+  const merchantTypeOption = resolveMerchantTypeOption(
+    basicForm.value.merchantType || basicForm.value.orderType,
+    merchantTaxonomySettings.value
+  );
+  const businessCategoryOption = resolveBusinessCategoryOption(
+    basicForm.value.businessCategoryKey || basicForm.value.businessCategory,
+    merchantTaxonomySettings.value
+  );
+  const ok = await updateShop({
+    ...basicForm.value,
+    orderType: merchantTypeOption.legacyOrderTypeLabel,
+    merchantType: merchantTypeOption.key,
+    businessCategoryKey: businessCategoryOption.key,
+    businessCategory: businessCategoryOption.label
+  });
   if (ok) {
     basicDialogVisible.value = false;
   }

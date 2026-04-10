@@ -5,6 +5,35 @@ const MESSAGE_RETENTION_PER_CHAT = 200;
 const MESSAGE_RETENTION_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 class Database {
+  toSqlLiteral(value: any): string {
+    if (value === null || value === undefined) {
+      return 'NULL'
+    }
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? String(value) : 'NULL'
+    }
+    if (typeof value === 'boolean') {
+      return value ? '1' : '0'
+    }
+    return `'${String(value).replace(/'/g, "''")}'`
+  }
+
+  interpolateSql(sql: string, params: any[] = []): string {
+    if (!Array.isArray(params) || params.length === 0) {
+      return String(sql || '')
+    }
+
+    let paramIndex = 0
+    return String(sql || '').replace(/\?/g, () => {
+      if (paramIndex >= params.length) {
+        return '?'
+      }
+      const nextValue = this.toSqlLiteral(params[paramIndex])
+      paramIndex += 1
+      return nextValue
+    })
+  }
+
   resolveMessageTimestamp(rawValue: any, fallback = Date.now()): number {
     const directValue = Number(rawValue)
     if (Number.isFinite(directValue) && directValue > 0) {
@@ -80,140 +109,151 @@ class Database {
     });
   }
 
-  executeSql(sql: string): Promise<void> {
+  executeSql(sql: string, params: any[] = []): Promise<void> {
     return new Promise((resolve, reject) => {
+      const finalSql = this.interpolateSql(sql, params)
       // @ts-ignore
       plus.sqlite.executeSql({
         name: DB_NAME,
         // @ts-ignore
-        sql: sql,
+        sql: finalSql,
         success: () => resolve(),
         fail: (err: any) => reject(err)
       });
     });
   }
 
-  selectSql(sql: string): Promise<any[]> {
+  selectSql(sql: string, params: any[] = []): Promise<any[]> {
     return new Promise((resolve, reject) => {
+      const finalSql = this.interpolateSql(sql, params)
       // @ts-ignore
       plus.sqlite.selectSql({
         name: DB_NAME,
         // @ts-ignore
-        sql: sql,
+        sql: finalSql,
         success: (res: any) => resolve(res),
         fail: (err: any) => reject(err)
       });
     });
   }
 
-  escapeSqlText(value: any): string {
-    return String(value || '').replace(/'/g, "''")
-  }
-
   pruneMessagesByChatId(chatId: string | number): Promise<void> {
-    const chatIdText = this.escapeSqlText(chatId)
     const cutoff = Date.now() - MESSAGE_RETENTION_MAX_AGE
     return this.executeSql(
-      `DELETE FROM messages WHERE chatId = '${chatIdText}' AND timestamp < ${cutoff}`
+      'DELETE FROM messages WHERE chatId = ? AND timestamp < ?',
+      [String(chatId || ''), cutoff]
     ).then(() => {
       return this.executeSql(
         `DELETE FROM messages
-         WHERE chatId = '${chatIdText}'
+         WHERE chatId = ?
            AND id NOT IN (
              SELECT id FROM messages
-             WHERE chatId = '${chatIdText}'
+             WHERE chatId = ?
              ORDER BY timestamp DESC, rowid DESC
-             LIMIT ${MESSAGE_RETENTION_PER_CHAT}
-           )`
+             LIMIT ?
+           )`,
+        [String(chatId || ''), String(chatId || ''), MESSAGE_RETENTION_PER_CHAT]
       )
     })
   }
 
   saveMessage(chatId: string | number, message: any, options: { skipPrune?: boolean } = {}) {
-    const chatIdText = this.escapeSqlText(chatId)
-    const avatar = this.escapeSqlText(message.avatar)
-    const sender = this.escapeSqlText(message.sender)
-    const senderId = this.escapeSqlText(message.senderId)
-    const senderRole = this.escapeSqlText(message.senderRole)
-    const content = this.escapeSqlText(message.content)
     const timestamp = this.resolveMessageTimestamp(message.timestamp ?? message.createdAt, Date.now())
-    const messageId = this.escapeSqlText(this.resolveMessageId(message, chatId, timestamp))
-    const messageType = this.escapeSqlText(message.messageType || 'text')
+    const messageId = this.resolveMessageId(message, chatId, timestamp)
     const isSelf = Number(message.isSelf || 0)
-    const status = this.escapeSqlText(message.status || '')
-    // @ts-ignore
-    plus.sqlite.executeSql({
-      name: DB_NAME,
-      // @ts-ignore
-      sql: `INSERT OR REPLACE INTO messages (id, chatId, sender, senderId, senderRole, content, messageType, timestamp, isSelf, avatar, status) VALUES ('${messageId}', '${chatIdText}', '${sender}', '${senderId}', '${senderRole}', '${content}', '${messageType}', ${timestamp}, ${isSelf}, '${avatar}', '${status}')`,
-      success: () => {
-        if (options.skipPrune) return
-        void this.pruneMessagesByChatId(chatId).catch((err) => {
-          console.error('裁剪消息缓存失败:', err)
-        })
-      },
-      fail: (err: any) => console.error('❌ 保存失败:', err)
-    });
+    this.executeSql(
+      `INSERT OR REPLACE INTO messages (
+        id, chatId, sender, senderId, senderRole, content, messageType, timestamp, isSelf, avatar, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        messageId,
+        String(chatId || ''),
+        String(message.sender || ''),
+        String(message.senderId || ''),
+        String(message.senderRole || ''),
+        String(message.content || ''),
+        String(message.messageType || 'text'),
+        timestamp,
+        Number.isFinite(isSelf) ? isSelf : 0,
+        String(message.avatar || ''),
+        String(message.status || '')
+      ]
+    ).then(() => {
+      if (options.skipPrune) return
+      void this.pruneMessagesByChatId(chatId).catch((err) => {
+        console.error('裁剪消息缓存失败:', err)
+      })
+    })
+      .catch((err: any) => console.error('❌ 保存失败:', err))
   }
 
   updateMessage(chatId: string | number, messageId: string | number, updates: Record<string, any> = {}): Promise<void> {
-    const chatIdText = this.escapeSqlText(chatId)
-    const messageIdText = this.escapeSqlText(messageId)
     const assignments: string[] = []
+    const params: any[] = []
 
     if (updates.id !== undefined && updates.id !== null && String(updates.id).trim()) {
-      assignments.push(`id = '${this.escapeSqlText(updates.id)}'`)
+      assignments.push('id = ?')
+      params.push(String(updates.id))
     }
     if (updates.sender !== undefined) {
-      assignments.push(`sender = '${this.escapeSqlText(updates.sender)}'`)
+      assignments.push('sender = ?')
+      params.push(String(updates.sender))
     }
     if (updates.senderId !== undefined) {
-      assignments.push(`senderId = '${this.escapeSqlText(updates.senderId)}'`)
+      assignments.push('senderId = ?')
+      params.push(String(updates.senderId))
     }
     if (updates.senderRole !== undefined) {
-      assignments.push(`senderRole = '${this.escapeSqlText(updates.senderRole)}'`)
+      assignments.push('senderRole = ?')
+      params.push(String(updates.senderRole))
     }
     if (updates.content !== undefined) {
-      assignments.push(`content = '${this.escapeSqlText(updates.content)}'`)
+      assignments.push('content = ?')
+      params.push(String(updates.content))
     }
     if (updates.messageType !== undefined) {
-      assignments.push(`messageType = '${this.escapeSqlText(updates.messageType)}'`)
+      assignments.push('messageType = ?')
+      params.push(String(updates.messageType))
     }
     if (updates.timestamp !== undefined) {
-      assignments.push(`timestamp = ${this.resolveMessageTimestamp(updates.timestamp, Date.now())}`)
+      assignments.push('timestamp = ?')
+      params.push(this.resolveMessageTimestamp(updates.timestamp, Date.now()))
     }
     if (updates.isSelf !== undefined) {
-      assignments.push(`isSelf = ${Number(updates.isSelf || 0)}`)
+      assignments.push('isSelf = ?')
+      params.push(Number(updates.isSelf || 0))
     }
     if (updates.avatar !== undefined) {
-      assignments.push(`avatar = '${this.escapeSqlText(updates.avatar)}'`)
+      assignments.push('avatar = ?')
+      params.push(String(updates.avatar))
     }
     if (updates.status !== undefined) {
-      assignments.push(`status = '${this.escapeSqlText(updates.status)}'`)
+      assignments.push('status = ?')
+      params.push(String(updates.status))
     }
 
     if (assignments.length === 0) {
       return Promise.resolve()
     }
 
+    params.push(String(chatId || ''))
+    params.push(String(messageId || ''))
     return this.executeSql(
-      `UPDATE messages SET ${assignments.join(', ')} WHERE chatId = '${chatIdText}' AND id = '${messageIdText}'`
+      `UPDATE messages SET ${assignments.join(', ')} WHERE chatId = ? AND id = ?`,
+      params
     )
   }
 
   getMessages(chatId: string | number): Promise<any[]> {
-    const chatIdText = this.escapeSqlText(chatId)
     return this.pruneMessagesByChatId(chatId)
       .catch(() => {})
       .then(() => {
-        // @ts-ignore
-        return this.selectSql(`SELECT * FROM messages WHERE chatId = '${chatIdText}' ORDER BY timestamp ASC`);
+        return this.selectSql('SELECT * FROM messages WHERE chatId = ? ORDER BY timestamp ASC', [String(chatId || '')])
       })
   }
 
   deleteMessagesByChatId(chatId: string | number): Promise<void> {
-    const chatIdText = this.escapeSqlText(chatId)
-    return this.executeSql(`DELETE FROM messages WHERE chatId = '${chatIdText}'`)
+    return this.executeSql('DELETE FROM messages WHERE chatId = ?', [String(chatId || '')])
   }
 }
 

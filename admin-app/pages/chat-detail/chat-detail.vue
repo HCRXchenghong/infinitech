@@ -109,6 +109,7 @@ import { ref, nextTick, onUnmounted } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { THEMES } from '@/common/data.js';
 import { API_CONFIG } from '@/utils/config.js';
+import { getAuthUser } from '@/utils/auth.js';
 import { db } from '@/utils/database.js';
 import { http } from '@/utils/request.js';
 import socketService from '@/utils/socketService.js';
@@ -257,7 +258,7 @@ async function connectSocket() {
 
 	socketService.emit('join_chat', {
 		chatId: chatId.value,
-		userId: 'admin',
+		userId: String(getAuthUser()?.id || getAuthUser()?.phone || ''),
 		role: 'admin'
 	});
 

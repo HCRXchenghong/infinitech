@@ -191,6 +191,12 @@ export const sendDiningBuddyMessage = (partyId, payload) => request({
   data: payload
 })
 
+export const createDiningBuddyReport = (payload) => request({
+  url: '/api/dining-buddy/reports',
+  method: 'POST',
+  data: payload
+})
+
 export const createAfterSales = (payload) => request({
   url: '/api/after-sales',
   method: 'POST',
@@ -350,7 +356,7 @@ export const fetchUserAddresses = async (userId) => {
     url: `/api/user/${encodeURIComponent(userId)}/addresses`,
     method: 'GET'
   })
-  return Array.isArray(res?.data) ? res.data : []
+  return res && Array.isArray(res.data) ? res.data : []
 }
 
 export const fetchDefaultUserAddress = async (userId) => {
@@ -358,7 +364,7 @@ export const fetchDefaultUserAddress = async (userId) => {
     url: `/api/user/${encodeURIComponent(userId)}/addresses/default`,
     method: 'GET'
   })
-  return res?.data || null
+  return (res && res.data) || null
 }
 
 export const registerPushDevice = (payload) => request({

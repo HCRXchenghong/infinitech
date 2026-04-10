@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import riderOrderStore, { grabOrder, loadAvailableOrders, loadRiderData } from '../shared-ui/riderOrderStore'
+import { fetchRiderPreferences } from '../shared-ui/api'
 
 const REJECT_POLICY_STORAGE_KEY = 'dispatch_reject_policy_v1'
 const MAX_REJECTS_PER_DAY = 5
@@ -22,7 +23,10 @@ export default Vue.extend({
       isAccepting: false,
       rejectCount: 0,
       rejectDateKey: '',
-      lastStatusSyncAt: 0
+      lastStatusSyncAt: 0,
+      riderPreferences: {
+        autoAcceptEnabled: false
+      } as any
     }
   },
   computed: {
@@ -38,6 +42,12 @@ export default Vue.extend({
     rejectButtonText(): string {
       if (this.rejectLimitReached) return '拒绝次数已用尽'
       return `拒绝（剩余${this.rejectRemaining}次）`
+    },
+    dispatchSubtitle(): string {
+      if (this.riderPreferences?.autoAcceptEnabled) {
+        return `${this.countdown} 秒后自动接单`
+      }
+      return '自动接单已关闭，请手动处理当前订单'
     }
   },
   watch: {
@@ -47,11 +57,13 @@ export default Vue.extend({
         return
       }
       this.resetSessionTracking()
+      void this.loadRiderPreferences()
       this.pollDispatchOrders(true)
     }
   },
   mounted() {
     this.restoreRejectPolicy()
+    void this.loadRiderPreferences()
     this.pollDispatchOrders(true)
     this.startPolling()
   },
@@ -156,6 +168,9 @@ export default Vue.extend({
     startCountdown() {
       this.stopCountdown()
       this.countdown = AUTO_ACCEPT_SECONDS
+      if (!this.riderPreferences?.autoAcceptEnabled) {
+        return
+      }
       this.countdownTimer = setInterval(() => {
         if (!this.showModal || !this.currentOrder) {
           this.stopCountdown()
@@ -249,7 +264,7 @@ export default Vue.extend({
         const now = Date.now()
         const needSyncStatus = forceStatusSync || now - this.lastStatusSyncAt >= STATUS_SYNC_INTERVAL_MS
         if (needSyncStatus) {
-          await loadRiderData()
+          await Promise.all([loadRiderData(), this.loadRiderPreferences()])
           this.lastStatusSyncAt = now
         }
 
@@ -334,6 +349,20 @@ export default Vue.extend({
       if (order.totalDistanceText) return order.totalDistanceText
       if (order.totalDistance || order.totalDistance === 0) return `${order.totalDistance}km`
       return '--'
+    },
+
+    async loadRiderPreferences() {
+      try {
+        const response: any = await fetchRiderPreferences()
+        const payload = response?.data || response || {}
+        this.riderPreferences = {
+          autoAcceptEnabled: !!(payload.auto_accept_enabled ?? payload.autoAcceptEnabled)
+        }
+      } catch (_error) {
+        this.riderPreferences = {
+          autoAcceptEnabled: false
+        }
+      }
     }
   }
 })

@@ -32,7 +32,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[Auth Handler] login request: phone=%s hasCode=%v hasPassword=%v", req.Phone, req.Code != "", req.Password != "")
+	log.Printf("[Auth Handler] login request: phone=%s hasCode=%v hasPassword=%v", maskPhoneForLog(req.Phone), req.Code != "", req.Password != "")
 
 	result, err := h.service.Login(c.Request.Context(), req.Phone, req.Code, req.Password)
 	if err != nil {
@@ -44,7 +44,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[Auth Handler] login success: phone=%s", req.Phone)
+	log.Printf("[Auth Handler] login success: phone=%s", maskPhoneForLog(req.Phone))
 	c.JSON(http.StatusOK, result)
 }
 
@@ -86,7 +86,7 @@ func (h *AuthHandler) RiderLogin(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[Rider Auth] login request: phone=%s hasCode=%v hasPassword=%v", req.Phone, req.Code != "", req.Password != "")
+	log.Printf("[Rider Auth] login request: phone=%s hasCode=%v hasPassword=%v", maskPhoneForLog(req.Phone), req.Code != "", req.Password != "")
 
 	result, err := h.service.RiderLogin(c.Request.Context(), req.Phone, req.Code, req.Password)
 	if err != nil {
@@ -98,7 +98,7 @@ func (h *AuthHandler) RiderLogin(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[Rider Auth] login success: phone=%s", req.Phone)
+	log.Printf("[Rider Auth] login success: phone=%s", maskPhoneForLog(req.Phone))
 	c.JSON(http.StatusOK, result)
 }
 
@@ -118,7 +118,7 @@ func (h *AuthHandler) MerchantLogin(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[Merchant Auth] login request: phone=%s hasCode=%v hasPassword=%v", req.Phone, req.Code != "", req.Password != "")
+	log.Printf("[Merchant Auth] login request: phone=%s hasCode=%v hasPassword=%v", maskPhoneForLog(req.Phone), req.Code != "", req.Password != "")
 
 	result, err := h.service.MerchantLogin(c.Request.Context(), req.Phone, req.Code, req.Password)
 	if err != nil {
@@ -130,7 +130,7 @@ func (h *AuthHandler) MerchantLogin(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[Merchant Auth] login success: phone=%s", req.Phone)
+	log.Printf("[Merchant Auth] login success: phone=%s", maskPhoneForLog(req.Phone))
 	c.JSON(http.StatusOK, result)
 }
 
@@ -213,7 +213,7 @@ func (h *AuthHandler) VerifyToken(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[Auth Handler] token verify success: phone=%s userId=%d", phone, userID)
+	log.Printf("[Auth Handler] token verify success: phone=%s userId=%d", maskPhoneForLog(phone), userID)
 	c.JSON(http.StatusOK, gin.H{
 		"valid":  true,
 		"phone":  phone,

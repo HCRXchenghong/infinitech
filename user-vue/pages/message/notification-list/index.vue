@@ -57,6 +57,7 @@
 import { fetchNotificationList } from '@/shared-ui/api.js'
 
 const NOTIFICATION_READ_EVENT = 'official-notification-read'
+const REALTIME_NOTIFICATION_REFRESH_EVENT = 'realtime:refresh:notifications'
 
 export default {
   data() {
@@ -70,10 +71,13 @@ export default {
   },
   onLoad() {
     uni.$on(NOTIFICATION_READ_EVENT, this.handleNotificationRead)
+    uni.$off(REALTIME_NOTIFICATION_REFRESH_EVENT, this.handleRealtimeNotificationRefresh)
+    uni.$on(REALTIME_NOTIFICATION_REFRESH_EVENT, this.handleRealtimeNotificationRefresh)
     this.refreshNotifications()
   },
   onUnload() {
     uni.$off(NOTIFICATION_READ_EVENT, this.handleNotificationRead)
+    uni.$off(REALTIME_NOTIFICATION_REFRESH_EVENT, this.handleRealtimeNotificationRefresh)
   },
   methods: {
     async refreshNotifications() {
@@ -112,6 +116,9 @@ export default {
           ? { ...item, is_read: true, isRead: true }
           : item
       )
+    },
+    handleRealtimeNotificationRefresh() {
+      void this.refreshNotifications()
     },
     loadMore() {
       this.loadNotifications()

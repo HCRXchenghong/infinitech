@@ -3,7 +3,7 @@
     <view class="dispatch-card" @click.stop>
       <view class="dispatch-header">
         <text class="dispatch-title">系统派单</text>
-        <text class="dispatch-subtitle">{{ countdown }} 秒后自动接单</text>
+        <text class="dispatch-subtitle">{{ dispatchSubtitle }}</text>
       </view>
 
       <view class="dispatch-body">

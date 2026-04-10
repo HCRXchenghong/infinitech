@@ -77,7 +77,7 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 		Medicine:          NewMedicineService(),
 		Message:           NewMessageService(repos.DB),
 		DiningBuddy:       NewDiningBuddyService(repos.DB),
-		Notification:      NewNotificationService(repos.Notification),
+		Notification:      NewNotificationService(repos.Notification, realtimeNotifyService),
 		Admin:             adminService,
 		Product:           NewProductService(repos.Product, repos.Redis),
 		FeaturedProduct:   NewFeaturedProductService(repos.FeaturedProduct),

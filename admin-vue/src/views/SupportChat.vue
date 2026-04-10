@@ -47,7 +47,18 @@
                 {{ selectedChat.phone }}
               </div>
             </div>
-            <el-button size="small" type="danger" @click="clearMessages" :loading="clearingMessages">清空聊天记录</el-button>
+            <div class="chat-header-actions">
+              <el-button
+                size="small"
+                type="primary"
+                plain
+                :disabled="!canStartRTC"
+                @click="startRTC"
+              >
+                RTC 语音
+              </el-button>
+              <el-button size="small" type="danger" @click="clearMessages" :loading="clearingMessages">清空聊天记录</el-button>
+            </div>
           </div>
 
           <div class="chat-messages" ref="messagesContainer">
@@ -155,8 +166,11 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { Picture, Ticket } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 import { useChatConsole } from './useChatConsole';
+import { canStartAdminRTCCall, startAdminRTCCall } from '@/utils/adminRtc';
 
 const {
   searchQuery,
@@ -193,6 +207,27 @@ const {
   namespace: '/support',
   defaultChatName: '骑手'
 });
+
+const canStartRTC = computed(() => {
+  return canStartAdminRTCCall(selectedChat.value || {});
+});
+
+async function startRTC() {
+  if (!selectedChat.value) return;
+
+  try {
+    await startAdminRTCCall({
+      chatId: selectedChat.value.id,
+      role: selectedChat.value.role,
+      targetId: selectedChat.value.targetId,
+      phone: selectedChat.value.phone,
+      name: selectedChat.value.name,
+      orderId: selectedChat.value.orderId,
+    });
+  } catch (error) {
+    ElMessage.error(error?.message || '发起 RTC 通话失败');
+  }
+}
 </script>
 
 <style scoped lang="css" src="./SupportChat.css"></style>

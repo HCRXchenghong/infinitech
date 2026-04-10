@@ -1,0 +1,4 @@
+-- Postgres container bootstraps the database, user, and password from
+-- POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD automatically.
+-- This placeholder keeps the bind-mounted init script path present so
+-- docker compose can start cleanly on hosts that don't auto-create files.

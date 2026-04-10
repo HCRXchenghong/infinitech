@@ -22,7 +22,7 @@
         <el-table-column prop="name" label="骑手姓名" />
         <el-table-column prop="level" label="段位" width="120">
           <template #default="{ row }">
-            <el-tag :type="getRankType(row.level)" size="small">{{ getRankName(row.level) }}</el-tag>
+            <el-tag :type="getRankType(row.level)" size="small">{{ getRankName(row.level, riderRankLevels) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="value" label="配送次数" width="120" align="right">
@@ -42,6 +42,7 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import request from '@/utils/request'
+import { getCachedRiderRankSettings, loadRiderRankSettings } from '@/utils/platform-settings'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 import { extractErrorMessage, getRankName, getRankType } from './dashboardHelpers'
 
@@ -53,6 +54,8 @@ const ranks = ref([])
 const period = ref(String(route.query.period || 'week'))
 const loadError = ref('')
 const dataCache = ref(new Map())
+const riderRankSettings = ref(getCachedRiderRankSettings())
+const riderRankLevels = ref(riderRankSettings.value?.levels || [])
 
 function goBack() {
   router.push('/dashboard')
@@ -68,6 +71,9 @@ function handlePeriodChange() {
 }
 
 async function loadRanks(forceRefresh = false) {
+  if (forceRefresh) {
+    await loadRiderRankDictionary(true)
+  }
   const cacheKey = period.value
   loadError.value = ''
 
@@ -89,7 +95,13 @@ async function loadRanks(forceRefresh = false) {
   }
 }
 
+async function loadRiderRankDictionary(forceRefresh = false) {
+  riderRankSettings.value = await loadRiderRankSettings(forceRefresh)
+  riderRankLevels.value = riderRankSettings.value?.levels || []
+}
+
 onMounted(() => {
+  void loadRiderRankDictionary()
   void loadRanks()
 })
 </script>

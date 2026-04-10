@@ -14,11 +14,25 @@ import notification from './utils/notification'
 Vue.component('message-popup', MessagePopup)
 
 const RIDER_HEARTBEAT_INTERVAL = 20 * 1000
+const SOCKET_TOKEN_KEY = 'socket_token'
+const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key'
 
 function normalizeBearerToken(raw: any) {
   const token = String(raw || '').trim()
   if (!token) return ''
   return /^bearer\s+/i.test(token) ? token : `Bearer ${token}`
+}
+
+function buildSocketTokenAccountKey(userId: any, role: string) {
+  const normalizedUserId = String(userId || '').trim()
+  const normalizedRole = String(role || '').trim().toLowerCase()
+  if (!normalizedUserId || !normalizedRole) return ''
+  return `${normalizedRole}:${normalizedUserId}`
+}
+
+function clearCachedSocketToken() {
+  uni.removeStorageSync(SOCKET_TOKEN_KEY)
+  uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
 }
 
 function resolveRiderMessageTimestamp(rawValue: any, fallback = Date.now()) {
@@ -174,7 +188,13 @@ export default Vue.extend({
 
       this.riderId = String(riderId)
 
-      let socketToken = uni.getStorageSync('socket_token')
+      const socketAccountKey = buildSocketTokenAccountKey(riderId, 'rider')
+      let socketToken = String(uni.getStorageSync(SOCKET_TOKEN_KEY) || '').trim()
+      const cachedAccountKey = String(uni.getStorageSync(SOCKET_TOKEN_ACCOUNT_KEY) || '').trim()
+      if (socketToken && cachedAccountKey !== socketAccountKey) {
+        clearCachedSocketToken()
+        socketToken = ''
+      }
       if (!socketToken) {
         try {
           const res: any = await new Promise((resolve, reject) => {
@@ -202,7 +222,8 @@ export default Vue.extend({
 
           if (resData && resData.token) {
             socketToken = resData.token
-            uni.setStorageSync('socket_token', socketToken)
+            uni.setStorageSync(SOCKET_TOKEN_KEY, socketToken)
+            uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, socketAccountKey)
           } else {
             console.error('[App] Missing socket token from generate-token response')
             return
@@ -283,7 +304,9 @@ export default Vue.extend({
         console.error('[App] Support socket connect error:', err)
         this.isConnected = false
         uni.$emit('socket:disconnected', { namespace: 'support', reason: 'connect_error' })
-        uni.removeStorageSync('socket_token')
+        if (/认证失败|auth/i.test(String(err?.message || ''))) {
+          clearCachedSocketToken()
+        }
         setTimeout(() => {
           this.tryConnectSocket()
         }, 3000)
@@ -293,7 +316,7 @@ export default Vue.extend({
         console.error('[App] Support socket auth error:', err)
         this.isConnected = false
         uni.$emit('socket:disconnected', { namespace: 'support', reason: 'auth_error' })
-        uni.removeStorageSync('socket_token')
+        clearCachedSocketToken()
         setTimeout(() => {
           this.tryConnectSocket()
         }, 3000)
@@ -330,7 +353,9 @@ export default Vue.extend({
 
       sock.on('connect_error', (err: any) => {
         console.error('[App] Rider socket connect error:', err)
-        uni.removeStorageSync('socket_token')
+        if (/认证失败|auth/i.test(String(err?.message || ''))) {
+          clearCachedSocketToken()
+        }
         setTimeout(() => {
           this.tryConnectSocket()
         }, 3000)
@@ -338,7 +363,7 @@ export default Vue.extend({
 
       sock.on('auth_error', (err: any) => {
         console.error('[App] Rider socket auth error:', err)
-        uni.removeStorageSync('socket_token')
+        clearCachedSocketToken()
         setTimeout(() => {
           this.tryConnectSocket()
         }, 3000)

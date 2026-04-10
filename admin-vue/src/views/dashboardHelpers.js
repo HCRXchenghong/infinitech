@@ -146,16 +146,23 @@ export function formatNumber(num) {
   return String(Math.floor(numeric))
 }
 
-export function getRankName(level) {
-  const rankMap = {
-    1: '青铜骑手',
-    2: '白银骑手',
-    3: '黄金骑手',
-    4: '钻石骑手',
-    5: '王者骑手',
-    6: '传奇大师'
+export function getRankName(level, rankLevels = []) {
+  const resolvedLevel = Array.isArray(rankLevels)
+    ? rankLevels.find((item) => Number(item?.level) === Number(level))
+    : null
+  if (resolvedLevel?.name) {
+    return resolvedLevel.name
   }
-  return rankMap[level] || '青铜骑手'
+
+  const rankMap = {
+    1: '青铜骑士',
+    2: '白银骑士',
+    3: '黄金骑士',
+    4: '钻石骑士',
+    5: '王者骑士',
+    6: '传奇骑士'
+  }
+  return rankMap[level] || '青铜骑士'
 }
 
 export function getRankType(level) {

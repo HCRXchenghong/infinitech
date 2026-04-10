@@ -18,8 +18,12 @@
 
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 14px;
+}
+
+.full-span-card {
+  width: 100%;
 }
 
 .api-management-card {
@@ -47,6 +51,50 @@
   color: #909399;
 }
 
+.sms-target-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sms-target-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #ebeef5;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.sms-target-label {
+  color: #303133;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.title-subtitle {
+  margin-top: 6px;
+  color: #606266;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.route-tip {
+  color: #606266;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.route-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 @media (max-width: 1200px) {
   .settings-grid {
     grid-template-columns: 1fr;
@@ -54,6 +102,10 @@
   
   .api-management-card {
     grid-column: 1;
+  }
+
+  .sms-target-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -95,6 +147,10 @@
   .form-tip-inline {
     font-size: 11px;
     margin-left: 8px;
+  }
+
+  .sms-target-grid {
+    grid-template-columns: 1fr;
   }
 
   .api-actions {

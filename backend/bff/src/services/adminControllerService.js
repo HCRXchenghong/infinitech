@@ -31,7 +31,8 @@ async function sendAdminSMSCode(req, res, next) {
   const { scene } = req.body || {};
   const payload = {
     ...req.body,
-    scene: scene || "login"
+    scene: scene || "login",
+    targetType: "admin"
   };
   const phone = maskPhone(payload.phone || "");
   logger.info(`📤 [BFF] 转发管理员验证码请求到 Go 后端: /api/sms/request (${phone})`);

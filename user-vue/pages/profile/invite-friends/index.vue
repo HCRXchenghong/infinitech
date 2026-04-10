@@ -2,7 +2,7 @@
   <view class="page invite-page">
     <view class="header">
       <view class="back-btn" @tap="goBack">
-        <text>&lt;</text>
+        <text>‹</text>
       </view>
       <text class="title">邀请好友</text>
       <view class="placeholder" />
@@ -70,6 +70,7 @@ import {
   fetchPublicRuntimeSettings,
   recordInviteShare
 } from '@/shared-ui/api.js'
+import { readValue } from '@/shared-ui/foundation/safe.js'
 
 const DEFAULT_INVITER_NAME = '悦享e食用户'
 const DEFAULT_CODE_ERROR_MESSAGE = '暂时无法获取邀请码，请稍后再试。'
@@ -144,7 +145,7 @@ export default {
     async loadRuntimeSettings() {
       try {
         const res = await fetchPublicRuntimeSettings()
-        this.inviteLandingURL = String(res?.invite_landing_url || '').trim()
+        this.inviteLandingURL = String(readValue(res, ['invite_landing_url'], '') || '').trim()
       } catch (error) {
         this.inviteLandingURL = ''
       }
@@ -158,7 +159,7 @@ export default {
           userId: profile.userId,
           phone: profile.phone
         })
-        const nextCode = String(res?.code || '').trim()
+        const nextCode = String(readValue(res, ['code'], '') || '').trim()
         if (nextCode) {
           this.inviteCode = nextCode
           this.codeStatus = 'ready'

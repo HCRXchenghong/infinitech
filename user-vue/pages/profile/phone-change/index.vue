@@ -59,6 +59,7 @@
 
 <script>
 import { changeUserPhone, requestSMSCode, verifySMSCodeCheck } from '@/shared-ui/api.js'
+import { normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
 import { saveTokenInfo } from '@/shared-ui/request-interceptor'
 
 const OLD_SCENE = 'change_phone_verify'
@@ -145,7 +146,7 @@ export default {
       return String(profile.id || profile.userId || profile.phone || '').trim()
     },
     resolveErrorMessage(err, fallback = '操作失败，请稍后重试') {
-      return err?.data?.error || err?.data?.message || err?.error || err?.message || fallback
+      return normalizeErrorMessage(err, fallback)
     },
     async sendOldCode() {
       if (this.oldCountdown > 0 || this.loading) return

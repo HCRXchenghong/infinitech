@@ -1,14 +1,19 @@
 <template>
   <view class="page errand-home">
-    <PageHeader title="跑腿" />
+    <PageHeader :title="pageTitle" />
 
     <scroll-view scroll-y class="content">
       <view class="hero-card">
-        <text class="hero-title">同城跑腿</text>
-        <text class="hero-desc">帮买、帮送、帮取、帮办统一走真实订单链路</text>
+        <text class="hero-title">{{ heroTitle }}</text>
+        <text class="hero-desc">{{ heroDesc }}</text>
       </view>
 
-      <view class="service-list">
+      <view v-if="!featureEnabled" class="empty-card">
+        <text class="empty-title">当前服务暂未开放</text>
+        <text class="empty-desc">跑腿服务已在后台关闭，请稍后再试</text>
+      </view>
+
+      <view v-else class="service-list">
         <view
           v-for="item in services"
           :key="item.id"
@@ -53,6 +58,10 @@
           </view>
         </view>
       </view>
+
+      <view v-if="featureEnabled && detailTip" class="detail-tip">
+        <text>{{ detailTip }}</text>
+      </view>
     </scroll-view>
   </view>
 </template>
@@ -61,11 +70,17 @@
 import PageHeader from '@/components/PageHeader.vue'
 import { fetchOrders } from '@/shared-ui/api.js'
 import { getCurrentUserIdentity, isErrandOrder, mapErrandOrderSummary } from '@/shared-ui/errand.js'
+import { isRuntimeRouteEnabled, loadPlatformRuntimeSettings } from '@/shared-ui/platform-runtime.js'
 
 export default {
   components: { PageHeader },
   data() {
     return {
+      featureEnabled: true,
+      pageTitle: '跑腿',
+      heroTitle: '同城跑腿',
+      heroDesc: '帮买、帮送、帮取、帮办统一走真实订单链路',
+      detailTip: '',
       services: [
         { id: 'buy', name: '帮我买', desc: '代买商品', icon: '购', color: '#ff6b00' },
         { id: 'deliver', name: '帮我送', desc: '同城配送', icon: '送', color: '#009bf5' },
@@ -77,20 +92,56 @@ export default {
     }
   },
   onLoad() {
+    this.loadRuntime()
     this.loadRecentOrders()
   },
   onShow() {
+    this.loadRuntime()
     this.loadRecentOrders()
   },
   methods: {
+    async loadRuntime() {
+      try {
+        const runtime = await loadPlatformRuntimeSettings()
+        this.featureEnabled = isRuntimeRouteEnabled(runtime, 'feature', 'errand', 'app-mobile')
+        const errandSettings = runtime.errandSettings || {}
+        this.pageTitle = errandSettings.page_title || '跑腿'
+        this.heroTitle = errandSettings.hero_title || '同城跑腿'
+        this.heroDesc = errandSettings.hero_desc || '帮买、帮送、帮取、帮办统一走真实订单链路'
+        this.detailTip = errandSettings.detail_tip || ''
+        if (Array.isArray(errandSettings.services) && errandSettings.services.length) {
+          this.services = errandSettings.services
+            .filter((item) => item && item.enabled !== false)
+            .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
+            .map((item) => ({
+              id: item.key,
+              name: item.label,
+              desc: item.desc,
+              icon: item.icon,
+              color: item.color,
+              route: item.route,
+              serviceFeeHint: item.service_fee_hint
+            }))
+        }
+      } catch (error) {
+        console.error('加载跑腿 runtime 失败:', error)
+      }
+    },
     goService(item) {
+      if (!this.featureEnabled) {
+        uni.showToast({ title: '当前服务暂未开放', icon: 'none' })
+        return
+      }
+      if (item.serviceFeeHint) {
+        uni.showToast({ title: item.serviceFeeHint, icon: 'none' })
+      }
       const routes = {
         buy: '/pages/errand/buy/index',
         deliver: '/pages/errand/deliver/index',
         pickup: '/pages/errand/pickup/index',
         do: '/pages/errand/do/index'
       }
-      const url = routes[item.id]
+      const url = item.route || routes[item.id]
       if (url) {
         uni.navigateTo({ url })
       }
@@ -249,6 +300,16 @@ export default {
   margin-top: 6px;
   font-size: 12px;
   color: #9ca3af;
+}
+
+.detail-tip {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #eef6ff;
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .recent-item {

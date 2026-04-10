@@ -1,7 +1,7 @@
 <template>
   <view class="page med-tracking">
     <view class="top">
-      <view class="back" @tap="back"><</view>
+      <view class="back" @tap="back">‹</view>
       <view class="track-card">
         <view class="row">
           <view class="moped">DEL</view>

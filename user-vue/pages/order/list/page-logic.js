@@ -16,39 +16,44 @@ function normalizePhoneNumber(value) {
 }
 
 function buildOrderPhoneAuditPayload(order, contactType, phoneNumber) {
+  const safeOrder = order && typeof order === 'object' ? order : {}
   const targetRole = contactType === 'rider' ? 'rider' : 'merchant'
   return {
     targetRole,
-    targetId: String(contactType === 'rider' ? (order?.riderId || '') : (order?.shopId || '')),
+    targetId: String(contactType === 'rider' ? (safeOrder.riderId || '') : (safeOrder.shopId || '')),
     targetPhone: normalizePhoneNumber(phoneNumber),
     entryPoint: 'order_list',
     scene: 'order_contact',
-    orderId: String(order?.id || ''),
-    roomId: contactType === 'rider' ? `rider_${order?.id || ''}` : `shop_${order?.id || ''}`,
+    orderId: String(safeOrder.id || ''),
+    roomId: contactType === 'rider' ? `rider_${safeOrder.id || ''}` : `shop_${safeOrder.id || ''}`,
     pagePath: '/pages/order/list/index',
     metadata: {
-      bizType: order?.bizType || '',
-      status: order?.status || '',
-      shopId: String(order?.shopId || ''),
-      riderId: String(order?.riderId || ''),
+      bizType: safeOrder.bizType || '',
+      status: safeOrder.status || '',
+      shopId: String(safeOrder.shopId || ''),
+      riderId: String(safeOrder.riderId || ''),
       contactType,
     }
   }
 }
 
 function buildOrderRTCContext(order, contactType) {
+  const safeOrder = order && typeof order === 'object' ? order : {}
+  const deliveryInfo = safeOrder.deliveryInfo && typeof safeOrder.deliveryInfo === 'object'
+    ? safeOrder.deliveryInfo
+    : {}
   const isRider = contactType === 'rider'
-  const riderInfo = String((order?.deliveryInfo && order.deliveryInfo.rider) || '')
+  const riderInfo = String(deliveryInfo.rider || '')
   const riderPhone = riderInfo.match(/1[3-9]\d{9}/)
   return {
     targetRole: isRider ? 'rider' : 'merchant',
-    targetId: String(isRider ? (order?.riderId || '') : (order?.shopId || '')),
-    targetName: isRider ? (riderInfo.split(' ')[0] || '骑手') : String(order?.shopName || '商家'),
+    targetId: String(isRider ? (safeOrder.riderId || '') : (safeOrder.shopId || '')),
+    targetName: isRider ? (riderInfo.split(' ')[0] || '骑手') : String(safeOrder.shopName || '商家'),
     targetPhone: normalizePhoneNumber(
-      isRider ? ((riderPhone && riderPhone[0]) || order?.riderPhone || '') : (order?.shopPhone || '')
+      isRider ? ((riderPhone && riderPhone[0]) || safeOrder.riderPhone || '') : (safeOrder.shopPhone || '')
     ),
-    conversationId: isRider ? `rider_${order?.id || ''}` : `shop_${order?.id || ''}`,
-    orderId: String(order?.id || ''),
+    conversationId: isRider ? `rider_${safeOrder.id || ''}` : `shop_${safeOrder.id || ''}`,
+    orderId: String(safeOrder.id || ''),
   }
 }
 

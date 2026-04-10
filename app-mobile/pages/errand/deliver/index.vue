@@ -67,6 +67,7 @@
 import PageHeader from '@/components/PageHeader.vue'
 import { createOrder } from '@/shared-ui/api.js'
 import { buildErrandOrderPayload, requireCurrentUserIdentity } from '@/shared-ui/errand.js'
+import { ensureErrandServiceOpen } from '@/shared-ui/errand-runtime.js'
 
 export default {
   components: { PageHeader },
@@ -100,7 +101,13 @@ export default {
       return Boolean(this.form.pickup && this.form.dropoff && this.form.item)
     }
   },
+  onLoad() {
+    this.ensureOpen()
+  },
   methods: {
+    async ensureOpen() {
+      await ensureErrandServiceOpen('deliver')
+    },
     async submitOrder() {
       if (!this.canSubmit || this.submitting) return
       const identity = requireCurrentUserIdentity()

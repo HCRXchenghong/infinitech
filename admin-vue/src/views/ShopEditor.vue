@@ -21,18 +21,24 @@
             <el-col :span="12">
               <el-form-item label="订单类型" required>
                 <el-select v-model="formData.orderType" placeholder="请选择订单类型" style="width: 100%;" @change="handleOrderTypeChange">
-                  <el-option label="外卖类" value="外卖类" />
-                  <el-option label="团购类" value="团购类" />
-                  <el-option label="混合类" value="混合类" />
+                  <el-option
+                    v-for="option in merchantTypeOptions"
+                    :key="option.key"
+                    :label="option.orderTypeLabel"
+                    :value="option.legacyOrderTypeLabel"
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="商户类型" required>
                 <el-select v-model="formData.merchantType" placeholder="请选择商户类型" style="width: 100%;" @change="handleMerchantTypeChange">
-                  <el-option label="外卖" value="takeout" />
-                  <el-option label="团购" value="groupbuy" />
-                  <el-option label="混合" value="hybrid" />
+                  <el-option
+                    v-for="option in merchantTypeOptions"
+                    :key="option.key"
+                    :label="option.label"
+                    :value="option.key"
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -41,13 +47,13 @@
           <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item label="业务分类" required>
-                <el-select v-model="formData.businessCategory" placeholder="请选择业务分类" style="width: 100%;">
-                  <el-option label="美食" value="美食" />
-                  <el-option label="团购" value="团购" />
-                  <el-option label="甜点饮品" value="甜点饮品" />
-                  <el-option label="超市便利" value="超市便利" />
-                  <el-option label="休闲玩乐" value="休闲玩乐" />
-                  <el-option label="生活服务" value="生活服务" />
+                <el-select v-model="formData.businessCategoryKey" placeholder="请选择业务分类" style="width: 100%;" @change="handleBusinessCategoryChange">
+                  <el-option
+                    v-for="option in businessCategoryOptions"
+                    :key="option.key"
+                    :label="option.label"
+                    :value="option.key"
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -208,9 +214,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, nextTick, defineProps, defineEmits } from 'vue';
+import { ref, reactive, nextTick, defineProps, defineEmits, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import ImageUpload from '@/components/ImageUpload.vue';
+import {
+  buildBusinessCategoryOptions,
+  buildMerchantTypeOptions,
+  loadMerchantTaxonomySettings,
+  resolveBusinessCategoryOption,
+  resolveMerchantTypeOption
+} from '@/utils/platform-settings';
 
 const props = defineProps({
   shop: {
@@ -227,6 +240,9 @@ const emit = defineEmits(['save', 'cancel']);
 
 const activeTab = ref('basic');
 const saving = ref(false);
+const merchantTaxonomySettings = ref(null);
+const merchantTypeOptions = ref(buildMerchantTypeOptions());
+const businessCategoryOptions = ref(buildBusinessCategoryOptions());
 
 function normalizeMerchantType(value) {
   const text = String(value || '').trim().toLowerCase();
@@ -243,19 +259,22 @@ function merchantTypeFromOrderType(orderType) {
 }
 
 function orderTypeFromMerchantType(merchantType) {
-  const normalized = normalizeMerchantType(merchantType);
-  if (normalized === 'groupbuy') return '团购类';
-  if (normalized === 'hybrid') return '混合类';
-  return '外卖类';
+  return resolveMerchantTypeOption(merchantType, merchantTaxonomySettings.value).legacyOrderTypeLabel;
 }
+
+const initialMerchantType = resolveMerchantTypeOption(props.shop?.merchantType || props.shop?.orderType);
+const initialBusinessCategory = resolveBusinessCategoryOption(
+  props.shop?.businessCategoryKey || props.shop?.businessCategory || props.shop?.category
+);
 
 // 表单数据
 const formData = reactive({
   id: props.shop?.id || null,
   name: props.shop?.name || '',
-  orderType: props.shop?.orderType || orderTypeFromMerchantType(props.shop?.merchantType) || '外卖类',
-  merchantType: normalizeMerchantType(props.shop?.merchantType || merchantTypeFromOrderType(props.shop?.orderType)),
-  businessCategory: props.shop?.businessCategory || '美食',
+  orderType: props.shop?.orderType || initialMerchantType.legacyOrderTypeLabel || '外卖类',
+  merchantType: normalizeMerchantType(props.shop?.merchantType || merchantTypeFromOrderType(props.shop?.orderType) || initialMerchantType.key),
+  businessCategoryKey: initialBusinessCategory.key || 'food',
+  businessCategory: initialBusinessCategory.label || '美食',
   phone: props.shop?.phone || '',
   address: props.shop?.address || '',
   businessHours: props.shop?.businessHours || '09:00-22:00',
@@ -325,13 +344,30 @@ function removeDiscount(index) {
 }
 
 function handleOrderTypeChange(value) {
-  formData.orderType = String(value || '');
-  formData.merchantType = merchantTypeFromOrderType(formData.orderType);
+  const selected = resolveMerchantTypeOption(value, merchantTaxonomySettings.value);
+  formData.orderType = selected.legacyOrderTypeLabel;
+  formData.merchantType = selected.key;
 }
 
 function handleMerchantTypeChange(value) {
-  formData.merchantType = normalizeMerchantType(value);
-  formData.orderType = orderTypeFromMerchantType(formData.merchantType);
+  const selected = resolveMerchantTypeOption(value, merchantTaxonomySettings.value);
+  formData.merchantType = selected.key;
+  formData.orderType = selected.legacyOrderTypeLabel;
+}
+
+function handleBusinessCategoryChange(value) {
+  const selected = resolveBusinessCategoryOption(value, merchantTaxonomySettings.value);
+  formData.businessCategoryKey = selected.key;
+  formData.businessCategory = selected.label;
+}
+
+async function loadTaxonomySettings(forceRefresh = false) {
+  const settings = await loadMerchantTaxonomySettings(forceRefresh);
+  merchantTaxonomySettings.value = settings;
+  merchantTypeOptions.value = buildMerchantTypeOptions(settings);
+  businessCategoryOptions.value = buildBusinessCategoryOptions(settings);
+  handleMerchantTypeChange(formData.merchantType || formData.orderType);
+  handleBusinessCategoryChange(formData.businessCategoryKey || formData.businessCategory);
 }
 
 // 保存
@@ -346,12 +382,18 @@ function handleSave() {
     ...formData,
     merchantType: normalizeMerchantType(formData.merchantType),
     orderType: orderTypeFromMerchantType(formData.merchantType),
+    businessCategoryKey: formData.businessCategoryKey,
+    businessCategory: formData.businessCategory,
     tags: JSON.stringify(formData.tags),
     discounts: JSON.stringify(formData.discounts)
   };
 
   emit('save', shopData);
 }
+
+onMounted(() => {
+  void loadTaxonomySettings();
+});
 </script>
 
 <style scoped>

@@ -111,7 +111,7 @@ func (h *AdminSettingsHandler) UpdateSMSConfig(c *gin.Context) {
 
 	existing := service.NormalizeSMSProviderConfigMap(existingRaw)
 	incoming := service.NormalizeSMSProviderConfigMap(data)
-	merged := service.MergeSMSProviderConfig(incoming, existing)
+	merged := service.MergeSMSProviderConfig(incoming, existing, data)
 	if err := service.ValidateSMSProviderConfig(merged); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
@@ -173,7 +173,7 @@ func (h *AdminSettingsHandler) GetPublicRuntimeSettings(c *gin.Context) {
 	data := service.DefaultServiceSettings()
 	_ = h.admin.GetSetting(c.Request.Context(), "service_settings", &data)
 	data = service.NormalizeServiceSettings(data)
-	c.JSON(http.StatusOK, service.BuildPublicRuntimeSettings(data))
+	c.JSON(http.StatusOK, service.BuildPublicPlatformRuntimeSettings(data, h.loadPlatformRuntimeBundle(c)))
 }
 
 func (h *AdminSettingsHandler) UpdateServiceSettings(c *gin.Context) {

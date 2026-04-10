@@ -19,6 +19,10 @@ type SMSProviderConfig struct {
 	TemplateCode    string `json:"template_code"`
 	RegionID        string `json:"region_id"`
 	Endpoint        string `json:"endpoint"`
+	ConsumerEnabled bool   `json:"consumer_enabled"`
+	MerchantEnabled bool   `json:"merchant_enabled"`
+	RiderEnabled    bool   `json:"rider_enabled"`
+	AdminEnabled    bool   `json:"admin_enabled"`
 }
 
 func DefaultSMSProviderConfig() SMSProviderConfig {
@@ -30,6 +34,10 @@ func DefaultSMSProviderConfig() SMSProviderConfig {
 		TemplateCode:    "",
 		RegionID:        defaultAliyunSMSRegion,
 		Endpoint:        "",
+		ConsumerEnabled: true,
+		MerchantEnabled: true,
+		RiderEnabled:    true,
+		AdminEnabled:    true,
 	}
 }
 
@@ -42,6 +50,10 @@ func NormalizeSMSProviderConfig(input SMSProviderConfig) SMSProviderConfig {
 	cfg.TemplateCode = strings.TrimSpace(input.TemplateCode)
 	cfg.RegionID = normalizeAliyunSMSRegion(input.RegionID)
 	cfg.Endpoint = normalizeAliyunSMSEndpoint(input.Endpoint)
+	cfg.ConsumerEnabled = input.ConsumerEnabled
+	cfg.MerchantEnabled = input.MerchantEnabled
+	cfg.RiderEnabled = input.RiderEnabled
+	cfg.AdminEnabled = input.AdminEnabled
 	return cfg
 }
 
@@ -58,15 +70,31 @@ func NormalizeSMSProviderConfigMap(raw map[string]interface{}) SMSProviderConfig
 		TemplateCode:    firstNonEmptyString(readSMSConfigString(raw, "template_code"), readSMSConfigString(raw, "template_id")),
 		RegionID:        firstNonEmptyString(readSMSConfigString(raw, "region_id"), readSMSConfigString(raw, "region")),
 		Endpoint:        readSMSConfigString(raw, "endpoint"),
+		ConsumerEnabled: readSMSConfigBoolWithAliases(raw, true, "consumer_enabled", "user_enabled"),
+		MerchantEnabled: readSMSConfigBoolWithAliases(raw, true, "merchant_enabled"),
+		RiderEnabled:    readSMSConfigBoolWithAliases(raw, true, "rider_enabled"),
+		AdminEnabled:    readSMSConfigBoolWithAliases(raw, true, "admin_enabled"),
 	}
 	return NormalizeSMSProviderConfig(cfg)
 }
 
-func MergeSMSProviderConfig(incoming, existing SMSProviderConfig) SMSProviderConfig {
+func MergeSMSProviderConfig(incoming, existing SMSProviderConfig, raw map[string]interface{}) SMSProviderConfig {
 	merged := NormalizeSMSProviderConfig(incoming)
 	current := NormalizeSMSProviderConfig(existing)
 	if merged.AccessKeySecret == "" && current.AccessKeySecret != "" {
 		merged.AccessKeySecret = current.AccessKeySecret
+	}
+	if !hasSMSConfigKey(raw, "consumer_enabled", "user_enabled") {
+		merged.ConsumerEnabled = current.ConsumerEnabled
+	}
+	if !hasSMSConfigKey(raw, "merchant_enabled") {
+		merged.MerchantEnabled = current.MerchantEnabled
+	}
+	if !hasSMSConfigKey(raw, "rider_enabled") {
+		merged.RiderEnabled = current.RiderEnabled
+	}
+	if !hasSMSConfigKey(raw, "admin_enabled") {
+		merged.AdminEnabled = current.AdminEnabled
 	}
 	return merged
 }
@@ -143,6 +171,10 @@ func SerializeSMSProviderConfigForStorage(input SMSProviderConfig) map[string]in
 		"template_code":     cfg.TemplateCode,
 		"region_id":         cfg.RegionID,
 		"endpoint":          cfg.Endpoint,
+		"consumer_enabled":  cfg.ConsumerEnabled,
+		"merchant_enabled":  cfg.MerchantEnabled,
+		"rider_enabled":     cfg.RiderEnabled,
+		"admin_enabled":     cfg.AdminEnabled,
 	}
 }
 
@@ -157,6 +189,26 @@ func BuildSMSProviderConfigAdminView(input SMSProviderConfig) map[string]interfa
 		"template_code":         cfg.TemplateCode,
 		"region_id":             cfg.RegionID,
 		"endpoint":              cfg.Endpoint,
+		"consumer_enabled":      cfg.ConsumerEnabled,
+		"merchant_enabled":      cfg.MerchantEnabled,
+		"rider_enabled":         cfg.RiderEnabled,
+		"admin_enabled":         cfg.AdminEnabled,
+	}
+}
+
+func (c SMSProviderConfig) IsTargetEnabled(target string) bool {
+	cfg := NormalizeSMSProviderConfig(c)
+	switch strings.ToLower(strings.TrimSpace(target)) {
+	case "consumer", "user":
+		return cfg.ConsumerEnabled
+	case "merchant":
+		return cfg.MerchantEnabled
+	case "rider":
+		return cfg.RiderEnabled
+	case "admin":
+		return cfg.AdminEnabled
+	default:
+		return true
 	}
 }
 
@@ -209,6 +261,48 @@ func readSMSConfigString(raw map[string]interface{}, key string) string {
 	}
 }
 
+func readSMSConfigBoolWithAliases(raw map[string]interface{}, fallback bool, keys ...string) bool {
+	for _, key := range keys {
+		if value, ok := raw[key]; ok {
+			return readSMSConfigBool(value, fallback)
+		}
+	}
+	return fallback
+}
+
+func readSMSConfigBool(value interface{}, fallback bool) bool {
+	switch typed := value.(type) {
+	case bool:
+		return typed
+	case float64:
+		return typed != 0
+	case float32:
+		return typed != 0
+	case int:
+		return typed != 0
+	case int64:
+		return typed != 0
+	case int32:
+		return typed != 0
+	case uint:
+		return typed != 0
+	case uint64:
+		return typed != 0
+	case string:
+		text := strings.ToLower(strings.TrimSpace(typed))
+		switch text {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
+		default:
+			return fallback
+		}
+	default:
+		return fallback
+	}
+}
+
 func firstNonEmptyString(values ...string) string {
 	for _, value := range values {
 		if strings.TrimSpace(value) != "" {
@@ -216,4 +310,16 @@ func firstNonEmptyString(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func hasSMSConfigKey(raw map[string]interface{}, keys ...string) bool {
+	if raw == nil {
+		return false
+	}
+	for _, key := range keys {
+		if _, ok := raw[key]; ok {
+			return true
+		}
+	}
+	return false
 }

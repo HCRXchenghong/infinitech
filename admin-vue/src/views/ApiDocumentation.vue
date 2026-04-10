@@ -1,160 +1,245 @@
-<template src="./ApiDocumentation.template.html"></template>
+<template>
+  <div class="api-documentation-page">
+    <div class="doc-header">
+      <div class="header-content">
+        <div class="header-left">
+          <h1 class="doc-title">
+            <el-icon><Document /></el-icon>
+            API 开发文档
+          </h1>
+          <p class="doc-subtitle">对外 API 的认证方式、权限模型、接口清单与代码示例</p>
+        </div>
+        <div class="header-actions">
+          <el-button type="primary" @click="downloadFullDocumentation" :loading="downloading">
+            <el-icon><Download /></el-icon>
+            下载完整文档
+          </el-button>
+          <el-button @click="refreshDocumentation">
+            <el-icon><Refresh /></el-icon>
+            刷新
+          </el-button>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-container">
+      <div class="doc-main">
+        <div class="markdown-body">
+          <section class="doc-section">
+            <h1>简介</h1>
+            <p>这里集中说明对外开放 API 的调用方式、权限要求和示例代码。</p>
+            <div class="info-box">
+              <el-icon><InfoFilled /></el-icon>
+              <div>
+                <strong>页面职责</strong>
+                <p>API 文档页负责解释接口怎么调；API Key 的创建、用途备注和权限分配，应放在 API 权限管理中维护。</p>
+              </div>
+            </div>
+
+            <div class="endpoint-card">
+              <div class="endpoint-method post">POST</div>
+              <div class="endpoint-path">/api/v1/query</div>
+            </div>
+            <p>统一查询接口的当前部署地址示例：<code>{{ apiBaseUrl }}/api/v1/query</code></p>
+          </section>
+
+          <section class="doc-section">
+            <h1>快速开始</h1>
+            <h2>1. 准备 API Key</h2>
+            <p>先在管理后台的 API 权限管理中创建一个 API Key，并为它勾选对应权限。</p>
+
+            <h2>2. 请求头认证</h2>
+            <div class="code-block">
+              <div class="code-header">
+                <span>http</span>
+                <el-button text @click="copyText(authHeaderExample)">
+                  <el-icon><DocumentCopy /></el-icon>
+                  复制
+                </el-button>
+              </div>
+              <pre><code>{{ authHeaderExample }}</code></pre>
+            </div>
+
+            <h2>3. 基础调用示例</h2>
+            <div class="code-block">
+              <div class="code-header">
+                <span>bash</span>
+                <el-button text @click="copyText(quickStartCurl)">
+                  <el-icon><DocumentCopy /></el-icon>
+                  复制
+                </el-button>
+              </div>
+              <pre><code>{{ quickStartCurl }}</code></pre>
+            </div>
+          </section>
+
+          <section class="doc-section">
+            <h1>权限模型</h1>
+            <p>每个 API Key 只能访问自己被授权的数据范围。没有权限时会返回 `403`。</p>
+
+            <table class="params-table">
+              <thead>
+                <tr>
+                  <th>权限标识</th>
+                  <th>说明</th>
+                  <th>可访问接口</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="permission in permissionRows" :key="permission.key">
+                  <td><code>{{ permission.key }}</code></td>
+                  <td>{{ permission.description }}</td>
+                  <td>{{ permission.scope }}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="resource-grid">
+              <div class="resource-card" v-for="resource in resourceTypes" :key="resource.name">
+                <div class="resource-header">
+                  <el-icon><component :is="iconMap[resource.icon]" /></el-icon>
+                  <strong>{{ resource.name }}</strong>
+                </div>
+                <p>{{ resource.description }}</p>
+                <div class="resource-permissions">
+                  <el-tag v-for="perm in resource.permissions" :key="perm" size="small">{{ perm }}</el-tag>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="doc-section">
+            <h1>公开接口清单</h1>
+            <p>以下是当前已经对外开放的主要接口分组。</p>
+
+            <div class="api-group" v-for="group in endpointGroups" :key="group.title">
+              <h2>{{ group.title }}</h2>
+              <div class="api-endpoint" v-for="endpoint in group.endpoints" :key="`${group.title}-${endpoint.path}`">
+                <div class="endpoint-card">
+                  <div class="endpoint-method" :class="endpoint.method.toLowerCase()">
+                    {{ endpoint.method }}
+                  </div>
+                  <div class="endpoint-path">{{ endpoint.path }}</div>
+                </div>
+                <p>{{ endpoint.description }}</p>
+                <table v-if="endpoint.params?.length" class="params-table">
+                  <thead>
+                    <tr>
+                      <th>参数名</th>
+                      <th>类型</th>
+                      <th>必填</th>
+                      <th>说明</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="param in endpoint.params" :key="`${endpoint.path}-${param.name}`">
+                      <td><code>{{ param.name }}</code></td>
+                      <td>{{ param.type }}</td>
+                      <td>{{ param.required ? '是' : '否' }}</td>
+                      <td>{{ param.description }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p class="permission-required">
+                  需要权限：
+                  <el-tag size="small">{{ endpoint.permission }}</el-tag>
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section class="doc-section">
+            <h1>代码示例</h1>
+            <div class="code-block" v-for="example in requestExamples" :key="example.id">
+              <div class="code-header">
+                <span>{{ example.lang }}</span>
+                <el-button text @click="copyText(example.code)">
+                  <el-icon><DocumentCopy /></el-icon>
+                  复制
+                </el-button>
+              </div>
+              <pre><code>{{ example.code }}</code></pre>
+            </div>
+          </section>
+
+          <section class="doc-section">
+            <h1>错误码说明</h1>
+            <table class="params-table">
+              <thead>
+                <tr>
+                  <th>状态码</th>
+                  <th>说明</th>
+                  <th>建议处理方式</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="errorCode in errorCodes" :key="errorCode.code">
+                  <td><code>{{ errorCode.code }}</code></td>
+                  <td>{{ errorCode.message }}</td>
+                  <td>{{ errorCode.action }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section class="doc-section">
+            <h1>注意事项</h1>
+            <ul class="notes-list">
+              <li v-for="note in notes" :key="note">{{ note }}</li>
+            </ul>
+            <div class="warning-box">
+              <el-icon><WarningFilled /></el-icon>
+              <div>
+                <strong>安全提示</strong>
+                <p>API Key 相当于密钥，请按调用方分配，避免多个系统共用同一个 Key。</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script setup>
-import { ref, computed } from 'vue';
+import { computed, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { 
-  Document, Download, Refresh, DocumentCopy, InfoFilled, WarningFilled,
-  ShoppingBag, User, UserFilled, Shop, Box, Collection, DataAnalysis
-} from '@element-plus/icons-vue';
-// 图标映射
-const iconMap = {
-  InfoFilled,
+import {
+  Box,
+  Collection,
   Document,
-  DataAnalysis,
-  User,
-  WarningFilled,
   DocumentCopy,
+  Download,
+  InfoFilled,
+  Refresh,
+  Shop,
   ShoppingBag,
+  User,
+  UserFilled,
+  WarningFilled,
+} from '@element-plus/icons-vue';
+
+const iconMap = {
+  ShoppingBag,
+  User,
   UserFilled,
   Shop,
   Box,
-  Collection
+  Collection,
 };
-
-const apiBaseUrl = computed(() => {
-  const protocol = window.location.protocol;
-  const hostname = window.location.hostname;
-  const port = window.location.port;
-  if (port) {
-    return `${protocol}//${hostname}:${port}`;
-  }
-  return `${protocol}//${hostname}`;
-});
 
 const downloading = ref(false);
 
-const resourceTypes = [
-  {
-    name: 'orders',
-    description: '订单数据，包括订单列表、订单详情、订单状态等',
-    permissions: ['orders', 'all'],
-    icon: 'ShoppingBag'
-  },
-  {
-    name: 'users',
-    description: '用户数据，包括用户列表、用户详情、用户类型等',
-    permissions: ['users', 'all'],
-    icon: 'User'
-  },
-  {
-    name: 'riders',
-    description: '骑手数据，包括骑手列表、骑手详情、骑手状态等',
-    permissions: ['riders', 'all'],
-    icon: 'UserFilled'
-  },
-  {
-    name: 'merchants',
-    description: '商户数据，包括商户列表、商户详情等',
-    permissions: ['merchants', 'all'],
-    icon: 'Shop'
-  },
-  {
-    name: 'products',
-    description: '商品数据，包括商品列表、商品详情、商品分类等',
-    permissions: ['products', 'all'],
-    icon: 'Box'
-  },
-  {
-    name: 'categories',
-    description: '分类数据，包括分类列表、分类详情等',
-    permissions: ['categories', 'all'],
-    icon: 'Collection'
+const apiBaseUrl = computed(() => {
+  if (typeof window === 'undefined') {
+    return '';
   }
-];
+  return window.location.origin;
+});
 
+const authHeaderExample = 'X-API-Key: your_api_key_here';
 
-// 复制代码
-function copyCode(codeId) {
-  const codeElement = document.getElementById(codeId);
-  if (codeElement) {
-    const text = codeElement.textContent;
-    navigator.clipboard.writeText(text).then(() => {
-      ElMessage.success('代码已复制到剪贴板');
-    }).catch(() => {
-      ElMessage.error('复制失败');
-    });
-  }
-}
-
-// 刷新文档
-function refreshDocumentation() {
-  window.location.reload();
-}
-
-// 下载完整文档
-function downloadFullDocumentation() {
-  downloading.value = true;
-  
-  try {
-    const docContent = generateFullDocumentation();
-    const blob = new Blob([docContent], { type: 'text/markdown;charset=utf-8' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `API开发文档_${new Date().toISOString().split('T')[0]}.md`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    
-    ElMessage.success('文档下载成功');
-  } catch (error) {
-    ElMessage.error('下载失败: ' + error.message);
-  } finally {
-    downloading.value = false;
-  }
-}
-
-// 生成完整文档
-function generateFullDocumentation() {
-  const baseUrl = apiBaseUrl.value;
-  
-  return `# 悦享e食平台 - API开发文档
-
-> 生成时间：${new Date().toLocaleString('zh-CN')}
-> 当前部署地址：${baseUrl}
-> 
-> **重要提示**：所有API接口地址使用相对路径（如 \`/api/v1/query\`），无论部署到哪个域名，都可以直接使用相对路径访问，系统会自动使用当前部署的域名。无需硬编码修改接口地址。
-
-## 目录
-
-1. [简介](#简介)
-2. [快速开始](#快速开始)
-3. [统一查询接口](#统一查询接口)
-4. [公开API端点](#公开API端点)
-5. [权限说明](#权限说明)
-6. [错误码说明](#错误码说明)
-7. [代码示例](#代码示例)
-8. [注意事项](#注意事项)
-
-## 简介
-
-欢迎使用悦享e食平台API开发文档。本文档提供了完整的API接口说明，帮助开发者快速集成平台数据。
-
-### 重要提示
-
-所有API接口都需要通过API Key进行认证。请在管理后台创建API Key并配置相应的访问权限。
-
-## 快速开始
-
-### 1. 获取API Key
-
-在管理后台的"系统设置" → "对外API接口管理"中创建API Key，并配置相应的访问权限。
-
-### 2. 基础请求示例
-
-\`\`\`bash
-curl -X POST "${baseUrl}/api/v1/query" \\
+const quickStartCurl = computed(() => `curl -X POST "${apiBaseUrl.value}/api/v1/query" \\
   -H "Content-Type: application/json" \\
   -H "X-API-Key: your_api_key_here" \\
   -d '{
@@ -164,242 +249,108 @@ curl -X POST "${baseUrl}/api/v1/query" \\
       "page": 1,
       "limit": 20
     }
-  }'
-\`\`\`
+  }'`);
 
-### 3. 响应格式
+const permissionRows = [
+  { key: 'orders', description: '订单数据访问权限', scope: '订单列表、订单详情、订单统计' },
+  { key: 'users', description: '用户数据访问权限', scope: '用户列表、用户详情、用户统计' },
+  { key: 'riders', description: '骑手数据访问权限', scope: '骑手列表、骑手详情、骑手统计' },
+  { key: 'dashboard', description: '仪表盘访问权限', scope: '平台统计、用户排名、骑手排名' },
+  { key: 'all', description: '全部数据访问权限', scope: '包含所有公开资源' },
+];
 
-\`\`\`json
-{
-  "success": true,
-  "data": {
-    "items": [...],
-    "total": 100,
-    "page": 1,
-    "limit": 20,
-    "totalPages": 5
+const resourceTypes = [
+  { name: 'orders', description: '订单数据，包括订单列表、详情和统计。', permissions: ['orders', 'all'], icon: 'ShoppingBag' },
+  { name: 'users', description: '用户数据，包括用户列表、详情和统计。', permissions: ['users', 'all'], icon: 'User' },
+  { name: 'riders', description: '骑手数据，包括骑手列表、详情和统计。', permissions: ['riders', 'all'], icon: 'UserFilled' },
+  { name: 'merchants', description: '商户数据，适用于统一查询接口。', permissions: ['all'], icon: 'Shop' },
+  { name: 'products', description: '商品数据，适用于统一查询接口。', permissions: ['all'], icon: 'Box' },
+  { name: 'categories', description: '分类数据，适用于统一查询接口。', permissions: ['all'], icon: 'Collection' },
+];
+
+const endpointGroups = [
+  {
+    title: '仪表盘数据',
+    endpoints: [
+      { method: 'GET', path: '/api/public/dashboard/stats', description: '获取平台统计数据。', permission: 'dashboard' },
+      {
+        method: 'GET',
+        path: '/api/public/dashboard/user-ranks',
+        description: '获取用户下单排行。',
+        permission: 'dashboard',
+        params: [{ name: 'period', type: 'string', required: false, description: 'week 或 month，默认 week' }],
+      },
+      {
+        method: 'GET',
+        path: '/api/public/dashboard/rider-ranks',
+        description: '获取骑手排行。',
+        permission: 'dashboard',
+        params: [{ name: 'period', type: 'string', required: false, description: 'day、week 或 month，默认 week' }],
+      },
+    ],
   },
-  "resource": "orders",
-  "action": "list"
-}
-\`\`\`
-
-## 统一查询接口
-
-统一的API查询端点，支持多种资源类型的查询操作。
-
-**接口地址**: \`POST /api/v1/query\` (相对路径，自动适应域名)
-
-**当前部署地址示例**: \`${baseUrl}/api/v1/query\`
-
-### 认证方式
-
-#### 方式一：请求头（推荐）
-
-\`\`\`
-X-API-Key: your_api_key_here
-\`\`\`
-
-#### 方式二：请求参数
-
-\`\`\`json
-{
-  "api_key": "your_api_key_here",
-  "resource": "orders",
-  "action": "list",
-  "params": {}
-}
-\`\`\`
-
-### 请求参数
-
-| 参数名 | 类型 | 必填 | 说明 |
-|--------|------|------|------|
-| resource | string | 是 | 资源类型：orders、users、riders、merchants、products、categories |
-| action | string | 否 | 操作类型：list（列表，默认）、get（单个） |
-| params | object | 否 | 查询参数，见下方说明 |
-
-#### 列表查询参数（action: list）
-
-| 参数名 | 类型 | 必填 | 说明 |
-|--------|------|------|------|
-| page | number | 否 | 页码，默认1 |
-| limit | number | 否 | 每页数量，默认20，最多100 |
-| search | string | 否 | 搜索关键词 |
-| status | string | 否 | 状态筛选（仅订单） |
-| type | string | 否 | 类型筛选（仅用户） |
-
-#### 单个查询参数（action: get）
-
-| 参数名 | 类型 | 必填 | 说明 |
-|--------|------|------|------|
-| id | number | 是 | 资源ID |
-
-### 资源类型
-
-- **orders**: 订单数据，包括订单列表、订单详情、订单状态等
-- **users**: 用户数据，包括用户列表、用户详情、用户类型等
-- **riders**: 骑手数据，包括骑手列表、骑手详情、骑手状态等
-- **merchants**: 商户数据，包括商户列表、商户详情等
-- **products**: 商品数据，包括商品列表、商品详情、商品分类等
-- **categories**: 分类数据，包括分类列表、分类详情等
-
-## 公开API端点
-
-除了统一查询接口外，平台还提供了专门的公开API端点，用于获取特定类型的数据。
-
-### 仪表盘数据
-
-#### 获取平台统计数据
-
-\`GET /api/public/dashboard/stats\` (相对路径，自动适应域名)
-
-获取平台统计数据，包括今日订单、今日收入、本月收入等。
-
-**需要权限**: dashboard
-
-#### 获取用户排名
-
-\`GET /api/public/dashboard/user-ranks\` (相对路径，自动适应域名)
-
-获取用户下单排名（周/月）。
-
-**查询参数**:
-- period: string (可选) - 时间周期：week（周）、month（月），默认week
-
-**需要权限**: dashboard
-
-#### 获取骑手排名
-
-\`GET /api/public/dashboard/rider-ranks\` (相对路径，自动适应域名)
-
-获取骑手排名（日/周/月）。
-
-**查询参数**:
-- period: string (可选) - 时间周期：day（日）、week（周）、month（月），默认week
-
-**需要权限**: dashboard
-
-### 订单数据
-
-#### 获取订单列表
-
-\`GET /api/public/orders\` (相对路径，自动适应域名)
-
-获取订单列表，支持分页、搜索和状态筛选。
-
-**查询参数**:
-- page: number (可选) - 页码，默认1
-- limit: number (可选) - 每页数量，默认15
-- search: string (可选) - 搜索关键词（订单号、客户姓名、骑手姓名）
-- status: string (可选) - 订单状态：pending、confirmed、preparing、ready、delivering、completed、cancelled
-
-**需要权限**: orders
-
-#### 获取单个订单
-
-\`GET /api/public/orders/:id\` (相对路径，自动适应域名)
-
-获取单个订单详情。
-
-**需要权限**: orders
-
-#### 获取订单统计
-
-\`GET /api/public/orders/stats\` (相对路径，自动适应域名)
-
-获取订单统计数据。
-
-**需要权限**: orders
-
-### 用户数据
-
-#### 获取用户列表
-
-\`GET /api/public/users\` (相对路径，自动适应域名)
-
-获取用户列表，支持分页和搜索。
-
-**需要权限**: users
-
-#### 获取单个用户
-
-\`GET /api/public/users/:id\` (相对路径，自动适应域名)
-
-获取单个用户详情。
-
-**需要权限**: users
-
-#### 获取用户统计
-
-\`GET /api/public/users/stats\` (相对路径，自动适应域名)
-
-获取用户统计数据。
-
-**需要权限**: users
-
-### 骑手数据
-
-#### 获取骑手列表
-
-\`GET /api/public/riders\` (相对路径，自动适应域名)
-
-获取骑手列表，支持分页和搜索。
-
-**需要权限**: riders
-
-#### 获取单个骑手
-
-\`GET /api/public/riders/:id\` (相对路径，自动适应域名)
-
-获取单个骑手详情。
-
-**需要权限**: riders
-
-#### 获取骑手统计
-
-\`GET /api/public/riders/stats\` (相对路径，自动适应域名)
-
-获取骑手统计数据。
-
-**需要权限**: riders
-
-## 权限说明
-
-每个API Key可以配置不同的访问权限，用于控制可以访问哪些类型的数据。
-
-| 权限标识 | 说明 | 可访问的资源 |
-|---------|------|------------|
-| orders | 订单数据访问权限 | 订单列表、订单详情、订单统计 |
-| users | 用户数据访问权限 | 用户列表、用户详情、用户统计 |
-| riders | 骑手数据访问权限 | 骑手列表、骑手详情、骑手统计 |
-| merchants | 商户数据访问权限 | 商户列表、商户详情 |
-| products | 商品数据访问权限 | 商品列表、商品详情、商品分类 |
-| categories | 分类数据访问权限 | 分类列表、分类详情 |
-| dashboard | 仪表盘数据访问权限 | 平台统计、用户排名、骑手排名 |
-| all | 全部数据访问权限 | 所有资源类型 |
-
-### 权限限制
-
-如果API Key没有某个资源的访问权限，请求该资源时会返回403错误。
-
-## 错误码说明
-
-| 状态码 | 说明 | 解决方案 |
-|--------|------|---------|
-| 200 | 请求成功 | - |
-| 400 | 请求参数错误 | 检查请求参数格式和必填项 |
-| 401 | 未提供API Key或API Key无效 | 检查API Key是否正确，是否已启用 |
-| 403 | API Key没有访问该资源的权限 | 在管理后台为API Key配置相应权限 |
-| 500 | 服务器内部错误 | 联系技术支持 |
-
-## 代码示例
-
-### JavaScript (fetch)
-
-\`\`\`javascript
-// 使用统一查询接口
-fetch('/api/v1/query', {  // 使用相对路径，自动适应域名
+  {
+    title: '订单数据',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/api/public/orders',
+        description: '获取订单列表，支持分页、搜索和状态筛选。',
+        permission: 'orders',
+        params: [
+          { name: 'page', type: 'number', required: false, description: '页码，默认 1' },
+          { name: 'limit', type: 'number', required: false, description: '每页数量，默认 15，最大 100' },
+          { name: 'search', type: 'string', required: false, description: '搜索关键词' },
+          { name: 'status', type: 'string', required: false, description: '订单状态筛选' },
+        ],
+      },
+      { method: 'GET', path: '/api/public/orders/:id', description: '获取单个订单详情。', permission: 'orders' },
+      { method: 'GET', path: '/api/public/orders/stats', description: '获取订单统计数据。', permission: 'orders' },
+    ],
+  },
+  {
+    title: '用户数据',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/api/public/users',
+        description: '获取用户列表，支持分页和搜索。',
+        permission: 'users',
+        params: [
+          { name: 'page', type: 'number', required: false, description: '页码，默认 1' },
+          { name: 'limit', type: 'number', required: false, description: '每页数量，默认 20' },
+          { name: 'search', type: 'string', required: false, description: '搜索关键词' },
+        ],
+      },
+      { method: 'GET', path: '/api/public/users/:id', description: '获取单个用户详情。', permission: 'users' },
+      { method: 'GET', path: '/api/public/users/stats', description: '获取用户统计数据。', permission: 'users' },
+    ],
+  },
+  {
+    title: '骑手数据',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/api/public/riders',
+        description: '获取骑手列表，支持分页和搜索。',
+        permission: 'riders',
+        params: [
+          { name: 'page', type: 'number', required: false, description: '页码，默认 1' },
+          { name: 'limit', type: 'number', required: false, description: '每页数量，默认 15' },
+          { name: 'search', type: 'string', required: false, description: '搜索关键词' },
+        ],
+      },
+      { method: 'GET', path: '/api/public/riders/:id', description: '获取单个骑手详情。', permission: 'riders' },
+      { method: 'GET', path: '/api/public/riders/stats', description: '获取骑手统计数据。', permission: 'riders' },
+    ],
+  },
+];
+
+const requestExamples = computed(() => [
+  {
+    id: 'javascript',
+    lang: 'javascript',
+    code: `fetch('${apiBaseUrl.value}/api/v1/query', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -414,28 +365,20 @@ fetch('/api/v1/query', {  // 使用相对路径，自动适应域名
     }
   })
 })
-.then(response => response.json())
-.then(data => {
-  console.log('Success:', data);
-})
-.catch(error => {
-  console.error('Error:', error);
-});
-\`\`\`
+  .then((response) => response.json())
+  .then((data) => console.log(data));`,
+  },
+  {
+    id: 'python',
+    lang: 'python',
+    code: `import requests
 
-### Python (requests)
-
-\`\`\`python
-import requests
-
-# 使用环境变量或配置获取基础URL，支持自动适应不同部署环境
-base_url = os.getenv('API_BASE_URL', '${baseUrl}')  # 默认使用当前部署地址
-url = f'{base_url}/api/v1/query'
+base_url = '${apiBaseUrl.value}'
 headers = {
     'Content-Type': 'application/json',
     'X-API-Key': 'your_api_key_here'
 }
-data = {
+payload = {
     'resource': 'orders',
     'action': 'list',
     'params': {
@@ -444,57 +387,102 @@ data = {
     }
 }
 
-response = requests.post(url, json=data, headers=headers)
-result = response.json()
-print(result)
-\`\`\`
+response = requests.post(f'{base_url}/api/v1/query', json=payload, headers=headers)
+print(response.json())`,
+  },
+  {
+    id: 'java',
+    lang: 'java',
+    code: `OkHttpClient client = new OkHttpClient();
+String json = "{\\"resource\\":\\"orders\\",\\"action\\":\\"list\\",\\"params\\":{\\"page\\":1,\\"limit\\":20}}";
 
-### Java (OkHttp)
+Request request = new Request.Builder()
+    .url("${apiBaseUrl.value}/api/v1/query")
+    .post(RequestBody.create(json, MediaType.parse("application/json")))
+    .addHeader("Content-Type", "application/json")
+    .addHeader("X-API-Key", "your_api_key_here")
+    .build();`,
+  },
+]);
 
-\`\`\`java
-import okhttp3.*;
-import java.io.IOException;
+const errorCodes = [
+  { code: '200', message: '请求成功', action: '正常处理返回数据' },
+  { code: '400', message: '请求参数错误', action: '检查 resource、action 和 params' },
+  { code: '401', message: '未提供 API Key 或 Key 无效', action: '确认请求头里的 X-API-Key' },
+  { code: '403', message: 'Key 没有访问该资源的权限', action: '去 API 权限管理中补齐权限' },
+  { code: '500', message: '服务端内部错误', action: '查看后台日志并联系技术支持' },
+];
 
-public class ApiClient {
-    // 从配置或环境变量获取基础URL，支持自动适应不同部署环境
-    private static final String BASE_URL = System.getenv("API_BASE_URL") != null 
-        ? System.getenv("API_BASE_URL") 
-        : "${baseUrl}";  // 默认使用当前部署地址
-    
-    public static void main(String[] args) throws IOException {
-        OkHttpClient client = new OkHttpClient();
-        
-        String json = "{\\"resource\\":\\"orders\\",\\"action\\":\\"list\\",\\"params\\":{\\"page\\":1,\\"limit\\":20}}";
-        RequestBody body = RequestBody.create(json, MediaType.parse("application/json"));
-        
-        Request request = new Request.Builder()
-            .url(BASE_URL + "/api/v1/query")
-            .post(body)
-            .addHeader("Content-Type", "application/json")
-            .addHeader("X-API-Key", "your_api_key_here")
-            .build();
-        
-        try (Response response = client.newCall(request).execute()) {
-            System.out.println(response.body().string());
-        }
-    }
+const notes = [
+  'API Key 需要先在后台启用后才能生效。',
+  '建议一套调用方对应一个 API Key，方便追踪和停用。',
+  '建议优先使用 HTTPS，避免在公网明文传输 Key。',
+  '分页接口建议将 limit 控制在 100 以内。',
+  '接口文档页负责说明怎么调，Key 与权限分配应在权限管理页维护。',
+];
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    ElMessage.success('已复制到剪贴板');
+  } catch (_error) {
+    ElMessage.error('复制失败');
+  }
 }
-\`\`\`
 
-## 注意事项
+function refreshDocumentation() {
+  if (typeof window !== 'undefined') {
+    window.location.reload();
+  }
+}
 
-1. API Key需要先在管理后台配置并启用
-2. 每个API Key的权限是独立的，需要根据实际需求配置
-3. 建议使用HTTPS协议以保证数据传输安全
-4. 请求频率建议控制在合理范围内，避免对服务器造成压力
-5. 单个查询时，如果资源不存在，会返回null
-6. 所有时间字段使用ISO 8601格式（YYYY-MM-DD HH:mm:ss）
-7. 分页查询时，limit最大值为100
+function buildMarkdown() {
+  const sections = [
+    '# API 开发文档',
+    '',
+    `当前部署地址：${apiBaseUrl.value}`,
+    '',
+    '## 认证方式',
+    '',
+    `- 请求头：\`${authHeaderExample}\``,
+    '',
+    '## 权限模型',
+    ...permissionRows.map((item) => `- \`${item.key}\`：${item.description}，${item.scope}`),
+    '',
+    '## 公开接口',
+    ...endpointGroups.flatMap((group) => [
+      '',
+      `### ${group.title}`,
+      ...group.endpoints.map((endpoint) => `- [${endpoint.method}] ${endpoint.path} (${endpoint.permission}) ${endpoint.description}`),
+    ]),
+    '',
+    '## 注意事项',
+    ...notes.map((item) => `- ${item}`),
+    '',
+    `生成时间：${new Date().toLocaleString('zh-CN')}`,
+  ];
+  return sections.join('\n');
+}
 
----
-
-*本文档由系统自动生成，最后更新时间：${new Date().toLocaleString('zh-CN')}*
-`;
+function downloadFullDocumentation() {
+  downloading.value = true;
+  try {
+    const blob = new Blob([buildMarkdown()], { type: 'text/markdown;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `API开发文档_${new Date().toISOString().slice(0, 10)}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    ElMessage.success('文档下载成功');
+  } catch (error) {
+    ElMessage.error(`下载失败: ${error?.message || '未知错误'}`);
+  } finally {
+    downloading.value = false;
+  }
 }
 </script>
+
 <style scoped lang="css" src="./ApiDocumentation.css"></style>

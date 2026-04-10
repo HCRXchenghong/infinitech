@@ -77,6 +77,8 @@ import {
   setDefaultUserAddress,
   updateUserAddress
 } from '@/shared-ui/api.js'
+import { normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
+import { readValue, resolveEventValue } from '@/shared-ui/foundation/safe.js'
 import { chooseLocation, getCurrentLocation } from '@/shared-ui/location.js'
 
 function buildCacheAddress(addr) {
@@ -165,13 +167,13 @@ export default {
         this.form.longitude = current.longitude
         this.form.isDefault = current.isDefault
       } catch (error) {
-        uni.showToast({ title: error?.error || error?.message || '加载地址失败', icon: 'none' })
+        uni.showToast({ title: normalizeErrorMessage(error, '加载地址失败'), icon: 'none' })
       } finally {
         this.loading = false
       }
     },
     onDefaultChange(event) {
-      this.form.isDefault = Boolean(event?.detail?.value)
+      this.form.isDefault = Boolean(resolveEventValue(event, false))
     },
     chooseDeliveryLocation() {
       uni.showLoading({ title: '定位中...' })
@@ -251,8 +253,8 @@ export default {
         const res = this.form.id
           ? await updateUserAddress(userId, this.form.id, payload)
           : await createUserAddress(userId, payload)
-        const savedAddress = res?.address || null
-        const savedAddressId = String(savedAddress?.id || this.form.id || '').trim()
+        const savedAddress = readValue(res, ['address'], null)
+        const savedAddressId = String(readValue(savedAddress, ['id'], this.form.id) || this.form.id || '').trim()
 
         if (savedAddressId && this.form.isDefault) {
           await setDefaultUserAddress(userId, savedAddressId)
@@ -264,7 +266,7 @@ export default {
           uni.navigateBack()
         }, 300)
       } catch (error) {
-        uni.showToast({ title: error?.error || error?.message || '保存失败', icon: 'none' })
+        uni.showToast({ title: normalizeErrorMessage(error, '保存失败'), icon: 'none' })
       } finally {
         this.submitting = false
       }

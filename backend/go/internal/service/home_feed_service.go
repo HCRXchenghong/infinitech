@@ -578,8 +578,14 @@ func sameHomeFeedEntity(item map[string]interface{}, publicID string, legacyID u
 }
 
 func homePromotionCampaignToMap(campaign repository.HomePromotionCampaign) map[string]interface{} {
+	var approvedByAdminID interface{}
+	if campaign.ApprovedByAdminID != nil {
+		approvedByAdminID = *campaign.ApprovedByAdminID
+	}
+
 	return map[string]interface{}{
 		"id":                normalizeHomeFeedString(campaign.UID, strconv.FormatUint(uint64(campaign.ID), 10)),
+		"tsid":              campaign.TSID,
 		"legacyId":          campaign.ID,
 		"objectType":        campaign.ObjectType,
 		"targetId":          campaign.TargetPublicID,
@@ -596,7 +602,7 @@ func homePromotionCampaignToMap(campaign repository.HomePromotionCampaign) map[s
 		"startAt":           campaign.StartAt,
 		"endAt":             campaign.EndAt,
 		"approvedAt":        campaign.ApprovedAt,
-		"approvedByAdminId": campaign.ApprovedByAdminID,
+		"approvedByAdminId": approvedByAdminID,
 		"created_at":        campaign.CreatedAt,
 		"updated_at":        campaign.UpdatedAt,
 	}

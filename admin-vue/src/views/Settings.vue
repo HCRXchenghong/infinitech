@@ -99,6 +99,27 @@
           <el-form-item label="Endpoint">
             <el-input v-model="sms.endpoint" placeholder="可选，如：dysmsapi.aliyuncs.com" />
           </el-form-item>
+          <el-form-item label="适用端">
+            <div class="sms-target-grid">
+              <div class="sms-target-item">
+                <span class="sms-target-label">用户端</span>
+                <el-switch v-model="sms.consumer_enabled" />
+              </div>
+              <div class="sms-target-item">
+                <span class="sms-target-label">商户端</span>
+                <el-switch v-model="sms.merchant_enabled" />
+              </div>
+              <div class="sms-target-item">
+                <span class="sms-target-label">骑手端</span>
+                <el-switch v-model="sms.rider_enabled" />
+              </div>
+              <div class="sms-target-item">
+                <span class="sms-target-label">管理端</span>
+                <el-switch v-model="sms.admin_enabled" />
+              </div>
+            </div>
+            <div class="form-tip">默认全开。关闭某个端后，该端将无法再发送登录、注册、找回密码等短信验证码。</div>
+          </el-form-item>
           <el-form-item>
             <el-button type="primary" :loading="saving" @click="saveSms">保存</el-button>
           </el-form-item>
@@ -950,100 +971,20 @@
 
       <!-- 对外 API 接口管理 -->
       <el-card class="card full-width">
-        <div class="card-title">对外 API 接口管理</div>
+        <div class="card-title">对外 API 能力</div>
         <el-alert type="info" :closable="false" style="margin-bottom: 14px;">
           <template #title>
-            <span style="font-weight:600;">统一接口地址：</span>
-            <code style="background:#f0f4f8;padding:2px 8px;border-radius:4px;font-size:13px;">POST 域名/api/v1/query</code>
+            API 文档负责说明接口怎么调用；API 权限管理负责维护 Key、主要 API URL / 路径和权限分配；API 管理仅保留第三方服务配置。
           </template>
         </el-alert>
-        <div style="display:flex;gap:8px;margin-bottom:14px;">
-          <el-button size="small" type="primary" @click="showAddApiDialog">新增 API Key</el-button>
-          <el-button size="small" type="success" @click="showApiDocumentation">开发文档</el-button>
-          <el-button size="small" @click="loadApiList" :loading="apiListLoading">刷新</el-button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <el-button type="primary" @click="router.push('/api-permissions')">打开 API 权限管理</el-button>
+          <el-button @click="router.push('/api-documentation')">打开 API 文档</el-button>
+          <el-button @click="router.push('/api-management')">打开第三方 API 配置</el-button>
         </div>
-        <el-table :data="apiList" stripe size="small" v-loading="apiListLoading">
-          <el-table-column prop="id" label="ID" width="60" />
-          <el-table-column prop="name" label="配置名称" min-width="120" />
-          <el-table-column prop="permissions" label="权限" min-width="180">
-            <template #default="{ row }">
-              <el-tag v-for="perm in row.permissions" :key="perm" size="small" style="margin-right:4px;">{{ getPermissionLabel(perm) }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="api_key" label="API Key" min-width="200">
-            <template #default="{ row }">
-              <el-input :value="row.api_key" readonly size="small" style="width:250px;">
-                <template #append><el-button @click="copyApiKey(row.api_key)" size="small">复制</el-button></template>
-              </el-input>
-            </template>
-          </el-table-column>
-          <el-table-column prop="is_active" label="状态" width="80">
-            <template #default="{ row }">
-              <el-tag :type="row.is_active ? 'success' : 'danger'" size="small">{{ row.is_active ? '启用' : '禁用' }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="180" fixed="right">
-            <template #default="{ row }">
-              <div style="display:flex;gap:4px;">
-                <el-button size="small" type="primary" @click="editApi(row)">编辑</el-button>
-                <el-button size="small" type="success" @click="showDownloadDialog(row)">文档</el-button>
-                <el-button size="small" type="danger" @click="deleteApi(row)">删除</el-button>
-              </div>
-            </template>
-          </el-table-column>
-          <template #empty>
-            <el-empty :description="apiListError ? '加载失败，暂无可显示数据' : '暂无 API 配置数据'" :image-size="90" />
-          </template>
-        </el-table>
       </el-card>
 
     </div>
-
-    <!-- 对话框 -->
-    <el-dialog v-model="downloadDialogVisible" title="下载 API 接口文档" width="480px" :close-on-click-modal="false">
-      <el-form label-width="100px" size="small">
-        <el-form-item label="选择语言">
-          <el-radio-group v-model="downloadLanguage">
-            <el-radio value="java">Java</el-radio>
-            <el-radio value="python">Python</el-radio>
-            <el-radio value="javascript">JavaScript</el-radio>
-            <el-radio value="php">PHP</el-radio>
-            <el-radio value="go">Go</el-radio>
-            <el-radio value="markdown">Markdown</el-radio>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="downloadDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="downloadApiDoc" :loading="downloadingApi">下载</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="apiDialogVisible" :title="editingApi ? '编辑 API Key 配置' : '新增 API Key 配置'" width="680px" :close-on-click-modal="false">
-      <el-alert type="info" :closable="false" style="margin-bottom:14px;">
-        <template #title><span style="font-size:12px;">统一 API 地址：<code>域名/api/v1/query</code></span></template>
-      </el-alert>
-      <el-form :model="apiForm" label-width="100px" size="small">
-        <el-form-item label="配置名称" required><el-input v-model="apiForm.name" placeholder="如：合作伙伴订单查询" /></el-form-item>
-        <el-form-item label="配置说明"><el-input v-model="apiForm.path" type="textarea" :rows="2" placeholder="可选：填写该 API Key 的主要用途说明" /></el-form-item>
-        <el-form-item label="访问权限" required>
-          <el-checkbox-group v-model="apiForm.permissions" @change="handleApiPermissionChange">
-            <el-checkbox label="orders">订单数据</el-checkbox>
-            <el-checkbox label="users">用户数据</el-checkbox>
-            <el-checkbox label="riders">骑手数据</el-checkbox>
-            <el-checkbox label="merchants">商户数据</el-checkbox>
-            <el-checkbox label="products">商品数据</el-checkbox>
-            <el-checkbox label="categories">分类数据</el-checkbox>
-            <el-checkbox label="dashboard">仪表盘数据</el-checkbox>
-          </el-checkbox-group>
-        </el-form-item>
-        <el-form-item label="启用状态"><el-switch v-model="apiForm.is_active" /></el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="apiDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveApi" :loading="savingApi">保存</el-button>
-      </template>
-    </el-dialog>
 
     <el-dialog v-model="clearAllDialogVisible" title="清空全部信息（二次验证）" width="460px">
       <el-form :model="clearAllVerifyForm" label-width="80px">

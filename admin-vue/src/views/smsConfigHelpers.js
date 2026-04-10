@@ -7,10 +7,24 @@ export const DEFAULT_SMS_CONFIG = Object.freeze({
   template_code: '',
   region_id: 'cn-hangzhou',
   endpoint: '',
+  consumer_enabled: true,
+  merchant_enabled: true,
+  rider_enabled: true,
+  admin_enabled: true,
 });
 
 export function normalizeSMSConfig(payload = {}) {
   const source = payload || {};
+  const normalizeBool = (value, fallback = true) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') {
+      const text = value.trim().toLowerCase();
+      if (['1', 'true', 'yes', 'on'].includes(text)) return true;
+      if (['0', 'false', 'no', 'off'].includes(text)) return false;
+    }
+    return fallback;
+  };
   return {
     ...DEFAULT_SMS_CONFIG,
     provider: String(source.provider || DEFAULT_SMS_CONFIG.provider).trim() || DEFAULT_SMS_CONFIG.provider,
@@ -21,6 +35,10 @@ export function normalizeSMSConfig(payload = {}) {
     template_code: String(source.template_code || source.template_id || '').trim(),
     region_id: String(source.region_id || DEFAULT_SMS_CONFIG.region_id).trim() || DEFAULT_SMS_CONFIG.region_id,
     endpoint: String(source.endpoint || '').trim(),
+    consumer_enabled: normalizeBool(source.consumer_enabled ?? source.user_enabled, DEFAULT_SMS_CONFIG.consumer_enabled),
+    merchant_enabled: normalizeBool(source.merchant_enabled, DEFAULT_SMS_CONFIG.merchant_enabled),
+    rider_enabled: normalizeBool(source.rider_enabled, DEFAULT_SMS_CONFIG.rider_enabled),
+    admin_enabled: normalizeBool(source.admin_enabled, DEFAULT_SMS_CONFIG.admin_enabled),
   };
 }
 
@@ -34,5 +52,9 @@ export function buildSMSConfigPayload(payload = {}) {
     template_code: normalized.template_code,
     region_id: normalized.region_id,
     endpoint: normalized.endpoint,
+    consumer_enabled: normalized.consumer_enabled,
+    merchant_enabled: normalized.merchant_enabled,
+    rider_enabled: normalized.rider_enabled,
+    admin_enabled: normalized.admin_enabled,
   };
 }

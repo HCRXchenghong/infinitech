@@ -113,6 +113,7 @@ import { onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Message, ArrowRight, User, Phone, Lock, ChatDotRound, Iphone, Present } from '@element-plus/icons-vue';
 import request from '@/utils/request';
+import { buildRuntimeUrl } from '@/utils/runtime';
 
 const props = defineProps({
   token: {
@@ -217,7 +218,7 @@ async function handleRegister() {
 
 function handleAppClick(platform) {
   if (platform === 'app') {
-    window.location.href = '/download';
+    window.location.href = buildRuntimeUrl('download', '/download');
     return;
   }
   ElMessage.info('请在微信中搜索“悦享e食”小程序');

@@ -183,6 +183,11 @@ func main() {
 		&repository.DiningBuddyParty{},
 		&repository.DiningBuddyPartyMember{},
 		&repository.DiningBuddyMessage{},
+		&repository.DiningBuddyReport{},
+		&repository.DiningBuddySensitiveWord{},
+		&repository.DiningBuddyUserRestriction{},
+		&repository.DiningBuddyAuditLog{},
+		&repository.RiderPreference{},
 		// 优惠券
 		&repository.Coupon{},
 		&repository.UserCoupon{},
@@ -266,6 +271,11 @@ func main() {
 		{name: "DiningBuddyParty", model: &repository.DiningBuddyParty{}},
 		{name: "DiningBuddyPartyMember", model: &repository.DiningBuddyPartyMember{}},
 		{name: "DiningBuddyMessage", model: &repository.DiningBuddyMessage{}},
+		{name: "DiningBuddyReport", model: &repository.DiningBuddyReport{}},
+		{name: "DiningBuddySensitiveWord", model: &repository.DiningBuddySensitiveWord{}},
+		{name: "DiningBuddyUserRestriction", model: &repository.DiningBuddyUserRestriction{}},
+		{name: "DiningBuddyAuditLog", model: &repository.DiningBuddyAuditLog{}},
+		{name: "RiderPreference", model: &repository.RiderPreference{}},
 		{name: "Coupon", model: &repository.Coupon{}},
 		{name: "UserCoupon", model: &repository.UserCoupon{}},
 		{name: "CouponIssueLog", model: &repository.CouponIssueLog{}},
@@ -321,6 +331,9 @@ func main() {
 	}
 	if err := ensureShopMerchantTypeBackfill(db); err != nil {
 		log.Printf("⚠️  商户类型字段回填失败: %v", err)
+	}
+	if err := ensureShopBusinessCategoryKeyBackfill(db); err != nil {
+		log.Printf("⚠️  商户业务分类 key 回填失败: %v", err)
 	}
 	if err := ensureOrderBizTypeBackfill(db); err != nil {
 		log.Printf("⚠️  订单业务类型字段回填失败: %v", err)
@@ -950,22 +963,9 @@ func main() {
 			}
 			c.JSON(200, orders)
 		})
-		api.GET("/riders/orders/available", func(c *gin.Context) {
-			// 骑手大厅仅展示已支付且尚未指派的待接单订单
-			var orders []repository.Order
-			if err := db.Model(&repository.Order{}).
-				Where("status = ?", "pending").
-				Where("(biz_type = ? OR biz_type IS NULL OR biz_type = '')", "takeout").
-				Where("(rider_id IS NULL OR rider_id = '')").
-				Where("payment_status = ?", "paid").
-				Order("created_at DESC").
-				Limit(200).
-				Find(&orders).Error; err != nil {
-				c.JSON(500, gin.H{"error": err.Error()})
-				return
-			}
-			c.JSON(200, orders)
-		})
+		api.GET("/riders/orders/available", handlers.Rider.ListAvailableOrders)
+		api.GET("/rider/preferences", handlers.Rider.GetPreferences)
+		api.POST("/rider/preferences", handlers.Rider.UpdatePreferences)
 
 		// 骑手个人信息管理
 		api.PUT("/riders/:id/avatar", handlers.Rider.UpdateAvatar)
@@ -1016,6 +1016,16 @@ func main() {
 		api.POST("/wechat-login-config", handlers.AdminSettings.UpdateWechatLoginConfig)
 		api.GET("/service-settings", handlers.AdminSettings.GetServiceSettings)
 		api.POST("/service-settings", handlers.AdminSettings.UpdateServiceSettings)
+		api.GET("/home-entry-settings", handlers.AdminSettings.GetHomeEntrySettings)
+		api.POST("/home-entry-settings", handlers.AdminSettings.UpdateHomeEntrySettings)
+		api.GET("/errand-settings", handlers.AdminSettings.GetErrandSettings)
+		api.POST("/errand-settings", handlers.AdminSettings.UpdateErrandSettings)
+		api.GET("/merchant-taxonomy-settings", handlers.AdminSettings.GetMerchantTaxonomySettings)
+		api.POST("/merchant-taxonomy-settings", handlers.AdminSettings.UpdateMerchantTaxonomySettings)
+		api.GET("/rider-rank-settings", handlers.AdminSettings.GetRiderRankSettings)
+		api.POST("/rider-rank-settings", handlers.AdminSettings.UpdateRiderRankSettings)
+		api.GET("/dining-buddy-settings", handlers.AdminSettings.GetDiningBuddySettings)
+		api.POST("/dining-buddy-settings", handlers.AdminSettings.UpdateDiningBuddySettings)
 		api.GET("/charity-settings", handlers.AdminSettings.GetCharitySettings)
 		api.POST("/charity-settings", handlers.AdminSettings.UpdateCharitySettings)
 		api.GET("/vip-settings", handlers.AdminSettings.GetVIPSettings)
@@ -1056,6 +1066,14 @@ func main() {
 		api.GET("/public/runtime-settings", handlers.AdminSettings.GetPublicRuntimeSettings)
 		api.GET("/public/charity-settings", handlers.AdminSettings.GetPublicCharitySettings)
 		api.GET("/public/vip-settings", handlers.AdminSettings.GetPublicVIPSettings)
+		api.GET("/data-exports/system-settings", handlers.AdminSettings.ExportSystemSettings)
+		api.GET("/data-exports/content-config", handlers.AdminSettings.ExportContentConfig)
+		api.GET("/data-exports/api-config", handlers.AdminSettings.ExportAPIConfig)
+		api.GET("/data-exports/payment-config", handlers.AdminSettings.ExportPaymentConfig)
+		api.POST("/data-imports/system-settings", handlers.AdminSettings.ImportSystemSettings)
+		api.POST("/data-imports/content-config", handlers.AdminSettings.ImportContentConfig)
+		api.POST("/data-imports/api-config", handlers.AdminSettings.ImportAPIConfig)
+		api.POST("/data-imports/payment-config", handlers.AdminSettings.ImportPaymentConfig)
 		api.GET("/home/feed", handlers.HomeFeed.GetHomeFeed)
 
 		appDownloadAdmin := api.Group("")
@@ -1535,6 +1553,29 @@ func main() {
 			diningBuddy.POST("/parties/:id/join", handlers.DiningBuddy.JoinParty)
 			diningBuddy.GET("/parties/:id/messages", handlers.DiningBuddy.ListMessages)
 			diningBuddy.POST("/parties/:id/messages", handlers.DiningBuddy.SendMessage)
+			diningBuddy.POST("/reports", handlers.DiningBuddy.CreateReport)
+		}
+
+		diningBuddyAdmin := api.Group("/admin/dining-buddy")
+		diningBuddyAdmin.Use(middleware.RequireAdmin(services.Admin))
+		{
+			diningBuddyAdmin.GET("/parties", handlers.DiningBuddy.AdminListParties)
+			diningBuddyAdmin.GET("/parties/:id", handlers.DiningBuddy.AdminGetParty)
+			diningBuddyAdmin.POST("/parties/:id/close", handlers.DiningBuddy.AdminCloseParty)
+			diningBuddyAdmin.POST("/parties/:id/reopen", handlers.DiningBuddy.AdminReopenParty)
+			diningBuddyAdmin.GET("/parties/:id/messages", handlers.DiningBuddy.AdminListMessages)
+			diningBuddyAdmin.DELETE("/messages/:id", handlers.DiningBuddy.AdminDeleteMessage)
+			diningBuddyAdmin.GET("/reports", handlers.DiningBuddy.AdminListReports)
+			diningBuddyAdmin.POST("/reports/:id/resolve", handlers.DiningBuddy.AdminResolveReport)
+			diningBuddyAdmin.POST("/reports/:id/reject", handlers.DiningBuddy.AdminRejectReport)
+			diningBuddyAdmin.GET("/sensitive-words", handlers.DiningBuddy.AdminListSensitiveWords)
+			diningBuddyAdmin.POST("/sensitive-words", handlers.DiningBuddy.AdminCreateSensitiveWord)
+			diningBuddyAdmin.PUT("/sensitive-words/:id", handlers.DiningBuddy.AdminUpdateSensitiveWord)
+			diningBuddyAdmin.DELETE("/sensitive-words/:id", handlers.DiningBuddy.AdminDeleteSensitiveWord)
+			diningBuddyAdmin.GET("/user-restrictions", handlers.DiningBuddy.AdminListUserRestrictions)
+			diningBuddyAdmin.POST("/user-restrictions", handlers.DiningBuddy.AdminUpsertUserRestriction)
+			diningBuddyAdmin.PUT("/user-restrictions/:id", handlers.DiningBuddy.AdminUpsertUserRestriction)
+			diningBuddyAdmin.GET("/audit-logs", handlers.DiningBuddy.AdminListAuditLogs)
 		}
 
 		medicine := api.Group("/medicine")
@@ -1861,6 +1902,55 @@ func ensureShopMerchantTypeBackfill(db *gorm.DB) error {
 		`UPDATE shops
 		SET merchant_type = 'takeout'
 		WHERE lower(trim(merchant_type)) NOT IN ('takeout', 'groupbuy', 'hybrid')`,
+	}
+	for _, sql := range steps {
+		if err := db.Exec(sql).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ensureShopBusinessCategoryKeyBackfill(db *gorm.DB) error {
+	if !db.Migrator().HasTable(&repository.Shop{}) {
+		return nil
+	}
+	if !db.Migrator().HasColumn(&repository.Shop{}, "BusinessCategoryKey") {
+		if err := db.Migrator().AddColumn(&repository.Shop{}, "BusinessCategoryKey"); err != nil {
+			return fmt.Errorf("add shops.business_category_key failed: %w", err)
+		}
+	}
+
+	steps := []string{
+		`UPDATE shops SET business_category_key = lower(trim(business_category_key))
+		WHERE business_category_key IS NOT NULL AND trim(business_category_key) <> ''`,
+		`UPDATE shops SET business_category_key = 'food' WHERE business_category_key IN ('美食')`,
+		`UPDATE shops SET business_category_key = 'groupbuy' WHERE business_category_key IN ('团购')`,
+		`UPDATE shops SET business_category_key = 'dessert_drinks' WHERE business_category_key IN ('甜点饮品')`,
+		`UPDATE shops SET business_category_key = 'supermarket_convenience' WHERE business_category_key IN ('超市便利')`,
+		`UPDATE shops SET business_category_key = 'leisure_entertainment' WHERE business_category_key IN ('休闲娱乐', '休闲玩乐')`,
+		`UPDATE shops SET business_category_key = 'life_services' WHERE business_category_key IN ('生活服务')`,
+		`UPDATE shops SET business_category_key = 'food'
+		WHERE (business_category_key IS NULL OR trim(business_category_key) = '') AND business_category IN ('美食')`,
+		`UPDATE shops SET business_category_key = 'groupbuy'
+		WHERE (business_category_key IS NULL OR trim(business_category_key) = '') AND business_category IN ('团购')`,
+		`UPDATE shops SET business_category_key = 'dessert_drinks'
+		WHERE (business_category_key IS NULL OR trim(business_category_key) = '') AND business_category IN ('甜点饮品')`,
+		`UPDATE shops SET business_category_key = 'supermarket_convenience'
+		WHERE (business_category_key IS NULL OR trim(business_category_key) = '') AND business_category IN ('超市便利')`,
+		`UPDATE shops SET business_category_key = 'leisure_entertainment'
+		WHERE (business_category_key IS NULL OR trim(business_category_key) = '') AND business_category IN ('休闲娱乐', '休闲玩乐')`,
+		`UPDATE shops SET business_category_key = 'life_services'
+		WHERE (business_category_key IS NULL OR trim(business_category_key) = '') AND business_category IN ('生活服务')`,
+		`UPDATE shops SET business_category_key = 'food'
+		WHERE business_category_key IS NULL OR trim(business_category_key) = ''`,
+		`UPDATE shops SET business_category = '休闲娱乐' WHERE business_category IN ('休闲玩乐')`,
+		`UPDATE shops SET business_category = '美食' WHERE business_category_key = 'food'`,
+		`UPDATE shops SET business_category = '团购' WHERE business_category_key = 'groupbuy'`,
+		`UPDATE shops SET business_category = '甜点饮品' WHERE business_category_key = 'dessert_drinks'`,
+		`UPDATE shops SET business_category = '超市便利' WHERE business_category_key = 'supermarket_convenience'`,
+		`UPDATE shops SET business_category = '休闲娱乐' WHERE business_category_key = 'leisure_entertainment'`,
+		`UPDATE shops SET business_category = '生活服务' WHERE business_category_key = 'life_services'`,
 	}
 	for _, sql := range steps {
 		if err := db.Exec(sql).Error; err != nil {

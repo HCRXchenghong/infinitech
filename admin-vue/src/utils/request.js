@@ -1,7 +1,14 @@
 import axios from 'axios';
 import { saveToCache, getFromCache, STORES } from './cache';
 import { getNetworkStatus } from './networkStatus';
-import { getToken, isInviteRuntime } from './runtime';
+import {
+  clearAdminSessionStorage,
+  getPublicRuntimeGuardMessage,
+  getToken,
+  isDownloadRuntime,
+  isInviteRuntime,
+  isPublicRuntime
+} from './runtime';
 import { hasValidPrimaryKey } from './record';
 
 // 支持通过环境变量配置后台服务地址：
@@ -32,9 +39,17 @@ function isInviteAllowedAPI(url) {
   const path = String(url || '');
   return path.startsWith('/api/onboarding/invites') ||
     path.startsWith('/api/coupons/link/') ||
-    path.startsWith('/api/public/app-download-config') ||
     path === '/api/upload' ||
     path.startsWith('/api/upload?') ||
+    path === '/api/health' ||
+    path === '/health' ||
+    path === '/api/ready' ||
+    path === '/ready';
+}
+
+function isDownloadAllowedAPI(url) {
+  const path = String(url || '');
+  return path.startsWith('/api/public/app-download-config') ||
     path === '/api/health' ||
     path === '/health' ||
     path === '/api/ready' ||
@@ -105,16 +120,22 @@ function extractCacheRecords(storeName, payload) {
 }
 
 instance.interceptors.request.use(async (config) => {
-  if (isInviteRuntime() && !isInviteAllowedAPI(config.url)) {
+  const isInviteRequest = isInviteRuntime();
+  const isDownloadRequest = isDownloadRuntime();
+  const isAllowedPublicAPI = isInviteRequest
+    ? isInviteAllowedAPI(config.url)
+    : (isDownloadRequest ? isDownloadAllowedAPI(config.url) : true);
+
+  if (isPublicRuntime() && !isAllowedPublicAPI) {
     return Promise.reject({
-      message: '1788 仅允许邀请页接口访问',
+      message: getPublicRuntimeGuardMessage() || '当前端口不允许访问该接口',
       code: 'INVITE_ONLY_API_BLOCKED',
       isInviteOnlyBlocked: true
     });
   }
 
   const token = getToken();
-  if (token && !isInviteRuntime()) {
+  if (token && !isPublicRuntime()) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   
@@ -197,16 +218,13 @@ instance.interceptors.response.use(
     const is401 = status === 401;
 
     // 邀请运行态禁止自动跳登录页，避免 /download <-> /login 闪屏循环
-    if (isInviteRuntime()) {
+    if (isPublicRuntime()) {
       return Promise.reject(error);
     }
     
     // 只有非登录接口的 401/403 错误才跳转
     if ((is401 || is403) && !isLoginApi) {
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_user');
-      sessionStorage.removeItem('admin_token');
-      sessionStorage.removeItem('admin_user');
+      clearAdminSessionStorage();
       // 如果已经在登录页，不重复跳转
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
@@ -226,4 +244,3 @@ instance.interceptors.response.use(
 export { baseURL };
 
 export default instance;
-

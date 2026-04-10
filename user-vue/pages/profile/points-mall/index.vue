@@ -15,15 +15,14 @@
           <text class="summary-value">{{ points }}</text>
         </view>
         <view class="summary-right">
-          <view class="summary-rule">消费 1 元 = 1 积分</view>
-          <view class="summary-rule">积分有效期 3 个月，过期清零</view>
-          <view class="summary-rule">退款订单积分将自动扣回</view>
+          <view v-for="rule in vipConfig.point_rules" :key="rule" class="summary-rule">{{ rule }}</view>
         </view>
       </view>
 
-      <view class="section-title">推荐兑换</view>
+      <view class="section-title">{{ vipConfig.points_section_title }}</view>
+      <view class="section-tip">{{ vipConfig.points_section_tip }}</view>
       <view class="goods-list">
-        <view v-for="(item, idx) in goods" :key="idx" class="goods-card">
+        <view v-for="item in goods" :key="item.id" class="goods-card">
           <view class="goods-icon" :class="item.colorClass">
             <text class="goods-emoji">{{ item.emoji }}</text>
           </view>
@@ -56,18 +55,21 @@
 </template>
 
 <script>
-import { fetchPointsBalance, fetchPointsGoods, redeemPoints } from '@/shared-ui/api.js'
+import { fetchPointsBalance, fetchPointsGoods, redeemPoints, fetchPublicVIPSettings } from '@/shared-ui/api.js'
+import { DEFAULT_VIP_CENTER_SETTINGS, normalizeVIPCenterSettings } from '../vip-center/vip-data.js'
 
 export default {
   data() {
     return {
       points: 0,
-      goods: []
+      goods: [],
+      vipConfig: normalizeVIPCenterSettings(DEFAULT_VIP_CENTER_SETTINGS)
     }
   },
   onLoad() {
     const stored = uni.getStorageSync('pointsBalance')
     if (typeof stored === 'number') this.points = stored
+    this.loadVipSettings()
     this.loadPoints()
     this.loadGoods()
   },
@@ -75,6 +77,15 @@ export default {
     this.loadPoints()
   },
   methods: {
+    loadVipSettings() {
+      fetchPublicVIPSettings()
+        .then((payload) => {
+          this.vipConfig = normalizeVIPCenterSettings(payload || {})
+        })
+        .catch(() => {
+          this.vipConfig = normalizeVIPCenterSettings(DEFAULT_VIP_CENTER_SETTINGS)
+        })
+    },
     goBack() {
       uni.navigateBack()
     },
@@ -234,6 +245,12 @@ export default {
   color: #6b7280;
   margin-bottom: 12px;
   font-weight: 600;
+}
+
+.section-tip {
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #9ca3af;
 }
 
 .goods-list {

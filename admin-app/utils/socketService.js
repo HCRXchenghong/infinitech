@@ -1,6 +1,10 @@
 import io from 'socket.io-client';
 import { db } from './database.js';
+import { getAuthUser } from './auth.js';
 import { API_CONFIG } from './config.js';
+
+const SOCKET_TOKEN_KEY = 'socket_token';
+const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key';
 
 function getSocketUrl() {
   const bffUrl = API_CONFIG.BFF_BASE_URL || process.env.VUE_APP_SOCKET_URL || '';
@@ -18,15 +22,45 @@ function buildSocketAuthHeader() {
   }
 }
 
+function getSocketIdentity() {
+  const user = getAuthUser();
+  const userId = String(user?.id || user?.phone || '').trim();
+  if (!userId) {
+    return null;
+  }
+
+  return {
+    userId,
+    role: 'admin',
+    cacheKey: `admin:${userId}`
+  };
+}
+
+function clearCachedSocketToken() {
+  uni.removeStorageSync(SOCKET_TOKEN_KEY);
+  uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY);
+}
+
 async function getSocketToken() {
   try {
-    const cached = uni.getStorageSync('socket_token');
-    if (cached) {
-      return String(cached);
+    const identity = getSocketIdentity();
+    if (!identity) {
+      clearCachedSocketToken();
+      return null;
+    }
+
+    const cached = String(uni.getStorageSync(SOCKET_TOKEN_KEY) || '').trim();
+    const cachedAccountKey = String(uni.getStorageSync(SOCKET_TOKEN_ACCOUNT_KEY) || '').trim();
+    if (cached && cachedAccountKey === identity.cacheKey) {
+      return cached;
+    }
+    if (cached && cachedAccountKey !== identity.cacheKey) {
+      clearCachedSocketToken();
     }
 
     const authHeader = buildSocketAuthHeader();
     if (!authHeader) {
+      clearCachedSocketToken();
       return null;
     }
 
@@ -39,8 +73,8 @@ async function getSocketToken() {
           Authorization: authHeader
         },
         data: {
-          userId: 'admin',
-          role: 'admin'
+          userId: identity.userId,
+          role: identity.role
         },
         success: resolve,
         fail: reject
@@ -53,7 +87,8 @@ async function getSocketToken() {
       return null;
     }
 
-    uni.setStorageSync('socket_token', token);
+    uni.setStorageSync(SOCKET_TOKEN_KEY, token);
+    uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, identity.cacheKey);
     return token;
   } catch (_err) {
     return null;
@@ -87,7 +122,7 @@ class SocketService {
     this.socket.on('connect_error', (error) => {
       const message = String(error?.message || '');
       if (/\u8ba4\u8bc1\u5931\u8d25/.test(message)) {
-        uni.removeStorageSync('socket_token');
+        clearCachedSocketToken();
         this.socket.disconnect();
         this.socket = null;
         this.namespace = null;

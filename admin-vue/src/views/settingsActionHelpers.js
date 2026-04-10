@@ -1,3 +1,5 @@
+import { clearAdminSessionStorage } from '@/utils/runtime';
+
 export function useSettingsActionHelpers({ request, payMode, debugMode, wxpay, alipay, savingPayMode, savingDebugMode, savingWx, savingAli, loadAll, router, ElMessage, ElMessageBox }) {
   async function savePayMode() {
     savingPayMode.value = true;
@@ -55,10 +57,7 @@ export function useSettingsActionHelpers({ request, payMode, debugMode, wxpay, a
       cancelButtonText: '取消',
       type: 'warning'
     }).then(() => {
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_user');
-      sessionStorage.removeItem('admin_token');
-      sessionStorage.removeItem('admin_user');
+      clearAdminSessionStorage();
       router.push('/login');
       ElMessage.success('已退出登录');
     }).catch(() => {

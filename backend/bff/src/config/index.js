@@ -57,17 +57,19 @@ function buildCorsOrigins() {
   const defaults = [
     "http://127.0.0.1:8888",
     "http://localhost:8888",
-    "http://127.0.0.1:5173",
-    "http://localhost:5173",
-    "http://127.0.0.1:8080",
-    "http://localhost:8080"
+    "http://127.0.0.1:1788",
+    "http://localhost:1788",
+    "http://127.0.0.1:1798",
+    "http://localhost:1798"
   ];
 
   const adminWebBaseUrl = normalizeOrigin(process.env.ADMIN_WEB_BASE_URL || "");
+  const downloadWebBaseUrl = normalizeOrigin(process.env.DOWNLOAD_WEB_BASE_URL || "");
   return uniqueValues([
     ...configured,
     ...defaults,
-    adminWebBaseUrl
+    adminWebBaseUrl,
+    downloadWebBaseUrl
   ]);
 }
 
@@ -105,6 +107,7 @@ module.exports = {
   jwtSecret: adminTokenSecret,
   adminTokenSecret,
   adminWebBaseUrl: process.env.ADMIN_WEB_BASE_URL || "",
+  downloadWebBaseUrl: process.env.DOWNLOAD_WEB_BASE_URL || "",
   adminQrLoginSecret: String(process.env.ADMIN_QR_LOGIN_SECRET || adminTokenSecret).trim(),
   corsOrigins: buildCorsOrigins(),
 

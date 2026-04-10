@@ -212,7 +212,7 @@
           <el-table-column prop="name" label="骑手" />
           <el-table-column prop="level" label="段位" width="120">
             <template #default="{ row }">
-              <el-tag :type="getRankType(row.level)" size="small">{{ getRankName(row.level) }}</el-tag>
+              <el-tag :type="getRankType(row.level)" size="small">{{ getRankName(row.level, riderRankLevels) }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="value" label="配送次数" width="120" align="right" />
@@ -236,6 +236,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import request from '@/utils/request'
 import socketService, { SOCKET_HTTP_BASE } from '@/utils/socket'
+import { getCurrentAdminSocketIdentity } from '@/utils/runtime'
+import { getCachedRiderRankSettings, loadRiderRankSettings } from '@/utils/platform-settings'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 import {
   createDefaultImStats,
@@ -269,6 +271,7 @@ const riderTab = ref('week')
 const userRanks = ref({ week: [], month: [] })
 const allRiderRanks = ref({ week: [], month: [] })
 const loading = ref(false)
+const riderRankSettings = ref(getCachedRiderRankSettings())
 
 const weatherData = ref({ available: false })
 const weatherConfig = ref({ refresh_interval_minutes: 10 })
@@ -295,6 +298,7 @@ function hasWeatherLocationConfig() {
 }
 
 const displayedRiderRanks = computed(() => (allRiderRanks.value[riderTab.value] || []).slice(0, 10))
+const riderRankLevels = computed(() => riderRankSettings.value?.levels || [])
 const lifeIndexEntries = computed(() => Object.entries(weatherData.value?.life_indices || {}))
 const forecastList = computed(() => (Array.isArray(weatherData.value?.forecast) ? weatherData.value.forecast : []))
 const hourlyList = computed(() =>
@@ -431,6 +435,10 @@ async function loadSystemHealth() {
   }
 }
 
+async function loadRiderRankDictionary(forceRefresh = false) {
+  riderRankSettings.value = await loadRiderRankSettings(forceRefresh)
+}
+
 function viewAllRiders() {
   router.push({
     path: '/rider-ranks',
@@ -445,7 +453,7 @@ function handleServerStats(data) {
 async function connectImStats() {
   try {
     monitorSocket = await socketService.connect('/monitor')
-    monitorSocket.emit('join_monitor', { userId: 'admin' })
+    monitorSocket.emit('join_monitor', { userId: getCurrentAdminSocketIdentity()?.userId || '' })
     socketService.on('server_stats', handleServerStats, '/monitor')
 
     const response = await fetch(`${SOCKET_HTTP_BASE}/api/stats`)
@@ -457,6 +465,7 @@ async function connectImStats() {
 }
 
 async function refreshData() {
+  await loadRiderRankDictionary(true)
   await loadWeatherConfig()
   weatherError.value = ''
   statsError.value = ''
@@ -583,6 +592,7 @@ async function loadOrders(forceRefresh = false) {
 }
 
 onMounted(async () => {
+  await loadRiderRankDictionary()
   await loadWeatherConfig()
   await refreshData()
   await connectImStats()

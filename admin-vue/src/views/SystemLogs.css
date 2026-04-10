@@ -111,12 +111,29 @@
 .service-signals {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   gap: 6px;
   margin-top: 8px;
+  min-width: 0;
 }
 
 .service-signal {
+  display: inline-flex;
+  align-items: flex-start;
+  flex: 1 1 260px;
   max-width: 100%;
+  min-width: 0;
+  height: auto;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  line-height: 1.4;
+  white-space: normal;
+}
+
+.service-signal :deep(.el-tag__content) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .service-detail {

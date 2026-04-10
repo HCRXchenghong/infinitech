@@ -217,20 +217,24 @@
           <el-col :span="12">
             <el-form-item label="店铺类型">
               <el-select v-model="basicForm.orderType" style="width: 100%">
-                <el-option label="外卖类" value="外卖类" />
-                <el-option label="团购类" value="团购类" />
+                <el-option
+                  v-for="option in merchantTypeOptions"
+                  :key="option.key"
+                  :label="option.orderTypeLabel"
+                  :value="option.legacyOrderTypeLabel"
+                />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="业务分类">
-              <el-select v-model="basicForm.businessCategory" style="width: 100%">
-                <el-option label="美食" value="美食" />
-                <el-option label="团购" value="团购" />
-                <el-option label="甜点饮品" value="甜点饮品" />
-                <el-option label="超市便利" value="超市便利" />
-                <el-option label="休闲玩乐" value="休闲玩乐" />
-                <el-option label="生活服务" value="生活服务" />
+              <el-select v-model="basicForm.businessCategoryKey" style="width: 100%" @change="handleBasicBusinessCategoryChange">
+                <el-option
+                  v-for="option in businessCategoryOptions"
+                  :key="option.key"
+                  :label="option.label"
+                  :value="option.key"
+                />
               </el-select>
             </el-form-item>
           </el-col>
@@ -537,4 +541,3 @@
     </el-dialog>
   </div>
 </template>
-

@@ -295,6 +295,7 @@ export function clearAuthSession(options = {}) {
 	uni.removeStorageSync(API_CONFIG.USER_KEY);
 	uni.removeStorageSync(AUTH_STORAGE_KEYS.SESSION_KEY);
 	uni.removeStorageSync('socket_token');
+	uni.removeStorageSync('socket_token_account_key');
 	uni.removeStorageSync(AUTH_STORAGE_KEYS.BIO_APP_LOCK_KEY);
 
 	if (!keepBiometric) {

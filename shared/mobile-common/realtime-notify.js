@@ -59,6 +59,7 @@ export function createRealtimeNotifyBridge(options = {}) {
   const loggerTag = trimValue(options.loggerTag) || 'RealtimeNotify'
   const storageKey = trimValue(options.storageKey) || 'realtime_notify_state'
   const tokenStorageKey = trimValue(options.tokenStorageKey) || 'socket_token'
+  const tokenAccountKeyStorageKey = trimValue(options.tokenAccountKeyStorageKey) || 'socket_token_account_key'
   const eventName = trimValue(options.eventName) || 'business_notification'
   const reconnectDelayMs = Number(options.reconnectDelayMs || 3000)
   const seenMessageTTL = Number(options.seenMessageTTL || 120000)
@@ -88,9 +89,38 @@ export function createRealtimeNotifyBridge(options = {}) {
     return false
   }
 
+  function resolveIdentityAccountKey(identity) {
+    if (typeof options.resolveTokenAccountKey === 'function') {
+      return trimValue(options.resolveTokenAccountKey(identity))
+    }
+    const role = trimValue(identity && identity.role)
+    const userId = trimValue(identity && identity.userId)
+    if (!role || !userId) return ''
+    return `${role}:${userId}`
+  }
+
+  function clearTokenCache() {
+    removeStorage(tokenStorageKey)
+    removeStorage(tokenAccountKeyStorageKey)
+  }
+
   async function fetchSocketToken(identity, forceRefresh = false) {
-    const cached = forceRefresh ? '' : trimValue(readStorage(tokenStorageKey))
-    if (cached) return cached
+    const accountKey = resolveIdentityAccountKey(identity)
+    if (!accountKey) {
+      throw new Error('missing realtime socket account key')
+    }
+
+    if (!forceRefresh) {
+      const cached = trimValue(readStorage(tokenStorageKey))
+      const cachedAccountKey = trimValue(readStorage(tokenAccountKeyStorageKey))
+      if (cached && cachedAccountKey === accountKey) {
+        return cached
+      }
+      if (cached || cachedAccountKey) {
+        clearTokenCache()
+      }
+    }
+
     const socketUrl = trimValue(typeof options.getSocketURL === 'function' ? options.getSocketURL() : '')
     if (!socketUrl) {
       throw new Error('socket url is not configured')
@@ -130,6 +160,7 @@ export function createRealtimeNotifyBridge(options = {}) {
       throw new Error('missing socket token from response')
     }
     writeStorage(tokenStorageKey, token)
+    writeStorage(tokenAccountKeyStorageKey, accountKey)
     return token
   }
 
@@ -182,7 +213,7 @@ export function createRealtimeNotifyBridge(options = {}) {
 
   function clearRealtimeState() {
     disconnectRealtimeChannel()
-    removeStorage(tokenStorageKey)
+    clearTokenCache()
     removeStorage(storageKey)
   }
 
@@ -253,7 +284,7 @@ export function createRealtimeNotifyBridge(options = {}) {
         console.error(`[${loggerTag}] realtime auth error:`, err)
         isConnected = false
         isConnecting = false
-        removeStorage(tokenStorageKey)
+        clearTokenCache()
         scheduleReconnect(true)
       })
     } catch (err) {

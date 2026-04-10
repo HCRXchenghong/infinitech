@@ -23,7 +23,7 @@ func NewAdminHandler(admin *service.AdminService, sms *service.SMSService) *Admi
 func (h *AdminHandler) Login(c *gin.Context) {
 	var req service.AdminLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "璇锋眰鍙傛暟閿欒"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
 		return
 	}
 
@@ -38,7 +38,7 @@ func (h *AdminHandler) Login(c *gin.Context) {
 func (h *AdminHandler) SendAdminSMSCode(c *gin.Context) {
 	var req service.RequestCodeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "璇锋眰鍙傛暟閿欒"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
 		return
 	}
 	if req.Scene == "" {
@@ -74,7 +74,7 @@ func (h *AdminHandler) CreateAdmin(c *gin.Context) {
 		Type     string `json:"type"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "璇锋眰鍙傛暟閿欒"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
 		return
 	}
 	if err := h.admin.CreateAdmin(c.Request.Context(), req.Phone, req.Name, req.Password, req.Type); err != nil {
@@ -87,12 +87,12 @@ func (h *AdminHandler) CreateAdmin(c *gin.Context) {
 func (h *AdminHandler) UpdateAdmin(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "璇锋眰鍙傛暟閿欒"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
 		return
 	}
 	updates := map[string]interface{}{}
@@ -115,7 +115,7 @@ func (h *AdminHandler) UpdateAdmin(c *gin.Context) {
 func (h *AdminHandler) DeleteAdmin(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	if err := h.admin.DeleteAdmin(c.Request.Context(), id); err != nil {
@@ -128,7 +128,7 @@ func (h *AdminHandler) DeleteAdmin(c *gin.Context) {
 func (h *AdminHandler) ResetAdminPassword(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	newPassword, err := h.admin.ResetAdminPassword(c.Request.Context(), id)
@@ -196,7 +196,7 @@ func (h *AdminHandler) ChangeOwnPassword(c *gin.Context) {
 		ConfirmPassword string `json:"confirmPassword"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "璇锋眰鍙傛暟閿欒"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
 		return
 	}
 	if strings.TrimSpace(req.CurrentPassword) == "" {
@@ -204,7 +204,7 @@ func (h *AdminHandler) ChangeOwnPassword(c *gin.Context) {
 		return
 	}
 	if strings.TrimSpace(req.NewPassword) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "璇疯緭鍏ユ柊瀵嗙爜"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请输入新密码"})
 		return
 	}
 	if len(strings.TrimSpace(req.NewPassword)) < 6 {
@@ -221,11 +221,11 @@ func (h *AdminHandler) ChangeOwnPassword(c *gin.Context) {
 			c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "登录状态已失效，请重新登录"})
 			return
 		}
-		if strings.Contains(err.Error(), "瀵嗙爜") {
+			if strings.Contains(err.Error(), "密码") {
 			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "淇敼瀵嗙爜澶辫触"})
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "修改密码失败"})
 		return
 	}
 
@@ -260,7 +260,7 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 		Type     string `json:"type"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "璇锋眰鍙傛暟閿欒"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
 		return
 	}
 	if err := h.admin.CreateUser(c.Request.Context(), req.Phone, req.Name, req.Password, req.Type); err != nil {
@@ -273,7 +273,7 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 func (h *AdminHandler) ResetUserPassword(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	newPassword, err := h.admin.ResetUserPassword(c.Request.Context(), id)
@@ -287,7 +287,7 @@ func (h *AdminHandler) ResetUserPassword(c *gin.Context) {
 func (h *AdminHandler) DeleteUserOrders(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	deleted, err := h.admin.DeleteUserOrders(c.Request.Context(), id)
@@ -301,7 +301,7 @@ func (h *AdminHandler) DeleteUserOrders(c *gin.Context) {
 func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	if err := h.admin.DeleteUser(c.Request.Context(), id); err != nil {
@@ -325,7 +325,7 @@ func (h *AdminHandler) ReorganizeUserRoleIDs(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID閲嶇粍鎴愬姛"})
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID重组成功"})
 }
 
 // Riders
@@ -351,7 +351,7 @@ func (h *AdminHandler) GetRiders(c *gin.Context) {
 func (h *AdminHandler) GetRiderByID(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	rider, err := h.admin.GetRider(c.Request.Context(), id)
@@ -369,7 +369,7 @@ func (h *AdminHandler) CreateRider(c *gin.Context) {
 		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "璇锋眰鍙傛暟閿欒"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
 		return
 	}
 	if err := h.admin.CreateRider(c.Request.Context(), req.Phone, req.Name, req.Password); err != nil {
@@ -382,7 +382,7 @@ func (h *AdminHandler) CreateRider(c *gin.Context) {
 func (h *AdminHandler) UpdateRider(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	var req struct {
@@ -394,7 +394,7 @@ func (h *AdminHandler) UpdateRider(c *gin.Context) {
 		EmergencyContactPhone string `json:"emergency_contact_phone"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "璇锋眰鍙傛暟閿欒"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
 		return
 	}
 
@@ -422,7 +422,7 @@ func (h *AdminHandler) UpdateRider(c *gin.Context) {
 func (h *AdminHandler) ResetRiderPassword(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	newPassword, err := h.admin.ResetRiderPassword(c.Request.Context(), id)
@@ -436,7 +436,7 @@ func (h *AdminHandler) ResetRiderPassword(c *gin.Context) {
 func (h *AdminHandler) DeleteRiderOrders(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	deleted, err := h.admin.DeleteRiderOrders(c.Request.Context(), id)
@@ -450,7 +450,7 @@ func (h *AdminHandler) DeleteRiderOrders(c *gin.Context) {
 func (h *AdminHandler) DeleteRider(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	if err := h.admin.DeleteRider(c.Request.Context(), id); err != nil {
@@ -474,7 +474,7 @@ func (h *AdminHandler) ReorganizeRiderRoleIDs(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID閲嶇粍鎴愬姛"})
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID重组成功"})
 }
 
 // Merchants
@@ -500,7 +500,7 @@ func (h *AdminHandler) GetMerchants(c *gin.Context) {
 func (h *AdminHandler) GetMerchant(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	merchant, err := h.admin.GetMerchant(c.Request.Context(), id)
@@ -519,7 +519,7 @@ func (h *AdminHandler) CreateMerchant(c *gin.Context) {
 		Password  string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "璇锋眰鍙傛暟閿欒"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
 		return
 	}
 	if err := h.admin.CreateMerchant(c.Request.Context(), req.Phone, req.Name, req.OwnerName, req.Password); err != nil {
@@ -532,7 +532,7 @@ func (h *AdminHandler) CreateMerchant(c *gin.Context) {
 func (h *AdminHandler) UpdateMerchant(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	var req struct {
@@ -542,7 +542,7 @@ func (h *AdminHandler) UpdateMerchant(c *gin.Context) {
 		BusinessLicenseImage string `json:"business_license_image"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "璇锋眰鍙傛暟閿欒"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
 		return
 	}
 	if err := h.admin.UpdateMerchant(c.Request.Context(), id, req.Phone, req.Name, req.OwnerName, req.BusinessLicenseImage); err != nil {
@@ -555,7 +555,7 @@ func (h *AdminHandler) UpdateMerchant(c *gin.Context) {
 func (h *AdminHandler) ResetMerchantPassword(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	newPassword, err := h.admin.ResetMerchantPassword(c.Request.Context(), id)
@@ -569,7 +569,7 @@ func (h *AdminHandler) ResetMerchantPassword(c *gin.Context) {
 func (h *AdminHandler) DeleteMerchant(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "鏃犳晥ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
 		return
 	}
 	if err := h.admin.DeleteMerchant(c.Request.Context(), id); err != nil {
@@ -593,7 +593,7 @@ func (h *AdminHandler) ReorganizeMerchantRoleIDs(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID閲嶇粍鎴愬姛"})
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID重组成功"})
 }
 
 // Orders list (admin)
@@ -804,12 +804,12 @@ func parseContextUint(value interface{}, exists bool) uint {
 	return 0
 }
 
-// ReorganizeRoleIds 閲嶇粍瑙掕壊ID
+// ReorganizeRoleIds 重组角色 ID
 func (h *AdminHandler) ReorganizeRoleIds(c *gin.Context) {
 	userType := c.Param("type")
 	if err := h.admin.ReorganizeRoleIds(c.Request.Context(), userType); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID閲嶇粍鎴愬姛"})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID重组成功"})
 }

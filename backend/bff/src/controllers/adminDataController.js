@@ -4,6 +4,19 @@
 
 const { proxyGet, proxyPost, proxyPut, proxyDelete } = require('../utils/goProxy');
 
+const DATA_RESOURCES = new Set(['users', 'riders', 'orders', 'merchants']);
+
+function resolveDataActionPath(req, action) {
+  const plainPath = String(req?.path || req?.originalUrl || '').split('?')[0];
+  const match = plainPath.match(/^\/(users|riders|orders|merchants)\/(export|import)$/);
+
+  if (match && DATA_RESOURCES.has(match[1])) {
+    return `/${match[1]}/${action}`;
+  }
+
+  throw new Error(`Unsupported admin data action path: ${plainPath || 'unknown'}`);
+}
+
 async function getUsers(req, res, next) {
   await proxyGet(req, res, next, '/users', { params: req.query });
 }
@@ -77,14 +90,15 @@ async function getRiderRanks(req, res, next) {
 }
 
 async function exportData(req, res, next) {
-  await proxyGet(req, res, next, '/export', { params: req.query });
+  await proxyGet(req, res, next, resolveDataActionPath(req, 'export'), { params: req.query });
 }
 
 async function importData(req, res, next) {
-  await proxyPost(req, res, next, '/import');
+  await proxyPost(req, res, next, resolveDataActionPath(req, 'import'));
 }
 
 module.exports = {
+  resolveDataActionPath,
   getUsers,
   getUserById,
   createUser,

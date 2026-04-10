@@ -115,6 +115,7 @@ import {
 } from '@/shared-ui/support-runtime.js'
 
 const SESSION_VISIBLE_MAX_AGE = 30 * 24 * 60 * 60 * 1000
+const REALTIME_NOTIFICATION_REFRESH_EVENT = 'realtime:refresh:notifications'
 
 const UI_TEXT = {
   title: '\u6d88\u606f',
@@ -181,13 +182,24 @@ export default {
       )
     }
   },
+  onLoad() {
+    uni.$off(REALTIME_NOTIFICATION_REFRESH_EVENT, this.handleRealtimeNotificationRefresh)
+    uni.$on(REALTIME_NOTIFICATION_REFRESH_EVENT, this.handleRealtimeNotificationRefresh)
+  },
   onShow() {
     this.initializePage()
+  },
+  onUnload() {
+    uni.$off(REALTIME_NOTIFICATION_REFRESH_EVENT, this.handleRealtimeNotificationRefresh)
   },
   methods: {
     async initializePage() {
       await this.loadSupportRuntimeConfig()
       await Promise.all([this.loadSessions(), this.loadNotificationSummary()])
+    },
+
+    handleRealtimeNotificationRefresh() {
+      void this.loadNotificationSummary()
     },
 
     async loadSupportRuntimeConfig() {
