@@ -52,6 +52,7 @@ export const MENU_GROUPS = [
         name: '沟通与审计',
         children: [
           { path: '/support-chat', name: '客服工作台' },
+          { path: '/rtc-console', name: 'RTC 管理台' },
           { path: '/contact-phone-audits', name: '电话联系审计' },
           { path: '/rtc-call-audits', name: 'RTC 通话审计' },
         ],

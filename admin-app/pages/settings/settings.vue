@@ -194,7 +194,7 @@ const bioAuth = ref(false);
 const notifyEnabled = ref(true);
 const autoRefreshEnabled = ref(true);
 const cacheSizeText = ref('0 KB');
-const appVersion = ref('v1.0.0');
+const appVersion = ref('v1.0.1');
 const adminPhone = ref('');
 const serviceSettings = ref({});
 

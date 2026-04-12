@@ -1,6 +1,8 @@
-# Infinitech 1.0.0
+# Infinitech 1.0.1
 
 Infinitech 是一套面向本地生活服务场景的多端一体化平台，覆盖用户端、商户端、骑手端、管理端、实时消息、支付与提现、邀请落地页、下载页，以及一键安装和一键部署工具链。
+
+当前最新发布为 `1.0.1`，相对 `1.0.0` 的差异说明见 [CHANGELOG.md](./CHANGELOG.md)。
 
 这个仓库的 1.0.0 基线已经固定了以下原则：
 
@@ -321,7 +323,7 @@ No mojibake or invalid UTF-8 found.
 
 ## 12. 版本信息
 
-- 当前仓库发布版本：`1.0.0`
+- 当前仓库发布版本：`1.0.1`
 - 当前默认分支：`main`
 - 当前发布仓库：`https://github.com/HCRXchenghong/infinitech`
 
