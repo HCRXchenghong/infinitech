@@ -233,13 +233,11 @@ function emitToRTCParticipants(namespace, callRecord, eventName, payload, option
   const callerID = normalizeIdentityId(callRecord.caller_id || callRecord.callerId);
   const calleeRole = normalizeParticipantRole(callRecord.callee_role || callRecord.calleeRole);
   const calleeID = normalizeIdentityId(callRecord.callee_id || callRecord.calleeId);
-  const callId = resolveCallId(callRecord);
   const excludeSocketId = String(options.excludeSocketId || '').trim();
 
   const targetRooms = [
     callerRole && callerID ? buildIdentityRoom(callerRole, callerID) : '',
-    calleeRole && calleeID ? buildIdentityRoom(calleeRole, calleeID) : '',
-    callId ? buildCallRoom(callId) : ''
+    calleeRole && calleeID ? buildIdentityRoom(calleeRole, calleeID) : ''
   ].filter(Boolean);
 
   const sentRooms = new Set();
