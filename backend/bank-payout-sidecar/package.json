@@ -1,6 +1,6 @@
 {
   "name": "bank-payout-sidecar",
-  "version": "0.0.1",
+  "version": "1.0.1",
   "private": true,
   "description": "Bank payout sidecar skeleton for Infinite platform",
   "type": "module",

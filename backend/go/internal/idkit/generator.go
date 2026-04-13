@@ -20,7 +20,7 @@ type idSequenceRow struct {
 	ID            uint   `gorm:"primaryKey"`
 	BucketCode    string `gorm:"size:2;uniqueIndex;not null"`
 	CurrentSeq    int64  `gorm:"not null;default:0"`
-	WarnThreshold int64  `gorm:"not null;default:950000"`
+	WarnThreshold int64  `gorm:"not null;default:9500000000"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -46,8 +46,8 @@ type idLegacyMappingRow struct {
 	ID          uint   `gorm:"primaryKey"`
 	Domain      string `gorm:"size:100;index;not null"`
 	LegacyValue string `gorm:"size:100;index;not null"`
-	UID         string `gorm:"size:14;index;not null"`
-	TSID        string `gorm:"column:tsid;size:24;index;not null"`
+	UID         string `gorm:"size:18;index;not null"`
+	TSID        string `gorm:"column:tsid;size:28;index;not null"`
 	CreatedAt   time.Time
 }
 
@@ -100,13 +100,13 @@ func getDefaultDB() *gorm.DB {
 }
 
 func formatUID(bucket string, seq int64) string {
-	return fmt.Sprintf("%s%s%06d", Prefix, bucket, seq)
+	return fmt.Sprintf("%s%s%010d", Prefix, bucket, seq)
 }
 
-// BuildTSID builds a 24-char time-sensitive ID in Asia/Shanghai minute precision.
+// BuildTSID builds a 28-char time-sensitive ID in Asia/Shanghai minute precision.
 func BuildTSID(bucket string, seq int64, now time.Time) string {
-	ts := now.In(locationShanghai()).Format("0601021504")
-	return fmt.Sprintf("%s%s%s%06d", Prefix, bucket, ts, seq)
+	ts := normalizeIDTime(now).Format("0601021504")
+	return fmt.Sprintf("%s%s%s%010d", Prefix, bucket, ts, seq)
 }
 
 func isDuplicateError(err error) bool {
@@ -159,7 +159,7 @@ func nextUIDTx(tx *gorm.DB, bucket string) (string, int64, error) {
 				createErr := tx.Create(&idSequenceRow{
 					BucketCode:    bucket,
 					CurrentSeq:    0,
-					WarnThreshold: 950000,
+					WarnThreshold: SequenceWarnThreshold,
 				}).Error
 				if createErr != nil && !isDuplicateError(createErr) {
 					return "", 0, createErr
@@ -198,7 +198,7 @@ func nextUIDTx(tx *gorm.DB, bucket string) (string, int64, error) {
 	return "", 0, fmt.Errorf("allocate uid failed for bucket=%s after retries", bucket)
 }
 
-// NextUID allocates a unified 14-digit uid using the default DB set by Bootstrap/SetDB.
+// NextUID allocates a unified 18-digit uid using the default DB set by Bootstrap/SetDB.
 func NextUID(bucketCode string) (string, int64, error) {
 	db := getDefaultDB()
 	if db == nil {
@@ -207,7 +207,7 @@ func NextUID(bucketCode string) (string, int64, error) {
 	return NextUIDWithDB(context.Background(), db, bucketCode)
 }
 
-// NextUIDWithDB allocates a unified 14-digit uid with the given DB handle.
+// NextUIDWithDB allocates a unified 18-digit uid with the given DB handle.
 func NextUIDWithDB(ctx context.Context, db *gorm.DB, bucketCode string) (string, int64, error) {
 	if db == nil {
 		return "", 0, fmt.Errorf("nil db")
@@ -444,11 +444,17 @@ func SeedCodebook(db *gorm.DB) error {
 			}
 
 			if err := tx.Table("id_sequences").
-				Clauses(clause.OnConflict{DoNothing: true}).
+				Clauses(clause.OnConflict{
+					Columns: []clause.Column{{Name: "bucket_code"}},
+					DoUpdates: clause.Assignments(map[string]interface{}{
+						"warn_threshold": SequenceWarnThreshold,
+						"updated_at":     nowShanghai(),
+					}),
+				}).
 				Create(&idSequenceRow{
 					BucketCode:    bucket,
 					CurrentSeq:    0,
-					WarnThreshold: 950000,
+					WarnThreshold: SequenceWarnThreshold,
 					CreatedAt:     nowShanghai(),
 					UpdatedAt:     nowShanghai(),
 				}).Error; err != nil {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -499,9 +498,8 @@ func (s *OrderService) CreateOrder(ctx context.Context, data interface{}) (inter
 	}
 
 	now := time.Now()
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	dailyNumber := r.Intn(9000) + 1000
-	dailyID := fmt.Sprintf("%s%04d", now.Format("20060102"), dailyNumber)
+	dailyNumber := now.UnixNano() % 10000000000
+	dailyID := buildDailyOrderID(now, dailyNumber)
 
 	status := "pending"
 	if bizType == "groupbuy" {
@@ -559,6 +557,14 @@ func (s *OrderService) CreateOrder(ctx context.Context, data interface{}) (inter
 		}(),
 	}
 	if s.db != nil {
+		if _, dailySeq, refErr := nextUnifiedRefSequence(ctx, s.db, bucketDailyOrderNo); refErr != nil {
+			return nil, fmt.Errorf("allocate order daily reference failed: %w", refErr)
+		} else {
+			dailyNumber = dailySeq
+			dailyID = buildDailyOrderID(now, dailySeq)
+			order.DailyOrderID = dailyID
+			order.DailyOrderNumber = dailySeq
+		}
 		uid, tsid, idErr := idkit.NextIdentityForTable(ctx, s.db, "orders", now)
 		if idErr != nil {
 			return nil, fmt.Errorf("allocate order identity failed: %w", idErr)
@@ -1104,4 +1110,3 @@ func orderStatusText(status string) string {
 		return status
 	}
 }
-

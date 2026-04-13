@@ -12,22 +12,29 @@
               前往下载页
             </el-button>
             <el-button
-              v-if="mode === 'download-only' || mode === 'admin-only'"
+              v-if="mode === 'admin-only'"
               @click="openInviteExample"
             >
               邀请链接示例
             </el-button>
             <el-button
-              v-if="mode === 'download-only' || mode === 'admin-only'"
+              v-if="mode === 'admin-only'"
               @click="openCouponExample"
             >
               领券链接示例
             </el-button>
             <el-button
-              v-if="mode === 'invite-only' || mode === 'download-only'"
+              v-if="mode === 'invite-only' || mode === 'site-only'"
               @click="goAdminLogin"
             >
               前往管理端
+            </el-button>
+            <el-button
+              v-if="mode === 'site-only' || mode === 'admin-only'"
+              type="primary"
+              @click="goSiteHome"
+            >
+              前往官网
             </el-button>
             <el-button
               v-if="mode === 'admin-only'"
@@ -51,8 +58,11 @@ const route = useRoute();
 
 const mode = computed(() => {
   const currentMode = String(route.query.mode || '').trim();
-  if (currentMode === 'invite-only' || currentMode === 'download-only') {
+  if (currentMode === 'invite-only' || currentMode === 'site-only') {
     return currentMode;
+  }
+  if (currentMode === 'download-only') {
+    return 'site-only';
   }
   return 'admin-only';
 });
@@ -61,25 +71,25 @@ const title = computed(() => {
   if (mode.value === 'invite-only') {
     return '1788 仅开放邀请 / 领券页';
   }
-  if (mode.value === 'download-only') {
-    return '1798 仅开放下载页';
+  if (mode.value === 'site-only') {
+    return '1888 仅开放官网页';
   }
   return '8888 仅用于管理端';
 });
 
 const subtitle = computed(() => {
   if (mode.value === 'invite-only') {
-    return '当前端口仅开放 /invite/:token 邀请链接和 /coupon/:token 领券链接；下载页请使用 1798。';
+    return '当前端口仅开放 /invite/:token 邀请链接和 /coupon/:token 领券链接；平台下载请使用 1888 官网内的 /download 页面。';
   }
-  if (mode.value === 'download-only') {
-    return '当前端口仅开放 /download 下载页；邀请 / 领券请使用 1788。';
+  if (mode.value === 'site-only') {
+    return '当前端口仅开放官网首页、新闻资讯、平台下载、关于我们、曝光店铺和商务合作页面；后台请使用 8888。';
   }
-  return '当前端口只用于管理端登录和后台操作；邀请 / 领券请使用 1788，下载页请使用 1798。';
+  return '当前端口只用于管理端登录和后台操作；邀请 / 领券请使用 1788，平台下载请使用 1888 官网内的 /download 页面。';
 });
 
 function openDownloadHome() {
   if (typeof window === 'undefined') return;
-  window.open(buildRuntimeUrl('download', '/download'), '_self');
+  window.open(buildRuntimeUrl('site', '/download'), '_self');
 }
 
 function openInviteExample() {
@@ -95,6 +105,11 @@ function openCouponExample() {
 function goAdminLogin() {
   if (typeof window === 'undefined') return;
   window.open(buildRuntimeUrl('admin', '/login'), '_self');
+}
+
+function goSiteHome() {
+  if (typeof window === 'undefined') return;
+  window.open(buildRuntimeUrl('site', '/'), '_self');
 }
 </script>
 

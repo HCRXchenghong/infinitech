@@ -106,6 +106,62 @@ function Ensure-Node {
   throw (L '\u5f53\u524d\u65e2\u6ca1\u6709 winget \u4e5f\u6ca1\u6709 choco\uff0c\u65e0\u6cd5\u81ea\u52a8\u5b89\u88c5 Node.js\u3002')
 }
 
+function Get-GoExecutable {
+  if (Test-Command go) {
+    return (Get-Command go).Source
+  }
+
+  $candidates = @(
+    'C:\Program Files\Go\bin\go.exe'
+  )
+
+  foreach ($candidate in $candidates) {
+    if (Test-Path $candidate) {
+      return $candidate
+    }
+  }
+
+  return $null
+}
+
+function Ensure-Go {
+  $goExe = Get-GoExecutable
+  if ($goExe) {
+    $goDir = Split-Path -Parent $goExe
+    if (-not (($env:Path -split ';') -contains $goDir)) {
+      $env:Path = "$goDir;$env:Path"
+    }
+    return
+  }
+
+  Write-Host ''
+  Write-Host (L '\u6b63\u5728\u5b89\u88c5 Go...')
+
+  if (Test-Command winget) {
+    & winget install -e --id GoLang.Go --accept-source-agreements --accept-package-agreements
+    if ($LASTEXITCODE -eq 0) {
+      $goExe = Get-GoExecutable
+      if ($goExe) {
+        $env:Path = "$(Split-Path -Parent $goExe);$env:Path"
+        return
+      }
+    }
+  }
+
+  if (Test-Command choco) {
+    & choco install golang -y
+    if ($LASTEXITCODE -eq 0) {
+      $goExe = Get-GoExecutable
+      if ($goExe) {
+        $env:Path = "$(Split-Path -Parent $goExe);$env:Path"
+        return
+      }
+    }
+  }
+
+  throw (L '\u5f53\u524d\u672a\u80fd\u81ea\u52a8\u5b89\u88c5 Go\uff0c\u8bf7\u5148\u5b8c\u6210 Go \u5de5\u5177\u94fe\u5b89\u88c5\u540e\u91cd\u8bd5\u3002')
+}
+
 function Ensure-DockerDesktop {
   if (Test-DockerDesktopInstalled) {
     return
@@ -246,6 +302,7 @@ Write-Host ((L '\u68c0\u6d4b\u5230\u7cfb\u7edf\uff1a{0} / {1} \u4f4d') -f $compu
 Write-Host ((L '\u5df2\u9009\u62e9\u955c\u50cf\u6e90\uff1a{0}') -f $mirror)
 
 Ensure-Node
+Ensure-Go
 Ensure-DockerDesktop
 Wait-ForDocker
 

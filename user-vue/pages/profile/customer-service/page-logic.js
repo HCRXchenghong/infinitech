@@ -1,6 +1,7 @@
 import createSocket from '@/utils/socket-io'
 import config from '@/shared-ui/config'
 import { fetchHistory, markConversationRead, request, upsertConversation } from '@/shared-ui/api.js'
+import { playMessageNotificationSound } from '@/shared-ui/notification-sound.js'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/shared-ui/support-runtime.js'
 import OrderDetailPopup from '@/components/OrderDetailPopup.vue'
 import { normalizeIncomingMessage as normalizeIncomingMessagePayload, normalizeOrder as normalizeOrderPayload, formatOrderNo as formatOrderNoValue, formatOrderAmount as formatOrderAmountValue, getOrderStatusText as getOrderStatusTextValue, resolveMessageTimestamp as resolveIncomingMessageTimestamp } from './chat-utils'
@@ -230,6 +231,7 @@ export default {
         }
 
         if (!isFromSelf) {
+          playMessageNotificationSound()
           this.messages.push(normalizedMessage)
           this.$nextTick(() => {
             this.scrollToBottom()

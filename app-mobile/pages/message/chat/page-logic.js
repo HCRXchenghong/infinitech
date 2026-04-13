@@ -6,6 +6,7 @@ import {
   reverseGeocode,
   upsertConversation
 } from '@/shared-ui/api.js'
+import { playMessageNotificationSound } from '@/shared-ui/notification-sound.js'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/shared-ui/support-runtime.js'
 
 const DEFAULT_SELF_AVATAR = '/static/images/my-avatar.svg'
@@ -613,6 +614,7 @@ export default {
           payload.senderRole === 'user'
 
         if (!isSelf) {
+          playMessageNotificationSound()
           this.addMessage(
             'other',
             payload.content || '',

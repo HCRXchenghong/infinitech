@@ -56,7 +56,7 @@ type SettlementRuleStep struct {
 	FixedAmount        int64     `gorm:"default:0" json:"fixed_amount"`
 	MinOrderAmount     int64     `gorm:"default:0" json:"min_order_amount"`
 	MaxOrderAmount     int64     `gorm:"default:0" json:"max_order_amount"`
-	TierJSON           string    `gorm:"type:longtext" json:"tier_json"`
+	TierJSON           string    `gorm:"type:text" json:"tier_json"`
 	Enabled            bool      `gorm:"default:true;index" json:"enabled"`
 	Notes              string    `gorm:"type:text" json:"notes"`
 	CreatedAt          time.Time `json:"created_at"`
@@ -75,7 +75,7 @@ type OrderSettlementSnapshot struct {
 	RuleSetUID     string     `gorm:"size:64;index" json:"rule_set_uid"`
 	OrderAmount    int64      `gorm:"default:0" json:"order_amount"`
 	Status         string     `gorm:"size:30;index;default:'pending_settlement'" json:"status"`
-	SnapshotJSON   string     `gorm:"type:longtext" json:"snapshot_json"`
+	SnapshotJSON   string     `gorm:"type:text" json:"snapshot_json"`
 	SettledAt      *time.Time `json:"settled_at"`
 	ReversedAt     *time.Time `json:"reversed_at"`
 	CreatedAt      time.Time  `json:"created_at"`

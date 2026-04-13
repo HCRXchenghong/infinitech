@@ -48,6 +48,8 @@ type ServiceSettings struct {
 	SupportChatWelcomeMessage   string                       `json:"support_chat_welcome_message"`
 	MerchantChatWelcomeMessage  string                       `json:"merchant_chat_welcome_message"`
 	RiderChatWelcomeMessage     string                       `json:"rider_chat_welcome_message"`
+	MessageNotificationSoundURL string                       `json:"message_notification_sound_url"`
+	OrderNotificationSoundURL   string                       `json:"order_notification_sound_url"`
 	RiderAboutSummary           string                       `json:"rider_about_summary"`
 	RiderPortalTitle            string                       `json:"rider_portal_title"`
 	RiderPortalSubtitle         string                       `json:"rider_portal_subtitle"`
@@ -101,6 +103,8 @@ type PublicRuntimeSettings struct {
 	SupportChatWelcomeMessage   string                       `json:"support_chat_welcome_message"`
 	MerchantChatWelcomeMessage  string                       `json:"merchant_chat_welcome_message"`
 	RiderChatWelcomeMessage     string                       `json:"rider_chat_welcome_message"`
+	MessageNotificationSoundURL string                       `json:"message_notification_sound_url"`
+	OrderNotificationSoundURL   string                       `json:"order_notification_sound_url"`
 	RiderAboutSummary           string                       `json:"rider_about_summary"`
 	RiderPortalTitle            string                       `json:"rider_portal_title"`
 	RiderPortalSubtitle         string                       `json:"rider_portal_subtitle"`
@@ -149,6 +153,8 @@ func DefaultServiceSettings() ServiceSettings {
 		SupportChatWelcomeMessage:   "您好！我是平台客服，有什么可以帮助您的吗？",
 		MerchantChatWelcomeMessage:  "欢迎光临，有什么可以帮您的？",
 		RiderChatWelcomeMessage:     "您好，您的骑手正在配送中。",
+		MessageNotificationSoundURL: "",
+		OrderNotificationSoundURL:   "",
 		RiderAboutSummary:           "骑手端聚焦接单、配送、收入与保障场景，帮助骑手稳定履约并提升效率。",
 		RiderPortalTitle:            "骑手登录",
 		RiderPortalSubtitle:         "悦享e食 · 骑手端",
@@ -209,6 +215,8 @@ func NormalizeServiceSettings(input ServiceSettings) ServiceSettings {
 	settings.SupportChatWelcomeMessage = normalizeOptionalMultiline(input.SupportChatWelcomeMessage)
 	settings.MerchantChatWelcomeMessage = normalizeOptionalMultiline(input.MerchantChatWelcomeMessage)
 	settings.RiderChatWelcomeMessage = normalizeOptionalMultiline(input.RiderChatWelcomeMessage)
+	settings.MessageNotificationSoundURL = strings.TrimSpace(input.MessageNotificationSoundURL)
+	settings.OrderNotificationSoundURL = strings.TrimSpace(input.OrderNotificationSoundURL)
 	settings.RiderAboutSummary = normalizeOptionalMultiline(input.RiderAboutSummary)
 	settings.RiderPortalTitle = normalizeOptionalMultiline(input.RiderPortalTitle)
 	settings.RiderPortalSubtitle = normalizeOptionalMultiline(input.RiderPortalSubtitle)
@@ -381,6 +389,18 @@ func ValidateServiceSettings(input ServiceSettings) error {
 	}
 	if len(settings.RiderChatWelcomeMessage) > 500 {
 		return fmt.Errorf("rider_chat_welcome_message is too long")
+	}
+	if err := validateOptionalServiceURL(settings.MessageNotificationSoundURL, "message_notification_sound_url"); err != nil {
+		return err
+	}
+	if len(settings.MessageNotificationSoundURL) > 1024 {
+		return fmt.Errorf("message_notification_sound_url is too long")
+	}
+	if err := validateOptionalServiceURL(settings.OrderNotificationSoundURL, "order_notification_sound_url"); err != nil {
+		return err
+	}
+	if len(settings.OrderNotificationSoundURL) > 1024 {
+		return fmt.Errorf("order_notification_sound_url is too long")
 	}
 	if len(settings.RiderAboutSummary) > 500 {
 		return fmt.Errorf("rider_about_summary is too long")
@@ -578,6 +598,8 @@ func BuildPublicRuntimeSettings(input ServiceSettings) PublicRuntimeSettings {
 		SupportChatWelcomeMessage:   settings.SupportChatWelcomeMessage,
 		MerchantChatWelcomeMessage:  settings.MerchantChatWelcomeMessage,
 		RiderChatWelcomeMessage:     settings.RiderChatWelcomeMessage,
+		MessageNotificationSoundURL: settings.MessageNotificationSoundURL,
+		OrderNotificationSoundURL:   settings.OrderNotificationSoundURL,
 		RiderAboutSummary:           settings.RiderAboutSummary,
 		RiderPortalTitle:            settings.RiderPortalTitle,
 		RiderPortalSubtitle:         settings.RiderPortalSubtitle,

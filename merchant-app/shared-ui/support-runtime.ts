@@ -5,13 +5,17 @@ export interface SupportRuntimeSettings {
   welcomeMessage: string
   merchantWelcomeMessage: string
   riderWelcomeMessage: string
+  messageSoundUrl: string
+  orderSoundUrl: string
 }
 
 export const DEFAULT_SUPPORT_RUNTIME_SETTINGS: SupportRuntimeSettings = {
   title: '平台客服',
   welcomeMessage: '您好！我是平台客服，有什么可以帮助您的吗？',
   merchantWelcomeMessage: '欢迎光临，有什么可以帮您的？',
-  riderWelcomeMessage: '您好，您的骑手正在配送中。'
+  riderWelcomeMessage: '您好，您的骑手正在配送中。',
+  messageSoundUrl: '',
+  orderSoundUrl: ''
 }
 
 let cachedSupportRuntimeSettings: SupportRuntimeSettings = { ...DEFAULT_SUPPORT_RUNTIME_SETTINGS }
@@ -29,12 +33,20 @@ function normalizeSupportRuntimeSettings(payload: any = {}): SupportRuntimeSetti
   const riderWelcomeMessage =
     String(payload?.rider_chat_welcome_message || '').trim() ||
     DEFAULT_SUPPORT_RUNTIME_SETTINGS.riderWelcomeMessage
+  const messageSoundUrl =
+    String(payload?.message_notification_sound_url || '').trim() ||
+    DEFAULT_SUPPORT_RUNTIME_SETTINGS.messageSoundUrl
+  const orderSoundUrl =
+    String(payload?.order_notification_sound_url || '').trim() ||
+    DEFAULT_SUPPORT_RUNTIME_SETTINGS.orderSoundUrl
 
   return {
     title,
     welcomeMessage,
     merchantWelcomeMessage,
-    riderWelcomeMessage
+    riderWelcomeMessage,
+    messageSoundUrl,
+    orderSoundUrl
   }
 }
 

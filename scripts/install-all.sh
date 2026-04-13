@@ -151,7 +151,7 @@ ensure_apt_packages() {
   if [[ -n "$SUDO" ]]; then
     $SUDO apt-get update
     $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y \
-      bash ca-certificates curl gnupg lsb-release software-properties-common git nodejs npm docker.io
+      bash ca-certificates curl gnupg lsb-release software-properties-common git nodejs npm docker.io golang-go
     $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y docker-compose-plugin || true
     $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y docker-compose || true
     $SUDO systemctl enable --now docker || true
@@ -159,7 +159,7 @@ ensure_apt_packages() {
   else
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
-      bash ca-certificates curl gnupg lsb-release software-properties-common git nodejs npm docker.io
+      bash ca-certificates curl gnupg lsb-release software-properties-common git nodejs npm docker.io golang-go
     DEBIAN_FRONTEND=noninteractive apt-get install -y docker-compose-plugin || true
     DEBIAN_FRONTEND=noninteractive apt-get install -y docker-compose || true
     systemctl enable --now docker || true
@@ -178,6 +178,7 @@ ensure_macos_dependencies() {
 
   brew update
   brew install node
+  brew install go
   brew install --cask docker
 
   if [[ -d /Applications/Docker.app ]]; then
@@ -238,6 +239,10 @@ main() {
 
   if ! command_exists node; then
     echo "Node.js 安装后当前 shell 仍不可用，请重新打开终端后重试。" >&2
+    exit 1
+  fi
+  if ! command_exists go; then
+    echo "Go 安装后当前 shell 仍不可用，请重新打开终端后重试。" >&2
     exit 1
   fi
 

@@ -49,6 +49,8 @@ backend/docker/.deploy.runtime.env
 data/uploads/
 uploads/
 .npm-cache/
+artifacts/
+test-results/
 
 # OS / temp
 *.tmp

@@ -62,6 +62,8 @@ export function useSettingsPage() {
     support_chat_welcome_message: '您好！我是平台客服，有什么可以帮助您的吗？',
     merchant_chat_welcome_message: '欢迎光临，有什么可以帮您的？',
     rider_chat_welcome_message: '您好，您的骑手正在配送中。',
+    message_notification_sound_url: '',
+    order_notification_sound_url: '',
     rider_about_summary: '骑手端聚焦接单、配送、收入与保障场景，帮助骑手稳定履约并提升效率。',
     rider_portal_title: '骑手登录',
     rider_portal_subtitle: '悦享e食 · 骑手端',
@@ -110,6 +112,10 @@ export function useSettingsPage() {
   DEFAULT_SERVICE_SETTINGS.rider_exception_report_reasons = [...DEFAULT_RIDER_EXCEPTION_REPORT_REASONS];
   const serviceSettings = ref({ ...DEFAULT_SERVICE_SETTINGS });
   const savingServiceSettings = ref(false);
+  const uploadingServiceSounds = reactive({
+    message: false,
+    order: false,
+  });
   const DEFAULT_CHARITY_SETTINGS = {
     enabled: true,
     page_title: '悦享公益',
@@ -155,12 +161,14 @@ export function useSettingsPage() {
     ios_version: '',
     android_version: '',
     latest_version: '',
-    updated_at: ''
+    updated_at: '',
+    mini_program_qr_url: ''
   });
   const savingAppDownload = ref(false);
   const uploadingPackage = reactive({
     ios: false,
-    android: false
+    android: false,
+    miniProgramQr: false
   });
 
   const debugMode = ref({ enabled: false, delivery: false, phone_film: false, massage: false, coffee: false });
@@ -268,6 +276,8 @@ export function useSettingsPage() {
     serviceSettings.value.support_chat_welcome_message = String(serviceSettings.value.support_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.support_chat_welcome_message).trim() || DEFAULT_SERVICE_SETTINGS.support_chat_welcome_message;
     serviceSettings.value.merchant_chat_welcome_message = String(serviceSettings.value.merchant_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.merchant_chat_welcome_message).trim() || DEFAULT_SERVICE_SETTINGS.merchant_chat_welcome_message;
     serviceSettings.value.rider_chat_welcome_message = String(serviceSettings.value.rider_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.rider_chat_welcome_message).trim() || DEFAULT_SERVICE_SETTINGS.rider_chat_welcome_message;
+    serviceSettings.value.message_notification_sound_url = String(serviceSettings.value.message_notification_sound_url || '').trim();
+    serviceSettings.value.order_notification_sound_url = String(serviceSettings.value.order_notification_sound_url || '').trim();
     serviceSettings.value.rider_about_summary = normalizeServiceText(serviceSettings.value.rider_about_summary, DEFAULT_SERVICE_SETTINGS.rider_about_summary);
     serviceSettings.value.rider_portal_title = String(serviceSettings.value.rider_portal_title || DEFAULT_SERVICE_SETTINGS.rider_portal_title).trim() || DEFAULT_SERVICE_SETTINGS.rider_portal_title;
     serviceSettings.value.rider_portal_subtitle = String(serviceSettings.value.rider_portal_subtitle || DEFAULT_SERVICE_SETTINGS.rider_portal_subtitle).trim() || DEFAULT_SERVICE_SETTINGS.rider_portal_subtitle;
@@ -651,7 +661,8 @@ export function useSettingsPage() {
           ios_version: downloadResp.value.data.ios_version || '',
           android_version: downloadResp.value.data.android_version || '',
           latest_version: downloadResp.value.data.latest_version || '',
-          updated_at: downloadResp.value.data.updated_at || ''
+          updated_at: downloadResp.value.data.updated_at || '',
+          mini_program_qr_url: downloadResp.value.data.mini_program_qr_url || ''
         };
       }
       if (payModeResp.status === 'fulfilled' && payModeResp.value?.data) {
@@ -731,75 +742,186 @@ export function useSettingsPage() {
     }
   }
 
-  async function saveServiceSettings() {
+  function buildServiceSettingsPayload() {
+    return {
+      ...serviceSettings.value,
+      service_phone: (serviceSettings.value.service_phone || '').trim(),
+      support_chat_title: (serviceSettings.value.support_chat_title || DEFAULT_SERVICE_SETTINGS.support_chat_title).trim(),
+      support_chat_welcome_message: (serviceSettings.value.support_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.support_chat_welcome_message).trim(),
+      merchant_chat_welcome_message: (serviceSettings.value.merchant_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.merchant_chat_welcome_message).trim(),
+      rider_chat_welcome_message: (serviceSettings.value.rider_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.rider_chat_welcome_message).trim(),
+      message_notification_sound_url: (serviceSettings.value.message_notification_sound_url || '').trim(),
+      order_notification_sound_url: (serviceSettings.value.order_notification_sound_url || '').trim(),
+      rider_about_summary: normalizeServiceText(serviceSettings.value.rider_about_summary, DEFAULT_SERVICE_SETTINGS.rider_about_summary),
+      rider_portal_title: (serviceSettings.value.rider_portal_title || DEFAULT_SERVICE_SETTINGS.rider_portal_title).trim(),
+      rider_portal_subtitle: (serviceSettings.value.rider_portal_subtitle || DEFAULT_SERVICE_SETTINGS.rider_portal_subtitle).trim(),
+      rider_portal_login_footer: normalizeServiceText(serviceSettings.value.rider_portal_login_footer, DEFAULT_SERVICE_SETTINGS.rider_portal_login_footer),
+      merchant_portal_title: (serviceSettings.value.merchant_portal_title || DEFAULT_SERVICE_SETTINGS.merchant_portal_title).trim(),
+      merchant_portal_subtitle: (serviceSettings.value.merchant_portal_subtitle || DEFAULT_SERVICE_SETTINGS.merchant_portal_subtitle).trim(),
+      merchant_portal_login_footer: normalizeServiceText(serviceSettings.value.merchant_portal_login_footer, DEFAULT_SERVICE_SETTINGS.merchant_portal_login_footer),
+      merchant_privacy_policy: normalizeServiceText(serviceSettings.value.merchant_privacy_policy, DEFAULT_SERVICE_SETTINGS.merchant_privacy_policy),
+      merchant_service_agreement: normalizeServiceText(serviceSettings.value.merchant_service_agreement, DEFAULT_SERVICE_SETTINGS.merchant_service_agreement),
+      consumer_portal_title: (serviceSettings.value.consumer_portal_title || DEFAULT_SERVICE_SETTINGS.consumer_portal_title).trim(),
+      consumer_portal_subtitle: (serviceSettings.value.consumer_portal_subtitle || DEFAULT_SERVICE_SETTINGS.consumer_portal_subtitle).trim(),
+      consumer_portal_login_footer: normalizeServiceText(serviceSettings.value.consumer_portal_login_footer, DEFAULT_SERVICE_SETTINGS.consumer_portal_login_footer),
+      consumer_about_summary: normalizeServiceText(serviceSettings.value.consumer_about_summary, DEFAULT_SERVICE_SETTINGS.consumer_about_summary),
+      consumer_privacy_policy: normalizeServiceText(serviceSettings.value.consumer_privacy_policy, DEFAULT_SERVICE_SETTINGS.consumer_privacy_policy),
+      consumer_user_agreement: normalizeServiceText(serviceSettings.value.consumer_user_agreement, DEFAULT_SERVICE_SETTINGS.consumer_user_agreement),
+      invite_landing_url: (serviceSettings.value.invite_landing_url || '').trim(),
+      wechat_login_enabled: Boolean(serviceSettings.value.wechat_login_enabled),
+      wechat_login_entry_url: (serviceSettings.value.wechat_login_entry_url || '').trim(),
+      medicine_support_phone: (serviceSettings.value.medicine_support_phone || '').trim(),
+      medicine_support_title: (serviceSettings.value.medicine_support_title || DEFAULT_SERVICE_SETTINGS.medicine_support_title).trim(),
+      medicine_support_subtitle: (serviceSettings.value.medicine_support_subtitle || DEFAULT_SERVICE_SETTINGS.medicine_support_subtitle).trim(),
+      medicine_delivery_description: (serviceSettings.value.medicine_delivery_description || DEFAULT_SERVICE_SETTINGS.medicine_delivery_description).trim(),
+      medicine_season_tip: (serviceSettings.value.medicine_season_tip || DEFAULT_SERVICE_SETTINGS.medicine_season_tip).trim(),
+      rider_insurance_status_title: normalizeServiceText(serviceSettings.value.rider_insurance_status_title, DEFAULT_SERVICE_SETTINGS.rider_insurance_status_title),
+      rider_insurance_status_desc: normalizeServiceText(serviceSettings.value.rider_insurance_status_desc, DEFAULT_SERVICE_SETTINGS.rider_insurance_status_desc),
+      rider_insurance_policy_number: (serviceSettings.value.rider_insurance_policy_number || '').trim(),
+      rider_insurance_provider: (serviceSettings.value.rider_insurance_provider || '').trim(),
+      rider_insurance_effective_date: (serviceSettings.value.rider_insurance_effective_date || '').trim(),
+      rider_insurance_expire_date: (serviceSettings.value.rider_insurance_expire_date || '').trim(),
+      rider_insurance_claim_url: (serviceSettings.value.rider_insurance_claim_url || '').trim(),
+      rider_insurance_detail_url: (serviceSettings.value.rider_insurance_detail_url || '').trim(),
+      rider_insurance_claim_button_text: normalizeServiceText(serviceSettings.value.rider_insurance_claim_button_text, DEFAULT_SERVICE_SETTINGS.rider_insurance_claim_button_text),
+      rider_insurance_detail_button_text: normalizeServiceText(serviceSettings.value.rider_insurance_detail_button_text, DEFAULT_SERVICE_SETTINGS.rider_insurance_detail_button_text),
+      rider_insurance_coverages: normalizeRiderInsuranceCoverages(serviceSettings.value.rider_insurance_coverages),
+      rider_insurance_claim_steps: normalizeServiceStringList(
+        serviceSettings.value.rider_insurance_claim_steps,
+        DEFAULT_RIDER_INSURANCE_CLAIM_STEPS
+      ),
+      rtc_enabled: Boolean(serviceSettings.value.rtc_enabled),
+      rtc_timeout_seconds: Number(serviceSettings.value.rtc_timeout_seconds || DEFAULT_SERVICE_SETTINGS.rtc_timeout_seconds),
+      rtc_ice_servers: normalizeRTCIceServers(serviceSettings.value.rtc_ice_servers),
+      rider_exception_report_reasons: normalizeServiceStringList(
+        serviceSettings.value.rider_exception_report_reasons,
+        DEFAULT_RIDER_EXCEPTION_REPORT_REASONS
+      ),
+      map_provider: (serviceSettings.value.map_provider || DEFAULT_SERVICE_SETTINGS.map_provider).trim() || DEFAULT_SERVICE_SETTINGS.map_provider,
+      map_search_url: (serviceSettings.value.map_search_url || '').trim(),
+      map_reverse_url: (serviceSettings.value.map_reverse_url || '').trim(),
+      map_api_key: (serviceSettings.value.map_api_key || '').trim(),
+      map_tile_template: (serviceSettings.value.map_tile_template || DEFAULT_SERVICE_SETTINGS.map_tile_template).trim(),
+      map_timeout_seconds: Number(serviceSettings.value.map_timeout_seconds || DEFAULT_SERVICE_SETTINGS.map_timeout_seconds)
+    };
+  }
+
+  async function saveServiceSettings(options = {}) {
+    const successMessage = options?.successMessage || '服务配置保存成功';
     savingServiceSettings.value = true;
     try {
-      const payload = {
-        ...serviceSettings.value,
-        service_phone: (serviceSettings.value.service_phone || '').trim(),
-        support_chat_title: (serviceSettings.value.support_chat_title || DEFAULT_SERVICE_SETTINGS.support_chat_title).trim(),
-        support_chat_welcome_message: (serviceSettings.value.support_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.support_chat_welcome_message).trim(),
-        merchant_chat_welcome_message: (serviceSettings.value.merchant_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.merchant_chat_welcome_message).trim(),
-        rider_chat_welcome_message: (serviceSettings.value.rider_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.rider_chat_welcome_message).trim(),
-        rider_about_summary: normalizeServiceText(serviceSettings.value.rider_about_summary, DEFAULT_SERVICE_SETTINGS.rider_about_summary),
-        rider_portal_title: (serviceSettings.value.rider_portal_title || DEFAULT_SERVICE_SETTINGS.rider_portal_title).trim(),
-        rider_portal_subtitle: (serviceSettings.value.rider_portal_subtitle || DEFAULT_SERVICE_SETTINGS.rider_portal_subtitle).trim(),
-        rider_portal_login_footer: normalizeServiceText(serviceSettings.value.rider_portal_login_footer, DEFAULT_SERVICE_SETTINGS.rider_portal_login_footer),
-        merchant_portal_title: (serviceSettings.value.merchant_portal_title || DEFAULT_SERVICE_SETTINGS.merchant_portal_title).trim(),
-        merchant_portal_subtitle: (serviceSettings.value.merchant_portal_subtitle || DEFAULT_SERVICE_SETTINGS.merchant_portal_subtitle).trim(),
-        merchant_portal_login_footer: normalizeServiceText(serviceSettings.value.merchant_portal_login_footer, DEFAULT_SERVICE_SETTINGS.merchant_portal_login_footer),
-        merchant_privacy_policy: normalizeServiceText(serviceSettings.value.merchant_privacy_policy, DEFAULT_SERVICE_SETTINGS.merchant_privacy_policy),
-        merchant_service_agreement: normalizeServiceText(serviceSettings.value.merchant_service_agreement, DEFAULT_SERVICE_SETTINGS.merchant_service_agreement),
-        consumer_portal_title: (serviceSettings.value.consumer_portal_title || DEFAULT_SERVICE_SETTINGS.consumer_portal_title).trim(),
-        consumer_portal_subtitle: (serviceSettings.value.consumer_portal_subtitle || DEFAULT_SERVICE_SETTINGS.consumer_portal_subtitle).trim(),
-        consumer_portal_login_footer: normalizeServiceText(serviceSettings.value.consumer_portal_login_footer, DEFAULT_SERVICE_SETTINGS.consumer_portal_login_footer),
-        consumer_about_summary: normalizeServiceText(serviceSettings.value.consumer_about_summary, DEFAULT_SERVICE_SETTINGS.consumer_about_summary),
-        consumer_privacy_policy: normalizeServiceText(serviceSettings.value.consumer_privacy_policy, DEFAULT_SERVICE_SETTINGS.consumer_privacy_policy),
-        consumer_user_agreement: normalizeServiceText(serviceSettings.value.consumer_user_agreement, DEFAULT_SERVICE_SETTINGS.consumer_user_agreement),
-        invite_landing_url: (serviceSettings.value.invite_landing_url || '').trim(),
-        wechat_login_enabled: Boolean(serviceSettings.value.wechat_login_enabled),
-        wechat_login_entry_url: (serviceSettings.value.wechat_login_entry_url || '').trim(),
-        medicine_support_phone: (serviceSettings.value.medicine_support_phone || '').trim(),
-        medicine_support_title: (serviceSettings.value.medicine_support_title || DEFAULT_SERVICE_SETTINGS.medicine_support_title).trim(),
-        medicine_support_subtitle: (serviceSettings.value.medicine_support_subtitle || DEFAULT_SERVICE_SETTINGS.medicine_support_subtitle).trim(),
-        medicine_delivery_description: (serviceSettings.value.medicine_delivery_description || DEFAULT_SERVICE_SETTINGS.medicine_delivery_description).trim(),
-        medicine_season_tip: (serviceSettings.value.medicine_season_tip || DEFAULT_SERVICE_SETTINGS.medicine_season_tip).trim(),
-        rider_insurance_status_title: normalizeServiceText(serviceSettings.value.rider_insurance_status_title, DEFAULT_SERVICE_SETTINGS.rider_insurance_status_title),
-        rider_insurance_status_desc: normalizeServiceText(serviceSettings.value.rider_insurance_status_desc, DEFAULT_SERVICE_SETTINGS.rider_insurance_status_desc),
-        rider_insurance_policy_number: (serviceSettings.value.rider_insurance_policy_number || '').trim(),
-        rider_insurance_provider: (serviceSettings.value.rider_insurance_provider || '').trim(),
-        rider_insurance_effective_date: (serviceSettings.value.rider_insurance_effective_date || '').trim(),
-        rider_insurance_expire_date: (serviceSettings.value.rider_insurance_expire_date || '').trim(),
-        rider_insurance_claim_url: (serviceSettings.value.rider_insurance_claim_url || '').trim(),
-        rider_insurance_detail_url: (serviceSettings.value.rider_insurance_detail_url || '').trim(),
-        rider_insurance_claim_button_text: normalizeServiceText(serviceSettings.value.rider_insurance_claim_button_text, DEFAULT_SERVICE_SETTINGS.rider_insurance_claim_button_text),
-        rider_insurance_detail_button_text: normalizeServiceText(serviceSettings.value.rider_insurance_detail_button_text, DEFAULT_SERVICE_SETTINGS.rider_insurance_detail_button_text),
-        rider_insurance_coverages: normalizeRiderInsuranceCoverages(serviceSettings.value.rider_insurance_coverages),
-        rider_insurance_claim_steps: normalizeServiceStringList(
-          serviceSettings.value.rider_insurance_claim_steps,
-          DEFAULT_RIDER_INSURANCE_CLAIM_STEPS
-        ),
-        rtc_enabled: Boolean(serviceSettings.value.rtc_enabled),
-        rtc_timeout_seconds: Number(serviceSettings.value.rtc_timeout_seconds || DEFAULT_SERVICE_SETTINGS.rtc_timeout_seconds),
-        rtc_ice_servers: normalizeRTCIceServers(serviceSettings.value.rtc_ice_servers),
-        rider_exception_report_reasons: normalizeServiceStringList(
-          serviceSettings.value.rider_exception_report_reasons,
-          DEFAULT_RIDER_EXCEPTION_REPORT_REASONS
-        ),
-        map_provider: (serviceSettings.value.map_provider || DEFAULT_SERVICE_SETTINGS.map_provider).trim() || DEFAULT_SERVICE_SETTINGS.map_provider,
-        map_search_url: (serviceSettings.value.map_search_url || '').trim(),
-        map_reverse_url: (serviceSettings.value.map_reverse_url || '').trim(),
-        map_api_key: (serviceSettings.value.map_api_key || '').trim(),
-        map_tile_template: (serviceSettings.value.map_tile_template || DEFAULT_SERVICE_SETTINGS.map_tile_template).trim(),
-        map_timeout_seconds: Number(serviceSettings.value.map_timeout_seconds || DEFAULT_SERVICE_SETTINGS.map_timeout_seconds)
-      };
+      const payload = buildServiceSettingsPayload();
       await request.post('/api/service-settings', payload);
       mergeServiceSettings(payload);
-      ElMessage.success('服务配置保存成功');
+      ElMessage.success(successMessage);
+      return true;
     } catch (error) {
       ElMessage.error('保存失败: ' + (error?.response?.data?.error || error.message));
+      return false;
     } finally {
       savingServiceSettings.value = false;
+    }
+  }
+
+  function validateSoundFile(file) {
+    const fileName = String(file?.name || '').toLowerCase();
+    const mimeType = String(file?.type || '').toLowerCase();
+    const extension = fileName.includes('.') ? `.${fileName.split('.').pop()}` : '';
+    const allowedExts = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.amr'];
+    const isAudio = mimeType.startsWith('audio/') || allowedExts.includes(extension);
+    if (!isAudio) {
+      ElMessage.warning('仅支持 mp3、m4a、aac、wav、ogg、amr 音频文件');
+      return false;
+    }
+    if (Number(file?.size || 0) > 10 * 1024 * 1024) {
+      ElMessage.warning('音频文件大小不能超过 10MB');
+      return false;
+    }
+    return true;
+  }
+
+  function resolveDefaultSoundPreviewUrl(kind) {
+    return kind === 'order' ? '/audio/come.mp3' : '/audio/chat.mp3';
+  }
+
+  function resolveConfiguredSoundUrl(kind) {
+    if (kind === 'order') {
+      return String(serviceSettings.value.order_notification_sound_url || '').trim();
+    }
+    return String(serviceSettings.value.message_notification_sound_url || '').trim();
+  }
+
+  function previewServiceSound(kind) {
+    const url = resolveConfiguredSoundUrl(kind) || resolveDefaultSoundPreviewUrl(kind);
+    if (!url) {
+      ElMessage.warning('当前没有可试听的提示音');
+      return;
+    }
+    const player = new Audio();
+    player.src = url;
+    const playPromise = player.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(() => {
+        ElMessage.warning('浏览器拦截了自动播放，请与页面交互后重试');
+      });
+    }
+  }
+
+  async function handleServiceSoundUpload(field, options) {
+    const file = options?.file;
+    if (!file || !validateSoundFile(file)) {
+      return;
+    }
+
+    const kind = field === 'order_notification_sound_url' ? 'order' : 'message';
+    const loadingKey = kind === 'order' ? 'order' : 'message';
+    const previousValue = String(serviceSettings.value[field] || '').trim();
+
+    uploadingServiceSounds[loadingKey] = true;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await request.post('/api/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (typeof options?.onSuccess === 'function') {
+        options.onSuccess(data);
+      }
+
+      const nextUrl = String(data?.url || '').trim();
+      if (!nextUrl) {
+        throw new Error('上传成功但未返回文件地址');
+      }
+
+      serviceSettings.value[field] = nextUrl;
+      const saved = await saveServiceSettings({
+        successMessage: kind === 'order' ? '来单提示音已更新' : '消息提示音已更新'
+      });
+      if (!saved) {
+        serviceSettings.value[field] = previousValue;
+      }
+    } catch (error) {
+      if (typeof options?.onError === 'function') {
+        options.onError(error);
+      }
+      serviceSettings.value[field] = previousValue;
+      ElMessage.error(error?.response?.data?.error || error?.message || '提示音上传失败');
+    } finally {
+      uploadingServiceSounds[loadingKey] = false;
+    }
+  }
+
+  async function clearServiceSound(field) {
+    const kind = field === 'order_notification_sound_url' ? 'order' : 'message';
+    const previousValue = String(serviceSettings.value[field] || '').trim();
+    serviceSettings.value[field] = '';
+    const saved = await saveServiceSettings({
+      successMessage: kind === 'order'
+        ? '来单提示音配置已删除，已回退到默认 come.mp3'
+        : '消息提示音配置已删除，已回退到默认 chat.mp3'
+    });
+    if (!saved) {
+      serviceSettings.value[field] = previousValue;
     }
   }
 
@@ -989,6 +1111,21 @@ export function useSettingsPage() {
     return true;
   }
 
+  function beforeMiniProgramQrUpload(file) {
+    const fileName = String(file?.name || '').toLowerCase();
+    const isImage = String(file?.type || '').startsWith('image/') ||
+      ['.png', '.jpg', '.jpeg', '.webp', '.gif'].some((ext) => fileName.endsWith(ext));
+    if (!isImage) {
+      ElMessage.error('仅支持上传图片格式的小程序二维码');
+      return false;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      ElMessage.error('小程序二维码图片不能超过 10MB');
+      return false;
+    }
+    return true;
+  }
+
   async function handlePackageUpload(platform, options) {
     const file = options?.file;
     if (!file) return;
@@ -1017,6 +1154,33 @@ export function useSettingsPage() {
       options?.onError?.(error);
     } finally {
       uploadingPackage[platform] = false;
+    }
+  }
+
+  async function handleMiniProgramQrUpload(options) {
+    const file = options?.file;
+    if (!file) return;
+
+    uploadingPackage.miniProgramQr = true;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await request.post('/api/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const nextUrl = data?.url || data?.data?.url || data?.imageUrl || '';
+      if (!nextUrl) {
+        throw new Error('上传返回地址为空');
+      }
+
+      appDownloadConfig.value.mini_program_qr_url = nextUrl;
+      ElMessage.success('小程序二维码上传成功');
+      options?.onSuccess?.(data);
+    } catch (error) {
+      ElMessage.error(error?.response?.data?.error || error.message || '小程序二维码上传失败');
+      options?.onError?.(error);
+    } finally {
+      uploadingPackage.miniProgramQr = false;
     }
   }
 
@@ -1070,6 +1234,7 @@ export function useSettingsPage() {
     weather,
     DEFAULT_SERVICE_SETTINGS,
     serviceSettings,
+    uploadingServiceSounds,
     DEFAULT_CHARITY_SETTINGS,
     charitySettings,
     DEFAULT_VIP_SETTINGS,
@@ -1123,6 +1288,9 @@ export function useSettingsPage() {
     saveWeather,
     saveWechatLoginConfig,
     saveServiceSettings,
+    previewServiceSound,
+    handleServiceSoundUpload,
+    clearServiceSound,
     addRiderReportReason,
     removeRiderReportReason,
     addRiderInsuranceCoverage,
@@ -1148,6 +1316,8 @@ export function useSettingsPage() {
     saveAppDownload,
     beforePackageUpload,
     handlePackageUpload,
+    beforeMiniProgramQrUpload,
+    handleMiniProgramQrUpload,
     openDownloadLink,
     openClearAllDataDialog,
     confirmClearAllData,

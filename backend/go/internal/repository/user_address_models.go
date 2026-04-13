@@ -10,7 +10,7 @@ type UserAddress struct {
 	ID uint `gorm:"primaryKey" json:"legacyId,omitempty"`
 	UnifiedIdentity
 	UserLegacyID uint      `gorm:"index;not null" json:"userLegacyId,omitempty"`
-	UserUID      string    `gorm:"size:14;index" json:"userId,omitempty"`
+	UserUID      string    `gorm:"size:18;index" json:"userId,omitempty"`
 	Name         string    `gorm:"size:50;not null" json:"name"`
 	Phone        string    `gorm:"size:20;not null" json:"phone"`
 	Tag          string    `gorm:"size:20" json:"tag"`

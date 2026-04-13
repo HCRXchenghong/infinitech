@@ -88,12 +88,14 @@ class MessageManager {
 
   handleNewMessage(message: MessageData) {
     const incomingChatId = this.normalizeChatId(message.chatId)
-    if (incomingChatId && this.currentChatId === incomingChatId) {
+    const riderId = String(uni.getStorageSync('riderId') || '')
+    if (String(message.senderId) === riderId) {
       return
     }
 
-    const riderId = String(uni.getStorageSync('riderId') || '')
-    if (String(message.senderId) === riderId) {
+    if (incomingChatId && this.currentChatId === incomingChatId) {
+      notification.playMessageCue()
+      this.notifyListeners(message)
       return
     }
 

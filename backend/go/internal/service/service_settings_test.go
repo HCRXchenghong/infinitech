@@ -9,6 +9,8 @@ func TestBuildPublicRuntimeSettingsDisablesBrokenWechatEntry(t *testing.T) {
 		SupportChatWelcomeMessage:   "您好，我是平台客服中心，请问有什么可以帮您？",
 		MerchantChatWelcomeMessage:  "欢迎光临，这里是商家在线客服。",
 		RiderChatWelcomeMessage:     "您好，骑手已接单，正在为您赶来。",
+		MessageNotificationSoundURL: "https://cdn.yuexiang.com/audio/chat.mp3",
+		OrderNotificationSoundURL:   "https://cdn.yuexiang.com/audio/come.mp3",
 		InviteLandingURL:            "https://m.yuexiang.com/register",
 		WechatLoginEnabled:          true,
 		WechatLoginEntryURL:         "",
@@ -49,6 +51,12 @@ func TestBuildPublicRuntimeSettingsDisablesBrokenWechatEntry(t *testing.T) {
 	}
 	if public.RiderChatWelcomeMessage != "您好，骑手已接单，正在为您赶来。" {
 		t.Fatalf("unexpected rider chat welcome message: %q", public.RiderChatWelcomeMessage)
+	}
+	if public.MessageNotificationSoundURL != "https://cdn.yuexiang.com/audio/chat.mp3" {
+		t.Fatalf("unexpected message notification sound url: %q", public.MessageNotificationSoundURL)
+	}
+	if public.OrderNotificationSoundURL != "https://cdn.yuexiang.com/audio/come.mp3" {
+		t.Fatalf("unexpected order notification sound url: %q", public.OrderNotificationSoundURL)
 	}
 	if public.InviteLandingURL != "https://m.yuexiang.com/register" {
 		t.Fatalf("unexpected invite landing url: %q", public.InviteLandingURL)
@@ -92,6 +100,8 @@ func TestValidateServiceSettingsAcceptsInviteAndWechatURLs(t *testing.T) {
 	settings := ServiceSettings{
 		SupportChatTitle:            "客服中心",
 		SupportChatWelcomeMessage:   "您好，这里是客服中心。",
+		MessageNotificationSoundURL: "https://cdn.yuexiang.com/audio/chat.mp3",
+		OrderNotificationSoundURL:   "https://cdn.yuexiang.com/audio/come.mp3",
 		InviteLandingURL:            "https://m.yuexiang.com/register",
 		WechatLoginEnabled:          true,
 		WechatLoginEntryURL:         "https://auth.yuexiang.com/wechat/login",
@@ -128,6 +138,12 @@ func TestNormalizeServiceSettingsAppliesDefaults(t *testing.T) {
 	}
 	if settings.RiderChatWelcomeMessage == "" {
 		t.Fatal("expected default rider chat welcome message")
+	}
+	if settings.MessageNotificationSoundURL != "" {
+		t.Fatal("expected empty default message notification sound url")
+	}
+	if settings.OrderNotificationSoundURL != "" {
+		t.Fatal("expected empty default order notification sound url")
 	}
 	if settings.MedicineDeliveryDescription == "" {
 		t.Fatal("expected default medicine delivery description")

@@ -148,6 +148,9 @@ func main() {
 		&repository.Banner{},
 		&repository.FeaturedProduct{},
 		&repository.CooperationRequest{},
+		&repository.OfficialSiteExposure{},
+		&repository.OfficialSiteSupportSession{},
+		&repository.OfficialSiteSupportMessage{},
 		&repository.InviteCode{},
 		&repository.InviteRecord{},
 		&repository.OnboardingInviteLink{},
@@ -237,6 +240,9 @@ func main() {
 		{name: "Banner", model: &repository.Banner{}},
 		{name: "FeaturedProduct", model: &repository.FeaturedProduct{}},
 		{name: "CooperationRequest", model: &repository.CooperationRequest{}},
+		{name: "OfficialSiteExposure", model: &repository.OfficialSiteExposure{}},
+		{name: "OfficialSiteSupportSession", model: &repository.OfficialSiteSupportSession{}},
+		{name: "OfficialSiteSupportMessage", model: &repository.OfficialSiteSupportMessage{}},
 		{name: "InviteCode", model: &repository.InviteCode{}},
 		{name: "InviteRecord", model: &repository.InviteRecord{}},
 		{name: "OnboardingInviteLink", model: &repository.OnboardingInviteLink{}},
@@ -298,6 +304,10 @@ func main() {
 		log.Println("database migration recovery pass completed")
 	}
 
+	if err := ensureUnifiedIDSchema(db); err != nil {
+		log.Printf("⚠️  统一ID字段检查失败: %v", err)
+	}
+
 	if err := idkit.Bootstrap(db); err != nil {
 		log.Printf("⚠️  统一ID引擎初始化失败: %v", err)
 	} else {
@@ -337,6 +347,9 @@ func main() {
 	}
 	if err := ensureOrderBizTypeBackfill(db); err != nil {
 		log.Printf("⚠️  订单业务类型字段回填失败: %v", err)
+	}
+	if err := ensureCooperationRequestColumns(db); err != nil {
+		log.Printf("⚠️  商务合作字段检查失败: %v", err)
 	}
 
 	// 启动时做一次骑手收入账本修复，并开启定时结算任务（完成订单后冻结24h自动入账）
@@ -1477,6 +1490,21 @@ func main() {
 		api.GET("/cooperations", handlers.Cooperation.List)
 		api.PUT("/cooperations/:id", handlers.Cooperation.Update)
 
+		// 官网公开页
+		officialSite := api.Group("/official-site")
+		{
+			officialSite.GET("/news", handlers.OfficialSite.ListPublicNews)
+			officialSite.GET("/news/:id", handlers.OfficialSite.GetPublicNewsDetail)
+			officialSite.GET("/exposures", handlers.OfficialSite.ListPublicExposures)
+			officialSite.GET("/exposures/:id", handlers.OfficialSite.GetPublicExposureDetail)
+			officialSite.POST("/exposures", handlers.OfficialSite.CreateExposure)
+			officialSite.POST("/cooperations", handlers.OfficialSite.CreateCooperation)
+			officialSite.POST("/support/sessions", handlers.OfficialSite.CreateSupportSession)
+			officialSite.GET("/support/sessions/:token", handlers.OfficialSite.GetSupportSessionByToken)
+			officialSite.GET("/support/sessions/:token/messages", handlers.OfficialSite.ListSupportSessionMessagesByToken)
+			officialSite.POST("/support/sessions/:token/messages", handlers.OfficialSite.AppendVisitorSupportMessage)
+		}
+
 		// 邀请好友
 		api.GET("/invite/code", handlers.Invite.GetCode)
 		api.POST("/invite/share", handlers.Invite.Share)
@@ -1508,6 +1536,18 @@ func main() {
 			adminRTCCallAudits.GET("", handlers.RTCCallAudit.AdminList)
 			adminRTCCallAudits.POST("/cleanup-cycle", handlers.RTCCallAudit.AdminRunRetentionCleanup)
 			adminRTCCallAudits.POST("/:callId/review", handlers.RTCCallAudit.AdminReview)
+		}
+		officialSiteAdmin := api.Group("/admin/official-site")
+		officialSiteAdmin.Use(middleware.RequireAdmin(services.Admin))
+		{
+			officialSiteAdmin.GET("/exposures", handlers.OfficialSite.ListAdminExposures)
+			officialSiteAdmin.PUT("/exposures/:id", handlers.OfficialSite.UpdateExposure)
+			officialSiteAdmin.GET("/cooperations", handlers.OfficialSite.ListAdminCooperations)
+			officialSiteAdmin.PUT("/cooperations/:id", handlers.OfficialSite.UpdateCooperation)
+			officialSiteAdmin.GET("/support/sessions", handlers.OfficialSite.ListAdminSupportSessions)
+			officialSiteAdmin.GET("/support/sessions/:id/messages", handlers.OfficialSite.GetAdminSupportMessages)
+			officialSiteAdmin.POST("/support/sessions/:id/messages", handlers.OfficialSite.AppendAdminSupportMessage)
+			officialSiteAdmin.PUT("/support/sessions/:id", handlers.OfficialSite.UpdateSupportSession)
 		}
 
 		// 用户侧收藏与评价
@@ -1987,6 +2027,132 @@ func ensureOrderBizTypeBackfill(db *gorm.DB) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func ensureUnifiedIDSchema(db *gorm.DB) error {
+	if db == nil {
+		return nil
+	}
+	if !db.Migrator().HasTable(&repository.IDSequence{}) {
+		return nil
+	}
+
+	alterWidth := func(table, column string, size int) error {
+		if !db.Migrator().HasTable(table) || !db.Migrator().HasColumn(table, column) {
+			return nil
+		}
+		switch strings.ToLower(strings.TrimSpace(db.Dialector.Name())) {
+		case "postgres":
+			return db.Exec(fmt.Sprintf(`ALTER TABLE "%s" ALTER COLUMN "%s" TYPE varchar(%d)`, table, column, size)).Error
+		default:
+			return nil
+		}
+	}
+
+	alterBigInt := func(table, column string) error {
+		if !db.Migrator().HasTable(table) || !db.Migrator().HasColumn(table, column) {
+			return nil
+		}
+		switch strings.ToLower(strings.TrimSpace(db.Dialector.Name())) {
+		case "postgres":
+			return db.Exec(fmt.Sprintf(`ALTER TABLE "%s" ALTER COLUMN "%s" TYPE bigint`, table, column)).Error
+		default:
+			return nil
+		}
+	}
+
+	for table := range idkit.TableBuckets {
+		if err := alterWidth(table, "uid", 18); err != nil {
+			return fmt.Errorf("alter %s.uid failed: %w", table, err)
+		}
+		if err := alterWidth(table, "tsid", 28); err != nil {
+			return fmt.Errorf("alter %s.tsid failed: %w", table, err)
+		}
+	}
+	if err := alterBigInt("orders", "daily_order_number"); err != nil {
+		return fmt.Errorf("alter orders.daily_order_number failed: %w", err)
+	}
+
+	extraColumns := []struct {
+		table  string
+		column string
+		size   int
+	}{
+		{table: "id_legacy_mappings", column: "uid", size: 18},
+		{table: "id_legacy_mappings", column: "tsid", size: 28},
+		{table: "dining_buddy_parties", column: "host_user_uid", size: 18},
+		{table: "dining_buddy_party_members", column: "user_uid", size: 18},
+		{table: "dining_buddy_messages", column: "sender_user_uid", size: 18},
+		{table: "user_addresses", column: "user_uid", size: 18},
+		{table: "dining_buddy_reports", column: "reporter_user_uid", size: 18},
+		{table: "dining_buddy_user_restrictions", column: "user_uid", size: 18},
+		{table: "support_conversations", column: "target_uid", size: 28},
+	}
+	for _, item := range extraColumns {
+		if err := alterWidth(item.table, item.column, item.size); err != nil {
+			return fmt.Errorf("alter %s.%s failed: %w", item.table, item.column, err)
+		}
+	}
+
+	if err := db.Model(&repository.IDSequence{}).
+		Where("warn_threshold < ?", idkit.SequenceWarnThreshold).
+		Update("warn_threshold", idkit.SequenceWarnThreshold).Error; err != nil {
+		return fmt.Errorf("update id_sequences.warn_threshold failed: %w", err)
+	}
+
+	if strings.EqualFold(strings.TrimSpace(db.Dialector.Name()), "postgres") &&
+		db.Migrator().HasTable("orders") &&
+		db.Migrator().HasColumn("orders", "daily_order_id") {
+		var duplicateCount int64
+		if err := db.Raw(`
+			SELECT COUNT(*)
+			FROM (
+				SELECT daily_order_id
+				FROM orders
+				WHERE COALESCE(daily_order_id, '') <> ''
+				GROUP BY daily_order_id
+				HAVING COUNT(*) > 1
+			) AS duplicated_daily_order_ids
+		`).Scan(&duplicateCount).Error; err != nil {
+			return fmt.Errorf("check duplicate orders.daily_order_id failed: %w", err)
+		}
+		if duplicateCount == 0 {
+			if err := db.Exec(`
+				CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_daily_order_id_unique
+				ON "orders" ("daily_order_id")
+				WHERE COALESCE("daily_order_id", '') <> ''
+			`).Error; err != nil {
+				return fmt.Errorf("create unique index for orders.daily_order_id failed: %w", err)
+			}
+		} else {
+			log.Printf("⚠️  跳过 orders.daily_order_id 唯一索引创建，发现历史重复值数量=%d", duplicateCount)
+		}
+	}
+
+	return nil
+}
+
+func ensureCooperationRequestColumns(db *gorm.DB) error {
+	if !db.Migrator().HasTable(&repository.CooperationRequest{}) {
+		return nil
+	}
+
+	migrator := db.Migrator()
+	if !migrator.HasColumn(&repository.CooperationRequest{}, "SourceChannel") {
+		if err := migrator.AddColumn(&repository.CooperationRequest{}, "SourceChannel"); err != nil {
+			return fmt.Errorf("add cooperation_requests.source_channel failed: %w", err)
+		}
+	}
+
+	if err := db.Exec(`
+		UPDATE cooperation_requests
+		SET source_channel = 'general'
+		WHERE source_channel IS NULL OR trim(source_channel) = ''
+	`).Error; err != nil {
+		return fmt.Errorf("backfill cooperation_requests.source_channel failed: %w", err)
+	}
+
 	return nil
 }
 

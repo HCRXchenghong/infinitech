@@ -2,6 +2,7 @@ import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import socketService, { SOCKET_HTTP_BASE } from '@/utils/socket';
 import { getCurrentAdminSocketIdentity } from '@/utils/runtime';
+import { loadNotificationSoundRuntime, playMessageNotificationSound } from '@/utils/notificationSound';
 import {
   fetchMessageConversations,
   fetchMessageHistory,
@@ -382,6 +383,7 @@ export function useChatConsole(options = {}) {
   }
 
   onMounted(async () => {
+    void loadNotificationSoundRuntime();
     const socket = await socketService.connect(namespace);
     socketRef = socket;
 
@@ -410,6 +412,9 @@ export function useChatConsole(options = {}) {
       const incomingChatId = normalizeChatId(data.chatId);
       if (!incomingChatId) return;
       if (hasSeenMessage(incomingChatId, data.id)) return;
+      if (!isAdminSender(data)) {
+        playMessageNotificationSound();
+      }
 
 
       if (!upsertBeforeSelectedCheck && pushIncomingToSelectedChat(data, incomingChatId)) {
@@ -512,4 +517,3 @@ export function useChatConsole(options = {}) {
     deleteChat
   };
 }
-

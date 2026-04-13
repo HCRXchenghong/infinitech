@@ -10,7 +10,7 @@ type DiningBuddyReport struct {
 	MessageID        uint       `gorm:"index" json:"message_id"`
 	TargetUserID     uint       `gorm:"index" json:"target_user_id"`
 	ReporterUserID   uint       `gorm:"index;not null" json:"reporter_user_id"`
-	ReporterUserUID  string     `gorm:"size:14;index" json:"reporter_user_uid"`
+	ReporterUserUID  string     `gorm:"size:18;index" json:"reporter_user_uid"`
 	ReporterName     string     `gorm:"size:50" json:"reporter_name"`
 	Reason           string     `gorm:"size:120;not null" json:"reason"`
 	Description      string     `gorm:"size:500" json:"description"`
@@ -44,7 +44,7 @@ func (DiningBuddySensitiveWord) TableName() string {
 type DiningBuddyUserRestriction struct {
 	ID               uint       `gorm:"primaryKey" json:"id"`
 	UserID           uint       `gorm:"not null;uniqueIndex" json:"user_id"`
-	UserUID          string     `gorm:"size:14;index" json:"user_uid"`
+	UserUID          string     `gorm:"size:18;index" json:"user_uid"`
 	UserName         string     `gorm:"size:50" json:"user_name"`
 	RestrictionType  string     `gorm:"size:20;index;not null" json:"restriction_type"`
 	Reason           string     `gorm:"size:255" json:"reason"`

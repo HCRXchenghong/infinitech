@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/yuexiang/go-api/internal/idkit"
 	"github.com/yuexiang/go-api/internal/repository"
 	"gorm.io/gorm"
 )
@@ -31,22 +32,26 @@ func (s *InviteService) GetOrCreateCode(ctx context.Context, userID, phone strin
 		return &existing, nil
 	}
 
-	code := s.points.GenerateInviteCode(phone)
-	for i := 0; i < 3; i++ {
-		var count int64
-		_ = s.db.WithContext(ctx).Model(&repository.InviteCode{}).Where("code = ?", code).Count(&count).Error
-		if count == 0 {
-			break
-		}
-		code = s.points.GenerateInviteCode(phone)
-	}
+	now := time.Now()
+	code := fallbackInviteCode(now)
 
 	record := repository.InviteCode{
 		UserID:    userID,
 		Phone:     phone,
 		Code:      code,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if s.db != nil {
+		uid, tsid, err := idkit.NextIdentityForTable(ctx, s.db, record.TableName(), now)
+		if err != nil {
+			return nil, fmt.Errorf("allocate invite code identity failed: %w", err)
+		}
+		record.UID = uid
+		record.TSID = tsid
+		if built := buildInviteCodeFromUID(uid); built != "" {
+			record.Code = built
+		}
 	}
 	if err := s.db.WithContext(ctx).Create(&record).Error; err != nil {
 		return nil, err

@@ -27,6 +27,9 @@ func (s *CooperationService) Create(ctx context.Context, req *repository.Coopera
 	if req.CooperationType == "" {
 		req.CooperationType = "cooperation"
 	}
+	if req.SourceChannel == "" {
+		req.SourceChannel = "general"
+	}
 	req.Status = "pending"
 	req.CreatedAt = time.Now()
 	req.UpdatedAt = time.Now()
@@ -34,9 +37,10 @@ func (s *CooperationService) Create(ctx context.Context, req *repository.Coopera
 }
 
 type CooperationListParams struct {
-	Status string
-	Limit  int
-	Offset int
+	Status        string
+	SourceChannel string
+	Limit         int
+	Offset        int
 }
 
 func (s *CooperationService) List(ctx context.Context, params CooperationListParams) ([]repository.CooperationRequest, int64, error) {
@@ -46,6 +50,9 @@ func (s *CooperationService) List(ctx context.Context, params CooperationListPar
 	query := s.db.WithContext(ctx).Model(&repository.CooperationRequest{})
 	if params.Status != "" {
 		query = query.Where("status = ?", params.Status)
+	}
+	if params.SourceChannel != "" {
+		query = query.Where("source_channel = ?", params.SourceChannel)
 	}
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err

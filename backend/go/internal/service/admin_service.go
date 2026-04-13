@@ -1591,7 +1591,7 @@ func (s *AdminService) ImportOrders(ctx context.Context, items []map[string]inte
 				order.DailyOrderID = parseImportString(item, "daily_order_id")
 			}
 			if hasImportKey(item, "daily_order_number") {
-				order.DailyOrderNumber = int(parseInt64(item["daily_order_number"]))
+				order.DailyOrderNumber = parseInt64(item["daily_order_number"])
 			}
 			if hasImportKey(item, "user_id") {
 				order.UserID = parseImportString(item, "user_id")

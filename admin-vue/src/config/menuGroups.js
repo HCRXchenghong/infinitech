@@ -80,6 +80,7 @@ export const MENU_GROUPS = [
         id: 'operation-content',
         name: '内容与触达',
         children: [
+          { path: '/official-site-center', name: '官网中心' },
           { path: '/notifications', name: '官方通知' },
           { path: '/content-settings', name: '内容设置' },
         ],

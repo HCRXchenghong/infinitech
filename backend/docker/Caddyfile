@@ -5,22 +5,35 @@
 {$PUBLIC_DOMAIN} {
   encode zstd gzip
 
-  @socket path /socket.io* /token* /api/stats*
+  @socket path /socket.io* /token* /api/generate-token /api/stats*
   handle @socket {
     reverse_proxy socket-server:9898
   }
 
-  @api path /api/* /ready* /health*
+  @api path /api/* /ready* /health* /uploads/*
   handle @api {
     reverse_proxy bff:25500
   }
 
   handle {
-    respond "Infinitech gateway is running." 200
+    reverse_proxy admin-web:80
   }
 }
 
 {$ADMIN_DOMAIN} {
   encode zstd gzip
-  reverse_proxy admin-web:80
+
+  @socket path /socket.io* /token* /api/generate-token /api/stats*
+  handle @socket {
+    reverse_proxy socket-server:9898
+  }
+
+  @api path /api/* /ready* /health* /uploads/*
+  handle @api {
+    reverse_proxy bff:25500
+  }
+
+  handle {
+    reverse_proxy admin-web:80
+  }
 }

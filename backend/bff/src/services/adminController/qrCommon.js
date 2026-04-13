@@ -181,44 +181,44 @@ function normalizeOrigin(raw) {
   }
 }
 
-function normalizeDownloadWebHost(rawHost) {
+function normalizeSiteWebHost(rawHost) {
   let host = String(rawHost || "").trim();
   if (!host) {
     return "";
   }
   if (host.endsWith(":8888")) {
-    host = `${host.slice(0, -5)}:1798`;
+    host = `${host.slice(0, -5)}:1888`;
   }
   if (host.endsWith(":25500")) {
-    host = `${host.slice(0, -6)}:1798`;
+    host = `${host.slice(0, -6)}:1888`;
   }
   return host;
 }
 
 function resolveWebBaseUrl(req) {
-  const configuredOrigin = normalizeOrigin(config.downloadWebBaseUrl || config.adminWebBaseUrl);
+  const configuredOrigin = normalizeOrigin(config.siteWebBaseUrl || config.adminWebBaseUrl);
   if (configuredOrigin) {
     return configuredOrigin;
   }
 
   const bodyOrigin = normalizeOrigin(
-    req.body?.downloadOrigin || req.body?.publicOrigin || req.body?.webOrigin || req.body?.origin || ""
+    req.body?.siteOrigin || req.body?.downloadOrigin || req.body?.publicOrigin || req.body?.webOrigin || req.body?.origin || ""
   );
   if (bodyOrigin) {
-    return normalizeOrigin(bodyOrigin.replace(/:(8888|25500)(?=\/|$)/, ":1798")) || bodyOrigin;
+    return normalizeOrigin(bodyOrigin.replace(/:(8888|25500)(?=\/|$)/, ":1888")) || bodyOrigin;
   }
 
   const headerOrigin = normalizeOrigin(
-    req.headers["x-download-origin"] || req.headers["x-web-origin"] || req.headers.origin || ""
+    req.headers["x-site-origin"] || req.headers["x-download-origin"] || req.headers["x-web-origin"] || req.headers.origin || ""
   );
   if (headerOrigin) {
-    return normalizeOrigin(headerOrigin.replace(/:(8888|25500)(?=\/|$)/, ":1798")) || headerOrigin;
+    return normalizeOrigin(headerOrigin.replace(/:(8888|25500)(?=\/|$)/, ":1888")) || headerOrigin;
   }
 
   const protoRaw = String(req.headers["x-forwarded-proto"] || req.protocol || "http");
   const protocol = protoRaw.split(",")[0].trim() === "https" ? "https" : "http";
-  const hostRaw = String(req.headers["x-forwarded-host"] || req.headers.host || "localhost:1798");
-  const host = normalizeDownloadWebHost(hostRaw.split(",")[0].trim()) || "localhost:1798";
+  const hostRaw = String(req.headers["x-forwarded-host"] || req.headers.host || "localhost:1888");
+  const host = normalizeSiteWebHost(hostRaw.split(",")[0].trim()) || "localhost:1888";
   return `${protocol}://${host}`;
 }
 

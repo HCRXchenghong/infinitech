@@ -5,8 +5,8 @@ import {
   clearAdminSessionStorage,
   getPublicRuntimeGuardMessage,
   getToken,
-  isDownloadRuntime,
   isInviteRuntime,
+  isSiteRuntime,
   isPublicRuntime
 } from './runtime';
 import { hasValidPrimaryKey } from './record';
@@ -14,17 +14,9 @@ import { hasValidPrimaryKey } from './record';
 // 支持通过环境变量配置后台服务地址：
 // - 本地开发默认走同源代理（避免 CORS）
 // - 生产环境优先使用环境变量 VITE_ADMIN_API_BASE_URL
-// - 无配置时按当前页面主机名拼接 :25500，减少 IP 变更导致的断连
+// - 无配置时走同源 /api，由 nginx / 反代统一转发到 BFF
 const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
-function getDefaultProdBaseURL() {
-  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-    return `${protocol}//${window.location.hostname}:25500`;
-  }
-  return 'http://127.0.0.1:25500';
-}
-
-let baseURL = isDev ? '' : getDefaultProdBaseURL();
+let baseURL = '';
 
 if (!isDev && typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_ADMIN_API_BASE_URL) {
   baseURL = import.meta.env.VITE_ADMIN_API_BASE_URL;
@@ -50,6 +42,28 @@ function isInviteAllowedAPI(url) {
 function isDownloadAllowedAPI(url) {
   const path = String(url || '');
   return path.startsWith('/api/public/app-download-config') ||
+    path === '/api/health' ||
+    path === '/health' ||
+    path === '/api/ready' ||
+    path === '/ready';
+}
+
+function isSiteAllowedAPI(url) {
+  const path = String(url || '');
+  return path === '/api/public/app-download-config' ||
+    path.startsWith('/api/public/app-download-config?') ||
+    path === '/api/official-site/news' ||
+    path.startsWith('/api/official-site/news?') ||
+    /^\/api\/official-site\/news\/[^/]+(?:\?.*)?$/.test(path) ||
+    path === '/api/official-site/exposures' ||
+    path.startsWith('/api/official-site/exposures?') ||
+    /^\/api\/official-site\/exposures\/[^/]+(?:\?.*)?$/.test(path) ||
+    path === '/api/official-site/cooperations' ||
+    path === '/api/official-site/support/sessions' ||
+    /^\/api\/official-site\/support\/sessions\/[^/]+\/socket-token(?:\?.*)?$/.test(path) ||
+    /^\/api\/official-site\/support\/sessions\/[^/]+\/messages(?:\?.*)?$/.test(path) ||
+    path === '/api/upload' ||
+    path.startsWith('/api/upload?') ||
     path === '/api/health' ||
     path === '/health' ||
     path === '/api/ready' ||
@@ -121,10 +135,10 @@ function extractCacheRecords(storeName, payload) {
 
 instance.interceptors.request.use(async (config) => {
   const isInviteRequest = isInviteRuntime();
-  const isDownloadRequest = isDownloadRuntime();
+  const isSiteRequest = isSiteRuntime();
   const isAllowedPublicAPI = isInviteRequest
     ? isInviteAllowedAPI(config.url)
-    : (isDownloadRequest ? isDownloadAllowedAPI(config.url) : true);
+    : (isSiteRequest ? isSiteAllowedAPI(config.url) : true);
 
   if (isPublicRuntime() && !isAllowedPublicAPI) {
     return Promise.reject({

@@ -3,8 +3,24 @@ export function getToken() {
 }
 
 export const ADMIN_WEB_PORT = '8888';
+export const SITE_WEB_PORT = '1888';
 export const INVITE_WEB_PORT = '1788';
-export const DOWNLOAD_WEB_PORT = '1798';
+
+function normalizeOrigin(raw) {
+  const value = String(raw || '').trim();
+  if (!value) {
+    return '';
+  }
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return '';
+    }
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch (_error) {
+    return '';
+  }
+}
 
 function normalizeNumericId(value) {
   const raw = String(value ?? '').trim();
@@ -192,19 +208,66 @@ export function getCurrentPort() {
 
 function normalizeRuntime(value) {
   const runtime = String(value || '').trim().toLowerCase();
-  if (runtime === 'invite' || runtime === 'download' || runtime === 'admin') {
+  if (runtime === 'download') {
+    return 'site';
+  }
+  if (runtime === 'invite' || runtime === 'admin' || runtime === 'site') {
     return runtime;
   }
   return '';
 }
 
+function getRuntimeConfig() {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+  const config = window.__INFINITECH_RUNTIME_CONFIG__;
+  return config && typeof config === 'object' ? config : {};
+}
+
+function getConfiguredRuntimeOrigin(runtime) {
+  const config = getRuntimeConfig();
+  const normalizedRuntime = normalizeRuntime(runtime) || 'admin';
+  if (normalizedRuntime === 'site') {
+    return normalizeOrigin(config.siteOrigin);
+  }
+  if (normalizedRuntime === 'invite') {
+    return normalizeOrigin(config.inviteOrigin);
+  }
+  return normalizeOrigin(config.adminOrigin);
+}
+
+function inferRuntimeFromConfiguredOrigins() {
+  if (typeof window === 'undefined' || !window.location?.origin) {
+    return '';
+  }
+  const currentOrigin = normalizeOrigin(window.location.origin);
+  if (!currentOrigin) {
+    return '';
+  }
+
+  const entries = [
+    ['site', getConfiguredRuntimeOrigin('site')],
+    ['invite', getConfiguredRuntimeOrigin('invite')],
+    ['admin', getConfiguredRuntimeOrigin('admin')],
+  ];
+
+  for (const [runtime, configuredOrigin] of entries) {
+    if (configuredOrigin && configuredOrigin === currentOrigin) {
+      return runtime;
+    }
+  }
+
+  return '';
+}
+
 function inferRuntimeFromPort(port) {
   const currentPort = String(port || '').trim();
+  if (currentPort === SITE_WEB_PORT) {
+    return 'site';
+  }
   if (currentPort === INVITE_WEB_PORT) {
     return 'invite';
-  }
-  if (currentPort === DOWNLOAD_WEB_PORT) {
-    return 'download';
   }
   return 'admin';
 }
@@ -220,6 +283,11 @@ export function getAppRuntime() {
     }
   }
 
+  const configuredRuntime = inferRuntimeFromConfiguredOrigins();
+  if (configuredRuntime) {
+    return configuredRuntime;
+  }
+
   return inferRuntimeFromPort(getCurrentPort());
 }
 
@@ -227,8 +295,8 @@ export function isInviteRuntime() {
   return getAppRuntime() === 'invite';
 }
 
-export function isDownloadRuntime() {
-  return getAppRuntime() === 'download';
+export function isSiteRuntime() {
+  return getAppRuntime() === 'site';
 }
 
 export function isPublicRuntime() {
@@ -237,11 +305,11 @@ export function isPublicRuntime() {
 
 export function getPortForRuntime(runtime) {
   const normalized = normalizeRuntime(runtime) || 'admin';
+  if (normalized === 'site') {
+    return SITE_WEB_PORT;
+  }
   if (normalized === 'invite') {
     return INVITE_WEB_PORT;
-  }
-  if (normalized === 'download') {
-    return DOWNLOAD_WEB_PORT;
   }
   return ADMIN_WEB_PORT;
 }
@@ -251,6 +319,11 @@ export function buildRuntimeUrl(runtime, pathname = '/') {
   const normalizedPath = String(pathname || '/').startsWith('/')
     ? String(pathname || '/')
     : `/${String(pathname || '')}`;
+
+  const configuredOrigin = getConfiguredRuntimeOrigin(normalizedRuntime);
+  if (configuredOrigin) {
+    return `${configuredOrigin}${normalizedPath}`;
+  }
 
   if (typeof window === 'undefined' || !window.location) {
     const port = getPortForRuntime(normalizedRuntime);
@@ -263,11 +336,11 @@ export function buildRuntimeUrl(runtime, pathname = '/') {
 }
 
 export function getPublicRuntimeGuardMessage() {
-  if (isDownloadRuntime()) {
-    return '1798 仅允许下载页接口访问';
+  if (isSiteRuntime()) {
+    return '当前官网运行时仅允许官网相关接口访问';
   }
   if (isInviteRuntime()) {
-    return '1788 仅允许邀请 / 领券页接口访问';
+    return '当前邀请页运行时仅允许邀请 / 领券页接口访问';
   }
   return '';
 }

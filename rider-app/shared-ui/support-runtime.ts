@@ -6,6 +6,8 @@ export interface SupportRuntimeSettings {
   merchantWelcomeMessage: string
   riderWelcomeMessage: string
   aboutSummary: string
+  messageSoundUrl: string
+  orderSoundUrl: string
 }
 
 export const DEFAULT_SUPPORT_RUNTIME_SETTINGS: SupportRuntimeSettings = {
@@ -13,7 +15,9 @@ export const DEFAULT_SUPPORT_RUNTIME_SETTINGS: SupportRuntimeSettings = {
   welcomeMessage: '您好！我是平台客服，有什么可以帮助您的吗？',
   merchantWelcomeMessage: '欢迎光临，有什么可以帮您的？',
   riderWelcomeMessage: '您好，您的骑手正在配送中。',
-  aboutSummary: '骑手端聚焦接单、配送、收入与保障场景，帮助骑手稳定履约并提升效率。'
+  aboutSummary: '骑手端聚焦接单、配送、收入与保障场景，帮助骑手稳定履约并提升效率。',
+  messageSoundUrl: '',
+  orderSoundUrl: ''
 }
 
 let cachedSupportRuntimeSettings: SupportRuntimeSettings = { ...DEFAULT_SUPPORT_RUNTIME_SETTINGS }
@@ -34,13 +38,21 @@ function normalizeSupportRuntimeSettings(payload: any = {}): SupportRuntimeSetti
   const aboutSummary =
     String(payload?.rider_about_summary || '').trim() ||
     DEFAULT_SUPPORT_RUNTIME_SETTINGS.aboutSummary
+  const messageSoundUrl =
+    String(payload?.message_notification_sound_url || '').trim() ||
+    DEFAULT_SUPPORT_RUNTIME_SETTINGS.messageSoundUrl
+  const orderSoundUrl =
+    String(payload?.order_notification_sound_url || '').trim() ||
+    DEFAULT_SUPPORT_RUNTIME_SETTINGS.orderSoundUrl
 
   return {
     title,
     welcomeMessage,
     merchantWelcomeMessage,
     riderWelcomeMessage,
-    aboutSummary
+    aboutSummary,
+    messageSoundUrl,
+    orderSoundUrl
   }
 }
 

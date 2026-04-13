@@ -1,19 +1,30 @@
 const UNIFIED_ID_PREFIX = "250724";
 const BFF_LOG_BUCKET = "98";
 const INVITE_RUNTIME_PORT = "1788";
-const DOWNLOAD_RUNTIME_PORT = "1798";
+const SITE_RUNTIME_PORT = "1888";
 const PUBLIC_RUNTIME_ALLOWED_API_RULES = {
+  [SITE_RUNTIME_PORT]: [
+    { method: "GET", pattern: /^\/api\/public\/app-download-config$/ },
+    { method: "GET", pattern: /^\/api\/official-site\/news$/ },
+    { method: "GET", pattern: /^\/api\/official-site\/news\/[^/]+$/ },
+    { method: "GET", pattern: /^\/api\/official-site\/exposures$/ },
+    { method: "GET", pattern: /^\/api\/official-site\/exposures\/[^/]+$/ },
+    { method: "POST", pattern: /^\/api\/official-site\/exposures$/ },
+    { method: "POST", pattern: /^\/api\/official-site\/cooperations$/ },
+    { method: "POST", pattern: /^\/api\/official-site\/support\/sessions$/ },
+    { method: "GET", pattern: /^\/api\/official-site\/support\/sessions\/[^/]+\/socket-token$/ },
+    { method: "GET", pattern: /^\/api\/official-site\/support\/sessions\/[^/]+\/messages$/ },
+    { method: "POST", pattern: /^\/api\/official-site\/support\/sessions\/[^/]+\/messages$/ },
+    { method: "POST", pattern: /^\/api\/upload$/ },
+    { method: "GET", pattern: /^\/api\/health$/ },
+    { method: "GET", pattern: /^\/api\/ready$/ }
+  ],
   [INVITE_RUNTIME_PORT]: [
     { method: "GET", pattern: /^\/api\/onboarding\/invites\/[^/]+$/ },
     { method: "POST", pattern: /^\/api\/onboarding\/invites\/[^/]+\/submit$/ },
     { method: "GET", pattern: /^\/api\/coupons\/link\/[^/]+$/ },
     { method: "POST", pattern: /^\/api\/coupons\/link\/[^/]+\/claim$/ },
     { method: "POST", pattern: /^\/api\/upload$/ },
-    { method: "GET", pattern: /^\/api\/health$/ },
-    { method: "GET", pattern: /^\/api\/ready$/ }
-  ],
-  [DOWNLOAD_RUNTIME_PORT]: [
-    { method: "GET", pattern: /^\/api\/public\/app-download-config$/ },
     { method: "GET", pattern: /^\/api\/health$/ },
     { method: "GET", pattern: /^\/api\/ready$/ }
   ]
@@ -158,9 +169,11 @@ function isPublicRuntimePort(port) {
 }
 
 function getPublicRuntimeGuardMessage(port) {
-  return String(port || "").trim() === DOWNLOAD_RUNTIME_PORT
-    ? "1798 仅开放下载页相关接口"
-    : "1788 仅开放邀请 / 领券页相关接口";
+  const normalized = String(port || "").trim();
+  if (normalized === SITE_RUNTIME_PORT) {
+    return "1888 仅开放官网相关接口";
+  }
+  return "1788 仅开放邀请 / 领券页相关接口";
 }
 
 function isPublicRuntimeAllowedApiRequest(port, method, path) {
@@ -184,7 +197,7 @@ function isPublicRuntimeAllowedApiRequest(port, method, path) {
 
 module.exports = {
   INVITE_RUNTIME_PORT,
-  DOWNLOAD_RUNTIME_PORT,
+  SITE_RUNTIME_PORT,
   nextLogTsid,
   extractClientIp,
   extractSourcePort,

@@ -1,18 +1,8 @@
 # Changelog
 
-## 1.0.1 - 2026-04-12
+## 1.0.1 - 2026-04-13
 
-相对 `1.0.0` 的主要差异如下：
-
-- 新增管理端独立 `RTC 管理台`，支持在后台直接搜索站内用户 / 商户 / 骑手，填写会话号、订单号、入口标识、业务场景后发起 RTC 语音。
-- `RTC 管理台` 复用现有管理端 RTC 信令桥与全局通话状态，支持来电接听、拒绝、呼出取消、通话挂断，并同步展示媒体状态、通话 ID、业务留痕。
-- `RTC 管理台` 新增最近通话记录区，可直接回看最新 RTC 审计数据，并一键跳转到 `RTC 通话审计` 页面继续处理。
-- 修复 Socket RTC 事件重复广播问题，避免同一参与方因同时位于身份房间和通话房间而重复收到 `rtc_status` / `rtc_signal`，保证后台 RTC 管理台在真实双端通话下只收到单次状态与信令事件。
-- 仓库内对外版本号统一升级为 `1.0.1`，已同步管理端、BFF、Socket 服务、用户端、管理 App、骑手端、商户端、Android 用户端与 iOS 工程版本信息，避免发布后多端版本显示不一致。
-- Go 服务 Swagger 版本号同步升级到 `1.0.1`，便于接口文档和发布版本保持一致。
-
-本次发布验证：
-
-- `admin-vue` 执行 `npm run build` 通过。
-- `backend/bff` 执行 `npm test` 通过。
-- 真实运行环境已完成首次管理员初始化，并串行验证后台统计、站内联系人搜索、RTC 呼叫创建、Socket 信令、RTC 通话审计、用户侧历史、投诉复核与留存清理接口闭环可用。
+- Kept the full workspace on version `1.0.1`, including the previously lagging Alipay and bank payout sidecar package versions.
+- Added official-site-facing pages, cookie-consent flow, and official support chat wiring across admin web, BFF, Go service, and socket gateway.
+- Added centralized runtime sound settings for message notifications and order notifications, with bundled `chat.mp3` / `come.mp3` fallbacks across admin, customer, merchant, and rider clients.
+- Refreshed repository documentation and cleaned generated verification artifacts and duplicate root-level audio files from source control.

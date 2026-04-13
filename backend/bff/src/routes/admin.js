@@ -13,6 +13,7 @@ const homeController = require('../controllers/homeController');
 const contactController = require('../controllers/contactController');
 const rtcController = require('../controllers/rtcController');
 const diningBuddyController = require('../controllers/diningBuddyController');
+const officialSiteController = require('../controllers/officialSiteController');
 const financialRoutes = require('./financial');
 const adminWalletRoutes = require('./adminWallet');
 
@@ -109,6 +110,14 @@ router.get('/contact-phone-audits', contactController.listPhoneContactAudits);
 router.get('/rtc-call-audits', rtcController.listRTCCallAudits);
 router.post('/rtc-call-audits/cleanup-cycle', rtcController.runRTCRetentionCleanupCycle);
 router.post('/rtc-call-audits/:callId/review', rtcController.reviewRTCCallAudit);
+router.get('/admin/official-site/exposures', officialSiteController.listAdminExposures);
+router.put('/admin/official-site/exposures/:id', officialSiteController.updateExposure);
+router.get('/admin/official-site/cooperations', officialSiteController.listAdminCooperations);
+router.put('/admin/official-site/cooperations/:id', officialSiteController.updateCooperation);
+router.get('/admin/official-site/support/sessions', officialSiteController.listAdminSupportSessions);
+router.get('/admin/official-site/support/sessions/:id/messages', officialSiteController.getAdminSupportMessages);
+router.post('/admin/official-site/support/sessions/:id/messages', officialSiteController.appendAdminSupportMessage);
+router.put('/admin/official-site/support/sessions/:id', officialSiteController.updateSupportSession);
 
 router.get('/admins', adminController.getAdmins);
 router.post('/admins', adminController.createAdmin);

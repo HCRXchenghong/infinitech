@@ -75,7 +75,7 @@
       </main>
     </div>
   </div>
-  <AdminRTCCallDialog />
+  <AdminRTCCallDialog v-if="!isPublicRoute" />
 </template>
 
 <script setup>
@@ -84,7 +84,7 @@ import { useRoute, useRouter } from 'vue-router';
 import NetworkStatus from '@/components/NetworkStatus.vue';
 import AdminRTCCallDialog from '@/components/AdminRTCCallDialog.vue';
 import { MENU_GROUPS } from '@/config/menuGroups';
-import { clearAdminSessionStorage, getToken } from '@/utils/runtime';
+import { clearAdminSessionStorage, getAppRuntime, getToken } from '@/utils/runtime';
 import { disconnectAdminRTCBridge, ensureAdminRTCBridge } from '@/utils/adminRtc';
 
 const router = useRouter();
@@ -322,6 +322,9 @@ const currentName = computed(() => {
 });
 
 function isPublicPath(path = '') {
+  if (getAppRuntime() === 'site') {
+    return true;
+  }
   if (PUBLIC_ROUTE_EXACT.has(path)) {
     return true;
   }
@@ -329,6 +332,7 @@ function isPublicPath(path = '') {
 }
 
 const isPublicRoute = computed(() => isPublicPath(route.path));
+const shouldLockPublicScroll = computed(() => isPublicRoute.value && getAppRuntime() !== 'site');
 
 function applyPublicScrollLock(locked) {
   if (typeof document === 'undefined') return;
@@ -340,7 +344,7 @@ function applyPublicScrollLock(locked) {
 }
 
 watch(
-  isPublicRoute,
+  shouldLockPublicScroll,
   (locked) => {
     applyPublicScrollLock(Boolean(locked));
   },

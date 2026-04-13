@@ -19,7 +19,7 @@ type PaymentCallback struct {
 	ReplayFingerprint string     `gorm:"size:128;index" json:"replay_fingerprint"`
 	Status            string     `gorm:"size:20;default:'pending';index" json:"status"`
 	RequestHeaders    string     `gorm:"type:text" json:"request_headers"`
-	RequestBody       string     `gorm:"type:longtext" json:"request_body"`
+	RequestBody       string     `gorm:"type:text" json:"request_body"`
 	ResponseBody      string     `gorm:"type:text" json:"response_body"`
 	ProcessedAt       *time.Time `json:"processed_at"`
 	CreatedAt         time.Time  `json:"created_at"`
@@ -39,7 +39,7 @@ type IdempotencyRecord struct {
 	Scope             string     `gorm:"size:64;index;not null" json:"scope"`
 	RequestHash       string     `gorm:"size:128" json:"request_hash"`
 	Status            string     `gorm:"size:20;default:'processing';index" json:"status"`
-	ResponseData      string     `gorm:"type:longtext" json:"response_data"`
+	ResponseData      string     `gorm:"type:text" json:"response_data"`
 	ExpiredAt         *time.Time `json:"expired_at"`
 	CreatedAt         time.Time  `json:"created_at"`
 	UpdatedAt         time.Time  `json:"updated_at"`
@@ -63,7 +63,7 @@ type ReconciliationTask struct {
 	MatchedRecords  int        `gorm:"default:0" json:"matched_records"`
 	MismatchRecords int        `gorm:"default:0" json:"mismatch_records"`
 	ErrorMessage    string     `gorm:"type:text" json:"error_message"`
-	ResultData      string     `gorm:"type:longtext" json:"result_data"`
+	ResultData      string     `gorm:"type:text" json:"result_data"`
 	StartedAt       *time.Time `json:"started_at"`
 	CompletedAt     *time.Time `json:"completed_at"`
 	CreatedAt       time.Time  `json:"created_at"`

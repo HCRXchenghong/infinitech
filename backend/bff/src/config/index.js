@@ -57,19 +57,19 @@ function buildCorsOrigins() {
   const defaults = [
     "http://127.0.0.1:8888",
     "http://localhost:8888",
+    "http://127.0.0.1:1888",
+    "http://localhost:1888",
     "http://127.0.0.1:1788",
-    "http://localhost:1788",
-    "http://127.0.0.1:1798",
-    "http://localhost:1798"
+    "http://localhost:1788"
   ];
 
   const adminWebBaseUrl = normalizeOrigin(process.env.ADMIN_WEB_BASE_URL || "");
-  const downloadWebBaseUrl = normalizeOrigin(process.env.DOWNLOAD_WEB_BASE_URL || "");
+  const siteWebBaseUrl = normalizeOrigin(process.env.SITE_WEB_BASE_URL || "");
   return uniqueValues([
     ...configured,
     ...defaults,
     adminWebBaseUrl,
-    downloadWebBaseUrl
+    siteWebBaseUrl
   ]);
 }
 
@@ -81,6 +81,7 @@ module.exports = {
   port: process.env.BFF_PORT || 25500,
   goApiUrl: process.env.GO_API_URL || "http://127.0.0.1:1029",
   socketServerUrl: process.env.SOCKET_SERVER_URL || "http://127.0.0.1:9898",
+  socketServerApiSecret: String(process.env.SOCKET_SERVER_API_SECRET || process.env.TOKEN_API_SECRET || "").trim(),
 
   db: {
     host: process.env.DB_HOST || "127.0.0.1",
@@ -107,7 +108,7 @@ module.exports = {
   jwtSecret: adminTokenSecret,
   adminTokenSecret,
   adminWebBaseUrl: process.env.ADMIN_WEB_BASE_URL || "",
-  downloadWebBaseUrl: process.env.DOWNLOAD_WEB_BASE_URL || "",
+  siteWebBaseUrl: process.env.SITE_WEB_BASE_URL || "",
   adminQrLoginSecret: String(process.env.ADMIN_QR_LOGIN_SECRET || adminTokenSecret).trim(),
   corsOrigins: buildCorsOrigins(),
 

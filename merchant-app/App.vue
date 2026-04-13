@@ -3,13 +3,16 @@ import { defineComponent } from 'vue'
 import { registerCurrentPushDevice, clearPushRegistrationState } from '@/shared-ui/push-registration'
 import { startPushEventBridge } from '@/shared-ui/push-events'
 import { connectCurrentRealtimeChannel, clearRealtimeState } from '@/shared-ui/realtime-notify'
+import { bindNotificationSoundBridge } from '@/shared-ui/notification-sound'
 
 export default defineComponent({
   onLaunch() {
     void startPushEventBridge()
+    bindNotificationSoundBridge()
     this.checkAuth()
   },
   onShow() {
+    bindNotificationSoundBridge()
     this.checkAuth()
   },
   onHide() {

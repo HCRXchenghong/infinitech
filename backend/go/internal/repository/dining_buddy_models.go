@@ -13,7 +13,7 @@ type DiningBuddyParty struct {
 	MaxPeople    int                      `gorm:"not null;default:4" json:"maxPeople"`
 	Status       string                   `gorm:"size:20;index;not null;default:'open'" json:"status"`
 	HostUserID   uint                     `gorm:"index;not null" json:"-"`
-	HostUserUID  string                   `gorm:"size:14;index" json:"hostUserId,omitempty"`
+	HostUserUID  string                   `gorm:"size:18;index" json:"hostUserId,omitempty"`
 	HostName     string                   `gorm:"size:50" json:"host"`
 	HostAvatar   string                   `gorm:"size:255" json:"hostAvatar,omitempty"`
 	CreatedAt    time.Time                `json:"created_at"`
@@ -29,7 +29,7 @@ type DiningBuddyPartyMember struct {
 	ID         uint      `gorm:"primaryKey" json:"legacyId,omitempty"`
 	PartyID    uint      `gorm:"index;not null;uniqueIndex:uk_dining_buddy_party_user,priority:1" json:"partyId"`
 	UserID     uint      `gorm:"index;not null;uniqueIndex:uk_dining_buddy_party_user,priority:2" json:"-"`
-	UserUID    string    `gorm:"size:14;index" json:"userId,omitempty"`
+	UserUID    string    `gorm:"size:18;index" json:"userId,omitempty"`
 	UserName   string    `gorm:"size:50" json:"userName"`
 	UserAvatar string    `gorm:"size:255" json:"userAvatar,omitempty"`
 	IsHost     bool      `gorm:"default:false" json:"isHost"`
@@ -48,7 +48,7 @@ type DiningBuddyMessage struct {
 	PartyID       uint      `gorm:"index;not null" json:"partyId"`
 	SenderType    string    `gorm:"size:20;index;not null;default:'user'" json:"senderType"`
 	SenderUserID  uint      `gorm:"index" json:"-"`
-	SenderUserUID string    `gorm:"size:14;index" json:"senderUserId,omitempty"`
+	SenderUserUID string    `gorm:"size:18;index" json:"senderUserId,omitempty"`
 	SenderName    string    `gorm:"size:50" json:"senderName"`
 	SenderAvatar  string    `gorm:"size:255" json:"senderAvatar,omitempty"`
 	MessageType   string    `gorm:"size:20;not null;default:'text'" json:"messageType"`

@@ -25,6 +25,7 @@ type Handlers struct {
 	AdminSettings     *AdminSettingsHandler
 	Points            *PointsHandler
 	Cooperation       *CooperationHandler
+	OfficialSite      *OfficialSiteHandler
 	Invite            *InviteHandler
 	OnboardingInvite  *OnboardingInviteHandler
 	Rider             *RiderHandler
@@ -64,6 +65,7 @@ func NewHandlers(services *service.Services) *Handlers {
 		Upload:            NewUploadHandler(),
 		Points:            NewPointsHandler(services.Points),
 		Cooperation:       NewCooperationHandler(services.Cooperation),
+		OfficialSite:      NewOfficialSiteHandler(services.OfficialSite),
 		Invite:            NewInviteHandler(services.Invite),
 		OnboardingInvite:  NewOnboardingInviteHandler(services.OnboardingInvite),
 		Wallet:            NewWalletHandler(services.Wallet),

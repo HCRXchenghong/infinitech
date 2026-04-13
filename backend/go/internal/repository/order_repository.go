@@ -13,7 +13,7 @@ type Order struct {
 	ID uint `gorm:"primaryKey" json:"legacyId,omitempty"`
 	UnifiedIdentity
 	DailyOrderID                string     `gorm:"index" json:"daily_order_id"`
-	DailyOrderNumber            int        `json:"daily_order_number"`
+	DailyOrderNumber            int64      `json:"daily_order_number"`
 	UserID                      string     `gorm:"index" json:"user_id"`
 	CustomerName                string     `json:"customer_name"`
 	CustomerPhone               string     `json:"customer_phone"`

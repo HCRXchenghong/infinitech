@@ -63,6 +63,7 @@ import config from '@/shared-ui/config'
 import { fetchHistory, markConversationRead, upsertConversation } from '@/shared-ui/api'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/shared-ui/support-runtime'
 import { getMerchantId, getMerchantProfile } from '@/shared-ui/merchantContext'
+import { playMerchantMessageNotificationSound } from '@/shared-ui/notification-sound'
 
 const SOCKET_TOKEN_KEY = 'socket_token'
 const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key'
@@ -372,6 +373,7 @@ function connectSocket(token: string) {
     if (!payload || String(payload.chatId) !== String(chatId.value)) return
     const normalized = toViewMessage(payload)
     if (normalized.self) return
+    playMerchantMessageNotificationSound()
     messages.value.push(normalized)
     scrollToBottom()
     void syncReadState()

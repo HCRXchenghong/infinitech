@@ -466,7 +466,7 @@ async function refreshQrCode(showMessage = false) {
   try {
     const { data } = await request.post('/api/qr-login/session', {
       webOrigin: typeof window !== 'undefined' && window.location ? window.location.origin : '',
-      downloadOrigin: buildRuntimeUrl('download', '').replace(/\/$/, ''),
+      siteOrigin: buildRuntimeUrl('site', '').replace(/\/$/, ''),
     })
     const payload = data?.data || data
     if (!payload?.ticket || !payload?.qrText) {

@@ -174,7 +174,7 @@ type FinancialLogAudit struct {
 	OperatorID      string    `gorm:"size:64;index;not null" json:"operator_id"`
 	OperatorName    string    `gorm:"size:100" json:"operator_name"`
 	Reason          string    `gorm:"type:text" json:"reason"`
-	Snapshot        string    `gorm:"type:longtext;not null" json:"snapshot"`
+	Snapshot        string    `gorm:"type:text;not null" json:"snapshot"`
 	CreatedAt       time.Time `json:"created_at"`
 }
 

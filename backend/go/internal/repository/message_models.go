@@ -7,7 +7,7 @@ type SupportConversation struct {
 	ID              uint       `gorm:"primaryKey" json:"legacyId,omitempty"`
 	ChatID          string     `gorm:"size:64;uniqueIndex;not null" json:"chatId"`
 	TargetType      string     `gorm:"size:20;index;not null" json:"targetType"`
-	TargetUID       string     `gorm:"size:24;index" json:"targetUid"`
+	TargetUID       string     `gorm:"size:28;index" json:"targetUid"`
 	TargetLegacyID  uint       `gorm:"index" json:"targetLegacyId"`
 	TargetPhone     string     `gorm:"size:20;index" json:"targetPhone"`
 	TargetName      string     `gorm:"size:100" json:"targetName"`

@@ -12,7 +12,10 @@ function stripApiSuffix(value: string) {
 
 function normalizeRuntime(value: string) {
   const runtime = String(value || '').trim().toLowerCase();
-  if (runtime === 'invite' || runtime === 'download' || runtime === 'admin') {
+  if (runtime === 'download') {
+    return 'site';
+  }
+  if (runtime === 'invite' || runtime === 'admin' || runtime === 'site') {
     return runtime;
   }
   return '';
@@ -26,7 +29,7 @@ export default defineConfig(({ mode }) => {
   const runtimeMode =
     normalizeRuntime(env.VITE_APP_RUNTIME)
     || (env.VITE_INVITE_ONLY === 'true' ? 'invite' : '')
-    || (webPort === 1788 ? 'invite' : (webPort === 1798 ? 'download' : 'admin'));
+    || (webPort === 1888 ? 'site' : (webPort === 1788 ? 'invite' : 'admin'));
 
   const inviteGuardPlugin = {
     name: 'fixed-runtime-dev-guard',
@@ -56,7 +59,24 @@ export default defineConfig(({ mode }) => {
             pathname.startsWith('/invite/') ||
             pathname.startsWith('/coupon/')
           : pathname === '/' ||
+            pathname === '/news' ||
+            pathname.startsWith('/news/') ||
             pathname === '/download' ||
+            pathname === '/about' ||
+            pathname === '/privacy-policy' ||
+            pathname === '/disclaimer' ||
+            pathname === '/cookie-required' ||
+            pathname === '/expose' ||
+            pathname === '/expose/submit' ||
+            pathname.startsWith('/expose/') ||
+            pathname === '/exposures' ||
+            pathname === '/exposures/submit' ||
+            pathname.startsWith('/exposures/') ||
+            pathname === '/coop' ||
+            pathname === '/cooperation' ||
+            pathname === '/robots.txt' ||
+            pathname === '/sitemap.xml' ||
+            pathname === '/runtime-config.js' ||
             pathname === '/access-denied';
 
         const isFrameworkAsset = pathname.startsWith('/@vite') ||
@@ -83,7 +103,9 @@ export default defineConfig(({ mode }) => {
         res.statusCode = 302;
         res.setHeader(
           'Location',
-          runtimeMode === 'invite' ? '/access-denied?mode=invite-only' : '/access-denied?mode=download-only'
+          runtimeMode === 'invite'
+            ? '/access-denied?mode=invite-only'
+            : '/access-denied?mode=site-only'
         );
         res.end();
       });

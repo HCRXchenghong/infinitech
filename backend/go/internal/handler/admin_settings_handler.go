@@ -648,12 +648,13 @@ func (h *AdminSettingsHandler) UploadImage(c *gin.Context) {
 
 func (h *AdminSettingsHandler) GetAppDownloadConfig(c *gin.Context) {
 	data := map[string]interface{}{
-		"ios_url":         "",
-		"android_url":     "",
-		"ios_version":     "",
-		"android_version": "",
-		"latest_version":  "",
-		"updated_at":      "",
+		"ios_url":             "",
+		"android_url":         "",
+		"ios_version":         "",
+		"android_version":     "",
+		"latest_version":      "",
+		"updated_at":          "",
+		"mini_program_qr_url": "",
 	}
 	_ = h.admin.GetSetting(c.Request.Context(), "app_download_config", &data)
 	if parseString(data["updated_at"]) == "" {
@@ -679,6 +680,11 @@ func (h *AdminSettingsHandler) UpdateAppDownloadConfig(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "安卓下载链接不合法"})
 		return
 	}
+	miniProgramQrURL, err := sanitizeDownloadURL(parseString(req["mini_program_qr_url"]))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "小程序二维码地址不合法"})
+		return
+	}
 
 	updatedAt := strings.TrimSpace(parseString(req["updated_at"]))
 	if updatedAt == "" {
@@ -690,12 +696,13 @@ func (h *AdminSettingsHandler) UpdateAppDownloadConfig(c *gin.Context) {
 	}
 
 	data := map[string]interface{}{
-		"ios_url":         iosURL,
-		"android_url":     androidURL,
-		"ios_version":     strings.TrimSpace(parseString(req["ios_version"])),
-		"android_version": strings.TrimSpace(parseString(req["android_version"])),
-		"latest_version":  strings.TrimSpace(parseString(req["latest_version"])),
-		"updated_at":      updatedAt,
+		"ios_url":             iosURL,
+		"android_url":         androidURL,
+		"ios_version":         strings.TrimSpace(parseString(req["ios_version"])),
+		"android_version":     strings.TrimSpace(parseString(req["android_version"])),
+		"latest_version":      strings.TrimSpace(parseString(req["latest_version"])),
+		"updated_at":          updatedAt,
+		"mini_program_qr_url": miniProgramQrURL,
 	}
 	if data["latest_version"] == "" {
 		data["latest_version"] = firstNonEmptyString(data["android_version"], data["ios_version"])

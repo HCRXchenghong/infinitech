@@ -213,6 +213,62 @@
               placeholder="如：您好，您的骑手正在配送中。"
             />
           </el-form-item>
+          <el-form-item label="消息提示音">
+            <div style="display:grid;gap:12px;width:100%;">
+              <el-input
+                v-model="serviceSettings.message_notification_sound_url"
+                placeholder="留空时各端回退到内置 chat.mp3"
+              />
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <el-upload
+                  :show-file-list="false"
+                  :auto-upload="true"
+                  accept=".mp3,.m4a,.aac,.wav,.ogg,.amr,audio/*"
+                  :http-request="(options) => handleServiceSoundUpload('message_notification_sound_url', options)"
+                >
+                  <el-button :icon="Upload" :loading="uploadingServiceSounds.message">上传 / 替换</el-button>
+                </el-upload>
+                <el-button @click="previewServiceSound('message')">试听</el-button>
+                <el-button
+                  type="danger"
+                  plain
+                  :disabled="!serviceSettings.message_notification_sound_url"
+                  @click="clearServiceSound('message_notification_sound_url')"
+                >
+                  删除配置
+                </el-button>
+              </div>
+              <span class="form-tip-inline">用户端、商家端、骑手端、后台聊天台收到消息时统一使用这里；删除配置后回退到内置 `chat.mp3`。</span>
+            </div>
+          </el-form-item>
+          <el-form-item label="来单提示音">
+            <div style="display:grid;gap:12px;width:100%;">
+              <el-input
+                v-model="serviceSettings.order_notification_sound_url"
+                placeholder="留空时商家端和骑手端回退到内置 come.mp3"
+              />
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <el-upload
+                  :show-file-list="false"
+                  :auto-upload="true"
+                  accept=".mp3,.m4a,.aac,.wav,.ogg,.amr,audio/*"
+                  :http-request="(options) => handleServiceSoundUpload('order_notification_sound_url', options)"
+                >
+                  <el-button :icon="Upload" :loading="uploadingServiceSounds.order">上传 / 替换</el-button>
+                </el-upload>
+                <el-button @click="previewServiceSound('order')">试听</el-button>
+                <el-button
+                  type="danger"
+                  plain
+                  :disabled="!serviceSettings.order_notification_sound_url"
+                  @click="clearServiceSound('order_notification_sound_url')"
+                >
+                  删除配置
+                </el-button>
+              </div>
+              <span class="form-tip-inline">商家端、骑手端收到来单通知时统一使用这里；删除配置后回退到内置 `come.mp3`。</span>
+            </div>
+          </el-form-item>
           <el-form-item label="骑手端关于我们">
             <el-input
               v-model="serviceSettings.rider_about_summary"
@@ -811,6 +867,27 @@
               <el-button @click="openDownloadLink(appDownloadConfig.android_url, '安卓')">测试</el-button>
             </div>
           </el-form-item>
+          <el-form-item label="小程序二维码">
+            <div class="package-row">
+              <el-input v-model="appDownloadConfig.mini_program_qr_url" placeholder="请输入小程序二维码图片地址（支持 /uploads/...）" />
+              <el-upload
+                :show-file-list="false"
+                :http-request="handleMiniProgramQrUpload"
+                :before-upload="beforeMiniProgramQrUpload"
+                accept="image/*"
+              >
+                <el-button :loading="uploadingPackage.miniProgramQr">上传小程序码</el-button>
+              </el-upload>
+              <el-button @click="openDownloadLink(appDownloadConfig.mini_program_qr_url, '小程序二维码')">预览</el-button>
+            </div>
+            <div v-if="appDownloadConfig.mini_program_qr_url" style="margin-top: 12px;">
+              <img
+                :src="appDownloadConfig.mini_program_qr_url"
+                alt="小程序二维码预览"
+                style="width: 132px; height: 132px; object-fit: contain; border-radius: 12px; border: 1px solid #e5e7eb; background: #fff; padding: 8px;"
+              />
+            </div>
+          </el-form-item>
           <el-form-item label="iOS 版本">
             <el-input v-model="appDownloadConfig.ios_version" placeholder="如：2.0.1" />
           </el-form-item>
@@ -1030,6 +1107,7 @@ const {
   DEFAULT_WEATHER_CONFIG,
   weather,
   serviceSettings,
+  uploadingServiceSounds,
   charitySettings,
   vipSettings,
   wechatLoginConfig,
@@ -1079,6 +1157,9 @@ const {
   saveSms,
   saveWeather,
   saveServiceSettings,
+  previewServiceSound,
+  handleServiceSoundUpload,
+  clearServiceSound,
   addRiderReportReason,
   removeRiderReportReason,
   addRiderInsuranceCoverage,
@@ -1105,6 +1186,8 @@ const {
   saveAppDownload,
   beforePackageUpload,
   handlePackageUpload,
+  beforeMiniProgramQrUpload,
+  handleMiniProgramQrUpload,
   openDownloadLink,
   openClearAllDataDialog,
   confirmClearAllData,

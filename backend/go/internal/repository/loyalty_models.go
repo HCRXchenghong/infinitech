@@ -10,6 +10,7 @@ type CooperationRequest struct {
 	ContactName     string    `gorm:"size:50" json:"contact_name"`
 	ContactPhone    string    `gorm:"size:20" json:"contact_phone"`
 	CooperationType string    `gorm:"size:50" json:"cooperation_type"`
+	SourceChannel   string    `gorm:"size:40;index;default:'general'" json:"source_channel"`
 	City            string    `gorm:"size:50" json:"city"`
 	Description     string    `gorm:"type:text" json:"description"`
 	Status          string    `gorm:"size:20;default:'pending'" json:"status"`

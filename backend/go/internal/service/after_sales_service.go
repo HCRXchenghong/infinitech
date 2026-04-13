@@ -7,7 +7,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/yuexiang/go-api/internal/idkit"
@@ -23,8 +22,6 @@ type AfterSalesService struct {
 	opNotification *OpNotificationService
 	notifier       *RealtimeNotificationService
 }
-
-var afterSalesNoSeq atomic.Uint32
 
 func NewAfterSalesService(
 	repo repository.AfterSalesRepository,
@@ -179,7 +176,8 @@ func (s *AfterSalesService) Create(ctx context.Context, data interface{}) (inter
 	selectedProductsRaw, _ := json.Marshal(selectedProducts)
 	evidenceImagesRaw, _ := json.Marshal(evidenceImages)
 
-	requestNo := generateAfterSalesNo()
+	now := time.Now()
+	requestNo := fallbackAfterSalesNo(now)
 	entity := &repository.AfterSalesRequest{
 		RequestNo:             requestNo,
 		OrderID:               uint(orderIDUint64),
@@ -203,12 +201,15 @@ func (s *AfterSalesService) Create(ctx context.Context, data interface{}) (inter
 		entity.OrderNo = strconv.FormatUint(uint64(order.ID), 10)
 	}
 	if s.db != nil {
-		uid, tsid, idErr := idkit.NextIdentityForTable(ctx, s.db, entity.TableName(), time.Now())
+		uid, tsid, idErr := idkit.NextIdentityForTable(ctx, s.db, entity.TableName(), now)
 		if idErr != nil {
 			return nil, fmt.Errorf("allocate after-sales identity failed: %w", idErr)
 		}
 		entity.UID = uid
 		entity.TSID = tsid
+		if built := buildAfterSalesNoFromUID(uid); built != "" {
+			entity.RequestNo = built
+		}
 	}
 
 	if err := s.repo.Create(ctx, entity); err != nil {
@@ -739,12 +740,6 @@ func (s *AfterSalesService) resolveRedeemStateSnapshot(ctx context.Context, orde
 		return "redeemed", nil
 	}
 	return "unredeemed", nil
-}
-
-func generateAfterSalesNo() string {
-	now := time.Now()
-	seq := afterSalesNoSeq.Add(1) % 1000
-	return fmt.Sprintf("AS%s%09d%03d", now.Format("20060102150405"), now.Nanosecond(), seq)
 }
 
 func isValidAfterSalesType(v string) bool {

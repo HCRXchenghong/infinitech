@@ -3,8 +3,9 @@ import Login from '@/views/Login.vue'
 import InviteLanding from '@/views/InviteLanding.vue'
 import CouponLanding from '@/views/CouponLanding.vue'
 import AccessDenied from '@/views/AccessDenied.vue'
-import AppDownloadLanding from '@/views/AppDownloadLanding.vue'
 import { getAppRuntime, getToken } from '@/utils/runtime'
+import { applyOfficialSiteSeo, clearOfficialSiteSeo, resolveOfficialSiteSeoConfig } from '@/utils/officialSiteSeo'
+import { getSiteCookieConsent } from '@/utils/siteCookieConsent'
 
 const protectedRoutes = [
   { path: '/dashboard', name: 'dashboard', title: '仪表盘' },
@@ -26,6 +27,7 @@ const protectedRoutes = [
   { path: '/rtc-call-audits', name: 'rtc-call-audits', title: 'RTC 通话审计' },
   { path: '/after-sales', name: 'after-sales', title: '售后服务' },
   { path: '/operations-center', name: 'operations-center', title: '运营管理' },
+  { path: '/official-site-center', name: 'official-site-center', title: '官网中心' },
   { path: '/finance-center', name: 'finance-center', title: '财务中心' },
   { path: '/transaction-logs', name: 'transaction-logs', title: '财务日志' },
   { path: '/payment-center', name: 'payment-center', title: '支付中心' },
@@ -61,6 +63,7 @@ const protectedViewMap = {
   'rtc-call-audits': () => import('@/views/RTCCallAudits.vue'),
   'after-sales': () => import('@/views/AfterSales.vue'),
   'operations-center': () => import('@/views/OperationsCenter.vue'),
+  'official-site-center': () => import('@/views/OfficialSiteCenter.vue'),
   'finance-center': () => import('@/views/FinanceCenter.vue'),
   'transaction-logs': () => import('@/views/TransactionLogs.vue'),
   'payment-center': () => import('@/views/PaymentCenter.vue'),
@@ -80,13 +83,89 @@ const routes = [
   { path: '/login', name: 'login', component: Login, meta: { title: '登录' } },
   { path: '/invite/:token', name: 'invite-landing', component: InviteLanding, meta: { title: '邀请入驻' } },
   { path: '/coupon/:token', name: 'coupon-landing', component: CouponLanding, meta: { title: '优惠券领取' } },
-  { path: '/download', name: 'download-landing', component: AppDownloadLanding, meta: { title: 'APP 下载' } },
   { path: '/access-denied', name: 'access-denied', component: AccessDenied, meta: { title: '访问受限' } },
   {
     path: '/',
-    name: 'home',
-    redirect: '/dashboard',
-    meta: { requiresAuth: true, title: '首页' },
+    component: () => import('@/views/OfficialSiteLayout.vue'),
+    meta: { publicSite: true, siteRuntimeOnly: true },
+    children: [
+      {
+        path: '',
+        name: 'site-home',
+        component: () => import('@/views/OfficialSiteHome.vue'),
+        meta: { title: '首页', publicSite: true, siteRuntimeOnly: true },
+      },
+      {
+        path: 'news',
+        name: 'site-news',
+        component: () => import('@/views/OfficialSiteNews.vue'),
+        meta: { title: '新闻资讯', publicSite: true, siteRuntimeOnly: true },
+      },
+      {
+        path: 'news/:id',
+        name: 'site-news-detail',
+        component: () => import('@/views/OfficialSiteNewsDetail.vue'),
+        meta: { title: '新闻详情', publicSite: true, siteRuntimeOnly: true },
+      },
+      {
+        path: 'download',
+        name: 'site-download',
+        component: () => import('@/views/AppDownloadLanding.vue'),
+        meta: { title: '平台下载', publicSite: true, siteRuntimeOnly: true },
+      },
+      {
+        path: 'about',
+        name: 'site-about',
+        component: () => import('@/views/OfficialSiteAbout.vue'),
+        meta: { title: '关于我们', publicSite: true, siteRuntimeOnly: true },
+      },
+      {
+        path: 'privacy-policy',
+        name: 'site-privacy-policy',
+        component: () => import('@/views/OfficialSitePrivacyPolicy.vue'),
+        meta: { title: '隐私政策', publicSite: true, siteRuntimeOnly: true },
+      },
+      {
+        path: 'disclaimer',
+        name: 'site-disclaimer',
+        component: () => import('@/views/OfficialSiteDisclaimer.vue'),
+        meta: { title: '免责声明', publicSite: true, siteRuntimeOnly: true },
+      },
+      {
+        path: 'cookie-required',
+        name: 'site-cookie-required',
+        component: () => import('@/views/OfficialSiteCookieRequired.vue'),
+        meta: { title: 'Cookie 说明', publicSite: true, siteRuntimeOnly: true },
+      },
+      {
+        path: 'expose',
+        alias: ['/exposures'],
+        name: 'site-expose',
+        component: () => import('@/views/OfficialSiteExposureBoard.vue'),
+        meta: { title: '曝光店铺', publicSite: true, siteRuntimeOnly: true },
+      },
+      {
+        path: 'expose/submit',
+        alias: ['/exposures/submit'],
+        name: 'site-expose-submit',
+        component: () => import('@/views/OfficialSiteExposureBoard.vue'),
+        meta: { title: '提交曝光', publicSite: true, siteRuntimeOnly: true },
+      },
+      {
+        path: 'expose/:id',
+        alias: ['/exposures/:id'],
+        name: 'site-expose-detail',
+        component: () => import('@/views/OfficialSiteExposureDetail.vue'),
+        meta: { title: '曝光详情', publicSite: true, siteRuntimeOnly: true },
+      },
+      {
+        path: 'coop',
+        alias: ['/cooperation'],
+        name: 'site-coop',
+        component: () => import('@/views/OfficialSiteCooperation.vue'),
+        meta: { title: '商务合作', publicSite: true, siteRuntimeOnly: true },
+      },
+    ],
   },
   {
     path: '/merchants/:merchantId/shops/:shopId/menu',
@@ -162,10 +241,35 @@ function isCouponClaimPath(path) {
   return typeof path === 'string' && path.startsWith('/coupon/')
 }
 
+function isSitePath(path) {
+  return path === '/' ||
+    path === '/news' ||
+    path.startsWith('/news/') ||
+    path === '/download' ||
+    path === '/about' ||
+    path === '/privacy-policy' ||
+    path === '/disclaimer' ||
+    path === '/cookie-required' ||
+    path === '/expose' ||
+    path === '/expose/submit' ||
+    path.startsWith('/expose/') ||
+    path === '/exposures' ||
+    path === '/exposures/submit' ||
+    path.startsWith('/exposures/') ||
+    path === '/coop' ||
+    path === '/cooperation'
+}
+
 function resolveDocumentTitle(route) {
   const runtime = getAppRuntime()
   const routeTitle = typeof route?.meta?.title === 'string' ? route.meta.title.trim() : ''
-  if (runtime === 'invite' || runtime === 'download') {
+  if (runtime === 'site') {
+    if (routeTitle) {
+      return `悦享e食 - ${routeTitle}`
+    }
+    return '悦享e食'
+  }
+  if (runtime === 'invite') {
     if (routeTitle) {
       return `悦享e食 - ${routeTitle}`
     }
@@ -182,8 +286,10 @@ router.beforeEach((to, from, next) => {
   const invitePath = isInvitePath(to.path)
   const downloadPath = isDownloadPath(to.path)
   const couponClaimPath = isCouponClaimPath(to.path)
+  const sitePath = isSitePath(to.path)
   const accessDeniedRoute = to.name === 'access-denied'
-  const publicRuntime = runtime === 'invite' || runtime === 'download'
+  const publicRuntime = runtime === 'invite' || runtime === 'site'
+  const siteMatchedRoute = to.matched.some((record) => record.meta?.publicSite)
 
   if (runtime === 'invite' && to.path === '/') {
     next({ name: 'access-denied', query: { mode: 'invite-only' }, replace: true })
@@ -193,16 +299,35 @@ router.beforeEach((to, from, next) => {
     next({ name: 'access-denied', query: { mode: 'invite-only' }, replace: true })
     return
   }
-  if (runtime === 'download' && to.path === '/') {
-    next({ name: 'download-landing', replace: true })
+  if (runtime === 'site' && accessDeniedRoute) {
+    next({ name: 'site-home', replace: true })
     return
   }
-  if (runtime === 'download' && (invitePath || couponClaimPath || (!downloadPath && !accessDeniedRoute))) {
-    next({ name: 'access-denied', query: { mode: 'download-only' }, replace: true })
+  if (runtime === 'site' && !siteMatchedRoute && !sitePath) {
+    next({ name: 'site-home', replace: true })
     return
   }
 
+  if (runtime === 'site' && siteMatchedRoute) {
+    const siteCookieConsent = getSiteCookieConsent()
+    if (siteCookieConsent === 'accepted' && to.name === 'site-cookie-required') {
+      const redirectPath = typeof to.query.redirect === 'string' && to.query.redirect.startsWith('/')
+        ? to.query.redirect
+        : '/'
+      next({ path: redirectPath, replace: true })
+      return
+    }
+  }
+
   if (runtime === 'admin' && (invitePath || couponClaimPath || downloadPath)) {
+    next({ name: 'access-denied', query: { mode: 'admin-only' }, replace: true })
+    return
+  }
+  if (runtime === 'admin' && to.path === '/') {
+    next({ name: 'dashboard', replace: true })
+    return
+  }
+  if (runtime === 'admin' && sitePath) {
     next({ name: 'access-denied', query: { mode: 'admin-only' }, replace: true })
     return
   }
@@ -220,6 +345,12 @@ router.afterEach((to) => {
   if (typeof document === 'undefined') {
     return
   }
+  const siteMatchedRoute = to.matched.some((record) => record.meta?.publicSite)
+  if (siteMatchedRoute) {
+    applyOfficialSiteSeo(resolveOfficialSiteSeoConfig(to))
+    return
+  }
+  clearOfficialSiteSeo()
   document.title = resolveDocumentTitle(to)
 })
 

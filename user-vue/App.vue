@@ -7,12 +7,15 @@
 <script lang="ts">
 import Vue from 'vue'
 import { bootstrapUserApp, handleUserAppShow } from '@/shared-ui/app-core/bootstrap'
+import { bindNotificationSoundBridge } from '@/shared-ui/notification-sound.js'
 
 export default Vue.extend({
   onLaunch() {
+    bindNotificationSoundBridge()
     void bootstrapUserApp()
   },
   onShow() {
+    bindNotificationSoundBridge()
     void handleUserAppShow()
   }
 })

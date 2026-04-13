@@ -25,6 +25,7 @@ type Services struct {
 	FeaturedProduct   FeaturedProductService
 	Points            *PointsService
 	Cooperation       *CooperationService
+	OfficialSite      *OfficialSiteService
 	Invite            *InviteService
 	OnboardingInvite  *OnboardingInviteService
 	RiskControl       *RiskControlService
@@ -83,6 +84,7 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 		FeaturedProduct:   NewFeaturedProductService(repos.FeaturedProduct),
 		Points:            pointsService,
 		Cooperation:       NewCooperationService(repos.DB),
+		OfficialSite:      NewOfficialSiteService(repos.DB, realtimeNotifyService),
 		Invite:            NewInviteService(repos.DB, pointsService),
 		OnboardingInvite:  NewOnboardingInviteService(repos.DB),
 		RiskControl:       riskControlService,

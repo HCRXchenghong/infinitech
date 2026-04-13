@@ -1,12 +1,16 @@
+const UID_PATTERN = /^(?:\d{14}|\d{18})$/
+const TSID_PATTERN = /^(?:\d{24}|\d{28})$/
+
 /**
- * 格式化用户ID
- * @param id 原始ID
- * @param role 角色类型: 6-用户, 7-骑手, 8-管理员, 9-商户
- * @returns 格式化后的ID: 250724006XXXXXX
+ * 优先显示真实统一 ID；如果还是 legacy 数值，则直接回显，避免拼装伪 ID。
  */
-export function formatUserId(id: number | string, role: number): string {
-  const idStr = String(id).padStart(6, '0')
-  return `25072400${role}${idStr}`
+export function formatUserId(id: number | string, _role: number): string {
+  const raw = String(id ?? '').trim()
+  if (!raw) return ''
+  if (UID_PATTERN.test(raw) || TSID_PATTERN.test(raw)) {
+    return raw
+  }
+  return raw
 }
 
 /**

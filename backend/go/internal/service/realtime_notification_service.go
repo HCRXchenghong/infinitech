@@ -45,6 +45,11 @@ type RealtimeBroadcastRecipient struct {
 	Role string
 }
 
+type SocketCustomRecipient struct {
+	Role   string
+	UserID string
+}
+
 func NewRealtimeNotificationService(db *gorm.DB, cfg *config.Config, mobilePush *MobilePushService) *RealtimeNotificationService {
 	timeout := 5 * time.Second
 	socketURL := ""
@@ -83,6 +88,36 @@ func (s *RealtimeNotificationService) BroadcastPlatformEventBestEffort(ctx conte
 	if err := s.BroadcastPlatformEvent(ctx, recipients, envelope); err != nil {
 		log.Printf("⚠️ platform realtime broadcast failed: %v", err)
 	}
+}
+
+func (s *RealtimeNotificationService) PublishSocketCustomEventBestEffort(ctx context.Context, eventName string, recipients []SocketCustomRecipient, payload map[string]interface{}) {
+	if s == nil {
+		return
+	}
+	if err := s.PublishSocketCustomEvent(ctx, eventName, recipients, payload); err != nil {
+		log.Printf("⚠️ custom realtime socket event dispatch failed: %v", err)
+	}
+}
+
+func (s *RealtimeNotificationService) PublishSocketCustomEvent(ctx context.Context, eventName string, recipients []SocketCustomRecipient, payload map[string]interface{}) error {
+	if s == nil {
+		return nil
+	}
+
+	normalizedRecipients := normalizeRealtimeSocketRecipients(recipients)
+	if len(normalizedRecipients) == 0 {
+		return nil
+	}
+
+	socketRecipients := make([]socketRealtimeRecipient, 0, len(normalizedRecipients))
+	for _, recipient := range normalizedRecipients {
+		socketRecipients = append(socketRecipients, socketRealtimeRecipient{
+			Role:   recipient.Role,
+			UserID: recipient.UserID,
+		})
+	}
+
+	return s.publishSocketNamedEvent(ctx, eventName, socketRecipients, payload)
 }
 
 func (s *RealtimeNotificationService) BroadcastPlatformEvent(ctx context.Context, recipients []RealtimeBroadcastRecipient, envelope RealtimeNotificationEnvelope) error {
@@ -170,6 +205,33 @@ func normalizeRealtimeBroadcastRecipients(recipients []RealtimeBroadcastRecipien
 		}
 		seen[role] = struct{}{}
 		normalized = append(normalized, RealtimeBroadcastRecipient{Role: role})
+	}
+	return normalized
+}
+
+func normalizeRealtimeSocketRecipients(recipients []SocketCustomRecipient) []SocketCustomRecipient {
+	if len(recipients) == 0 {
+		return nil
+	}
+
+	normalized := make([]SocketCustomRecipient, 0, len(recipients))
+	seen := make(map[string]struct{}, len(recipients))
+	for _, recipient := range recipients {
+		role := normalizeRealtimeSocketRole(recipient.Role)
+		userID := strings.TrimSpace(recipient.UserID)
+		if role == "" || userID == "" {
+			continue
+		}
+
+		key := role + "|" + userID
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		normalized = append(normalized, SocketCustomRecipient{
+			Role:   role,
+			UserID: userID,
+		})
 	}
 	return normalized
 }
@@ -359,34 +421,60 @@ func (s *RealtimeNotificationService) queuePushDeliveries(ctx context.Context, r
 }
 
 func (s *RealtimeNotificationService) publishSocketEvent(ctx context.Context, recipients []RealtimeRecipient, envelope RealtimeNotificationEnvelope) error {
-	if s == nil || s.socketURL == "" || s.socketSecret == "" || s.requestClient == nil {
-		return nil
-	}
-
-	type socketRecipient struct {
-		Role   string `json:"role"`
-		UserID string `json:"userId"`
-	}
-
-	socketRecipients := make([]socketRecipient, 0, len(recipients))
+	socketRecipients := make([]socketRealtimeRecipient, 0, len(recipients))
 	for _, recipient := range recipients {
 		role := normalizeRealtimeSocketRole(recipient.UserType)
 		if role == "" {
 			continue
 		}
-		socketRecipients = append(socketRecipients, socketRecipient{
+		socketRecipients = append(socketRecipients, socketRealtimeRecipient{
 			Role:   role,
 			UserID: strings.TrimSpace(recipient.UserID),
 		})
 	}
-	if len(socketRecipients) == 0 {
+	return s.publishSocketNamedEvent(ctx, "business_notification", socketRecipients, envelope.Payload)
+}
+
+func (s *RealtimeNotificationService) publishSocketBroadcastEvent(ctx context.Context, recipients []RealtimeBroadcastRecipient, envelope RealtimeNotificationEnvelope) error {
+	socketRecipients := make([]socketRealtimeRecipient, 0, len(recipients))
+	for _, recipient := range recipients {
+		role := normalizeRealtimeSocketRole(recipient.Role)
+		if role == "" {
+			continue
+		}
+		socketRecipients = append(socketRecipients, socketRealtimeRecipient{
+			Role:   role,
+			UserID: "*",
+		})
+	}
+	return s.publishSocketNamedEvent(ctx, "business_notification", socketRecipients, envelope.Payload)
+}
+
+type socketRealtimeRecipient struct {
+	Role   string `json:"role"`
+	UserID string `json:"userId"`
+}
+
+func (s *RealtimeNotificationService) publishSocketNamedEvent(ctx context.Context, eventName string, recipients []socketRealtimeRecipient, payload map[string]interface{}) error {
+	if s == nil || s.socketURL == "" || s.socketSecret == "" || s.requestClient == nil {
 		return nil
 	}
 
+	eventName = strings.TrimSpace(eventName)
+	if eventName == "" {
+		return fmt.Errorf("%w: eventName is required", ErrInvalidArgument)
+	}
+	if len(recipients) == 0 {
+		return nil
+	}
+	if payload == nil {
+		payload = map[string]interface{}{}
+	}
+
 	body, err := json.Marshal(map[string]interface{}{
-		"eventName":  "business_notification",
-		"recipients": socketRecipients,
-		"payload":    envelope.Payload,
+		"eventName":  eventName,
+		"recipients": recipients,
+		"payload":    payload,
 	})
 	if err != nil {
 		return err
@@ -414,63 +502,11 @@ func (s *RealtimeNotificationService) publishSocketEvent(ctx context.Context, re
 	return fmt.Errorf("socket realtime publish failed with status %d", resp.StatusCode)
 }
 
-func (s *RealtimeNotificationService) publishSocketBroadcastEvent(ctx context.Context, recipients []RealtimeBroadcastRecipient, envelope RealtimeNotificationEnvelope) error {
-	if s == nil || s.socketURL == "" || s.socketSecret == "" || s.requestClient == nil {
-		return nil
-	}
-
-	type socketRecipient struct {
-		Role   string `json:"role"`
-		UserID string `json:"userId"`
-	}
-
-	socketRecipients := make([]socketRecipient, 0, len(recipients))
-	for _, recipient := range recipients {
-		role := normalizeRealtimeSocketRole(recipient.Role)
-		if role == "" {
-			continue
-		}
-		socketRecipients = append(socketRecipients, socketRecipient{
-			Role:   role,
-			UserID: "*",
-		})
-	}
-	if len(socketRecipients) == 0 {
-		return nil
-	}
-
-	body, err := json.Marshal(map[string]interface{}{
-		"eventName":  "business_notification",
-		"recipients": socketRecipients,
-		"payload":    envelope.Payload,
-	})
-	if err != nil {
-		return err
-	}
-
-	requestCtx := ctx
-	if requestCtx == nil {
-		requestCtx = context.Background()
-	}
-	req, err := http.NewRequestWithContext(requestCtx, http.MethodPost, s.socketURL+"/api/realtime/publish", bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.Header.Set("Authorization", "Bearer "+s.socketSecret)
-
-	resp, err := s.requestClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		return nil
-	}
-	return fmt.Errorf("socket realtime broadcast failed with status %d", resp.StatusCode)
-}
-
 func normalizeRealtimeSocketRole(userType string) string {
+	switch strings.ToLower(strings.TrimSpace(userType)) {
+	case "site_visitor":
+		return "site_visitor"
+	}
 	switch normalizeRealtimeUserType(userType) {
 	case "customer":
 		return "user"

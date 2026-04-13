@@ -3,7 +3,7 @@ import { logger } from './logger.js';
 function normalizeNotifyRole(value) {
   const role = String(value || '').trim().toLowerCase();
   if (role === 'customer') return 'user';
-  if (role === 'user' || role === 'rider' || role === 'merchant' || role === 'admin') {
+  if (role === 'user' || role === 'rider' || role === 'merchant' || role === 'admin' || role === 'site_visitor') {
     return role;
   }
   return '';

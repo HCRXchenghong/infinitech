@@ -15,12 +15,14 @@ import { registerCurrentPushDevice, clearPushRegistrationState } from '@/shared-
 import { startPushEventBridge } from '@/shared-ui/push-events'
 import { connectCurrentRealtimeChannel, clearRealtimeState } from '@/shared-ui/realtime-notify'
 import { ensureUserRTCInviteBridge, disconnectUserRTCInviteBridge } from '@/shared-ui/rtc-contact.js'
+import { bindNotificationSoundBridge } from '@/shared-ui/notification-sound.js'
 
 export default Vue.extend({
   onLaunch() {
     // 0. 检查版本并清除缓存（如果需要）
     checkAndClearCacheIfNeeded()
     void startPushEventBridge()
+    bindNotificationSoundBridge()
 
     // 1. 安装请求拦截器（必须最先执行）
     setupRequestInterceptor()
@@ -146,6 +148,7 @@ export default Vue.extend({
     }
   },
   onShow() {
+    bindNotificationSoundBridge()
     void this.syncPushRegistration()
     void this.syncRealtimeNotifyBridge()
     void this.syncRTCInviteBridge()
@@ -177,4 +180,3 @@ export default Vue.extend({
 
 /* 有自定义 header 的页面，header 会延伸到状态栏下方，不需要额外 padding */
 </style>
-

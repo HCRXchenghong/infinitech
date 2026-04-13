@@ -218,7 +218,7 @@ async function handleRegister() {
 
 function handleAppClick(platform) {
   if (platform === 'app') {
-    window.location.href = buildRuntimeUrl('download', '/download');
+    window.location.href = buildRuntimeUrl('site', '/download');
     return;
   }
   ElMessage.info('请在微信中搜索“悦享e食”小程序');
