@@ -20,6 +20,14 @@ func NewWalletHandler(wallet *service.WalletService) *WalletHandler {
 	return &WalletHandler{wallet: wallet}
 }
 
+func respondWalletInvalidRequest(c *gin.Context, message string) {
+	respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, message, nil)
+}
+
+func respondWalletMirroredSuccess(c *gin.Context, message string, data interface{}) {
+	respondMirroredSuccessEnvelope(c, message, data)
+}
+
 func (h *WalletHandler) GetBalance(c *gin.Context) {
 	userID := strings.TrimSpace(c.Query("userId"))
 	if userID == "" {
@@ -35,13 +43,13 @@ func (h *WalletHandler) GetBalance(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "钱包余额加载成功", result)
 }
 
 func (h *WalletHandler) PayOrder(c *gin.Context) {
 	var req service.PayOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondWalletInvalidRequest(c, "invalid request")
 		return
 	}
 	req.IdempotencyKey = resolveIdempotencyKey(req.IdempotencyKey, c.GetHeader("Idempotency-Key"))
@@ -51,7 +59,7 @@ func (h *WalletHandler) PayOrder(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "订单支付发起成功", result)
 }
 
 // Payment is the user-facing wallet payment endpoint (alias for PayOrder).
@@ -62,7 +70,7 @@ func (h *WalletHandler) Payment(c *gin.Context) {
 func (h *WalletHandler) Recharge(c *gin.Context) {
 	var req service.RechargeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondWalletInvalidRequest(c, "invalid request")
 		return
 	}
 	req.IdempotencyKey = resolveIdempotencyKey(req.IdempotencyKey, c.GetHeader("Idempotency-Key"))
@@ -72,7 +80,7 @@ func (h *WalletHandler) Recharge(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "余额充值发起成功", result)
 }
 
 func (h *WalletHandler) GetPaymentOptions(c *gin.Context) {
@@ -86,7 +94,7 @@ func (h *WalletHandler) GetPaymentOptions(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "支付方式加载成功", result)
 }
 
 func (h *WalletHandler) GetWithdrawOptions(c *gin.Context) {
@@ -99,13 +107,13 @@ func (h *WalletHandler) GetWithdrawOptions(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "提现方式加载成功", result)
 }
 
 func (h *WalletHandler) PreviewWithdrawFee(c *gin.Context) {
 	var req service.WithdrawFeePreviewRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondWalletInvalidRequest(c, "invalid request")
 		return
 	}
 	result, err := h.wallet.PreviewWithdrawFee(c.Request.Context(), req)
@@ -113,13 +121,13 @@ func (h *WalletHandler) PreviewWithdrawFee(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "提现手续费试算成功", result)
 }
 
 func (h *WalletHandler) Withdraw(c *gin.Context) {
 	var req service.WithdrawRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondWalletInvalidRequest(c, "invalid request")
 		return
 	}
 	req.IdempotencyKey = resolveIdempotencyKey(req.IdempotencyKey, c.GetHeader("Idempotency-Key"))
@@ -129,7 +137,7 @@ func (h *WalletHandler) Withdraw(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "提现申请提交成功", result)
 }
 
 func (h *WalletHandler) GetRiderDepositStatus(c *gin.Context) {
@@ -139,13 +147,13 @@ func (h *WalletHandler) GetRiderDepositStatus(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "骑手保证金状态加载成功", result)
 }
 
 func (h *WalletHandler) CreateRiderDepositPayIntent(c *gin.Context) {
 	var req service.RiderDepositPayRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondWalletInvalidRequest(c, "invalid request")
 		return
 	}
 	req.IdempotencyKey = resolveIdempotencyKey(req.IdempotencyKey, c.GetHeader("Idempotency-Key"))
@@ -154,13 +162,13 @@ func (h *WalletHandler) CreateRiderDepositPayIntent(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "骑手保证金支付发起成功", result)
 }
 
 func (h *WalletHandler) WithdrawRiderDeposit(c *gin.Context) {
 	var req service.RiderDepositWithdrawRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondWalletInvalidRequest(c, "invalid request")
 		return
 	}
 	req.IdempotencyKey = resolveIdempotencyKey(req.IdempotencyKey, c.GetHeader("Idempotency-Key"))
@@ -169,7 +177,7 @@ func (h *WalletHandler) WithdrawRiderDeposit(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "骑手保证金提现提交成功", result)
 }
 
 func (h *WalletHandler) ListTransactions(c *gin.Context) {
@@ -203,7 +211,7 @@ func (h *WalletHandler) ListTransactions(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "钱包流水加载成功", result)
 }
 
 func (h *WalletHandler) GetTransactionStatus(c *gin.Context) {
@@ -217,7 +225,7 @@ func (h *WalletHandler) GetTransactionStatus(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "交易状态加载成功", result)
 }
 
 func (h *WalletHandler) GetRechargeStatus(c *gin.Context) {
@@ -232,7 +240,7 @@ func (h *WalletHandler) GetRechargeStatus(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "充值状态加载成功", result)
 }
 
 func (h *WalletHandler) GetWithdrawStatus(c *gin.Context) {
@@ -247,7 +255,7 @@ func (h *WalletHandler) GetWithdrawStatus(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "提现状态加载成功", result)
 }
 
 func resolveIdempotencyKey(bodyKey, headerKey string) string {
@@ -339,17 +347,22 @@ func digitsOnly(text string) bool {
 
 func writeWalletServiceError(c *gin.Context, err error) {
 	status := http.StatusInternalServerError
+	code := responseCodeInternalError
 	switch {
 	case errors.Is(err, service.ErrInvalidArgument):
 		status = http.StatusBadRequest
+		code = responseCodeInvalidArgument
 	case errors.Is(err, service.ErrRiskControl):
 		status = http.StatusForbidden
+		code = responseCodeForbidden
 	case errors.Is(err, service.ErrInsufficientBalance):
 		status = http.StatusConflict
+		code = responseCodeConflict
 	case errors.Is(err, service.ErrConcurrentBalanceUpdate):
 		status = http.StatusConflict
+		code = responseCodeConflict
 	}
-	c.JSON(status, gin.H{"success": false, "error": err.Error()})
+	respondErrorEnvelope(c, status, code, err.Error(), nil)
 }
 
 func (h *WalletHandler) ListWithdrawRecords(c *gin.Context) {
@@ -371,5 +384,5 @@ func (h *WalletHandler) ListWithdrawRecords(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "提现记录加载成功", result)
 }

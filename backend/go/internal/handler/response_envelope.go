@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -46,6 +47,26 @@ func legacyEnvelopeFields(data interface{}) gin.H {
 	default:
 		return nil
 	}
+}
+
+func mirroredEnvelopeFields(data interface{}) gin.H {
+	if legacy := legacyEnvelopeFields(data); legacy != nil {
+		return legacy
+	}
+	if data == nil {
+		return nil
+	}
+
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return nil
+	}
+
+	legacy := map[string]interface{}{}
+	if err := json.Unmarshal(raw, &legacy); err != nil {
+		return nil
+	}
+	return gin.H(legacy)
 }
 
 func normalizeResponseMessage(message string, status int) string {
@@ -102,7 +123,7 @@ func respondSuccessEnvelope(c *gin.Context, message string, data interface{}, le
 }
 
 func respondMirroredSuccessEnvelope(c *gin.Context, message string, data interface{}) {
-	respondSuccessEnvelope(c, message, data, legacyEnvelopeFields(data))
+	respondSuccessEnvelope(c, message, data, mirroredEnvelopeFields(data))
 }
 
 func respondPaginatedEnvelope(c *gin.Context, code, message, listKey string, items interface{}, total int64, page, limit int) {

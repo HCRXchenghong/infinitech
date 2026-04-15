@@ -101,28 +101,8 @@ func respondAdminSettingsSuccess(c *gin.Context, message string, data interface{
 	respondSuccessEnvelope(c, message, data, nil)
 }
 
-func adminSettingsLegacyEnvelopeFields(data interface{}) gin.H {
-	if legacy := legacyEnvelopeFields(data); legacy != nil {
-		return legacy
-	}
-	if data == nil {
-		return nil
-	}
-
-	raw, err := json.Marshal(data)
-	if err != nil {
-		return nil
-	}
-
-	legacy := map[string]interface{}{}
-	if err := json.Unmarshal(raw, &legacy); err != nil {
-		return nil
-	}
-	return gin.H(legacy)
-}
-
 func respondAdminSettingsMirroredSuccess(c *gin.Context, message string, data interface{}) {
-	respondSuccessEnvelope(c, message, data, adminSettingsLegacyEnvelopeFields(data))
+	respondMirroredSuccessEnvelope(c, message, data)
 }
 
 // Debug mode

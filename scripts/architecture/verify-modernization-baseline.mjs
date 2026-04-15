@@ -350,6 +350,22 @@ assertContains(
   'respondAdminSettingsMirroredSuccess(c, "天气信息加载成功", normalized)',
 );
 assertContains(
+  "backend/go/internal/handler/wallet_handler.go",
+  'respondWalletMirroredSuccess(c, "钱包余额加载成功", result)',
+);
+assertContains(
+  "backend/go/internal/handler/wallet_handler.go",
+  "respondErrorEnvelope(c, status, code, err.Error(), nil)",
+);
+assertContains(
+  "backend/go/internal/handler/financial_handler.go",
+  'respondWalletMirroredSuccess(c, "财务概览加载成功", result)',
+);
+assertContains(
+  "backend/go/internal/handler/payment_handler.go",
+  'respondWalletMirroredSuccess(c, "订单支付发起成功", result)',
+);
+assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",
   'respondAdminSettingsSuccess(c, "APP 下载配置加载成功", data)',
 );
@@ -784,6 +800,10 @@ assertContains(
 assertContains(
   "admin-vue/src/views/FinanceCenter.vue",
   "const payload = extractEnvelopeData(res.data) || {};",
+);
+assertContains(
+  "admin-vue/src/views/FinanceCenter.vue",
+  "const payload = extractEnvelopeData(res.data) || res.data || {};",
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers/sms.js",

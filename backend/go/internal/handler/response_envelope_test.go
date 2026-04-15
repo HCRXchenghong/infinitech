@@ -96,7 +96,7 @@ func TestRespondMirroredSuccessEnvelopeMirrorsMapPayloadToLegacyFields(t *testin
 	}
 }
 
-func TestRespondAdminSettingsMirroredSuccessMirrorsStructPayloadToLegacyFields(t *testing.T) {
+func TestRespondMirroredSuccessEnvelopeMirrorsStructPayloadToLegacyFields(t *testing.T) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
@@ -110,7 +110,7 @@ func TestRespondAdminSettingsMirroredSuccessMirrorsStructPayloadToLegacyFields(t
 	ctx.Request = httptest.NewRequest(http.MethodGet, "/test", nil)
 	ctx.Set("request_id", "req-test-005")
 
-	respondAdminSettingsMirroredSuccess(ctx, "mirrored-struct", payload{
+	respondMirroredSuccessEnvelope(ctx, "mirrored-struct", payload{
 		ServicePhone: "400-800-1234",
 		RTCEnabled:   true,
 	})

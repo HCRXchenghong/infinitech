@@ -26,7 +26,7 @@ func (h *FinancialHandler) GetOverview(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "财务概览加载成功", result)
 }
 
 func (h *FinancialHandler) GetStatistics(c *gin.Context) {
@@ -39,7 +39,7 @@ func (h *FinancialHandler) GetStatistics(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "财务统计加载成功", result)
 }
 
 func (h *FinancialHandler) GetUserDetails(c *gin.Context) {
@@ -58,7 +58,7 @@ func (h *FinancialHandler) GetUserDetails(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "财务用户明细加载成功", result)
 }
 
 func (h *FinancialHandler) Export(c *gin.Context) {
@@ -73,7 +73,7 @@ func (h *FinancialHandler) Export(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "财务导出数据加载成功", result)
 }
 
 func (h *FinancialHandler) GetTransactionLogs(c *gin.Context) {
@@ -91,7 +91,7 @@ func (h *FinancialHandler) GetTransactionLogs(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "财务流水加载成功", result)
 }
 
 type deleteTransactionLogRequest struct {
@@ -126,7 +126,7 @@ func parseRecordID(value interface{}) uint {
 func (h *FinancialHandler) DeleteTransactionLog(c *gin.Context) {
 	var req deleteTransactionLogRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondWalletInvalidRequest(c, "invalid request")
 		return
 	}
 
@@ -141,11 +141,11 @@ func (h *FinancialHandler) DeleteTransactionLog(c *gin.Context) {
 		return
 	}
 	if !deleted {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "未找到该条财务日志，可能已被删除"})
+		respondErrorEnvelope(c, http.StatusNotFound, responseCodeNotFound, "未找到该条财务日志，可能已被删除", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondWalletMirroredSuccess(c, "财务流水删除成功", gin.H{"deleted": true})
 }
 
 func (h *FinancialHandler) ClearTransactionLogs(c *gin.Context) {
@@ -153,7 +153,7 @@ func (h *FinancialHandler) ClearTransactionLogs(c *gin.Context) {
 		Reason string `json:"reason"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondWalletInvalidRequest(c, "invalid request")
 		return
 	}
 
@@ -162,8 +162,7 @@ func (h *FinancialHandler) ClearTransactionLogs(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
+	respondWalletMirroredSuccess(c, "财务流水清空成功", gin.H{
 		"cleared": cleared,
 	})
 }

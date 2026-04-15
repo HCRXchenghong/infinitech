@@ -23,7 +23,7 @@ func NewPaymentHandler(payment *service.PaymentService) *PaymentHandler {
 func (h *PaymentHandler) PayOrder(c *gin.Context) {
 	var req service.PayOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondWalletInvalidRequest(c, "invalid request")
 		return
 	}
 	req.IdempotencyKey = resolveIdempotencyKey(req.IdempotencyKey, c.GetHeader("Idempotency-Key"))
@@ -33,13 +33,13 @@ func (h *PaymentHandler) PayOrder(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "订单支付发起成功", result)
 }
 
 func (h *PaymentHandler) RefundOrder(c *gin.Context) {
 	var req service.RefundOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondWalletInvalidRequest(c, "invalid request")
 		return
 	}
 	req.IdempotencyKey = resolveIdempotencyKey(req.IdempotencyKey, c.GetHeader("Idempotency-Key"))
@@ -49,7 +49,7 @@ func (h *PaymentHandler) RefundOrder(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondWalletMirroredSuccess(c, "订单退款发起成功", result)
 }
 
 func (h *PaymentHandler) WechatCallback(c *gin.Context) {

@@ -475,7 +475,8 @@ async function doExport() {
   exporting.value = true;
   try {
     const res = await request.get('/api/financial/export', { params: buildParams() });
-    const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+    const payload = extractEnvelopeData(res.data) || res.data || {};
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const a = Object.assign(document.createElement('a'), {
       href: URL.createObjectURL(blob),
       download: `finance-report-${periodType.value}-${statDate.value || 'latest'}.json`,
