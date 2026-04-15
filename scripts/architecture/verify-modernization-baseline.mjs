@@ -418,6 +418,18 @@ assertContains(
   'respondSuccessEnvelope(c, "用户售后列表加载成功", result, nil)',
 );
 assertContains(
+  "backend/go/internal/handler/groupbuy_handler.go",
+  'respondSuccessEnvelope(c, "团购券列表加载成功", result, nil)',
+);
+assertContains(
+  "backend/go/internal/handler/groupbuy_handler.go",
+  'respondGroupbuyMirroredSuccess(c, "团购券核销码加载成功", result)',
+);
+assertContains(
+  "backend/go/internal/handler/groupbuy_handler.go",
+  'respondGroupbuyMirroredSuccess(c, "团购券核销成功", result)',
+);
+assertContains(
   "backend/bff/src/utils/apiEnvelope.js",
   "function buildSuccessEnvelopePayload(req, message, data, options = {})",
 );
@@ -472,6 +484,14 @@ assertContains(
 assertContains(
   "merchant-app/shared-ui/merchantOrders.ts",
   "extractPaginatedItems(afterSalesRes, {",
+);
+assertContains(
+  "shared/mobile-common/order-list-page.js",
+  "extractEnvelopeData(vouchers)",
+);
+assertContains(
+  "shared/mobile-common/order-detail-page.js",
+  "extractEnvelopeData(vouchers)",
 );
 assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",

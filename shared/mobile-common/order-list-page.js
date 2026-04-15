@@ -284,7 +284,8 @@ export function createOrderListPage({
       async showVoucherCode(order) {
         try {
           const vouchers = await fetchGroupbuyVouchers({ orderId: order.id, status: 'issued' })
-          const list = Array.isArray(vouchers) ? vouchers : []
+          const payload = extractEnvelopeData(vouchers)
+          const list = Array.isArray(payload) ? payload : []
           if (list.length === 0) {
             uni.showToast({ title: '暂无可用券码', icon: 'none' })
             return

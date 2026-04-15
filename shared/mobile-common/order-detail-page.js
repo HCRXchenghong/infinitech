@@ -1,5 +1,6 @@
 import { createPhoneContactHelper } from './phone-contact.js'
 import { normalizeOrderPayMethods, normalizePayChannel } from './order-payment-options.js'
+import { extractEnvelopeData } from '../../packages/contracts/src/http.js'
 
 function normalizePhoneNumber(value) {
   const text = String(value || '').trim()
@@ -545,7 +546,8 @@ export function createOrderDetailPage({
       async showVoucherCode(order) {
         try {
           const vouchers = await fetchGroupbuyVouchers({ orderId: order.id, status: 'issued' })
-          const list = Array.isArray(vouchers) ? vouchers : []
+          const payload = extractEnvelopeData(vouchers)
+          const list = Array.isArray(payload) ? payload : []
           if (list.length === 0) {
             uni.showToast({ title: '暂无可用券码', icon: 'none' })
             return
