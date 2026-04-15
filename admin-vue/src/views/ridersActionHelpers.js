@@ -368,7 +368,7 @@ export function useRiderActionHelpers(ctx) {
       detail.value.id_card_front = nextRef;
       ElMessage.success('身份证照片上传成功');
     } catch (error) {
-      ElMessage.error(error?.response?.data?.error || error.message || '身份证照片上传失败');
+      ElMessage.error(extractErrorMessage(error, '身份证照片上传失败'));
     } finally {
       uploadingRiderIdCard.value = false;
     }
@@ -407,7 +407,7 @@ export function useRiderActionHelpers(ctx) {
       await loadRiders(true);
       await openDetail({ id: riderEditForm.value.id });
     } catch (error) {
-      ElMessage.error(error?.response?.data?.error || '保存骑手信息失败');
+      ElMessage.error(extractErrorMessage(error, '保存骑手信息失败'));
     } finally {
       savingRiderEdit.value = false;
     }

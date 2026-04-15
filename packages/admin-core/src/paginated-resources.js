@@ -71,6 +71,12 @@ export function extractAdminMerchantPage(payload = {}) {
   });
 }
 
+export function extractMerchantShopPage(payload = {}) {
+  return normalizePage(payload, {
+    listKeys: ["shops", "items"],
+  });
+}
+
 function normalizeSummary(source = {}, keys = []) {
   const summary = {};
   for (const key of keys) {
@@ -143,4 +149,16 @@ export function extractRiderReviewPage(payload = {}) {
       ratingCount: page.summary.rating_count,
     },
   };
+}
+
+export function extractAfterSalesPage(payload = {}) {
+  return normalizePage(payload, {
+    listKeys: ["list", "items"],
+  });
+}
+
+export function extractFinancialTransactionLogPage(payload = {}) {
+  return normalizePage(payload, {
+    listKeys: ["items", "records", "logs"],
+  });
 }

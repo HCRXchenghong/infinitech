@@ -2,8 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  extractAfterSalesPage,
   extractContactPhoneAuditPage,
   extractAdminMerchantPage,
+  extractFinancialTransactionLogPage,
+  extractMerchantShopPage,
   extractRTCCallAuditPage,
   extractRTCCallAuditRecord,
   extractRiderReviewPage,
@@ -106,6 +109,22 @@ test("extractAdminMerchantPage supports enveloped merchant payloads", () => {
     {
       items: [{ id: 5, owner_name: "Jane", shopCount: 2 }],
       total: 4,
+      page: 0,
+      limit: 0,
+    },
+  );
+});
+
+test("extractMerchantShopPage reads enveloped shop collections", () => {
+  assert.deepEqual(
+    extractMerchantShopPage({
+      data: {
+        shops: [{ id: 1, name: "Main shop" }],
+      },
+    }),
+    {
+      items: [{ id: 1, name: "Main shop" }],
+      total: 1,
       page: 0,
       limit: 0,
     },
@@ -262,6 +281,44 @@ test("extractRiderReviewPage reads enveloped rider review summaries", () => {
         page: 1,
         limit: 20,
       },
+    },
+  );
+});
+
+test("extractAfterSalesPage supports legacy after-sales list payloads", () => {
+  assert.deepEqual(
+    extractAfterSalesPage({
+      list: [{ id: 91, requestNo: "AS001" }],
+      total: 5,
+      page: 2,
+      limit: 20,
+    }),
+    {
+      items: [{ id: 91, requestNo: "AS001" }],
+      total: 5,
+      page: 2,
+      limit: 20,
+    },
+  );
+});
+
+test("extractFinancialTransactionLogPage reads standardized log payloads", () => {
+  assert.deepEqual(
+    extractFinancialTransactionLogPage({
+      data: {
+        items: [{ id: "txn-1", type: "payment" }],
+        pagination: {
+          total: 7,
+          page: 3,
+          limit: 50,
+        },
+      },
+    }),
+    {
+      items: [{ id: "txn-1", type: "payment" }],
+      total: 7,
+      page: 3,
+      limit: 50,
     },
   );
 });

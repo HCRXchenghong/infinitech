@@ -111,6 +111,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import {
   extractAdminMerchantPage,
+  extractMerchantShopPage,
   extractTemporaryCredential,
 } from '@infinitech/admin-core';
 import {
@@ -155,6 +156,16 @@ onMounted(() => {
   loadMerchants();
 });
 
+async function resolveMerchantShopCount(merchantId) {
+  try {
+    const shopsRes = await request.get(`/api/merchants/${merchantId}/shops`);
+    const page = extractMerchantShopPage(shopsRes.data);
+    return Number(page.total || page.items.length || 0);
+  } catch (_error) {
+    return 0;
+  }
+}
+
 async function loadMerchants() {
   loading.value = true;
   loadError.value = '';
@@ -172,28 +183,19 @@ async function loadMerchants() {
 
     const listWithCount = await Promise.all(
       page.items.map(async (merchant) => {
-        try {
-          const shopsRes = await request.get(`/api/merchants/${merchant.id}/shops`);
-          const shops = shopsRes?.data?.shops || [];
-          return {
-            ...merchant,
-            shopCount: Array.isArray(shops) ? shops.length : 0
-          };
-        } catch (err) {
-          return {
-            ...merchant,
-            shopCount: 0
-          };
-        }
+        const shopCount = await resolveMerchantShopCount(merchant.id);
+        return {
+          ...merchant,
+          shopCount,
+        };
       })
     );
 
     merchants.value = listWithCount;
     total.value = Number(page.total || 0);
   } catch (error) {
-    console.error('加载商户列表失败:', error);
-    loadError.value = error?.response?.data?.error || error?.message || '加载商户列表失败，请稍后重试';
-    ElMessage.error(error?.response?.data?.error || '加载商户列表失败');
+    loadError.value = extractErrorMessage(error, '加载商户列表失败，请稍后重试');
+    ElMessage.error(loadError.value);
     merchants.value = [];
     total.value = 0;
   } finally {
@@ -256,8 +258,7 @@ async function submitCreate() {
     createDialogVisible.value = false;
     loadMerchants();
   } catch (error) {
-    console.error('创建商户失败:', error);
-    ElMessage.error(error?.response?.data?.error || '创建商户失败');
+    ElMessage.error(extractErrorMessage(error, '创建商户失败'));
   } finally {
     creating.value = false;
   }
@@ -339,7 +340,7 @@ async function resetPassword(merchant) {
     ElMessage.success(`商户密码已重置，并已下载安全回执 ${filename}`);
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error(error?.response?.data?.error || '重置密码失败');
+      ElMessage.error(extractErrorMessage(error, '重置密码失败'));
     }
   }
 }
@@ -360,7 +361,7 @@ async function deleteMerchant(merchant) {
     loadMerchants();
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error(error?.response?.data?.error || '删除商户失败');
+      ElMessage.error(extractErrorMessage(error, '删除商户失败'));
     }
   }
 }

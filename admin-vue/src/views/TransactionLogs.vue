@@ -210,6 +210,8 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Search } from '@element-plus/icons-vue';
+import { extractFinancialTransactionLogPage } from '@infinitech/admin-core';
+import { extractErrorMessage } from '@infinitech/contracts';
 import request from '../utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 
@@ -302,11 +304,12 @@ async function loadTransactionLogs() {
     }
 
     const res = await request.get('/api/financial/transaction-logs', { params });
-    transactionLogs.value = res.data?.items || [];
-    logPagination.value.total = res.data?.pagination?.total || 0;
+    const page = extractFinancialTransactionLogPage(res.data);
+    transactionLogs.value = page.items;
+    logPagination.value.total = page.total;
   } catch (e) {
-    loadError.value = e?.response?.data?.error || e?.message || '加载财务日志失败，请稍后重试';
-    ElMessage.error('加载财务日志失败');
+    loadError.value = extractErrorMessage(e, '加载财务日志失败，请稍后重试');
+    ElMessage.error(loadError.value);
     transactionLogs.value = [];
     logPagination.value.total = 0;
   } finally {
@@ -364,7 +367,7 @@ async function confirmDeleteLog() {
     pendingDeleteLog.value = null;
     loadTransactionLogs();
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || '删除财务日志失败');
+    ElMessage.error(extractErrorMessage(error, '删除财务日志失败'));
   } finally {
     deleting.value = false;
   }
@@ -387,7 +390,7 @@ async function confirmClearLogs() {
     logPagination.value.page = 1;
     loadTransactionLogs();
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || '清空财务日志失败');
+    ElMessage.error(extractErrorMessage(error, '清空财务日志失败'));
   } finally {
     clearing.value = false;
   }

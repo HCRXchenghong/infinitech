@@ -193,7 +193,9 @@
 
 <script setup>
 import { onMounted, ref } from 'vue';
+import { extractAfterSalesPage } from '@infinitech/admin-core';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 
@@ -319,14 +321,14 @@ async function fetchRecords() {
         search: searchKeyword.value || undefined
       }
     });
-    const payload = data && typeof data === 'object' ? data : {};
-    const list = Array.isArray(payload.list) ? payload.list : [];
-    records.value = list.map(normalizeRecord);
-    total.value = Number(payload.total || 0);
+    const pageData = extractAfterSalesPage(data);
+    records.value = pageData.items.map(normalizeRecord);
+    total.value = Number(pageData.total || 0);
   } catch (error) {
-    console.error('加载售后列表失败:', error);
-    loadError.value = error?.response?.data?.error || error?.message || '加载售后列表失败，请稍后重试';
-    ElMessage.error(error?.response?.data?.error || '加载售后列表失败');
+    records.value = [];
+    total.value = 0;
+    loadError.value = extractErrorMessage(error, '加载售后列表失败，请稍后重试');
+    ElMessage.error(loadError.value);
   } finally {
     loading.value = false;
   }
@@ -376,14 +378,14 @@ async function submitClear(scope) {
   clearing.value = true;
   try {
     const { data } = await request.post('/api/after-sales/clear', { scope });
-    const deleted = Number(data?.deleted || 0);
+    const payload = extractEnvelopeData(data) || data || {};
+    const deleted = Number(payload.deleted || 0);
     const scopeText = scope === 'all' ? '全部售后单' : '已处理售后单';
     ElMessage.success(`${scopeText}已清除，共 ${deleted} 条`);
     page.value = 1;
     fetchRecords();
   } catch (error) {
-    console.error('清除售后记录失败:', error);
-    ElMessage.error(error?.response?.data?.error || '清除售后记录失败');
+    ElMessage.error(extractErrorMessage(error, '清除售后记录失败'));
   } finally {
     clearing.value = false;
   }
@@ -443,17 +445,17 @@ async function submitProcess() {
       refundAmount,
       refundReason: processForm.value.refundReason || ''
     });
-    const latest = normalizeRecord(data || {});
+    const payload = extractEnvelopeData(data) || data || {};
+    const latest = normalizeRecord(payload);
     if (processForm.value.shouldRefund && !latest.refundTransactionId) {
       ElMessage.warning('状态已更新，但未生成退款流水号，请检查后端退款接口');
     } else {
       ElMessage.success('处理状态已更新');
     }
     processVisible.value = false;
-    fetchRecords();
+    await fetchRecords();
   } catch (error) {
-    console.error('更新售后状态失败:', error);
-    ElMessage.error(error?.response?.data?.error || '更新状态失败');
+    ElMessage.error(extractErrorMessage(error, '更新状态失败'));
   } finally {
     submitting.value = false;
   }

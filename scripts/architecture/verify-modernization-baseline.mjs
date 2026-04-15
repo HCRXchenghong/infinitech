@@ -534,6 +534,18 @@ assertContains(
   "extractPaginatedItems(payload).items",
 );
 assertContains(
+  "admin-vue/src/views/AfterSales.vue",
+  "extractAfterSalesPage(data)",
+);
+assertContains(
+  "admin-vue/src/views/TransactionLogs.vue",
+  "extractFinancialTransactionLogPage(res.data)",
+);
+assertContains(
+  "admin-vue/src/views/Merchants.vue",
+  "extractMerchantShopPage(shopsRes.data)",
+);
+assertContains(
   "admin-vue/src/views/useChatConsole.js",
   "extractUploadAsset(data)",
 );
@@ -556,6 +568,14 @@ assertContains(
 assertContains(
   "packages/admin-core/src/system-log-resources.js",
   "export function extractSystemLogPage(payload = {})",
+);
+assertContains(
+  "packages/admin-core/src/paginated-resources.js",
+  "export function extractAfterSalesPage(payload = {})",
+);
+assertContains(
+  "packages/admin-core/src/paginated-resources.js",
+  "export function extractFinancialTransactionLogPage(payload = {})",
 );
 assertContains(
   "admin-vue/src/utils/officialSiteApi.js",
@@ -619,6 +639,18 @@ assertNotContains(
 );
 assertNotContains(
   "admin-vue/src/views/AdminRTCConsole.vue",
+  "error?.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/AfterSales.vue",
+  "error?.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/TransactionLogs.vue",
+  "error?.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/ridersActionHelpers.js",
   "error?.response?.data?.error",
 );
 assertContains(
