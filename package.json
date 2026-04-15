@@ -1,7 +1,7 @@
 {
   "name": "infinitech-monorepo",
   "private": true,
-  "version": "2.0.1",
+  "version": "1.0.0",
   "scripts": {
     "verify:merchant-types": "npx tsc -p merchant-app/tsconfig.json --noEmit",
     "verify:rider-types": "npx tsc -p rider-app/tsconfig.json --noEmit",
