@@ -1,5 +1,6 @@
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
+import { extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
 import socketService from '@/utils/socket';
 import request from '@/utils/request';
 import { getCurrentAdminSocketIdentity } from '@/utils/runtime';
@@ -229,22 +230,24 @@ export function useChatConsole(options = {}) {
           'Content-Type': 'multipart/form-data'
         }
       });
-      if (!data.url) throw new Error('image_upload_failed');
+      const asset = extractUploadAsset(data);
+      const imageUrl = String(asset?.url || '').trim();
+      if (!imageUrl) throw new Error('image_upload_failed');
 
       messages.value.push(createOutgoingTempMessage({
         id: createLocalMessageId('image'),
-        content: data.url,
+        content: imageUrl,
         type: 'image'
       }));
 
       emitSendMessage({
         messageType: 'image',
-        content: data.url
+        content: imageUrl
       });
 
       nextTick(() => scrollToBottom());
-    } catch (_error) {
-      ElMessage.error('Image upload failed');
+    } catch (error) {
+      ElMessage.error(extractErrorMessage(error, 'Image upload failed'));
     } finally {
       uploadingImage.value = false;
     }

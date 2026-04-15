@@ -1,39 +1,32 @@
-import { extractUploadAsset } from "@infinitech/contracts/http";
+import {
+  extractEnvelopeData,
+  extractErrorMessage as extractContractErrorMessage,
+  extractPaginatedItems,
+  extractUploadAsset,
+} from "@infinitech/contracts";
 import request from "@/utils/request";
 
-export function extractRecords(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== "object") return [];
-  if (Array.isArray(payload.records)) return payload.records;
-  if (Array.isArray(payload.list)) return payload.list;
-  if (Array.isArray(payload.data)) return payload.data;
-  if (payload.data && typeof payload.data === "object") {
-    if (Array.isArray(payload.data.records)) return payload.data.records;
-    if (Array.isArray(payload.data.list)) return payload.data.list;
-    if (Array.isArray(payload.data.items)) return payload.data.items;
-  }
-  return [];
+export const extractErrorMessage = extractContractErrorMessage;
+
+function extractRecordCollection(payload, options = {}) {
+  const page = extractPaginatedItems(payload, {
+    listKeys: ["records", "list", "items"],
+    ...(options || {}),
+  });
+  return {
+    records: page.items,
+    total: Number(page.total || 0),
+    page: Number(page.page || 0),
+    limit: Number(page.limit || 0),
+  };
 }
 
-export function extractPayloadData(payload) {
-  if (
-    payload &&
-    typeof payload === "object" &&
-    payload.data &&
-    typeof payload.data === "object"
-  ) {
-    return payload.data;
-  }
-  return payload;
-}
-
-export function extractErrorMessage(error, fallback = "请求失败，请稍后重试") {
-  return (
-    error?.response?.data?.error ||
-    error?.response?.data?.message ||
-    error?.message ||
-    fallback
-  );
+function normalizeSupportMessageBundle(payload) {
+  const source = extractEnvelopeData(payload) || payload || {};
+  return {
+    session: source?.session || null,
+    messages: Array.isArray(source?.messages) ? source.messages : [],
+  };
 }
 
 export function resolveOfficialSiteMediaUrl(value) {
@@ -115,7 +108,7 @@ export async function uploadOfficialSiteFile(file) {
 
 export async function getPublicAppDownloadConfig() {
   const { data } = await request.get("/api/public/app-download-config");
-  const payload = extractPayloadData(data);
+  const payload = extractEnvelopeData(data);
   if (!payload || typeof payload !== "object") {
     return payload;
   }
@@ -129,19 +122,22 @@ export async function getPublicAppDownloadConfig() {
 
 export async function listPublicOfficialSiteExposures() {
   const { data } = await request.get("/api/official-site/exposures");
-  const records = extractRecords(data).map((item) => ({
+  const page = extractRecordCollection(data);
+  const records = page.records.map((item) => ({
     ...item,
     photo_urls: normalizeOfficialSiteMediaList(item?.photo_urls),
   }));
   return {
     records,
-    total: Number(data?.total || 0),
+    total: page.total,
+    page: page.page,
+    limit: page.limit,
   };
 }
 
 export async function getPublicOfficialSiteExposureDetail(id) {
   const { data } = await request.get(`/api/official-site/exposures/${id}`);
-  const payload = extractPayloadData(data);
+  const payload = extractEnvelopeData(data);
   if (!payload || typeof payload !== "object") {
     return payload;
   }
@@ -153,19 +149,22 @@ export async function getPublicOfficialSiteExposureDetail(id) {
 
 export async function listPublicOfficialSiteNews(params = {}) {
   const { data } = await request.get("/api/official-site/news", { params });
-  const records = extractRecords(data).map((item) => ({
+  const page = extractRecordCollection(data);
+  const records = page.records.map((item) => ({
     ...item,
     cover: resolveOfficialSiteMediaUrl(item?.cover),
   }));
   return {
     records,
-    total: Number(data?.total || 0),
+    total: page.total,
+    page: page.page,
+    limit: page.limit,
   };
 }
 
 export async function getPublicOfficialSiteNewsDetail(id) {
   const { data } = await request.get(`/api/official-site/news/${id}`);
-  const payload = extractPayloadData(data);
+  const payload = extractEnvelopeData(data);
   if (!payload || typeof payload !== "object") {
     return payload;
   }
@@ -187,7 +186,7 @@ export async function getPublicOfficialSiteNewsDetail(id) {
 
 export async function createOfficialSiteExposure(payload) {
   const { data } = await request.post("/api/official-site/exposures", payload);
-  return extractPayloadData(data);
+  return extractEnvelopeData(data) || data;
 }
 
 export async function createOfficialSiteCooperation(payload) {
@@ -195,7 +194,7 @@ export async function createOfficialSiteCooperation(payload) {
     "/api/official-site/cooperations",
     payload,
   );
-  return extractPayloadData(data);
+  return extractEnvelopeData(data) || data;
 }
 
 export async function createOfficialSiteSupportSession(payload) {
@@ -203,14 +202,14 @@ export async function createOfficialSiteSupportSession(payload) {
     "/api/official-site/support/sessions",
     payload,
   );
-  return data;
+  return normalizeSupportMessageBundle(data);
 }
 
 export async function getOfficialSiteSupportMessages(token) {
   const { data } = await request.get(
     `/api/official-site/support/sessions/${token}/messages`,
   );
-  return data;
+  return normalizeSupportMessageBundle(data);
 }
 
 export async function appendOfficialSiteSupportMessage(token, payload) {
@@ -218,26 +217,29 @@ export async function appendOfficialSiteSupportMessage(token, payload) {
     `/api/official-site/support/sessions/${token}/messages`,
     payload,
   );
-  return data;
+  return extractEnvelopeData(data) || data;
 }
 
 export async function getOfficialSiteSupportSocketToken(token) {
   const { data } = await request.get(
     `/api/official-site/support/sessions/${token}/socket-token`,
   );
-  return extractPayloadData(data);
+  return extractEnvelopeData(data) || data;
 }
 
 export async function listAdminOfficialSiteExposures(params = {}) {
   const { data } = await request.get("/api/admin/official-site/exposures", {
     params,
   });
+  const page = extractRecordCollection(data);
   return {
-    records: extractRecords(data).map((item) => ({
+    records: page.records.map((item) => ({
       ...item,
       photo_urls: normalizeOfficialSiteMediaList(item?.photo_urls),
     })),
-    total: Number(data?.total || 0),
+    total: page.total,
+    page: page.page,
+    limit: page.limit,
   };
 }
 
@@ -246,16 +248,19 @@ export async function updateAdminOfficialSiteExposure(id, payload) {
     `/api/admin/official-site/exposures/${id}`,
     payload,
   );
-  return extractPayloadData(data);
+  return extractEnvelopeData(data) || data;
 }
 
 export async function listAdminOfficialSiteCooperations(params = {}) {
   const { data } = await request.get("/api/admin/official-site/cooperations", {
     params,
   });
+  const page = extractRecordCollection(data);
   return {
-    records: extractRecords(data),
-    total: Number(data?.total || 0),
+    records: page.records,
+    total: page.total,
+    page: page.page,
+    limit: page.limit,
   };
 }
 
@@ -264,7 +269,7 @@ export async function updateAdminOfficialSiteCooperation(id, payload) {
     `/api/admin/official-site/cooperations/${id}`,
     payload,
   );
-  return extractPayloadData(data);
+  return extractEnvelopeData(data) || data;
 }
 
 export async function listAdminOfficialSiteSupportSessions(params = {}) {
@@ -272,9 +277,12 @@ export async function listAdminOfficialSiteSupportSessions(params = {}) {
     "/api/admin/official-site/support/sessions",
     { params },
   );
+  const page = extractRecordCollection(data);
   return {
-    records: extractRecords(data),
-    total: Number(data?.total || 0),
+    records: page.records,
+    total: page.total,
+    page: page.page,
+    limit: page.limit,
   };
 }
 
@@ -282,7 +290,7 @@ export async function getAdminOfficialSiteSupportMessages(id) {
   const { data } = await request.get(
     `/api/admin/official-site/support/sessions/${id}/messages`,
   );
-  return data;
+  return normalizeSupportMessageBundle(data);
 }
 
 export async function appendAdminOfficialSiteSupportMessage(id, payload) {
@@ -290,7 +298,7 @@ export async function appendAdminOfficialSiteSupportMessage(id, payload) {
     `/api/admin/official-site/support/sessions/${id}/messages`,
     payload,
   );
-  return extractPayloadData(data);
+  return extractEnvelopeData(data) || data;
 }
 
 export async function updateAdminOfficialSiteSupportSession(id, payload) {
@@ -298,5 +306,5 @@ export async function updateAdminOfficialSiteSupportSession(id, payload) {
     `/api/admin/official-site/support/sessions/${id}`,
     payload,
   );
-  return extractPayloadData(data);
+  return extractEnvelopeData(data) || data;
 }

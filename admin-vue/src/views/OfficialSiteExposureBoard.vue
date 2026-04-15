@@ -134,7 +134,7 @@ async function loadRecords() {
   loading.value = true;
   try {
     const data = await listPublicOfficialSiteExposures();
-    records.value = Array.isArray(data.records) ? data.records : [];
+    records.value = data.records;
   } catch (error) {
     records.value = [];
     ElMessage.error(extractErrorMessage(error, '曝光板加载失败'));

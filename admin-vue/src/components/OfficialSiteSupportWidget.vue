@@ -388,7 +388,7 @@ async function reloadMessages(options = {}) {
   try {
     const data = await getOfficialSiteSupportMessages(sessionToken.value);
     session.value = mergeSessionPayload(session.value, data?.session || null);
-    const nextMessages = normalizeMessages(Array.isArray(data?.messages) ? data.messages : []);
+    const nextMessages = normalizeMessages(data?.messages || []);
     const hasNewAdminMessages = notifyOnNewAdminMessages && findNewAdminMessages(previousMessages, nextMessages);
     messages.value = nextMessages;
     if (hasNewAdminMessages) {
@@ -423,7 +423,7 @@ async function sendMessage() {
   sending.value = true;
   try {
     const data = await appendOfficialSiteSupportMessage(sessionToken.value, { content });
-    const message = data?.data || null;
+    const message = data || null;
     if (message) {
       messages.value = mergeMessages(messages.value, [message]);
     }
@@ -460,7 +460,7 @@ async function createSession(content) {
     sessionToken.value = nextToken;
     persistOfficialSiteSupportToken(nextToken);
     session.value = mergeSessionPayload(session.value, sessionPayload);
-    messages.value = normalizeMessages(Array.isArray(data?.messages) ? data.messages : []);
+    messages.value = normalizeMessages(data?.messages || []);
     replyContent.value = '';
     await bootstrapRealtime(false);
     ElMessage.success('已接入在线客服');

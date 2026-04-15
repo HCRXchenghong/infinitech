@@ -234,6 +234,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { extractPaginatedItems } from '@infinitech/contracts'
 import request from '@/utils/request'
 import socketService, { SOCKET_HTTP_BASE } from '@/utils/socket'
 import { getCurrentAdminSocketIdentity } from '@/utils/runtime'
@@ -383,6 +384,10 @@ function extractHealthDetail(detail, key) {
   const source = String(detail || '')
   const match = source.match(new RegExp(`${key}=([^\\s|]+)`))
   return match ? String(match[1] || '').trim() : ''
+}
+
+function extractRankItems(payload) {
+  return extractPaginatedItems(payload).items
 }
 
 function applyImStatsPatch(data) {
@@ -557,16 +562,13 @@ async function loadOrders(forceRefresh = false) {
     }
 
     userRanks.value = {
-      week: weekUserRes.status === 'fulfilled' && Array.isArray(weekUserRes.value?.data) ? weekUserRes.value.data : [],
-      month:
-        monthUserRes.status === 'fulfilled' && Array.isArray(monthUserRes.value?.data) ? monthUserRes.value.data : []
+      week: weekUserRes.status === 'fulfilled' ? extractRankItems(weekUserRes.value?.data) : [],
+      month: monthUserRes.status === 'fulfilled' ? extractRankItems(monthUserRes.value?.data) : []
     }
 
     allRiderRanks.value = {
-      week:
-        weekRiderRes.status === 'fulfilled' && Array.isArray(weekRiderRes.value?.data) ? weekRiderRes.value.data : [],
-      month:
-        monthRiderRes.status === 'fulfilled' && Array.isArray(monthRiderRes.value?.data) ? monthRiderRes.value.data : []
+      week: weekRiderRes.status === 'fulfilled' ? extractRankItems(weekRiderRes.value?.data) : [],
+      month: monthRiderRes.status === 'fulfilled' ? extractRankItems(monthRiderRes.value?.data) : []
     }
 
     ranksCache.value.set(cacheKey, {

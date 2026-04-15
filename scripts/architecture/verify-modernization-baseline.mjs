@@ -518,6 +518,34 @@ assertContains(
   "extractPaginatedItems(data, { listKeys: ['shops'] }).items",
 );
 assertContains(
+  "admin-vue/src/views/chatConsoleApi.js",
+  "extractPaginatedItems(data).items",
+);
+assertContains(
+  "admin-vue/src/views/chatConsoleApi.js",
+  "extractPaginatedItems(data, { listKeys: ['messages', 'items', 'records', 'list'] }).items",
+);
+assertContains(
+  "admin-vue/src/views/RiderRanks.vue",
+  "extractPaginatedItems(data).items",
+);
+assertContains(
+  "admin-vue/src/views/Dashboard.vue",
+  "extractPaginatedItems(payload).items",
+);
+assertContains(
+  "admin-vue/src/views/useChatConsole.js",
+  "extractUploadAsset(data)",
+);
+assertContains(
+  "admin-vue/src/utils/officialSiteApi.js",
+  "extractPaginatedItems(payload",
+);
+assertContains(
+  "admin-vue/src/utils/officialSiteApi.js",
+  "export const extractErrorMessage = extractContractErrorMessage",
+);
+assertContains(
   "admin-vue/src/views/settingsApiManagementHelpers.js",
   "extractEnvelopeData(data)",
 );
@@ -555,6 +583,10 @@ assertNotContains(
 );
 assertNotContains(
   "admin-vue/src/views/MerchantProfile.vue",
+  "error?.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/utils/officialSiteApi.js",
   "error?.response?.data?.error",
 );
 assertContains(

@@ -668,7 +668,7 @@ async function loadSupportSessions(silent = false) {
       search: supportFilters.search || undefined,
       limit: 50
     });
-    supportSessions.value = Array.isArray(data.records) ? data.records : [];
+    supportSessions.value = data.records;
 
     if (selectedSupportId.value) {
       const stillExists = supportSessions.value.some((item) => item.id === selectedSupportId.value);
@@ -709,7 +709,7 @@ async function loadSelectedSupportMessages(silent = false) {
   try {
     const data = await getAdminOfficialSiteSupportMessages(selectedSupportId.value);
     selectedSupportSession.value = data?.session || null;
-    supportMessages.value = Array.isArray(data?.messages) ? data.messages : [];
+    supportMessages.value = data?.messages || [];
     upsertSupportSession(selectedSupportSession.value);
   } catch (error) {
     if (!silent) {
@@ -768,7 +768,7 @@ async function loadExposures() {
       process_status: exposureFilters.process_status || undefined,
       limit: 50
     });
-    exposures.value = Array.isArray(data.records) ? data.records : [];
+    exposures.value = data.records;
   } catch (error) {
     ElMessage.error(extractErrorMessage(error, '曝光记录加载失败'));
   } finally {
@@ -811,7 +811,7 @@ async function loadCooperations() {
       status: cooperationFilters.status || undefined,
       limit: 50
     });
-    cooperations.value = Array.isArray(data.records) ? data.records : [];
+    cooperations.value = data.records;
   } catch (error) {
     ElMessage.error(extractErrorMessage(error, '官网商务合作加载失败'));
   } finally {

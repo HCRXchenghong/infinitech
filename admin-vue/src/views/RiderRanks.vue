@@ -41,6 +41,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { extractPaginatedItems } from '@infinitech/contracts'
 import request from '@/utils/request'
 import { getCachedRiderRankSettings, loadRiderRankSettings } from '@/utils/platform-settings'
 import PageStateAlert from '@/components/PageStateAlert.vue'
@@ -85,7 +86,7 @@ async function loadRanks(forceRefresh = false) {
   loading.value = true
   try {
     const { data } = await request.get(`/api/rider-ranks?period=${period.value}`)
-    ranks.value = Array.isArray(data) ? data : []
+    ranks.value = extractPaginatedItems(data).items
     dataCache.value.set(cacheKey, [...ranks.value])
   } catch (error) {
     ranks.value = []

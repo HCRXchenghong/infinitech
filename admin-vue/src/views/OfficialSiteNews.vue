@@ -61,7 +61,7 @@ async function loadNews() {
   loading.value = true;
   try {
     const data = await listPublicOfficialSiteNews({ limit: 50, page: 1 });
-    records.value = Array.isArray(data.records) ? data.records : [];
+    records.value = data.records;
   } catch (error) {
     records.value = [];
     ElMessage.error(extractErrorMessage(error, '新闻资讯加载失败'));

@@ -230,7 +230,7 @@ async function loadNews() {
   loading.value = true;
   try {
     const data = await listPublicOfficialSiteNews({ limit: 4, page: 1 });
-    newsRecords.value = Array.isArray(data.records) ? data.records : [];
+    newsRecords.value = data.records;
   } catch (error) {
     newsRecords.value = [];
     ElMessage.error(extractErrorMessage(error, '平台动态加载失败'));
