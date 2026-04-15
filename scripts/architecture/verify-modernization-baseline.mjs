@@ -470,6 +470,26 @@ assertContains(
   "extractEnvelopeData(data)",
 );
 assertContains(
+  "admin-vue/src/views/HomeEntrySettings.vue",
+  "extractEnvelopeData(data)",
+);
+assertContains(
+  "admin-vue/src/views/MerchantTaxonomySettings.vue",
+  "extractEnvelopeData(data)",
+);
+assertContains(
+  "admin-vue/src/views/RiderRankSettings.vue",
+  "extractEnvelopeData(data)",
+);
+assertContains(
+  "admin-vue/src/views/ErrandSettings.vue",
+  "extractEnvelopeData(data)",
+);
+assertContains(
+  "admin-vue/src/views/DiningBuddyGovernance.vue",
+  "extractEnvelopeData(data)",
+);
+assertContains(
   "backend/go/internal/handler/shop_handler.go",
   'respondEnvelope(c, http.StatusOK, "SHOP_REVIEW_LISTED"',
 );

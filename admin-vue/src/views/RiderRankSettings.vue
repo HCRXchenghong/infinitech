@@ -93,6 +93,7 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 
@@ -134,9 +135,9 @@ async function loadSettings(forceRefresh = false) {
     const { data } = await request.get('/api/rider-rank-settings', {
       params: forceRefresh ? { _t: Date.now() } : undefined
     })
-    Object.assign(form, normalizePayload(data || {}))
+    Object.assign(form, normalizePayload(extractEnvelopeData(data) || {}))
   } catch (error) {
-    loadError.value = error?.response?.data?.error || error?.message || '加载骑手等级配置失败'
+    loadError.value = extractErrorMessage(error, '加载骑手等级配置失败')
   } finally {
     loading.value = false
   }
@@ -172,10 +173,10 @@ async function saveSettings() {
       levels: form.levels.map(createLevel)
     }
     const { data } = await request.post('/api/rider-rank-settings', payload)
-    Object.assign(form, normalizePayload(data?.data || payload))
+    Object.assign(form, normalizePayload(extractEnvelopeData(data) || payload))
     ElMessage.success('骑手等级配置已保存')
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '保存骑手等级配置失败')
+    ElMessage.error(extractErrorMessage(error, '保存骑手等级配置失败'))
   } finally {
     saving.value = false
   }

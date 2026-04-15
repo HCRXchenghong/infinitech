@@ -373,6 +373,7 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 
@@ -515,9 +516,9 @@ async function loadRuntimeSettings(forceRefresh = false) {
     const { data } = await request.get('/api/dining-buddy-settings', {
       params: forceRefresh ? { _t: Date.now() } : undefined
     })
-    applyRuntimeSettings(data || {})
+    applyRuntimeSettings(extractEnvelopeData(data) || {})
   } catch (error) {
-    pageError.value = error?.response?.data?.error || error?.message || '加载同频饭友运行配置失败'
+    pageError.value = extractErrorMessage(error, '加载同频饭友运行配置失败')
   } finally {
     runtimeLoading.value = false
   }
@@ -566,10 +567,10 @@ async function saveRuntimeSettings() {
       }))
     }
     const { data } = await request.post('/api/dining-buddy-settings', payload)
-    applyRuntimeSettings(data?.data || payload)
+    applyRuntimeSettings(extractEnvelopeData(data) || payload)
     ElMessage.success('同频饭友运行配置已保存')
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '保存同频饭友运行配置失败')
+    ElMessage.error(extractErrorMessage(error, '保存同频饭友运行配置失败'))
   } finally {
     runtimeSaving.value = false
   }
