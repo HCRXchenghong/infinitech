@@ -32,6 +32,25 @@ function createProxyHandler(method, pathResolver, optionsResolver) {
   };
 }
 
+function normalizeAssetUrlFields(req, payload, fields) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return payload;
+  }
+
+  const normalized = { ...payload };
+  for (const field of fields) {
+    if (typeof normalized[field] === "string" && normalized[field]) {
+      normalized[field] = normalizePublicAssetUrl(req, normalized[field]);
+    }
+  }
+
+  if (normalized.data && typeof normalized.data === "object" && !Array.isArray(normalized.data)) {
+    normalized.data = normalizeAssetUrlFields(req, normalized.data, fields);
+  }
+
+  return normalized;
+}
+
 const getCarousel = createProxyHandler("get", "/api/carousel", (req) => ({ params: req.query }));
 const createCarousel = createProxyHandler("post", "/api/carousel", (req) => ({ body: req.body }));
 const updateCarousel = createProxyHandler("put", (req) => `/api/carousel/${req.params.id}`, (req) => ({ body: req.body }));
@@ -114,13 +133,7 @@ async function getAppDownloadConfig(req, res) {
         return status < 500;
       }
     });
-    const data = response.data || {};
-    if (data.ios_url) {
-      data.ios_url = normalizePublicAssetUrl(req, data.ios_url);
-    }
-    if (data.android_url) {
-      data.android_url = normalizePublicAssetUrl(req, data.android_url);
-    }
+    const data = normalizeAssetUrlFields(req, response.data, ["ios_url", "android_url", "mini_program_qr_url"]);
     return res.status(response.status).json(data);
   } catch (error) {
     return handleProxyError(res, error, "getAppDownloadConfig", { success: false, error: error.message });
@@ -157,13 +170,7 @@ async function uploadImage(req, res) {
         return status < 500;
       }
     });
-
-    const data = response.data && typeof response.data === "object"
-      ? { ...response.data }
-      : response.data;
-    if (data && data.imageUrl) {
-      data.imageUrl = normalizePublicAssetUrl(req, data.imageUrl);
-    }
+    const data = normalizeAssetUrlFields(req, response.data, ["imageUrl", "image_url", "url", "asset_url"]);
 
     return res.json(data);
   } catch (error) {
@@ -189,13 +196,7 @@ async function uploadEditorImage(req, res) {
         return status < 500;
       }
     });
-
-    const data = response.data && typeof response.data === "object"
-      ? { ...response.data }
-      : response.data;
-    if (data && data.url) {
-      data.url = normalizePublicAssetUrl(req, data.url);
-    }
+    const data = normalizeAssetUrlFields(req, response.data, ["url", "asset_url"]);
 
     return res.status(response.status).json(data);
   } catch (error) {
@@ -221,13 +222,7 @@ async function uploadPackage(req, res) {
         return status < 500;
       }
     });
-
-    const data = response.data && typeof response.data === "object"
-      ? { ...response.data }
-      : response.data;
-    if (data && data.url) {
-      data.url = normalizePublicAssetUrl(req, data.url);
-    }
+    const data = normalizeAssetUrlFields(req, response.data, ["url", "asset_url"]);
 
     return res.status(response.status).json(data);
   } catch (error) {
@@ -390,4 +385,5 @@ module.exports = {
   updateCoinRatio,
   adminRecharge,
   clearAllData,
+  normalizeAssetUrlFields,
 };

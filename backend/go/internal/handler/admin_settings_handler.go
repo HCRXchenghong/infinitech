@@ -639,7 +639,7 @@ func (h *AdminSettingsHandler) DeletePublicAPI(c *gin.Context) {
 func (h *AdminSettingsHandler) UploadImage(c *gin.Context) {
 	file, err := c.FormFile("image")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "未找到图片"})
+		respondAdminSettingsInvalidRequest(c, "未找到图片")
 		return
 	}
 
@@ -650,13 +650,13 @@ func (h *AdminSettingsHandler) UploadImage(c *gin.Context) {
 		".webp": true, ".bmp": true, ".heic": true, ".heif": true,
 	}
 	if !allowedExts[ext] {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "不支持的图片格式"})
+		respondAdminSettingsInvalidRequest(c, "不支持的图片格式")
 		return
 	}
 
 	uploadDir := filepath.Join("data", "uploads")
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "创建目录失败"})
+		respondAdminSettingsStatusError(c, http.StatusInternalServerError, "创建目录失败")
 		return
 	}
 
@@ -664,7 +664,7 @@ func (h *AdminSettingsHandler) UploadImage(c *gin.Context) {
 	savePath := filepath.Join(uploadDir, filename)
 
 	if err := c.SaveUploadedFile(file, savePath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "保存失败"})
+		respondAdminSettingsStatusError(c, http.StatusInternalServerError, "保存失败")
 		return
 	}
 
@@ -672,16 +672,15 @@ func (h *AdminSettingsHandler) UploadImage(c *gin.Context) {
 	finalFilename, err := utils.CompressImage(savePath, 500*1024)
 	if err != nil {
 		os.Remove(savePath)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "图片处理失败"})
+		respondAdminSettingsStatusError(c, http.StatusInternalServerError, "图片处理失败")
 		return
 	}
 
 	imageURL := "/uploads/" + finalFilename
-	c.JSON(http.StatusOK, gin.H{
-		"success":  true,
-		"imageUrl": imageURL,
-		"data":     buildPublicAssetPayload(imageURL, finalFilename, "admin_settings_image", file.Size),
-	})
+	payload := buildPublicAssetPayload(imageURL, finalFilename, "admin_settings_image", file.Size)
+	payload["imageUrl"] = imageURL
+	payload["url"] = imageURL
+	respondAdminSettingsMirroredSuccess(c, "图片上传成功", payload)
 }
 
 func (h *AdminSettingsHandler) GetAppDownloadConfig(c *gin.Context) {
@@ -756,15 +755,15 @@ func (h *AdminSettingsHandler) UpdateAppDownloadConfig(c *gin.Context) {
 func (h *AdminSettingsHandler) UploadPackage(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "未找到安装包文件"})
+		respondAdminSettingsInvalidRequest(c, "未找到安装包文件")
 		return
 	}
 	if file.Size <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "文件为空"})
+		respondAdminSettingsInvalidRequest(c, "文件为空")
 		return
 	}
 	if file.Size > maxPackageUploadSize {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "安装包大小不能超过300MB"})
+		respondAdminSettingsInvalidRequest(c, "安装包大小不能超过300MB")
 		return
 	}
 
@@ -775,31 +774,28 @@ func (h *AdminSettingsHandler) UploadPackage(c *gin.Context) {
 		".aab": true,
 	}
 	if !allowedExts[ext] {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "仅支持 .ipa / .apk / .aab 安装包"})
+		respondAdminSettingsInvalidRequest(c, "仅支持 .ipa / .apk / .aab 安装包")
 		return
 	}
 
 	uploadDir := filepath.Join("data", "uploads", "packages")
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "创建安装包目录失败"})
+		respondAdminSettingsStatusError(c, http.StatusInternalServerError, "创建安装包目录失败")
 		return
 	}
 
 	filename := strconv.FormatInt(time.Now().UnixNano(), 10) + ext
 	savePath := filepath.Join(uploadDir, filename)
 	if err := c.SaveUploadedFile(file, savePath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "安装包保存失败"})
+		respondAdminSettingsStatusError(c, http.StatusInternalServerError, "安装包保存失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":       true,
-		"url":           "/uploads/packages/" + filename,
-		"filename":      filename,
-		"original_name": filepath.Base(file.Filename),
-		"size":          file.Size,
-		"data":          buildPublicAssetPayload("/uploads/packages/"+filename, filename, "app_package", file.Size),
-	})
+	packageURL := "/uploads/packages/" + filename
+	payload := buildPublicAssetPayload(packageURL, filename, "app_package", file.Size)
+	payload["url"] = packageURL
+	payload["original_name"] = filepath.Base(file.Filename)
+	respondAdminSettingsMirroredSuccess(c, "安装包上传成功", payload)
 }
 
 func (h *AdminSettingsHandler) GetWeather(c *gin.Context) {

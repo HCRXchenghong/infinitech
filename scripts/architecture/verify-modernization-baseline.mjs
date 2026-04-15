@@ -346,6 +346,14 @@ assertContains(
   'respondSuccessEnvelope(c, "开放 API 列表加载成功", items, nil)',
 );
 assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  'respondAdminSettingsMirroredSuccess(c, "图片上传成功", payload)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  'respondAdminSettingsMirroredSuccess(c, "安装包上传成功", payload)',
+);
+assertContains(
   "backend/go/internal/handler/admin_settings_export_handler.go",
   'respondAdminSettingsSuccess(c, "系统配置导出成功", data)',
 );
@@ -748,6 +756,14 @@ assertContains(
 assertContains(
   "scripts/push-delivery-drill.mjs",
   "const payload = extractEnvelopeData(stats);",
+);
+assertContains(
+  "backend/bff/src/services/adminSettingsService.js",
+  'const data = normalizeAssetUrlFields(req, response.data, ["ios_url", "android_url", "mini_program_qr_url"]);',
+);
+assertContains(
+  "backend/bff/src/services/adminSettingsService.js",
+  'const data = normalizeAssetUrlFields(req, response.data, ["imageUrl", "image_url", "url", "asset_url"]);',
 );
 assertContains(
   "admin-vue/src/views/dashboardHelpers.js",
