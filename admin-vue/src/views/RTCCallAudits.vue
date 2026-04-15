@@ -284,6 +284,8 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { extractRTCCallAuditPage, extractRTCCallAuditRecord } from '@infinitech/admin-core'
+import { extractErrorMessage } from '@infinitech/contracts'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 
@@ -433,8 +435,8 @@ async function loadAudits() {
         limit: pagination.limit,
       },
     })
-    const payload = data?.data || data || {}
-    records.value = Array.isArray(payload.items) ? payload.items : []
+    const payload = extractRTCCallAuditPage(data)
+    records.value = payload.items
     const nextSummary = payload.summary || {}
     summary.total = Number(nextSummary.total || 0)
     summary.accepted = Number(nextSummary.accepted || 0)
@@ -451,7 +453,7 @@ async function loadAudits() {
     summary.failed = 0
     summary.complaints = 0
     pagination.total = 0
-    loadError.value = error?.response?.data?.error || error?.message || '加载 RTC 通话审计失败'
+    loadError.value = extractErrorMessage(error, '加载 RTC 通话审计失败')
     ElMessage.error('加载 RTC 通话审计失败')
   } finally {
     loading.value = false
@@ -511,13 +513,13 @@ async function submitReview(row, payload, successMessage, confirmMessage) {
   actionLoading[key] = true
   try {
     const { data } = await request.post(`/api/rtc-call-audits/${encodeURIComponent(key)}/review`, payload)
-    const updated = data?.data || data || {}
+    const updated = extractRTCCallAuditRecord(data)
     syncRecord(updated)
     ElMessage.success(successMessage)
     await loadAudits()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error(error?.response?.data?.error || error?.message || '更新 RTC 审计失败')
+      ElMessage.error(extractErrorMessage(error, '更新 RTC 审计失败'))
     }
   } finally {
     actionLoading[key] = false

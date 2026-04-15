@@ -19,13 +19,13 @@ func NewPhoneContactAuditHandler(svc *service.PhoneContactAuditService) *PhoneCo
 
 func (h *PhoneContactAuditHandler) RecordPhoneClick(c *gin.Context) {
 	if h == nil || h.service == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "contact audit service unavailable"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "电话联系审计服务不可用", nil)
 		return
 	}
 
 	var req service.PhoneContactAuditInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "message": err.Error()})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "请求参数错误", gin.H{"detail": err.Error()})
 		return
 	}
 
@@ -33,24 +33,21 @@ func (h *PhoneContactAuditHandler) RecordPhoneClick(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUnauthorized):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusUnauthorized, responseCodeUnauthorized, err.Error(), nil)
 		case errors.Is(err, service.ErrForbidden):
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusForbidden, responseCodeForbidden, err.Error(), nil)
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, err.Error(), nil)
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    record,
-	})
+	respondSuccessEnvelope(c, "电话联系审计记录成功", record, nil)
 }
 
 func (h *PhoneContactAuditHandler) AdminList(c *gin.Context) {
 	if h == nil || h.service == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "contact audit service unavailable"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "电话联系审计服务不可用", nil)
 		return
 	}
 
@@ -69,17 +66,14 @@ func (h *PhoneContactAuditHandler) AdminList(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUnauthorized):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusUnauthorized, responseCodeUnauthorized, err.Error(), nil)
 		case errors.Is(err, service.ErrForbidden):
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusForbidden, responseCodeForbidden, err.Error(), nil)
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, err.Error(), nil)
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    result,
-	})
+	respondEnvelope(c, http.StatusOK, "CONTACT_PHONE_AUDIT_LISTED", "电话联系审计加载成功", result, nil)
 }

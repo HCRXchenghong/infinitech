@@ -2,7 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  extractContactPhoneAuditPage,
   extractAdminMerchantPage,
+  extractRTCCallAuditPage,
+  extractRTCCallAuditRecord,
   extractAdminRiderPage,
   extractAdminUserPage,
   normalizeAdminMerchantSummary,
@@ -103,6 +106,97 @@ test("extractAdminMerchantPage supports enveloped merchant payloads", () => {
       total: 4,
       page: 0,
       limit: 0,
+    },
+  );
+});
+
+test("extractContactPhoneAuditPage reads summary and nested pagination", () => {
+  assert.deepEqual(
+    extractContactPhoneAuditPage({
+      data: {
+        items: [{ id: 1 }],
+        summary: {
+          total: 9,
+          clicked: 4,
+          opened: 3,
+          failed: 2,
+        },
+        pagination: {
+          total: 9,
+          page: 2,
+          limit: 20,
+        },
+      },
+    }),
+    {
+      items: [{ id: 1 }],
+      total: 9,
+      page: 2,
+      limit: 20,
+      summary: {
+        total: 9,
+        clicked: 4,
+        opened: 3,
+        failed: 2,
+      },
+      pagination: {
+        total: 9,
+        page: 2,
+        limit: 20,
+      },
+    },
+  );
+});
+
+test("extractRTCCallAuditPage reads rtc summary and extractRTCCallAuditRecord unwraps envelopes", () => {
+  assert.deepEqual(
+    extractRTCCallAuditPage({
+      data: {
+        items: [{ uid: "call-1" }],
+        summary: {
+          total: 5,
+          accepted: 2,
+          ended: 1,
+          failed: 1,
+          complaints: 1,
+        },
+        pagination: {
+          total: 5,
+          page: 1,
+          limit: 8,
+        },
+      },
+    }),
+    {
+      items: [{ uid: "call-1" }],
+      total: 5,
+      page: 1,
+      limit: 8,
+      summary: {
+        total: 5,
+        accepted: 2,
+        ended: 1,
+        failed: 1,
+        complaints: 1,
+      },
+      pagination: {
+        total: 5,
+        page: 1,
+        limit: 8,
+      },
+    },
+  );
+
+  assert.deepEqual(
+    extractRTCCallAuditRecord({
+      data: {
+        uid: "call-2",
+        complaint_status: "reported",
+      },
+    }),
+    {
+      uid: "call-2",
+      complaint_status: "reported",
     },
   );
 });

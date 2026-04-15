@@ -165,6 +165,8 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { extractContactPhoneAuditPage } from '@infinitech/admin-core'
+import { extractErrorMessage } from '@infinitech/contracts'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 
@@ -256,8 +258,8 @@ async function loadAudits() {
         limit: pagination.limit,
       },
     })
-    const payload = data?.data || data || {}
-    records.value = Array.isArray(payload.items) ? payload.items : []
+    const payload = extractContactPhoneAuditPage(data)
+    records.value = payload.items
     const nextSummary = payload.summary || {}
     summary.total = Number(nextSummary.total || 0)
     summary.clicked = Number(nextSummary.clicked || 0)
@@ -272,7 +274,7 @@ async function loadAudits() {
     summary.opened = 0
     summary.failed = 0
     pagination.total = 0
-    loadError.value = error?.response?.data?.error || error?.message || '加载电话联系审计失败'
+    loadError.value = extractErrorMessage(error, '加载电话联系审计失败')
     ElMessage.error('加载电话联系审计失败')
   } finally {
     loading.value = false

@@ -36,13 +36,13 @@ func resolveRTCCallID(c *gin.Context) string {
 
 func (h *RTCCallAuditHandler) UpsertCall(c *gin.Context) {
 	if h == nil || h.service == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "rtc call audit service unavailable"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "RTC 通话审计服务不可用", nil)
 		return
 	}
 
 	var req service.RTCCallAuditUpsertInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "message": err.Error()})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "请求参数错误", gin.H{"detail": err.Error()})
 		return
 	}
 
@@ -50,30 +50,27 @@ func (h *RTCCallAuditHandler) UpsertCall(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUnauthorized):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusUnauthorized, responseCodeUnauthorized, err.Error(), nil)
 		case errors.Is(err, service.ErrForbidden):
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusForbidden, responseCodeForbidden, err.Error(), nil)
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, err.Error(), nil)
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    record,
-	})
+	respondSuccessEnvelope(c, "RTC 通话审计写入成功", record, nil)
 }
 
 func (h *RTCCallAuditHandler) UpdateCallStatus(c *gin.Context) {
 	if h == nil || h.service == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "rtc call audit service unavailable"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "RTC 通话审计服务不可用", nil)
 		return
 	}
 
 	var req service.RTCCallAuditUpsertInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "message": err.Error()})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "请求参数错误", gin.H{"detail": err.Error()})
 		return
 	}
 	req.CallID = resolveRTCCallID(c)
@@ -82,24 +79,21 @@ func (h *RTCCallAuditHandler) UpdateCallStatus(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUnauthorized):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusUnauthorized, responseCodeUnauthorized, err.Error(), nil)
 		case errors.Is(err, service.ErrForbidden):
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusForbidden, responseCodeForbidden, err.Error(), nil)
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, err.Error(), nil)
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    record,
-	})
+	respondSuccessEnvelope(c, "RTC 通话状态更新成功", record, nil)
 }
 
 func (h *RTCCallAuditHandler) AdminList(c *gin.Context) {
 	if h == nil || h.service == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "rtc call audit service unavailable"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "RTC 通话审计服务不可用", nil)
 		return
 	}
 
@@ -118,30 +112,27 @@ func (h *RTCCallAuditHandler) AdminList(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUnauthorized):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusUnauthorized, responseCodeUnauthorized, err.Error(), nil)
 		case errors.Is(err, service.ErrForbidden):
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusForbidden, responseCodeForbidden, err.Error(), nil)
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, err.Error(), nil)
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    result,
-	})
+	respondEnvelope(c, http.StatusOK, "RTC_CALL_AUDIT_LISTED", "RTC 通话审计加载成功", result, nil)
 }
 
 func (h *RTCCallAuditHandler) AdminReview(c *gin.Context) {
 	if h == nil || h.service == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "rtc call audit service unavailable"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "RTC 通话审计服务不可用", nil)
 		return
 	}
 
 	var req service.RTCCallAuditAdminReviewInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "message": err.Error()})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "请求参数错误", gin.H{"detail": err.Error()})
 		return
 	}
 
@@ -149,24 +140,21 @@ func (h *RTCCallAuditHandler) AdminReview(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUnauthorized):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusUnauthorized, responseCodeUnauthorized, err.Error(), nil)
 		case errors.Is(err, service.ErrForbidden):
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusForbidden, responseCodeForbidden, err.Error(), nil)
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, err.Error(), nil)
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    record,
-	})
+	respondSuccessEnvelope(c, "RTC 审计处理成功", record, nil)
 }
 
 func (h *RTCCallAuditHandler) AdminRunRetentionCleanup(c *gin.Context) {
 	if h == nil || h.service == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "rtc call audit service unavailable"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "RTC 通话审计服务不可用", nil)
 		return
 	}
 
@@ -174,31 +162,25 @@ func (h *RTCCallAuditHandler) AdminRunRetentionCleanup(c *gin.Context) {
 	before := h.service.RetentionCleanupStatusSnapshot()
 	cleared, err := h.service.RunRetentionCleanupCycleNow(c.Request.Context(), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":  "rtc retention cleanup failed",
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "RTC 录音留存清理失败", gin.H{
 			"detail": err.Error(),
-			"data": gin.H{
-				"before": before,
-			},
+			"before": before,
 		})
 		return
 	}
 
 	after := h.service.RetentionCleanupStatusSnapshot()
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"before":  before,
-			"after":   after,
-			"cleared": cleared,
-			"limit":   limit,
-		},
-	})
+	respondSuccessEnvelope(c, "RTC 录音留存清理完成", gin.H{
+		"before":  before,
+		"after":   after,
+		"cleared": cleared,
+		"limit":   limit,
+	}, nil)
 }
 
 func (h *RTCCallAuditHandler) GetCall(c *gin.Context) {
 	if h == nil || h.service == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "rtc call audit service unavailable"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "RTC 通话审计服务不可用", nil)
 		return
 	}
 
@@ -206,24 +188,21 @@ func (h *RTCCallAuditHandler) GetCall(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUnauthorized):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusUnauthorized, responseCodeUnauthorized, err.Error(), nil)
 		case errors.Is(err, service.ErrForbidden):
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusForbidden, responseCodeForbidden, err.Error(), nil)
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, err.Error(), nil)
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    record,
-	})
+	respondSuccessEnvelope(c, "RTC 通话详情加载成功", record, nil)
 }
 
 func (h *RTCCallAuditHandler) ListHistory(c *gin.Context) {
 	if h == nil || h.service == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "rtc call audit service unavailable"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "RTC 通话审计服务不可用", nil)
 		return
 	}
 
@@ -236,17 +215,14 @@ func (h *RTCCallAuditHandler) ListHistory(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUnauthorized):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusUnauthorized, responseCodeUnauthorized, err.Error(), nil)
 		case errors.Is(err, service.ErrForbidden):
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusForbidden, responseCodeForbidden, err.Error(), nil)
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, err.Error(), nil)
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    result,
-	})
+	respondEnvelope(c, http.StatusOK, "RTC_CALL_HISTORY_LISTED", "RTC 通话历史加载成功", result, nil)
 }

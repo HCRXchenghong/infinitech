@@ -293,6 +293,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
+import { extractRTCCallAuditPage } from '@infinitech/admin-core'
+import { extractErrorMessage } from '@infinitech/contracts'
 
 import PageStateAlert from '@/components/PageStateAlert.vue'
 import request from '@/utils/request'
@@ -513,8 +515,8 @@ async function loadRecentAudits() {
         limit: 8,
       },
     })
-    const payload = data?.data || data || {}
-    recentAudits.value = Array.isArray(payload.items) ? payload.items : []
+    const payload = extractRTCCallAuditPage(data)
+    recentAudits.value = payload.items
     const summary = payload.summary || {}
     auditSummary.total = Number(summary.total || 0)
     auditSummary.accepted = Number(summary.accepted || 0)
@@ -526,7 +528,7 @@ async function loadRecentAudits() {
     auditSummary.accepted = 0
     auditSummary.ended = 0
     auditSummary.complaints = 0
-    auditsError.value = error?.response?.data?.error || error?.message || '加载 RTC 通话记录失败'
+    auditsError.value = extractErrorMessage(error, '加载 RTC 通话记录失败')
     ElMessage.error('加载 RTC 通话记录失败')
   } finally {
     auditsLoading.value = false

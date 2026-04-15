@@ -39,6 +39,9 @@ export function extractPaginatedItems(payload, options = {}) {
   const listKeys = Array.isArray(options.listKeys) && options.listKeys.length > 0
     ? options.listKeys
     : ["items", "records", "list"];
+  const pagination = data && typeof data === "object" && data.pagination && typeof data.pagination === "object"
+    ? data.pagination
+    : {};
   const normalized = {
     items: [],
     total: 0,
@@ -63,9 +66,11 @@ export function extractPaginatedItems(payload, options = {}) {
     }
   }
 
-  normalized.total = Number(data.total || payload?.total || normalized.items.length || 0);
-  normalized.page = Number(data.page || payload?.page || 0);
-  normalized.limit = Number(data.limit || payload?.limit || 0);
+  normalized.total = Number(
+    data.total || pagination.total || payload?.total || normalized.items.length || 0,
+  );
+  normalized.page = Number(data.page || pagination.page || payload?.page || 0);
+  normalized.limit = Number(data.limit || pagination.limit || payload?.limit || 0);
   return normalized;
 }
 

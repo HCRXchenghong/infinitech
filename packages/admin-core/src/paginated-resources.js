@@ -1,4 +1,4 @@
-import { extractPaginatedItems } from "../../contracts/src/http.js";
+import { extractEnvelopeData, extractPaginatedItems } from "../../contracts/src/http.js";
 
 function normalizeNumber(value, fallback = 0) {
   const parsed = Number(value);
@@ -55,4 +55,47 @@ export function extractAdminMerchantPage(payload = {}) {
     listKeys: ["merchants", "items"],
     normalizeItem: normalizeAdminMerchantSummary,
   });
+}
+
+function normalizeSummary(source = {}, keys = []) {
+  const summary = {};
+  for (const key of keys) {
+    summary[key] = normalizeNumber(source[key], 0);
+  }
+  return summary;
+}
+
+function buildListResult(payload, summaryKeys = []) {
+  const data = extractEnvelopeData(payload);
+  const page = extractPaginatedItems(payload);
+  const source = data && typeof data === "object" ? data : {};
+
+  return {
+    items: page.items,
+    total: page.total,
+    page: page.page,
+    limit: page.limit,
+    summary: normalizeSummary(source.summary, summaryKeys),
+    pagination: {
+      page: page.page,
+      limit: page.limit,
+      total: page.total,
+    },
+  };
+}
+
+export function extractContactPhoneAuditPage(payload = {}) {
+  return buildListResult(payload, ["total", "clicked", "opened", "failed"]);
+}
+
+export function extractRTCCallAuditPage(payload = {}) {
+  return buildListResult(payload, ["total", "accepted", "ended", "failed", "complaints"]);
+}
+
+export function extractRTCCallAuditRecord(payload = {}) {
+  const data = extractEnvelopeData(payload);
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return {};
+  }
+  return data;
 }

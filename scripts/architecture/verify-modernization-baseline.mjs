@@ -421,6 +421,18 @@ assertContains(
   "admin-vue/src/views/ridersHelpers.js",
   "extractAdminRiderPage",
 );
+assertContains(
+  "admin-vue/src/views/ContactPhoneAudits.vue",
+  "extractContactPhoneAuditPage",
+);
+assertContains(
+  "admin-vue/src/views/RTCCallAudits.vue",
+  "extractRTCCallAuditPage",
+);
+assertContains(
+  "admin-vue/src/views/AdminRTCConsole.vue",
+  "extractRTCCallAuditPage",
+);
 assertNotContains(
   "socket-server/index.js",
   "origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : '*'",
