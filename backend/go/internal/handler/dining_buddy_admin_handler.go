@@ -10,25 +10,33 @@ import (
 	"github.com/yuexiang/go-api/internal/service"
 )
 
+func respondDiningBuddyInvalidRequest(c *gin.Context, message string) {
+	respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, message, nil)
+}
+
+func respondDiningBuddySuccess(c *gin.Context, message string, data interface{}) {
+	respondMirroredSuccessEnvelope(c, message, data)
+}
+
 func (h *DiningBuddyHandler) CreateReport(c *gin.Context) {
 	currentUserID, err := diningBuddyCurrentUserID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusUnauthorized, responseCodeUnauthorized, err.Error(), nil)
 		return
 	}
 
 	var req service.DiningBuddyReportInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
+		respondDiningBuddyInvalidRequest(c, "invalid request payload")
 		return
 	}
 
 	report, err := h.service.CreateReport(c.Request.Context(), currentUserID, req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondDiningBuddyInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "report": report})
+	respondDiningBuddySuccess(c, "同频饭友举报创建成功", gin.H{"report": report})
 }
 
 func (h *DiningBuddyHandler) AdminListParties(c *gin.Context) {
@@ -40,19 +48,19 @@ func (h *DiningBuddyHandler) AdminListParties(c *gin.Context) {
 		Limit:    limit,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"parties": items})
+	respondDiningBuddySuccess(c, "同频饭友组局列表加载成功", gin.H{"parties": items})
 }
 
 func (h *DiningBuddyHandler) AdminGetParty(c *gin.Context) {
 	item, err := h.service.AdminGetParty(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondDiningBuddyInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, item)
+	respondDiningBuddySuccess(c, "同频饭友组局详情加载成功", item)
 }
 
 func (h *DiningBuddyHandler) AdminCloseParty(c *gin.Context) {
@@ -63,10 +71,10 @@ func (h *DiningBuddyHandler) AdminCloseParty(c *gin.Context) {
 	adminID := parseContextUint(c.Get("admin_id"))
 	adminName := strings.TrimSpace(c.GetString("admin_name"))
 	if err := h.service.AdminCloseParty(c.Request.Context(), c.Param("id"), adminID, adminName, req.Reason); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondDiningBuddyInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondDiningBuddySuccess(c, "同频饭友组局已关闭", gin.H{})
 }
 
 func (h *DiningBuddyHandler) AdminReopenParty(c *gin.Context) {
@@ -77,19 +85,19 @@ func (h *DiningBuddyHandler) AdminReopenParty(c *gin.Context) {
 	adminID := parseContextUint(c.Get("admin_id"))
 	adminName := strings.TrimSpace(c.GetString("admin_name"))
 	if err := h.service.AdminReopenParty(c.Request.Context(), c.Param("id"), adminID, adminName, req.Reason); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondDiningBuddyInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondDiningBuddySuccess(c, "同频饭友组局已重开", gin.H{})
 }
 
 func (h *DiningBuddyHandler) AdminListMessages(c *gin.Context) {
 	items, err := h.service.AdminListMessages(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondDiningBuddyInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"messages": items})
+	respondDiningBuddySuccess(c, "同频饭友消息列表加载成功", gin.H{"messages": items})
 }
 
 func (h *DiningBuddyHandler) AdminDeleteMessage(c *gin.Context) {
@@ -100,20 +108,20 @@ func (h *DiningBuddyHandler) AdminDeleteMessage(c *gin.Context) {
 	adminID := parseContextUint(c.Get("admin_id"))
 	adminName := strings.TrimSpace(c.GetString("admin_name"))
 	if err := h.service.AdminDeleteMessage(c.Request.Context(), c.Param("id"), adminID, adminName, req.Reason); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondDiningBuddyInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondDiningBuddySuccess(c, "同频饭友消息已删除", gin.H{})
 }
 
 func (h *DiningBuddyHandler) AdminListReports(c *gin.Context) {
 	limit, _ := strconv.Atoi(strings.TrimSpace(c.Query("limit")))
 	items, err := h.service.AdminListReports(c.Request.Context(), c.Query("status"), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"reports": items})
+	respondDiningBuddySuccess(c, "同频饭友举报列表加载成功", gin.H{"reports": items})
 }
 
 func (h *DiningBuddyHandler) AdminResolveReport(c *gin.Context) {
@@ -125,10 +133,10 @@ func (h *DiningBuddyHandler) AdminResolveReport(c *gin.Context) {
 	adminID := parseContextUint(c.Get("admin_id"))
 	adminName := strings.TrimSpace(c.GetString("admin_name"))
 	if err := h.service.AdminResolveReport(c.Request.Context(), c.Param("id"), adminID, adminName, req.ResolutionNote, req.ResolutionAction); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondDiningBuddyInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondDiningBuddySuccess(c, "同频饭友举报已受理", gin.H{})
 }
 
 func (h *DiningBuddyHandler) AdminRejectReport(c *gin.Context) {
@@ -139,19 +147,19 @@ func (h *DiningBuddyHandler) AdminRejectReport(c *gin.Context) {
 	adminID := parseContextUint(c.Get("admin_id"))
 	adminName := strings.TrimSpace(c.GetString("admin_name"))
 	if err := h.service.AdminRejectReport(c.Request.Context(), c.Param("id"), adminID, adminName, req.ResolutionNote); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondDiningBuddyInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondDiningBuddySuccess(c, "同频饭友举报已驳回", gin.H{})
 }
 
 func (h *DiningBuddyHandler) AdminListSensitiveWords(c *gin.Context) {
 	items, err := h.service.AdminListSensitiveWords(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": items})
+	respondDiningBuddySuccess(c, "同频饭友敏感词加载成功", gin.H{"items": items})
 }
 
 func (h *DiningBuddyHandler) AdminCreateSensitiveWord(c *gin.Context) {
@@ -161,17 +169,17 @@ func (h *DiningBuddyHandler) AdminCreateSensitiveWord(c *gin.Context) {
 		Description string `json:"description"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
+		respondDiningBuddyInvalidRequest(c, "invalid request payload")
 		return
 	}
 	adminID := parseContextUint(c.Get("admin_id"))
 	adminName := strings.TrimSpace(c.GetString("admin_name"))
 	item, err := h.service.AdminCreateSensitiveWord(c.Request.Context(), req.Word, req.Enabled, req.Description, adminID, adminName)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondDiningBuddyInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "item": item})
+	respondDiningBuddySuccess(c, "同频饭友敏感词创建成功", gin.H{"item": item})
 }
 
 func (h *DiningBuddyHandler) AdminUpdateSensitiveWord(c *gin.Context) {
@@ -181,35 +189,35 @@ func (h *DiningBuddyHandler) AdminUpdateSensitiveWord(c *gin.Context) {
 		Description string `json:"description"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
+		respondDiningBuddyInvalidRequest(c, "invalid request payload")
 		return
 	}
 	adminID := parseContextUint(c.Get("admin_id"))
 	adminName := strings.TrimSpace(c.GetString("admin_name"))
 	if err := h.service.AdminUpdateSensitiveWord(c.Request.Context(), c.Param("id"), req.Word, req.Enabled, req.Description, adminID, adminName); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondDiningBuddyInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondDiningBuddySuccess(c, "同频饭友敏感词更新成功", gin.H{})
 }
 
 func (h *DiningBuddyHandler) AdminDeleteSensitiveWord(c *gin.Context) {
 	adminID := parseContextUint(c.Get("admin_id"))
 	adminName := strings.TrimSpace(c.GetString("admin_name"))
 	if err := h.service.AdminDeleteSensitiveWord(c.Request.Context(), c.Param("id"), adminID, adminName); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondDiningBuddyInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondDiningBuddySuccess(c, "同频饭友敏感词删除成功", gin.H{})
 }
 
 func (h *DiningBuddyHandler) AdminListUserRestrictions(c *gin.Context) {
 	items, err := h.service.AdminListUserRestrictions(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": items})
+	respondDiningBuddySuccess(c, "同频饭友用户限制加载成功", gin.H{"items": items})
 }
 
 func (h *DiningBuddyHandler) AdminUpsertUserRestriction(c *gin.Context) {
@@ -221,14 +229,14 @@ func (h *DiningBuddyHandler) AdminUpsertUserRestriction(c *gin.Context) {
 		ExpiresAt       string `json:"expires_at"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
+		respondDiningBuddyInvalidRequest(c, "invalid request payload")
 		return
 	}
 	var expiresAt *time.Time
 	if strings.TrimSpace(req.ExpiresAt) != "" {
 		parsed, err := time.Parse(time.RFC3339, strings.TrimSpace(req.ExpiresAt))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "expires_at is invalid"})
+			respondDiningBuddyInvalidRequest(c, "expires_at is invalid")
 			return
 		}
 		expiresAt = &parsed
@@ -237,18 +245,18 @@ func (h *DiningBuddyHandler) AdminUpsertUserRestriction(c *gin.Context) {
 	adminName := strings.TrimSpace(c.GetString("admin_name"))
 	item, err := h.service.AdminUpsertUserRestriction(c.Request.Context(), req.TargetUserID, req.RestrictionType, req.Reason, req.Note, expiresAt, adminID, adminName)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondDiningBuddyInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "item": item})
+	respondDiningBuddySuccess(c, "同频饭友用户限制保存成功", gin.H{"item": item})
 }
 
 func (h *DiningBuddyHandler) AdminListAuditLogs(c *gin.Context) {
 	limit, _ := strconv.Atoi(strings.TrimSpace(c.Query("limit")))
 	items, err := h.service.AdminListAuditLogs(c.Request.Context(), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": items})
+	respondDiningBuddySuccess(c, "同频饭友审计日志加载成功", gin.H{"items": items})
 }

@@ -18,6 +18,10 @@ func NewAdminWalletHandler(wallet *service.WalletService) *AdminWalletHandler {
 	return &AdminWalletHandler{wallet: wallet}
 }
 
+func respondAdminWalletInvalidRequest(c *gin.Context) {
+	respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "invalid request", nil)
+}
+
 func extractAdminActor(c *gin.Context) service.AdminWalletActor {
 	adminID := strings.TrimSpace(c.GetHeader("X-Admin-ID"))
 	if adminID == "" {
@@ -35,7 +39,7 @@ func extractAdminActor(c *gin.Context) service.AdminWalletActor {
 func (h *AdminWalletHandler) AddBalance(c *gin.Context) {
 	var req service.AdminBalanceOperationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondAdminWalletInvalidRequest(c)
 		return
 	}
 	actor := extractAdminActor(c)
@@ -44,13 +48,13 @@ func (h *AdminWalletHandler) AddBalance(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "管理端加款成功", result)
 }
 
 func (h *AdminWalletHandler) DeductBalance(c *gin.Context) {
 	var req service.AdminBalanceOperationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondAdminWalletInvalidRequest(c)
 		return
 	}
 	actor := extractAdminActor(c)
@@ -59,13 +63,13 @@ func (h *AdminWalletHandler) DeductBalance(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "管理端扣款成功", result)
 }
 
 func (h *AdminWalletHandler) FreezeAccount(c *gin.Context) {
 	var req service.AdminFreezeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondAdminWalletInvalidRequest(c)
 		return
 	}
 	actor := extractAdminActor(c)
@@ -74,13 +78,13 @@ func (h *AdminWalletHandler) FreezeAccount(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "账户冻结成功", result)
 }
 
 func (h *AdminWalletHandler) UnfreezeAccount(c *gin.Context) {
 	var req service.AdminFreezeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondAdminWalletInvalidRequest(c)
 		return
 	}
 	actor := extractAdminActor(c)
@@ -89,7 +93,7 @@ func (h *AdminWalletHandler) UnfreezeAccount(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "账户解冻成功", result)
 }
 
 func (h *AdminWalletHandler) ListOperations(c *gin.Context) {
@@ -106,13 +110,13 @@ func (h *AdminWalletHandler) ListOperations(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "管理端资金操作记录加载成功", result)
 }
 
 func (h *AdminWalletHandler) ReviewWithdraw(c *gin.Context) {
 	var req service.WithdrawReviewRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondAdminWalletInvalidRequest(c)
 		return
 	}
 	actor := extractAdminActor(c)
@@ -121,7 +125,7 @@ func (h *AdminWalletHandler) ReviewWithdraw(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "提现审核处理成功", result)
 }
 
 func (h *AdminWalletHandler) ListWithdrawRequests(c *gin.Context) {
@@ -137,7 +141,7 @@ func (h *AdminWalletHandler) ListWithdrawRequests(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "提现记录加载成功", result)
 }
 
 func (h *AdminWalletHandler) ListPaymentCallbacks(c *gin.Context) {
@@ -155,7 +159,7 @@ func (h *AdminWalletHandler) ListPaymentCallbacks(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "支付回调记录加载成功", result)
 }
 
 func (h *AdminWalletHandler) GetPaymentCallbackDetail(c *gin.Context) {
@@ -164,13 +168,13 @@ func (h *AdminWalletHandler) GetPaymentCallbackDetail(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "支付回调详情加载成功", result)
 }
 
 func (h *AdminWalletHandler) ReplayPaymentCallback(c *gin.Context) {
 	var req service.PaymentCallbackReplayRequest
 	if err := c.ShouldBindJSON(&req); err != nil && !errors.Is(err, io.EOF) {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondAdminWalletInvalidRequest(c)
 		return
 	}
 	actor := extractAdminActor(c)
@@ -179,7 +183,7 @@ func (h *AdminWalletHandler) ReplayPaymentCallback(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "支付回调重放成功", result)
 }
 
 func (h *AdminWalletHandler) GetPaymentCenterConfig(c *gin.Context) {
@@ -188,13 +192,13 @@ func (h *AdminWalletHandler) GetPaymentCenterConfig(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "支付中心配置加载成功", result)
 }
 
 func (h *AdminWalletHandler) SavePaymentCenterConfig(c *gin.Context) {
 	var req service.PaymentCenterConfigPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondAdminWalletInvalidRequest(c)
 		return
 	}
 	result, err := h.wallet.SavePaymentCenterConfig(c.Request.Context(), req)
@@ -202,7 +206,7 @@ func (h *AdminWalletHandler) SavePaymentCenterConfig(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "支付中心配置保存成功", result)
 }
 
 func (h *AdminWalletHandler) PreviewSettlement(c *gin.Context) {
@@ -211,7 +215,7 @@ func (h *AdminWalletHandler) PreviewSettlement(c *gin.Context) {
 		RuleSetName string `json:"ruleSetName"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request"})
+		respondAdminWalletInvalidRequest(c)
 		return
 	}
 	result, err := h.wallet.PreviewSettlement(c.Request.Context(), req.Amount, req.RuleSetName)
@@ -219,7 +223,7 @@ func (h *AdminWalletHandler) PreviewSettlement(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "分账试算成功", result)
 }
 
 func (h *AdminWalletHandler) GetSettlementOrder(c *gin.Context) {
@@ -228,7 +232,7 @@ func (h *AdminWalletHandler) GetSettlementOrder(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "订单分账详情加载成功", result)
 }
 
 func (h *AdminWalletHandler) GetRiderDepositOverview(c *gin.Context) {
@@ -237,7 +241,7 @@ func (h *AdminWalletHandler) GetRiderDepositOverview(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "骑手保证金概览加载成功", result)
 }
 
 func (h *AdminWalletHandler) ListRiderDepositRecords(c *gin.Context) {
@@ -251,7 +255,7 @@ func (h *AdminWalletHandler) ListRiderDepositRecords(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "骑手保证金记录加载成功", result)
 }
 
 func (h *AdminWalletHandler) AdminRecharge(c *gin.Context) {
@@ -262,7 +266,7 @@ func (h *AdminWalletHandler) AdminRecharge(c *gin.Context) {
 		Note     string `json:"note"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || req.UserID == "" || req.Amount <= 0 {
-		c.JSON(400, gin.H{"success": false, "error": "参数错误"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "参数错误", nil)
 		return
 	}
 	actor := extractAdminActor(c)
@@ -277,5 +281,5 @@ func (h *AdminWalletHandler) AdminRecharge(c *gin.Context) {
 		writeWalletServiceError(c, err)
 		return
 	}
-	c.JSON(200, result)
+	respondMirroredSuccessEnvelope(c, "管理端充值成功", result)
 }

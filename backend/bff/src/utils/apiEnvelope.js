@@ -26,6 +26,7 @@ function normalizeErrorCode(status, explicitCode = '') {
     case 429:
       return 'TOO_MANY_REQUESTS';
     case 502:
+    case 503:
       return 'UPSTREAM_UNAVAILABLE';
     case 504:
       return 'UPSTREAM_TIMEOUT';

@@ -270,6 +270,30 @@ assertContains(
   `"request_id": currentRequestID(c)`,
 );
 assertContains(
+  "backend/go/internal/handler/response_envelope.go",
+  "func respondMirroredSuccessEnvelope(c *gin.Context, message string, data interface{})",
+);
+assertContains(
+  "backend/go/internal/handler/admin_wallet_handler.go",
+  'respondMirroredSuccessEnvelope(c, "支付回调记录加载成功", result)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_wallet_handler.go",
+  'respondAdminWalletInvalidRequest(c)',
+);
+assertContains(
+  "backend/go/internal/handler/dining_buddy_admin_handler.go",
+  "func respondDiningBuddySuccess(c *gin.Context, message string, data interface{})",
+);
+assertContains(
+  "backend/go/internal/handler/dining_buddy_admin_handler.go",
+  'respondDiningBuddySuccess(c, "同频饭友组局列表加载成功", gin.H{"parties": items})',
+);
+assertContains(
+  "backend/go/internal/handler/dining_buddy_admin_handler.go",
+  'respondDiningBuddyInvalidRequest(c, "invalid request payload")',
+);
+assertContains(
   "backend/go/internal/handler/onboarding_invite_handler.go",
   'respondEnvelope(c, http.StatusOK, "ONBOARDING_INVITE_CREATED"',
 );
@@ -384,6 +408,18 @@ assertContains(
 assertContains(
   "backend/bff/src/utils/apiEnvelope.js",
   "function buildErrorEnvelopePayload(req, status, message, options = {})",
+);
+assertContains(
+  "backend/bff/src/controllers/authController.js",
+  "buildErrorEnvelopePayload(req, status, message, {",
+);
+assertContains(
+  "backend/bff/src/controllers/authController.js",
+  "legacy: { statusCode: status }",
+);
+assertNotContains(
+  "backend/bff/src/controllers/authController.js",
+  "debug:",
 );
 assertContains(
   "backend/bff/src/middleware/errorHandler.js",

@@ -4,6 +4,7 @@
 
 const { goUrl, proxyPost, requestGoRaw } = require('../utils/goProxy');
 const { logger } = require('../utils/logger');
+const { buildErrorEnvelopePayload } = require('../utils/apiEnvelope');
 
 /**
  * 用户登录
@@ -68,6 +69,14 @@ async function wechatBindLogin(req, res, next) {
 async function requestSMSCode(req, res, next) {
   const targetUrl = goUrl('/sms/request');
 
+  function sendClientError(status, message) {
+    return res.status(status).json(
+      buildErrorEnvelopePayload(req, status, message, {
+        legacy: { statusCode: status },
+      })
+    );
+  }
+
   try {
     const response = await requestGoRaw(req, {
       method: 'post',
@@ -85,47 +94,21 @@ async function requestSMSCode(req, res, next) {
       const isHTML = typeof responseData === 'string' && responseData.includes('<!DOCTYPE html>');
 
       if (isHTML) {
-        return res.status(404).json({
-          success: false,
-          error: 'Go 后端路由不存在，请检查路由配置',
-          message: 'Go 后端路由不存在，请检查路由配置',
-          debug: {
-            url: targetUrl,
-            status: error.response.status,
-            note: 'Go 后端返回了 HTML 404 页面，说明路由未匹配'
-          }
-        });
+        return sendClientError(404, 'Go 后端路由不存在，请检查路由配置');
       }
 
-      return res.status(error.response.status).json({
-        success: false,
-        error: responseData?.error || responseData?.message || `Go 后端错误: ${error.response.status}`,
-        message: responseData?.message || `Go 后端错误: ${error.response.status}`
-      });
+      return sendClientError(
+        error.response.status,
+        responseData?.error || responseData?.message || `Go 后端错误: ${error.response.status}`
+      );
     }
 
     if (error.code === 'ECONNREFUSED') {
-      return res.status(503).json({
-        success: false,
-        error: 'Go 后端服务未启动，请检查 Go 后端服务状态',
-        message: 'Go 后端服务未启动，请检查 Go 后端服务状态',
-        debug: {
-          url: targetUrl,
-          code: error.code
-        }
-      });
+      return sendClientError(503, 'Go 后端服务未启动，请检查 Go 后端服务状态');
     }
 
     if (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
-      return res.status(504).json({
-        success: false,
-        error: '请求 Go 后端超时，请检查 Go 后端服务状态',
-        message: '请求 Go 后端超时，请检查 Go 后端服务状态',
-        debug: {
-          url: targetUrl,
-          code: error.code
-        }
-      });
+      return sendClientError(504, '请求 Go 后端超时，请检查 Go 后端服务状态');
     }
 
     logger.error('Request SMS code unexpected error:', {

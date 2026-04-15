@@ -54,6 +54,48 @@ func TestRespondSuccessEnvelopeIncludesRequestMetadata(t *testing.T) {
 	}
 }
 
+func TestRespondMirroredSuccessEnvelopeMirrorsMapPayloadToLegacyFields(t *testing.T) {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/test", nil)
+	ctx.Set("request_id", "req-test-004")
+
+	respondMirroredSuccessEnvelope(ctx, "mirrored", gin.H{
+		"items": []string{"a", "b"},
+		"total": 2,
+	})
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to decode payload: %v", err)
+	}
+
+	if payload["request_id"] != "req-test-004" {
+		t.Fatalf("expected request_id req-test-004, got %v", payload["request_id"])
+	}
+	if payload["message"] != "mirrored" {
+		t.Fatalf("expected message mirrored, got %v", payload["message"])
+	}
+	if payload["total"] != float64(2) {
+		t.Fatalf("expected top-level total 2, got %v", payload["total"])
+	}
+
+	data, ok := payload["data"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected data object, got %T", payload["data"])
+	}
+	if data["total"] != float64(2) {
+		t.Fatalf("expected data.total 2, got %v", data["total"])
+	}
+}
+
 func TestRespondSensitiveEnvelopeSetsNoStoreHeaders(t *testing.T) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)

@@ -37,6 +37,17 @@ func normalizeResponseData(data interface{}) interface{} {
 	return data
 }
 
+func legacyEnvelopeFields(data interface{}) gin.H {
+	switch typed := data.(type) {
+	case gin.H:
+		return typed
+	case map[string]interface{}:
+		return gin.H(typed)
+	default:
+		return nil
+	}
+}
+
 func normalizeResponseMessage(message string, status int) string {
 	message = strings.TrimSpace(message)
 	if message != "" {
@@ -88,6 +99,10 @@ func respondEnvelope(c *gin.Context, status int, code, message string, data inte
 
 func respondSuccessEnvelope(c *gin.Context, message string, data interface{}, legacy gin.H) {
 	respondEnvelope(c, http.StatusOK, responseCodeOK, message, data, legacy)
+}
+
+func respondMirroredSuccessEnvelope(c *gin.Context, message string, data interface{}) {
+	respondSuccessEnvelope(c, message, data, legacyEnvelopeFields(data))
 }
 
 func respondPaginatedEnvelope(c *gin.Context, code, message, listKey string, items interface{}, total int64, page, limit int) {
