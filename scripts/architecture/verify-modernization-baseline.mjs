@@ -510,6 +510,14 @@ assertContains(
   "extractPaginatedItems(data).items",
 );
 assertContains(
+  "admin-vue/src/views/ShopMenuManage.vue",
+  "extractPaginatedItems(data).items",
+);
+assertContains(
+  "admin-vue/src/views/MerchantProfile.vue",
+  "extractPaginatedItems(data, { listKeys: ['shops'] }).items",
+);
+assertContains(
   "admin-vue/src/views/settingsApiManagementHelpers.js",
   "extractEnvelopeData(data)",
 );
@@ -540,6 +548,14 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/apiManagementHelpers.js",
   "function extractErrorMessage(error, fallback)",
+);
+assertNotContains(
+  "admin-vue/src/views/ShopMenuManage.vue",
+  "error?.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/MerchantProfile.vue",
+  "error?.response?.data?.error",
 );
 assertContains(
   "admin-vue/src/views/couponManagementHelpers.js",

@@ -210,6 +210,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { extractEnvelopeData, extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts';
 import request from '@/utils/request';
 import ImageUpload from '@/components/ImageUpload.vue';
 import PageStateAlert from '@/components/PageStateAlert.vue';
@@ -265,9 +266,9 @@ async function loadShop() {
   loadError.value = '';
   try {
     const { data } = await request.get(`/api/shops/${shopId}`);
-    shop.value = data || {};
+    shop.value = extractEnvelopeData(data) || {};
   } catch (error) {
-    loadError.value = error?.response?.data?.error || error?.response?.data?.message || error?.message || '加载店铺信息失败，请稍后重试';
+    loadError.value = extractErrorMessage(error, '加载店铺信息失败，请稍后重试');
   }
 }
 
@@ -276,13 +277,15 @@ async function loadCategories() {
   loading.value = true;
   try {
     const { data } = await request.get('/api/categories', { params: { shopId } });
-    categories.value = Array.isArray(data) ? data : [];
-    if (categories.value.length > 0 && !selectedCategoryId.value) {
-      selectedCategoryId.value = categories.value[0].id;
+    categories.value = extractPaginatedItems(data).items;
+    const hasSelectedCategory = categories.value.some((item) => item?.id === selectedCategoryId.value);
+    if (!hasSelectedCategory) {
+      selectedCategoryId.value = categories.value.length > 0 ? categories.value[0].id : null;
     }
   } catch (error) {
     categories.value = [];
-    loadError.value = error?.response?.data?.error || error?.response?.data?.message || error?.message || '加载分类失败，请稍后重试';
+    selectedCategoryId.value = null;
+    loadError.value = extractErrorMessage(error, '加载分类失败，请稍后重试');
   } finally {
     loading.value = false;
   }
@@ -296,10 +299,10 @@ async function loadProducts() {
     const { data } = await request.get('/api/products', {
       params: { shopId, categoryId: selectedCategoryId.value }
     });
-    products.value = Array.isArray(data) ? data : [];
+    products.value = extractPaginatedItems(data).items;
   } catch (error) {
     products.value = [];
-    productsError.value = error?.response?.data?.error || error?.response?.data?.message || error?.message || '加载商品失败，请稍后重试';
+    productsError.value = extractErrorMessage(error, '加载商品失败，请稍后重试');
   } finally {
     loading.value = false;
   }
@@ -341,7 +344,7 @@ async function saveCategory() {
     await loadCategories();
   } catch (error) {
     console.error('保存分类失败:', error);
-    ElMessage.error(error?.response?.data?.error || '保存失败');
+    ElMessage.error(extractErrorMessage(error, '保存分类失败'));
   } finally {
     saving.value = false;
   }
@@ -363,7 +366,7 @@ async function deleteCategory(category) {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除分类失败:', error);
-      ElMessage.error(error?.response?.data?.error || '删除失败');
+      ElMessage.error(extractErrorMessage(error, '删除分类失败'));
     }
   }
 }
@@ -402,7 +405,7 @@ async function saveProduct() {
     await loadProducts();
   } catch (error) {
     console.error('保存商品失败:', error);
-    ElMessage.error(error?.response?.data?.error || '保存失败');
+    ElMessage.error(extractErrorMessage(error, '保存商品失败'));
   } finally {
     saving.value = false;
   }
@@ -422,7 +425,7 @@ async function deleteProduct(product) {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除商品失败:', error);
-      ElMessage.error(error?.response?.data?.error || '删除失败');
+      ElMessage.error(extractErrorMessage(error, '删除商品失败'));
     }
   }
 }

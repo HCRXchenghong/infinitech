@@ -153,7 +153,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { extractEnvelopeData, extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
+import { extractEnvelopeData, extractErrorMessage, extractPaginatedItems, extractUploadAsset } from '@infinitech/contracts';
 import request from '@/utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 import ShopEditor from './ShopEditor.vue';
@@ -228,8 +228,7 @@ async function loadShops() {
   shopsError.value = '';
   try {
     const { data } = await request.get(`/api/merchants/${merchantId}/shops`);
-    const payload = extractEnvelopeData(data);
-    const list = Array.isArray(payload?.shops) ? payload.shops : [];
+    const list = extractPaginatedItems(data, { listKeys: ['shops'] }).items;
     shops.value = list.map((item) => ({
       ...item,
       isActive: item.isActive === true || item.isActive === 1
@@ -362,8 +361,9 @@ async function handleShopSave(shopData) {
     shopDialogVisible.value = false;
     await loadShops();
   } catch (error) {
-    shopsError.value = error?.response?.data?.error || error?.response?.data?.message || error?.message || '保存店铺失败，请稍后重试';
-    ElMessage.error(error?.response?.data?.error || '保存店铺失败');
+    const message = extractErrorMessage(error, '保存店铺失败，请稍后重试');
+    shopsError.value = message;
+    ElMessage.error(message);
   }
 }
 
@@ -387,7 +387,7 @@ async function deleteShop(shop) {
     await loadShops();
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error(error?.response?.data?.error || '删除店铺失败');
+      ElMessage.error(extractErrorMessage(error, '删除店铺失败'));
     }
   }
 }
