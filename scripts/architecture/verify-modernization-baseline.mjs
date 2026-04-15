@@ -334,6 +334,18 @@ assertContains(
   'respondAdminSettingsSuccess(c, "虚拟币比例保存成功", data)',
 );
 assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  'respondAdminSettingsMirroredSuccess(c, "支付提示文案加载成功", data)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  'respondSuccessEnvelope(c, "推送消息列表加载成功", items, nil)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  'respondSuccessEnvelope(c, "开放 API 列表加载成功", items, nil)',
+);
+assertContains(
   "backend/go/internal/handler/admin_settings_export_handler.go",
   'respondAdminSettingsSuccess(c, "系统配置导出成功", data)',
 );
@@ -728,6 +740,14 @@ assertContains(
 assertContains(
   "admin-vue/src/views/apiManagementHelpers.js",
   "extractEnvelopeData(data)",
+);
+assertContains(
+  "scripts/push-delivery-drill.mjs",
+  "extractPaginatedItems(deliveriesResponse.data).items",
+);
+assertContains(
+  "scripts/push-delivery-drill.mjs",
+  "const payload = extractEnvelopeData(stats);",
 );
 assertContains(
   "admin-vue/src/views/dashboardHelpers.js",

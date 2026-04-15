@@ -78,8 +78,31 @@ func respondAdminSettingsInternalError(c *gin.Context, err error) {
 	respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, err.Error(), nil)
 }
 
+func respondAdminSettingsStatusError(c *gin.Context, status int, message string) {
+	code := responseCodeInternalError
+	switch status {
+	case http.StatusBadRequest:
+		code = responseCodeInvalidArgument
+	case http.StatusUnauthorized:
+		code = responseCodeUnauthorized
+	case http.StatusForbidden:
+		code = responseCodeForbidden
+	case http.StatusNotFound:
+		code = responseCodeNotFound
+	case http.StatusConflict:
+		code = responseCodeConflict
+	case http.StatusGone:
+		code = responseCodeGone
+	}
+	respondErrorEnvelope(c, status, code, message, nil)
+}
+
 func respondAdminSettingsSuccess(c *gin.Context, message string, data interface{}) {
 	respondSuccessEnvelope(c, message, data, nil)
+}
+
+func respondAdminSettingsMirroredSuccess(c *gin.Context, message string, data interface{}) {
+	respondMirroredSuccessEnvelope(c, message, data)
 }
 
 // Debug mode
@@ -270,56 +293,56 @@ func (h *AdminSettingsHandler) UpdateVIPSettings(c *gin.Context) {
 func (h *AdminSettingsHandler) GetPaymentNotices(c *gin.Context) {
 	data := map[string]interface{}{"delivery": "", "phone_film": "", "massage": "", "coffee": ""}
 	_ = h.admin.GetSetting(c.Request.Context(), "payment_notices", &data)
-	c.JSON(http.StatusOK, data)
+	respondAdminSettingsMirroredSuccess(c, "支付提示文案加载成功", data)
 }
 
 func (h *AdminSettingsHandler) UpdatePaymentNotices(c *gin.Context) {
 	var data map[string]interface{}
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if err := h.admin.SaveSetting(c.Request.Context(), "payment_notices", data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondAdminSettingsMirroredSuccess(c, "支付提示文案保存成功", data)
 }
 
 // Carousel settings
 func (h *AdminSettingsHandler) GetCarouselSettings(c *gin.Context) {
 	data := map[string]interface{}{"auto_play_seconds": 5}
 	_ = h.admin.GetSetting(c.Request.Context(), "carousel_settings", &data)
-	c.JSON(http.StatusOK, data)
+	respondAdminSettingsMirroredSuccess(c, "轮播配置加载成功", data)
 }
 
 func (h *AdminSettingsHandler) UpdateCarouselSettings(c *gin.Context) {
 	var data map[string]interface{}
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if err := h.admin.SaveSetting(c.Request.Context(), "carousel_settings", data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondAdminSettingsMirroredSuccess(c, "轮播配置保存成功", data)
 }
 
 // Carousel CRUD
 func (h *AdminSettingsHandler) GetCarousel(c *gin.Context) {
 	items, err := h.admin.ListCarousel(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, items)
+	respondSuccessEnvelope(c, "轮播图列表加载成功", items, nil)
 }
 
 func (h *AdminSettingsHandler) CreateCarousel(c *gin.Context) {
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	item := repository.Carousel{
@@ -331,21 +354,21 @@ func (h *AdminSettingsHandler) CreateCarousel(c *gin.Context) {
 		IsActive:  parseBool(req["is_active"]),
 	}
 	if err := h.admin.CreateCarousel(c.Request.Context(), &item); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondSuccessEnvelope(c, "轮播图创建成功", item, nil)
 }
 
 func (h *AdminSettingsHandler) UpdateCarousel(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
+		respondAdminSettingsInvalidRequest(c, "无效ID")
 		return
 	}
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	updates := map[string]interface{}{}
@@ -368,39 +391,39 @@ func (h *AdminSettingsHandler) UpdateCarousel(c *gin.Context) {
 		updates["is_active"] = parseBool(v)
 	}
 	if err := h.admin.UpdateCarousel(c.Request.Context(), id, updates); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondSuccessEnvelope(c, "轮播图更新成功", gin.H{"id": id, "updated": true}, nil)
 }
 
 func (h *AdminSettingsHandler) DeleteCarousel(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
+		respondAdminSettingsInvalidRequest(c, "无效ID")
 		return
 	}
 	if err := h.admin.DeleteCarousel(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondSuccessEnvelope(c, "轮播图删除成功", gin.H{"id": id, "deleted": true}, nil)
 }
 
 // Push messages
 func (h *AdminSettingsHandler) GetPushMessages(c *gin.Context) {
 	items, err := h.admin.ListPushMessages(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, items)
+	respondSuccessEnvelope(c, "推送消息列表加载成功", items, nil)
 }
 
 func (h *AdminSettingsHandler) CreatePushMessage(c *gin.Context) {
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	item := repository.PushMessage{
@@ -413,16 +436,16 @@ func (h *AdminSettingsHandler) CreatePushMessage(c *gin.Context) {
 		ScheduledEndTime:   parseString(req["scheduled_end_time"]),
 	}
 	if err := h.admin.CreatePushMessage(c.Request.Context(), &item); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondSuccessEnvelope(c, "推送消息创建成功", item, nil)
 }
 
 func (h *AdminSettingsHandler) GetPushMessageStats(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
+		respondAdminSettingsInvalidRequest(c, "无效ID")
 		return
 	}
 
@@ -433,17 +456,17 @@ func (h *AdminSettingsHandler) GetPushMessageStats(c *gin.Context) {
 		if strings.Contains(lower, "record not found") || strings.Contains(lower, "invalid id") {
 			status = http.StatusNotFound
 		}
-		c.JSON(status, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsStatusError(c, status, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, stats)
+	respondAdminSettingsMirroredSuccess(c, "推送消息统计加载成功", stats)
 }
 
 func (h *AdminSettingsHandler) GetPushMessageDeliveries(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
+		respondAdminSettingsInvalidRequest(c, "无效ID")
 		return
 	}
 
@@ -459,22 +482,22 @@ func (h *AdminSettingsHandler) GetPushMessageDeliveries(c *gin.Context) {
 		if strings.Contains(lower, "record not found") || strings.Contains(lower, "invalid id") {
 			status = http.StatusNotFound
 		}
-		c.JSON(status, gin.H{"success": false, "error": listErr.Error()})
+		respondAdminSettingsStatusError(c, status, listErr.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, deliveries)
+	respondSuccessEnvelope(c, "推送投递记录加载成功", deliveries, nil)
 }
 
 func (h *AdminSettingsHandler) UpdatePushMessage(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
+		respondAdminSettingsInvalidRequest(c, "无效ID")
 		return
 	}
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	updates := map[string]interface{}{}
@@ -488,28 +511,28 @@ func (h *AdminSettingsHandler) UpdatePushMessage(c *gin.Context) {
 		}
 	}
 	if err := h.admin.UpdatePushMessage(c.Request.Context(), id, updates); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondSuccessEnvelope(c, "推送消息更新成功", gin.H{"id": id, "updated": true}, nil)
 }
 
 func (h *AdminSettingsHandler) DeletePushMessage(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
+		respondAdminSettingsInvalidRequest(c, "无效ID")
 		return
 	}
 	if err := h.admin.DeletePushMessage(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondSuccessEnvelope(c, "推送消息删除成功", gin.H{"id": id, "deleted": true}, nil)
 }
 
 func (h *AdminSettingsHandler) RunPushDispatchCycle(c *gin.Context) {
 	if h.mobilePush == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"success": false, "error": "push service unavailable"})
+		respondAdminSettingsStatusError(c, http.StatusServiceUnavailable, "push service unavailable")
 		return
 	}
 
@@ -517,7 +540,7 @@ func (h *AdminSettingsHandler) RunPushDispatchCycle(c *gin.Context) {
 	if c.Request.ContentLength > 0 {
 		var req map[string]interface{}
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+			respondAdminSettingsInvalidRequest(c, "请求参数错误")
 			return
 		}
 		if raw, ok := req["limit"]; ok {
@@ -525,20 +548,18 @@ func (h *AdminSettingsHandler) RunPushDispatchCycle(c *gin.Context) {
 		}
 	}
 
+	worker := h.mobilePush.WorkerStatusSnapshot(c.Request.Context())
 	processed, err := h.mobilePush.RunDispatchCycle(c.Request.Context(), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   err.Error(),
-			"worker":  h.mobilePush.WorkerStatusSnapshot(c.Request.Context()),
+		respondEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, err.Error(), gin.H{}, gin.H{
+			"worker": worker,
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":   true,
+	respondAdminSettingsMirroredSuccess(c, "推送派发轮询执行成功", gin.H{
 		"processed": processed,
-		"worker":    h.mobilePush.WorkerStatusSnapshot(c.Request.Context()),
+		"worker":    worker,
 	})
 }
 
@@ -546,35 +567,39 @@ func (h *AdminSettingsHandler) RunPushDispatchCycle(c *gin.Context) {
 func (h *AdminSettingsHandler) GetPublicAPIs(c *gin.Context) {
 	items, err := h.admin.ListPublicAPIs(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, items)
+	respondSuccessEnvelope(c, "开放 API 列表加载成功", items, nil)
 }
 
 func (h *AdminSettingsHandler) CreatePublicAPI(c *gin.Context) {
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	permissions := parseStringArray(req["permissions"])
 	if err := h.admin.CreatePublicAPI(c.Request.Context(), parseString(req["name"]), parseString(req["path"]), permissions, parseString(req["api_key"]), parseString(req["description"]), parseBool(req["is_active"])); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondSuccessEnvelope(c, "开放 API 创建成功", gin.H{
+		"name":        parseString(req["name"]),
+		"path":        parseString(req["path"]),
+		"permissions": permissions,
+	}, nil)
 }
 
 func (h *AdminSettingsHandler) UpdatePublicAPI(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
+		respondAdminSettingsInvalidRequest(c, "无效ID")
 		return
 	}
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	updates := map[string]interface{}{}
@@ -591,23 +616,23 @@ func (h *AdminSettingsHandler) UpdatePublicAPI(c *gin.Context) {
 		updates["permissions"] = parseStringArray(v)
 	}
 	if err := h.admin.UpdatePublicAPI(c.Request.Context(), id, updates); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondSuccessEnvelope(c, "开放 API 更新成功", gin.H{"id": id, "updated": true}, nil)
 }
 
 func (h *AdminSettingsHandler) DeletePublicAPI(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
+		respondAdminSettingsInvalidRequest(c, "无效ID")
 		return
 	}
 	if err := h.admin.DeletePublicAPI(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondSuccessEnvelope(c, "开放 API 删除成功", gin.H{"id": id, "deleted": true}, nil)
 }
 
 // Upload image

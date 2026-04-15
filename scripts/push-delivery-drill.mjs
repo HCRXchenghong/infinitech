@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { extractEnvelopeData, extractPaginatedItems } from '../packages/contracts/src/http.js';
 
 const DEFAULT_TIMEOUT_MS = 8000;
 const DEFAULT_POLL_INTERVAL_MS = 2000;
@@ -111,8 +112,8 @@ function createPushMessagePayload(label, now = new Date()) {
 }
 
 function findDrillMessage(items, payload) {
-  if (!Array.isArray(items)) return null;
-  return items.find((item) => {
+  const rows = extractPaginatedItems(items).items;
+  return rows.find((item) => {
     if (!item || typeof item !== 'object') return false;
     return String(item.title || '').trim() === payload.title
       && String(item.content || '').trim() === payload.content;
@@ -120,7 +121,8 @@ function findDrillMessage(items, payload) {
 }
 
 function summarizeStats(stats) {
-  if (!stats || typeof stats !== 'object') {
+  const payload = extractEnvelopeData(stats);
+  if (!payload || typeof payload !== 'object') {
     return {
       totalDeliveries: 0,
       queued: 0,
@@ -133,14 +135,14 @@ function summarizeStats(stats) {
     };
   }
   return {
-    totalDeliveries: Number(stats.total_deliveries || 0),
-    queued: Number(stats.queued_count || 0),
-    sent: Number(stats.sent_count || 0),
-    failed: Number(stats.failed_count || 0),
-    acknowledged: Number(stats.acknowledged_count || 0),
-    received: Number(stats.received_count || 0),
-    read: Number(stats.read_count || 0),
-    unread: Number(stats.unread_count || 0),
+    totalDeliveries: Number(payload.total_deliveries || 0),
+    queued: Number(payload.queued_count || 0),
+    sent: Number(payload.sent_count || 0),
+    failed: Number(payload.failed_count || 0),
+    acknowledged: Number(payload.acknowledged_count || 0),
+    received: Number(payload.received_count || 0),
+    read: Number(payload.read_count || 0),
+    unread: Number(payload.unread_count || 0),
   };
 }
 
@@ -331,9 +333,7 @@ async function main() {
       }
 
       const stats = summarizeStats(statsResponse.data);
-      const deliveries = deliveriesResponse.data && Array.isArray(deliveriesResponse.data.items)
-        ? deliveriesResponse.data.items
-        : [];
+      const deliveries = extractPaginatedItems(deliveriesResponse.data).items;
       const matchingDeliveries = requiresTargetMatch
         ? deliveries.filter((item) => deliveryMatchesTarget(item))
         : deliveries;
