@@ -251,7 +251,7 @@ function buildConfig(): Config {
     API_BASE_URL: apiBaseUrl,
     SOCKET_URL: socketUrl,
     isDev,
-    TIMEOUT: 30_000
+    TIMEOUT: 30000
   }
 }
 

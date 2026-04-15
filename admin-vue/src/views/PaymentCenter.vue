@@ -83,6 +83,7 @@
           <li>出款回调：{{ gatewaySummary.alipay?.payoutNotifyConfigured ? '已配置' : '未配置' }}</li>
           <li>侧车地址：{{ gatewaySummary.alipay?.sidecarUrlConfigured ? '已配置' : '未配置' }}</li>
           <li>环境：{{ gatewaySummary.alipay?.sandbox ? '沙箱' : '生产' }}</li>
+          <li>Stub 兜底：{{ gatewaySummary.alipay?.allowStubBlocked ? '已封禁(生产/类生产环境)' : (gatewaySummary.alipay?.allowStub ? '开启' : '关闭') }}</li>
         </ul>
       </el-card>
 
@@ -101,7 +102,7 @@
           <li>商户号：{{ gatewaySummary.bankCard?.merchantIdConfigured ? '已配置' : '未配置' }}</li>
           <li>API Key：{{ gatewaySummary.bankCard?.apiKeyConfigured ? '已配置' : '未配置' }}</li>
           <li>回调地址：{{ gatewaySummary.bankCard?.notifyUrlConfigured ? '已配置' : '未配置' }}</li>
-          <li>Stub 兜底：{{ gatewaySummary.bankCard?.allowStub ? '开启' : '关闭' }}</li>
+          <li>Stub 兜底：{{ gatewaySummary.bankCard?.allowStubBlocked ? '已封禁(生产/类生产环境)' : (gatewaySummary.bankCard?.allowStub ? '开启' : '关闭') }}</li>
         </ul>
       </el-card>
     </div>
@@ -1105,7 +1106,7 @@ const state = reactive({
     merchant_id: '',
     api_key: '',
     notify_url: '',
-    allow_stub: true,
+    allow_stub: false,
   },
   riderDepositRecords: [],
   withdrawRequests: [],
@@ -1242,7 +1243,7 @@ function normalizeConfig(payload = {}) {
     merchant_id: '',
     api_key: '',
     notify_url: '',
-    allow_stub: true,
+    allow_stub: false,
     ...cloneValue(payload.bank_card_config, {}),
   }
   state.bank_card_config.sidecar_url ||= ''
@@ -1251,7 +1252,7 @@ function normalizeConfig(payload = {}) {
   state.bank_card_config.api_key ||= ''
   state.bank_card_config.notify_url ||= ''
   if (typeof state.bank_card_config.allow_stub !== 'boolean') {
-    state.bank_card_config.allow_stub = true
+    state.bank_card_config.allow_stub = false
   }
 }
 

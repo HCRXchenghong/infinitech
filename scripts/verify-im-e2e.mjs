@@ -12,7 +12,6 @@ const DEFAULT_BFF_BASE_URL = 'http://127.0.0.1:25500';
 const DEFAULT_GO_BASE_URL = 'http://127.0.0.1:1029';
 const DEFAULT_SOCKET_BASE_URL = 'http://127.0.0.1:9898';
 const DEFAULT_DB_PATH = path.join(REPO_ROOT, 'backend/go/data/yuexiang.db');
-const DEFAULT_JWT_SECRET = 'yuexiang-dev-secret-key-change-in-production-32chars';
 const DEFAULT_TIMEOUT_MS = 12000;
 const DEFAULT_SHORT_WAIT_MS = 350;
 
@@ -116,6 +115,11 @@ function buildUserAccessToken(entity, jwtSecret) {
 
 function buildAdminAccessToken(admin, jwtSecret) {
   const now = Math.floor(Date.now() / 1000);
+  const adminType = String(admin?.type || '').trim().toLowerCase();
+  assertCondition(
+    adminType === 'admin' || adminType === 'super_admin',
+    `admin ${admin?.uid || admin?.id || ''} is missing an explicit admin type`
+  );
   return signGoStyleTokenPayload(
     {
       phone: admin.phone,
@@ -124,7 +128,7 @@ function buildAdminAccessToken(admin, jwtSecret) {
       sub: admin.uid,
       adminId: admin.uid,
       name: admin.name,
-      type: admin.type || 'super_admin',
+      type: adminType,
       bootstrapPending: false,
       exp: now + 7 * 24 * 60 * 60,
       iat: now,
@@ -1137,7 +1141,8 @@ async function main() {
   const goBaseUrl = normalizeBaseUrl(process.env.GO_API_URL, DEFAULT_GO_BASE_URL);
   const socketBaseUrl = normalizeBaseUrl(process.env.SOCKET_SERVER_URL, DEFAULT_SOCKET_BASE_URL);
   const dbPath = String(process.env.IM_E2E_DB_PATH || DEFAULT_DB_PATH).trim();
-  const jwtSecret = String(process.env.JWT_SECRET || DEFAULT_JWT_SECRET).trim();
+  const jwtSecret = String(process.env.JWT_SECRET || '').trim();
+  assertCondition(jwtSecret, 'JWT_SECRET is required for scripts/verify-im-e2e.mjs');
   const reportFile = String(
     process.env.IM_E2E_REPORT_FILE
       || path.join(REPO_ROOT, 'artifacts', `verify-im-e2e-${label}.json`)

@@ -36,75 +36,14 @@
   </view>
 </template>
 
-<script setup lang="ts">
-import { ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
-import { deleteShop } from '@/shared-ui/api'
-import {
-  clearMerchantContext,
-  ensureMerchantShops,
-  getCurrentShopId,
-  setCurrentShopId,
-} from '@/shared-ui/merchantContext'
+<script lang="ts">
+import { defineComponent } from 'vue'
+import { useMerchantShopSwitchPage } from '@/shared-ui/merchantAccountPages'
 
-const shops = ref<any[]>([])
-const currentShopId = ref('')
-
-async function loadData() {
-  const ctx = await ensureMerchantShops(true)
-  shops.value = ctx.shops || []
-  currentShopId.value = String(getCurrentShopId() || ctx.currentShop?.id || '')
-}
-
-function goCreateShop() {
-  uni.navigateTo({ url: '/pages/store/create' })
-}
-
-function switchShop(shop: any) {
-  if (!shop?.id) return
-  setCurrentShopId(shop.id)
-  currentShopId.value = String(shop.id)
-  uni.showToast({ title: '已切换店铺', icon: 'success' })
-  setTimeout(() => {
-    uni.navigateBack()
-  }, 200)
-}
-
-function confirmDelete(shop: any) {
-  uni.showModal({
-    title: '删除店铺',
-    content: `确认删除“${shop.name || `店铺${shop.id}`}”？`,
-    confirmColor: '#d03030',
-    success: async (res: any) => {
-      if (!res.confirm) return
-      try {
-        await deleteShop(shop.id)
-        uni.showToast({ title: '删除成功', icon: 'success' })
-
-        const deletingCurrent = String(shop.id) === currentShopId.value
-        clearMerchantContext()
-        await loadData()
-
-        if (deletingCurrent && shops.value.length > 0) {
-          setCurrentShopId(shops.value[0].id)
-          currentShopId.value = String(shops.value[0].id)
-        }
-      } catch (err: any) {
-        uni.showToast({
-          title: err?.error || err?.message || '删除失败（需近2天无订单）',
-          icon: 'none',
-        })
-      }
-    },
-  })
-}
-
-onShow(async () => {
-  try {
-    await loadData()
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '加载失败', icon: 'none' })
-  }
+export default defineComponent({
+  setup() {
+    return useMerchantShopSwitchPage()
+  },
 })
 </script>
 

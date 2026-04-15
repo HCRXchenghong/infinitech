@@ -48,20 +48,22 @@ function requireSharedSecret() {
   return secret;
 }
 
-function buildCorsOrigins() {
+function buildCorsOrigins(productionLike) {
   const configured = String(process.env.BFF_CORS_ORIGINS || process.env.CORS_ORIGINS || "")
     .split(",")
     .map((item) => normalizeOrigin(item))
     .filter(Boolean);
 
-  const defaults = [
-    "http://127.0.0.1:8888",
-    "http://localhost:8888",
-    "http://127.0.0.1:1888",
-    "http://localhost:1888",
-    "http://127.0.0.1:1788",
-    "http://localhost:1788"
-  ];
+  const defaults = productionLike
+    ? []
+    : [
+      "http://127.0.0.1:8888",
+      "http://localhost:8888",
+      "http://127.0.0.1:1888",
+      "http://localhost:1888",
+      "http://127.0.0.1:1788",
+      "http://localhost:1788"
+    ];
 
   const adminWebBaseUrl = normalizeOrigin(process.env.ADMIN_WEB_BASE_URL || "");
   const siteWebBaseUrl = normalizeOrigin(process.env.SITE_WEB_BASE_URL || "");
@@ -76,20 +78,29 @@ function buildCorsOrigins() {
 const adminTokenSecret = requireSharedSecret();
 const env = process.env.NODE_ENV || process.env.ENV || "development";
 const productionLike = ["production", "prod", "staging"].includes(String(env).trim().toLowerCase());
+const corsOrigins = buildCorsOrigins(productionLike);
+const socketServerApiSecret = String(process.env.SOCKET_SERVER_API_SECRET || process.env.TOKEN_API_SECRET || "").trim();
+
+if (productionLike && !socketServerApiSecret) {
+  throw new Error("BFF requires SOCKET_SERVER_API_SECRET or TOKEN_API_SECRET in production-like environments");
+}
+if (productionLike && corsOrigins.length === 0) {
+  throw new Error("BFF requires BFF_CORS_ORIGINS or explicit ADMIN_WEB_BASE_URL/SITE_WEB_BASE_URL in production-like environments");
+}
 
 module.exports = {
   port: process.env.BFF_PORT || 25500,
   goApiUrl: process.env.GO_API_URL || "http://127.0.0.1:1029",
   socketServerUrl: process.env.SOCKET_SERVER_URL || "http://127.0.0.1:9898",
-  socketServerApiSecret: String(process.env.SOCKET_SERVER_API_SECRET || process.env.TOKEN_API_SECRET || "").trim(),
+  socketServerApiSecret,
 
   db: {
     host: process.env.DB_HOST || "127.0.0.1",
-    port: process.env.DB_PORT || 3306,
-    user: process.env.DB_USER || "root",
+    port: process.env.DB_PORT || 5432,
+    user: process.env.DB_USER || "yuexiang_user",
     password: process.env.DB_PASSWORD || "",
     database: process.env.DB_NAME || "yuexiang",
-    dialect: process.env.DB_DIALECT || "mysql"
+    dialect: process.env.DB_DIALECT || "postgres"
   },
 
   redis: {
@@ -110,7 +121,7 @@ module.exports = {
   adminWebBaseUrl: process.env.ADMIN_WEB_BASE_URL || "",
   siteWebBaseUrl: process.env.SITE_WEB_BASE_URL || "",
   adminQrLoginSecret: String(process.env.ADMIN_QR_LOGIN_SECRET || adminTokenSecret).trim(),
-  corsOrigins: buildCorsOrigins(),
+  corsOrigins,
 
   http: {
     requestTimeoutMs: toPositiveInt(process.env.BFF_REQUEST_TIMEOUT_MS, 30000),
@@ -143,5 +154,6 @@ module.exports = {
   },
 
   logLevel: process.env.LOG_LEVEL || "info",
-  env
+  env,
+  productionLike
 };

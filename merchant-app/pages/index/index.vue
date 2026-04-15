@@ -3,14 +3,14 @@
     <scroll-view scroll-y class="content" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="refreshAll">
       <view class="hero">
         <view class="hero-left" @tap="selectShop">
-          <text class="shop-name">{{ currentShop?.name || '未绑定店铺' }}</text>
-          <text class="shop-meta">{{ currentShop?.businessCategory || '请选择店铺' }} 路 {{ currentShop?.phone || '--' }}</text>
+          <text class="shop-name">{{ currentShopView.name }}</text>
+          <text class="shop-meta">{{ currentShopView.businessCategory }} 路 {{ currentShopView.phone }}</text>
         </view>
 
         <view class="hero-right">
-          <text class="switch-label">{{ currentShop?.isActive ? '营业中' : '暂停营业' }}</text>
+          <text class="switch-label">{{ currentShopView.isActive ? '营业中' : '暂停营业' }}</text>
           <switch
-            :checked="!!currentShop?.isActive"
+            :checked="currentShopView.isActive"
             color="#009bf5"
             :disabled="switching || !currentShop"
             @change="toggleBusiness"
@@ -67,190 +67,14 @@
   </view>
 </template>
 
-<script setup lang="ts">
-import { computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
-import { fetchAfterSales, fetchOrders, fetchProducts, updateShop } from '@/shared-ui/api'
-import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/shared-ui/support-runtime'
-import {
-  ensureMerchantShops,
-  formatMoney,
-  getCurrentShopId,
-  getMerchantId,
-  orderStatusText,
-  setCurrentShopId
-} from '@/shared-ui/merchantContext'
+<script lang="ts">
+import { defineComponent } from 'vue'
+import { useMerchantDashboardPage } from '@/shared-ui/merchantOrders'
 
-const refreshing = ref(false)
-const switching = ref(false)
-const supportTitle = ref(getCachedSupportRuntimeSettings().title)
-
-const shops = ref<any[]>([])
-const currentShop = ref<any>(null)
-const orders = ref<any[]>([])
-const afterSalesList = ref<any[]>([])
-const products = ref<any[]>([])
-const noShopPrompted = ref(false)
-
-const stats = computed(() => {
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
-
-  const todayRevenue = orders.value
-    .filter((o) => o.status === 'completed' && new Date(o.created_at).getTime() >= todayStart.getTime())
-    .reduce((sum, o) => sum + Number(o.total_price || 0), 0)
-
-  const todoCount = orders.value.filter((o) => ['pending', 'accepted'].includes(o.status)).length
-  const deliveringCount = orders.value.filter((o) => o.status === 'delivering').length
-  const afterSalesCount = afterSalesList.value.filter((item) => item.status === 'pending').length
-
-  return {
-    todayRevenue: formatMoney(todayRevenue),
-    todoCount,
-    deliveringCount,
-    afterSalesCount
-  }
-})
-
-const recentOrders = computed(() => {
-  return [...orders.value]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 5)
-})
-
-function formatTime(timeText: string) {
-  if (!timeText) return '--'
-  const date = new Date(timeText)
-  if (Number.isNaN(date.getTime())) return String(timeText)
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hour = String(date.getHours()).padStart(2, '0')
-  const minute = String(date.getMinutes()).padStart(2, '0')
-  return `${month}-${day} ${hour}:${minute}`
-}
-
-async function loadData(force = false) {
-  const context = await ensureMerchantShops(force)
-  shops.value = context.shops || []
-
-  const currentShopId = getCurrentShopId()
-  const activeShop = (shops.value || []).find((shop: any) => String(shop.id) === String(currentShopId)) || context.currentShop
-  currentShop.value = activeShop || null
-
-  if (!currentShop.value) {
-    orders.value = []
-    products.value = []
-    afterSalesList.value = []
-    maybePromptCreateShop()
-    return
-  }
-  noShopPrompted.value = false
-
-  const shopId = String(currentShop.value.id)
-  const [orderRes, productRes, afterSalesRes]: any[] = await Promise.all([
-    fetchOrders({ page: 1, limit: 200 }),
-    fetchProducts({ shopId }),
-    fetchAfterSales({ page: 1, limit: 200 })
-  ])
-
-  const allOrders = Array.isArray(orderRes?.orders) ? orderRes.orders : []
-  orders.value = allOrders.filter((item: any) => String(item.shop_id || item.shopId) === shopId)
-
-  products.value = Array.isArray(productRes) ? productRes : []
-
-  const allAfterSales = Array.isArray(afterSalesRes?.list) ? afterSalesRes.list : []
-  afterSalesList.value = allAfterSales.filter((item: any) => String(item.shopId || item.shop_id) === shopId)
-}
-
-async function loadSupportRuntimeConfig() {
-  const supportRuntime = await loadSupportRuntimeSettings()
-  supportTitle.value = supportRuntime.title
-}
-
-async function refreshAll() {
-  refreshing.value = true
-  try {
-    await loadData(true)
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '刷新失败', icon: 'none' })
-  } finally {
-    refreshing.value = false
-  }
-}
-
-async function toggleBusiness(e: any) {
-  if (!currentShop.value || switching.value) return
-  const target = !!e.detail.value
-  switching.value = true
-  try {
-    await updateShop(currentShop.value.id, { isActive: target })
-    currentShop.value = { ...currentShop.value, isActive: target }
-    uni.showToast({ title: target ? '已恢复营业' : '已暂停营业', icon: 'success' })
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '更新失败', icon: 'none' })
-  } finally {
-    switching.value = false
-  }
-}
-
-function selectShop() {
-  if (!shops.value.length) {
-    maybePromptCreateShop()
-    return
-  }
-  uni.showActionSheet({
-    itemList: shops.value.map((shop: any) => `${shop.name}`),
-    success: async (res: any) => {
-      const selected = shops.value[res.tapIndex]
-      if (!selected) return
-      setCurrentShopId(selected.id)
-      await refreshAll()
-    }
-  })
-}
-
-function goTab(url: string) {
-  uni.switchTab({ url })
-}
-
-function openSupportChat() {
-  const profile = uni.getStorageSync('merchantProfile') || {}
-  const merchantId = getMerchantId() || String(profile.phone || '')
-  if (!merchantId) {
-    uni.showToast({ title: '商户身份异常', icon: 'none' })
-    return
-  }
-  uni.navigateTo({
-    url: `/pages/messages/chat?chatId=${encodeURIComponent(`merchant_${merchantId}`)}&role=admin&targetId=${encodeURIComponent(String(merchantId))}`
-  })
-}
-
-function openOrder(id: string | number) {
-  uni.navigateTo({ url: `/pages/orders/detail?id=${id}` })
-}
-
-function maybePromptCreateShop() {
-  if (noShopPrompted.value) return
-  noShopPrompted.value = true
-  uni.showModal({
-    title: '还没有店铺',
-    content: '检测到当前账号还没有店铺，是否现在去创建？',
-    confirmText: '去创建',
-    cancelText: '稍后',
-    success: (res: any) => {
-      if (!res.confirm) return
-      uni.navigateTo({ url: '/pages/store/create' })
-    }
-  })
-}
-
-onShow(async () => {
-  try {
-    void loadSupportRuntimeConfig()
-    await loadData()
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '加载失败', icon: 'none' })
-  }
+export default defineComponent({
+  setup() {
+    return useMerchantDashboardPage()
+  },
 })
 </script>
 

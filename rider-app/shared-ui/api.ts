@@ -3,6 +3,15 @@
  */
 
 import config from './config'
+import { buildAuthorizationHeaders } from '../../packages/client-sdk/src/auth.js'
+import {
+  createMobilePushApi,
+  createRiderPreferenceApi,
+} from '../../packages/client-sdk/src/mobile-capabilities.js'
+import {
+  readStoredBearerToken,
+  uploadAuthenticatedAsset,
+} from '../../packages/mobile-core/src/upload.js'
 
 declare const uni: any
 
@@ -13,24 +22,6 @@ export const fetchPublicRuntimeSettings = () => request({
   method: 'GET'
 })
 
-export const registerPushDevice = (payload: Record<string, any>) => request({
-  url: '/api/mobile/push/devices/register',
-  method: 'POST',
-  data: payload
-})
-
-export const unregisterPushDevice = (payload: Record<string, any>) => request({
-  url: '/api/mobile/push/devices/unregister',
-  method: 'POST',
-  data: payload
-})
-
-export const ackPushMessage = (payload: Record<string, any>) => request({
-  url: '/api/mobile/push/ack',
-  method: 'POST',
-  data: payload
-})
-
 export const recordPhoneContactClick = (payload: Record<string, any>) => request({
   url: '/api/contact/phone-clicks',
   method: 'POST',
@@ -38,10 +29,7 @@ export const recordPhoneContactClick = (payload: Record<string, any>) => request
 })
 
 function readAuthToken(): string {
-  const raw = String(uni.getStorageSync('token') || uni.getStorageSync('access_token') || '').trim()
-  if (!raw) return ''
-  if (/^bearer\s+/i.test(raw)) return raw
-  return `Bearer ${raw}`
+  return readStoredBearerToken(uni, ['token', 'access_token'])
 }
 
 export function request(options: any) {
@@ -102,6 +90,52 @@ export function request(options: any) {
   })
 }
 
+export function uploadImage(filePath: string) {
+  return uploadAuthenticatedAsset({
+    uniApp: uni,
+    baseUrl: getBaseUrl(),
+    filePath,
+    token: readAuthToken(),
+  })
+}
+
+export function buildAuthorizationHeader(token: string): Record<string, string> {
+  return buildAuthorizationHeaders(token)
+}
+
+export function readAuthorizationHeader(): Record<string, string> {
+  const token = readAuthToken()
+  return buildAuthorizationHeader(token)
+}
+
+const mobilePushApi = createMobilePushApi({
+  post(url: string, data?: Record<string, any>) {
+    return request({
+      url,
+      method: 'POST',
+      data,
+    })
+  },
+})
+
+const riderPreferenceApi = createRiderPreferenceApi({
+  get(url: string) {
+    return request({
+      url,
+      method: 'GET',
+    })
+  },
+  post(url: string, data?: Record<string, any>) {
+    return request({
+      url,
+      method: 'POST',
+      data,
+    })
+  },
+})
+
+export const { registerPushDevice, unregisterPushDevice, ackPushMessage } = mobilePushApi
+
 // 骑手登录
 export const riderLogin = (credentials: any) => request({
   url: '/api/auth/rider/login',
@@ -161,16 +195,7 @@ export const fetchRiderOrders = (status?: string) => {
   })
 }
 
-export const fetchRiderPreferences = () => request({
-  url: '/api/riders/preferences',
-  method: 'GET'
-})
-
-export const saveRiderPreferences = (payload: Record<string, any>) => request({
-  url: '/api/riders/preferences',
-  method: 'POST',
-  data: payload
-})
+export const { fetchRiderPreferences, saveRiderPreferences } = riderPreferenceApi
 
 const riderPayload = () => {
   const riderId = uni.getStorageSync('riderId')

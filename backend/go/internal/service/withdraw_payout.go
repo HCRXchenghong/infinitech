@@ -29,10 +29,7 @@ func (s *WalletService) executeWithdrawPayout(ctx context.Context, request *repo
 	if err != nil {
 		return nil, err
 	}
-	if method == "bank_card" && runtimeConfig.BankCard.SidecarURL != "" && ((runtimeConfig.BankCard.ProviderURL != "" &&
-		runtimeConfig.BankCard.MerchantID != "" &&
-		runtimeConfig.BankCard.APIKey != "" &&
-		runtimeConfig.BankCard.NotifyURL != "") || runtimeConfig.BankCard.AllowStub) {
+	if method == "bank_card" && bankCardSidecarExecutionEnabled(runtimeConfig.BankCard) {
 		result, err := s.createBankPayoutSidecar(ctx, runtimeConfig, request)
 		if err != nil {
 			return nil, err

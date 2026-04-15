@@ -1,4 +1,14 @@
 import { useRiderReviewActionHelpers } from './ridersReviewActionHelpers';
+import { extractTemporaryCredential } from '@infinitech/admin-core';
+import {
+  createDefaultInviteLinkForm,
+  createEmptyInviteLinkResult,
+  createOnboardingInviteApi,
+  getInviteRemainingUses as resolveInviteRemainingUses,
+} from '@infinitech/client-sdk';
+import { extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
+import { loadAuthorizedBlobUrl, revokeBlobUrl } from '@/utils/privateAsset';
+import { downloadCredentialReceipt } from '@/utils/credentialReceipt';
 
 export function useRiderActionHelpers(ctx) {
   const {
@@ -39,6 +49,26 @@ export function useRiderActionHelpers(ctx) {
     normalizeImageArray,
     formatTime,
   } = ctx;
+  const onboardingInviteApi = createOnboardingInviteApi({
+    get: (url, config) => request.get(url, config),
+    post: (url, payload, config) => request.post(url, payload, config),
+  });
+
+  async function resolvePrivatePreviewUrl(candidate, fallback = '') {
+    const url = String(candidate || '').trim();
+    if (!url) {
+      return String(fallback || '').trim();
+    }
+    if (!url.startsWith('/api/riders/')) {
+      return url;
+    }
+    return loadAuthorizedBlobUrl(url);
+  }
+
+  function replacePreviewUrl(target, key, nextUrl) {
+    revokeBlobUrl(target?.[key]);
+    target[key] = nextUrl;
+  }
 
   function showAddDialog() {
     newRider.value = {
@@ -50,43 +80,26 @@ export function useRiderActionHelpers(ctx) {
   }
 
   function openInviteDialog() {
-    inviteForm.value = {
-      expires_hours: 72,
-      max_uses: 1
-    };
-    inviteResult.value = {
-      invite_url: '',
-      expires_at: '',
-      max_uses: 1,
-      used_count: 0,
-      remaining_uses: 1
-    };
+    inviteForm.value = createDefaultInviteLinkForm();
+    inviteResult.value = createEmptyInviteLinkResult();
     inviteDialogVisible.value = true;
   }
 
   async function createInviteLink() {
     creatingInvite.value = true;
     try {
-      const { data } = await request.post('/api/admin/onboarding/invites', {
+      inviteResult.value = await onboardingInviteApi.createAdminInvite({
         invite_type: 'rider',
         expires_hours: Number(inviteForm.value.expires_hours || 72),
         max_uses: Number(inviteForm.value.max_uses || 1)
       });
-      const payload = data?.data || {};
-      inviteResult.value = {
-        invite_url: payload.invite_url || '',
-        expires_at: payload.expires_at || '',
-        max_uses: Number(payload.max_uses || inviteForm.value.max_uses || 1),
-        used_count: Number(payload.used_count || 0),
-        remaining_uses: Number(payload.remaining_uses || 0)
-      };
       if (inviteResult.value.invite_url) {
         ElMessage.success('邀请链接生成成功');
       } else {
         ElMessage.error('邀请链接生成失败');
       }
     } catch (error) {
-      ElMessage.error(error?.response?.data?.error || '邀请链接生成失败');
+      ElMessage.error(extractErrorMessage(error, '邀请链接生成失败'));
     } finally {
       creatingInvite.value = false;
     }
@@ -114,12 +127,7 @@ export function useRiderActionHelpers(ctx) {
   }
 
   function getInviteRemainingUses() {
-    if (Number.isFinite(Number(inviteResult.value.remaining_uses))) {
-      return Number(inviteResult.value.remaining_uses);
-    }
-    const maxUses = Number(inviteResult.value.max_uses || 1);
-    const usedCount = Number(inviteResult.value.used_count || 0);
-    return Math.max(0, maxUses - usedCount);
+    return resolveInviteRemainingUses(inviteResult.value);
   }
 
   async function handleAddRider() {
@@ -205,18 +213,17 @@ export function useRiderActionHelpers(ctx) {
       resettingPassword.value = rider.id;
       try {
         const { data } = await request.post(`/api/riders/${rider.id}/reset-password`);
-
-        if (data.success) {
-          ElMessageBox.alert(
-            `骑手密码重置成功！新密码为：<strong style="font-size: 20px; color: #409eff;">${data.newPassword}</strong><br/><br/>请告知骑手使用新密码登录。`,
-            '密码重置成功',
-            {
-              confirmButtonText: '确定',
-              dangerouslyUseHTMLString: true,
-              type: 'success'
-            }
-          );
+        const credential = extractTemporaryCredential(data);
+        if (!data.success || !credential) {
+          throw new Error('后端未返回一次性临时口令');
         }
+        const filename = downloadCredentialReceipt({
+          scene: 'rider-reset-password',
+          subject: `骑手 ${rider.name || rider.phone || rider.id}`,
+          account: rider.phone || String(rider.id || ''),
+          temporaryPassword: credential.temporaryPassword,
+        });
+        ElMessage.success(`骑手密码已重置，并已下载安全回执 ${filename}`);
       } catch (e) {
         ElMessage.error(e.response?.data?.error || '重置骑手密码失败');
       } finally {
@@ -289,6 +296,7 @@ export function useRiderActionHelpers(ctx) {
   }
 
   async function openDetail(row) {
+    replacePreviewUrl(detail.value, 'id_card_front_preview_url', '');
     detail.value = { ...row };
     detailVisible.value = true;
 
@@ -296,12 +304,17 @@ export function useRiderActionHelpers(ctx) {
       const { data } = await request.get(`/api/riders/${row.id}`);
       if (data) {
         const source = data.data || data;
+        const detailPreviewUrl = await resolvePrivatePreviewUrl(
+          source.id_card_front_preview_url,
+          source.id_card_front || source.id_card_image || '',
+        );
         detail.value = {
           ...detail.value,
           ...source,
           rating: Number(source.rating || detail.value.rating || 0),
           rating_count: Number(source.rating_count || source.ratingCount || detail.value.rating_count || 0),
           id_card_front: source.id_card_front || source.id_card_image || '',
+          id_card_front_preview_url: detailPreviewUrl,
           emergency_contact_name: source.emergency_contact_name || '',
           emergency_contact_phone: source.emergency_contact_phone || '',
           onboarding_info: source.onboarding_info || null
@@ -313,13 +326,15 @@ export function useRiderActionHelpers(ctx) {
   }
 
   function openRiderEditDialog() {
+    replacePreviewUrl(riderEditForm.value, 'id_card_front_preview_url', '');
     riderEditForm.value = {
       id: detail.value.id || null,
       name: detail.value.name || '',
       phone: detail.value.phone || '',
       emergency_contact_name: detail.value.emergency_contact_name || '',
       emergency_contact_phone: detail.value.emergency_contact_phone || '',
-      id_card_front: detail.value.id_card_front || detail.value.id_card_image || ''
+      id_card_front: detail.value.id_card_front || detail.value.id_card_image || '',
+      id_card_front_preview_url: detail.value.id_card_front_preview_url || detail.value.id_card_front || detail.value.id_card_image || ''
     };
     riderEditVisible.value = true;
   }
@@ -335,15 +350,22 @@ export function useRiderActionHelpers(ctx) {
     uploadingRiderIdCard.value = true;
     try {
       const formData = new FormData();
-      formData.append('file', raw);
-      const { data } = await request.post('/api/upload', formData, {
+      formData.append('image', raw);
+      formData.append('field', 'id_card_front');
+      const { data } = await request.post(`/api/riders/${riderEditForm.value.id}/cert`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      const nextUrl = data?.url || '';
-      if (!nextUrl) {
-        throw new Error('上传返回地址为空');
+      const asset = extractUploadAsset(data);
+      const nextRef = String(asset?.asset_id || data?.assetRef || data?.imageUrl || '').trim();
+      const previewSource = String(asset?.asset_url || data?.previewUrl || '').trim();
+      if (!nextRef || !previewSource) {
+        throw new Error('上传返回的证件资源信息不完整');
       }
-      riderEditForm.value.id_card_front = nextUrl;
+      const previewUrl = await resolvePrivatePreviewUrl(previewSource);
+      riderEditForm.value.id_card_front = nextRef;
+      replacePreviewUrl(riderEditForm.value, 'id_card_front_preview_url', previewUrl);
+      replacePreviewUrl(detail.value, 'id_card_front_preview_url', previewUrl);
+      detail.value.id_card_front = nextRef;
       ElMessage.success('身份证照片上传成功');
     } catch (error) {
       ElMessage.error(error?.response?.data?.error || error.message || '身份证照片上传失败');

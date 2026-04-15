@@ -1,0 +1,32 @@
+{
+  "name": "infinitech-monorepo",
+  "private": true,
+  "version": "2.0.1",
+  "scripts": {
+    "verify:merchant-types": "npx tsc -p merchant-app/tsconfig.json --noEmit",
+    "verify:rider-types": "npx tsc -p rider-app/tsconfig.json --noEmit",
+    "verify:user-types": "npx tsc -p user-vue/tsconfig.json --noEmit",
+    "verify:app-mobile-types": "npx tsc -p app-mobile/tsconfig.json --noEmit",
+    "verify:mobile-types": "npm run verify:merchant-types && npm run verify:rider-types && npm run verify:user-types && npm run verify:app-mobile-types",
+    "verify:admin-vue-build": "npm --workspace admin-vue run build",
+    "verify:admin-win-types": "npx tsc -p admin-win/tsconfig.json --noEmit",
+    "verify:admin-mac-types": "npx tsc -p admin-mac/tsconfig.json --noEmit",
+    "verify:admin-win-build": "npm --workspace admin-win run build",
+    "verify:admin-mac-build": "npm --workspace admin-mac run build",
+    "verify:admin-stack": "npm run verify:admin-vue-build && npm run verify:admin-win-types && npm run verify:admin-mac-types && npm run verify:admin-win-build && npm run verify:admin-mac-build",
+    "verify:contracts-tests": "node --test packages/contracts/src/http.test.mjs",
+    "verify:client-sdk-tests": "node --test packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs",
+    "verify:go-tests": "cd backend/go && go test ./...",
+    "verify:bff-tests": "npm --prefix backend/bff test",
+    "verify:socket-check": "npm --prefix socket-server run check",
+    "verify:management-tests": "node --test scripts/lib/management/management.test.mjs",
+    "verify:backend-runtime": "npm run verify:go-tests && npm run verify:bff-tests && npm run verify:socket-check",
+    "verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:contracts-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"
+  },
+  "workspaces": [
+    "packages/*",
+    "admin-vue",
+    "admin-win",
+    "admin-mac"
+  ]
+}

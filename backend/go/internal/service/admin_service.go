@@ -2,9 +2,6 @@ package service
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,11 +11,11 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/yuexiang/go-api/internal/admincli"
 	"github.com/yuexiang/go-api/internal/repository"
 	"gorm.io/gorm"
 )
 
-const defaultAdminPassword = "123456"
 const defaultBootstrapAdminPhone = "13800138000"
 const defaultBootstrapAdminName = "Bootstrap Admin"
 const riderOnlineTTL = 90 * time.Second
@@ -169,92 +166,38 @@ func (s *AdminService) generateToken(admin repository.Admin) (string, error) {
 	if s.tokenSecret == "" {
 		return "", fmt.Errorf("admin token secret is not configured")
 	}
-	payload := map[string]interface{}{
-		"phone":            admin.Phone,
-		"userId":           admin.ID,
-		"id":               admin.UID,
-		"sub":              admin.UID,
-		"adminId":          admin.UID,
-		"name":             admin.Name,
-		"type":             admin.Type,
-		"bootstrapPending": s.AdminRequiresBootstrapSetup(admin),
-		"exp":              time.Now().Add(7 * 24 * time.Hour).Unix(),
-		"iat":              time.Now().Unix(),
-	}
-	payloadJSON, err := json.Marshal(payload)
-	if err != nil {
-		return "", err
-	}
-	payloadBase64 := base64.URLEncoding.EncodeToString(payloadJSON)
-	mac := hmac.New(sha256.New, []byte(s.tokenSecret))
-	mac.Write([]byte(payloadBase64))
-	signature := base64.URLEncoding.EncodeToString(mac.Sum(nil))
-	return payloadBase64 + "." + signature, nil
+	payload := buildAdminTokenPayload(admin)
+	payload["bootstrapPending"] = s.AdminRequiresBootstrapSetup(admin)
+	return signUnifiedTokenPayload(s.tokenSecret, payload)
 }
 
 // VerifyToken validates admin token and returns admin info.
 func (s *AdminService) VerifyToken(ctx context.Context, authHeader string) (*repository.Admin, error) {
-	token := strings.TrimSpace(authHeader)
-	if strings.HasPrefix(strings.ToLower(token), "bearer ") {
-		token = strings.TrimSpace(token[7:])
-	}
-	if token == "" {
-		return nil, fmt.Errorf("missing token")
-	}
-
-	parts := strings.Split(token, ".")
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid token format")
-	}
-	payloadBase64 := parts[0]
-	signature := parts[1]
-
 	if s.tokenSecret == "" {
 		return nil, fmt.Errorf("admin token secret is not configured")
 	}
 
-	mac := hmac.New(sha256.New, []byte(s.tokenSecret))
-	mac.Write([]byte(payloadBase64))
-	expectedSignature := base64.URLEncoding.EncodeToString(mac.Sum(nil))
-	if !hmac.Equal([]byte(signature), []byte(expectedSignature)) {
-		return nil, fmt.Errorf("invalid token signature")
-	}
-
-	payloadJSON, err := base64.URLEncoding.DecodeString(payloadBase64)
+	payload, err := verifyUnifiedTokenPayload(authHeader, s.tokenSecret)
 	if err != nil {
-		return nil, fmt.Errorf("invalid token payload")
+		return nil, err
 	}
 
-	var payload map[string]interface{}
-	if err := json.Unmarshal(payloadJSON, &payload); err != nil {
-		return nil, fmt.Errorf("invalid token payload")
+	if normalizeUnifiedTokenKind(payload) != tokenKindAccess {
+		return nil, fmt.Errorf("invalid admin token kind")
 	}
 
-	exp, ok := payload["exp"].(float64)
-	if !ok {
-		return nil, fmt.Errorf("invalid token exp")
-	}
-	if time.Now().Unix() > int64(exp) {
-		return nil, fmt.Errorf("token expired")
+	if principalType := normalizeUnifiedPrincipalType(payload, principalTypeAdmin); principalType != principalTypeAdmin {
+		return nil, fmt.Errorf("invalid admin principal type")
 	}
 
-	if adminType, ok := payload["type"].(string); ok && strings.TrimSpace(adminType) != "" {
-		normalizedType := strings.ToLower(strings.TrimSpace(adminType))
-		if normalizedType != "admin" && normalizedType != "super_admin" {
-			return nil, fmt.Errorf("invalid admin type")
-		}
+	adminType := strings.ToLower(strings.TrimSpace(claimString(payload, "role", "type", "userType")))
+	if adminType != "" && adminType != "admin" && adminType != "super_admin" {
+		return nil, fmt.Errorf("invalid admin type")
 	}
 
-	phone, _ := payload["phone"].(string)
-
-	var userID int64
-	switch value := payload["userId"].(type) {
-	case float64:
-		userID = int64(value)
-	case string:
-		parsed, _ := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
-		userID = parsed
-	}
+	phone := claimString(payload, "phone")
+	principalID := normalizeUnifiedPrincipalID(payload)
+	userID := claimInt64(payload, "principal_legacy_id", "userId")
 
 	var admin repository.Admin
 	if userID > 0 {
@@ -270,16 +213,42 @@ func (s *AdminService) VerifyToken(ctx context.Context, authHeader string) (*rep
 		}
 	}
 
+	if admin.ID == 0 && principalID != "" {
+		resolvedID, resolveErr := resolveEntityID(ctx, s.db, "admins", principalID)
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
+		findByID := s.db.WithContext(ctx).Where("id = ?", resolvedID).Limit(1).Find(&admin)
+		if findByID.Error != nil {
+			return nil, findByID.Error
+		}
+		if findByID.RowsAffected == 0 {
+			return nil, fmt.Errorf("admin not found")
+		}
+		if phone != "" && admin.Phone != phone {
+			return nil, fmt.Errorf("token user mismatch")
+		}
+	}
+
 	if phone == "" {
 		return nil, fmt.Errorf("invalid token subject")
 	}
-	admin = repository.Admin{}
-	findByPhone := s.db.WithContext(ctx).Where("phone = ?", phone).Limit(1).Find(&admin)
-	if findByPhone.Error != nil {
-		return nil, findByPhone.Error
+
+	if admin.ID == 0 {
+		findByPhone := s.db.WithContext(ctx).Where("phone = ?", phone).Limit(1).Find(&admin)
+		if findByPhone.Error != nil {
+			return nil, findByPhone.Error
+		}
+		if findByPhone.RowsAffected == 0 {
+			return nil, fmt.Errorf("admin not found")
+		}
 	}
-	if findByPhone.RowsAffected == 0 {
-		return nil, fmt.Errorf("admin not found")
+
+	if !unifiedPrincipalMatchesEntity(principalID, admin.UID, admin.ID, admin.Phone) {
+		return nil, fmt.Errorf("token subject mismatch")
+	}
+	if adminType != "" && strings.ToLower(strings.TrimSpace(admin.Type)) != adminType {
+		return nil, fmt.Errorf("token role mismatch")
 	}
 
 	return &admin, nil
@@ -294,12 +263,65 @@ func (s *AdminService) ListAdmins(ctx context.Context) ([]repository.Admin, erro
 	return admins, nil
 }
 
+func normalizeManagedAdminType(value string, defaultValue string) (string, error) {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	if normalized == "" {
+		if strings.TrimSpace(defaultValue) == "" {
+			return "", fmt.Errorf("管理员类型不能为空")
+		}
+		return strings.TrimSpace(defaultValue), nil
+	}
+	if normalized != "admin" && normalized != "super_admin" {
+		return "", fmt.Errorf("管理员类型只能是 admin 或 super_admin")
+	}
+	return normalized, nil
+}
+
+func normalizeOptionalTextValue(value interface{}) string {
+	if value == nil {
+		return ""
+	}
+	switch typed := value.(type) {
+	case string:
+		return strings.TrimSpace(typed)
+	default:
+		return strings.TrimSpace(fmt.Sprint(typed))
+	}
+}
+
+func validatePrivilegedPassword(password string) error {
+	return admincli.ValidateManualPassword(password)
+}
+
+func generateTemporaryPasswordHash() (string, string, error) {
+	password, err := admincli.GenerateSecurePassword(admincli.DefaultGeneratedPasswordLength)
+	if err != nil {
+		return "", "", err
+	}
+	hash, err := hashPassword(password)
+	if err != nil {
+		return "", "", err
+	}
+	return password, hash, nil
+}
+
 func (s *AdminService) CreateAdmin(ctx context.Context, phone, name, password, adminType string) error {
+	phone = strings.TrimSpace(phone)
+	name = strings.TrimSpace(name)
+	password = strings.TrimSpace(password)
+
 	if !isValidPhone(phone) {
 		return fmt.Errorf("手机号格式不正确")
 	}
-	if password == "" {
-		return fmt.Errorf("密码不能为空")
+	if name == "" {
+		return fmt.Errorf("管理员姓名不能为空")
+	}
+	if err := validatePrivilegedPassword(password); err != nil {
+		return err
+	}
+	normalizedType, err := normalizeManagedAdminType(adminType, "admin")
+	if err != nil {
+		return err
 	}
 
 	var count int64
@@ -317,7 +339,7 @@ func (s *AdminService) CreateAdmin(ctx context.Context, phone, name, password, a
 		Phone:        phone,
 		Name:         name,
 		PasswordHash: hash,
-		Type:         "super_admin",
+		Type:         normalizedType,
 	}
 	return s.db.WithContext(ctx).Create(&admin).Error
 }
@@ -327,7 +349,43 @@ func (s *AdminService) UpdateAdmin(ctx context.Context, id string, updates map[s
 	if err != nil {
 		return err
 	}
-	return s.db.WithContext(ctx).Model(&repository.Admin{}).Where("id = ?", resolvedID).Updates(updates).Error
+
+	normalizedUpdates := map[string]interface{}{}
+	if rawPhone, ok := updates["phone"]; ok {
+		phone := normalizeOptionalTextValue(rawPhone)
+		if !isValidPhone(phone) {
+			return fmt.Errorf("手机号格式不正确")
+		}
+		var count int64
+		if err := s.db.WithContext(ctx).
+			Model(&repository.Admin{}).
+			Where("phone = ? AND id <> ?", phone, resolvedID).
+			Count(&count).Error; err != nil {
+			return err
+		}
+		if count > 0 {
+			return fmt.Errorf("手机号已存在")
+		}
+		normalizedUpdates["phone"] = phone
+	}
+	if rawName, ok := updates["name"]; ok {
+		name := normalizeOptionalTextValue(rawName)
+		if name == "" {
+			return fmt.Errorf("管理员姓名不能为空")
+		}
+		normalizedUpdates["name"] = name
+	}
+	if rawType, ok := updates["type"]; ok {
+		normalizedType, err := normalizeManagedAdminType(normalizeOptionalTextValue(rawType), "")
+		if err != nil {
+			return err
+		}
+		normalizedUpdates["type"] = normalizedType
+	}
+	if len(normalizedUpdates) == 0 {
+		return fmt.Errorf("没有需要更新的字段")
+	}
+	return s.db.WithContext(ctx).Model(&repository.Admin{}).Where("id = ?", resolvedID).Updates(normalizedUpdates).Error
 }
 
 func (s *AdminService) DeleteAdmin(ctx context.Context, id string) error {
@@ -343,14 +401,14 @@ func (s *AdminService) ResetAdminPassword(ctx context.Context, id string) (strin
 	if err != nil {
 		return "", err
 	}
-	hash, err := hashPassword(defaultAdminPassword)
+	newPassword, hash, err := generateTemporaryPasswordHash()
 	if err != nil {
 		return "", err
 	}
 	if err := s.db.WithContext(ctx).Model(&repository.Admin{}).Where("id = ?", resolvedID).Update("password_hash", hash).Error; err != nil {
 		return "", err
 	}
-	return defaultAdminPassword, nil
+	return newPassword, nil
 }
 
 func (s *AdminService) ChangeOwnPassword(ctx context.Context, adminID uint, currentPassword, newPassword string) error {
@@ -360,8 +418,8 @@ func (s *AdminService) ChangeOwnPassword(ctx context.Context, adminID uint, curr
 	if strings.TrimSpace(currentPassword) == "" {
 		return fmt.Errorf("当前密码不能为空")
 	}
-	if len(strings.TrimSpace(newPassword)) < 6 {
-		return fmt.Errorf("新密码至少需要 6 位")
+	if err := validatePrivilegedPassword(strings.TrimSpace(newPassword)); err != nil {
+		return err
 	}
 
 	var admin repository.Admin
@@ -478,14 +536,14 @@ func (s *AdminService) ResetUserPassword(ctx context.Context, id string) (string
 	if err != nil {
 		return "", err
 	}
-	hash, err := hashPassword(defaultAdminPassword)
+	newPassword, hash, err := generateTemporaryPasswordHash()
 	if err != nil {
 		return "", err
 	}
 	if err := s.db.WithContext(ctx).Model(&repository.User{}).Where("id = ?", resolvedID).Update("password_hash", hash).Error; err != nil {
 		return "", err
 	}
-	return defaultAdminPassword, nil
+	return newPassword, nil
 }
 
 func (s *AdminService) DeleteUserOrders(ctx context.Context, id string) (int64, error) {
@@ -723,14 +781,14 @@ func (s *AdminService) ResetRiderPassword(ctx context.Context, id string) (strin
 	if err != nil {
 		return "", err
 	}
-	hash, err := hashPassword(defaultAdminPassword)
+	newPassword, hash, err := generateTemporaryPasswordHash()
 	if err != nil {
 		return "", err
 	}
 	if err := s.db.WithContext(ctx).Model(&repository.Rider{}).Where("id = ?", resolvedID).Update("password_hash", hash).Error; err != nil {
 		return "", err
 	}
-	return defaultAdminPassword, nil
+	return newPassword, nil
 }
 
 func (s *AdminService) DeleteRiderOrders(ctx context.Context, id string) (int64, error) {
@@ -966,14 +1024,14 @@ func (s *AdminService) ResetMerchantPassword(ctx context.Context, id string) (st
 	if err != nil {
 		return "", err
 	}
-	hash, err := hashPassword(defaultAdminPassword)
+	newPassword, hash, err := generateTemporaryPasswordHash()
 	if err != nil {
 		return "", err
 	}
 	if err := s.db.WithContext(ctx).Model(&repository.Merchant{}).Where("id = ?", resolvedID).Update("password_hash", hash).Error; err != nil {
 		return "", err
 	}
-	return defaultAdminPassword, nil
+	return newPassword, nil
 }
 
 func (s *AdminService) DeleteMerchant(ctx context.Context, id string) error {
@@ -1255,12 +1313,6 @@ func (s *AdminService) ImportUsers(ctx context.Context, items []map[string]inter
 					user.PasswordHash = hash
 				}
 			}
-			if user.PasswordHash == "" {
-				hash, err := hashPassword(defaultAdminPassword)
-				if err == nil {
-					user.PasswordHash = hash
-				}
-			}
 
 			if err := saveImportedModel(ctx, tx, "users", &user, user.ID, user.UID, user.TSID); err != nil {
 				return err
@@ -1410,12 +1462,6 @@ func (s *AdminService) ImportRiders(ctx context.Context, items []map[string]inte
 					rider.PasswordHash = hash
 				}
 			}
-			if rider.PasswordHash == "" {
-				hash, err := hashPassword(defaultAdminPassword)
-				if err == nil {
-					rider.PasswordHash = hash
-				}
-			}
 
 			if err := saveImportedModel(ctx, tx, "riders", &rider, rider.ID, rider.UID, rider.TSID); err != nil {
 				return err
@@ -1508,12 +1554,6 @@ func (s *AdminService) ImportMerchants(ctx context.Context, items []map[string]i
 				merchant.PasswordHash = parseImportString(item, "password_hash")
 			} else if hasImportKey(item, "password") {
 				if hash, err := hashPassword(parseImportString(item, "password")); err == nil {
-					merchant.PasswordHash = hash
-				}
-			}
-			if merchant.PasswordHash == "" {
-				hash, err := hashPassword(defaultAdminPassword)
-				if err == nil {
 					merchant.PasswordHash = hash
 				}
 			}

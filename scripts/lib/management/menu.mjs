@@ -165,7 +165,7 @@ async function showAdminMenu(actions, repoRoot) {
       case 2: {
         const phone = await promptText('输入管理员手机号', '')
         const name = await promptText('输入管理员姓名', '')
-        const type = await promptText('输入管理员类型 admin/super_admin', 'super_admin')
+        const type = await promptText('输入管理员类型 admin/super_admin', 'admin')
         const autoGenerate = await promptConfirm('是否自动生成高强度临时密码？', true)
         const password = autoGenerate ? '' : await promptText('输入管理员密码', '')
         actions.createAdmin(repoRoot, {

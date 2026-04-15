@@ -16,6 +16,7 @@ router.post('/preferences', riderController.updateRiderPreferences)
 // 个人信息管理
 router.put('/:riderId/avatar', riderController.updateAvatar)
 router.get('/:riderId/profile', riderController.getRiderProfile)
+router.get('/:riderId/cert', riderController.getRiderCert)
 router.put('/:riderId/profile', riderController.updateRiderProfile)
 router.post('/:riderId/cert', upload.single('image'), riderController.uploadCert)
 router.post('/:riderId/change-phone', riderController.changePhone)

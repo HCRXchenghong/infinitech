@@ -1,3 +1,1 @@
-import createSocket from './socket-io.js'
-
-export default createSocket
+export { default } from '../../shared/mobile-common/socket-io'

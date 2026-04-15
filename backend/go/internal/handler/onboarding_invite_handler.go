@@ -3,8 +3,10 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yuexiang/go-api/internal/service"
@@ -21,7 +23,7 @@ func NewOnboardingInviteHandler(svc *service.OnboardingInviteService) *Onboardin
 func (h *OnboardingInviteHandler) AdminCreateInvite(c *gin.Context) {
 	var req service.OnboardingInviteCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "请求参数错误", nil)
 		return
 	}
 
@@ -45,10 +47,10 @@ func (h *OnboardingInviteHandler) AdminCreateInvite(c *gin.Context) {
 
 	result, err := h.service.CreateInviteLink(c.Request.Context(), req, adminID, adminName)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
+	respondEnvelope(c, http.StatusOK, "ONBOARDING_INVITE_CREATED", "邀请链接创建成功", result, nil)
 }
 
 func (h *OnboardingInviteHandler) AdminListInvites(c *gin.Context) {
@@ -66,23 +68,33 @@ func (h *OnboardingInviteHandler) AdminListInvites(c *gin.Context) {
 	status := strings.TrimSpace(c.Query("status"))
 	items, total, err := h.service.ListInviteLinks(c.Request.Context(), inviteType, status, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "items": items, "total": total, "page": page, "limit": limit})
+	respondEnvelope(c, http.StatusOK, "ONBOARDING_INVITE_LISTED", "邀请链接列表加载成功", gin.H{
+		"items": items,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	}, gin.H{
+		"items": items,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	})
 }
 
 func (h *OnboardingInviteHandler) AdminRevokeInvite(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效邀请ID"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "无效邀请ID", nil)
 		return
 	}
 	if err := h.service.RevokeInviteLink(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondEnvelope(c, http.StatusOK, "ONBOARDING_INVITE_REVOKED", "邀请链接已撤销", nil, nil)
 }
 
 func (h *OnboardingInviteHandler) AdminListSubmissions(c *gin.Context) {
@@ -99,10 +111,20 @@ func (h *OnboardingInviteHandler) AdminListSubmissions(c *gin.Context) {
 	inviteType := strings.TrimSpace(c.Query("invite_type"))
 	items, total, err := h.service.ListSubmissions(c.Request.Context(), inviteType, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "items": items, "total": total, "page": page, "limit": limit})
+	respondEnvelope(c, http.StatusOK, "ONBOARDING_SUBMISSION_LISTED", "入驻提交记录加载成功", gin.H{
+		"items": items,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	}, gin.H{
+		"items": items,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	})
 }
 
 func (h *OnboardingInviteHandler) PublicGetInvite(c *gin.Context) {
@@ -110,15 +132,17 @@ func (h *OnboardingInviteHandler) PublicGetInvite(c *gin.Context) {
 	link, err := h.service.GetInviteByToken(c.Request.Context(), token)
 	if err != nil {
 		if errors.Is(err, service.ErrOnboardingInviteNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "邀请链接不存在"})
+			respondErrorEnvelope(c, http.StatusNotFound, responseCodeNotFound, "邀请链接不存在", nil)
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询邀请链接失败"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "查询邀请链接失败", nil)
 		return
 	}
 
 	if link.Status != "pending" {
-		c.JSON(http.StatusGone, gin.H{"error": "邀请链接已失效", "status": link.Status})
+		respondErrorEnvelope(c, http.StatusGone, responseCodeGone, "邀请链接已失效", gin.H{
+			"status": link.Status,
+		})
 		return
 	}
 
@@ -131,22 +155,25 @@ func (h *OnboardingInviteHandler) PublicGetInvite(c *gin.Context) {
 	case "old_user":
 		requiredFields = []string{"name", "phone", "password"}
 	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "邀请类型不支持"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "邀请类型不支持", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"invite": gin.H{
-			"id":              link.UID,
-			"invite_type":     link.InviteType,
-			"status":          link.Status,
-			"token_prefix":    link.TokenPrefix,
-			"expires_at":      link.ExpiresAt,
-			"max_uses":        link.MaxUses,
-			"used_count":      link.UsedCount,
-			"remaining_uses":  maxInt(0, link.MaxUses-link.UsedCount),
-			"required_fields": requiredFields,
-		},
+	invite := gin.H{
+		"id":              link.UID,
+		"invite_type":     link.InviteType,
+		"status":          link.Status,
+		"token_prefix":    link.TokenPrefix,
+		"expires_at":      link.ExpiresAt,
+		"max_uses":        link.MaxUses,
+		"used_count":      link.UsedCount,
+		"remaining_uses":  maxInt(0, link.MaxUses-link.UsedCount),
+		"required_fields": requiredFields,
+	}
+	respondEnvelope(c, http.StatusOK, "ONBOARDING_INVITE_LOADED", "邀请链接加载成功", gin.H{
+		"invite": invite,
+	}, gin.H{
+		"invite": invite,
 	})
 }
 
@@ -154,7 +181,7 @@ func (h *OnboardingInviteHandler) PublicSubmitInvite(c *gin.Context) {
 	token := c.Param("token")
 	var req service.OnboardingInviteSubmitRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "请求参数错误", nil)
 		return
 	}
 
@@ -163,24 +190,72 @@ func (h *OnboardingInviteHandler) PublicSubmitInvite(c *gin.Context) {
 		msg := err.Error()
 		switch {
 		case strings.Contains(msg, "失效"), strings.Contains(msg, "过期"):
-			c.JSON(http.StatusGone, gin.H{"error": msg})
+			respondErrorEnvelope(c, http.StatusGone, responseCodeGone, msg, nil)
 		case errors.Is(err, service.ErrOnboardingInviteNotFound):
-			c.JSON(http.StatusNotFound, gin.H{"error": "邀请链接不存在"})
+			respondErrorEnvelope(c, http.StatusNotFound, responseCodeNotFound, "邀请链接不存在", nil)
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+			respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, msg, nil)
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"submission_id": submission.ID,
-			"invite_type":   submission.InviteType,
-			"entity_type":   submission.EntityType,
-			"entity_id":     submission.EntityID,
-		},
-	})
+	respondEnvelope(c, http.StatusOK, "ONBOARDING_SUBMISSION_CREATED", "入驻信息提交成功", gin.H{
+		"submission_id": submission.ID,
+		"invite_type":   submission.InviteType,
+		"entity_type":   submission.EntityType,
+		"entity_id":     submission.EntityID,
+	}, nil)
+}
+
+func (h *OnboardingInviteHandler) PublicUploadAsset(c *gin.Context) {
+	token := strings.TrimSpace(c.Param("token"))
+	link, err := h.service.GetInviteByToken(c.Request.Context(), token)
+	if err != nil {
+		if errors.Is(err, service.ErrOnboardingInviteNotFound) {
+			respondErrorEnvelope(c, http.StatusNotFound, responseCodeNotFound, "邀请链接不存在", nil)
+			return
+		}
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "校验邀请链接失败", nil)
+		return
+	}
+	if link.Status != "pending" {
+		respondErrorEnvelope(c, http.StatusGone, responseCodeGone, "邀请链接已失效", gin.H{
+			"status": link.Status,
+		})
+		return
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "没有找到上传文件", nil)
+		return
+	}
+
+	tokenPrefix := strings.Trim(strings.TrimSpace(link.TokenPrefix), "/.")
+	if tokenPrefix == "" {
+		tokenPrefix = "invite"
+	}
+	dateDir := time.Now().Format("2006-01-02")
+	finalFilename, url, err := saveUploadFile(c, file, 5*1024*1024, publicImageUploadAllowedExts, "onboarding-invite", tokenPrefix, filepath.Clean(dateDir))
+	if err != nil {
+		status := http.StatusBadRequest
+		if isUploadInternalError(err) {
+			status = http.StatusInternalServerError
+		}
+		code := responseCodeInvalidArgument
+		if status >= http.StatusInternalServerError {
+			code = responseCodeInternalError
+		}
+		respondErrorEnvelope(c, status, code, err.Error(), nil)
+		return
+	}
+
+	respondEnvelope(c, http.StatusOK, "ONBOARDING_ASSET_UPLOADED", "邀请资料上传成功", gin.H{
+		"url":          url,
+		"filename":     finalFilename,
+		"invite_type":  link.InviteType,
+		"token_prefix": link.TokenPrefix,
+	}, nil)
 }
 
 func maxInt(a, b int) int {

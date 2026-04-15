@@ -5,8 +5,8 @@ import { generateDeploymentCredentials } from './lib/management/credentials.mjs'
 import { installGlobalLaunchers } from './lib/management/launcher-install.mjs'
 import { getManagementPaths, repoRootFallback } from './lib/management/paths.mjs'
 import { buildAllowedOrigins, composeDown, composeUp, removeManagedVolumes, resolveProfilesForMode } from './lib/management/orchestrator.mjs'
-import { readEnvFile, writeEnvFile } from './lib/management/runtime-env.mjs'
-import { promptChoice, promptText } from './lib/management/utils.mjs'
+import { readEnvFile, writeEnvFile, writeSensitiveReceipt } from './lib/management/runtime-env.mjs'
+import { maskSecret, promptChoice, promptText } from './lib/management/utils.mjs'
 
 function parseArgs(argv) {
   const flags = {
@@ -236,17 +236,26 @@ function buildNextRuntimeValues(currentValues, mirrorProfile, deployMode, resetM
 }
 
 function printSummary(envFile, runtimeValues, launcherInfo) {
+  const receiptPath = writeSensitiveReceipt(repoRootFallback, 'install-credentials', [
+    { label: 'Bootstrap 手机号', value: runtimeValues.BOOTSTRAP_ADMIN_PHONE },
+    { label: 'Bootstrap 名称', value: runtimeValues.BOOTSTRAP_ADMIN_NAME },
+    { label: 'Bootstrap 一次性口令', value: runtimeValues.BOOTSTRAP_ADMIN_PASSWORD },
+    { label: '二次验证账号', value: runtimeValues.SYSTEM_LOG_DELETE_ACCOUNT },
+    { label: '二次验证口令', value: runtimeValues.SYSTEM_LOG_DELETE_PASSWORD },
+  ])
   console.log('\n运行时环境文件已写入：')
   console.log(`  ${envFile}`)
   console.log('\n全局命令已安装：')
   console.log(`  ${launcherInfo.launcherPaths.join('\n  ')}`)
   console.log('\n首次初始化管理员信息：')
-  console.log(`  手机号: ${runtimeValues.BOOTSTRAP_ADMIN_PHONE}`)
+  console.log(`  手机号: ${maskSecret(runtimeValues.BOOTSTRAP_ADMIN_PHONE)}`)
   console.log(`  名称:   ${runtimeValues.BOOTSTRAP_ADMIN_NAME}`)
-  console.log(`  密码:   ${runtimeValues.BOOTSTRAP_ADMIN_PASSWORD}`)
+  console.log('  口令:   已写入安全回执')
   console.log('\n敏感操作二次验证信息：')
-  console.log(`  账号: ${runtimeValues.SYSTEM_LOG_DELETE_ACCOUNT}`)
-  console.log(`  密码: ${runtimeValues.SYSTEM_LOG_DELETE_PASSWORD}`)
+  console.log(`  账号: ${maskSecret(runtimeValues.SYSTEM_LOG_DELETE_ACCOUNT)}`)
+  console.log('  口令: 已写入安全回执')
+  console.log('\n敏感凭据回执：')
+  console.log(`  ${receiptPath}`)
 }
 
 async function main() {

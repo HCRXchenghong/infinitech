@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"net"
+	"net/url"
 	"os"
 	"strings"
 
@@ -8,7 +10,6 @@ import (
 )
 
 func CORS() gin.HandlerFunc {
-	// 从环境变量读取白名单，多个用逗号分隔；未配置时允许所有（开发环境兼容）
 	allowedRaw := os.Getenv("ALLOWED_ORIGINS")
 	var allowedOrigins []string
 	if allowedRaw != "" {
@@ -19,27 +20,69 @@ func CORS() gin.HandlerFunc {
 			}
 		}
 	}
+	env := strings.ToLower(strings.TrimSpace(os.Getenv("ENV")))
+	if env == "" {
+		env = strings.ToLower(strings.TrimSpace(os.Getenv("NODE_ENV")))
+	}
+	productionLike := env == "production" || env == "prod" || env == "staging"
 
-	return func(c *gin.Context) {
-		origin := c.GetHeader("Origin")
-		allowOrigin := "*"
+	resolveAllowedOrigin := func(origin string) string {
+		origin = strings.TrimSpace(origin)
+		if origin == "" {
+			return ""
+		}
 		if len(allowedOrigins) > 0 {
-			allowOrigin = allowedOrigins[0]
-			for _, o := range allowedOrigins {
-				if o == origin {
-					allowOrigin = origin
-					break
+			for _, candidate := range allowedOrigins {
+				if candidate == origin {
+					return origin
 				}
 			}
+			return ""
+		}
+		if productionLike {
+			return ""
 		}
 
-		c.Writer.Header().Set("Access-Control-Allow-Origin", allowOrigin)
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		parsed, err := url.Parse(origin)
+		if err != nil {
+			return ""
+		}
+		host := strings.TrimSpace(parsed.Hostname())
+		if host == "" {
+			return ""
+		}
+		if strings.EqualFold(host, "localhost") {
+			return origin
+		}
+		ip := net.ParseIP(host)
+		if ip != nil && ip.IsLoopback() {
+			return origin
+		}
+		return ""
+	}
+
+	return func(c *gin.Context) {
+		origin := strings.TrimSpace(c.GetHeader("Origin"))
+		allowOrigin := resolveAllowedOrigin(origin)
+
+		if allowOrigin != "" {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+			c.Writer.Header().Set("Vary", "Origin")
+		}
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
 
 		if c.Request.Method == "OPTIONS" {
+			if origin != "" && allowOrigin == "" {
+				c.AbortWithStatus(403)
+				return
+			}
 			c.AbortWithStatus(204)
+			return
+		}
+		if origin != "" && allowOrigin == "" {
+			c.AbortWithStatusJSON(403, gin.H{"error": "origin not allowed"})
 			return
 		}
 

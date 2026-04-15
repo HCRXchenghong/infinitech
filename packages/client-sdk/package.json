@@ -1,0 +1,12 @@
+{
+  "name": "@infinitech/client-sdk",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./auth": "./src/auth.js",
+    "./mobile-capabilities": "./src/mobile-capabilities.js",
+    "./onboarding-invite": "./src/onboarding-invite.js"
+  }
+}

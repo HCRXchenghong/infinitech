@@ -1,3 +1,8 @@
+import {
+  extractUnifiedPrincipalIdentity,
+  parseUnifiedTokenPayload
+} from '@infinitech/contracts/identity';
+
 export function getToken() {
   return localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
 }
@@ -41,48 +46,6 @@ function safeJsonParse(value) {
   }
 }
 
-function normalizeBase64Url(value) {
-  const raw = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
-  const remainder = raw.length % 4;
-  if (!remainder) {
-    return raw;
-  }
-  return raw + '='.repeat(4 - remainder);
-}
-
-function decodeBase64UrlToJSON(value) {
-  const normalized = normalizeBase64Url(value);
-  if (!normalized) {
-    return null;
-  }
-
-  try {
-    const binary = atob(normalized);
-    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-    const text = typeof TextDecoder !== 'undefined'
-      ? new TextDecoder('utf-8').decode(bytes)
-      : binary;
-    return JSON.parse(text);
-  } catch (_error) {
-    return null;
-  }
-}
-
-function parseTokenPayload(token) {
-  const rawToken = String(token || '').trim();
-  if (!rawToken) {
-    return null;
-  }
-
-  const parts = rawToken.split('.');
-  const payloadPart = parts.length === 2 ? parts[0] : (parts.length >= 3 ? parts[1] : '');
-  if (!payloadPart) {
-    return null;
-  }
-
-  return decodeBase64UrlToJSON(payloadPart);
-}
-
 function normalizeAdminType(value) {
   return String(value || '').trim().toLowerCase();
 }
@@ -92,8 +55,16 @@ function normalizeAdminUser(user) {
     return null;
   }
 
-  const uid = String(user.uid || user.id || user.adminId || user.admin_id || '').trim();
-  const numericId = normalizeNumericId(user.userId || user.numericId || user.legacyId);
+  const identity = extractUnifiedPrincipalIdentity(user, { normalizeType: true }) || {};
+  const uid = String(
+    user.uid || user.id || user.adminId || user.admin_id || identity.principalId || ''
+  ).trim();
+  const numericId = normalizeNumericId(
+    user.userId || user.numericId || user.legacyId || identity.legacyId
+  );
+  const type = normalizeAdminType(
+    user.type || user.role || identity.role || (identity.principalType === 'admin' ? 'admin' : '')
+  );
 
   return {
     id: uid || numericId || '',
@@ -101,7 +72,8 @@ function normalizeAdminUser(user) {
     numericId,
     phone: String(user.phone || ''),
     name: String(user.name || user.username || '管理员'),
-    type: normalizeAdminType(user.type || user.role)
+    type,
+    sessionId: String(user.sessionId || user.session_id || identity.sessionId || '').trim()
   };
 }
 
@@ -125,9 +97,16 @@ export function getStoredAdminUser() {
 }
 
 export function getCurrentAdminIdentity() {
-  const payload = parseTokenPayload(getToken()) || {};
+  const payload = parseUnifiedTokenPayload(getToken()) || {};
+  const payloadIdentity = extractUnifiedPrincipalIdentity(payload, { normalizeType: true }) || {};
   const storedUser = getStoredAdminUser();
-  const type = normalizeAdminType(storedUser?.type || payload.type || payload.role);
+  const type = normalizeAdminType(
+    storedUser?.type
+      || payloadIdentity.role
+      || (payloadIdentity.principalType === 'admin' ? 'admin' : '')
+      || payload.type
+      || payload.role
+  );
 
   if (type !== 'admin' && type !== 'super_admin') {
     return null;
@@ -136,6 +115,7 @@ export function getCurrentAdminIdentity() {
   const uid = String(
     storedUser?.uid
       || storedUser?.id
+      || payloadIdentity.principalId
       || payload.id
       || payload.sub
       || payload.adminId
@@ -144,9 +124,10 @@ export function getCurrentAdminIdentity() {
   ).trim();
   const numericId = normalizeNumericId(
     storedUser?.numericId
+      || payloadIdentity.legacyId
       || payload.userId
   );
-  const id = uid || numericId || String(payload.phone || '').trim();
+  const id = uid || numericId || String(payloadIdentity.phone || payload.phone || '').trim();
 
   if (!id) {
     return null;
@@ -156,9 +137,10 @@ export function getCurrentAdminIdentity() {
     id,
     uid,
     numericId,
-    phone: String(storedUser?.phone || payload.phone || '').trim(),
-    name: String(storedUser?.name || payload.name || payload.phone || '管理员').trim() || '管理员',
-    type
+    phone: String(storedUser?.phone || payloadIdentity.phone || payload.phone || '').trim(),
+    name: String(storedUser?.name || payloadIdentity.name || payload.name || payload.phone || '管理员').trim() || '管理员',
+    type,
+    sessionId: String(storedUser?.sessionId || payloadIdentity.sessionId || payload.session_id || payload.sessionId || '').trim()
   };
 }
 

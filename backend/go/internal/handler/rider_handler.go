@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -15,7 +13,6 @@ import (
 	"github.com/yuexiang/go-api/internal/idkit"
 	"github.com/yuexiang/go-api/internal/repository"
 	svc "github.com/yuexiang/go-api/internal/service"
-	"github.com/yuexiang/go-api/internal/utils"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -97,9 +94,17 @@ func (h *RiderHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
+	payload := gin.H{}
+	if encoded, err := json.Marshal(rider); err == nil {
+		_ = json.Unmarshal(encoded, &payload)
+	}
+	payload["id_card_front_preview_url"] = buildRiderCertPreviewURL(rider.ID, "id_card_front", rider.IDCardFront)
+	payload["id_card_back_preview_url"] = buildRiderCertPreviewURL(rider.ID, "id_card_back", rider.IDCardBack)
+	payload["health_cert_preview_url"] = buildRiderCertPreviewURL(rider.ID, "health_cert", rider.HealthCert)
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    rider,
+		"data":    payload,
 	})
 }
 
@@ -124,6 +129,20 @@ func (h *RiderHandler) UpdateProfile(c *gin.Context) {
 	updates := make(map[string]interface{})
 	for _, field := range allowedFields {
 		if val, ok := req[field]; ok {
+			if _, certField := riderCertAllowedFields[field]; certField {
+				normalized := strings.TrimSpace(fmt.Sprint(val))
+				if normalized == "" {
+					updates[field] = ""
+					continue
+				}
+				nextRef, _, normalizeErr := promoteLegacyRiderCertReference(riderID, field, normalized)
+				if normalizeErr != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": normalizeErr.Error()})
+					return
+				}
+				updates[field] = nextRef
+				continue
+			}
 			updates[field] = val
 		}
 	}
@@ -142,6 +161,50 @@ func (h *RiderHandler) UpdateProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
+// DownloadCert 鉴权下载骑手私有证件
+func (h *RiderHandler) DownloadCert(c *gin.Context) {
+	riderID, err := h.resolveRiderID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效骑手ID"})
+		return
+	}
+	field, ok := normalizeRiderCertField(c.Query("field"))
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "不支持的证件字段"})
+		return
+	}
+
+	var rider repository.Rider
+	if err := h.db.Select("id", "id_card_front", "id_card_back", "health_cert").Where("id = ?", riderID).First(&rider).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "骑手不存在"})
+		return
+	}
+
+	storedValue := ""
+	switch field {
+	case "id_card_front":
+		storedValue = rider.IDCardFront
+	case "id_card_back":
+		storedValue = rider.IDCardBack
+	case "health_cert":
+		storedValue = rider.HealthCert
+	}
+
+	ref, absPath, contentType, changed, resolveErr := resolveStoredRiderCertFile(riderID, field, storedValue)
+	if resolveErr != nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": resolveErr.Error()})
+		return
+	}
+	if changed {
+		_ = h.db.Model(&repository.Rider{}).Where("id = ?", riderID).Update(field, ref).Error
+	}
+
+	c.Header("Cache-Control", "no-store")
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Content-Type", contentType)
+	c.File(absPath)
+}
+
 // UploadCert 上传证件照片
 func (h *RiderHandler) UploadCert(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
@@ -149,7 +212,11 @@ func (h *RiderHandler) UploadCert(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效骑手ID"})
 		return
 	}
-	field := c.PostForm("field")
+	field, ok := normalizeRiderCertField(c.PostForm("field"))
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "不支持的证件字段"})
+		return
+	}
 
 	file, err := c.FormFile("image")
 	if err != nil {
@@ -157,35 +224,51 @@ func (h *RiderHandler) UploadCert(c *gin.Context) {
 		return
 	}
 
-	// 保存文件
-	uploadDir := filepath.Join("data", "uploads", "certs")
-	os.MkdirAll(uploadDir, 0755)
-
-	filename := fmt.Sprintf("%d_%d_%s", time.Now().UnixNano(), riderID, filepath.Base(file.Filename))
-	savePath := filepath.Join(uploadDir, filename)
-
-	if err := c.SaveUploadedFile(file, savePath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "保存失败"})
+	nextRef, filename, contentType, saveErr := saveUploadedRiderCert(c, file, riderID, field)
+	if saveErr != nil {
+		status := http.StatusBadRequest
+		if strings.Contains(saveErr.Error(), "目录失败") ||
+			strings.Contains(saveErr.Error(), "保存证件失败") ||
+			strings.Contains(saveErr.Error(), "图片处理失败") {
+			status = http.StatusInternalServerError
+		}
+		c.JSON(status, gin.H{"success": false, "error": saveErr.Error()})
 		return
 	}
 
-	// 压缩图片到500KB以下
-	finalFilename, err := utils.CompressImage(savePath, 500*1024)
-	if err != nil {
-		os.Remove(savePath)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "图片处理失败"})
-		return
-	}
+	var previous repository.Rider
+	_ = h.db.Select(field).Where("id = ?", riderID).First(&previous).Error
 
-	imageUrl := "/uploads/certs/" + finalFilename
-
-	// 更新数据库
-	if err := h.db.Model(&repository.Rider{}).Where("id = ?", riderID).Update(field, imageUrl).Error; err != nil {
+	if err := h.db.Model(&repository.Rider{}).Where("id = ?", riderID).Update(field, nextRef).Error; err != nil {
+		cleanupRiderCertReference(riderID, field, nextRef)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "更新失败"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "imageUrl": imageUrl})
+	switch field {
+	case "id_card_front":
+		cleanupRiderCertReference(riderID, field, previous.IDCardFront)
+	case "id_card_back":
+		cleanupRiderCertReference(riderID, field, previous.IDCardBack)
+	case "health_cert":
+		cleanupRiderCertReference(riderID, field, previous.HealthCert)
+	}
+
+	previewURL := buildRiderCertPreviewURL(riderID, field, nextRef)
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"imageUrl":   nextRef,
+		"assetRef":   nextRef,
+		"previewUrl": previewURL,
+		"data": gin.H{
+			"asset_id":      nextRef,
+			"asset_url":     previewURL,
+			"access_policy": "private",
+			"content_type":  contentType,
+			"owner_scope":   fmt.Sprintf("rider:%d:%s", riderID, field),
+			"filename":      filename,
+		},
+	})
 }
 
 // ChangePhone 修改手机号

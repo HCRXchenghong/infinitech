@@ -45,97 +45,14 @@
   </view>
 </template>
 
-<script setup lang="ts">
-import { onUnmounted, ref } from 'vue'
-import { requestSMSCode, verifySMSCodeCheck } from '@/shared-ui/api'
+<script lang="ts">
+import { defineComponent } from 'vue'
+import { useMerchantResetPasswordPage } from '@/shared-ui/merchantAccountPages'
 
-const phone = ref('')
-const code = ref('')
-const sendingCode = ref(false)
-const submitting = ref(false)
-const codeCooldown = ref(0)
-
-let timer: any = null
-
-function validatePhone() {
-  const p = String(phone.value || '').trim()
-  if (!/^1\d{10}$/.test(p)) {
-    uni.showToast({ title: '请输入正确手机号', icon: 'none' })
-    return ''
-  }
-  return p
-}
-
-function startCooldown() {
-  codeCooldown.value = 60
-  if (timer) clearInterval(timer)
-  timer = setInterval(() => {
-    codeCooldown.value -= 1
-    if (codeCooldown.value <= 0) {
-      clearInterval(timer)
-      timer = null
-    }
-  }, 1000)
-}
-
-async function handleSendCode() {
-  if (sendingCode.value || codeCooldown.value > 0) return
-  const p = validatePhone()
-  if (!p) return
-
-  sendingCode.value = true
-  try {
-    const res: any = await requestSMSCode(p, 'merchant_reset')
-    if (res?.success === false) {
-      throw new Error(res?.error || res?.message || '验证码发送失败')
-    }
-    uni.showToast({ title: res?.message || '验证码已发送', icon: 'success' })
-    startCooldown()
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '验证码发送失败', icon: 'none' })
-  } finally {
-    sendingCode.value = false
-  }
-}
-
-async function handleNext() {
-  if (submitting.value) return
-  const p = validatePhone()
-  if (!p) return
-
-  const c = String(code.value || '').trim()
-  if (!c) {
-    uni.showToast({ title: '请输入验证码', icon: 'none' })
-    return
-  }
-
-  submitting.value = true
-  try {
-    const res: any = await verifySMSCodeCheck({ phone: p, code: c, scene: 'merchant_reset' })
-    if (res?.success === false) {
-      throw new Error(res?.error || res?.message || '验证码校验失败')
-    }
-
-    uni.setStorageSync('reset_password_data', { phone: p, code: c })
-    uni.redirectTo({
-      url: `/pages/set-password/index?phone=${encodeURIComponent(p)}&code=${encodeURIComponent(c)}`,
-    })
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '验证码错误', icon: 'none' })
-  } finally {
-    submitting.value = false
-  }
-}
-
-function goLogin() {
-  uni.redirectTo({ url: '/pages/login/index' })
-}
-
-onUnmounted(() => {
-  if (timer) {
-    clearInterval(timer)
-    timer = null
-  }
+export default defineComponent({
+  setup() {
+    return useMerchantResetPasswordPage()
+  },
 })
 </script>
 

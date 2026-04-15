@@ -1,101 +1,125 @@
-import axios from 'axios';
-import { saveToCache, getFromCache, STORES } from './cache';
-import { getNetworkStatus } from './networkStatus';
+import axios from "axios";
+import { saveToCache, getFromCache, STORES } from "./cache";
+import { getNetworkStatus } from "./networkStatus";
 import {
   clearAdminSessionStorage,
   getPublicRuntimeGuardMessage,
   getToken,
   isInviteRuntime,
   isSiteRuntime,
-  isPublicRuntime
-} from './runtime';
-import { hasValidPrimaryKey } from './record';
+  isPublicRuntime,
+} from "./runtime";
+import { hasValidPrimaryKey } from "./record";
 
 // 支持通过环境变量配置后台服务地址：
 // - 本地开发默认走同源代理（避免 CORS）
 // - 生产环境优先使用环境变量 VITE_ADMIN_API_BASE_URL
 // - 无配置时走同源 /api，由 nginx / 反代统一转发到 BFF
-const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
-let baseURL = '';
+const isDev =
+  typeof import.meta !== "undefined" && import.meta.env && import.meta.env.DEV;
+let baseURL = "";
 
-if (!isDev && typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_ADMIN_API_BASE_URL) {
+if (
+  !isDev &&
+  typeof import.meta !== "undefined" &&
+  import.meta.env &&
+  import.meta.env.VITE_ADMIN_API_BASE_URL
+) {
   baseURL = import.meta.env.VITE_ADMIN_API_BASE_URL;
 }
 
 const instance = axios.create({
   baseURL,
-  timeout: 15000
+  timeout: 15000,
 });
 
 function isInviteAllowedAPI(url) {
-  const path = String(url || '');
-  return path.startsWith('/api/onboarding/invites') ||
-    path.startsWith('/api/coupons/link/') ||
-    path === '/api/upload' ||
-    path.startsWith('/api/upload?') ||
-    path === '/api/health' ||
-    path === '/health' ||
-    path === '/api/ready' ||
-    path === '/ready';
+  const path = String(url || "");
+  return (
+    /^\/api\/onboarding\/invites\/[^/]+(?:\?.*)?$/.test(path) ||
+    /^\/api\/onboarding\/invites\/[^/]+\/upload(?:\?.*)?$/.test(path) ||
+    /^\/api\/onboarding\/invites\/[^/]+\/submit(?:\?.*)?$/.test(path) ||
+    /^\/api\/coupons\/link\/[^/]+(?:\?.*)?$/.test(path) ||
+    /^\/api\/coupons\/link\/[^/]+\/claim(?:\?.*)?$/.test(path) ||
+    path === "/api/health" ||
+    path === "/health" ||
+    path === "/api/ready" ||
+    path === "/ready"
+  );
 }
 
 function isDownloadAllowedAPI(url) {
-  const path = String(url || '');
-  return path.startsWith('/api/public/app-download-config') ||
-    path === '/api/health' ||
-    path === '/health' ||
-    path === '/api/ready' ||
-    path === '/ready';
+  const path = String(url || "");
+  return (
+    path.startsWith("/api/public/app-download-config") ||
+    path === "/api/health" ||
+    path === "/health" ||
+    path === "/api/ready" ||
+    path === "/ready"
+  );
 }
 
 function isSiteAllowedAPI(url) {
-  const path = String(url || '');
-  return path === '/api/public/app-download-config' ||
-    path.startsWith('/api/public/app-download-config?') ||
-    path === '/api/official-site/news' ||
-    path.startsWith('/api/official-site/news?') ||
+  const path = String(url || "");
+  return (
+    path === "/api/public/app-download-config" ||
+    path.startsWith("/api/public/app-download-config?") ||
+    path === "/api/official-site/news" ||
+    path.startsWith("/api/official-site/news?") ||
     /^\/api\/official-site\/news\/[^/]+(?:\?.*)?$/.test(path) ||
-    path === '/api/official-site/exposures' ||
-    path.startsWith('/api/official-site/exposures?') ||
+    path === "/api/official-site/exposures" ||
+    path.startsWith("/api/official-site/exposures?") ||
     /^\/api\/official-site\/exposures\/[^/]+(?:\?.*)?$/.test(path) ||
-    path === '/api/official-site/cooperations' ||
-    path === '/api/official-site/support/sessions' ||
-    /^\/api\/official-site\/support\/sessions\/[^/]+\/socket-token(?:\?.*)?$/.test(path) ||
-    /^\/api\/official-site\/support\/sessions\/[^/]+\/messages(?:\?.*)?$/.test(path) ||
-    path === '/api/upload' ||
-    path.startsWith('/api/upload?') ||
-    path === '/api/health' ||
-    path === '/health' ||
-    path === '/api/ready' ||
-    path === '/ready';
+    path === "/api/official-site/exposures/assets" ||
+    path.startsWith("/api/official-site/exposures/assets?") ||
+    path === "/api/official-site/cooperations" ||
+    path === "/api/official-site/support/sessions" ||
+    /^\/api\/official-site\/support\/sessions\/[^/]+\/socket-token(?:\?.*)?$/.test(
+      path,
+    ) ||
+    /^\/api\/official-site\/support\/sessions\/[^/]+\/messages(?:\?.*)?$/.test(
+      path,
+    ) ||
+    path === "/api/health" ||
+    path === "/health" ||
+    path === "/api/ready" ||
+    path === "/ready"
+  );
 }
 
 const hasValidId = hasValidPrimaryKey;
 
 // 判断是否为读操作（GET请求且是数据查询接口）
 function isReadOperation(config) {
-  const url = config.url || '';
-  const isGet = config.method === 'get' || config.method === 'GET';
-  const isDataApi = url.includes('/api/users') || 
-                    url.includes('/api/riders') || 
-                    url.includes('/api/orders') || 
-                    url.includes('/api/merchants');
+  const url = config.url || "";
+  const isGet = config.method === "get" || config.method === "GET";
+  const isDataApi =
+    url.includes("/api/users") ||
+    url.includes("/api/riders") ||
+    url.includes("/api/orders") ||
+    url.includes("/api/merchants");
   // 排除导出接口（导出接口需要实时数据）
-  return isGet && isDataApi && !url.includes('/import') && !url.includes('/export') && !url.includes('/health');
+  return (
+    isGet &&
+    isDataApi &&
+    !url.includes("/import") &&
+    !url.includes("/export") &&
+    !url.includes("/health")
+  );
 }
 
 // 判断是否为写操作（POST/PUT/DELETE）
 function isWriteOperation(config) {
-  const method = config.method?.toLowerCase() || '';
-  return ['post', 'put', 'patch', 'delete'].includes(method);
+  const method = config.method?.toLowerCase() || "";
+  return ["post", "put", "patch", "delete"].includes(method);
 }
 
 // 获取对应的缓存存储名称
 function getCacheStoreName(url) {
-  if (url.includes('/api/users')) return STORES.USERS;
-  if (url.includes('/api/riders')) return STORES.RIDERS;
-  if (url.includes('/api/orders')) return STORES.ORDERS;
-  if (url.includes('/api/merchants')) return STORES.MERCHANTS;
+  if (url.includes("/api/users")) return STORES.USERS;
+  if (url.includes("/api/riders")) return STORES.RIDERS;
+  if (url.includes("/api/orders")) return STORES.ORDERS;
+  if (url.includes("/api/merchants")) return STORES.MERCHANTS;
   return null;
 }
 
@@ -106,18 +130,18 @@ function extractCacheRecords(storeName, payload) {
   }
 
   const listFieldMap = {
-    [STORES.USERS]: 'users',
-    [STORES.RIDERS]: 'riders',
-    [STORES.ORDERS]: 'orders',
-    [STORES.MERCHANTS]: 'merchants'
+    [STORES.USERS]: "users",
+    [STORES.RIDERS]: "riders",
+    [STORES.ORDERS]: "orders",
+    [STORES.MERCHANTS]: "merchants",
   };
   const listField = listFieldMap[storeName];
 
-  if (typeof payload === 'object') {
+  if (typeof payload === "object") {
     if (listField && Array.isArray(payload[listField])) {
       return payload[listField].filter(hasValidId);
     }
-    if (payload.data && typeof payload.data === 'object') {
+    if (payload.data && typeof payload.data === "object") {
       if (Array.isArray(payload.data[listField])) {
         return payload.data[listField].filter(hasValidId);
       }
@@ -138,13 +162,15 @@ instance.interceptors.request.use(async (config) => {
   const isSiteRequest = isSiteRuntime();
   const isAllowedPublicAPI = isInviteRequest
     ? isInviteAllowedAPI(config.url)
-    : (isSiteRequest ? isSiteAllowedAPI(config.url) : true);
+    : isSiteRequest
+      ? isSiteAllowedAPI(config.url)
+      : true;
 
   if (isPublicRuntime() && !isAllowedPublicAPI) {
     return Promise.reject({
-      message: getPublicRuntimeGuardMessage() || '当前端口不允许访问该接口',
-      code: 'INVITE_ONLY_API_BLOCKED',
-      isInviteOnlyBlocked: true
+      message: getPublicRuntimeGuardMessage() || "当前端口不允许访问该接口",
+      code: "INVITE_ONLY_API_BLOCKED",
+      isInviteOnlyBlocked: true,
     });
   }
 
@@ -152,19 +178,19 @@ instance.interceptors.request.use(async (config) => {
   if (token && !isPublicRuntime()) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  
+
   // 检查网络状态
   const isOnline = getNetworkStatus();
-  
+
   // 如果是写操作且断网，直接拒绝请求
   if (isWriteOperation(config) && !isOnline) {
     return Promise.reject({
-      message: '网络连接已断开，无法执行此操作。请检查网络连接后重试。',
-      code: 'NETWORK_ERROR',
-      isNetworkError: true
+      message: "网络连接已断开，无法执行此操作。请检查网络连接后重试。",
+      code: "NETWORK_ERROR",
+      isNetworkError: true,
     });
   }
-  
+
   // 如果是读操作，先尝试从缓存读取（后台同时请求服务器更新）
   if (isReadOperation(config)) {
     const storeName = getCacheStoreName(config.url);
@@ -177,38 +203,38 @@ instance.interceptors.request.use(async (config) => {
 
   // 写操作也标记缓存存储，便于成功后清理旧缓存
   if (!config._cacheStore && isWriteOperation(config)) {
-    config._cacheStore = getCacheStoreName(config.url || '');
+    config._cacheStore = getCacheStoreName(config.url || "");
   }
-  
+
   return config;
 });
 
 instance.interceptors.response.use(
   async (res) => {
     const config = res.config;
-    
+
     // 如果是读操作，保存到缓存
     if (config._useCache && config._cacheStore) {
       const records = extractCacheRecords(config._cacheStore, res.data);
       await saveToCache(config._cacheStore, records);
     }
-    
+
     // 如果是写操作成功，清空相关缓存（强制下次从服务器获取最新数据）
     if (isWriteOperation(config) && config._cacheStore) {
       await saveToCache(config._cacheStore, []);
     }
-    
+
     return res;
   },
   async (error) => {
     const config = error.config;
     const status = error?.response?.status;
-    const url = config?.url || config?.baseURL + config?.url || '';
+    const url = config?.url || config?.baseURL + config?.url || "";
 
     if (error?.isInviteOnlyBlocked) {
       return Promise.reject(error);
     }
-    
+
     // 如果是读操作失败，尝试从缓存返回数据
     if (config?._useCache && config?._cacheStore) {
       const cachedData = await getFromCache(config._cacheStore);
@@ -217,17 +243,17 @@ instance.interceptors.response.use(
         return {
           data: cachedData,
           status: 200,
-          statusText: 'OK',
+          statusText: "OK",
           headers: {},
           config,
           _fromCache: true,
-          _networkError: true
+          _networkError: true,
         };
       }
     }
-    
+
     // 如果是登录接口的403错误（密码错误限制），不跳转，让登录页面自己处理
-    const isLoginApi = url.includes('/api/login') || url.includes('login');
+    const isLoginApi = url.includes("/api/login") || url.includes("login");
     const is403 = status === 403;
     const is401 = status === 401;
 
@@ -235,24 +261,24 @@ instance.interceptors.response.use(
     if (isPublicRuntime()) {
       return Promise.reject(error);
     }
-    
+
     // 只有非登录接口的 401/403 错误才跳转
     if ((is401 || is403) && !isLoginApi) {
       clearAdminSessionStorage();
       // 如果已经在登录页，不重复跳转
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
       }
     }
-    
+
     // 如果是网络错误，添加标记
     if (!error.response && !error.isNetworkError) {
       error.isNetworkError = true;
-      error.message = error.message || '网络连接失败，请检查网络连接';
+      error.message = error.message || "网络连接失败，请检查网络连接";
     }
-    
+
     return Promise.reject(error);
-  }
+  },
 );
 
 export { baseURL };

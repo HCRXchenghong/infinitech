@@ -153,6 +153,19 @@ export function exportSensitiveSnapshot(repoRoot = repoRootFallback, envValues, 
   return filePath
 }
 
+export function writeSensitiveReceipt(repoRoot = repoRootFallback, label = 'receipt', rows = []) {
+  const paths = getManagementPaths(repoRoot)
+  const receiptDir = path.join(paths.configDir, 'receipts')
+  ensureDirectory(receiptDir)
+  const filePath = path.join(receiptDir, `${timestampLabel()}-${label}.txt`)
+  const content = rows
+    .filter((row) => row && row.label)
+    .map((row) => `${row.label}: ${String(row.value ?? '')}`)
+    .join('\n')
+  fs.writeFileSync(filePath, `${content}\n`, { encoding: 'utf8', mode: 0o600 })
+  return filePath
+}
+
 export function buildRestoreChanges(currentValues, backupValues, selectedKeys = []) {
   const keys = selectedKeys.length > 0
     ? selectedKeys

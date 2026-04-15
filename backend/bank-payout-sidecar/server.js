@@ -44,6 +44,14 @@ function boolFromValue(value, fallback = false) {
   return fallback
 }
 
+function currentEnv() {
+  return normalizeText(process.env.ENV || process.env.NODE_ENV || 'development').toLowerCase()
+}
+
+function productionLikeEnv() {
+  return ['production', 'prod', 'staging'].includes(currentEnv())
+}
+
 function requireText(value, field) {
   const normalized = normalizeText(value)
   if (!normalized) {
@@ -67,12 +75,18 @@ function configSummary(body = {}) {
     merchantIdConfigured: Boolean(normalizeText(body.merchantId)),
     apiKeyConfigured: Boolean(normalizeText(body.apiKey)),
     notifyUrlConfigured: Boolean(normalizeText(body.notifyUrl)),
+    allowStubRequested: allowStubRequested(body),
     allowStub: allowStub(body),
+    allowStubBlocked: allowStubRequested(body) && !allowStub(body),
   }
 }
 
+function allowStubRequested(body = {}) {
+  return boolFromValue(body.allowStub, boolFromValue(process.env.BANK_PAYOUT_ALLOW_STUB, false))
+}
+
 function allowStub(body = {}) {
-  return boolFromValue(body.allowStub, boolFromValue(process.env.BANK_PAYOUT_ALLOW_STUB, true))
+  return !productionLikeEnv() && allowStubRequested(body)
 }
 
 function isConfigured(body = {}) {
@@ -381,8 +395,8 @@ const server = http.createServer(async (req, res) => {
     json(res, 200, {
       status: 'ok',
       service: 'bank-payout-sidecar',
-      ready: boolFromValue(process.env.BANK_PAYOUT_ALLOW_STUB, true),
-      mode: boolFromValue(process.env.BANK_PAYOUT_ALLOW_STUB, true) ? 'stub-enabled' : 'config-required',
+      ready: boolFromValue(process.env.BANK_PAYOUT_ALLOW_STUB, false),
+      mode: boolFromValue(process.env.BANK_PAYOUT_ALLOW_STUB, false) ? 'stub-enabled' : 'config-required',
       storedPayouts: payouts.size,
       timestamp: new Date().toISOString(),
     })

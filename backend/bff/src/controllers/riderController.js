@@ -110,6 +110,45 @@ exports.getRiderProfile = async (req, res, next) => {
   await proxyGet(req, res, next, `/riders/${riderId}/profile`, withRiderProxyOptions());
 };
 
+exports.getRiderCert = async (req, res, next) => {
+  const { riderId } = req.params;
+
+  try {
+    const response = await requestGoRaw(req, {
+      method: "get",
+      path: `/riders/${riderId}/cert`,
+      params: req.query,
+      responseType: "stream",
+      timeout: 20000,
+      validateStatus: () => true,
+      preferExtraHeaders: true,
+    });
+
+    res.status(response.status);
+    const hopByHopHeaders = new Set([
+      "connection",
+      "keep-alive",
+      "proxy-authenticate",
+      "proxy-authorization",
+      "te",
+      "trailer",
+      "transfer-encoding",
+      "upgrade",
+    ]);
+
+    Object.entries(response.headers || {}).forEach(([key, value]) => {
+      if (!value || hopByHopHeaders.has(String(key).toLowerCase())) {
+        return;
+      }
+      res.setHeader(key, value);
+    });
+
+    response.data.pipe(res);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // 更新骑手资料
 exports.updateRiderProfile = async (req, res, next) => {
   const { riderId } = req.params;

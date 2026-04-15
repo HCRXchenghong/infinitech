@@ -4,6 +4,7 @@ import {
   createRTCCall,
   getRTCCall,
   listRTCCallHistory,
+  readAuthorizationHeader,
   updateRTCCallStatus,
 } from '@/shared-ui/api.js'
 import {
@@ -14,14 +15,6 @@ import { getCachedRTCRuntimeSettings, loadRTCRuntimeSettings } from './rtc-runti
 
 function trimValue(value) {
   return String(value || '').trim()
-}
-
-function buildSocketAuthHeader() {
-  const token = trimValue(uni.getStorageSync('token'))
-  if (!token) return {}
-  return {
-    Authorization: /^bearer\s+/i.test(token) ? token : `Bearer ${token}`,
-  }
 }
 
 function resolveCurrentUserId() {
@@ -92,7 +85,7 @@ async function ensureSocketToken() {
     uni.request({
       url: `${config.SOCKET_URL}/api/generate-token`,
       method: 'POST',
-      header: Object.assign({ 'Content-Type': 'application/json' }, buildSocketAuthHeader()),
+      header: Object.assign({ 'Content-Type': 'application/json' }, readAuthorizationHeader()),
       data: { userId, role: 'user' },
       success: resolve,
       fail: reject,

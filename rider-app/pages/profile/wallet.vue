@@ -91,7 +91,7 @@
 </template>
 
 <script>
-import { request } from '../../shared-ui/api'
+import { buildAuthorizationHeader, request } from '../../shared-ui/api'
 import {
   getClientPaymentErrorMessage,
   invokeClientPayment,
@@ -191,8 +191,7 @@ export default {
       return { riderId, riderName, token }
     },
     getAuthHeader(token) {
-      if (!token) return {}
-      return { Authorization: `Bearer ${token}` }
+      return buildAuthorizationHeader(token)
     },
     withQuery(path, params) {
       const query = Object.keys(params || {})

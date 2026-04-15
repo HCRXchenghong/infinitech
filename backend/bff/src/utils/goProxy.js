@@ -1,6 +1,8 @@
 const axios = require('axios');
 const config = require('../config');
+const { buildErrorEnvelopePayload } = require('./apiEnvelope');
 const { withForwardAuth } = require('./forwardAuth');
+const FORWARDED_RESPONSE_HEADERS = ['cache-control', 'pragma', 'expires', 'x-content-type-options'];
 
 function goUrl(path) {
   return `${config.goApiUrl}/api${path}`;
@@ -20,26 +22,63 @@ function sendFallback(res, options) {
   return res.status(Number(options.fallbackStatus || 200)).json(options.fallbackPayload);
 }
 
-function buildNormalizedErrorPayload(error, defaultErrorMessage) {
+function buildNormalizedErrorPayload(req, error, status, defaultErrorMessage) {
   const responseData = error.response?.data;
 
   if (responseData && typeof responseData === 'object') {
-    return responseData;
+    if (
+      responseData.request_id !== undefined &&
+      responseData.code !== undefined &&
+      responseData.message !== undefined &&
+      responseData.data !== undefined
+    ) {
+      return responseData;
+    }
+
+    return buildErrorEnvelopePayload(
+      req,
+      status,
+      responseData.error || responseData.message || defaultErrorMessage || error.message,
+      {
+        code: responseData.code,
+        data: responseData.data,
+        upstreamPayload: responseData,
+        legacy: responseData,
+      },
+    );
   }
 
   if (typeof responseData === 'string' && responseData.trim()) {
-    return { success: false, error: responseData };
+    return buildErrorEnvelopePayload(req, status, responseData, {
+      upstreamPayload: error.response?.data,
+    });
   }
 
-  return {
-    success: false,
-    error: error.message || defaultErrorMessage || 'Request failed'
-  };
+  return buildErrorEnvelopePayload(
+    req,
+    status,
+    error.message || defaultErrorMessage || 'Request failed',
+  );
 }
 
-function sendNormalizedError(res, error, options, statusOverride) {
+function sendNormalizedError(req, res, error, options, statusOverride) {
   const status = Number(statusOverride || options.normalizeErrorStatus || 500);
-  return res.status(status).json(buildNormalizedErrorPayload(error, options.defaultErrorMessage));
+  return res.status(status).json(buildNormalizedErrorPayload(req, error, status, options.defaultErrorMessage));
+}
+
+function applyResponseHeaders(res, responseHeaders = {}, explicitHeaders = {}) {
+  for (const headerName of FORWARDED_RESPONSE_HEADERS) {
+    const headerValue = responseHeaders?.[headerName];
+    if (headerValue) {
+      res.setHeader(headerName, headerValue);
+    }
+  }
+
+  for (const [headerName, headerValue] of Object.entries(explicitHeaders || {})) {
+    if (headerValue !== undefined && headerValue !== null && headerValue !== '') {
+      res.setHeader(headerName, headerValue);
+    }
+  }
 }
 
 function pickDeleteBody(options, req) {
@@ -99,6 +138,7 @@ async function proxyToGo(req, res, next, options) {
       return sendFallback(res, options);
     }
 
+    applyResponseHeaders(res, response.headers, options.responseHeaders);
     return res.status(response.status).json(response.data);
   } catch (error) {
     if (error.code === 'ECONNREFUSED' && options.fallbackOnConnectionRefused && options.fallbackPayload !== undefined) {
@@ -110,13 +150,14 @@ async function proxyToGo(req, res, next, options) {
         return sendFallback(res, options);
       }
       if (options.normalizeErrorResponse) {
-        return sendNormalizedError(res, error, options, error.response.status);
+        return sendNormalizedError(req, res, error, options, error.response.status);
       }
+      applyResponseHeaders(res, error.response.headers, options.responseHeaders);
       return res.status(error.response.status).json(error.response.data);
     }
 
     if (options.normalizeErrorResponse) {
-      return sendNormalizedError(res, error, options);
+      return sendNormalizedError(req, res, error, options);
     }
 
     return next(error);

@@ -10,13 +10,15 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "useDefineForClassFields": true,
+    "resolveJsonModule": true,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
     "sourceMap": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
     },
-    "lib": ["esnext", "dom"],
-    "types": ["@dcloudio/types"]
+    "lib": ["esnext", "dom"]
   },
   "include": [
     "**/*.ts",

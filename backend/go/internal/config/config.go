@@ -139,7 +139,7 @@ func Load() *Config {
 			Host:                        getEnv("DB_HOST", "127.0.0.1"),
 			Port:                        getEnv("DB_PORT", "5432"),
 			User:                        getEnv("DB_USER", "yuexiang_user"),
-			Password:                    getEnv("DB_PASSWORD", "yuexiang_password"),
+			Password:                    strings.TrimSpace(os.Getenv("DB_PASSWORD")),
 			DBName:                      getEnv("DB_NAME", "yuexiang"),
 			Driver:                      normalizeDatabaseDriver(getEnv("DB_DRIVER", "postgres")),
 			DSN:                         strings.TrimSpace(os.Getenv("DB_DSN")),
@@ -238,6 +238,24 @@ func (c *Config) Validate() error {
 			driver,
 			c.Env,
 		)
+	}
+	if isProductionLikeEnv(c.Env) && driver != "sqlite" && strings.TrimSpace(c.Database.DSN) == "" && strings.TrimSpace(c.Database.Password) == "" {
+		return fmt.Errorf("DB_PASSWORD is required in %s environment", c.Env)
+	}
+	if isProductionLikeEnv(c.Env) && driver != "sqlite" && strings.TrimSpace(c.Database.DSN) == "" && strings.TrimSpace(c.Database.Password) == "yuexiang_password" {
+		return fmt.Errorf("DB_PASSWORD must not use the default value in %s environment", c.Env)
+	}
+	if isProductionLikeEnv(c.Env) && strings.TrimSpace(c.Socket.APISecret) == "" {
+		return fmt.Errorf("SOCKET_SERVER_API_SECRET is required in %s environment", c.Env)
+	}
+	if isProductionLikeEnv(c.Env) {
+		bootstrapPassword := strings.TrimSpace(os.Getenv("BOOTSTRAP_ADMIN_PASSWORD"))
+		if bootstrapPassword == "" {
+			return fmt.Errorf("BOOTSTRAP_ADMIN_PASSWORD is required in %s environment", c.Env)
+		}
+		if bootstrapPassword == "123456" {
+			return fmt.Errorf("BOOTSTRAP_ADMIN_PASSWORD must not use the default weak password in %s environment", c.Env)
+		}
 	}
 
 	if driver != "sqlite" && strings.TrimSpace(c.Database.DSN) == "" {

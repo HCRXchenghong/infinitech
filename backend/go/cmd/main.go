@@ -374,10 +374,9 @@ func main() {
 			log.Printf("⚠️ bootstrap admin ensure failed: %v", bootstrapErr)
 		} else if created {
 			log.Printf(
-				"✅ bootstrap admin created: phone=%s name=%s password=%s",
+				"✅ bootstrap admin created: phone=%s name=%s bootstrap_setup_required=true",
 				bootstrapAdmin.Phone,
 				bootstrapAdmin.Name,
-				service.DefaultBootstrapAdminPassword(),
 			)
 		}
 	}
@@ -452,11 +451,18 @@ func main() {
 	}
 	r.Use(middleware.UnifiedIDResolver(db))
 
+	// 骑手证件已切换为私有资源，禁止继续经公开 uploads 直出
+	blockLegacyPrivateDocument := func(c *gin.Context) {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"error":   "private document assets must be accessed through authenticated API routes",
+		})
+	}
+	r.GET("/uploads/certs/*filepath", blockLegacyPrivateDocument)
+	r.HEAD("/uploads/certs/*filepath", blockLegacyPrivateDocument)
+
 	// 静态资源
 	r.Static("/uploads", "./data/uploads")
-
-	// 文件上传路由
-	r.POST("/api/upload", handlers.FileUpload.Upload)
 
 	// 健康检查
 	healthHandler := func(c *gin.Context) {
@@ -984,6 +990,7 @@ func main() {
 		api.PUT("/riders/:id/avatar", handlers.Rider.UpdateAvatar)
 		api.GET("/riders/:id/profile", handlers.Rider.GetProfile)
 		api.PUT("/riders/:id/profile", handlers.Rider.UpdateProfile)
+		api.GET("/riders/:id/cert", handlers.Rider.DownloadCert)
 		api.POST("/riders/:id/cert", handlers.Rider.UploadCert)
 		api.POST("/riders/:id/change-phone", handlers.Rider.SecureChangePhone)
 		api.POST("/riders/:id/change-password", handlers.Rider.ChangePassword)
@@ -1497,6 +1504,7 @@ func main() {
 			officialSite.GET("/news/:id", handlers.OfficialSite.GetPublicNewsDetail)
 			officialSite.GET("/exposures", handlers.OfficialSite.ListPublicExposures)
 			officialSite.GET("/exposures/:id", handlers.OfficialSite.GetPublicExposureDetail)
+			officialSite.POST("/exposures/assets", handlers.OfficialSite.UploadExposureAsset)
 			officialSite.POST("/exposures", handlers.OfficialSite.CreateExposure)
 			officialSite.POST("/cooperations", handlers.OfficialSite.CreateCooperation)
 			officialSite.POST("/support/sessions", handlers.OfficialSite.CreateSupportSession)
@@ -1513,7 +1521,9 @@ func main() {
 
 		// 入驻邀请链接（公开页）
 		api.GET("/onboarding/invites/:token", handlers.OnboardingInvite.PublicGetInvite)
+		api.POST("/onboarding/invites/:token/upload", handlers.OnboardingInvite.PublicUploadAsset)
 		api.POST("/onboarding/invites/:token/submit", handlers.OnboardingInvite.PublicSubmitInvite)
+		api.POST("/upload", handlers.FileUpload.Upload)
 
 		// 入驻邀请链接（管理端）
 		onboardingAdmin := api.Group("/admin/onboarding/invites")

@@ -40,74 +40,15 @@
   </view>
 </template>
 
-<script setup lang="ts">
-import { ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import { merchantSetNewPassword } from '@/shared-ui/api'
+<script lang="ts">
+import { defineComponent } from 'vue'
+import { useMerchantSetPasswordPage } from '@/shared-ui/merchantAccountPages'
 
-const phone = ref('')
-const code = ref('')
-const password = ref('')
-const confirmPassword = ref('')
-const submitting = ref(false)
-
-onLoad((options: any) => {
-  if (options?.phone) phone.value = decodeURIComponent(options.phone)
-  if (options?.code) code.value = decodeURIComponent(options.code)
-
-  if (!phone.value || !code.value) {
-    const cache = uni.getStorageSync('reset_password_data')
-    if (cache) {
-      phone.value = cache.phone || ''
-      code.value = cache.code || ''
-    }
-  }
-
-  if (!phone.value || !code.value) {
-    uni.showToast({ title: '验证信息已失效，请重新获取验证码', icon: 'none' })
-    setTimeout(() => {
-      uni.redirectTo({ url: '/pages/reset-password/index' })
-    }, 500)
-  }
+export default defineComponent({
+  setup() {
+    return useMerchantSetPasswordPage()
+  },
 })
-
-async function handleSubmit() {
-  if (submitting.value) return
-
-  const pw = String(password.value || '').trim()
-  const cpw = String(confirmPassword.value || '').trim()
-
-  if (!pw || pw.length < 6) {
-    uni.showToast({ title: '密码至少 6 位', icon: 'none' })
-    return
-  }
-  if (pw !== cpw) {
-    uni.showToast({ title: '两次输入密码不一致', icon: 'none' })
-    return
-  }
-
-  submitting.value = true
-  try {
-    const res: any = await merchantSetNewPassword({ phone: phone.value, code: code.value, password: pw })
-    if (res?.success === false) {
-      throw new Error(res?.error || res?.message || '密码重置失败')
-    }
-
-    uni.removeStorageSync('reset_password_data')
-    uni.showToast({ title: '密码重置成功', icon: 'success' })
-    setTimeout(() => {
-      uni.redirectTo({ url: '/pages/login/index' })
-    }, 500)
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '密码重置失败', icon: 'none' })
-  } finally {
-    submitting.value = false
-  }
-}
-
-function goLogin() {
-  uni.redirectTo({ url: '/pages/login/index' })
-}
 </script>
 
 <style lang="scss" scoped>

@@ -1,4 +1,5 @@
 import Vue from 'vue'
+import { extractRiderPreferenceSettings } from '../../packages/client-sdk/src/mobile-capabilities.js'
 import riderOrderStore, { grabOrder, loadAvailableOrders, loadRiderData } from '../shared-ui/riderOrderStore'
 import { fetchRiderPreferences } from '../shared-ui/api'
 
@@ -354,9 +355,9 @@ export default Vue.extend({
     async loadRiderPreferences() {
       try {
         const response: any = await fetchRiderPreferences()
-        const payload = response?.data || response || {}
+        const payload = extractRiderPreferenceSettings(response)
         this.riderPreferences = {
-          autoAcceptEnabled: !!(payload.auto_accept_enabled ?? payload.autoAcceptEnabled)
+          autoAcceptEnabled: payload.autoAcceptEnabled
         }
       } catch (_error) {
         this.riderPreferences = {

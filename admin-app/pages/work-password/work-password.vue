@@ -198,32 +198,7 @@ function resetPasswordPath(account) {
 
 async function handleResetPassword(account) {
 	if (resettingKey.value) return;
-	const apiPath = resetPasswordPath(account);
-	if (!apiPath) {
-		showToast('当前账号不支持重置');
-		return;
-	}
-
-	const confirmRes = await showConfirmModal({
-		title: '确认重置密码',
-		content: '此操作将会重置密码，确认继续吗？'
-	});
-	if (!confirmRes.confirm) return;
-
-	resettingKey.value = account.key;
-	try {
-		const response = await http.post(apiPath, {});
-		const newPassword = String(response && response.newPassword ? response.newPassword : '123456');
-		await showConfirmModal({
-			title: '重置成功',
-			content: `账号 ${account.phone} 的密码已重置为 ${newPassword}`,
-			showCancel: false
-		});
-	} catch (err) {
-		showToast(err && err.message ? err.message : '重置密码失败');
-	} finally {
-		resettingKey.value = '';
-	}
+	showToast('移动端已禁用明文重置口令，请使用管理 Web / Win / Mac 下载安全回执');
 }
 </script>
 

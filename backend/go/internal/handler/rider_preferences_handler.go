@@ -110,25 +110,22 @@ func (h *RiderHandler) loadRiderPreference(c *gin.Context, riderID uint) reposit
 func (h *RiderHandler) GetPreferences(c *gin.Context) {
 	riderID := h.currentRiderID(c)
 	if riderID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "骑手身份缺失"})
+		respondErrorEnvelope(c, http.StatusUnauthorized, responseCodeUnauthorized, "骑手身份缺失", nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    riderPreferenceToMap(h.loadRiderPreference(c, riderID)),
-	})
+	respondSuccessEnvelope(c, "骑手偏好加载成功", riderPreferenceToMap(h.loadRiderPreference(c, riderID)), nil)
 }
 
 func (h *RiderHandler) UpdatePreferences(c *gin.Context) {
 	riderID := h.currentRiderID(c)
 	if riderID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "骑手身份缺失"})
+		respondErrorEnvelope(c, http.StatusUnauthorized, responseCodeUnauthorized, "骑手身份缺失", nil)
 		return
 	}
 
 	var payload riderPreferencePayload
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "参数错误"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "参数错误", nil)
 		return
 	}
 
@@ -145,20 +142,17 @@ func (h *RiderHandler) UpdatePreferences(c *gin.Context) {
 		Where("rider_id = ?", riderID).
 		Assign(pref).
 		FirstOrCreate(&pref).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "保存骑手偏好失败"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "保存骑手偏好失败", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    riderPreferenceToMap(pref),
-	})
+	respondSuccessEnvelope(c, "骑手偏好保存成功", riderPreferenceToMap(pref), nil)
 }
 
 func (h *RiderHandler) ListAvailableOrders(c *gin.Context) {
 	riderID := h.currentRiderID(c)
 	if riderID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "骑手身份缺失"})
+		respondErrorEnvelope(c, http.StatusUnauthorized, responseCodeUnauthorized, "骑手身份缺失", nil)
 		return
 	}
 
@@ -174,7 +168,7 @@ func (h *RiderHandler) ListAvailableOrders(c *gin.Context) {
 		Order("created_at DESC").
 		Limit(200).
 		Find(&orders).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "加载可用订单失败"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "加载可用订单失败", nil)
 		return
 	}
 
@@ -232,10 +226,12 @@ func (h *RiderHandler) ListAvailableOrders(c *gin.Context) {
 		result = append(result, item.Data)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":     true,
-		"preferences": riderPreferenceToMap(preference),
-		"data":        result,
+	preferences := riderPreferenceToMap(preference)
+	respondSuccessEnvelope(c, "可接订单加载成功", gin.H{
+		"items":       result,
+		"preferences": preferences,
+	}, gin.H{
+		"preferences": preferences,
 	})
 }
 

@@ -45,7 +45,7 @@ function extractPaymentPayload(result: PaymentResult): Record<string, any> {
 
 function requestPayment(options: Record<string, any>) {
   return new Promise((resolve, reject) => {
-    uni.requestPayment({
+    ;(uni.requestPayment as any)({
       ...options,
       success: resolve,
       fail: reject,

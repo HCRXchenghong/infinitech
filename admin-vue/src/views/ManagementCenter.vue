@@ -91,7 +91,9 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, RefreshRight } from '@element-plus/icons-vue';
+import { extractTemporaryCredential } from '@infinitech/admin-core';
 import request from '@/utils/request';
+import { downloadCredentialReceipt } from '@/utils/credentialReceipt';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 
 const loading = ref(false);
@@ -287,12 +289,15 @@ async function handleResetPassword(admin) {
       { type: 'warning' }
     );
     const { data } = await request.post(`/api/admins/${adminId}/reset-password`, {});
-    const newPassword = String(data?.newPassword || data?.data?.newPassword || '').trim();
-    if (newPassword) {
-      await ElMessageBox.alert(`新密码：${newPassword}`, '重置成功', {
-        type: 'success',
-        confirmButtonText: '知道了'
+    const credential = extractTemporaryCredential(data);
+    if (credential) {
+      const filename = downloadCredentialReceipt({
+        scene: 'admin-reset-password',
+        subject: `管理员 ${admin.name || admin.phone || adminId}`,
+        account: admin.phone || String(adminId || ''),
+        temporaryPassword: credential.temporaryPassword,
       });
+      ElMessage.success(`管理员密码已重置，并已下载安全回执 ${filename}`);
     } else {
       ElMessage.success('密码重置成功');
     }

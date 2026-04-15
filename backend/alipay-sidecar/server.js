@@ -48,6 +48,14 @@ function normalizeText(value) {
   return String(value == null ? '' : value).trim()
 }
 
+function currentEnv() {
+  return normalizeText(process.env.ENV || process.env.NODE_ENV || 'development').toLowerCase()
+}
+
+function productionLikeEnv() {
+  return ['production', 'prod', 'staging'].includes(currentEnv())
+}
+
 function configSummary() {
   return {
     appIdConfigured: Boolean(normalizeText(process.env.ALIPAY_APP_ID)),
@@ -55,6 +63,9 @@ function configSummary() {
     publicKeyConfigured: Boolean(normalizeText(process.env.ALIPAY_PUBLIC_KEY)),
     notifyUrlConfigured: Boolean(normalizeText(process.env.ALIPAY_NOTIFY_URL)),
     sandbox: String(process.env.ALIPAY_SANDBOX || 'true').trim().toLowerCase() !== 'false',
+    allowStubRequested: allowStubModeRequested(),
+    allowStub: allowStubMode(),
+    allowStubBlocked: allowStubModeRequested() && !allowStubMode(),
   }
 }
 
@@ -63,8 +74,12 @@ function isReady() {
   return config.appIdConfigured && config.privateKeyConfigured && config.publicKeyConfigured && config.notifyUrlConfigured
 }
 
-function allowStubMode() {
+function allowStubModeRequested() {
   return boolFromEnv(process.env.ALIPAY_SIDECAR_ALLOW_STUB, false)
+}
+
+function allowStubMode() {
+  return !productionLikeEnv() && allowStubModeRequested()
 }
 
 function currentMode() {
@@ -424,7 +439,7 @@ const server = http.createServer(async (req, res) => {
       service: 'alipay-sidecar',
       mode: currentMode(),
       ready: isReady(),
-      payoutMode: currentMode() === 'official-sdk' ? 'official-sdk' : 'stub',
+      payoutMode: currentMode() === 'official-sdk' ? 'official-sdk' : currentMode(),
       config: configSummary(),
       timestamp: new Date().toISOString(),
     })

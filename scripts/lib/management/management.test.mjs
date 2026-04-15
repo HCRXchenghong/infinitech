@@ -55,6 +55,8 @@ test('config schema exposes initialization and security metadata', () => {
   assert.equal(meta.group, '初始化与安全')
   assert.equal(meta.type, 'secret')
   assert.equal(meta.sensitive, true)
+  assert.equal(meta.required, true)
+  assert.match(meta.requiredHint, /required/i)
 })
 
 test('validateConfigValue rejects conflicting host ports', () => {

@@ -220,12 +220,13 @@ export function setupRequestInterceptor() {
   // 重写 uni.request
   // @ts-ignore
   uni.request = async function(options: UniApp.RequestOptions) {
+    const normalizedOptions = (options || {}) as UniApp.RequestOptions
     const {
       success: originSuccess,
       fail: originFail,
       complete: originComplete,
       ...requestOptions
-    } = options || {}
+    } = normalizedOptions
     const tokenInfo = getTokenInfo()
     const headers = { ...(requestOptions.header || {}) }
 
@@ -259,7 +260,7 @@ export function setupRequestInterceptor() {
         }
       }
 
-      const finalOptions = { ...requestOptions, header: headers }
+      const finalOptions: UniApp.RequestOptions = { ...requestOptions, header: headers }
       const res = await requestOnce(finalOptions)
 
       if (res.statusCode === 401) {

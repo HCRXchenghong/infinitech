@@ -49,6 +49,47 @@ function parseTokenPayload(token) {
   return decodeBase64UrlToJSON(payloadPart);
 }
 
+function extractPayloadIdentity(payload, options = {}) {
+  const normalizeType = options.normalizeType !== false;
+  const principalTypeRaw = payload?.principal_type || payload?.principalType || "";
+  const roleRaw = payload?.role || payload?.type || payload?.userType || "";
+  const principalType = normalizeType
+    ? String(principalTypeRaw || "").trim().toLowerCase()
+    : String(principalTypeRaw || "");
+  const role = normalizeType
+    ? String(roleRaw || "").trim().toLowerCase()
+    : String(roleRaw || "");
+  let normalizedPrincipalType = principalType;
+  if (!normalizedPrincipalType) {
+    if (role === "admin" || role === "super_admin") {
+      normalizedPrincipalType = "admin";
+    } else if (role === "user" || role === "merchant" || role === "rider") {
+      normalizedPrincipalType = role;
+    }
+  }
+
+  return {
+    principalType: normalizedPrincipalType,
+    legacyId: String(payload?.principal_legacy_id || payload?.userId || payload?.numericId || payload?.legacyId || ""),
+    id: String(
+      payload?.principal_id
+      || payload?.principalId
+      || payload?.id
+      || payload?.sub
+      || payload?.adminId
+      || payload?.admin_id
+      || payload?.userId
+      || payload?.phone
+      || ""
+    ),
+    name: String(payload?.name || payload?.adminName || payload?.username || payload?.phone || ""),
+    phone: String(payload?.phone || ""),
+    type: role || normalizedPrincipalType,
+    sessionId: String(payload?.session_id || payload?.sessionId || ""),
+    tokenKind: String(payload?.token_kind || payload?.tokenKind || "")
+  };
+}
+
 function extractAuthIdentity(req, options = {}) {
   const token = normalizeBearerToken(req?.headers?.authorization);
   if (!token) {
@@ -56,18 +97,16 @@ function extractAuthIdentity(req, options = {}) {
   }
 
   const payload = parseTokenPayload(token) || {};
-  const idRaw = payload.userId || payload.sub || payload.id || payload.adminId || payload.admin_id || payload.phone || "";
-  const nameRaw = payload.name || payload.adminName || payload.username || payload.phone || "";
-  const typeRaw = payload.type || payload.role || payload.userType || "";
-  const type = options.normalizeType
-    ? String(typeRaw || "").trim().toLowerCase()
-    : String(typeRaw || "");
+  const identity = extractPayloadIdentity(payload, options);
 
   return {
     token,
-    id: String(idRaw || ""),
-    name: String(nameRaw || ""),
-    type,
+    id: identity.id || identity.legacyId,
+    legacyId: identity.legacyId,
+    name: identity.name,
+    type: identity.type,
+    principalType: identity.principalType,
+    sessionId: identity.sessionId,
     payload
   };
 }
@@ -83,11 +122,10 @@ function parseOperatorFromAuthHeader(authorization) {
     return { operatorId: "", operatorName: "" };
   }
 
-  const operatorIdRaw = payload.userId || payload.sub || payload.id || payload.adminId || payload.admin_id || payload.phone || "";
-  const operatorNameRaw = payload.name || payload.adminName || payload.username || payload.phone || "";
+  const identity = extractPayloadIdentity(payload, { normalizeType: true });
   return {
-    operatorId: String(operatorIdRaw || ""),
-    operatorName: String(operatorNameRaw || "")
+    operatorId: String(identity.id || identity.legacyId || ""),
+    operatorName: String(identity.name || "")
   };
 }
 
@@ -150,16 +188,16 @@ function extractVerifiedAdminIdentity(req, options = {}) {
   }
 
   const payload = verification.payload || identity.payload || {};
-  const typeRaw = payload.type || payload.role || payload.userType || identity.type || "";
-  const type = options.normalizeType
-    ? String(typeRaw || "").trim().toLowerCase()
-    : String(typeRaw || "");
+  const normalized = extractPayloadIdentity(payload, options);
 
   return {
     ...identity,
-    id: String(payload.id || payload.sub || payload.adminId || payload.admin_id || payload.userId || identity.id || ""),
-    name: String(payload.name || payload.adminName || payload.username || payload.phone || identity.name || ""),
-    type,
+    id: String(normalized.id || normalized.legacyId || identity.id || ""),
+    legacyId: String(normalized.legacyId || identity.legacyId || ""),
+    name: String(normalized.name || identity.name || ""),
+    type: normalized.type || identity.type || "",
+    principalType: normalized.principalType || identity.principalType || "",
+    sessionId: normalized.sessionId || identity.sessionId || "",
     payload,
     verification
   };

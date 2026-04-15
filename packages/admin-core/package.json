@@ -1,0 +1,15 @@
+{
+  "name": "@infinitech/admin-core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./route-registry": "./src/route-registry.js",
+    "./module-catalog": "./src/module-catalog.js",
+    "./menu-groups": "./src/menu-groups.js",
+    "./temporary-credential": "./src/temporary-credential.js",
+    "./desktop-shell": "./src/desktop-shell.js",
+    "./upload": "./src/upload.js"
+  }
+}

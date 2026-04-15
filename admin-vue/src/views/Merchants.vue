@@ -109,7 +109,16 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { extractTemporaryCredential } from '@infinitech/admin-core';
+import {
+  createDefaultInviteLinkForm,
+  createEmptyInviteLinkResult,
+  createOnboardingInviteApi,
+  getInviteRemainingUses as resolveInviteRemainingUses,
+} from '@infinitech/client-sdk';
+import { extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
+import { downloadCredentialReceipt } from '@/utils/credentialReceipt';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 
 const router = useRouter();
@@ -132,16 +141,11 @@ const createForm = ref({
 });
 const inviteDialogVisible = ref(false);
 const creatingInvite = ref(false);
-const inviteForm = ref({
-  expires_hours: 72,
-  max_uses: 1
-});
-const inviteResult = ref({
-  invite_url: '',
-  expires_at: '',
-  max_uses: 1,
-  used_count: 0,
-  remaining_uses: 1
+const inviteForm = ref(createDefaultInviteLinkForm());
+const inviteResult = ref(createEmptyInviteLinkResult());
+const onboardingInviteApi = createOnboardingInviteApi({
+  get: (url, config) => request.get(url, config),
+  post: (url, payload, config) => request.post(url, payload, config),
 });
 
 onMounted(() => {
@@ -231,17 +235,8 @@ function openCreateDialog() {
 }
 
 function openInviteDialog() {
-  inviteForm.value = {
-    expires_hours: 72,
-    max_uses: 1
-  };
-  inviteResult.value = {
-    invite_url: '',
-    expires_at: '',
-    max_uses: 1,
-    used_count: 0,
-    remaining_uses: 1
-  };
+  inviteForm.value = createDefaultInviteLinkForm();
+  inviteResult.value = createEmptyInviteLinkResult();
   inviteDialogVisible.value = true;
 }
 
@@ -276,26 +271,18 @@ async function submitCreate() {
 async function createInviteLink() {
   creatingInvite.value = true;
   try {
-    const { data } = await request.post('/api/admin/onboarding/invites', {
+    inviteResult.value = await onboardingInviteApi.createAdminInvite({
       invite_type: 'merchant',
       expires_hours: Number(inviteForm.value.expires_hours || 72),
       max_uses: Number(inviteForm.value.max_uses || 1)
     });
-    const payload = data?.data || {};
-    inviteResult.value = {
-      invite_url: payload.invite_url || '',
-      expires_at: payload.expires_at || '',
-      max_uses: Number(payload.max_uses || inviteForm.value.max_uses || 1),
-      used_count: Number(payload.used_count || 0),
-      remaining_uses: Number(payload.remaining_uses || 0)
-    };
     if (inviteResult.value.invite_url) {
       ElMessage.success('邀请链接生成成功');
     } else {
       ElMessage.error('邀请链接生成失败');
     }
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || '邀请链接生成失败');
+    ElMessage.error(extractErrorMessage(error, '邀请链接生成失败'));
   } finally {
     creatingInvite.value = false;
   }
@@ -328,12 +315,7 @@ function formatDateTime(value) {
 }
 
 function getInviteRemainingUses() {
-  if (Number.isFinite(Number(inviteResult.value.remaining_uses))) {
-    return Number(inviteResult.value.remaining_uses);
-  }
-  const maxUses = Number(inviteResult.value.max_uses || 1);
-  const usedCount = Number(inviteResult.value.used_count || 0);
-  return Math.max(0, maxUses - usedCount);
+  return resolveInviteRemainingUses(inviteResult.value);
 }
 
 async function resetPassword(merchant) {
@@ -349,12 +331,17 @@ async function resetPassword(merchant) {
     );
 
     const { data } = await request.post(`/api/merchants/${merchant.id}/reset-password`);
-    const newPassword = data?.newPassword || '123456';
-    ElMessageBox.alert(`新密码：<strong style="color:#409eff">${newPassword}</strong>`, '重置成功', {
-      confirmButtonText: '确定',
-      dangerouslyUseHTMLString: true,
-      type: 'success'
+    const credential = extractTemporaryCredential(data);
+    if (!credential) {
+      throw new Error('后端未返回新的临时密码，请检查重置口令流程');
+    }
+    const filename = downloadCredentialReceipt({
+      scene: 'merchant-reset-password',
+      subject: `商户 ${merchant.name || merchant.phone || merchant.id}`,
+      account: merchant.phone || String(merchant.id || ''),
+      temporaryPassword: credential.temporaryPassword,
     });
+    ElMessage.success(`商户密码已重置，并已下载安全回执 ${filename}`);
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error(error?.response?.data?.error || '重置密码失败');

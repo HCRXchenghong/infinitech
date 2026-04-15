@@ -3,13 +3,16 @@
     <div v-if="imageUrl" class="image-preview">
       <img :src="imageUrl" alt="预览" />
       <div class="image-actions">
-        <el-button size="small" type="danger" @click="handleRemove">删除</el-button>
+        <el-button size="small" type="danger" @click="handleRemove"
+          >删除</el-button
+        >
       </div>
     </div>
     <el-upload
       v-else
       class="upload-area"
       :action="uploadUrl"
+      :headers="uploadHeaders"
       :show-file-list="false"
       :before-upload="beforeUpload"
       :on-success="handleSuccess"
@@ -24,76 +27,93 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
-import { Plus } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import request from '@/utils/request'
+import { computed, ref, watch } from "vue";
+import { Plus } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
+import { buildAdminUploadHeaders } from "@infinitech/admin-core/upload";
+import { extractUploadAsset } from "@infinitech/contracts";
+import request from "@/utils/request";
+import { getToken } from "@/utils/runtime";
 
 const props = defineProps({
   modelValue: {
     type: String,
-    default: ''
+    default: "",
   },
   maxSize: {
     type: Number,
-    default: 5
-  }
-})
+    default: 5,
+  },
+});
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(["update:modelValue"]);
 
-const imageUrl = ref(props.modelValue)
-const UPLOAD_PATH = '/api/upload'
+const imageUrl = ref(props.modelValue);
+const UPLOAD_PATH = "/api/upload";
 
 function resolveUploadUrl() {
-  const rawBaseURL = String(request?.defaults?.baseURL || '').replace(/\/+$/, '')
+  const rawBaseURL = String(request?.defaults?.baseURL || "").replace(
+    /\/+$/,
+    "",
+  );
   if (!rawBaseURL) {
-    return UPLOAD_PATH
+    return UPLOAD_PATH;
   }
-  const normalizedBaseURL = rawBaseURL.replace(/\/api$/i, '')
-  return `${normalizedBaseURL}${UPLOAD_PATH}`
+  const normalizedBaseURL = rawBaseURL.replace(/\/api$/i, "");
+  return `${normalizedBaseURL}${UPLOAD_PATH}`;
 }
 
-const uploadUrl = ref(resolveUploadUrl())
+const uploadUrl = ref(resolveUploadUrl());
+const uploadHeaders = computed(() => buildAdminUploadHeaders(getToken()));
 
-watch(() => props.modelValue, (newVal) => {
-  imageUrl.value = newVal
-})
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    imageUrl.value = newVal;
+  },
+);
 
 const beforeUpload = (file) => {
-  const isImage = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)
-  const isLt5M = file.size / 1024 / 1024 < props.maxSize
+  const isImage = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+  ].includes(file.type);
+  const isLt5M = file.size / 1024 / 1024 < props.maxSize;
 
   if (!isImage) {
-    ElMessage.error('只能上传 jpg, png, gif, webp 格式的图片')
-    return false
+    ElMessage.error("只能上传 jpg, png, gif, webp 格式的图片");
+    return false;
   }
   if (!isLt5M) {
-    ElMessage.error(`图片大小不能超过 ${props.maxSize}MB`)
-    return false
+    ElMessage.error(`图片大小不能超过 ${props.maxSize}MB`);
+    return false;
   }
-  return true
-}
+  return true;
+};
 
 const handleSuccess = (response) => {
-  if (response.url) {
-    imageUrl.value = response.url
-    emit('update:modelValue', response.url)
-    ElMessage.success('上传成功')
+  const asset = extractUploadAsset(response);
+  const nextUrl = String(asset?.asset_url || asset?.url || response?.imageUrl || "").trim();
+  if (nextUrl) {
+    imageUrl.value = nextUrl;
+    emit("update:modelValue", nextUrl);
+    ElMessage.success("上传成功");
   } else {
-    ElMessage.error('上传失败')
+    ElMessage.error("上传失败");
   }
-}
+};
 
 const handleError = (error) => {
-  console.error('上传失败:', error)
-  ElMessage.error('上传失败，请重试')
-}
+  console.error("上传失败:", error);
+  ElMessage.error("上传失败，请重试");
+};
 
 const handleRemove = () => {
-  imageUrl.value = ''
-  emit('update:modelValue', '')
-}
+  imageUrl.value = "";
+  emit("update:modelValue", "");
+};
 </script>
 
 <style scoped>

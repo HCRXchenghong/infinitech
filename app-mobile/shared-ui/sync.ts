@@ -79,8 +79,8 @@ function isNetworkError(error: any) {
 }
 
 class SyncService {
-  private localDB: LocalDB
-  private syncing: boolean
+  declare private localDB: LocalDB
+  declare private syncing: boolean
 
   constructor() {
     this.localDB = getLocalDB()

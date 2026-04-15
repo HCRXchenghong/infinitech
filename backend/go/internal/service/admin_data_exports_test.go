@@ -484,6 +484,66 @@ func TestAdminServiceImportMerchantsRoundTripPreservesExportedFields(t *testing.
 	assertJSONEquivalent(t, "merchant round-trip", exported[0], roundTrip[0])
 }
 
+func TestAdminServiceImportAccountsWithoutPasswordDoesNotInjectWeakDefault(t *testing.T) {
+	svc, db := newAdminServiceForDataExportsTest(t)
+	ctx := context.Background()
+
+	userSuccess, userErrors := svc.ImportUsers(ctx, []map[string]interface{}{
+		{
+			"phone": "13800000101",
+			"name":  "无密码用户",
+		},
+	})
+	if userSuccess != 1 || userErrors != 0 {
+		t.Fatalf("unexpected user import result success=%d error=%d", userSuccess, userErrors)
+	}
+
+	riderSuccess, riderErrors := svc.ImportRiders(ctx, []map[string]interface{}{
+		{
+			"phone": "13800000102",
+			"name":  "无密码骑手",
+		},
+	})
+	if riderSuccess != 1 || riderErrors != 0 {
+		t.Fatalf("unexpected rider import result success=%d error=%d", riderSuccess, riderErrors)
+	}
+
+	merchantSuccess, merchantErrors := svc.ImportMerchants(ctx, []map[string]interface{}{
+		{
+			"phone":      "13800000103",
+			"name":       "无密码商户",
+			"owner_name": "老板",
+		},
+	})
+	if merchantSuccess != 1 || merchantErrors != 0 {
+		t.Fatalf("unexpected merchant import result success=%d error=%d", merchantSuccess, merchantErrors)
+	}
+
+	var user repository.User
+	if err := db.Where("phone = ?", "13800000101").First(&user).Error; err != nil {
+		t.Fatalf("load imported user failed: %v", err)
+	}
+	if user.PasswordHash != "" {
+		t.Fatalf("expected imported user without password to keep empty hash, got %q", user.PasswordHash)
+	}
+
+	var rider repository.Rider
+	if err := db.Where("phone = ?", "13800000102").First(&rider).Error; err != nil {
+		t.Fatalf("load imported rider failed: %v", err)
+	}
+	if rider.PasswordHash != "" {
+		t.Fatalf("expected imported rider without password to keep empty hash, got %q", rider.PasswordHash)
+	}
+
+	var merchant repository.Merchant
+	if err := db.Where("phone = ?", "13800000103").First(&merchant).Error; err != nil {
+		t.Fatalf("load imported merchant failed: %v", err)
+	}
+	if merchant.PasswordHash != "" {
+		t.Fatalf("expected imported merchant without password to keep empty hash, got %q", merchant.PasswordHash)
+	}
+}
+
 func TestAdminServiceImportOrdersRoundTripPreservesExportedFields(t *testing.T) {
 	svc, db := newAdminServiceForDataExportsTest(t)
 	ctx := context.Background()

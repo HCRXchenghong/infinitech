@@ -112,6 +112,8 @@
 import { onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Message, ArrowRight, User, Phone, Lock, ChatDotRound, Iphone, Present } from '@element-plus/icons-vue';
+import { createOnboardingInviteApi } from '@infinitech/client-sdk';
+import { extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 import { buildRuntimeUrl } from '@/utils/runtime';
 
@@ -134,6 +136,10 @@ const formData = reactive({
   username: '',
   phone: '',
   password: ''
+});
+const onboardingInviteApi = createOnboardingInviteApi({
+  get: (url, config) => request.get(url, config),
+  post: (url, payload, config) => request.post(url, payload, config),
 });
 
 let stepTimer = null;
@@ -198,7 +204,7 @@ async function handleRegister() {
 
   isSubmitting.value = true;
   try {
-    await request.post(`/api/onboarding/invites/${props.token}/submit`, {
+    await onboardingInviteApi.submitInvite(props.token, {
       name: formData.username,
       phone: formData.phone,
       password: formData.password
@@ -206,7 +212,7 @@ async function handleRegister() {
     step.value = 4;
     ElMessage.success('提交成功');
   } catch (error) {
-    const message = error?.response?.data?.error || '提交失败';
+    const message = extractErrorMessage(error, '提交失败');
     ElMessage.error(message);
     if (error?.response?.status === 404 || error?.response?.status === 410) {
       emit('link-invalid', message);

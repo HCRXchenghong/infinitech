@@ -240,7 +240,7 @@ function normalizeAdminType(value) {
 
 function isAllowedAdminType(type) {
   const normalized = normalizeAdminType(type);
-  return normalized === "admin" || normalized === "super_admin" || normalized === "";
+  return normalized === "admin" || normalized === "super_admin";
 }
 
 function getTokenExpiresAt(payload) {

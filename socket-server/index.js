@@ -2,11 +2,8 @@ import { Server } from 'socket.io';
 import { createServer } from 'http';
 import { authMiddleware, generateToken } from './auth.js';
 import { getServerStats, addOnlineUser, removeOnlineUser, getOnlineCount, getOnlineUsers } from './monitor.js';
-import Busboy from 'busboy';
-import { mkdirSync, existsSync, createReadStream, createWriteStream, unlinkSync } from 'fs';
-import { basename, join, dirname, extname, resolve } from 'path';
+import { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import crypto from 'crypto';
 import { logger } from './logger.js';
 import { getSupportHistoryFallbackConfig, setupSupportNamespaces } from './supportNamespaces.js';
 import { setupRiderNamespace } from './riderNamespace.js';
@@ -14,7 +11,6 @@ import { publishRealtimeEvent, setupNotifyNamespace } from './notifyNamespace.js
 import { setupRTCNamespace } from './rtcNamespace.js';
 import { validateSocketIdentity } from './socketIdentity.js';
 import { REQUEST_ID_HEADER, attachRequestId, resolveRequestId } from './requestId.js';
-import { convertHeicIfNeeded } from './heicConvert.js';
 import {
   allowFixedWindowRateLimit,
   attachSocketIoRedisAdapter,
@@ -26,6 +22,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PORT = process.env.SOCKET_PORT || 9898;
 const TRUSTED_TOKEN_API_SECRET = String(process.env.TOKEN_API_SECRET || '').trim();
+const ENV = String(process.env.ENV || process.env.NODE_ENV || 'development').trim().toLowerCase();
+const PRODUCTION_LIKE = ['production', 'prod', 'staging'].includes(ENV);
 
 function toPositiveInt(value, fallback) {
   const parsed = Number.parseInt(value, 10);
@@ -36,7 +34,6 @@ const SOCKET_HTTP_REQUEST_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_HTTP_REQ
 const SOCKET_HTTP_HEADERS_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_HTTP_HEADERS_TIMEOUT_MS, 35_000);
 const SOCKET_HTTP_KEEP_ALIVE_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_HTTP_KEEP_ALIVE_TIMEOUT_MS, 5_000);
 const SOCKET_JSON_BODY_LIMIT_BYTES = toPositiveInt(process.env.SOCKET_JSON_BODY_LIMIT_BYTES, 1024 * 1024);
-const SOCKET_UPLOAD_LIMIT_BYTES = toPositiveInt(process.env.SOCKET_UPLOAD_LIMIT_BYTES, 12 * 1024 * 1024);
 const SOCKET_HTTP_RATE_LIMIT_WINDOW_MS = toPositiveInt(process.env.SOCKET_HTTP_RATE_LIMIT_WINDOW_MS, 60_000);
 const SOCKET_HTTP_RATE_LIMIT_MAX = toPositiveInt(process.env.SOCKET_HTTP_RATE_LIMIT_MAX, 300);
 const SOCKET_PING_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_PING_TIMEOUT_MS, 20_000);
@@ -50,174 +47,22 @@ let supportNamespace;
 let notifyNamespace;
 initRedisState();
 
-const UPLOAD_DIR = join(__dirname, 'uploads');
-const UPLOAD_DIR_REALPATH = resolve(UPLOAD_DIR);
-if (!existsSync(UPLOAD_DIR)) {
-  mkdirSync(UPLOAD_DIR, { recursive: true });
-}
-
 function createPayloadTooLargeError(limitBytes) {
   const error = new Error(`Payload too large (max ${limitBytes} bytes)`);
   error.statusCode = 413;
   return error;
 }
 
-function createBadRequestError(message) {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-}
-
-function resolveUploadFilePath(pathname) {
-  const rawName = String(pathname || '').replace(/^\/uploads\//, '');
-  if (!rawName) {
-    return null;
-  }
-
-  let decodedName = rawName;
-  try {
-    decodedName = decodeURIComponent(rawName);
-  } catch (_err) {
-    return null;
-  }
-
-  const safeName = basename(decodedName);
-  if (!safeName || safeName !== decodedName || safeName === '.' || safeName === '..') {
-    return null;
-  }
-
-  const filePath = resolve(UPLOAD_DIR_REALPATH, safeName);
-  const expectedPrefix = `${UPLOAD_DIR_REALPATH}/`;
-  if (filePath !== UPLOAD_DIR_REALPATH && !filePath.startsWith(expectedPrefix)) {
-    return null;
-  }
-
-  return { filename: safeName, filePath };
-}
-
-function resolveUploadExtension(filename, mimeType = '') {
-  const explicitExt = extname(String(filename || '')).toLowerCase();
-  if (explicitExt) return explicitExt;
-
-  const mime = String(mimeType || '').trim().toLowerCase();
-  const mimeMap = {
-    'image/jpeg': '.jpg',
-    'image/png': '.png',
-    'image/gif': '.gif',
-    'image/webp': '.webp',
-    'image/bmp': '.bmp',
-    'image/heic': '.heic',
-    'image/heif': '.heif',
-    'audio/mpeg': '.mp3',
-    'audio/mp4': '.m4a',
-    'audio/aac': '.aac',
-    'audio/wav': '.wav',
-    'audio/ogg': '.ogg',
-    'audio/amr': '.amr'
-  };
-  return mimeMap[mime] || '.bin';
-}
-
-function parseMultipart(req, maxBytes) {
-  return new Promise((resolve, reject) => {
-    let busboy;
-    try {
-      busboy = Busboy({
-        headers: req.headers,
-        limits: {
-          files: 1,
-          fileSize: maxBytes,
-          fields: 16,
-          parts: 32
-        }
-      });
-    } catch (_err) {
-      reject(createBadRequestError('Invalid multipart upload'));
-      return;
-    }
-
-    let settled = false;
-    let fileFound = false;
-    let tempFilePath = '';
-    let writer = null;
-
-    const cleanup = () => {
-      if (!tempFilePath) return;
-      try {
-        if (existsSync(tempFilePath)) {
-          unlinkSync(tempFilePath);
-        }
-      } catch (_err) {
-        // ignore cleanup failure
-      }
-    };
-
-    const fail = (err) => {
-      if (settled) return;
-      settled = true;
-       try {
-        if (writer) {
-          writer.destroy();
-        }
-      } catch (_destroyError) {
-        // ignore
-      }
-      cleanup();
-      reject(err);
-    };
-
-    busboy.on('file', (_fieldName, file, info = {}) => {
-      if (fileFound) {
-        file.resume();
-        fail(createBadRequestError('Only one file upload is supported'));
-        return;
-      }
-      fileFound = true;
-
-      const originalName = String(info.filename || '').trim() || 'upload.bin';
-      const ext = resolveUploadExtension(originalName, info.mimeType);
-      const filename = `${crypto.randomBytes(16).toString('hex')}${ext}`;
-      tempFilePath = join(UPLOAD_DIR, filename);
-      writer = createWriteStream(tempFilePath, { flags: 'wx' });
-
-      file.on('limit', () => {
-        fail(createPayloadTooLargeError(maxBytes));
-      });
-      file.on('error', (err) => fail(err));
-      writer.on('error', (err) => fail(err));
-      writer.on('finish', () => {
-        if (settled) return;
-        settled = true;
-        resolve({ filename, originalName });
-      });
-
-      file.pipe(writer);
-    });
-
-    busboy.on('filesLimit', () => {
-      fail(createBadRequestError('Only one file upload is supported'));
-    });
-    busboy.on('partsLimit', () => {
-      fail(createBadRequestError('Too many multipart parts'));
-    });
-    busboy.on('error', (err) => fail(err));
-    busboy.on('finish', () => {
-      if (settled || fileFound) return;
-      fail(createBadRequestError('No file found'));
-    });
-    req.on('error', fail);
-    req.pipe(busboy);
-  });
-}
-
-const DEFAULT_ALLOWED_ORIGINS = [
-  'http://127.0.0.1:8888',
-  'http://localhost:8888',
-  'http://127.0.0.1:1788',
-  'http://localhost:1788',
-  'http://127.0.0.1:1798',
-  'http://localhost:1798'
-];
+const DEFAULT_ALLOWED_ORIGINS = PRODUCTION_LIKE
+  ? []
+  : [
+    'http://127.0.0.1:8888',
+    'http://localhost:8888',
+    'http://127.0.0.1:1788',
+    'http://localhost:1788',
+    'http://127.0.0.1:1798',
+    'http://localhost:1798'
+  ];
 
 const ALLOWED_ORIGINS = Array.from(new Set(
   (process.env.ALLOWED_ORIGINS || '')
@@ -227,11 +72,27 @@ const ALLOWED_ORIGINS = Array.from(new Set(
     .concat(DEFAULT_ALLOWED_ORIGINS)
 ));
 
+if (PRODUCTION_LIKE && ALLOWED_ORIGINS.length === 0) {
+  throw new Error('ALLOWED_ORIGINS is required for socket-server in production-like environments');
+}
+
 function getCorsOrigin(reqOrigin) {
   const normalizedOrigin = String(reqOrigin || '').trim();
   if (!normalizedOrigin) return '';
   if (ALLOWED_ORIGINS.includes(normalizedOrigin)) return normalizedOrigin;
   return '';
+}
+
+function socketIoCorsOrigin(origin, callback) {
+  if (!origin) {
+    callback(null, true);
+    return;
+  }
+  if (getCorsOrigin(origin)) {
+    callback(null, true);
+    return;
+  }
+  callback(new Error('Origin not allowed by socket-server CORS'));
 }
 
 function writeJson(res, statusCode, payload) {
@@ -437,59 +298,18 @@ const httpServer = createServer(async (req, res) => {
   }
 
   if (pathname === '/api/upload' && req.method === 'POST') {
-    try {
-      const { filename } = await parseMultipart(req, SOCKET_UPLOAD_LIMIT_BYTES);
-      const ext = extname(filename).toLowerCase();
-      let finalFilename = filename;
-
-      if (ext === '.heic' || ext === '.heif') {
-        const filePath = join(UPLOAD_DIR, filename);
-        const converted = await convertHeicIfNeeded(filePath, ext);
-        finalFilename = converted.split(/[/\\]/).pop();
-      }
-
-      const host = req.headers.host || `0.0.0.0:${PORT}`;
-      const url = `http://${host}/uploads/${finalFilename}`;
-      writeJson(res, 200, { url, filename: finalFilename });
-    } catch (err) {
-      logger.error('上传失败:', err);
-      writeJson(res, Number(err?.statusCode || 500), { error: err?.message || '上传失败' });
-    }
+    writeJson(res, 403, {
+      success: false,
+      error: 'Socket server direct upload is disabled. Use the authenticated BFF upload endpoint instead.',
+    });
     return;
   }
 
   if (pathname.startsWith('/uploads/') && req.method === 'GET') {
-    const uploadTarget = resolveUploadFilePath(pathname);
-    if (!uploadTarget) {
-      writeJson(res, 400, { error: 'Invalid upload path' });
-      return;
-    }
-
-    const { filename, filePath } = uploadTarget;
-    if (existsSync(filePath)) {
-      const ext = extname(filename).toLowerCase();
-      const mimeTypes = {
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.png': 'image/png',
-        '.gif': 'image/gif',
-        '.webp': 'image/webp',
-        '.bmp': 'image/bmp',
-        '.heic': 'image/heic',
-        '.heif': 'image/heif',
-        '.mp3': 'audio/mpeg',
-        '.m4a': 'audio/mp4',
-        '.aac': 'audio/aac',
-        '.wav': 'audio/wav',
-        '.ogg': 'audio/ogg',
-        '.amr': 'audio/amr'
-      };
-      res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
-      createReadStream(filePath).pipe(res);
-    } else {
-      res.writeHead(404);
-      res.end('Not found');
-    }
+    writeJson(res, 403, {
+      success: false,
+      error: 'Socket server public upload hosting is disabled. Use authenticated API asset routes instead.',
+    });
     return;
   }
 
@@ -590,7 +410,7 @@ httpServer.keepAliveTimeout = SOCKET_HTTP_KEEP_ALIVE_TIMEOUT_MS;
 
 const io = new Server(httpServer, {
   cors: {
-    origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : '*',
+    origin: socketIoCorsOrigin,
     methods: ['GET', 'POST']
   },
   pingTimeout: SOCKET_PING_TIMEOUT_MS,

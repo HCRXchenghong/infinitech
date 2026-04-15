@@ -89,7 +89,7 @@ func BuildDatabaseConfig() *config.Config {
 			Host:            getEnv("DB_HOST", "127.0.0.1"),
 			Port:            getEnv("DB_PORT", "5432"),
 			User:            getEnv("DB_USER", getEnv("POSTGRES_USER", "yuexiang_user")),
-			Password:        getEnv("DB_PASSWORD", getEnv("POSTGRES_PASSWORD", "yuexiang_password")),
+			Password:        strings.TrimSpace(getEnv("DB_PASSWORD", os.Getenv("POSTGRES_PASSWORD"))),
 			DBName:          getEnv("DB_NAME", getEnv("POSTGRES_DB", "yuexiang")),
 			Driver:          strings.ToLower(strings.TrimSpace(getEnv("DB_DRIVER", "postgres"))),
 			DSN:             strings.TrimSpace(os.Getenv("DB_DSN")),
@@ -130,7 +130,7 @@ func IsValidPhone(phone string) bool {
 func NormalizeAdminType(value string) (string, error) {
 	text := strings.ToLower(strings.TrimSpace(value))
 	if text == "" {
-		return "super_admin", nil
+		return "admin", nil
 	}
 	if text != "admin" && text != "super_admin" {
 		return "", fmt.Errorf("管理员类型只能是 admin 或 super_admin")
@@ -437,4 +437,3 @@ func MustParseUint(value string) uint {
 	parsed, _ := strconv.ParseUint(strings.TrimSpace(value), 10, 64)
 	return uint(parsed)
 }
-

@@ -9,7 +9,7 @@ type Admin struct {
 	Phone        string    `gorm:"size:20;uniqueIndex;not null" json:"phone"`
 	Name         string    `gorm:"size:50" json:"name"`
 	PasswordHash string    `gorm:"size:255" json:"-"`
-	Type         string    `gorm:"size:20;default:super_admin" json:"type"`
+	Type         string    `gorm:"size:20" json:"type"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }

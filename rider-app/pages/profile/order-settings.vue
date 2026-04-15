@@ -63,6 +63,7 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import { extractRiderPreferenceSettings } from '../../../packages/client-sdk/src/mobile-capabilities.js'
 import { fetchRiderPreferences, saveRiderPreferences } from '../../shared-ui/api'
 
 export default Vue.extend({
@@ -88,14 +89,7 @@ export default Vue.extend({
   },
   methods: {
     normalizePreferences(raw: any = {}) {
-      const maxDistanceKm = Number(raw.max_distance_km ?? raw.maxDistanceKm ?? 3)
-      return {
-        maxDistanceKm: Number.isFinite(maxDistanceKm) && maxDistanceKm > 0 ? maxDistanceKm : 3,
-        autoAcceptEnabled: !!(raw.auto_accept_enabled ?? raw.autoAcceptEnabled),
-        preferRoute: raw.prefer_route === undefined && raw.preferRoute === undefined ? true : !!(raw.prefer_route ?? raw.preferRoute),
-        preferHighPrice: raw.prefer_high_price === undefined && raw.preferHighPrice === undefined ? true : !!(raw.prefer_high_price ?? raw.preferHighPrice),
-        preferNearby: !!(raw.prefer_nearby ?? raw.preferNearby)
-      }
+      return extractRiderPreferenceSettings(raw)
     },
     async loadPreferences() {
       this.loading = true

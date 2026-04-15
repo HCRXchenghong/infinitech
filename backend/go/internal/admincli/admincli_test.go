@@ -79,8 +79,8 @@ func TestNormalizeAdminType(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error for empty admin type: %v", err)
 	}
-	if value != "super_admin" {
-		t.Fatalf("expected empty admin type to default to super_admin, got %q", value)
+	if value != "admin" {
+		t.Fatalf("expected empty admin type to default to admin, got %q", value)
 	}
 
 	value, err = NormalizeAdminType("ADMIN")

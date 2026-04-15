@@ -1,6 +1,7 @@
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import socketService, { SOCKET_HTTP_BASE } from '@/utils/socket';
+import socketService from '@/utils/socket';
+import request from '@/utils/request';
 import { getCurrentAdminSocketIdentity } from '@/utils/runtime';
 import { loadNotificationSoundRuntime, playMessageNotificationSound } from '@/utils/notificationSound';
 import {
@@ -223,11 +224,11 @@ export function useChatConsole(options = {}) {
     formData.append('file', file);
 
     try {
-      const res = await fetch(`${SOCKET_HTTP_BASE}/api/upload`, {
-        method: 'POST',
-        body: formData
+      const { data } = await request.post('/api/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
-      const data = await res.json();
       if (!data.url) throw new Error('image_upload_failed');
 
       messages.value.push(createOutgoingTempMessage({

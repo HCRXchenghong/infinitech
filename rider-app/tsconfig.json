@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "strict": false,
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+    "strictNullChecks": false,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "useDefineForClassFields": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "lib": ["es2018", "dom"],
+    "types": ["@dcloudio/types"]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.d.ts",
+    "**/*.js",
+    "**/*.vue"
+  ],
+  "exclude": [
+    "node_modules",
+    "unpackage",
+    "dist"
+  ]
+}

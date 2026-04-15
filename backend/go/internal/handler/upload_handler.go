@@ -71,5 +71,6 @@ func (h *UploadHandler) UploadImage(c *gin.Context) {
 		"url":      url,
 		"filename": finalFilename,
 		"size":     file.Size,
+		"data":     buildPublicAssetPayload(url, finalFilename, "merchant_or_admin_image", file.Size),
 	})
 }

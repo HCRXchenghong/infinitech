@@ -1,51 +1,60 @@
-import { defineConfig, loadEnv } from 'vite';
-import vue from '@vitejs/plugin-vue';
-import path from 'path';
+import { defineConfig, loadEnv } from "vite";
+import vue from "@vitejs/plugin-vue";
+import Components from "unplugin-vue-components/vite";
+import ElementPlus from "unplugin-element-plus/vite";
+import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
+import path from "path";
 
 function stripTrailingSlash(value: string) {
-  return value.replace(/\/$/, '');
+  return value.replace(/\/$/, "");
 }
 
 function stripApiSuffix(value: string) {
-  return stripTrailingSlash(value).replace(/\/api$/, '');
+  return stripTrailingSlash(value).replace(/\/api$/, "");
 }
 
 function normalizeRuntime(value: string) {
-  const runtime = String(value || '').trim().toLowerCase();
-  if (runtime === 'download') {
-    return 'site';
+  const runtime = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (runtime === "download") {
+    return "site";
   }
-  if (runtime === 'invite' || runtime === 'admin' || runtime === 'site') {
+  if (runtime === "invite" || runtime === "admin" || runtime === "site") {
     return runtime;
   }
-  return '';
+  return "";
 }
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), 'VITE_');
-  const apiTarget = stripApiSuffix(env.VITE_ADMIN_API_BASE_URL || 'http://127.0.0.1:25500');
-  const socketTarget = stripTrailingSlash(env.VITE_SOCKET_URL || 'http://127.0.0.1:9898');
+  const env = loadEnv(mode, process.cwd(), "VITE_");
+  const apiTarget = stripApiSuffix(
+    env.VITE_ADMIN_API_BASE_URL || "http://127.0.0.1:25500",
+  );
+  const socketTarget = stripTrailingSlash(
+    env.VITE_SOCKET_URL || "http://127.0.0.1:9898",
+  );
   const webPort = Number(env.VITE_ADMIN_WEB_PORT || 8888);
   const runtimeMode =
-    normalizeRuntime(env.VITE_APP_RUNTIME)
-    || (env.VITE_INVITE_ONLY === 'true' ? 'invite' : '')
-    || (webPort === 1888 ? 'site' : (webPort === 1788 ? 'invite' : 'admin'));
+    normalizeRuntime(env.VITE_APP_RUNTIME) ||
+    (env.VITE_INVITE_ONLY === "true" ? "invite" : "") ||
+    (webPort === 1888 ? "site" : webPort === 1788 ? "invite" : "admin");
 
   const inviteGuardPlugin = {
-    name: 'fixed-runtime-dev-guard',
+    name: "fixed-runtime-dev-guard",
     configureServer(server: any) {
       server.middlewares.use((req: any, res: any, next: any) => {
-        const rawUrl = String(req?.url || '/');
-        const pathname = rawUrl.split('?')[0] || '/';
+        const rawUrl = String(req?.url || "/");
+        const pathname = rawUrl.split("?")[0] || "/";
 
-        if (runtimeMode === 'admin') {
+        if (runtimeMode === "admin") {
           if (
-            pathname.startsWith('/invite/')
-            || pathname.startsWith('/coupon/')
-            || pathname === '/download'
+            pathname.startsWith("/invite/") ||
+            pathname.startsWith("/coupon/") ||
+            pathname === "/download"
           ) {
             res.statusCode = 302;
-            res.setHeader('Location', '/access-denied?mode=admin-only');
+            res.setHeader("Location", "/access-denied?mode=admin-only");
             res.end();
             return;
           }
@@ -53,128 +62,169 @@ export default defineConfig(({ mode }) => {
           return;
         }
 
-        const allowedPublicPath = runtimeMode === 'invite'
-          ? pathname === '/' ||
-            pathname === '/access-denied' ||
-            pathname.startsWith('/invite/') ||
-            pathname.startsWith('/coupon/')
-          : pathname === '/' ||
-            pathname === '/news' ||
-            pathname.startsWith('/news/') ||
-            pathname === '/download' ||
-            pathname === '/about' ||
-            pathname === '/privacy-policy' ||
-            pathname === '/disclaimer' ||
-            pathname === '/cookie-required' ||
-            pathname === '/expose' ||
-            pathname === '/expose/submit' ||
-            pathname.startsWith('/expose/') ||
-            pathname === '/exposures' ||
-            pathname === '/exposures/submit' ||
-            pathname.startsWith('/exposures/') ||
-            pathname === '/coop' ||
-            pathname === '/cooperation' ||
-            pathname === '/robots.txt' ||
-            pathname === '/sitemap.xml' ||
-            pathname === '/runtime-config.js' ||
-            pathname === '/access-denied';
+        const allowedPublicPath =
+          runtimeMode === "invite"
+            ? pathname === "/" ||
+              pathname === "/access-denied" ||
+              pathname.startsWith("/invite/") ||
+              pathname.startsWith("/coupon/")
+            : pathname === "/" ||
+              pathname === "/news" ||
+              pathname.startsWith("/news/") ||
+              pathname === "/download" ||
+              pathname === "/about" ||
+              pathname === "/privacy-policy" ||
+              pathname === "/disclaimer" ||
+              pathname === "/cookie-required" ||
+              pathname === "/expose" ||
+              pathname === "/expose/submit" ||
+              pathname.startsWith("/expose/") ||
+              pathname === "/exposures" ||
+              pathname === "/exposures/submit" ||
+              pathname.startsWith("/exposures/") ||
+              pathname === "/coop" ||
+              pathname === "/cooperation" ||
+              pathname === "/robots.txt" ||
+              pathname === "/sitemap.xml" ||
+              pathname === "/runtime-config.js" ||
+              pathname === "/access-denied";
 
-        const isFrameworkAsset = pathname.startsWith('/@vite') ||
-          pathname.startsWith('/@id/') ||
-          pathname.startsWith('/@fs/') ||
-          pathname.startsWith('/src/') ||
-          pathname.startsWith('/node_modules/') ||
-          pathname === '/__vite_ping';
+        const isFrameworkAsset =
+          pathname.startsWith("/@vite") ||
+          pathname.startsWith("/@id/") ||
+          pathname.startsWith("/@fs/") ||
+          pathname.startsWith("/src/") ||
+          pathname.startsWith("/node_modules/") ||
+          pathname === "/__vite_ping";
 
-        const isStaticAsset = pathname.includes('.') ||
-          pathname.startsWith('/assets/') ||
-          pathname.startsWith('/logo');
+        const isStaticAsset =
+          pathname.includes(".") ||
+          pathname.startsWith("/assets/") ||
+          pathname.startsWith("/logo");
 
-        const isApiOrHealth = pathname.startsWith('/api/') ||
-          pathname === '/health' ||
-          pathname.startsWith('/health?') ||
-          pathname.startsWith('/uploads/');
+        const isApiOrHealth =
+          pathname.startsWith("/api/") ||
+          pathname === "/health" ||
+          pathname.startsWith("/health?") ||
+          pathname.startsWith("/uploads/");
 
-        if (allowedPublicPath || isFrameworkAsset || isStaticAsset || isApiOrHealth) {
+        if (
+          allowedPublicPath ||
+          isFrameworkAsset ||
+          isStaticAsset ||
+          isApiOrHealth
+        ) {
           next();
           return;
         }
 
         res.statusCode = 302;
         res.setHeader(
-          'Location',
-          runtimeMode === 'invite'
-            ? '/access-denied?mode=invite-only'
-            : '/access-denied?mode=site-only'
+          "Location",
+          runtimeMode === "invite"
+            ? "/access-denied?mode=invite-only"
+            : "/access-denied?mode=site-only",
         );
         res.end();
       });
-    }
+    },
   };
 
   return {
-    plugins: [vue(), inviteGuardPlugin],
+    plugins: [
+      vue(),
+      Components({
+        resolvers: [ElementPlusResolver()],
+        dts: false,
+      }),
+      ElementPlus(),
+      inviteGuardPlugin,
+    ],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, 'src')
-      }
+        "@": path.resolve(__dirname, "src"),
+        "@infinitech/admin-core": path.resolve(
+          __dirname,
+          "../packages/admin-core/src",
+        ),
+        "@infinitech/client-sdk": path.resolve(
+          __dirname,
+          "../packages/client-sdk/src",
+        ),
+        "@infinitech/contracts": path.resolve(
+          __dirname,
+          "../packages/contracts/src",
+        ),
+      },
     },
     build: {
       chunkSizeWarningLimit: 700,
       rollupOptions: {
         output: {
           manualChunks(id) {
-            if (!id.includes('node_modules')) {
+            if (!id.includes("node_modules")) {
               return;
             }
-            if (id.includes('sql.js')) {
-              return 'vendor-sqljs';
+            if (id.includes("sql.js")) {
+              return "vendor-sqljs";
             }
-            if (id.includes('echarts')) {
-              return 'vendor-echarts';
+            if (id.includes("echarts")) {
+              return "vendor-echarts";
             }
-            if (id.includes('element-plus')) {
-              return 'vendor-element-plus';
+            if (id.includes("@element-plus/icons-vue")) {
+              return "vendor-element-icons";
             }
-            if (id.includes('socket.io-client')) {
-              return 'vendor-socket';
+            if (id.includes("async-validator")) {
+              return "vendor-async-validator";
+            }
+            if (id.includes("dayjs")) {
+              return "vendor-dayjs";
+            }
+            if (id.includes("@ctrl/tinycolor")) {
+              return "vendor-tinycolor";
+            }
+            if (id.includes("element-plus")) {
+              return "vendor-element-plus";
+            }
+            if (id.includes("socket.io-client")) {
+              return "vendor-socket";
             }
             if (
-              id.includes('/vue/') ||
-              id.includes('/vue-router/') ||
-              id.includes('@vue/')
+              id.includes("/vue/") ||
+              id.includes("/vue-router/") ||
+              id.includes("@vue/")
             ) {
-              return 'vendor-vue';
+              return "vendor-vue";
             }
-            return 'vendor-misc';
-          }
-        }
-      }
+            return "vendor-misc";
+          },
+        },
+      },
     },
     server: {
-      host: '0.0.0.0',
+      host: "0.0.0.0",
       port: Number.isFinite(webPort) && webPort > 0 ? webPort : 8888,
       strictPort: true,
       proxy: {
-        '^/api(?:/|$)': {
+        "^/api(?:/|$)": {
           target: apiTarget,
-          changeOrigin: true
+          changeOrigin: true,
         },
-        '/health': {
+        "/health": {
           target: apiTarget,
-          changeOrigin: true
+          changeOrigin: true,
         },
-        '/socket-api': {
+        "/socket-api": {
           target: socketTarget,
           changeOrigin: true,
-          rewrite: (pathValue) => pathValue.replace(/^\/socket-api/, '')
+          rewrite: (pathValue) => pathValue.replace(/^\/socket-api/, ""),
         },
-        '/socket.io': {
+        "/socket.io": {
           target: socketTarget,
           changeOrigin: true,
-          ws: true
-        }
-      }
-    }
+          ws: true,
+        },
+      },
+    },
   };
 });

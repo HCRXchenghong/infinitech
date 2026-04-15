@@ -53,7 +53,7 @@
 
         <view class="field row middle">
           <text class="label">是否上架</text>
-          <switch :checked="form.isActive" color="#009bf5" @change="(e:any)=> (form.isActive = !!e.detail.value)" />
+          <switch :checked="form.isActive" color="#009bf5" @change="onStatusChange" />
         </view>
       </view>
 
@@ -70,167 +70,15 @@
   </view>
 </template>
 
-<script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import { deleteProduct, fetchCategories, fetchProductDetail, updateProduct, uploadImage } from '@/shared-ui/api'
+<script lang="ts">
+import { defineComponent } from 'vue'
+import { useProductEditorPage } from '@/shared-ui/productEditorPage'
 
-const productId = ref('')
-const submitting = ref(false)
-const uploadingImage = ref(false)
-const categories = ref<any[]>([])
-
-const form = reactive({
-  shopId: '',
-  categoryId: '',
-  name: '',
-  price: '',
-  stock: '999',
-  description: '',
-  image: '',
-  isActive: true,
+export default defineComponent({
+  setup() {
+    return useProductEditorPage('edit')
+  },
 })
-
-const categoryNames = computed(() => categories.value.map((item: any) => item.name))
-const selectedCategoryName = computed(() => {
-  const target = categories.value.find((item: any) => String(item.id) === String(form.categoryId))
-  return target ? target.name : '请选择分类'
-})
-
-function onCategoryChange(e: any) {
-  const index = Number(e.detail.value || 0)
-  const item = categories.value[index]
-  if (item) form.categoryId = String(item.id)
-}
-
-async function loadCategories(shopId: string) {
-  const res: any = await fetchCategories(shopId)
-  categories.value = Array.isArray(res) ? res : []
-}
-
-function clearProductImage() {
-  form.image = ''
-}
-
-function chooseProductImage() {
-  if (uploadingImage.value) return
-  uni.chooseImage({
-    count: 1,
-    sizeType: ['compressed'],
-    sourceType: ['album', 'camera'],
-    success: async (res: any) => {
-      const filePath = String(res?.tempFilePaths?.[0] || '').trim()
-      if (!filePath) return
-      uploadingImage.value = true
-      try {
-        const uploaded: any = await uploadImage(filePath)
-        form.image = String(uploaded?.url || '').trim()
-        uni.showToast({ title: '图片上传成功', icon: 'success' })
-      } catch (err: any) {
-        uni.showToast({ title: err?.error || err?.message || '图片上传失败', icon: 'none' })
-      } finally {
-        uploadingImage.value = false
-      }
-    },
-    fail: (err: any) => {
-      const msg = String(err?.errMsg || '').toLowerCase()
-      if (msg.includes('cancel')) return
-      uni.showToast({ title: '选择图片失败', icon: 'none' })
-    },
-  })
-}
-
-onLoad(async (options: any) => {
-  const id = String(options?.id || '')
-  if (!id) {
-    uni.showToast({ title: '缺少商品ID', icon: 'none' })
-    return
-  }
-
-  productId.value = id
-
-  try {
-    const detail: any = await fetchProductDetail(id)
-    form.shopId = String(detail?.shopId || detail?.shop_id || '')
-    form.categoryId = String(detail?.categoryId || detail?.category_id || '')
-    form.name = String(detail?.name || '')
-    form.price = String(detail?.price || '')
-    form.stock = String(detail?.stock ?? 999)
-    form.description = String(detail?.description || '')
-    form.image = String(detail?.image || '')
-    form.isActive = !!detail?.isActive
-
-    if (form.shopId) {
-      await loadCategories(form.shopId)
-    }
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '加载失败', icon: 'none' })
-  }
-})
-
-async function handleSubmit() {
-  if (submitting.value) return
-
-  const name = String(form.name || '').trim()
-  const price = Number(form.price || 0)
-  const stock = Number(form.stock || 0)
-
-  if (!name) {
-    uni.showToast({ title: '请输入商品名称', icon: 'none' })
-    return
-  }
-  if (!form.categoryId) {
-    uni.showToast({ title: '请选择商品分类', icon: 'none' })
-    return
-  }
-  if (!price || price <= 0) {
-    uni.showToast({ title: '请输入正确售价', icon: 'none' })
-    return
-  }
-
-  submitting.value = true
-  try {
-    await updateProduct(productId.value, {
-      shopId: String(form.shopId || '').trim(),
-      categoryId: String(form.categoryId || '').trim(),
-      name,
-      price,
-      stock: Number.isFinite(stock) ? stock : 999,
-      description: form.description,
-      image: form.image,
-      isActive: form.isActive,
-    })
-    uni.showToast({ title: '保存成功', icon: 'success' })
-    setTimeout(() => uni.navigateBack(), 300)
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '保存失败', icon: 'none' })
-  } finally {
-    submitting.value = false
-  }
-}
-
-function handleDelete() {
-  uni.showModal({
-    title: '删除商品',
-    content: '删除后不可恢复，确定继续吗？',
-    success: async (res: any) => {
-      if (!res.confirm) return
-      submitting.value = true
-      try {
-        await deleteProduct(productId.value, {
-          shopId: String(form.shopId || '').trim(),
-          categoryId: String(form.categoryId || '').trim(),
-        })
-        uni.showToast({ title: '已删除', icon: 'success' })
-        setTimeout(() => uni.navigateBack(), 300)
-      } catch (err: any) {
-        uni.showToast({ title: err?.error || err?.message || '删除失败', icon: 'none' })
-      } finally {
-        submitting.value = false
-      }
-    },
-  })
-}
 </script>
 
 <style lang="scss" scoped>

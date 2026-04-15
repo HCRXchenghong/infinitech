@@ -643,7 +643,12 @@ func (h *AdminSettingsHandler) UploadImage(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "imageUrl": "/uploads/" + finalFilename})
+	imageURL := "/uploads/" + finalFilename
+	c.JSON(http.StatusOK, gin.H{
+		"success":  true,
+		"imageUrl": imageURL,
+		"data":     buildPublicAssetPayload(imageURL, finalFilename, "admin_settings_image", file.Size),
+	})
 }
 
 func (h *AdminSettingsHandler) GetAppDownloadConfig(c *gin.Context) {
@@ -760,6 +765,7 @@ func (h *AdminSettingsHandler) UploadPackage(c *gin.Context) {
 		"filename":      filename,
 		"original_name": filepath.Base(file.Filename),
 		"size":          file.Size,
+		"data":          buildPublicAssetPayload("/uploads/packages/"+filename, filename, "app_package", file.Size),
 	})
 }
 

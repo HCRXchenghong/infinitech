@@ -2,10 +2,6 @@ package service
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -112,6 +108,16 @@ type LoginResponse struct {
 	User         map[string]interface{} `json:"user,omitempty"`
 	Error        string                 `json:"error,omitempty"`
 	NeedRegister bool                   `json:"needRegister,omitempty"`
+}
+
+type VerifiedTokenIdentity struct {
+	Phone         string   `json:"phone"`
+	UserID        int64    `json:"userId"`
+	PrincipalType string   `json:"principalType"`
+	PrincipalID   string   `json:"principalId"`
+	Role          string   `json:"role,omitempty"`
+	SessionID     string   `json:"sessionId,omitempty"`
+	Scope         []string `json:"scope,omitempty"`
 }
 
 func (s *AuthService) Login(ctx context.Context, phone, code, password string) (interface{}, error) {
@@ -518,6 +524,66 @@ func (s *AuthService) generateRefreshToken(phone string, userId int64) (string, 
 	return s.generateTokenWithExpiry(phone, userId, s.config.JWT.RefreshTokenExpiry, "refresh")
 }
 
+func (s *AuthService) generatePrincipalAccessToken(principalType, phone string, principalNumericID int64) (string, error) {
+	if s == nil || s.config == nil {
+		return "", fmt.Errorf("auth config not initialized")
+	}
+
+	normalizedPrincipalType := strings.TrimSpace(principalType)
+	if normalizedPrincipalType == "" {
+		return "", fmt.Errorf("principal type is required")
+	}
+
+	principalID := principalIDForUnifiedToken("", principalNumericID)
+	normalizedPhone := strings.TrimSpace(phone)
+	name := ""
+	role := normalizedPrincipalType
+
+	switch normalizedPrincipalType {
+	case principalTypeUser:
+		if user := s.resolveUserTokenProfile(normalizedPhone, principalNumericID); user != nil {
+			principalID = principalIDForUnifiedToken(user.UID, int64(user.ID))
+			normalizedPhone = strings.TrimSpace(user.Phone)
+			name = strings.TrimSpace(user.Name)
+			if normalizedRole := strings.TrimSpace(user.Type); normalizedRole != "" {
+				role = normalizedRole
+			}
+		}
+	case principalTypeRider:
+		if s.db != nil && principalNumericID > 0 {
+			var rider repository.Rider
+			if err := s.db.WithContext(context.Background()).Where("id = ?", principalNumericID).Limit(1).Find(&rider).Error; err == nil && rider.ID > 0 {
+				principalID = principalIDForUnifiedToken(rider.UID, int64(rider.ID))
+				normalizedPhone = strings.TrimSpace(rider.Phone)
+				name = strings.TrimSpace(rider.Name)
+			}
+		}
+	case principalTypeMerchant:
+		if s.db != nil && principalNumericID > 0 {
+			var merchant repository.Merchant
+			if err := s.db.WithContext(context.Background()).Where("id = ?", principalNumericID).Limit(1).Find(&merchant).Error; err == nil && merchant.ID > 0 {
+				principalID = principalIDForUnifiedToken(merchant.UID, int64(merchant.ID))
+				normalizedPhone = strings.TrimSpace(merchant.Phone)
+				name = strings.TrimSpace(merchant.Name)
+			}
+		}
+	default:
+		return "", fmt.Errorf("unsupported principal type")
+	}
+
+	payload := buildBusinessTokenPayload(
+		normalizedPrincipalType,
+		principalNumericID,
+		principalID,
+		normalizedPhone,
+		name,
+		role,
+		tokenKindAccess,
+		s.config.JWT.AccessTokenExpiry,
+	)
+	return signUnifiedTokenPayload(s.config.JWT.Secret, payload)
+}
+
 // IssueAccessToken exposes access-token issuance for other authenticated flows
 // such as phone changes where the subject phone number has just been updated.
 func (s *AuthService) IssueAccessToken(phone string, userId int64) (string, error) {
@@ -539,193 +605,155 @@ func (s *AuthService) IssueTokenPair(phone string, userId int64) (string, string
 	return accessToken, refreshToken, int64(s.config.JWT.AccessTokenExpiry.Seconds()), nil
 }
 
+func (s *AuthService) resolveUserTokenProfile(phone string, userId int64) *repository.User {
+	if s == nil || s.repo == nil || userId <= 0 {
+		return nil
+	}
+	if user, err := s.repo.GetByID(context.Background(), uint(userId)); err == nil && user != nil {
+		return user
+	}
+	if strings.TrimSpace(phone) == "" {
+		return nil
+	}
+	user, err := s.repo.GetByPhone(context.Background(), phone)
+	if err != nil || user == nil || int64(user.ID) != userId {
+		return nil
+	}
+	return user
+}
+
 // generateTokenWithExpiry builds a signed token with the given expiry and type.
 func (s *AuthService) generateTokenWithExpiry(phone string, userId int64, expiry time.Duration, tokenType string) (string, error) {
-	secret := s.config.JWT.Secret
-
-	// Build the token payload.
-	payload := map[string]interface{}{
-		"phone":  phone,
-		"userId": userId,
-		"type":   tokenType,
-		"exp":    time.Now().Add(expiry).Unix(),
-		"iat":    time.Now().Unix(),
+	principalID := principalIDForUnifiedToken("", userId)
+	role := principalTypeUser
+	name := ""
+	if user := s.resolveUserTokenProfile(phone, userId); user != nil {
+		principalID = principalIDForUnifiedToken(user.UID, int64(user.ID))
+		name = strings.TrimSpace(user.Name)
+		if normalizedRole := strings.TrimSpace(user.Type); normalizedRole != "" {
+			role = normalizedRole
+		}
+		phone = user.Phone
 	}
 
-	// Serialize the payload before encoding.
-	payloadJSON, err := json.Marshal(payload)
+	payload := buildBusinessTokenPayload(
+		principalTypeUser,
+		userId,
+		principalID,
+		phone,
+		name,
+		role,
+		tokenType,
+		expiry,
+	)
+	return signUnifiedTokenPayload(s.config.JWT.Secret, payload)
+}
+
+func (s *AuthService) verifyAccessTokenPayload(tokenString, expectedPrincipalType string) (map[string]interface{}, string, int64, string, error) {
+	if s.db == nil {
+		return nil, "", 0, "", fmt.Errorf("db not initialized")
+	}
+
+	payload, err := verifyUnifiedTokenPayload(tokenString, s.config.JWT.Secret)
 	if err != nil {
-		return "", err
+		return nil, "", 0, "", err
 	}
 
-	// Base64-encode the payload.
-	payloadBase64 := base64.URLEncoding.EncodeToString(payloadJSON)
+	if normalizeUnifiedTokenKind(payload) != tokenKindAccess {
+		return nil, "", 0, "", fmt.Errorf("invalid token kind")
+	}
 
-	// Sign the encoded payload with HMAC-SHA256.
-	h := hmac.New(sha256.New, []byte(secret))
-	h.Write([]byte(payloadBase64))
-	signature := base64.URLEncoding.EncodeToString(h.Sum(nil))
+	if principalType := normalizeUnifiedPrincipalType(payload, expectedPrincipalType); principalType != expectedPrincipalType {
+		return nil, "", 0, "", fmt.Errorf("invalid principal type")
+	}
 
-	// Compose the final token as payload.signature.
-	token := payloadBase64 + "." + signature
+	phone := claimString(payload, "phone")
+	numericID := claimInt64(payload, "principal_legacy_id", "userId")
+	principalID := normalizeUnifiedPrincipalID(payload)
+	if numericID <= 0 && strings.TrimSpace(principalID) == "" {
+		return nil, "", 0, "", fmt.Errorf("invalid token subject")
+	}
 
-	return token, nil
+	return payload, phone, numericID, principalID, nil
+}
+
+func (s *AuthService) resolveVerifiedEntityID(tableName, principalID string, numericID int64) (uint, error) {
+	if numericID > 0 {
+		return uint(numericID), nil
+	}
+	return resolveEntityID(context.Background(), s.db, tableName, principalID)
 }
 
 // VerifyToken preserves the legacy verification entrypoint.
 func (s *AuthService) VerifyToken(tokenString string) (bool, string, int64, error) {
-	return s.VerifyUserToken(tokenString)
+	identity, err := s.VerifyTokenIdentity(tokenString)
+	if err != nil {
+		return false, "", 0, err
+	}
+	return true, identity.Phone, identity.UserID, nil
 }
 
 // VerifyUserToken validates a user token.
 func (s *AuthService) VerifyUserToken(tokenString string) (bool, string, int64, error) {
-	token := strings.TrimSpace(tokenString)
-	if strings.HasPrefix(strings.ToLower(token), "bearer ") {
-		token = strings.TrimSpace(token[7:])
-	}
-	if token == "" {
-		return false, "", 0, fmt.Errorf("missing token")
-	}
-	if s.db == nil {
-		return false, "", 0, fmt.Errorf("db not initialized")
-	}
-
-	parts := strings.Split(token, ".")
-	if len(parts) != 2 {
-		return false, "", 0, fmt.Errorf("invalid token format")
-	}
-
-	payloadBase64 := parts[0]
-	signature := parts[1]
-
-	h := hmac.New(sha256.New, []byte(s.config.JWT.Secret))
-	h.Write([]byte(payloadBase64))
-	expectedSignature := base64.URLEncoding.EncodeToString(h.Sum(nil))
-	if signature != expectedSignature {
-		return false, "", 0, fmt.Errorf("invalid signature")
-	}
-
-	payloadJSON, err := base64.URLEncoding.DecodeString(payloadBase64)
+	identity, err := s.VerifyTokenIdentity(tokenString)
 	if err != nil {
-		return false, "", 0, fmt.Errorf("failed to decode payload")
+		return false, "", 0, err
 	}
 
-	var payload map[string]interface{}
-	if err := json.Unmarshal(payloadJSON, &payload); err != nil {
-		return false, "", 0, fmt.Errorf("failed to parse payload")
+	return true, identity.Phone, identity.UserID, nil
+}
+
+func (s *AuthService) VerifyTokenIdentity(tokenString string) (*VerifiedTokenIdentity, error) {
+	payload, phone, userID, principalID, err := s.verifyAccessTokenPayload(tokenString, principalTypeUser)
+	if err != nil {
+		return nil, err
 	}
 
-	exp, ok := payload["exp"].(float64)
-	if !ok {
-		return false, "", 0, fmt.Errorf("invalid exp field")
-	}
-	if time.Now().Unix() > int64(exp) {
-		return false, "", 0, fmt.Errorf("token expired")
-	}
-
-	phone, _ := payload["phone"].(string)
-
-	var userID int64
-	switch value := payload["userId"].(type) {
-	case float64:
-		userID = int64(value)
-	case int:
-		userID = int64(value)
-	case int64:
-		userID = value
-	case string:
-		parsed, parseErr := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
-		if parseErr == nil {
-			userID = parsed
-		}
-	}
-	if userID <= 0 {
-		return false, "", 0, fmt.Errorf("invalid token subject")
+	resolvedID, err := s.resolveVerifiedEntityID("users", principalID, userID)
+	if err != nil {
+		return nil, err
 	}
 
 	var user repository.User
-	find := s.db.WithContext(context.Background()).Where("id = ?", userID).Limit(1).Find(&user)
+	find := s.db.WithContext(context.Background()).Where("id = ?", resolvedID).Limit(1).Find(&user)
 	if find.Error != nil {
-		return false, "", 0, find.Error
+		return nil, find.Error
 	}
 	if find.RowsAffected == 0 {
-		return false, "", 0, fmt.Errorf("user not found")
+		return nil, fmt.Errorf("user not found")
 	}
 	if phone != "" && user.Phone != phone {
-		return false, "", 0, fmt.Errorf("token user mismatch")
+		return nil, fmt.Errorf("token user mismatch")
+	}
+	if !unifiedPrincipalMatchesEntity(principalID, user.UID, user.ID, user.Phone) {
+		return nil, fmt.Errorf("token subject mismatch")
 	}
 
-	return true, user.Phone, int64(user.ID), nil
+	return &VerifiedTokenIdentity{
+		Phone:         user.Phone,
+		UserID:        int64(user.ID),
+		PrincipalType: normalizeUnifiedPrincipalType(payload, principalTypeUser),
+		PrincipalID:   principalIDForUnifiedToken(user.UID, int64(user.ID)),
+		Role:          claimString(payload, "role"),
+		SessionID:     claimString(payload, "session_id", "sessionId"),
+		Scope:         claimStringSlice(payload, "scope"),
+	}, nil
 }
 
 // VerifyRiderToken validates a rider token.
 func (s *AuthService) VerifyRiderToken(tokenString string) (bool, string, int64, error) {
-	token := strings.TrimSpace(tokenString)
-	if strings.HasPrefix(strings.ToLower(token), "bearer ") {
-		token = strings.TrimSpace(token[7:])
-	}
-	if token == "" {
-		return false, "", 0, fmt.Errorf("missing token")
-	}
-	if s.db == nil {
-		return false, "", 0, fmt.Errorf("db not initialized")
-	}
-
-	parts := strings.Split(token, ".")
-	if len(parts) != 2 {
-		return false, "", 0, fmt.Errorf("invalid token format")
-	}
-
-	payloadBase64 := parts[0]
-	signature := parts[1]
-
-	h := hmac.New(sha256.New, []byte(s.config.JWT.Secret))
-	h.Write([]byte(payloadBase64))
-	expectedSignature := base64.URLEncoding.EncodeToString(h.Sum(nil))
-	if signature != expectedSignature {
-		return false, "", 0, fmt.Errorf("invalid signature")
-	}
-
-	payloadJSON, err := base64.URLEncoding.DecodeString(payloadBase64)
+	_, phone, riderID, principalID, err := s.verifyAccessTokenPayload(tokenString, principalTypeRider)
 	if err != nil {
-		return false, "", 0, fmt.Errorf("failed to decode payload")
+		return false, "", 0, err
 	}
 
-	var payload map[string]interface{}
-	if err := json.Unmarshal(payloadJSON, &payload); err != nil {
-		return false, "", 0, fmt.Errorf("failed to parse payload")
-	}
-
-	exp, ok := payload["exp"].(float64)
-	if !ok {
-		return false, "", 0, fmt.Errorf("invalid exp field")
-	}
-	if time.Now().Unix() > int64(exp) {
-		return false, "", 0, fmt.Errorf("token expired")
-	}
-
-	phone, _ := payload["phone"].(string)
-
-	var riderID int64
-	switch value := payload["userId"].(type) {
-	case float64:
-		riderID = int64(value)
-	case int:
-		riderID = int64(value)
-	case int64:
-		riderID = value
-	case string:
-		parsed, parseErr := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
-		if parseErr == nil {
-			riderID = parsed
-		}
-	}
-	if riderID <= 0 {
-		return false, "", 0, fmt.Errorf("invalid token subject")
+	resolvedID, err := s.resolveVerifiedEntityID("riders", principalID, riderID)
+	if err != nil {
+		return false, "", 0, err
 	}
 
 	var rider repository.Rider
-	find := s.db.WithContext(context.Background()).Where("id = ?", riderID).Limit(1).Find(&rider)
+	find := s.db.WithContext(context.Background()).Where("id = ?", resolvedID).Limit(1).Find(&rider)
 	if find.Error != nil {
 		return false, "", 0, find.Error
 	}
@@ -735,78 +763,27 @@ func (s *AuthService) VerifyRiderToken(tokenString string) (bool, string, int64,
 	if phone != "" && rider.Phone != phone {
 		return false, "", 0, fmt.Errorf("token user mismatch")
 	}
+	if !unifiedPrincipalMatchesEntity(principalID, rider.UID, rider.ID, rider.Phone) {
+		return false, "", 0, fmt.Errorf("token subject mismatch")
+	}
 
 	return true, rider.Phone, int64(rider.ID), nil
 }
 
 // VerifyMerchantToken validates a merchant token.
 func (s *AuthService) VerifyMerchantToken(tokenString string) (bool, string, int64, error) {
-	token := strings.TrimSpace(tokenString)
-	if strings.HasPrefix(strings.ToLower(token), "bearer ") {
-		token = strings.TrimSpace(token[7:])
-	}
-	if token == "" {
-		return false, "", 0, fmt.Errorf("missing token")
-	}
-	if s.db == nil {
-		return false, "", 0, fmt.Errorf("db not initialized")
-	}
-
-	parts := strings.Split(token, ".")
-	if len(parts) != 2 {
-		return false, "", 0, fmt.Errorf("invalid token format")
-	}
-
-	payloadBase64 := parts[0]
-	signature := parts[1]
-
-	h := hmac.New(sha256.New, []byte(s.config.JWT.Secret))
-	h.Write([]byte(payloadBase64))
-	expectedSignature := base64.URLEncoding.EncodeToString(h.Sum(nil))
-	if signature != expectedSignature {
-		return false, "", 0, fmt.Errorf("invalid signature")
-	}
-
-	payloadJSON, err := base64.URLEncoding.DecodeString(payloadBase64)
+	_, phone, merchantID, principalID, err := s.verifyAccessTokenPayload(tokenString, principalTypeMerchant)
 	if err != nil {
-		return false, "", 0, fmt.Errorf("failed to decode payload")
+		return false, "", 0, err
 	}
 
-	var payload map[string]interface{}
-	if err := json.Unmarshal(payloadJSON, &payload); err != nil {
-		return false, "", 0, fmt.Errorf("failed to parse payload")
-	}
-
-	exp, ok := payload["exp"].(float64)
-	if !ok {
-		return false, "", 0, fmt.Errorf("invalid exp field")
-	}
-	if time.Now().Unix() > int64(exp) {
-		return false, "", 0, fmt.Errorf("token expired")
-	}
-
-	phone, _ := payload["phone"].(string)
-
-	var merchantID int64
-	switch value := payload["userId"].(type) {
-	case float64:
-		merchantID = int64(value)
-	case int:
-		merchantID = int64(value)
-	case int64:
-		merchantID = value
-	case string:
-		parsed, parseErr := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
-		if parseErr == nil {
-			merchantID = parsed
-		}
-	}
-	if merchantID <= 0 {
-		return false, "", 0, fmt.Errorf("invalid token subject")
+	resolvedID, err := s.resolveVerifiedEntityID("merchants", principalID, merchantID)
+	if err != nil {
+		return false, "", 0, err
 	}
 
 	var merchant repository.Merchant
-	find := s.db.WithContext(context.Background()).Where("id = ?", merchantID).Limit(1).Find(&merchant)
+	find := s.db.WithContext(context.Background()).Where("id = ?", resolvedID).Limit(1).Find(&merchant)
 	if find.Error != nil {
 		return false, "", 0, find.Error
 	}
@@ -816,96 +793,75 @@ func (s *AuthService) VerifyMerchantToken(tokenString string) (bool, string, int
 	if phone != "" && merchant.Phone != phone {
 		return false, "", 0, fmt.Errorf("token user mismatch")
 	}
+	if !unifiedPrincipalMatchesEntity(principalID, merchant.UID, merchant.ID, merchant.Phone) {
+		return false, "", 0, fmt.Errorf("token subject mismatch")
+	}
 
 	return true, merchant.Phone, int64(merchant.ID), nil
 }
 
 // RefreshToken validates a refresh token and issues a new token pair.
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*LoginResponse, error) {
-	secret := s.config.JWT.Secret
-
-	// Split the token into payload and signature parts.
-	parts := strings.Split(refreshToken, ".")
-	if len(parts) != 2 {
-		return &LoginResponse{
-			Success: false,
-			Error:   "invalid refresh token format",
-		}, fmt.Errorf("invalid token format")
-	}
-
-	payloadBase64 := parts[0]
-	signature := parts[1]
-
-	// Verify the refresh token signature.
-	h := hmac.New(sha256.New, []byte(secret))
-	h.Write([]byte(payloadBase64))
-	expectedSignature := base64.URLEncoding.EncodeToString(h.Sum(nil))
-
-	if signature != expectedSignature {
-		return &LoginResponse{
-			Success: false,
-			Error:   "invalid refresh token signature",
-		}, fmt.Errorf("invalid signature")
-	}
-
-	// Decode the payload.
-	payloadJSON, err := base64.URLEncoding.DecodeString(payloadBase64)
+	payload, err := verifyUnifiedTokenPayload(refreshToken, s.config.JWT.Secret)
 	if err != nil {
 		return &LoginResponse{
 			Success: false,
-			Error:   "failed to decode refresh token",
-		}, fmt.Errorf("failed to decode payload")
+			Error:   "invalid refresh token",
+		}, err
 	}
 
-	// Parse the payload JSON.
-	var payload map[string]interface{}
-	if err := json.Unmarshal(payloadJSON, &payload); err != nil {
-		return &LoginResponse{
-			Success: false,
-			Error:   "failed to parse refresh token",
-		}, fmt.Errorf("failed to parse payload")
-	}
-
-	// Ensure the token type is refresh.
-	tokenType, _ := payload["type"].(string)
-	if tokenType != "refresh" {
+	if normalizeUnifiedTokenKind(payload) != tokenKindRefresh {
 		return &LoginResponse{
 			Success: false,
 			Error:   "not a refresh token",
 		}, fmt.Errorf("invalid token type")
 	}
 
-	// Validate refresh token expiry.
-	exp, ok := payload["exp"].(float64)
-	if !ok {
+	if principalType := normalizeUnifiedPrincipalType(payload, principalTypeUser); principalType != principalTypeUser {
 		return &LoginResponse{
 			Success: false,
-			Error:   "invalid exp field",
-		}, fmt.Errorf("invalid exp field")
+			Error:   "invalid refresh principal",
+		}, fmt.Errorf("invalid principal type")
 	}
 
-	if time.Now().Unix() > int64(exp) {
+	phone := claimString(payload, "phone")
+	userID := claimInt64(payload, "principal_legacy_id", "userId")
+	principalID := normalizeUnifiedPrincipalID(payload)
+	if userID <= 0 && strings.TrimSpace(principalID) != "" {
+		resolvedID, resolveErr := resolveEntityID(ctx, s.db, "users", principalID)
+		if resolveErr == nil {
+			userID = int64(resolvedID)
+		}
+	}
+	if userID <= 0 {
 		return &LoginResponse{
 			Success: false,
-			Error:   "refresh token expired",
-		}, fmt.Errorf("token expired")
+			Error:   "invalid refresh subject",
+		}, fmt.Errorf("invalid refresh subject")
 	}
 
-	// Extract the subject identity from the payload.
-	phone, _ := payload["phone"].(string)
-	userId, _ := payload["userId"].(float64)
-
-	// Ensure the referenced user still exists.
-	user, err := s.repo.GetByPhone(ctx, phone)
+	user, err := s.repo.GetByID(ctx, uint(userID))
 	if err != nil || user == nil {
 		return &LoginResponse{
 			Success: false,
 			Error:   "user not found",
 		}, fmt.Errorf("user not found")
 	}
+	if phone != "" && user.Phone != phone {
+		return &LoginResponse{
+			Success: false,
+			Error:   "token user mismatch",
+		}, fmt.Errorf("token user mismatch")
+	}
+	if !unifiedPrincipalMatchesEntity(principalID, user.UID, user.ID, user.Phone) {
+		return &LoginResponse{
+			Success: false,
+			Error:   "token subject mismatch",
+		}, fmt.Errorf("token subject mismatch")
+	}
 
 	// Issue a new access token.
-	newAccessToken, err := s.generateToken(phone, int64(userId))
+	newAccessToken, err := s.generateToken(user.Phone, int64(user.ID))
 	if err != nil {
 		return &LoginResponse{
 			Success: false,
@@ -914,7 +870,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*L
 	}
 
 	// Issue a new refresh token.
-	newRefreshToken, err := s.generateRefreshToken(phone, int64(userId))
+	newRefreshToken, err := s.generateRefreshToken(user.Phone, int64(user.ID))
 	if err != nil {
 		return &LoginResponse{
 			Success: false,
@@ -1012,7 +968,7 @@ func (s *AuthService) RiderLogin(ctx context.Context, phone, code, password stri
 	}
 
 	// Issue a rider JWT token.
-	token, err := s.generateToken(phone, int64(rider.ID))
+	token, err := s.generatePrincipalAccessToken(principalTypeRider, phone, int64(rider.ID))
 	if err != nil {
 		return &LoginResponse{
 			Success: false,
@@ -1086,7 +1042,7 @@ func (s *AuthService) MerchantLogin(ctx context.Context, phone, code, password s
 	}
 
 	// Issue a merchant JWT token.
-	token, err := s.generateToken(phone, int64(merchant.ID))
+	token, err := s.generatePrincipalAccessToken(principalTypeMerchant, phone, int64(merchant.ID))
 	if err != nil {
 		return &LoginResponse{
 			Success: false,

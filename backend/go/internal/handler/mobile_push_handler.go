@@ -19,7 +19,9 @@ func NewMobilePushHandler(svc *service.MobilePushService) *MobilePushHandler {
 func (h *MobilePushHandler) RegisterDevice(c *gin.Context) {
 	var req service.PushRegistrationInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "message": err.Error()})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "请求参数错误", gin.H{
+			"validation_error": err.Error(),
+		})
 		return
 	}
 
@@ -29,16 +31,15 @@ func (h *MobilePushHandler) RegisterDevice(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    record,
-	})
+	respondSuccessEnvelope(c, "推送设备注册成功", record, nil)
 }
 
 func (h *MobilePushHandler) UnregisterDevice(c *gin.Context) {
 	var req service.PushUnregisterInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "message": err.Error()})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "请求参数错误", gin.H{
+			"validation_error": err.Error(),
+		})
 		return
 	}
 
@@ -47,13 +48,15 @@ func (h *MobilePushHandler) UnregisterDevice(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondSuccessEnvelope(c, "推送设备注销成功", nil, nil)
 }
 
 func (h *MobilePushHandler) Ack(c *gin.Context) {
 	var req service.PushAckInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request", "message": err.Error()})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "请求参数错误", gin.H{
+			"validation_error": err.Error(),
+		})
 		return
 	}
 
@@ -62,16 +65,16 @@ func (h *MobilePushHandler) Ack(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondSuccessEnvelope(c, "推送消息确认成功", nil, nil)
 }
 
 func (h *MobilePushHandler) abortByError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, service.ErrUnauthorized):
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusUnauthorized, responseCodeUnauthorized, err.Error(), nil)
 	case errors.Is(err, service.ErrForbidden):
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusForbidden, responseCodeForbidden, err.Error(), nil)
 	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, err.Error(), nil)
 	}
 }

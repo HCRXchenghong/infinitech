@@ -75,124 +75,14 @@
   </view>
 </template>
 
-<script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import {
-  getCachedMerchantPortalRuntimeSettings,
-  loadMerchantPortalRuntimeSettings,
-} from '@/shared-ui/portal-runtime'
-import { getAppVersionLabel } from '@/shared-ui/app-version'
+<script lang="ts">
+import { defineComponent } from 'vue'
+import { useMerchantAppSettingsPage } from '@/shared-ui/merchantAccountPages'
 
-const STORAGE_KEY = 'merchantAppSettings'
-
-const settings = reactive({
-  notification: true,
-  sound: true,
-  vibrate: true,
-})
-const portalRuntime = reactive(getCachedMerchantPortalRuntimeSettings())
-const appVersionLabel = ref(getAppVersionLabel())
-
-const cacheSize = ref('0 MB')
-
-const profile: any = uni.getStorageSync('merchantProfile') || {}
-const phone = String(profile.phone || '')
-
-const phoneMasked = computed(() => {
-  if (/^1\d{10}$/.test(phone)) {
-    return phone.replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2')
-  }
-  return phone || '未绑定'
-})
-
-function back() {
-  uni.navigateBack()
-}
-
-function loadSettings() {
-  const saved: any = uni.getStorageSync(STORAGE_KEY) || {}
-  settings.notification = saved.notification !== false
-  settings.sound = saved.sound !== false
-  settings.vibrate = saved.vibrate !== false
-}
-
-function saveSettings() {
-  uni.setStorageSync(STORAGE_KEY, {
-    notification: settings.notification,
-    sound: settings.sound,
-    vibrate: settings.vibrate,
-  })
-}
-
-function toggleSwitch(key: 'notification' | 'sound' | 'vibrate', e: any) {
-  settings[key] = !!e.detail.value
-  saveSettings()
-}
-
-function showPrivacy() {
-  uni.showModal({
-    title: '隐私政策',
-    content: portalRuntime.privacyPolicy,
-    showCancel: false,
-  })
-}
-
-function showAgreement() {
-  uni.showModal({
-    title: '用户协议',
-    content: portalRuntime.serviceAgreement,
-    showCancel: false,
-  })
-}
-
-function calcCacheSize() {
-  try {
-    const info = uni.getStorageInfoSync()
-    const sizeKB = Number(info.currentSize || 0)
-    if (sizeKB < 1024) {
-      cacheSize.value = `${sizeKB.toFixed(0)} KB`
-      return
-    }
-    cacheSize.value = `${(sizeKB / 1024).toFixed(1)} MB`
-  } catch (_err) {
-    cacheSize.value = '0 MB'
-  }
-}
-
-function clearCache() {
-  uni.showModal({
-    title: '清除缓存',
-    content: '清除后会重新拉取页面缓存数据，是否继续？',
-    success: (res: any) => {
-      if (!res.confirm) return
-
-      const token = uni.getStorageSync('token')
-      const profileData = uni.getStorageSync('merchantProfile')
-      const authMode = uni.getStorageSync('authMode')
-
-      uni.clearStorageSync()
-
-      if (token) uni.setStorageSync('token', token)
-      if (profileData) uni.setStorageSync('merchantProfile', profileData)
-      if (authMode) uni.setStorageSync('authMode', authMode)
-
-      saveSettings()
-      calcCacheSize()
-      uni.showToast({ title: '缓存已清除', icon: 'success' })
-    },
-  })
-}
-
-function goResetPassword() {
-  uni.navigateTo({ url: '/pages/reset-password/index' })
-}
-
-loadSettings()
-calcCacheSize()
-onMounted(() => {
-  void loadMerchantPortalRuntimeSettings().then((runtime) => {
-    Object.assign(portalRuntime, runtime)
-  })
+export default defineComponent({
+  setup() {
+    return useMerchantAppSettingsPage()
+  },
 })
 </script>
 

@@ -1,4 +1,5 @@
 import {
+  getOrderStatusClass,
   getOrderStatusText,
   normalizeAfterSalesItem,
   normalizeBizType,
@@ -7,6 +8,7 @@ import {
 } from '@/shared-ui/platform-schema.js'
 
 export {
+  getOrderStatusClass as orderStatusClass,
   getOrderStatusText as orderStatusText,
   normalizeBizType,
   normalizeOrderStatus as parseStatus,

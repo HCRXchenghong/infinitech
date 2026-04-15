@@ -4,7 +4,16 @@ import { ref, onMounted } from 'vue';
 import request from '@/utils/request';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, More, Delete, Sort, Plus } from '@element-plus/icons-vue';
+import { extractTemporaryCredential } from '@infinitech/admin-core';
+import {
+  createDefaultInviteLinkForm,
+  createEmptyInviteLinkResult,
+  createOnboardingInviteApi,
+  getInviteRemainingUses as resolveInviteRemainingUses,
+} from '@infinitech/client-sdk';
+import { extractErrorMessage } from '@infinitech/contracts';
 import { formatRoleId } from '@/utils/format';
+import { downloadCredentialReceipt } from '@/utils/credentialReceipt';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 import ResponsiveActions from '@/components/ResponsiveActions.vue';
 import { useResponsiveListPage } from '@/composables/useResponsiveListPage';
@@ -39,23 +48,18 @@ const newUser = ref({
 });
 const inviteDialogVisible = ref(false);
 const creatingInvite = ref(false);
-const inviteForm = ref({
-  expires_hours: 72,
-  max_uses: 1
-});
-const inviteResult = ref({
-  invite_url: '',
-  expires_at: '',
-  max_uses: 1,
-  used_count: 0,
-  remaining_uses: 1
-});
+const inviteForm = ref(createDefaultInviteLinkForm());
+const inviteResult = ref(createEmptyInviteLinkResult());
 
 // 数据缓存：避免重复加载相同页面的数据
 const dataCache = ref(new Map());
 const cacheKey = () => {
   return `${currentPage.value}-${pageSize.value}-${searchKeyword.value || ''}`;
 };
+const onboardingInviteApi = createOnboardingInviteApi({
+  get: (url, config) => request.get(url, config),
+  post: (url, payload, config) => request.post(url, payload, config),
+});
 
 onMounted(async () => {
   loadUsers();
@@ -189,18 +193,17 @@ async function handleResetPassword(user) {
     resettingPassword.value = user.id;
     try {
       const { data } = await request.post(`/api/users/${user.id}/reset-password`);
-      
-      if (data.success) {
-        ElMessageBox.alert(
-          `密码重置成功！新密码为：<strong style="font-size: 20px; color: #409eff;">${data.newPassword}</strong><br/><br/>请告知用户使用新密码登录。`,
-          '密码重置成功',
-          {
-            confirmButtonText: '确定',
-            dangerouslyUseHTMLString: true,
-            type: 'success'
-          }
-        );
+      const credential = extractTemporaryCredential(data);
+      if (!data.success || !credential) {
+        throw new Error('后端未返回一次性临时口令');
       }
+      const filename = downloadCredentialReceipt({
+        scene: 'user-reset-password',
+        subject: `用户 ${user.name || user.phone || user.id}`,
+        account: user.phone || formatRoleId(user.id, 'user'),
+        temporaryPassword: credential.temporaryPassword,
+      });
+      ElMessage.success(`密码已重置，并已下载安全回执 ${filename}`);
     } catch (e) {
       console.error('重置密码失败:', e);
       ElMessage.error(e.response?.data?.error || '重置密码失败');
@@ -222,43 +225,26 @@ function showAddDialog() {
 }
 
 function openInviteDialog() {
-  inviteForm.value = {
-    expires_hours: 72,
-    max_uses: 1
-  };
-  inviteResult.value = {
-    invite_url: '',
-    expires_at: '',
-    max_uses: 1,
-    used_count: 0,
-    remaining_uses: 1
-  };
+  inviteForm.value = createDefaultInviteLinkForm();
+  inviteResult.value = createEmptyInviteLinkResult();
   inviteDialogVisible.value = true;
 }
 
 async function createInviteLink() {
   creatingInvite.value = true;
   try {
-    const { data } = await request.post('/api/admin/onboarding/invites', {
+    inviteResult.value = await onboardingInviteApi.createAdminInvite({
       invite_type: 'old_user',
       expires_hours: Number(inviteForm.value.expires_hours || 72),
       max_uses: Number(inviteForm.value.max_uses || 1)
     });
-    const payload = data?.data || {};
-    inviteResult.value = {
-      invite_url: payload.invite_url || '',
-      expires_at: payload.expires_at || '',
-      max_uses: Number(payload.max_uses || inviteForm.value.max_uses || 1),
-      used_count: Number(payload.used_count || 0),
-      remaining_uses: Number(payload.remaining_uses || 0)
-    };
     if (inviteResult.value.invite_url) {
       ElMessage.success('邀请链接生成成功');
     } else {
       ElMessage.error('邀请链接生成失败');
     }
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || '邀请链接生成失败');
+    ElMessage.error(extractErrorMessage(error, '邀请链接生成失败'));
   } finally {
     creatingInvite.value = false;
   }
@@ -286,12 +272,7 @@ function formatInviteDateTime(value) {
 }
 
 function getInviteRemainingUses() {
-  if (Number.isFinite(Number(inviteResult.value.remaining_uses))) {
-    return Number(inviteResult.value.remaining_uses);
-  }
-  const maxUses = Number(inviteResult.value.max_uses || 1);
-  const usedCount = Number(inviteResult.value.used_count || 0);
-  return Math.max(0, maxUses - usedCount);
+  return resolveInviteRemainingUses(inviteResult.value);
 }
 
 async function handleAddUser() {

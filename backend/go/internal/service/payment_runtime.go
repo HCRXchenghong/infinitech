@@ -34,22 +34,25 @@ type alipayRuntimeConfig struct {
 	PayoutNotifyURL string `json:"payoutNotifyUrl"`
 	Sandbox         bool   `json:"sandbox"`
 	SidecarURL      string `json:"sidecarUrl"`
+	AllowStub       bool   `json:"allowStub"`
+	StubRequested   bool   `json:"-"`
 }
 
 type bankCardPayoutRuntimeConfig struct {
-	ArrivalText string `json:"arrivalText"`
-	SidecarURL  string `json:"sidecarUrl"`
-	ProviderURL string `json:"providerUrl"`
-	MerchantID  string `json:"merchantId"`
-	APIKey      string `json:"apiKey"`
-	NotifyURL   string `json:"notifyUrl"`
-	AllowStub   bool   `json:"allowStub"`
+	ArrivalText        string `json:"arrivalText"`
+	SidecarURL         string `json:"sidecarUrl"`
+	ProviderURL        string `json:"providerUrl"`
+	MerchantID         string `json:"merchantId"`
+	APIKey             string `json:"apiKey"`
+	NotifyURL          string `json:"notifyUrl"`
+	AllowStub          bool   `json:"allowStub"`
+	AllowStubRequested bool   `json:"-"`
 }
 
 type paymentGatewayRuntimeConfig struct {
-	Mode     payModeConfig              `json:"pay_mode"`
-	Wechat   wechatPayRuntimeConfig     `json:"wechat"`
-	Alipay   alipayRuntimeConfig        `json:"alipay"`
+	Mode     payModeConfig               `json:"pay_mode"`
+	Wechat   wechatPayRuntimeConfig      `json:"wechat"`
+	Alipay   alipayRuntimeConfig         `json:"alipay"`
 	BankCard bankCardPayoutRuntimeConfig `json:"bankCard"`
 }
 
@@ -72,6 +75,31 @@ func firstTrimmed(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func runtimeEnvName() string {
+	return strings.ToLower(strings.TrimSpace(firstTrimmed(os.Getenv("ENV"), os.Getenv("NODE_ENV"), "development")))
+}
+
+func runtimeEnvProductionLike() bool {
+	switch runtimeEnvName() {
+	case "production", "prod", "staging":
+		return true
+	default:
+		return false
+	}
+}
+
+func bankCardProviderConfigured(cfg bankCardPayoutRuntimeConfig) bool {
+	return strings.TrimSpace(cfg.SidecarURL) != "" &&
+		strings.TrimSpace(cfg.ProviderURL) != "" &&
+		strings.TrimSpace(cfg.MerchantID) != "" &&
+		strings.TrimSpace(cfg.APIKey) != "" &&
+		strings.TrimSpace(cfg.NotifyURL) != ""
+}
+
+func bankCardSidecarExecutionEnabled(cfg bankCardPayoutRuntimeConfig) bool {
+	return strings.TrimSpace(cfg.SidecarURL) != "" && (bankCardProviderConfigured(cfg) || cfg.AllowStub)
 }
 
 func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.WalletRepository) (paymentGatewayRuntimeConfig, error) {
@@ -97,6 +125,7 @@ func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.Wallet
 			PayoutNotifyURL: "",
 			Sandbox:         true,
 			SidecarURL:      "",
+			AllowStub:       false,
 		},
 		BankCard: bankCardPayoutRuntimeConfig{
 			ArrivalText: defaultBankCardConfig().ArrivalText,
@@ -105,7 +134,7 @@ func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.Wallet
 			MerchantID:  "",
 			APIKey:      "",
 			NotifyURL:   "",
-			AllowStub:   true,
+			AllowStub:   false,
 		},
 	}
 
@@ -147,6 +176,13 @@ func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.Wallet
 	} else if strings.EqualFold(strings.TrimSpace(os.Getenv("ALIPAY_SANDBOX")), "false") {
 		cfg.Alipay.Sandbox = false
 	}
+	if stubValue, ok := boolStringValue(os.Getenv("ALIPAY_SIDECAR_ALLOW_STUB")); ok {
+		cfg.Alipay.AllowStub = stubValue
+		cfg.Alipay.StubRequested = true
+	}
+	if runtimeEnvProductionLike() {
+		cfg.Alipay.AllowStub = false
+	}
 
 	var bankCard map[string]interface{}
 	if err := loadJSONWalletSetting(ctx, repo, payCenterBankCardSettingKey, &bankCard); err != nil {
@@ -158,12 +194,20 @@ func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.Wallet
 	cfg.BankCard.MerchantID = firstTrimmed(stringConfigValue(bankCard["merchant_id"]), stringConfigValue(bankCard["merchantId"]), os.Getenv("BANK_PAYOUT_MERCHANT_ID"))
 	cfg.BankCard.APIKey = firstTrimmed(stringConfigValue(bankCard["api_key"]), stringConfigValue(bankCard["apiKey"]), os.Getenv("BANK_PAYOUT_API_KEY"))
 	cfg.BankCard.NotifyURL = firstTrimmed(stringConfigValue(bankCard["notify_url"]), stringConfigValue(bankCard["notifyUrl"]), os.Getenv("BANK_PAYOUT_NOTIFY_URL"))
+	stubRequested := false
 	if raw, ok := boolConfigValue(bankCard["allow_stub"]); ok {
 		cfg.BankCard.AllowStub = raw
+		stubRequested = true
 	} else if raw, ok := boolConfigValue(bankCard["allowStub"]); ok {
 		cfg.BankCard.AllowStub = raw
+		stubRequested = true
 	} else if envValue, ok := boolStringValue(os.Getenv("BANK_PAYOUT_ALLOW_STUB")); ok {
 		cfg.BankCard.AllowStub = envValue
+		stubRequested = true
+	}
+	cfg.BankCard.AllowStubRequested = stubRequested && cfg.BankCard.AllowStub
+	if runtimeEnvProductionLike() {
+		cfg.BankCard.AllowStub = false
 	}
 
 	return cfg, nil
@@ -216,10 +260,7 @@ func buildPaymentGatewaySummary(cfg paymentGatewayRuntimeConfig) map[string]inte
 		cfg.Alipay.NotifyURL != "" &&
 		cfg.Alipay.SidecarURL != ""
 
-	bankCardReady := cfg.BankCard.SidecarURL != "" && ((cfg.BankCard.ProviderURL != "" &&
-		cfg.BankCard.MerchantID != "" &&
-		cfg.BankCard.APIKey != "" &&
-		cfg.BankCard.NotifyURL != "") || cfg.BankCard.AllowStub)
+	bankCardReady := bankCardSidecarExecutionEnabled(cfg.BankCard)
 
 	return map[string]interface{}{
 		"mode": map[string]interface{}{
@@ -248,6 +289,9 @@ func buildPaymentGatewaySummary(cfg paymentGatewayRuntimeConfig) map[string]inte
 			"payoutNotifyConfigured": cfg.Alipay.PayoutNotifyURL != "",
 			"sidecarUrlConfigured":   cfg.Alipay.SidecarURL != "",
 			"sandbox":                cfg.Alipay.Sandbox,
+			"allowStub":              cfg.Alipay.AllowStub,
+			"allowStubRequested":     cfg.Alipay.StubRequested,
+			"allowStubBlocked":       cfg.Alipay.StubRequested && !cfg.Alipay.AllowStub,
 			"integrationTarget":      "official-sidecar-sdk",
 		},
 		"bankCard": map[string]interface{}{
@@ -259,6 +303,9 @@ func buildPaymentGatewaySummary(cfg paymentGatewayRuntimeConfig) map[string]inte
 			"apiKeyConfigured":      cfg.BankCard.APIKey != "",
 			"notifyUrlConfigured":   cfg.BankCard.NotifyURL != "",
 			"allowStub":             cfg.BankCard.AllowStub,
+			"allowStubRequested":    cfg.BankCard.AllowStubRequested,
+			"allowStubBlocked":      cfg.BankCard.AllowStubRequested && !cfg.BankCard.AllowStub,
+			"manualFallbackEnabled": true,
 			"integrationTarget":     "bank-payout-sidecar",
 		},
 	}

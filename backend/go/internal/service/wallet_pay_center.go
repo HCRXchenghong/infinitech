@@ -145,7 +145,7 @@ func defaultBankCardConfig() BankCardConfig {
 		MerchantID:  "",
 		APIKey:      "",
 		NotifyURL:   "",
-		AllowStub:   true,
+		AllowStub:   false,
 	}
 }
 
@@ -587,7 +587,10 @@ func (s *WalletService) SavePaymentCenterConfig(ctx context.Context, payload Pay
 	if err != nil {
 		return nil, err
 	}
-	bankCardCfg := normalizeBankCardConfig(payload.BankCard)
+	bankCardCfg, err := normalizeAndValidateBankCardConfig(payload.BankCard)
+	if err != nil {
+		return nil, err
+	}
 
 	if payload.PayMode != nil {
 		if err := s.saveJSONSetting(ctx, "pay_mode", payload.PayMode); err != nil {
@@ -949,6 +952,28 @@ func normalizeBankCardConfig(cfg BankCardConfig) BankCardConfig {
 	cfg.APIKey = strings.TrimSpace(cfg.APIKey)
 	cfg.NotifyURL = strings.TrimSpace(cfg.NotifyURL)
 	return cfg
+}
+
+func normalizeAndValidateBankCardConfig(cfg BankCardConfig) (BankCardConfig, error) {
+	normalized := normalizeBankCardConfig(cfg)
+	if normalized.AllowStub && runtimeEnvProductionLike() {
+		return BankCardConfig{}, fmt.Errorf("%w: bank card payout stub is not allowed in %s environment", ErrInvalidArgument, runtimeEnvName())
+	}
+	if normalized.AllowStub && normalized.SidecarURL == "" {
+		return BankCardConfig{}, fmt.Errorf("%w: bank card payout stub requires sidecar_url", ErrInvalidArgument)
+	}
+
+	providerFieldsConfigured := normalized.ProviderURL != "" || normalized.MerchantID != "" || normalized.APIKey != "" || normalized.NotifyURL != ""
+	if providerFieldsConfigured {
+		if normalized.SidecarURL == "" {
+			return BankCardConfig{}, fmt.Errorf("%w: bank card payout adapter requires sidecar_url", ErrInvalidArgument)
+		}
+		if normalized.ProviderURL == "" || normalized.MerchantID == "" || normalized.APIKey == "" || normalized.NotifyURL == "" {
+			return BankCardConfig{}, fmt.Errorf("%w: bank card payout adapter requires provider_url, merchant_id, api_key, and notify_url", ErrInvalidArgument)
+		}
+	}
+
+	return normalized, nil
 }
 
 func withdrawAmountRangeOverlap(leftMin, leftMax, rightMin, rightMax int64) bool {

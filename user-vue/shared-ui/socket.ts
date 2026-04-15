@@ -1,3 +1,1 @@
-import socketService from './socket.js'
-
-export default socketService
+export { default } from '../../shared/mobile-common/socket'

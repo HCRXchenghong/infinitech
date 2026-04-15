@@ -150,6 +150,7 @@ var routeGuardRules = []routeGuardRule{
 	{path: "/api/orders/:id/dispatch", methods: methods("POST"), guard: guardMerchantOrAdmin},
 	{path: "/api/after-sales", methods: methods("GET"), guard: guardMerchantOrAdmin},
 	{path: "/api/after-sales/:id/status", methods: methods("PUT"), guard: guardMerchantOrAdmin},
+	{path: "/api/upload", methods: methods("POST"), guard: guardAnyAuth},
 	{path: "/api/upload/image", methods: methods("POST"), guard: guardMerchantOrAdmin},
 
 	// 骑手写操作
@@ -161,7 +162,7 @@ var routeGuardRules = []routeGuardRule{
 	// 骑手按自身 ID 访问
 	{path: "/api/riders/:id/avatar", methods: methods("PUT"), guard: guardRiderSelfOrAdmin, idParam: "id"},
 	{path: "/api/riders/:id/profile", methods: methods("GET", "PUT"), guard: guardRiderSelfOrAdmin, idParam: "id"},
-	{path: "/api/riders/:id/cert", methods: methods("POST"), guard: guardRiderSelfOrAdmin, idParam: "id"},
+	{path: "/api/riders/:id/cert", methods: methods("GET", "POST"), guard: guardRiderSelfOrAdmin, idParam: "id"},
 	{path: "/api/riders/:id/change-phone", methods: methods("POST"), guard: guardRiderSelfOrAdmin, idParam: "id"},
 	{path: "/api/riders/:id/change-password", methods: methods("POST"), guard: guardRiderSelfOrAdmin, idParam: "id"},
 	{path: "/api/riders/:id/rank", methods: methods("GET"), guard: guardRiderSelfOrAdmin, idParam: "id"},

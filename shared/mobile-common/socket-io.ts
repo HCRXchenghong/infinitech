@@ -1,14 +1,19 @@
 class SocketIO {
-  private socket: any = null
-  private url: string = ''
-  private namespace: string = ''
-  private eventHandlers: Record<string, Function> = {}
-  private connected: boolean = false
-  private hasConnected: boolean = false
-  private token: string = ''
+  declare private socket: any
+  declare private url: string
+  declare private namespace: string
+  declare private eventHandlers: Record<string, Function>
+  declare private connected: boolean
+  declare private hasConnected: boolean
+  declare private token: string
 
   constructor(url: string, namespace: string = '', token: string = '') {
+    this.socket = null
     this.url = url
+    this.namespace = ''
+    this.eventHandlers = {}
+    this.connected = false
+    this.hasConnected = false
     this.token = token
     if (namespace) {
       this.namespace = namespace.startsWith('/') ? namespace : `/${namespace}`

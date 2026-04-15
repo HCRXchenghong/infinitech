@@ -69,14 +69,14 @@ interface RiderState {
   }>
 }
 
-const state = Vue.observable<RiderState>({
+const state = Vue.observable({
   isOnline: false,
   todayEarnings: '0',
   completedCount: 0,
   myOrders: [],
   newOrders: [],
   earningsLog: []
-})
+}) as RiderState
 
 function toArray(payload: any): any[] {
   if (Array.isArray(payload)) return payload
@@ -136,6 +136,12 @@ function parseDateValue(value: any): Date | null {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return null
   return date
+}
+
+function settlePromise<T>(promise: Promise<T>) {
+  return promise
+    .then((value) => ({ status: 'fulfilled' as const, value }))
+    .catch((reason) => ({ status: 'rejected' as const, reason }))
 }
 
 function formatDateTime(value: any): string {
@@ -535,9 +541,9 @@ export async function loadRiderData() {
   const riderId = uni.getStorageSync('riderId')
   if (!riderId) return
 
-  const [ordersResult, statsResult] = await Promise.allSettled([
-    fetchRiderOrders(),
-    fetchRiderStats()
+  const [ordersResult, statsResult] = await Promise.all([
+    settlePromise(fetchRiderOrders()),
+    settlePromise(fetchRiderStats())
   ])
 
   if (ordersResult.status === 'fulfilled') {

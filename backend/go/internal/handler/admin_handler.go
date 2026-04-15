@@ -20,6 +20,21 @@ func NewAdminHandler(admin *service.AdminService, sms *service.SMSService) *Admi
 	return &AdminHandler{admin: admin, sms: sms}
 }
 
+func writeSensitiveResponseHeaders(c *gin.Context) {
+	headers := c.Writer.Header()
+	headers.Set("Cache-Control", "no-store, no-cache, must-revalidate, private")
+	headers.Set("Pragma", "no-cache")
+	headers.Set("Expires", "0")
+	headers.Set("X-Content-Type-Options", "nosniff")
+}
+
+func buildTemporaryCredentialPayload(password string) gin.H {
+	return gin.H{
+		"temporaryPassword": strings.TrimSpace(password),
+		"deliveryMode":      "operator_receipt",
+	}
+}
+
 func (h *AdminHandler) Login(c *gin.Context) {
 	var req service.AdminLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -136,7 +151,14 @@ func (h *AdminHandler) ResetAdminPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "newPassword": newPassword})
+	temporaryCredential := buildTemporaryCredentialPayload(newPassword)
+	respondSensitiveEnvelope(c, http.StatusOK, responseCodeOK, "管理员密码已重置", gin.H{
+		"newPassword":         newPassword,
+		"temporaryCredential": temporaryCredential,
+	}, gin.H{
+		"newPassword":         newPassword,
+		"temporaryCredential": temporaryCredential,
+	})
 }
 
 func (h *AdminHandler) CompleteBootstrapSetup(c *gin.Context) {
@@ -207,10 +229,6 @@ func (h *AdminHandler) ChangeOwnPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请输入新密码"})
 		return
 	}
-	if len(strings.TrimSpace(req.NewPassword)) < 6 {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "新密码至少需要 6 位"})
-		return
-	}
 	if req.ConfirmPassword != "" && req.NewPassword != req.ConfirmPassword {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "两次输入的新密码不一致"})
 		return
@@ -221,11 +239,11 @@ func (h *AdminHandler) ChangeOwnPassword(c *gin.Context) {
 			c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "登录状态已失效，请重新登录"})
 			return
 		}
-			if strings.Contains(err.Error(), "密码") {
+		if strings.Contains(err.Error(), "密码") {
 			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 			return
 		}
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "修改密码失败"})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "修改密码失败"})
 		return
 	}
 
@@ -281,7 +299,14 @@ func (h *AdminHandler) ResetUserPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "newPassword": newPassword})
+	temporaryCredential := buildTemporaryCredentialPayload(newPassword)
+	respondSensitiveEnvelope(c, http.StatusOK, responseCodeOK, "用户密码已重置", gin.H{
+		"newPassword":         newPassword,
+		"temporaryCredential": temporaryCredential,
+	}, gin.H{
+		"newPassword":         newPassword,
+		"temporaryCredential": temporaryCredential,
+	})
 }
 
 func (h *AdminHandler) DeleteUserOrders(c *gin.Context) {
@@ -325,7 +350,7 @@ func (h *AdminHandler) ReorganizeUserRoleIDs(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-		c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID重组成功"})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID重组成功"})
 }
 
 // Riders
@@ -430,7 +455,14 @@ func (h *AdminHandler) ResetRiderPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "newPassword": newPassword})
+	temporaryCredential := buildTemporaryCredentialPayload(newPassword)
+	respondSensitiveEnvelope(c, http.StatusOK, responseCodeOK, "骑手密码已重置", gin.H{
+		"newPassword":         newPassword,
+		"temporaryCredential": temporaryCredential,
+	}, gin.H{
+		"newPassword":         newPassword,
+		"temporaryCredential": temporaryCredential,
+	})
 }
 
 func (h *AdminHandler) DeleteRiderOrders(c *gin.Context) {
@@ -474,7 +506,7 @@ func (h *AdminHandler) ReorganizeRiderRoleIDs(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-		c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID重组成功"})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID重组成功"})
 }
 
 // Merchants
@@ -563,7 +595,14 @@ func (h *AdminHandler) ResetMerchantPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "newPassword": newPassword})
+	temporaryCredential := buildTemporaryCredentialPayload(newPassword)
+	respondSensitiveEnvelope(c, http.StatusOK, responseCodeOK, "商户密码已重置", gin.H{
+		"newPassword":         newPassword,
+		"temporaryCredential": temporaryCredential,
+	}, gin.H{
+		"newPassword":         newPassword,
+		"temporaryCredential": temporaryCredential,
+	})
 }
 
 func (h *AdminHandler) DeleteMerchant(c *gin.Context) {
@@ -593,7 +632,7 @@ func (h *AdminHandler) ReorganizeMerchantRoleIDs(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-		c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID重组成功"})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID重组成功"})
 }
 
 // Orders list (admin)

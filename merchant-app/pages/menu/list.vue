@@ -1,7 +1,7 @@
 <template>
-  <view class="page">
+    <view class="page">
     <view class="header">
-      <text class="shop-name">{{ currentShop?.name || '未绑定店铺' }}</text>
+      <text class="shop-name">{{ currentShopName }}</text>
       <text class="shop-hint">店铺切换请前往「店铺」页</text>
     </view>
 
@@ -37,7 +37,7 @@
           <view class="product-bottom">
             <view>
               <text class="price">¥{{ Number(item.price || 0).toFixed(2) }}</text>
-              <text class="meta">库存 {{ item.stock ?? 0 }} · 月售 {{ item.monthlySales ?? 0 }}</text>
+              <text class="meta">库存 {{ displayMetric(item.stock) }} · 月售 {{ displayMetric(item.monthlySales) }}</text>
             </view>
 
             <view class="actions">
@@ -57,131 +57,14 @@
   </view>
 </template>
 
-<script setup lang="ts">
-import { computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
-import { createCategory, deleteCategory, fetchCategories, fetchProducts, updateProduct } from '@/shared-ui/api'
-import { ensureMerchantShops, getCurrentShopId } from '@/shared-ui/merchantContext'
+<script lang="ts">
+import { defineComponent } from 'vue'
+import { useMerchantMenuPage } from '@/shared-ui/merchantMenuPage'
 
-const shops = ref<any[]>([])
-const currentShop = ref<any>(null)
-
-const categories = ref<any[]>([])
-const products = ref<any[]>([])
-const selectedCategoryId = ref('')
-
-const filteredProducts = computed(() => {
-  if (!selectedCategoryId.value) return products.value
-  return products.value.filter(
-    (item: any) => String(item.categoryId || item.category_id || '') === selectedCategoryId.value
-  )
-})
-
-async function loadData(force = false) {
-  const context = await ensureMerchantShops(force)
-  shops.value = context.shops || []
-
-  const currentShopId = getCurrentShopId()
-  currentShop.value = shops.value.find((shop: any) => String(shop.id) === String(currentShopId)) || context.currentShop || null
-  if (!currentShop.value) {
-    categories.value = []
-    products.value = []
-    return
-  }
-
-  const shopId = String(currentShop.value.id)
-  const [catRes, productRes]: any[] = await Promise.all([
-    fetchCategories(shopId),
-    fetchProducts({ shopId }),
-  ])
-
-  categories.value = Array.isArray(catRes) ? catRes : []
-  products.value = Array.isArray(productRes) ? productRes : []
-
-  if (!selectedCategoryId.value && categories.value.length > 0) {
-    selectedCategoryId.value = String(categories.value[0].id)
-  }
-
-  if (selectedCategoryId.value && !categories.value.find((cat: any) => String(cat.id) === selectedCategoryId.value)) {
-    selectedCategoryId.value = categories.value[0] ? String(categories.value[0].id) : ''
-  }
-}
-
-function goAddProduct() {
-  if (!currentShop.value) return
-  const categoryId = selectedCategoryId.value || ''
-  uni.navigateTo({
-    url: `/pages/menu/add?shopId=${currentShop.value.id}&categoryId=${categoryId}`,
-  })
-}
-
-function goEditProduct(id: string | number) {
-  uni.navigateTo({ url: `/pages/menu/edit?id=${id}` })
-}
-
-async function toggleActive(item: any) {
-  try {
-    await updateProduct(item.id, {
-      shopId: String(currentShop.value.id || '').trim(),
-      categoryId: String(item.categoryId || '').trim(),
-      isActive: !item.isActive,
-    })
-    item.isActive = !item.isActive
-    uni.showToast({ title: item.isActive ? '已上架' : '已下架', icon: 'success' })
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '操作失败', icon: 'none' })
-  }
-}
-
-async function createNewCategory() {
-  if (!currentShop.value) return
-  uni.showModal({
-    title: '新增分类',
-    editable: true,
-    placeholderText: '输入分类名称',
-    success: async (res: any) => {
-      if (!res.confirm) return
-      const name = String(res.content || '').trim()
-      if (!name) return
-      try {
-        await createCategory({
-          shopId: String(currentShop.value.id || '').trim(),
-          name,
-          sortOrder: categories.value.length + 1,
-          isActive: true,
-        })
-        uni.showToast({ title: '新增成功', icon: 'success' })
-        await loadData(true)
-      } catch (err: any) {
-        uni.showToast({ title: err?.error || err?.message || '新增失败', icon: 'none' })
-      }
-    },
-  })
-}
-
-function confirmDeleteCategory(cat: any) {
-  uni.showModal({
-    title: '删除分类',
-    content: `确定删除分类“${cat.name}”？`,
-    success: async (res: any) => {
-      if (!res.confirm || !currentShop.value) return
-      try {
-        await deleteCategory(cat.id, currentShop.value.id)
-        uni.showToast({ title: '已删除', icon: 'success' })
-        await loadData(true)
-      } catch (err: any) {
-        uni.showToast({ title: err?.error || err?.message || '删除失败', icon: 'none' })
-      }
-    },
-  })
-}
-
-onShow(async () => {
-  try {
-    await loadData()
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '加载失败', icon: 'none' })
-  }
+export default defineComponent({
+  setup() {
+    return useMerchantMenuPage()
+  },
 })
 </script>
 

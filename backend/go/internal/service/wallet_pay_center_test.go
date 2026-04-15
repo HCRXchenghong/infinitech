@@ -91,3 +91,43 @@ func TestNormalizeAndValidateRiderDepositPolicyDeduplicatesMethods(t *testing.T)
 		t.Fatalf("expected duplicate methods to be removed, got %v", policy.AllowedMethods)
 	}
 }
+
+func TestNormalizeAndValidateBankCardConfigRejectsStubInProduction(t *testing.T) {
+	t.Setenv("ENV", "production")
+
+	_, err := normalizeAndValidateBankCardConfig(BankCardConfig{
+		ArrivalText: "24小时-48小时",
+		SidecarURL:  "http://bank-sidecar.local",
+		AllowStub:   true,
+	})
+	if err == nil {
+		t.Fatal("expected production bank card stub config to be rejected")
+	}
+}
+
+func TestNormalizeAndValidateBankCardConfigRejectsPartialAdapterConfig(t *testing.T) {
+	t.Setenv("ENV", "development")
+
+	_, err := normalizeAndValidateBankCardConfig(BankCardConfig{
+		ArrivalText: "24小时-48小时",
+		SidecarURL:  "http://bank-sidecar.local",
+		ProviderURL: "https://provider.example.com",
+	})
+	if err == nil {
+		t.Fatal("expected partial bank card adapter config to be rejected")
+	}
+}
+
+func TestNormalizeAndValidateBankCardConfigAllowsManualFallbackOnly(t *testing.T) {
+	t.Setenv("ENV", "development")
+
+	cfg, err := normalizeAndValidateBankCardConfig(BankCardConfig{
+		ArrivalText: "24小时-48小时",
+	})
+	if err != nil {
+		t.Fatalf("expected manual-only bank card config to be valid, got %v", err)
+	}
+	if cfg.AllowStub {
+		t.Fatal("expected manual-only bank card config to keep stub disabled")
+	}
+}

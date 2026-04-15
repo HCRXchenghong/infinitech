@@ -117,6 +117,7 @@
               <li>私钥：{{ yesNo(gatewaySummary.alipay?.privateKeyConfigured) }}</li>
               <li>公钥：{{ yesNo(gatewaySummary.alipay?.publicKeyConfigured) }}</li>
               <li>侧车地址：{{ yesNo(gatewaySummary.alipay?.sidecarUrlConfigured) }}</li>
+              <li>Stub 兜底：{{ gatewaySummary.alipay?.allowStubBlocked ? '已封禁(生产/类生产环境)' : (gatewaySummary.alipay?.allowStub ? '开启' : '关闭') }}</li>
             </ul>
           </div>
           <div class="gateway-item">
@@ -133,7 +134,7 @@
               <li>商户号：{{ yesNo(gatewaySummary.bankCard?.merchantIdConfigured) }}</li>
               <li>API Key：{{ yesNo(gatewaySummary.bankCard?.apiKeyConfigured) }}</li>
               <li>回调地址：{{ yesNo(gatewaySummary.bankCard?.notifyUrlConfigured) }}</li>
-              <li>Stub 兜底：{{ gatewaySummary.bankCard?.allowStub ? '开启' : '关闭' }}</li>
+              <li>Stub 兜底：{{ gatewaySummary.bankCard?.allowStubBlocked ? '已封禁(生产/类生产环境)' : (gatewaySummary.bankCard?.allowStub ? '开启' : '关闭') }}</li>
             </ul>
           </div>
         </div>

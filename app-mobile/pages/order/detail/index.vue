@@ -31,7 +31,7 @@
       <!-- 订单状态卡片 -->
       <view class="status-card">
         <view class="status-icon-wrapper">
-          <view class="status-icon" :class="getStatusIconClass(order.status)">
+          <view class="status-icon" :class="order.statusIconClass">
             <text>{{ getStatusIcon(order.status) }}</text>
           </view>
         </view>

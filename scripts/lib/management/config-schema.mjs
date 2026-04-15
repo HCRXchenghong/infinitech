@@ -163,6 +163,7 @@ function parseComposeMetadata(repoRoot = repoRootFallback) {
   const { composeFile } = getManagementPaths(repoRoot)
   const content = fs.readFileSync(composeFile, 'utf8')
   const defaults = new Map()
+  const required = new Map()
   const variableServices = new Map()
   let currentService = ''
   let inServices = false
@@ -184,12 +185,16 @@ function parseComposeMetadata(repoRoot = repoRootFallback) {
       }
     }
 
-    const matches = [...line.matchAll(/\$\{([A-Z0-9_]+)(?::-([^}]*))?\}/g)]
+    const matches = [...line.matchAll(/\$\{([A-Z0-9_]+)(?:(:-|:\?)([^}]*))?\}/g)]
     for (const match of matches) {
       const key = match[1]
-      const defaultHint = match[2] ?? ''
+      const operator = match[2] ?? ''
+      const hint = match[3] ?? ''
       if (!defaults.has(key)) {
-        defaults.set(key, defaultHint)
+        defaults.set(key, operator === ':-' ? hint : '')
+      }
+      if (operator === ':?' && !required.has(key)) {
+        required.set(key, hint)
       }
       if (currentService) {
         const services = variableServices.get(key) || new Set()
@@ -201,6 +206,7 @@ function parseComposeMetadata(repoRoot = repoRootFallback) {
 
   return {
     defaults,
+    required,
     variableServices,
   }
 }
@@ -218,6 +224,8 @@ function buildMeta(key, composeMetadata) {
     sensitive: isSensitive(key, common.type),
     common: Boolean(common.common),
     defaultHint: composeMetadata.defaults.get(key) ?? '',
+    required: composeMetadata.required.has(key),
+    requiredHint: composeMetadata.required.get(key) ?? '',
     affectedServices: services,
     description: common.description || '',
   }
@@ -230,7 +238,12 @@ export function buildConfigSchema(repoRoot = repoRootFallback) {
   }
 
   const composeMetadata = parseComposeMetadata(repoRoot)
-  const keys = Array.from(composeMetadata.defaults.keys()).sort()
+  const keys = Array.from(new Set([
+    ...Object.keys(COMMON_ENV_METADATA),
+    ...composeMetadata.defaults.keys(),
+    ...composeMetadata.required.keys(),
+    ...composeMetadata.variableServices.keys(),
+  ])).sort()
   const schema = keys.map((key) => buildMeta(key, composeMetadata))
   schemaCache.set(cacheKey, schema)
   return schema

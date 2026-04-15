@@ -1,8 +1,13 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import request from '@/utils/request';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import {
+  createDefaultInviteLinkForm,
+  createEmptyInviteLinkResult,
+} from '@infinitech/client-sdk';
 import { formatRoleId } from '@/utils/format';
 import { getCachedRiderRankSettings } from '@/utils/platform-settings';
+import { revokeBlobUrl } from '@/utils/privateAsset';
 import { useResponsiveListPage } from '@/composables/useResponsiveListPage';
 import { useRiderActionHelpers } from './ridersActionHelpers';
 
@@ -38,7 +43,8 @@ export function useRidersPage() {
     phone: '',
     emergency_contact_name: '',
     emergency_contact_phone: '',
-    id_card_front: ''
+    id_card_front: '',
+    id_card_front_preview_url: ''
   });
   const newRider = ref({
     phone: '',
@@ -47,17 +53,8 @@ export function useRidersPage() {
   });
   const inviteDialogVisible = ref(false);
   const creatingInvite = ref(false);
-  const inviteForm = ref({
-    expires_hours: 72,
-    max_uses: 1
-  });
-  const inviteResult = ref({
-    invite_url: '',
-    expires_at: '',
-    max_uses: 1,
-    used_count: 0,
-    remaining_uses: 1
-  });
+  const inviteForm = ref(createDefaultInviteLinkForm());
+  const inviteResult = ref(createEmptyInviteLinkResult());
   const reviewManageVisible = ref(false);
   const reviewTargetRider = ref({});
   const riderReviewsLoading = ref(false);
@@ -109,6 +106,8 @@ export function useRidersPage() {
     if (refreshTimer) {
       clearInterval(refreshTimer);
     }
+    revokeBlobUrl(detail.value?.id_card_front_preview_url);
+    revokeBlobUrl(riderEditForm.value?.id_card_front_preview_url);
   });
 
   async function loadRiders(forceRefresh = false) {

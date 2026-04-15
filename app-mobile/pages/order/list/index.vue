@@ -78,7 +78,7 @@
             </view>
           </view>
           <view class="status-wrapper">
-            <text class="order-status" :class="getStatusClass(order)">
+            <text class="order-status" :class="order.statusClass">
               {{ order.statusText }}
             </text>
           </view>

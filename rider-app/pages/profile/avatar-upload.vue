@@ -1,7 +1,11 @@
 <template>
   <view class="container">
     <view class="avatar-preview">
-      <image :src="avatarUrl || '/static/images/logo.png'" mode="aspectFill" class="avatar-img" />
+      <image
+        :src="avatarUrl || '/static/images/logo.png'"
+        mode="aspectFill"
+        class="avatar-img"
+      />
     </view>
     <view class="actions">
       <button class="btn" @click="chooseFromAlbum">从相册选择</button>
@@ -11,90 +15,74 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue'
-import { updateAvatar } from '../../shared-ui/api'
-import config from '../../shared-ui/config'
+import Vue from "vue";
+import { updateAvatar, uploadImage } from "../../shared-ui/api";
 
 export default Vue.extend({
   data() {
     return {
-      avatarUrl: ''
-    }
+      avatarUrl: "",
+    };
   },
   onLoad() {
-    const profile = uni.getStorageSync('riderProfile')
+    const profile = uni.getStorageSync("riderProfile");
     if (profile && profile.avatar) {
-      this.avatarUrl = profile.avatar
+      this.avatarUrl = profile.avatar;
     }
   },
   methods: {
     chooseFromAlbum() {
       uni.chooseImage({
         count: 1,
-        sourceType: ['album'],
+        sourceType: ["album"],
         success: (res: any) => {
-          this.uploadAvatar(res.tempFilePaths[0])
-        }
-      })
+          this.uploadAvatar(res.tempFilePaths[0]);
+        },
+      });
     },
     takePhoto() {
       uni.chooseImage({
         count: 1,
-        sourceType: ['camera'],
+        sourceType: ["camera"],
         success: (res: any) => {
-          this.uploadAvatar(res.tempFilePaths[0])
-        }
-      })
+          this.uploadAvatar(res.tempFilePaths[0]);
+        },
+      });
     },
     async uploadAvatar(filePath: string) {
-      uni.showLoading({ title: '上传中...' })
+      uni.showLoading({ title: "上传中..." });
 
       try {
-        const riderId = uni.getStorageSync('riderId')
-
-        // 先上传图片到服务器
-        const uploadRes: any = await new Promise((resolve, reject) => {
-          uni.uploadFile({
-            url: `${config.API_BASE_URL}/api/upload-image`,
-            filePath,
-            name: 'image',
-            success: (res: any) => {
-              const data = JSON.parse(res.data)
-              if (data.imageUrl) {
-                resolve(data)
-              } else {
-                reject(new Error(data.error || '上传失败'))
-              }
-            },
-            fail: reject
-          })
-        })
-
-        const imageUrl = uploadRes.imageUrl.startsWith('http') ? uploadRes.imageUrl : config.API_BASE_URL + uploadRes.imageUrl
+        const riderId = uni.getStorageSync("riderId");
+        const uploadRes: any = await uploadImage(filePath);
+        const imageUrl = String(uploadRes?.url || "").trim();
+        if (!imageUrl) {
+          throw new Error("上传返回地址为空");
+        }
 
         // 更新头像URL到数据库
-        await updateAvatar(imageUrl)
+        await updateAvatar(imageUrl);
 
-        this.avatarUrl = imageUrl
+        this.avatarUrl = imageUrl;
 
         // 更新本地存储
-        const profile = uni.getStorageSync('riderProfile') || {}
-        profile.avatar = imageUrl
-        uni.setStorageSync('riderProfile', profile)
+        const profile = uni.getStorageSync("riderProfile") || {};
+        profile.avatar = imageUrl;
+        uni.setStorageSync("riderProfile", profile);
 
-        uni.hideLoading()
-        uni.showToast({ title: '头像更新成功', icon: 'success' })
+        uni.hideLoading();
+        uni.showToast({ title: "头像更新成功", icon: "success" });
 
         setTimeout(() => {
-          uni.navigateBack()
-        }, 1500)
+          uni.navigateBack();
+        }, 1500);
       } catch (err: any) {
-        uni.hideLoading()
-        uni.showToast({ title: err.message || '上传失败', icon: 'none' })
+        uni.hideLoading();
+        uni.showToast({ title: err.message || "上传失败", icon: "none" });
       }
-    }
-  }
-})
+    },
+  },
+});
 </script>
 
 <style lang="scss" scoped>

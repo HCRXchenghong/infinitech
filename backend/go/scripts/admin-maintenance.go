@@ -1,3 +1,6 @@
+//go:build script
+// +build script
+
 package main
 
 import (
@@ -15,18 +18,18 @@ import (
 )
 
 type response struct {
-	Success     bool                 `json:"success"`
-	Action      string               `json:"action,omitempty"`
-	Error       string               `json:"error,omitempty"`
-	NewPassword string               `json:"newPassword,omitempty"`
-	Admin       map[string]any       `json:"admin,omitempty"`
-	Admins      []map[string]any     `json:"admins,omitempty"`
-	Data        map[string]any       `json:"data,omitempty"`
+	Success     bool             `json:"success"`
+	Action      string           `json:"action,omitempty"`
+	Error       string           `json:"error,omitempty"`
+	NewPassword string           `json:"newPassword,omitempty"`
+	Admin       map[string]any   `json:"admin,omitempty"`
+	Admins      []map[string]any `json:"admins,omitempty"`
+	Data        map[string]any   `json:"data,omitempty"`
 }
 
 func main() {
 	var (
-		action        = flag.String("action", "list", "操作：list/show/create/update/reset-password/delete")
+		action         = flag.String("action", "list", "操作：list/show/create/update/reset-password/delete")
 		adminID        = flag.Uint("id", 0, "管理员 legacy ID")
 		phone          = flag.String("phone", "", "用于选择管理员的手机号")
 		newPhone       = flag.String("new-phone", "", "管理员新的手机号")

@@ -203,8 +203,8 @@ func (h *AuthHandler) VerifyToken(c *gin.Context) {
 		token = authHeader[7:]
 	}
 
-	valid, phone, userID, err := h.service.VerifyToken(token)
-	if err != nil || !valid {
+	identity, err := h.service.VerifyTokenIdentity(token)
+	if err != nil {
 		log.Printf("[Auth Handler] token verify failed: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"valid": false,
@@ -213,11 +213,17 @@ func (h *AuthHandler) VerifyToken(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[Auth Handler] token verify success: phone=%s userId=%d", maskPhoneForLog(phone), userID)
+	log.Printf("[Auth Handler] token verify success: phone=%s userId=%d", maskPhoneForLog(identity.Phone), identity.UserID)
 	c.JSON(http.StatusOK, gin.H{
-		"valid":  true,
-		"phone":  phone,
-		"userId": userID,
+		"valid":         true,
+		"phone":         identity.Phone,
+		"userId":        identity.UserID,
+		"id":            identity.PrincipalID,
+		"principalType": identity.PrincipalType,
+		"principalId":   identity.PrincipalID,
+		"role":          identity.Role,
+		"sessionId":     identity.SessionID,
+		"scope":         identity.Scope,
 	})
 }
 

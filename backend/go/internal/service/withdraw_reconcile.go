@@ -128,10 +128,7 @@ func (s *WalletService) refreshBankCardWithdrawGatewayStatus(ctx context.Context
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(cfg.BankCard.SidecarURL) == "" {
-		return nil
-	}
-	if !(cfg.BankCard.AllowStub || (cfg.BankCard.ProviderURL != "" && cfg.BankCard.MerchantID != "" && cfg.BankCard.APIKey != "" && cfg.BankCard.NotifyURL != "")) {
+	if !bankCardSidecarExecutionEnabled(cfg.BankCard) {
 		return nil
 	}
 

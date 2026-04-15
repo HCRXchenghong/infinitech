@@ -11,12 +11,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	runtimeBootstrapAdminPhone    = readBootstrapEnv("BOOTSTRAP_ADMIN_PHONE", defaultBootstrapAdminPhone)
-	runtimeBootstrapAdminName     = readBootstrapEnv("BOOTSTRAP_ADMIN_NAME", defaultBootstrapAdminName)
-	runtimeBootstrapAdminPassword = readBootstrapEnv("BOOTSTRAP_ADMIN_PASSWORD", defaultAdminPassword)
-)
-
 func readBootstrapEnv(key, fallback string) string {
 	value := strings.TrimSpace(os.Getenv(key))
 	if value == "" {
@@ -26,22 +20,27 @@ func readBootstrapEnv(key, fallback string) string {
 }
 
 func DefaultBootstrapAdminPhone() string {
-	return runtimeBootstrapAdminPhone
+	return readBootstrapEnv("BOOTSTRAP_ADMIN_PHONE", defaultBootstrapAdminPhone)
 }
 
 func DefaultBootstrapAdminName() string {
-	return runtimeBootstrapAdminName
+	return readBootstrapEnv("BOOTSTRAP_ADMIN_NAME", defaultBootstrapAdminName)
 }
 
 func DefaultBootstrapAdminPassword() string {
-	return runtimeBootstrapAdminPassword
+	return strings.TrimSpace(os.Getenv("BOOTSTRAP_ADMIN_PASSWORD"))
 }
 
 func (s *AdminService) AdminRequiresBootstrapSetup(admin repository.Admin) bool {
-	if strings.TrimSpace(admin.Phone) == runtimeBootstrapAdminPhone {
+	bootstrapPhone := DefaultBootstrapAdminPhone()
+	bootstrapPassword := DefaultBootstrapAdminPassword()
+	if bootstrapPhone != "" && strings.TrimSpace(admin.Phone) == bootstrapPhone {
 		return true
 	}
-	return checkPassword(admin.PasswordHash, runtimeBootstrapAdminPassword)
+	if bootstrapPassword == "" {
+		return false
+	}
+	return checkPassword(admin.PasswordHash, bootstrapPassword)
 }
 
 func (s *AdminService) EnsureBootstrapAdmin(ctx context.Context) (*repository.Admin, bool, error) {
@@ -53,14 +52,19 @@ func (s *AdminService) EnsureBootstrapAdmin(ctx context.Context) (*repository.Ad
 		return nil, false, nil
 	}
 
-	hash, err := hashPassword(runtimeBootstrapAdminPassword)
+	bootstrapPassword := DefaultBootstrapAdminPassword()
+	if bootstrapPassword == "" {
+		return nil, false, fmt.Errorf("BOOTSTRAP_ADMIN_PASSWORD is required to create the initial bootstrap admin")
+	}
+
+	hash, err := hashPassword(bootstrapPassword)
 	if err != nil {
 		return nil, false, err
 	}
 
 	admin := repository.Admin{
-		Phone:        runtimeBootstrapAdminPhone,
-		Name:         runtimeBootstrapAdminName,
+		Phone:        DefaultBootstrapAdminPhone(),
+		Name:         DefaultBootstrapAdminName(),
 		PasswordHash: hash,
 		Type:         "super_admin",
 	}
@@ -82,16 +86,18 @@ func (s *AdminService) CompleteBootstrapSetup(ctx context.Context, adminID uint,
 	if !isValidPhone(phone) {
 		return &AdminLoginResponse{Success: false, Error: "请输入有效的管理员手机号"}, 400, fmt.Errorf("invalid admin phone")
 	}
-	if phone == runtimeBootstrapAdminPhone {
+	bootstrapPhone := DefaultBootstrapAdminPhone()
+	bootstrapPassword := DefaultBootstrapAdminPassword()
+	if phone == bootstrapPhone {
 		return &AdminLoginResponse{Success: false, Error: "请修改为真实的管理员手机号"}, 400, fmt.Errorf("bootstrap phone must be changed")
 	}
 	if name == "" {
 		return &AdminLoginResponse{Success: false, Error: "请输入真实的管理员名称"}, 400, fmt.Errorf("admin name is required")
 	}
-	if len(newPassword) < 6 {
-		return &AdminLoginResponse{Success: false, Error: "新密码至少需要 6 位"}, 400, fmt.Errorf("new password too short")
+	if err := validatePrivilegedPassword(newPassword); err != nil {
+		return &AdminLoginResponse{Success: false, Error: err.Error()}, 400, err
 	}
-	if newPassword == runtimeBootstrapAdminPassword {
+	if bootstrapPassword != "" && newPassword == bootstrapPassword {
 		return &AdminLoginResponse{Success: false, Error: "新密码不能继续使用默认初始密码"}, 400, fmt.Errorf("new password must not equal default password")
 	}
 

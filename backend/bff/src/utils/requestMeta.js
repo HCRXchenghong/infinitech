@@ -9,25 +9,34 @@ const PUBLIC_RUNTIME_ALLOWED_API_RULES = {
     { method: "GET", pattern: /^\/api\/official-site\/news\/[^/]+$/ },
     { method: "GET", pattern: /^\/api\/official-site\/exposures$/ },
     { method: "GET", pattern: /^\/api\/official-site\/exposures\/[^/]+$/ },
+    { method: "POST", pattern: /^\/api\/official-site\/exposures\/assets$/ },
     { method: "POST", pattern: /^\/api\/official-site\/exposures$/ },
     { method: "POST", pattern: /^\/api\/official-site\/cooperations$/ },
     { method: "POST", pattern: /^\/api\/official-site\/support\/sessions$/ },
-    { method: "GET", pattern: /^\/api\/official-site\/support\/sessions\/[^/]+\/socket-token$/ },
-    { method: "GET", pattern: /^\/api\/official-site\/support\/sessions\/[^/]+\/messages$/ },
-    { method: "POST", pattern: /^\/api\/official-site\/support\/sessions\/[^/]+\/messages$/ },
-    { method: "POST", pattern: /^\/api\/upload$/ },
+    {
+      method: "GET",
+      pattern: /^\/api\/official-site\/support\/sessions\/[^/]+\/socket-token$/,
+    },
+    {
+      method: "GET",
+      pattern: /^\/api\/official-site\/support\/sessions\/[^/]+\/messages$/,
+    },
+    {
+      method: "POST",
+      pattern: /^\/api\/official-site\/support\/sessions\/[^/]+\/messages$/,
+    },
     { method: "GET", pattern: /^\/api\/health$/ },
-    { method: "GET", pattern: /^\/api\/ready$/ }
+    { method: "GET", pattern: /^\/api\/ready$/ },
   ],
   [INVITE_RUNTIME_PORT]: [
     { method: "GET", pattern: /^\/api\/onboarding\/invites\/[^/]+$/ },
+    { method: "POST", pattern: /^\/api\/onboarding\/invites\/[^/]+\/upload$/ },
     { method: "POST", pattern: /^\/api\/onboarding\/invites\/[^/]+\/submit$/ },
     { method: "GET", pattern: /^\/api\/coupons\/link\/[^/]+$/ },
     { method: "POST", pattern: /^\/api\/coupons\/link\/[^/]+\/claim$/ },
-    { method: "POST", pattern: /^\/api\/upload$/ },
     { method: "GET", pattern: /^\/api\/health$/ },
-    { method: "GET", pattern: /^\/api\/ready$/ }
-  ]
+    { method: "GET", pattern: /^\/api\/ready$/ },
+  ],
 };
 
 let bffLogMinute = "";
@@ -35,13 +44,15 @@ let bffLogCounter = 0;
 
 function nextLogTsid() {
   const now = new Date();
-  const shanghai = new Date(now.getTime() + (8 * 60 - now.getTimezoneOffset()) * 60 * 1000);
+  const shanghai = new Date(
+    now.getTime() + (8 * 60 - now.getTimezoneOffset()) * 60 * 1000,
+  );
   const minute = [
     String(shanghai.getUTCFullYear()).slice(-2),
     String(shanghai.getUTCMonth() + 1).padStart(2, "0"),
     String(shanghai.getUTCDate()).padStart(2, "0"),
     String(shanghai.getUTCHours()).padStart(2, "0"),
-    String(shanghai.getUTCMinutes()).padStart(2, "0")
+    String(shanghai.getUTCMinutes()).padStart(2, "0"),
   ].join("");
 
   if (bffLogMinute !== minute) {
@@ -75,7 +86,8 @@ function extractClientIp(req) {
     .map((item) => item.trim())
     .find(Boolean);
   const xRealIp = String(req.headers["x-real-ip"] || "").trim();
-  const candidate = xForwardedFor || xRealIp || req.ip || req.socket?.remoteAddress || "";
+  const candidate =
+    xForwardedFor || xRealIp || req.ip || req.socket?.remoteAddress || "";
   return normalizeIp(candidate);
 }
 
@@ -114,16 +126,40 @@ function normalizeRequestPath(value) {
 function inferActorTypeByPath(rawPath) {
   const path = normalizeRequestPath(rawPath).toLowerCase();
 
-  if (path === "/login" || path === "/api/login" || path.startsWith("/admins") || path.startsWith("/api/admins")) {
+  if (
+    path === "/login" ||
+    path === "/api/login" ||
+    path.startsWith("/admins") ||
+    path.startsWith("/api/admins")
+  ) {
     return "admin";
   }
-  if (path === "/auth/rider/login" || path === "/api/auth/rider/login" || path.startsWith("/riders") || path.startsWith("/api/riders")) {
+  if (
+    path === "/auth/rider/login" ||
+    path === "/api/auth/rider/login" ||
+    path.startsWith("/riders") ||
+    path.startsWith("/api/riders")
+  ) {
     return "rider";
   }
-  if (path === "/auth/merchant/login" || path === "/api/auth/merchant/login" || path.startsWith("/merchants") || path.startsWith("/api/merchants")) {
+  if (
+    path === "/auth/merchant/login" ||
+    path === "/api/auth/merchant/login" ||
+    path.startsWith("/merchants") ||
+    path.startsWith("/api/merchants")
+  ) {
     return "merchant";
   }
-  if (path === "/auth/login" || path === "/api/auth/login" || path === "/auth/register" || path === "/api/auth/register" || path.startsWith("/users") || path.startsWith("/api/users") || path.startsWith("/user") || path.startsWith("/api/user")) {
+  if (
+    path === "/auth/login" ||
+    path === "/api/auth/login" ||
+    path === "/auth/register" ||
+    path === "/api/auth/register" ||
+    path.startsWith("/users") ||
+    path.startsWith("/api/users") ||
+    path.startsWith("/user") ||
+    path.startsWith("/api/user")
+  ) {
     return "user";
   }
 
@@ -144,7 +180,10 @@ function inferActionScene(method, rawPath) {
     if (path === "/auth/rider/login" || path === "/api/auth/rider/login") {
       return "rider_login";
     }
-    if (path === "/auth/merchant/login" || path === "/api/auth/merchant/login") {
+    if (
+      path === "/auth/merchant/login" ||
+      path === "/api/auth/merchant/login"
+    ) {
       return "merchant_login";
     }
     if (path === "/login" || path === "/api/login") {
@@ -177,7 +216,8 @@ function getPublicRuntimeGuardMessage(port) {
 }
 
 function isPublicRuntimeAllowedApiRequest(port, method, path) {
-  const rules = PUBLIC_RUNTIME_ALLOWED_API_RULES[String(port || "").trim()] || [];
+  const rules =
+    PUBLIC_RUNTIME_ALLOWED_API_RULES[String(port || "").trim()] || [];
   const normalizedMethod = String(method || "").toUpperCase();
   const normalizedPath = normalizeRequestPath(path);
   if (!normalizedPath.startsWith("/api/")) {
@@ -190,7 +230,9 @@ function isPublicRuntimeAllowedApiRequest(port, method, path) {
 
   return rules.some((rule) => {
     const ruleMethod = String(rule.method || "").toUpperCase();
-    const methodMatched = normalizedMethod === ruleMethod || (normalizedMethod === "HEAD" && ruleMethod === "GET");
+    const methodMatched =
+      normalizedMethod === ruleMethod ||
+      (normalizedMethod === "HEAD" && ruleMethod === "GET");
     return methodMatched && rule.pattern.test(normalizedPath);
   });
 }

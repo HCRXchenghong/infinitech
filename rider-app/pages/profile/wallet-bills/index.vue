@@ -132,7 +132,7 @@
 </template>
 
 <script>
-import pageLogic from './index-logic.js'
+import pageLogic from './index-logic'
 
 export default pageLogic
 </script>

@@ -138,10 +138,11 @@ func (h *PaymentHandler) handleCallback(c *gin.Context, channel string) {
 			params["providerOrderId"],
 			params["provider_order_id"],
 		)),
-		Headers:     headers,
-		Params:      params,
-		RawBody:     string(rawBody),
-		Verified:    parseBoolLike(c.Query("verified")) || parseBoolLike(c.GetHeader("X-Debug-Verified")),
+		Headers: headers,
+		Params:  params,
+		RawBody: string(rawBody),
+		// Public callbacks must always enter the real verifier chain first.
+		Verified:    false,
 		Response:    "ok",
 		HTTPRequest: c.Request.Clone(c.Request.Context()),
 	}
@@ -170,15 +171,6 @@ func firstNonEmptyHeader(c *gin.Context, keys ...string) string {
 		}
 	}
 	return ""
-}
-
-func parseBoolLike(value string) bool {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "1", "true", "yes", "y", "ok":
-		return true
-	default:
-		return false
-	}
 }
 
 func firstNonEmptyText(values ...string) string {

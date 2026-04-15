@@ -53,7 +53,7 @@
 
         <view class="field row middle">
           <text class="label">是否上架</text>
-          <switch :checked="form.isActive" color="#009bf5" @change="(e:any)=> (form.isActive = !!e.detail.value)" />
+          <switch :checked="form.isActive" color="#009bf5" @change="onStatusChange" />
         </view>
       </view>
 
@@ -68,145 +68,15 @@
   </view>
 </template>
 
-<script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import { createProduct, fetchCategories, uploadImage } from '@/shared-ui/api'
-import { ensureMerchantShops, getCurrentShopId } from '@/shared-ui/merchantContext'
+<script lang="ts">
+import { defineComponent } from 'vue'
+import { useProductEditorPage } from '@/shared-ui/productEditorPage'
 
-const submitting = ref(false)
-const uploadingImage = ref(false)
-const categories = ref<any[]>([])
-
-const form = reactive({
-  shopId: '',
-  categoryId: '',
-  name: '',
-  price: '',
-  stock: '999',
-  description: '',
-  image: '',
-  isActive: true,
+export default defineComponent({
+  setup() {
+    return useProductEditorPage('create')
+  },
 })
-
-const categoryNames = computed(() => categories.value.map((item: any) => item.name))
-const selectedCategoryName = computed(() => {
-  const target = categories.value.find((item: any) => String(item.id) === String(form.categoryId))
-  return target ? target.name : '请选择分类'
-})
-
-function onCategoryChange(e: any) {
-  const index = Number(e.detail.value || 0)
-  const item = categories.value[index]
-  if (item) form.categoryId = String(item.id)
-}
-
-async function loadCategories(shopId: string) {
-  const res: any = await fetchCategories(shopId)
-  categories.value = Array.isArray(res) ? res : []
-  if (!form.categoryId && categories.value.length) {
-    form.categoryId = String(categories.value[0].id)
-  }
-}
-
-function clearProductImage() {
-  form.image = ''
-}
-
-function chooseProductImage() {
-  if (uploadingImage.value) return
-  uni.chooseImage({
-    count: 1,
-    sizeType: ['compressed'],
-    sourceType: ['album', 'camera'],
-    success: async (res: any) => {
-      const filePath = String(res?.tempFilePaths?.[0] || '').trim()
-      if (!filePath) return
-      uploadingImage.value = true
-      try {
-        const uploaded: any = await uploadImage(filePath)
-        form.image = String(uploaded?.url || '').trim()
-        uni.showToast({ title: '图片上传成功', icon: 'success' })
-      } catch (err: any) {
-        uni.showToast({ title: err?.error || err?.message || '图片上传失败', icon: 'none' })
-      } finally {
-        uploadingImage.value = false
-      }
-    },
-    fail: (err: any) => {
-      const msg = String(err?.errMsg || '').toLowerCase()
-      if (msg.includes('cancel')) return
-      uni.showToast({ title: '选择图片失败', icon: 'none' })
-    },
-  })
-}
-
-onLoad(async (options: any) => {
-  try {
-    const shopId = String(options?.shopId || getCurrentShopId())
-    if (!shopId) {
-      const ctx = await ensureMerchantShops()
-      form.shopId = String(ctx.currentShop?.id || '')
-    } else {
-      form.shopId = shopId
-    }
-
-    if (!form.shopId) {
-      uni.showToast({ title: '未找到店铺信息', icon: 'none' })
-      return
-    }
-
-    await loadCategories(form.shopId)
-
-    if (options?.categoryId) {
-      form.categoryId = String(options.categoryId)
-    }
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '加载失败', icon: 'none' })
-  }
-})
-
-async function handleSubmit() {
-  if (submitting.value) return
-
-  const name = String(form.name || '').trim()
-  const price = Number(form.price || 0)
-  const stock = Number(form.stock || 0)
-
-  if (!name) {
-    uni.showToast({ title: '请输入商品名称', icon: 'none' })
-    return
-  }
-  if (!form.categoryId) {
-    uni.showToast({ title: '请选择商品分类', icon: 'none' })
-    return
-  }
-  if (!price || price <= 0) {
-    uni.showToast({ title: '请输入正确售价', icon: 'none' })
-    return
-  }
-
-  submitting.value = true
-  try {
-    await createProduct({
-      shopId: String(form.shopId || '').trim(),
-      categoryId: String(form.categoryId || '').trim(),
-      name,
-      price,
-      stock: Number.isFinite(stock) ? stock : 999,
-      description: form.description,
-      image: form.image,
-      isActive: form.isActive,
-      unit: '份',
-    })
-    uni.showToast({ title: '商品创建成功', icon: 'success' })
-    setTimeout(() => uni.navigateBack(), 300)
-  } catch (err: any) {
-    uni.showToast({ title: err?.error || err?.message || '创建失败', icon: 'none' })
-  } finally {
-    submitting.value = false
-  }
-}
 </script>
 
 <style lang="scss" scoped>

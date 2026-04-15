@@ -2,8 +2,10 @@ package handler
 
 import (
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yuexiang/go-api/internal/service"
@@ -47,6 +49,41 @@ func (h *OfficialSiteHandler) CreateExposure(c *gin.Context) {
 		"data": gin.H{
 			"id":            record.UID,
 			"review_status": record.ReviewStatus,
+		},
+	})
+}
+
+func (h *OfficialSiteHandler) UploadExposureAsset(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "没有找到上传文件"})
+		return
+	}
+
+	dateDir := time.Now().Format("2006-01-02")
+	finalFilename, url, err := saveUploadFile(
+		c,
+		file,
+		5*1024*1024,
+		publicImageUploadAllowedExts,
+		"official-site",
+		"exposures",
+		filepath.Clean(dateDir),
+	)
+	if err != nil {
+		status := http.StatusBadRequest
+		if isUploadInternalError(err) {
+			status = http.StatusInternalServerError
+		}
+		c.JSON(status, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"url":      url,
+			"filename": finalFilename,
 		},
 	})
 }

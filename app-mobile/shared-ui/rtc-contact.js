@@ -4,6 +4,7 @@ import {
   createRTCCall,
   getRTCCall,
   listRTCCallHistory,
+  readAuthorizationHeader,
   updateRTCCallStatus,
 } from '@/shared-ui/api.js'
 import {
@@ -14,14 +15,6 @@ import { getCachedRTCRuntimeSettings, loadRTCRuntimeSettings } from './rtc-runti
 
 function trimValue(value) {
   return String(value || '').trim()
-}
-
-function buildSocketAuthHeader() {
-  const token = trimValue(uni.getStorageSync('token'))
-  if (!token) return {}
-  return {
-    Authorization: /^bearer\s+/i.test(token) ? token : `Bearer ${token}`,
-  }
 }
 
 function resolveCurrentUserId() {
@@ -48,10 +41,11 @@ function getCurrentPageInfo() {
 }
 
 function buildIncomingCallUrl(payload) {
-  const call = payload?.call || payload || {}
-  const callId = normalizeCallId(call) || trimValue(payload?.callId)
-  const callerRole = trimValue(call.callerRole || call.caller_role || payload?.fromRole)
-  const callerId = trimValue(call.callerId || call.caller_id || payload?.fromId)
+  const safePayload = payload && typeof payload === 'object' ? payload : {}
+  const call = safePayload.call || safePayload || {}
+  const callId = normalizeCallId(call) || trimValue(safePayload.callId)
+  const callerRole = trimValue(call.callerRole || call.caller_role || safePayload.fromRole)
+  const callerId = trimValue(call.callerId || call.caller_id || safePayload.fromId)
   const orderId = trimValue(call.orderId || call.order_id)
   const conversationId = trimValue(call.conversationId || call.conversation_id)
   const targetName =
@@ -91,7 +85,7 @@ async function ensureSocketToken() {
     uni.request({
       url: `${config.SOCKET_URL}/api/generate-token`,
       method: 'POST',
-      header: Object.assign({ 'Content-Type': 'application/json' }, buildSocketAuthHeader()),
+      header: Object.assign({ 'Content-Type': 'application/json' }, readAuthorizationHeader()),
       data: { userId, role: 'user' },
       success: resolve,
       fail: reject,
@@ -169,18 +163,20 @@ export async function ensureUserRTCInviteBridge() {
   })
 
   socket.on('rtc_invite', (payload = {}) => {
-    const callId = normalizeCallId(payload?.call || payload) || trimValue(payload?.callId)
+    const safePayload = payload && typeof payload === 'object' ? payload : {}
+    const callId = normalizeCallId(safePayload.call || safePayload) || trimValue(safePayload.callId)
     if (!callId) return
 
     const currentPage = getCurrentPageInfo()
     const currentRoute = currentPage && currentPage.route ? `/${currentPage.route}` : ''
-    const currentCallId = trimValue(currentPage?.options?.callId)
+    const currentOptions = currentPage && currentPage.options ? currentPage.options : {}
+    const currentCallId = trimValue(currentOptions.callId)
     if (currentRoute === '/pages/rtc/call/index' && currentCallId === callId) {
       return
     }
 
     uni.navigateTo({
-      url: buildIncomingCallUrl(payload),
+      url: buildIncomingCallUrl(safePayload),
       fail: () => {},
     })
   })

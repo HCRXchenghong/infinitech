@@ -35,10 +35,11 @@ import {
   readEnvFile,
   restoreEnvSelection,
   restoreEnvBackup,
+  writeSensitiveReceipt,
   writeEnvFile,
 } from './runtime-env.mjs'
 import { runAdminMaintenance } from './admin-maintenance.mjs'
-import { formatKeyValues, openFileInEditor, promptConfirm, promptExact, promptText } from './utils.mjs'
+import { formatKeyValues, maskSecret, openFileInEditor, promptConfirm, promptExact, promptText } from './utils.mjs'
 
 function parseArgv(argv) {
   const options = {}
@@ -414,6 +415,13 @@ function showAdmin(repoRoot, selector) {
   return payload
 }
 
+function printSensitiveReceipt(repoRoot, label, title, rows) {
+  const receiptPath = writeSensitiveReceipt(repoRoot, label, rows)
+  console.log(title)
+  console.log(`敏感回执已写入：${receiptPath}`)
+  return receiptPath
+}
+
 function createAdmin(repoRoot, options) {
   const payload = runAdminMaintenance(repoRoot, {
     action: 'create',
@@ -425,7 +433,12 @@ function createAdmin(repoRoot, options) {
   })
   console.log(`管理员已创建：${payload.admin?.phone} / ${payload.admin?.name}`)
   if (payload.newPassword) {
-    console.log(`初始密码：${payload.newPassword}`)
+    printSensitiveReceipt(repoRoot, 'admin-create-password', '初始密码已生成。', [
+      { label: '对象', value: `管理员 ${payload.admin?.name || payload.admin?.phone || '-'}` },
+      { label: '账号', value: String(payload.admin?.phone || '-') },
+      { label: '一次性临时口令', value: payload.newPassword },
+      { label: '要求', value: '请通过受控渠道交付，并提醒首次登录后立即修改密码。' },
+    ])
   }
   return payload
 }
@@ -452,7 +465,12 @@ function resetAdminPassword(repoRoot, options) {
   })
   console.log(`管理员密码已重置：${payload.admin?.phone}`)
   if (payload.newPassword) {
-    console.log(`新密码：${payload.newPassword}`)
+    printSensitiveReceipt(repoRoot, 'admin-reset-password', '管理员口令已重置。', [
+      { label: '对象', value: `管理员 ${payload.admin?.name || payload.admin?.phone || '-'}` },
+      { label: '账号', value: String(payload.admin?.phone || '-') },
+      { label: '一次性临时口令', value: payload.newPassword },
+      { label: '要求', value: '请通过受控渠道交付，并提醒首次登录后立即修改密码。' },
+    ])
   }
   return payload
 }
@@ -697,32 +715,39 @@ export async function runCli(argv, repoRoot) {
         case 'show-bootstrap': {
           const state = getRuntimeState(context.repoRoot)
           console.log(formatKeyValues([
-            { label: '手机号', value: describeEnvValue(context.repoRoot, 'BOOTSTRAP_ADMIN_PHONE', state.envValues.BOOTSTRAP_ADMIN_PHONE, { revealSensitive: true }) },
-            { label: '名称', value: describeEnvValue(context.repoRoot, 'BOOTSTRAP_ADMIN_NAME', state.envValues.BOOTSTRAP_ADMIN_NAME, { revealSensitive: true }) },
-            { label: '密码', value: describeEnvValue(context.repoRoot, 'BOOTSTRAP_ADMIN_PASSWORD', state.envValues.BOOTSTRAP_ADMIN_PASSWORD, { revealSensitive: true }) },
+            { label: '手机号', value: describeEnvValue(context.repoRoot, 'BOOTSTRAP_ADMIN_PHONE', state.envValues.BOOTSTRAP_ADMIN_PHONE) },
+            { label: '名称', value: describeEnvValue(context.repoRoot, 'BOOTSTRAP_ADMIN_NAME', state.envValues.BOOTSTRAP_ADMIN_NAME) },
+            { label: '密码', value: describeEnvValue(context.repoRoot, 'BOOTSTRAP_ADMIN_PASSWORD', state.envValues.BOOTSTRAP_ADMIN_PASSWORD) },
           ]))
           return
         }
         case 'rotate-bootstrap': {
           const result = await rotateBootstrap(context.repoRoot)
           printDiff(result.diff)
-          console.log(`新 bootstrap 手机号：${result.generated.bootstrapAdminPhone}`)
-          console.log(`新 bootstrap 密码：${result.generated.bootstrapAdminPassword}`)
+          printSensitiveReceipt(context.repoRoot, 'bootstrap-credentials', 'Bootstrap 凭据已轮换。', [
+            { label: '手机号', value: result.generated.bootstrapAdminPhone },
+            { label: '名称', value: result.generated.bootstrapAdminName },
+            { label: '一次性 bootstrap 口令', value: result.generated.bootstrapAdminPassword },
+          ])
+          console.log(`新 bootstrap 手机号：${maskSecret(result.generated.bootstrapAdminPhone)}`)
           return
         }
         case 'show-verify': {
           const state = getRuntimeState(context.repoRoot)
           console.log(formatKeyValues([
-            { label: '账号', value: describeEnvValue(context.repoRoot, 'SYSTEM_LOG_DELETE_ACCOUNT', state.envValues.SYSTEM_LOG_DELETE_ACCOUNT, { revealSensitive: true }) },
-            { label: '密码', value: describeEnvValue(context.repoRoot, 'SYSTEM_LOG_DELETE_PASSWORD', state.envValues.SYSTEM_LOG_DELETE_PASSWORD, { revealSensitive: true }) },
+            { label: '账号', value: describeEnvValue(context.repoRoot, 'SYSTEM_LOG_DELETE_ACCOUNT', state.envValues.SYSTEM_LOG_DELETE_ACCOUNT) },
+            { label: '密码', value: describeEnvValue(context.repoRoot, 'SYSTEM_LOG_DELETE_PASSWORD', state.envValues.SYSTEM_LOG_DELETE_PASSWORD) },
           ]))
           return
         }
         case 'rotate-verify': {
           const result = await rotateVerifyCredentials(context.repoRoot)
           printDiff(result.diff)
-          console.log(`新验证账号：${result.generated.systemLogDeleteAccount}`)
-          console.log(`新验证密码：${result.generated.systemLogDeletePassword}`)
+          printSensitiveReceipt(context.repoRoot, 'verify-credentials', '敏感二次验证凭据已轮换。', [
+            { label: '账号', value: result.generated.systemLogDeleteAccount },
+            { label: '一次性验证口令', value: result.generated.systemLogDeletePassword },
+          ])
+          console.log(`新验证账号：${maskSecret(result.generated.systemLogDeleteAccount)}`)
           return
         }
         default:

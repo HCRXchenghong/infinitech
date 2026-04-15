@@ -17,7 +17,7 @@ func newValidConfigForTest() *Config {
 			Host:            "127.0.0.1",
 			Port:            "5432",
 			User:            "yuexiang_user",
-			Password:        "yuexiang_password",
+			Password:        "TestDBPass123!",
 			DBName:          "yuexiang",
 			Driver:          "postgres",
 			MaxOpenConns:    40,
@@ -44,6 +44,9 @@ func newValidConfigForTest() *Config {
 			ReadyMaxQueue:    5000,
 			ReadyMaxQueueAge: 30 * time.Minute,
 		},
+		Socket: SocketConfig{
+			APISecret: "test-socket-secret",
+		},
 		RTC: RTCConfig{
 			RecordingRetention:      24 * time.Hour,
 			RetentionCleanupEnabled: true,
@@ -66,6 +69,15 @@ func newValidConfigForTest() *Config {
 			TrustedProxies:     []string{"127.0.0.1", "::1"},
 		},
 	}
+}
+
+func prepareProductionConfigTest(t *testing.T, cfg *Config) {
+	t.Helper()
+	cfg.Env = "production"
+	cfg.Redis.Required = true
+	cfg.Database.Password = "ProdDBPass123!"
+	cfg.Socket.APISecret = "socket-secret"
+	t.Setenv("BOOTSTRAP_ADMIN_PASSWORD", "StrongBootstrap123!")
 }
 
 func validFCMPrivateKeyForTest(t *testing.T) string {
@@ -103,8 +115,7 @@ func TestValidateAllowsDevelopmentSQLite(t *testing.T) {
 
 func TestValidateRejectsProductionSQLite(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
-	cfg.Redis.Required = true
+	prepareProductionConfigTest(t, cfg)
 	cfg.Database.Driver = "sqlite"
 	cfg.Database.DSN = "data/yuexiang.db"
 	cfg.Database.Host = ""
@@ -119,8 +130,7 @@ func TestValidateRejectsProductionSQLite(t *testing.T) {
 
 func TestValidateRejectsProductionMySQLByDefault(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
-	cfg.Redis.Required = true
+	prepareProductionConfigTest(t, cfg)
 	cfg.Database.Driver = "mysql"
 	cfg.Database.Port = "3306"
 
@@ -129,10 +139,59 @@ func TestValidateRejectsProductionMySQLByDefault(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsProductionDefaultDatabasePassword(t *testing.T) {
+	cfg := newValidConfigForTest()
+	prepareProductionConfigTest(t, cfg)
+	cfg.Database.Password = "yuexiang_password"
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected production default database password to be rejected")
+	}
+}
+
+func TestValidateRejectsProductionMissingDatabasePassword(t *testing.T) {
+	cfg := newValidConfigForTest()
+	prepareProductionConfigTest(t, cfg)
+	cfg.Database.Password = ""
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected production missing database password to be rejected")
+	}
+}
+
+func TestValidateRejectsProductionMissingSocketSecret(t *testing.T) {
+	cfg := newValidConfigForTest()
+	prepareProductionConfigTest(t, cfg)
+	cfg.Socket.APISecret = ""
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected production missing socket secret to be rejected")
+	}
+}
+
+func TestValidateRejectsProductionMissingBootstrapPassword(t *testing.T) {
+	cfg := newValidConfigForTest()
+	prepareProductionConfigTest(t, cfg)
+	t.Setenv("BOOTSTRAP_ADMIN_PASSWORD", "")
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected production missing bootstrap password to be rejected")
+	}
+}
+
+func TestValidateRejectsProductionWeakBootstrapPassword(t *testing.T) {
+	cfg := newValidConfigForTest()
+	prepareProductionConfigTest(t, cfg)
+	t.Setenv("BOOTSTRAP_ADMIN_PASSWORD", "123456")
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected weak production bootstrap password to be rejected")
+	}
+}
+
 func TestValidateAllowsProductionMySQLWithEmergencyOverride(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
-	cfg.Redis.Required = true
+	prepareProductionConfigTest(t, cfg)
 	cfg.Database.Driver = "mysql"
 	cfg.Database.Port = "3306"
 	cfg.Database.AllowLegacyProductionDriver = true
@@ -144,7 +203,7 @@ func TestValidateAllowsProductionMySQLWithEmergencyOverride(t *testing.T) {
 
 func TestValidateRejectsRequiredRedisWhenDisabled(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
+	prepareProductionConfigTest(t, cfg)
 	cfg.Redis.Enabled = false
 	cfg.Redis.Required = true
 
@@ -173,8 +232,7 @@ func TestValidateRejectsNegativePushReadyMaxQueueAge(t *testing.T) {
 
 func TestValidateRejectsProductionLogPushProviderWhenDispatchEnabled(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
-	cfg.Redis.Required = true
+	prepareProductionConfigTest(t, cfg)
 	cfg.Push.DispatchEnabled = true
 	cfg.Push.DispatchProvider = "log"
 
@@ -185,8 +243,7 @@ func TestValidateRejectsProductionLogPushProviderWhenDispatchEnabled(t *testing.
 
 func TestValidateAllowsProductionWebhookPushProviderWhenConfigured(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
-	cfg.Redis.Required = true
+	prepareProductionConfigTest(t, cfg)
 	cfg.Push.DispatchEnabled = true
 	cfg.Push.DispatchProvider = "webhook"
 	cfg.Push.WebhookURL = "https://push-gateway.example.com/dispatch"
@@ -199,8 +256,7 @@ func TestValidateAllowsProductionWebhookPushProviderWhenConfigured(t *testing.T)
 
 func TestValidateRejectsProductionWebhookWithoutHTTPS(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
-	cfg.Redis.Required = true
+	prepareProductionConfigTest(t, cfg)
 	cfg.Push.DispatchEnabled = true
 	cfg.Push.DispatchProvider = "webhook"
 	cfg.Push.WebhookURL = "http://push-gateway.example.com/dispatch"
@@ -213,8 +269,7 @@ func TestValidateRejectsProductionWebhookWithoutHTTPS(t *testing.T) {
 
 func TestValidateRejectsProductionWebhookToLocalhost(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
-	cfg.Redis.Required = true
+	prepareProductionConfigTest(t, cfg)
 	cfg.Push.DispatchEnabled = true
 	cfg.Push.DispatchProvider = "webhook"
 	cfg.Push.WebhookURL = "https://localhost:9443/dispatch"
@@ -227,8 +282,7 @@ func TestValidateRejectsProductionWebhookToLocalhost(t *testing.T) {
 
 func TestValidateRejectsProductionWebhookToPrivateIP(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
-	cfg.Redis.Required = true
+	prepareProductionConfigTest(t, cfg)
 	cfg.Push.DispatchEnabled = true
 	cfg.Push.DispatchProvider = "webhook"
 	cfg.Push.WebhookURL = "https://10.20.30.40/dispatch"
@@ -241,8 +295,7 @@ func TestValidateRejectsProductionWebhookToPrivateIP(t *testing.T) {
 
 func TestValidateRejectsProductionWebhookWithoutAuthOrSigning(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
-	cfg.Redis.Required = true
+	prepareProductionConfigTest(t, cfg)
 	cfg.Push.DispatchEnabled = true
 	cfg.Push.DispatchProvider = "webhook"
 	cfg.Push.WebhookURL = "https://push-gateway.example.com/dispatch"
@@ -267,8 +320,7 @@ func TestValidateRejectsIncompleteWebhookAuthConfig(t *testing.T) {
 
 func TestValidateAllowsProductionFCMWhenConfigured(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
-	cfg.Redis.Required = true
+	prepareProductionConfigTest(t, cfg)
 	cfg.Push.DispatchEnabled = true
 	cfg.Push.DispatchProvider = "fcm"
 	cfg.Push.FCMProjectID = "demo-project"
@@ -282,8 +334,7 @@ func TestValidateAllowsProductionFCMWhenConfigured(t *testing.T) {
 
 func TestValidateRejectsProductionFCMWithoutCredentials(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
-	cfg.Redis.Required = true
+	prepareProductionConfigTest(t, cfg)
 	cfg.Push.DispatchEnabled = true
 	cfg.Push.DispatchProvider = "fcm"
 	cfg.Push.FCMProjectID = ""
@@ -297,8 +348,7 @@ func TestValidateRejectsProductionFCMWithoutCredentials(t *testing.T) {
 
 func TestValidateRejectsProductionFCMPrivateTokenEndpoint(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
-	cfg.Redis.Required = true
+	prepareProductionConfigTest(t, cfg)
 	cfg.Push.DispatchEnabled = true
 	cfg.Push.DispatchProvider = "fcm"
 	cfg.Push.FCMProjectID = "demo-project"
@@ -313,8 +363,7 @@ func TestValidateRejectsProductionFCMPrivateTokenEndpoint(t *testing.T) {
 
 func TestValidateRejectsProductionFCMWithInvalidClientEmail(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
-	cfg.Redis.Required = true
+	prepareProductionConfigTest(t, cfg)
 	cfg.Push.DispatchEnabled = true
 	cfg.Push.DispatchProvider = "fcm"
 	cfg.Push.FCMProjectID = "demo-project"
@@ -328,8 +377,7 @@ func TestValidateRejectsProductionFCMWithInvalidClientEmail(t *testing.T) {
 
 func TestValidateRejectsProductionFCMWithInvalidPrivateKey(t *testing.T) {
 	cfg := newValidConfigForTest()
-	cfg.Env = "production"
-	cfg.Redis.Required = true
+	prepareProductionConfigTest(t, cfg)
 	cfg.Push.DispatchEnabled = true
 	cfg.Push.DispatchProvider = "fcm"
 	cfg.Push.FCMProjectID = "demo-project"

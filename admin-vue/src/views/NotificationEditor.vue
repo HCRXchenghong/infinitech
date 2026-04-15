@@ -6,11 +6,13 @@
           <el-icon><ArrowLeft /></el-icon>
           返回
         </el-button>
-        <span class="page-title">{{ isEdit ? '编辑通知' : '新建通知' }}</span>
+        <span class="page-title">{{ isEdit ? "编辑通知" : "新建通知" }}</span>
       </div>
       <div class="header-actions">
         <el-button @click="saveDraft" :loading="saving">保存草稿</el-button>
-        <el-button type="primary" @click="publish" :loading="publishing">发布</el-button>
+        <el-button type="primary" @click="publish" :loading="publishing"
+          >发布</el-button
+        >
       </div>
     </div>
 
@@ -39,6 +41,7 @@
               <el-upload
                 class="cover-uploader"
                 :action="uploadUrl"
+                :headers="uploadHeaders"
                 :show-file-list="false"
                 :on-success="handleCoverSuccess"
                 :before-upload="beforeCoverUpload"
@@ -91,7 +94,9 @@
                   class="block-item"
                 >
                   <div class="block-header">
-                    <span class="block-type">{{ getBlockTypeName(block.type) }}</span>
+                    <span class="block-type">{{
+                      getBlockTypeName(block.type)
+                    }}</span>
                     <div class="block-actions">
                       <el-button
                         size="small"
@@ -167,7 +172,7 @@
                     <el-button
                       size="small"
                       @click="addListItem(index)"
-                      style="margin-top: 8px;"
+                      style="margin-top: 8px"
                     >
                       <el-icon><Plus /></el-icon>
                       添加列表项
@@ -179,12 +184,17 @@
                     <el-upload
                       class="image-uploader"
                       :action="uploadUrl"
+                      :headers="uploadHeaders"
                       :show-file-list="false"
                       :on-success="(res) => handleImageSuccess(res, index)"
                       :before-upload="beforeImageUpload"
                       accept="image/*"
                     >
-                      <img v-if="block.url" :src="block.url" class="uploaded-image" />
+                      <img
+                        v-if="block.url"
+                        :src="block.url"
+                        class="uploaded-image"
+                      />
                       <div v-else class="image-placeholder">
                         <el-icon><Plus /></el-icon>
                         <div>上传图片</div>
@@ -193,12 +203,15 @@
                     <el-input
                       v-model="block.caption"
                       placeholder="图片说明（可选）"
-                      style="margin-top: 8px;"
+                      style="margin-top: 8px"
                     />
                   </div>
                 </div>
 
-                <div v-if="form.content.blocks.length === 0" class="empty-blocks">
+                <div
+                  v-if="form.content.blocks.length === 0"
+                  class="empty-blocks"
+                >
                   <el-empty description="暂无内容，请点击上方按钮添加内容块" />
                 </div>
               </div>
@@ -216,18 +229,25 @@
           </div>
         </template>
         <div class="preview-content">
-          <div class="preview-title">{{ form.title || '通知标题' }}</div>
+          <div class="preview-title">{{ form.title || "通知标题" }}</div>
           <div class="preview-meta">
             <span>{{ formatTime(new Date()) }}</span>
             <span>·</span>
-            <span>{{ form.source || '悦享e食' }}</span>
+            <span>{{ form.source || "悦享e食" }}</span>
           </div>
           <img v-if="form.cover" :src="form.cover" class="preview-cover" />
           <div class="preview-body">
             <div v-for="(block, index) in form.content.blocks" :key="index">
-              <p v-if="block.type === 'p'" class="preview-p">{{ block.text }}</p>
-              <h2 v-else-if="block.type === 'h2'" class="preview-h2">{{ block.text }}</h2>
-              <blockquote v-else-if="block.type === 'quote'" class="preview-quote">
+              <p v-if="block.type === 'p'" class="preview-p">
+                {{ block.text }}
+              </p>
+              <h2 v-else-if="block.type === 'h2'" class="preview-h2">
+                {{ block.text }}
+              </h2>
+              <blockquote
+                v-else-if="block.type === 'quote'"
+                class="preview-quote"
+              >
                 {{ block.text }}
               </blockquote>
               <ul v-else-if="block.type === 'ul'" class="preview-ul">
@@ -235,7 +255,9 @@
               </ul>
               <div v-else-if="block.type === 'img'" class="preview-img">
                 <img :src="block.url" />
-                <p v-if="block.caption" class="preview-caption">{{ block.caption }}</p>
+                <p v-if="block.caption" class="preview-caption">
+                  {{ block.caption }}
+                </p>
               </div>
             </div>
           </div>
@@ -246,9 +268,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { computed, ref, onMounted } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { ElMessage } from "element-plus";
 import {
   ArrowLeft,
   Plus,
@@ -259,9 +281,11 @@ import {
   Picture,
   Top,
   Bottom,
-  Delete
-} from '@element-plus/icons-vue'
-import axios from 'axios'
+  Delete,
+} from "@element-plus/icons-vue";
+import axios from "axios";
+import { buildAdminUploadHeaders } from "@infinitech/admin-core/upload";
+import { getToken } from "@/utils/runtime";
 import {
   createEmptyNotificationForm,
   normalizeNotificationContent,
@@ -269,173 +293,174 @@ import {
   moveBlock,
   getBlockTypeName,
   validateImageFile,
-  buildNotificationPayload
-} from './notificationEditorHelpers'
+  buildNotificationPayload,
+} from "./notificationEditorHelpers";
 
-const router = useRouter()
-const route = useRoute()
+const router = useRouter();
+const route = useRoute();
 
-const isEdit = ref(false)
-const saving = ref(false)
-const publishing = ref(false)
-const uploadUrl = ref('/api/upload/image')
+const isEdit = ref(false);
+const saving = ref(false);
+const publishing = ref(false);
+const uploadUrl = ref("/api/upload/image");
+const uploadHeaders = computed(() => buildAdminUploadHeaders(getToken()));
 
-const form = ref(createEmptyNotificationForm())
+const form = ref(createEmptyNotificationForm());
 
 const loadNotification = async (id) => {
   try {
-    const res = await axios.get(`/api/notifications/admin/${id}`)
+    const res = await axios.get(`/api/notifications/admin/${id}`);
     if (res.data) {
       form.value = {
-        title: res.data.title || '',
-        source: res.data.source || '悦享e食',
-        cover: res.data.cover || '',
-        content: normalizeNotificationContent(res.data.content)
-      }
+        title: res.data.title || "",
+        source: res.data.source || "悦享e食",
+        cover: res.data.cover || "",
+        content: normalizeNotificationContent(res.data.content),
+      };
     }
   } catch (error) {
-    console.error('加载通知失败:', error)
-    ElMessage.error('加载通知失败')
+    console.error("加载通知失败:", error);
+    ElMessage.error("加载通知失败");
   }
-}
+};
 
 const addBlock = (type) => {
-  form.value.content.blocks.push(createBlock(type))
-}
+  form.value.content.blocks.push(createBlock(type));
+};
 
 const removeBlock = (index) => {
-  form.value.content.blocks.splice(index, 1)
-}
+  form.value.content.blocks.splice(index, 1);
+};
 
 const moveBlockUp = (index) => {
-  moveBlock(form.value.content.blocks, index, -1)
-}
+  moveBlock(form.value.content.blocks, index, -1);
+};
 
 const moveBlockDown = (index) => {
-  moveBlock(form.value.content.blocks, index, 1)
-}
+  moveBlock(form.value.content.blocks, index, 1);
+};
 
 const addListItem = (blockIndex) => {
-  form.value.content.blocks[blockIndex].items.push('')
-}
+  form.value.content.blocks[blockIndex].items.push("");
+};
 
 const removeListItem = (blockIndex, itemIndex) => {
-  form.value.content.blocks[blockIndex].items.splice(itemIndex, 1)
-}
+  form.value.content.blocks[blockIndex].items.splice(itemIndex, 1);
+};
 
 const handleCoverSuccess = (response) => {
   if (response.url) {
-    form.value.cover = response.url
-    ElMessage.success('封面上传成功')
+    form.value.cover = response.url;
+    ElMessage.success("封面上传成功");
   } else {
-    ElMessage.error('封面上传失败')
+    ElMessage.error("封面上传失败");
   }
-}
+};
 
 const beforeCoverUpload = (file) => {
-  const result = validateImageFile(file, 2)
+  const result = validateImageFile(file, 2);
   if (!result.valid) {
-    ElMessage.error(result.message)
-    return false
+    ElMessage.error(result.message);
+    return false;
   }
-  return true
-}
+  return true;
+};
 
 const handleImageSuccess = (response, blockIndex) => {
   if (response.url) {
-    form.value.content.blocks[blockIndex].url = response.url
-    ElMessage.success('图片上传成功')
+    form.value.content.blocks[blockIndex].url = response.url;
+    ElMessage.success("图片上传成功");
   } else {
-    ElMessage.error('图片上传失败')
+    ElMessage.error("图片上传失败");
   }
-}
+};
 
 const beforeImageUpload = (file) => {
-  const result = validateImageFile(file, 5)
+  const result = validateImageFile(file, 5);
   if (!result.valid) {
-    ElMessage.error(result.message)
-    return false
+    ElMessage.error(result.message);
+    return false;
   }
-  return true
-}
+  return true;
+};
 
 const saveDraft = async () => {
   if (!form.value.title) {
-    ElMessage.warning('请输入通知标题')
-    return
+    ElMessage.warning("请输入通知标题");
+    return;
   }
 
-  saving.value = true
+  saving.value = true;
   try {
-    const data = buildNotificationPayload(form.value, false)
+    const data = buildNotificationPayload(form.value, false);
 
     if (isEdit.value) {
-      await axios.put(`/api/notifications/admin/${route.params.id}`, data)
-      ElMessage.success('保存成功')
+      await axios.put(`/api/notifications/admin/${route.params.id}`, data);
+      ElMessage.success("保存成功");
     } else {
-      const res = await axios.post('/api/notifications/admin', data)
-      ElMessage.success('保存成功')
-      isEdit.value = true
-      router.replace(`/notifications/edit/${res.data.id}`)
+      const res = await axios.post("/api/notifications/admin", data);
+      ElMessage.success("保存成功");
+      isEdit.value = true;
+      router.replace(`/notifications/edit/${res.data.id}`);
     }
   } catch (error) {
-    console.error('保存失败:', error)
-    ElMessage.error('保存失败')
+    console.error("保存失败:", error);
+    ElMessage.error("保存失败");
   } finally {
-    saving.value = false
+    saving.value = false;
   }
-}
+};
 
 const publish = async () => {
   if (!form.value.title) {
-    ElMessage.warning('请输入通知标题')
-    return
+    ElMessage.warning("请输入通知标题");
+    return;
   }
   if (form.value.content.blocks.length === 0) {
-    ElMessage.warning('请添加通知内容')
-    return
+    ElMessage.warning("请添加通知内容");
+    return;
   }
 
-  publishing.value = true
+  publishing.value = true;
   try {
-    const data = buildNotificationPayload(form.value, true)
+    const data = buildNotificationPayload(form.value, true);
 
     if (isEdit.value) {
-      await axios.put(`/api/notifications/admin/${route.params.id}`, data)
+      await axios.put(`/api/notifications/admin/${route.params.id}`, data);
     } else {
-      await axios.post('/api/notifications/admin', data)
+      await axios.post("/api/notifications/admin", data);
     }
 
-    ElMessage.success('发布成功')
-    router.push('/notifications')
+    ElMessage.success("发布成功");
+    router.push("/notifications");
   } catch (error) {
-    console.error('发布失败:', error)
-    ElMessage.error('发布失败')
+    console.error("发布失败:", error);
+    ElMessage.error("发布失败");
   } finally {
-    publishing.value = false
+    publishing.value = false;
   }
-}
+};
 
 const goBack = () => {
-  router.back()
-}
+  router.back();
+};
 
 const formatTime = (date) => {
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 onMounted(() => {
   if (route.params.id) {
-    isEdit.value = true
-    loadNotification(route.params.id)
+    isEdit.value = true;
+    loadNotification(route.params.id);
   }
-})
+});
 </script>
 
 <style scoped lang="css" src="./NotificationEditor.css"></style>
