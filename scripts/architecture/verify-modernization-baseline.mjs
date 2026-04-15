@@ -386,6 +386,26 @@ assertContains(
   'respondOfficialSitePaginated(c, "官网客服会话列表加载成功", records, total, page, limit)',
 );
 assertContains(
+  "backend/go/internal/handler/coupon_handler.go",
+  "func respondCouponPaginated(c *gin.Context, message string, items interface{}, total int64, page, limit int)",
+);
+assertContains(
+  "backend/go/internal/handler/coupon_handler.go",
+  'respondCouponMirroredSuccess(c, "优惠券创建成功", result)',
+);
+assertContains(
+  "backend/go/internal/handler/coupon_handler.go",
+  'respondCouponPaginated(c, "优惠券列表加载成功", items, total, page, limit)',
+);
+assertContains(
+  "backend/go/internal/handler/coupon_handler.go",
+  'respondSuccessEnvelope(c, "可用优惠券列表加载成功", coupons, nil)',
+);
+assertContains(
+  "backend/go/internal/handler/coupon_handler.go",
+  'respondCouponMirroredSuccess(c, "领券链接信息加载成功", gin.H{',
+);
+assertContains(
   "backend/bff/src/utils/apiEnvelope.js",
   "function buildSuccessEnvelopePayload(req, message, data, options = {})",
 );
@@ -416,6 +436,22 @@ assertContains(
 assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",
   'respondAdminSettingsMirroredSuccess(c, "图片上传成功", payload)',
+);
+assertContains(
+  "user-vue/pages/order/coupon/index.vue",
+  "extractEnvelopeData(res)",
+);
+assertContains(
+  "app-mobile/pages/order/coupon/index.vue",
+  "extractEnvelopeData(res)",
+);
+assertContains(
+  "user-vue/pages/profile/coupon-list/index.vue",
+  "extractEnvelopeData(res)",
+);
+assertContains(
+  "app-mobile/pages/profile/coupon-list/index.vue",
+  "extractEnvelopeData(res)",
 );
 assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",

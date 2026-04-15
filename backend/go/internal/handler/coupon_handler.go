@@ -36,11 +36,89 @@ type couponReceiveRequest struct {
 	Phone  string `json:"phone"`
 }
 
+func respondCouponError(c *gin.Context, status int, message string) {
+	respondErrorEnvelope(c, status, couponResponseCodeForStatus(status), message, nil)
+}
+
+func respondCouponInvalidRequest(c *gin.Context, message string) {
+	respondCouponError(c, http.StatusBadRequest, message)
+}
+
+func respondCouponNotFound(c *gin.Context, message string) {
+	respondCouponError(c, http.StatusNotFound, message)
+}
+
+func respondCouponMirroredSuccess(c *gin.Context, message string, data interface{}) {
+	respondMirroredSuccessEnvelope(c, message, data)
+}
+
+func respondCouponPaginated(c *gin.Context, message string, items interface{}, total int64, page, limit int) {
+	respondPaginatedEnvelope(c, responseCodeOK, message, "items", items, total, page, limit)
+}
+
+func couponResponseCodeForStatus(status int) string {
+	switch status {
+	case http.StatusBadRequest:
+		return responseCodeInvalidArgument
+	case http.StatusUnauthorized:
+		return responseCodeUnauthorized
+	case http.StatusForbidden:
+		return responseCodeForbidden
+	case http.StatusNotFound:
+		return responseCodeNotFound
+	case http.StatusConflict:
+		return responseCodeConflict
+	case http.StatusGone:
+		return responseCodeGone
+	default:
+		if status >= http.StatusInternalServerError {
+			return responseCodeInternalError
+		}
+		return responseCodeInvalidArgument
+	}
+}
+
+func parseCouponPage(c *gin.Context) (int, int) {
+	return parsePositiveInt(c.Query("page"), 1), parsePositiveInt(c.Query("limit"), 20)
+}
+
+func resolveCouponUserID(c *gin.Context, allowBody bool) (string, error) {
+	userID := strings.TrimSpace(c.Query("userId"))
+	if userID != "" {
+		return userID, nil
+	}
+
+	if allowBody {
+		var req couponReceiveRequest
+		if bindErr := c.ShouldBindJSON(&req); bindErr == nil {
+			userID = strings.TrimSpace(req.UserID)
+			if userID == "" {
+				userID = strings.TrimSpace(req.Phone)
+			}
+		} else if !errors.Is(bindErr, io.EOF) {
+			return "", bindErr
+		}
+	}
+
+	if userID == "" {
+		if rawPhone, ok := c.Get("user_phone"); ok {
+			userID = strings.TrimSpace(toString(rawPhone))
+		}
+	}
+	if userID == "" {
+		if rawID, ok := c.Get("user_id"); ok {
+			userID = strings.TrimSpace(toString(rawID))
+		}
+	}
+
+	return userID, nil
+}
+
 // CreateCoupon 创建优惠券（商户/管理员）
 func (h *CouponHandler) CreateCoupon(c *gin.Context) {
 	var req service.CreateCouponRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondCouponInvalidRequest(c, err.Error())
 		return
 	}
 
@@ -50,22 +128,12 @@ func (h *CouponHandler) CreateCoupon(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "优惠券创建成功",
-		"data":    result,
-	})
+	respondCouponMirroredSuccess(c, "优惠券创建成功", result)
 }
 
 // AdminListCoupons 管理端优惠券列表
 func (h *CouponHandler) AdminListCoupons(c *gin.Context) {
-	page, _ := strconv.Atoi(c.Query("page"))
-	limit, _ := strconv.Atoi(c.Query("limit"))
-	if page <= 0 {
-		page = 1
-	}
-	if limit <= 0 {
-		limit = 20
-	}
+	page, limit := parseCouponPage(c)
 
 	items, total, err := h.couponService.ListCoupons(c.Request.Context(), service.CouponListQuery{
 		ShopID:  strings.TrimSpace(c.Query("shopId")),
@@ -80,29 +148,17 @@ func (h *CouponHandler) AdminListCoupons(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"items": items,
-		"total": total,
-		"page":  page,
-		"limit": limit,
-	})
+	respondCouponPaginated(c, "优惠券列表加载成功", items, total, page, limit)
 }
 
 // AdminListCouponIssueLogs 管理端优惠券发放日志
 func (h *CouponHandler) AdminListCouponIssueLogs(c *gin.Context) {
 	couponID := strings.TrimSpace(c.Param("couponId"))
 	if couponID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的优惠券ID"})
+		respondCouponInvalidRequest(c, "无效的优惠券ID")
 		return
 	}
-	page, _ := strconv.Atoi(c.Query("page"))
-	limit, _ := strconv.Atoi(c.Query("limit"))
-	if page <= 0 {
-		page = 1
-	}
-	if limit <= 0 {
-		limit = 20
-	}
+	page, limit := parseCouponPage(c)
 
 	items, total, err := h.couponService.ListCouponIssueLogs(c.Request.Context(), couponID, service.CouponIssueLogListQuery{
 		Status:  strings.TrimSpace(c.Query("status")),
@@ -115,25 +171,20 @@ func (h *CouponHandler) AdminListCouponIssueLogs(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"items": items,
-		"total": total,
-		"page":  page,
-		"limit": limit,
-	})
+	respondCouponPaginated(c, "优惠券发放日志加载成功", items, total, page, limit)
 }
 
 // UpdateCoupon 更新优惠券
 func (h *CouponHandler) UpdateCoupon(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的优惠券ID"})
+		respondCouponInvalidRequest(c, "无效的优惠券ID")
 		return
 	}
 
 	var req service.UpdateCouponRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondCouponInvalidRequest(c, err.Error())
 		return
 	}
 
@@ -142,14 +193,17 @@ func (h *CouponHandler) UpdateCoupon(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "优惠券更新成功"})
+	respondCouponMirroredSuccess(c, "优惠券更新成功", gin.H{
+		"id":      id,
+		"updated": true,
+	})
 }
 
 // DeleteCoupon 删除优惠券
 func (h *CouponHandler) DeleteCoupon(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的优惠券ID"})
+		respondCouponInvalidRequest(c, "无效的优惠券ID")
 		return
 	}
 
@@ -158,93 +212,78 @@ func (h *CouponHandler) DeleteCoupon(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "优惠券删除成功"})
+	respondCouponMirroredSuccess(c, "优惠券删除成功", gin.H{
+		"id":      id,
+		"deleted": true,
+	})
 }
 
 // GetCouponByID 获取优惠券详情
 func (h *CouponHandler) GetCouponByID(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的优惠券ID"})
+		respondCouponInvalidRequest(c, "无效的优惠券ID")
 		return
 	}
 
 	coupon, err := h.couponService.GetCouponByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "优惠券不存在"})
+		writeCouponServiceError(c, err, http.StatusNotFound)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": coupon})
+	respondCouponMirroredSuccess(c, "优惠券详情加载成功", coupon)
 }
 
 // GetShopCoupons 获取店铺优惠券列表
 func (h *CouponHandler) GetShopCoupons(c *gin.Context) {
 	shopID := strings.TrimSpace(c.Param("id"))
 	if shopID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的店铺ID"})
+		respondCouponInvalidRequest(c, "无效的店铺ID")
 		return
 	}
 
 	coupons, err := h.couponService.GetShopCoupons(c.Request.Context(), shopID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		writeCouponServiceError(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": coupons})
+	respondSuccessEnvelope(c, "店铺优惠券列表加载成功", coupons, nil)
 }
 
 // GetActiveCoupons 获取店铺活动中的优惠券
 func (h *CouponHandler) GetActiveCoupons(c *gin.Context) {
 	shopID := strings.TrimSpace(c.Param("id"))
 	if shopID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的店铺ID"})
+		respondCouponInvalidRequest(c, "无效的店铺ID")
 		return
 	}
 
 	coupons, err := h.couponService.GetActiveCoupons(c.Request.Context(), shopID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		writeCouponServiceError(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": coupons})
+	respondSuccessEnvelope(c, "活动优惠券列表加载成功", coupons, nil)
 }
 
 // ReceiveCoupon 用户领取优惠券
 func (h *CouponHandler) ReceiveCoupon(c *gin.Context) {
 	couponID := strings.TrimSpace(c.Param("couponId"))
 	if couponID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的优惠券ID"})
+		respondCouponInvalidRequest(c, "无效的优惠券ID")
 		return
 	}
 
-	userID := strings.TrimSpace(c.Query("userId"))
-	if userID == "" {
-		var req couponReceiveRequest
-		if bindErr := c.ShouldBindJSON(&req); bindErr == nil {
-			userID = strings.TrimSpace(req.UserID)
-			if userID == "" {
-				userID = strings.TrimSpace(req.Phone)
-			}
-		} else if !errors.Is(bindErr, io.EOF) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": bindErr.Error()})
-			return
-		}
+	userID, err := resolveCouponUserID(c, true)
+	if err != nil {
+		respondCouponInvalidRequest(c, err.Error())
+		return
 	}
 	if userID == "" {
-		if rawPhone, ok := c.Get("user_phone"); ok {
-			userID = strings.TrimSpace(toString(rawPhone))
-		}
-	}
-	if userID == "" {
-		if rawID, ok := c.Get("user_id"); ok {
-			userID = strings.TrimSpace(toString(rawID))
-		}
-	}
-	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "用户ID不能为空"})
+		respondCouponInvalidRequest(c, "用户ID不能为空")
 		return
 	}
 
@@ -253,24 +292,22 @@ func (h *CouponHandler) ReceiveCoupon(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "领取成功"})
+	respondCouponMirroredSuccess(c, "领取成功", gin.H{
+		"couponId": couponID,
+		"received": true,
+		"userId":   userID,
+	})
 }
 
 // GetUserCoupons 获取用户优惠券列表
 func (h *CouponHandler) GetUserCoupons(c *gin.Context) {
-	userID := strings.TrimSpace(c.Query("userId"))
-	if userID == "" {
-		if rawPhone, ok := c.Get("user_phone"); ok {
-			userID = strings.TrimSpace(toString(rawPhone))
-		}
+	userID, err := resolveCouponUserID(c, false)
+	if err != nil {
+		respondCouponInvalidRequest(c, err.Error())
+		return
 	}
 	if userID == "" {
-		if rawID, ok := c.Get("user_id"); ok {
-			userID = strings.TrimSpace(toString(rawID))
-		}
-	}
-	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "用户ID不能为空"})
+		respondCouponInvalidRequest(c, "用户ID不能为空")
 		return
 	}
 
@@ -281,36 +318,30 @@ func (h *CouponHandler) GetUserCoupons(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": coupons})
+	respondSuccessEnvelope(c, "用户优惠券列表加载成功", coupons, nil)
 }
 
 // GetAvailableCoupons 获取用户可用优惠券
 func (h *CouponHandler) GetAvailableCoupons(c *gin.Context) {
-	userID := strings.TrimSpace(c.Query("userId"))
-	if userID == "" {
-		if rawPhone, ok := c.Get("user_phone"); ok {
-			userID = strings.TrimSpace(toString(rawPhone))
-		}
+	userID, err := resolveCouponUserID(c, false)
+	if err != nil {
+		respondCouponInvalidRequest(c, err.Error())
+		return
 	}
 	if userID == "" {
-		if rawID, ok := c.Get("user_id"); ok {
-			userID = strings.TrimSpace(toString(rawID))
-		}
-	}
-	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "用户ID不能为空"})
+		respondCouponInvalidRequest(c, "用户ID不能为空")
 		return
 	}
 
 	shopID := strings.TrimSpace(c.Query("shopId"))
 	if shopID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的店铺ID"})
+		respondCouponInvalidRequest(c, "无效的店铺ID")
 		return
 	}
 
 	orderAmount, err := strconv.ParseFloat(c.Query("orderAmount"), 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的订单金额"})
+		respondCouponInvalidRequest(c, "无效的订单金额")
 		return
 	}
 
@@ -320,20 +351,20 @@ func (h *CouponHandler) GetAvailableCoupons(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": coupons})
+	respondSuccessEnvelope(c, "可用优惠券列表加载成功", coupons, nil)
 }
 
 // AdminIssueCouponToPhone 客服按手机号发券
 func (h *CouponHandler) AdminIssueCouponToPhone(c *gin.Context) {
 	couponID := strings.TrimSpace(c.Param("couponId"))
 	if couponID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的优惠券ID"})
+		respondCouponInvalidRequest(c, "无效的优惠券ID")
 		return
 	}
 
 	var req couponIssueToPhoneRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondCouponInvalidRequest(c, err.Error())
 		return
 	}
 
@@ -342,14 +373,19 @@ func (h *CouponHandler) AdminIssueCouponToPhone(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "发券成功"})
+	respondCouponMirroredSuccess(c, "发券成功", gin.H{
+		"channel":  strings.TrimSpace(req.Channel),
+		"couponId": couponID,
+		"issued":   true,
+		"phone":    strings.TrimSpace(req.Phone),
+	})
 }
 
 // PublicGetCouponByToken 1788链接页查询优惠券信息
 func (h *CouponHandler) PublicGetCouponByToken(c *gin.Context) {
 	token := strings.TrimSpace(c.Param("token"))
 	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "领券链接无效"})
+		respondCouponInvalidRequest(c, "领券链接无效")
 		return
 	}
 
@@ -359,7 +395,7 @@ func (h *CouponHandler) PublicGetCouponByToken(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	respondCouponMirroredSuccess(c, "领券链接信息加载成功", gin.H{
 		"coupon": coupon,
 	})
 }
@@ -368,13 +404,13 @@ func (h *CouponHandler) PublicGetCouponByToken(c *gin.Context) {
 func (h *CouponHandler) PublicClaimCouponByToken(c *gin.Context) {
 	token := strings.TrimSpace(c.Param("token"))
 	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "领券链接无效"})
+		respondCouponInvalidRequest(c, "领券链接无效")
 		return
 	}
 
 	var req couponClaimByPhoneRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondCouponInvalidRequest(c, err.Error())
 		return
 	}
 
@@ -383,23 +419,27 @@ func (h *CouponHandler) PublicClaimCouponByToken(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "领取成功，已放入卡包"})
+	respondCouponMirroredSuccess(c, "领取成功，已放入卡包", gin.H{
+		"claimed": true,
+		"phone":   strings.TrimSpace(req.Phone),
+		"token":   token,
+	})
 }
 
 func writeCouponServiceError(c *gin.Context, err error, fallbackStatus int) {
 	if errors.Is(err, service.ErrUnauthorized) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		respondCouponError(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 	if errors.Is(err, service.ErrForbidden) {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		respondCouponError(c, http.StatusForbidden, err.Error())
 		return
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "记录不存在"})
+		respondCouponNotFound(c, "记录不存在")
 		return
 	}
-	c.JSON(fallbackStatus, gin.H{"error": err.Error()})
+	respondCouponError(c, fallbackStatus, err.Error())
 }
 
 func toString(value interface{}) string {

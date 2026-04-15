@@ -47,6 +47,7 @@
 
 <script>
 import { request } from '@/shared-ui/api.js'
+import { extractEnvelopeData } from '../../../../packages/contracts/src/http.js'
 
 function formatDiscountLabel(amount) {
   const reduced = 100 - Number(amount || 0)
@@ -93,9 +94,8 @@ export default {
           }
         })
 
-        if (res && Array.isArray(res.data)) {
-          this.coupons = res.data
-        }
+        const payload = extractEnvelopeData(res)
+        this.coupons = Array.isArray(payload) ? payload : []
       } catch (error) {
         console.error('加载优惠券失败:', error)
         uni.showToast({ title: '加载失败', icon: 'none' })

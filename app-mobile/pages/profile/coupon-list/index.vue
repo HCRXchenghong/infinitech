@@ -40,6 +40,7 @@
 
 <script>
 import { fetchUserCoupons } from '@/shared-ui/api'
+import { extractEnvelopeData } from '../../../../packages/contracts/src/http.js'
 
 export default {
   data() {
@@ -100,8 +101,8 @@ export default {
         }
         const res = await fetchUserCoupons(params)
 
-        const payload = res && res.data
-        const list = Array.isArray(payload) ? payload : (Array.isArray(res) ? res : [])
+        const payload = extractEnvelopeData(res)
+        const list = Array.isArray(payload) ? payload : []
         this.coupons = list.map(this.normalizeCoupon)
       } catch (error) {
         this.coupons = []

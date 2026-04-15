@@ -1,5 +1,6 @@
 import { request, addUserFavorite, deleteUserFavorite, fetchUserFavoriteStatus, recordPhoneContactClick } from '@/shared-ui/api.js'
 import { createPhoneContactHelper } from '../../../../shared/mobile-common/phone-contact.js'
+import { extractEnvelopeData } from '../../../../packages/contracts/src/http.js'
 
 const phoneContactHelper = createPhoneContactHelper({ recordPhoneContactClick })
 
@@ -265,10 +266,8 @@ export const shopDetailMethods = {
         url: `/api/shops/${shopId}/coupons/active`,
         method: 'GET'
       })
-
-      if (res && Array.isArray(res.data)) {
-        this.activeCoupons = res.data
-      }
+      const payload = extractEnvelopeData(res)
+      this.activeCoupons = Array.isArray(payload) ? payload : []
     } catch (err) {
       console.error('加载优惠券失败:', err)
     }
@@ -296,7 +295,7 @@ export const shopDetailMethods = {
       uni.hideLoading()
       console.error('领取优惠券失败:', err)
       uni.showToast({
-        title: (err.response && err.response.data && err.response.data.error) || '领取失败',
+        title: (err && err.error) || (err && err.data && err.data.error) || '领取失败',
         icon: 'none'
       })
     }
