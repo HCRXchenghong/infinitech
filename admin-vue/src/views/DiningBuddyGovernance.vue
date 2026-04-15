@@ -587,7 +587,7 @@ async function loadParties(forceRefresh = false) {
     })
     parties.value = Array.isArray(data?.parties) ? data.parties : []
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '加载组局列表失败')
+    ElMessage.error(extractErrorMessage(error, '加载组局列表失败'))
   } finally {
     partiesLoading.value = false
   }
@@ -597,10 +597,10 @@ async function openPartyDrawer(row) {
   partyDrawerVisible.value = true
   try {
     const { data } = await request.get(`/api/admin/dining-buddy/parties/${encodeURIComponent(row.id)}`)
-    partyDetail.value = data || row
+    partyDetail.value = extractEnvelopeData(data) || row
   } catch (error) {
     partyDetail.value = row
-    ElMessage.error(error?.response?.data?.error || error?.message || '加载组局详情失败')
+    ElMessage.error(extractErrorMessage(error, '加载组局详情失败'))
   }
 }
 
@@ -617,9 +617,10 @@ async function loadMessages(partyId, forceRefresh = false) {
     const { data } = await request.get(`/api/admin/dining-buddy/parties/${encodeURIComponent(partyId)}/messages`, {
       params: forceRefresh ? { _t: Date.now() } : undefined
     })
-    messages.value = Array.isArray(data?.messages) ? data.messages : []
+    const payload = extractEnvelopeData(data) || {}
+    messages.value = Array.isArray(payload.messages) ? payload.messages : []
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '加载消息列表失败')
+    ElMessage.error(extractErrorMessage(error, '加载消息列表失败'))
   } finally {
     messagesLoading.value = false
   }
@@ -645,7 +646,7 @@ async function changePartyStatus(row, action) {
     ElMessage.success(`组局已${actionLabel}`)
     await Promise.all([loadParties(true), loadAuditLogs(true)])
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || `${actionLabel}组局失败`)
+    ElMessage.error(extractErrorMessage(error, `${actionLabel}组局失败`))
   }
 }
 
@@ -658,9 +659,10 @@ async function loadReports(forceRefresh = false) {
         _t: forceRefresh ? Date.now() : undefined
       }
     })
-    reports.value = Array.isArray(data?.reports) ? data.reports : []
+    const payload = extractEnvelopeData(data) || {}
+    reports.value = Array.isArray(payload.reports) ? payload.reports : []
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '加载举报列表失败')
+    ElMessage.error(extractErrorMessage(error, '加载举报列表失败'))
   } finally {
     reportsLoading.value = false
   }
@@ -696,7 +698,7 @@ async function handleReport(row, action) {
     ElMessage.success(action === 'resolve' ? '举报已受理' : '举报已驳回')
     await Promise.all([loadReports(true), loadAuditLogs(true)])
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '处理举报失败')
+    ElMessage.error(extractErrorMessage(error, '处理举报失败'))
   }
 }
 
@@ -717,9 +719,10 @@ async function loadSensitiveWords(forceRefresh = false) {
     const { data } = await request.get('/api/admin/dining-buddy/sensitive-words', {
       params: forceRefresh ? { _t: Date.now() } : undefined
     })
-    sensitiveWords.value = Array.isArray(data?.items) ? data.items : []
+    const payload = extractEnvelopeData(data) || {}
+    sensitiveWords.value = Array.isArray(payload.items) ? payload.items : []
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '加载敏感词失败')
+    ElMessage.error(extractErrorMessage(error, '加载敏感词失败'))
   } finally {
     sensitiveLoading.value = false
   }
@@ -754,7 +757,7 @@ async function saveSensitiveWord() {
     ElMessage.success('敏感词已保存')
     await Promise.all([loadSensitiveWords(true), loadAuditLogs(true)])
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '保存敏感词失败')
+    ElMessage.error(extractErrorMessage(error, '保存敏感词失败'))
   } finally {
     sensitiveSaving.value = false
   }
@@ -773,7 +776,7 @@ async function deleteSensitiveWord(row) {
     ElMessage.success('敏感词已删除')
     await Promise.all([loadSensitiveWords(true), loadAuditLogs(true)])
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '删除敏感词失败')
+    ElMessage.error(extractErrorMessage(error, '删除敏感词失败'))
   }
 }
 
@@ -783,9 +786,10 @@ async function loadRestrictions(forceRefresh = false) {
     const { data } = await request.get('/api/admin/dining-buddy/user-restrictions', {
       params: forceRefresh ? { _t: Date.now() } : undefined
     })
-    restrictions.value = Array.isArray(data?.items) ? data.items : []
+    const payload = extractEnvelopeData(data) || {}
+    restrictions.value = Array.isArray(payload.items) ? payload.items : []
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '加载用户限制失败')
+    ElMessage.error(extractErrorMessage(error, '加载用户限制失败'))
   } finally {
     restrictionsLoading.value = false
   }
@@ -814,7 +818,7 @@ async function saveRestriction() {
     ElMessage.success('用户限制已保存')
     await Promise.all([loadRestrictions(true), loadAuditLogs(true)])
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '保存用户限制失败')
+    ElMessage.error(extractErrorMessage(error, '保存用户限制失败'))
   } finally {
     restrictionSaving.value = false
   }
@@ -826,9 +830,10 @@ async function loadAuditLogs(forceRefresh = false) {
     const { data } = await request.get('/api/admin/dining-buddy/audit-logs', {
       params: forceRefresh ? { _t: Date.now() } : undefined
     })
-    auditLogs.value = Array.isArray(data?.items) ? data.items : []
+    const payload = extractEnvelopeData(data) || {}
+    auditLogs.value = Array.isArray(payload.items) ? payload.items : []
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '加载审计日志失败')
+    ElMessage.error(extractErrorMessage(error, '加载审计日志失败'))
   } finally {
     auditLoading.value = false
   }
@@ -856,7 +861,7 @@ async function deleteMessage(row) {
       loadAuditLogs(true)
     ])
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '删除消息失败')
+    ElMessage.error(extractErrorMessage(error, '删除消息失败'))
   }
 }
 
@@ -873,7 +878,7 @@ async function loadAll(forceRefresh = false) {
       loadAuditLogs(forceRefresh)
     ])
   } catch (error) {
-    pageError.value = error?.response?.data?.error || error?.message || '加载同频饭友治理数据失败'
+    pageError.value = extractErrorMessage(error, '加载同频饭友治理数据失败')
   } finally {
     pageLoading.value = false
   }

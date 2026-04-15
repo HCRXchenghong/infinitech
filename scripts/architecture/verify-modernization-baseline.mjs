@@ -502,6 +502,14 @@ assertContains(
   "extractEnvelopeData(data)",
 );
 assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "extractErrorMessage(error",
+);
+assertContains(
+  "admin-vue/src/views/FinanceCenter.vue",
+  "extractEnvelopeData(res.data)",
+);
+assertContains(
   "backend/go/internal/handler/shop_handler.go",
   'respondEnvelope(c, http.StatusOK, "SHOP_REVIEW_LISTED"',
 );

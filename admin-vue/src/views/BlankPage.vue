@@ -227,7 +227,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { extractPaginatedItems } from '@infinitech/contracts'
+import { extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 
@@ -414,7 +414,7 @@ async function loadWorkbench() {
     riderDepositOverview.value = depositRes.data || {}
     withdrawRequests.value = normalizeListPayload(withdrawRes.data)
   } catch (error) {
-    pageError.value = error?.response?.data?.error || error?.message || '加载联调工作台失败'
+    pageError.value = extractErrorMessage(error, '加载联调工作台失败')
   } finally {
     loading.value = false
   }

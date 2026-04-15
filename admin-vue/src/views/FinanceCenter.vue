@@ -259,6 +259,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { extractEnvelopeData, extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts';
 import request from '../utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 
@@ -360,10 +361,10 @@ async function loadOverview() {
   overviewError.value = '';
   try {
     const res = await request.get('/api/financial/overview', { params: buildParams() });
-    overview.value = res.data || {};
+    overview.value = extractEnvelopeData(res.data) || {};
   } catch (error) {
     overview.value = {};
-    overviewError.value = error?.response?.data?.error || error?.message || '加载平台概览失败';
+    overviewError.value = extractErrorMessage(error, '加载平台概览失败');
   }
   finally { overviewLoading.value = false; }
 }
@@ -377,12 +378,12 @@ async function loadDetails() {
       request.get('/api/financial/user-details', { params: { ...params, userType: 'rider' } }),
       request.get('/api/financial/user-details', { params: { ...params, userType: 'merchant' } }),
     ]);
-    riderDetails.value = rRes.data?.items || [];
-    merchantDetails.value = mRes.data?.items || [];
+    riderDetails.value = extractPaginatedItems(rRes.data).items;
+    merchantDetails.value = extractPaginatedItems(mRes.data).items;
   } catch (error) {
     riderDetails.value = [];
     merchantDetails.value = [];
-    detailsError.value = error?.response?.data?.error || error?.message || '加载收入榜失败';
+    detailsError.value = extractErrorMessage(error, '加载收入榜失败');
   }
   finally { detailsLoading.value = false; }
 }
@@ -401,10 +402,10 @@ async function loadRecentTransactions() {
   logsError.value = '';
   try {
     const res = await request.get('/api/financial/transaction-logs', { params: { page: 1, limit: 1 } });
-    transactionLogs.value = res.data?.items || [];
+    transactionLogs.value = extractPaginatedItems(res.data).items;
   } catch (error) {
     transactionLogs.value = [];
-    logsError.value = error?.response?.data?.error || error?.message || '加载财务日志失败';
+    logsError.value = extractErrorMessage(error, '加载财务日志失败');
   } finally {
     logsLoading.value = false;
   }

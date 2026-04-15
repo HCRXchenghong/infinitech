@@ -1064,7 +1064,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { extractPaginatedItems } from '@infinitech/contracts'
+import { extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 import ImageUpload from '@/components/ImageUpload.vue'
@@ -1267,7 +1267,7 @@ async function loadAll() {
     state.withdrawRequests = normalizeListPayload(withdrawRes.data)
     state.paymentCallbacks = normalizeListPayload(callbackRes.data)
   } catch (error) {
-    pageError.value = error?.response?.data?.error || error?.message || '加载支付中心失败'
+    pageError.value = extractErrorMessage(error, '加载支付中心失败')
   } finally {
     loading.value = false
   }
@@ -1291,7 +1291,7 @@ async function loadPaymentCallbacks() {
     })
     state.paymentCallbacks = normalizeListPayload(data)
   } catch (error) {
-    pageError.value = error?.response?.data?.error || error?.message || '加载回调日志失败'
+    pageError.value = extractErrorMessage(error, '加载回调日志失败')
   } finally {
     callbackLoading.value = false
   }
@@ -1507,7 +1507,7 @@ async function loadSettlementOrder() {
     settlementOrderDetail.value = data || null
   } catch (error) {
     settlementOrderDetail.value = null
-    pageError.value = error?.response?.data?.error || error?.message || '查询订单分账失败'
+    pageError.value = extractErrorMessage(error, '查询订单分账失败')
     ElMessage.error(pageError.value)
   } finally {
     settlementLookupLoading.value = false
@@ -1529,7 +1529,7 @@ async function openPaymentCallbackDetail(row) {
     callbackDetail.value = data || null
     callbackDetailVisible.value = true
   } catch (error) {
-    pageError.value = error?.response?.data?.error || error?.message || '加载回调详情失败'
+    pageError.value = extractErrorMessage(error, '加载回调详情失败')
   } finally {
     callbackDetailLoading.value = false
   }
@@ -1564,7 +1564,7 @@ async function replayPaymentCallback(row) {
     const nextCallbackId = data?.callbackId || callbackId
     await openPaymentCallbackDetail({ callback_id: nextCallbackId })
   } catch (error) {
-    pageError.value = error?.response?.data?.error || error?.message || '重放回调失败'
+    pageError.value = extractErrorMessage(error, '重放回调失败')
     ElMessage.error(pageError.value)
   } finally {
     callbackReplayLoading.value = ''
@@ -1631,7 +1631,7 @@ async function openWithdrawHistory(row) {
     })
     withdrawActionHistory.value = normalizeListPayload(data)
   } catch (error) {
-    pageError.value = error?.response?.data?.error || error?.message || '加载提现处理轨迹失败'
+    pageError.value = extractErrorMessage(error, '加载提现处理轨迹失败')
     ElMessage.error(pageError.value)
   } finally {
     withdrawHistoryLoading.value = false
@@ -1767,7 +1767,7 @@ async function submitWithdrawAction(row, action) {
     ElMessage.success(`${actionTitle}已提交`)
     await loadAll()
   } catch (error) {
-    pageError.value = error?.response?.data?.error || error?.message || `${actionTitle}失败`
+    pageError.value = extractErrorMessage(error, `${actionTitle}失败`)
     ElMessage.error(pageError.value)
   } finally {
     withdrawActionLoading.value = ''
@@ -1819,7 +1819,7 @@ async function submitBankPayoutComplete() {
     resetBankPayoutForm()
     await loadAll()
   } catch (error) {
-    pageError.value = error?.response?.data?.error || error?.message || '\u4fdd\u5b58\u94f6\u884c\u5361\u6253\u6b3e\u8bb0\u5f55\u5931\u8d25'
+    pageError.value = extractErrorMessage(error, '\u4fdd\u5b58\u94f6\u884c\u5361\u6253\u6b3e\u8bb0\u5f55\u5931\u8d25')
     ElMessage.error(pageError.value)
   } finally {
     bankPayoutSubmitting.value = false
@@ -1840,7 +1840,7 @@ async function syncWithdrawStatus(row) {
     ElMessage.success(`同步完成，当前状态：${withdrawStatusLabel(data?.status || row?.status)}`)
     await loadAll()
   } catch (error) {
-    pageError.value = error?.response?.data?.error || error?.message || '同步网关状态失败'
+    pageError.value = extractErrorMessage(error, '同步网关状态失败')
     ElMessage.error(pageError.value)
   } finally {
     withdrawActionLoading.value = ''
@@ -1873,7 +1873,7 @@ async function retryWithdrawPayout(row) {
     }
     await loadAll()
   } catch (error) {
-    pageError.value = error?.response?.data?.error || error?.message || '重试打款失败'
+    pageError.value = extractErrorMessage(error, '重试打款失败')
     ElMessage.error(pageError.value)
   } finally {
     withdrawActionLoading.value = ''
@@ -1922,7 +1922,7 @@ async function supplementWithdraw(row, action) {
     }
     await loadAll()
   } catch (error) {
-    pageError.value = error?.response?.data?.error || error?.message || `${actionTitle}失败`
+    pageError.value = extractErrorMessage(error, `${actionTitle}失败`)
     ElMessage.error(pageError.value)
   } finally {
     withdrawActionLoading.value = ''
@@ -1954,7 +1954,7 @@ async function saveAll() {
     normalizeConfig(data || {})
     ElMessage.success('支付中心配置已保存')
   } catch (error) {
-    pageError.value = error?.response?.data?.error || error?.message || '保存失败'
+    pageError.value = extractErrorMessage(error, '保存失败')
     ElMessage.error(pageError.value)
   } finally {
     saving.value = false
@@ -1970,7 +1970,7 @@ async function runPreview() {
     })
     settlementPreviewEntries.value = data?.preview_entries || []
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.message || '预览失败')
+    ElMessage.error(extractErrorMessage(error, '预览失败'))
   } finally {
     previewing.value = false
   }
