@@ -1,3 +1,4 @@
+import { extractEnvelopeData } from '@infinitech/contracts'
 import request from '@/utils/request'
 
 const DEFAULT_MERCHANT_TAXONOMY_SETTINGS = {
@@ -121,7 +122,7 @@ export async function loadMerchantTaxonomySettings(forceRefresh = false) {
     params: forceRefresh ? { _t: Date.now() } : undefined
   })
     .then(({ data }) => {
-      merchantTaxonomyCache = normalizeMerchantTaxonomySettings(data || {})
+      merchantTaxonomyCache = normalizeMerchantTaxonomySettings(extractEnvelopeData(data) || {})
       merchantTaxonomyLoaded = true
       return getCachedMerchantTaxonomySettings()
     })
@@ -149,7 +150,7 @@ export async function loadRiderRankSettings(forceRefresh = false) {
     params: forceRefresh ? { _t: Date.now() } : undefined
   })
     .then(({ data }) => {
-      riderRankCache = normalizeRiderRankSettings(data || {})
+      riderRankCache = normalizeRiderRankSettings(extractEnvelopeData(data) || {})
       riderRankLoaded = true
       return getCachedRiderRankSettings()
     })

@@ -66,6 +66,22 @@ func NewAdminSettingsHandler(admin *service.AdminService, mobilePush *service.Mo
 	return &AdminSettingsHandler{admin: admin, mobilePush: mobilePush}
 }
 
+func respondAdminSettingsInvalidRequest(c *gin.Context, message string) {
+	respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, message, nil)
+}
+
+func respondAdminSettingsInternalError(c *gin.Context, err error) {
+	if err == nil {
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "internal error", nil)
+		return
+	}
+	respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, err.Error(), nil)
+}
+
+func respondAdminSettingsSuccess(c *gin.Context, message string, data interface{}) {
+	respondSuccessEnvelope(c, message, data, nil)
+}
+
 // Debug mode
 func (h *AdminSettingsHandler) GetDebugMode(c *gin.Context) {
 	data := map[string]interface{}{

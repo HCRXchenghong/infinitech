@@ -294,6 +294,22 @@ assertContains(
   'respondDiningBuddyInvalidRequest(c, "invalid request payload")',
 );
 assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  "func respondAdminSettingsSuccess(c *gin.Context, message string, data interface{})",
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler_platform.go",
+  'respondAdminSettingsSuccess(c, "首页入口配置加载成功", data)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler_platform.go",
+  'respondAdminSettingsSuccess(c, "跑腿配置保存成功", data)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler_platform.go",
+  'respondAdminSettingsInvalidRequest(c, "请求参数错误")',
+);
+assertContains(
   "backend/go/internal/handler/onboarding_invite_handler.go",
   'respondEnvelope(c, http.StatusOK, "ONBOARDING_INVITE_CREATED"',
 );
@@ -600,6 +616,10 @@ assertContains(
 assertContains(
   "admin-vue/src/views/HomeCampaigns.vue",
   "extractPaginatedItems(data, { listKeys: ['campaigns'] }).items",
+);
+assertContains(
+  "admin-vue/src/utils/platform-settings.js",
+  "extractEnvelopeData(data) || {}",
 );
 assertContains(
   "admin-vue/src/views/AdminRTCConsole.vue",
