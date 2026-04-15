@@ -256,6 +256,7 @@ import {
   Plus,
   Top
 } from '@element-plus/icons-vue';
+import { extractEnvelopeData, extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
 import request from '@/utils/request';
 import {
   blockTypeLabel,
@@ -310,15 +311,16 @@ async function loadNotification() {
 
   try {
     const { data } = await request.get(`/api/notifications/admin/${notificationId.value}`);
+    const payload = extractEnvelopeData(data) || {};
     form.value = {
-      title: data?.title || '',
-      source: data?.source || '悦享e食',
-      cover: data?.cover || '',
-      blocks: parseContent(data?.content)
+      title: payload.title || '',
+      source: payload.source || '悦享e食',
+      cover: payload.cover || '',
+      blocks: parseContent(payload.content)
     };
     ensureInitialBlock();
   } catch (error) {
-    ElMessage.error('加载通知失败');
+    ElMessage.error(extractErrorMessage(error, '加载通知失败'));
     ensureInitialBlock();
   }
 }
@@ -362,12 +364,13 @@ async function uploadCover(option) {
     const { data } = await request.post('/api/upload/image', fd, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
-    const imageUrl = data?.url || data?.data?.url;
+    const asset = extractUploadAsset(data);
+    const imageUrl = asset?.url || '';
     if (!imageUrl) throw new Error('no image url');
     form.value.cover = imageUrl;
     ElMessage.success('封面上传成功');
   } catch (error) {
-    ElMessage.error('封面上传失败');
+    ElMessage.error(extractErrorMessage(error, '封面上传失败'));
   } finally {
     uploadingCover.value = false;
   }
@@ -386,12 +389,13 @@ async function uploadBlockImage(option, blockIndex) {
     const { data } = await request.post('/api/upload/image', fd, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
-    const imageUrl = data?.url || data?.data?.url;
+    const asset = extractUploadAsset(data);
+    const imageUrl = asset?.url || '';
     if (!imageUrl) throw new Error('no image url');
     form.value.blocks[blockIndex].url = imageUrl;
     ElMessage.success('内容图上传成功');
   } catch (error) {
-    ElMessage.error('内容图上传失败');
+    ElMessage.error(extractErrorMessage(error, '内容图上传失败'));
   } finally {
     const next = { ...uploadingBlockMap.value };
     delete next[block.key];
@@ -419,8 +423,9 @@ async function submitNotification(published) {
   }
 
   const { data } = await request.post('/api/notifications/admin', payload);
-  if (data?.id) {
-    router.replace(`/notifications/edit/${data.id}`);
+  const created = extractEnvelopeData(data) || {};
+  if (created?.id) {
+    router.replace(`/notifications/edit/${created.id}`);
   }
   return true;
 }
@@ -434,7 +439,7 @@ async function saveDraft() {
       ElMessage.success('草稿已保存');
     }
   } catch (error) {
-    ElMessage.error('保存失败');
+    ElMessage.error(extractErrorMessage(error, '保存失败'));
   } finally {
     saving.value = false;
   }
@@ -450,7 +455,7 @@ async function publish() {
       router.push('/notifications');
     }
   } catch (error) {
-    ElMessage.error('发布失败');
+    ElMessage.error(extractErrorMessage(error, '发布失败'));
   } finally {
     publishing.value = false;
   }

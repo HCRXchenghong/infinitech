@@ -6,7 +6,7 @@ import {
   createOnboardingInviteApi,
   getInviteRemainingUses as resolveInviteRemainingUses,
 } from '@infinitech/client-sdk';
-import { extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
+import { extractEnvelopeData, extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
 import { loadAuthorizedBlobUrl, revokeBlobUrl } from '@/utils/privateAsset';
 import { downloadCredentialReceipt } from '@/utils/credentialReceipt';
 
@@ -303,7 +303,7 @@ export function useRiderActionHelpers(ctx) {
     try {
       const { data } = await request.get(`/api/riders/${row.id}`);
       if (data) {
-        const source = data.data || data;
+        const source = extractEnvelopeData(data) || {};
         const detailPreviewUrl = await resolvePrivatePreviewUrl(
           source.id_card_front_preview_url,
           source.id_card_front || source.id_card_image || '',

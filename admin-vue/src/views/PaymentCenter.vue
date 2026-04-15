@@ -1064,6 +1064,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { extractPaginatedItems } from '@infinitech/contracts'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 import ImageUpload from '@/components/ImageUpload.vue'
@@ -1161,14 +1162,7 @@ function cloneValue(value, fallback) {
 }
 
 function normalizeListPayload(payload) {
-  if (Array.isArray(payload)) return payload
-  if (Array.isArray(payload?.records)) return payload.records
-  if (Array.isArray(payload?.items)) return payload.items
-  if (Array.isArray(payload?.list)) return payload.list
-  if (Array.isArray(payload?.data?.records)) return payload.data.records
-  if (Array.isArray(payload?.data?.items)) return payload.data.items
-  if (Array.isArray(payload?.data?.list)) return payload.data.list
-  return []
+  return extractPaginatedItems(payload).items
 }
 
 const filteredWithdrawRequests = computed(() => {

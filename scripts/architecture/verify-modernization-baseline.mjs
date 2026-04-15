@@ -446,6 +446,30 @@ assertContains(
   "extractRiderReviewPage",
 );
 assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "extractPaginatedItems(payload).items",
+);
+assertContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "extractPaginatedItems(payload).items",
+);
+assertContains(
+  "admin-vue/src/views/NotificationEditorPage.vue",
+  "extractUploadAsset",
+);
+assertContains(
+  "admin-vue/src/views/MerchantProfile.vue",
+  "extractUploadAsset",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers.js",
+  "extractUploadAsset",
+);
+assertContains(
+  "admin-vue/src/views/ridersActionHelpers.js",
+  "extractEnvelopeData(data)",
+);
+assertContains(
   "backend/go/internal/handler/shop_handler.go",
   'respondEnvelope(c, http.StatusOK, "SHOP_REVIEW_LISTED"',
 );

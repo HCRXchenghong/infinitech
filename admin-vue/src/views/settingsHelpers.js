@@ -1,6 +1,7 @@
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { extractUploadAsset } from '@infinitech/contracts';
 import request from '@/utils/request';
 import { useDataManagementPage } from './dataManagementHelpers';
 import { useSettingsApiManagement } from './settingsApiManagementHelpers';
@@ -888,7 +889,8 @@ export function useSettingsPage() {
         options.onSuccess(data);
       }
 
-      const nextUrl = String(data?.url || '').trim();
+      const asset = extractUploadAsset(data);
+      const nextUrl = String(asset?.url || '').trim();
       if (!nextUrl) {
         throw new Error('上传成功但未返回文件地址');
       }
@@ -1137,7 +1139,8 @@ export function useSettingsPage() {
       const { data } = await request.post('/api/upload-package', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      const nextUrl = data?.url || '';
+      const asset = extractUploadAsset(data);
+      const nextUrl = asset?.url || '';
       if (!nextUrl) {
         throw new Error('上传返回地址为空');
       }
@@ -1168,7 +1171,8 @@ export function useSettingsPage() {
       const { data } = await request.post('/api/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      const nextUrl = data?.url || data?.data?.url || data?.imageUrl || '';
+      const asset = extractUploadAsset(data);
+      const nextUrl = asset?.url || '';
       if (!nextUrl) {
         throw new Error('上传返回地址为空');
       }

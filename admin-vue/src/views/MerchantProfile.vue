@@ -153,6 +153,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { extractEnvelopeData, extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
 import request from '@/utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 import ShopEditor from './ShopEditor.vue';
@@ -210,13 +211,14 @@ async function loadMerchant() {
   merchantError.value = '';
   loading.value = true;
   try {
-    const { data: current } = await request.get(`/api/merchant/${merchantId}`);
+    const { data } = await request.get(`/api/merchant/${merchantId}`);
+    const current = extractEnvelopeData(data) || {};
     merchant.value = {
       ...current,
       owner_name: current.owner_name || current.name || ''
     };
   } catch (error) {
-    merchantError.value = error?.response?.data?.error || error?.response?.data?.message || error?.message || '加载商户信息失败，请稍后重试';
+    merchantError.value = extractErrorMessage(error, '加载商户信息失败，请稍后重试');
   } finally {
     loading.value = false;
   }
@@ -226,14 +228,15 @@ async function loadShops() {
   shopsError.value = '';
   try {
     const { data } = await request.get(`/api/merchants/${merchantId}/shops`);
-    const list = Array.isArray(data?.shops) ? data.shops : [];
+    const payload = extractEnvelopeData(data);
+    const list = Array.isArray(payload?.shops) ? payload.shops : [];
     shops.value = list.map((item) => ({
       ...item,
       isActive: item.isActive === true || item.isActive === 1
     }));
   } catch (error) {
     shops.value = [];
-    shopsError.value = error?.response?.data?.error || error?.response?.data?.message || error?.message || '加载店铺信息失败，请稍后重试';
+    shopsError.value = extractErrorMessage(error, '加载店铺信息失败，请稍后重试');
   }
 }
 
@@ -271,14 +274,15 @@ async function handleBusinessLicenseChange(uploadFile) {
     const { data } = await request.post('/api/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
-    const nextUrl = data?.url || data?.data?.url || data?.imageUrl || '';
+    const asset = extractUploadAsset(data);
+    const nextUrl = asset?.url || '';
     if (!nextUrl) {
       throw new Error('上传返回地址为空');
     }
     merchantForm.value.business_license_image = nextUrl;
     ElMessage.success('营业执照上传成功');
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error.message || '营业执照上传失败');
+    ElMessage.error(extractErrorMessage(error, '营业执照上传失败'));
   } finally {
     uploadingBusinessLicense.value = false;
   }
@@ -312,7 +316,7 @@ async function saveMerchant() {
     await loadMerchant();
   } catch (error) {
     console.error('更新商户失败:', error);
-    ElMessage.error(error?.response?.data?.error || '保存失败');
+    ElMessage.error(extractErrorMessage(error, '保存失败'));
   } finally {
     savingMerchant.value = false;
   }
