@@ -1,5 +1,6 @@
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { extractEnvelopeData, extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts';
 import request from '@/utils/request';
 
 export function useCouponManagementPage() {
@@ -92,13 +93,14 @@ export function useCouponManagementPage() {
         limit: filters.limit
       };
       const { data } = await request.get('/api/coupons/admin', { params });
-      coupons.value = Array.isArray(data?.items) ? data.items : [];
-      total.value = Number(data?.total || 0);
+      const page = extractPaginatedItems(data);
+      coupons.value = page.items;
+      total.value = Number(page.total || 0);
     } catch (error) {
-      loadError.value = error?.response?.data?.error || error?.message || '加载优惠券失败，请稍后重试';
+      loadError.value = extractErrorMessage(error, '加载优惠券失败，请稍后重试');
       coupons.value = [];
       total.value = 0;
-      ElMessage.error(error?.response?.data?.error || '加载优惠券失败');
+      ElMessage.error(extractErrorMessage(error, '加载优惠券失败'));
     } finally {
       loading.value = false;
     }
@@ -220,7 +222,8 @@ export function useCouponManagementPage() {
         description: createForm.description || ''
       };
       const { data } = await request.post('/api/coupons/admin', payload);
-      const claimUrl = data?.data?.claimUrl || data?.data?.coupon?.claimUrl || '';
+      const created = extractEnvelopeData(data) || {};
+      const claimUrl = String(created.claimUrl || created.coupon?.claimUrl || '').trim();
       createDialogVisible.value = false;
       ElMessage.success(claimUrl ? '创建成功，已生成链接' : '创建成功');
       if (claimUrl) {
@@ -228,7 +231,7 @@ export function useCouponManagementPage() {
       }
       await loadCoupons();
     } catch (error) {
-      ElMessage.error(error?.response?.data?.error || '创建失败');
+      ElMessage.error(extractErrorMessage(error, '创建失败'));
     } finally {
       creating.value = false;
     }
@@ -241,7 +244,7 @@ export function useCouponManagementPage() {
       ElMessage.success(target === 'active' ? '已上架' : '已下架');
       await loadCoupons();
     } catch (error) {
-      ElMessage.error(error?.response?.data?.error || '更新状态失败');
+      ElMessage.error(extractErrorMessage(error, '更新状态失败'));
     }
   }
 
@@ -257,7 +260,7 @@ export function useCouponManagementPage() {
       await loadCoupons();
     } catch (error) {
       if (error !== 'cancel') {
-        ElMessage.error(error?.response?.data?.error || '删除失败');
+        ElMessage.error(extractErrorMessage(error, '删除失败'));
       }
     }
   }
@@ -296,13 +299,14 @@ export function useCouponManagementPage() {
         limit: issueLogFilters.limit
       };
       const { data } = await request.get(`/api/coupons/admin/${issueLogCoupon.id}/issue-logs`, { params });
-      issueLogs.value = Array.isArray(data?.items) ? data.items : [];
-      issueLogTotal.value = Number(data?.total || 0);
+      const page = extractPaginatedItems(data);
+      issueLogs.value = page.items;
+      issueLogTotal.value = Number(page.total || 0);
     } catch (error) {
       issueLogs.value = [];
       issueLogTotal.value = 0;
-      issueLogError.value = error?.response?.data?.error || error?.message || '加载发送记录失败，请稍后重试';
-      ElMessage.error(error?.response?.data?.error || '加载发送记录失败');
+      issueLogError.value = extractErrorMessage(error, '加载发送记录失败，请稍后重试');
+      ElMessage.error(extractErrorMessage(error, '加载发送记录失败'));
     } finally {
       issueLogLoading.value = false;
     }
@@ -336,7 +340,7 @@ export function useCouponManagementPage() {
         loadIssueLogs();
       }
     } catch (error) {
-      ElMessage.error(error?.response?.data?.error || '发券失败');
+      ElMessage.error(extractErrorMessage(error, '发券失败'));
     } finally {
       issuing.value = false;
     }

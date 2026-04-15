@@ -92,6 +92,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, RefreshRight } from '@element-plus/icons-vue';
 import { extractTemporaryCredential } from '@infinitech/admin-core';
+import { extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts';
 import request from '@/utils/request';
 import { downloadCredentialReceipt } from '@/utils/credentialReceipt';
 import PageStateAlert from '@/components/PageStateAlert.vue';
@@ -135,10 +136,6 @@ onMounted(() => {
   loadAll();
 });
 
-function extractErrorMessage(error, fallback) {
-  return error?.response?.data?.error || error?.response?.data?.message || error?.message || fallback;
-}
-
 function resolveAdminId(admin) {
   const id = admin?.id ?? admin?.legacyId;
   if (id === undefined || id === null || id === '') {
@@ -175,8 +172,9 @@ async function loadAdmins() {
   loadingAdmins.value = true;
   try {
     const { data } = await request.get('/api/admins');
-    const payload = data?.data ?? data;
-    admins.value = Array.isArray(payload) ? payload : [];
+    admins.value = extractPaginatedItems(data, {
+      listKeys: ['admins', 'items']
+    }).items;
   } catch (error) {
     admins.value = [];
     adminsError.value = extractErrorMessage(error, '加载管理员账号失败，请稍后重试');

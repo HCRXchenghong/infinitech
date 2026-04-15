@@ -121,6 +121,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 
 const route = useRoute();
@@ -251,13 +252,14 @@ async function loadCoupon() {
 
   try {
     const { data } = await request.get(`/api/coupons/link/${encodeURIComponent(token.value)}`);
-    const payload = data?.coupon || data?.data?.coupon || data?.data || null;
+    const enveloped = extractEnvelopeData(data);
+    const payload = enveloped?.coupon || enveloped || null;
     if (!payload || !payload.id) {
       throw new Error('优惠券信息无效');
     }
     coupon.value = payload;
   } catch (error) {
-    loadError.value = error?.response?.data?.error || error?.message || '领券链接不可用';
+    loadError.value = extractErrorMessage(error, '领券链接不可用');
   } finally {
     loading.value = false;
   }
@@ -287,12 +289,13 @@ async function handleClaim() {
     const { data } = await request.post(`/api/coupons/link/${encodeURIComponent(token.value)}/claim`, {
       phone: input
     });
+    const payload = extractEnvelopeData(data) || {};
 
     isClaimed.value = true;
     updateCouponAfterClaim();
-    showToast(data?.message || '领取成功，已放入卡包');
+    showToast(payload.message || data?.message || '领取成功，已放入卡包');
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || '领取失败');
+    ElMessage.error(extractErrorMessage(error, '领取失败'));
   } finally {
     claiming.value = false;
   }

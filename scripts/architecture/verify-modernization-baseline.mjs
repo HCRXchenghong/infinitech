@@ -490,6 +490,18 @@ assertContains(
   "extractEnvelopeData(data)",
 );
 assertContains(
+  "admin-vue/src/views/ManagementCenter.vue",
+  "extractPaginatedItems(data",
+);
+assertContains(
+  "admin-vue/src/views/couponManagementHelpers.js",
+  "extractPaginatedItems(data)",
+);
+assertContains(
+  "admin-vue/src/views/CouponLanding.vue",
+  "extractEnvelopeData(data)",
+);
+assertContains(
   "backend/go/internal/handler/shop_handler.go",
   'respondEnvelope(c, http.StatusOK, "SHOP_REVIEW_LISTED"',
 );
