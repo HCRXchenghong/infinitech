@@ -1,3 +1,5 @@
+import { extractErrorMessage } from '@infinitech/contracts';
+
 function formatExportDate() {
   return new Date().toISOString().split('T')[0];
 }
@@ -24,15 +26,10 @@ function buildPlatformBackupSummary(allData) {
 }
 
 function buildErrorMessage(prefix, error) {
-  let message = `${prefix}: `;
-  if (error?.response) {
-    message += error.response.data?.error || `服务器错误 (${error.response.status})`;
-  } else if (error?.request) {
-    message += '网络连接失败，请检查网络或服务器状态';
-  } else {
-    message += error?.message || '未知错误';
+  if (error?.request && !error?.response) {
+    return `${prefix}: 网络连接失败，请检查网络或服务器状态`;
   }
-  return message;
+  return `${prefix}: ${extractErrorMessage(error, '未知错误')}`;
 }
 
 function saveJsonFile(jsonString, filename) {
@@ -442,7 +439,7 @@ export function useDataManagementBundleHelpers({
       }
     } catch (error) {
       if (error !== 'cancel') {
-        ElMessage.error('导入失败: ' + (error?.response?.data?.error || error.message));
+        ElMessage.error(buildErrorMessage('导入失败', error));
       }
     } finally {
       importingAll.value = false;

@@ -538,6 +538,18 @@ assertContains(
   "extractAfterSalesPage(data)",
 );
 assertContains(
+  "admin-vue/src/views/DiningBuddyGovernance.vue",
+  "extractPaginatedItems(data, { listKeys: ['parties', 'items'] }).items",
+);
+assertContains(
+  "admin-vue/src/views/NotificationPreviewPage.vue",
+  "extractEnvelopeData(data) || {}",
+);
+assertContains(
+  "admin-vue/src/views/settingsActionHelpers.js",
+  "extractErrorMessage(error, '未知错误')",
+);
+assertContains(
   "admin-vue/src/views/TransactionLogs.vue",
   "extractFinancialTransactionLogPage(res.data)",
 );
@@ -651,6 +663,22 @@ assertNotContains(
 );
 assertNotContains(
   "admin-vue/src/views/ridersActionHelpers.js",
+  "error?.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/NotificationPreviewPage.vue",
+  "error?.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/settingsActionHelpers.js",
+  "error?.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/dataManagementHelpers.js",
+  "error?.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/dataManagementBundleHelpers.js",
   "error?.response?.data?.error",
 );
 assertContains(

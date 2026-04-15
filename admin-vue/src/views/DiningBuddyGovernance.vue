@@ -373,7 +373,7 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts'
+import { extractEnvelopeData, extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 
@@ -585,7 +585,7 @@ async function loadParties(forceRefresh = false) {
         _t: forceRefresh ? Date.now() : undefined
       }
     })
-    parties.value = Array.isArray(data?.parties) ? data.parties : []
+    parties.value = extractPaginatedItems(data, { listKeys: ['parties', 'items'] }).items
   } catch (error) {
     ElMessage.error(extractErrorMessage(error, '加载组局列表失败'))
   } finally {
@@ -617,8 +617,7 @@ async function loadMessages(partyId, forceRefresh = false) {
     const { data } = await request.get(`/api/admin/dining-buddy/parties/${encodeURIComponent(partyId)}/messages`, {
       params: forceRefresh ? { _t: Date.now() } : undefined
     })
-    const payload = extractEnvelopeData(data) || {}
-    messages.value = Array.isArray(payload.messages) ? payload.messages : []
+    messages.value = extractPaginatedItems(data, { listKeys: ['messages', 'items'] }).items
   } catch (error) {
     ElMessage.error(extractErrorMessage(error, '加载消息列表失败'))
   } finally {
@@ -659,8 +658,7 @@ async function loadReports(forceRefresh = false) {
         _t: forceRefresh ? Date.now() : undefined
       }
     })
-    const payload = extractEnvelopeData(data) || {}
-    reports.value = Array.isArray(payload.reports) ? payload.reports : []
+    reports.value = extractPaginatedItems(data, { listKeys: ['reports', 'items'] }).items
   } catch (error) {
     ElMessage.error(extractErrorMessage(error, '加载举报列表失败'))
   } finally {
@@ -719,8 +717,7 @@ async function loadSensitiveWords(forceRefresh = false) {
     const { data } = await request.get('/api/admin/dining-buddy/sensitive-words', {
       params: forceRefresh ? { _t: Date.now() } : undefined
     })
-    const payload = extractEnvelopeData(data) || {}
-    sensitiveWords.value = Array.isArray(payload.items) ? payload.items : []
+    sensitiveWords.value = extractPaginatedItems(data).items
   } catch (error) {
     ElMessage.error(extractErrorMessage(error, '加载敏感词失败'))
   } finally {
@@ -786,8 +783,7 @@ async function loadRestrictions(forceRefresh = false) {
     const { data } = await request.get('/api/admin/dining-buddy/user-restrictions', {
       params: forceRefresh ? { _t: Date.now() } : undefined
     })
-    const payload = extractEnvelopeData(data) || {}
-    restrictions.value = Array.isArray(payload.items) ? payload.items : []
+    restrictions.value = extractPaginatedItems(data).items
   } catch (error) {
     ElMessage.error(extractErrorMessage(error, '加载用户限制失败'))
   } finally {
@@ -830,8 +826,7 @@ async function loadAuditLogs(forceRefresh = false) {
     const { data } = await request.get('/api/admin/dining-buddy/audit-logs', {
       params: forceRefresh ? { _t: Date.now() } : undefined
     })
-    const payload = extractEnvelopeData(data) || {}
-    auditLogs.value = Array.isArray(payload.items) ? payload.items : []
+    auditLogs.value = extractPaginatedItems(data).items
   } catch (error) {
     ElMessage.error(extractErrorMessage(error, '加载审计日志失败'))
   } finally {

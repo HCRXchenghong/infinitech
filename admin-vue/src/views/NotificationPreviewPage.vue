@@ -76,6 +76,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowLeft } from '@element-plus/icons-vue';
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 
 const route = useRoute();
@@ -158,10 +159,10 @@ async function loadNotification() {
   try {
     const id = route.params.id;
     const { data } = await request.get(`/api/notifications/admin/${id}`);
-    notification.value = data || {};
+    notification.value = extractEnvelopeData(data) || {};
   } catch (error) {
     notification.value = {};
-    loadError.value = error?.response?.data?.error || '加载通知失败';
+    loadError.value = extractErrorMessage(error, '加载通知失败');
   } finally {
     loading.value = false;
   }
