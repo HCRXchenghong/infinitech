@@ -11,6 +11,7 @@
     "./temporary-credential": "./src/temporary-credential.js",
     "./desktop-shell": "./src/desktop-shell.js",
     "./upload": "./src/upload.js",
-    "./paginated-resources": "./src/paginated-resources.js"
+    "./paginated-resources": "./src/paginated-resources.js",
+    "./system-log-resources": "./src/system-log-resources.js"
   }
 }

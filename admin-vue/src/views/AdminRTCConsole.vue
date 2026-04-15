@@ -297,7 +297,6 @@ import { extractRTCCallAuditPage } from '@infinitech/admin-core'
 import { extractErrorMessage } from '@infinitech/contracts'
 
 import PageStateAlert from '@/components/PageStateAlert.vue'
-import request from '@/utils/request'
 import {
   acceptAdminRTCCall,
   adminRTCState,
@@ -309,6 +308,7 @@ import {
   isFinalStatus,
   isWaitingStatus,
   rejectAdminRTCCall,
+  searchAdminRTCTargets,
   startAdminRTCCall,
 } from '@/utils/adminRtc'
 
@@ -479,13 +479,7 @@ async function searchTargets() {
   targetsLoading.value = true
   targetsError.value = ''
   try {
-    const { data } = await request.get('/api/messages/targets/search', {
-      params: {
-        q: searchForm.keyword,
-        limit: 20,
-      },
-    })
-    const list = Array.isArray(data?.targets) ? data.targets : []
+    const list = await searchAdminRTCTargets(searchForm.keyword)
     targets.value = list
       .map((item) => normalizeTarget(item))
       .filter((item) => ['user', 'merchant', 'rider'].includes(item.role))
@@ -498,8 +492,8 @@ async function searchTargets() {
   } catch (error) {
     targets.value = []
     selectedTarget.value = null
-    targetsError.value = error?.response?.data?.error || error?.message || '搜索 RTC 联系人失败'
-    ElMessage.error('搜索 RTC 联系人失败')
+    targetsError.value = extractErrorMessage(error, '搜索 RTC 联系人失败')
+    ElMessage.error(targetsError.value)
   } finally {
     targetsLoading.value = false
   }
@@ -529,7 +523,7 @@ async function loadRecentAudits() {
     auditSummary.ended = 0
     auditSummary.complaints = 0
     auditsError.value = extractErrorMessage(error, '加载 RTC 通话记录失败')
-    ElMessage.error('加载 RTC 通话记录失败')
+    ElMessage.error(auditsError.value)
   } finally {
     auditsLoading.value = false
   }
@@ -558,7 +552,7 @@ async function startCall() {
     ElMessage.success('RTC 呼叫已发起')
     await loadRecentAudits()
   } catch (error) {
-    ElMessage.error(error?.message || '发起 RTC 呼叫失败')
+    ElMessage.error(extractErrorMessage(error, '发起 RTC 呼叫失败'))
   } finally {
     startingCall.value = false
   }
@@ -569,7 +563,7 @@ async function handleAccept() {
     await acceptAdminRTCCall()
     ElMessage.success('已接听 RTC 通话')
   } catch (error) {
-    ElMessage.error(error?.message || '接听 RTC 通话失败')
+    ElMessage.error(extractErrorMessage(error, '接听 RTC 通话失败'))
   }
 }
 
@@ -578,7 +572,7 @@ async function handleReject() {
     await rejectAdminRTCCall()
     ElMessage.success('已拒绝 RTC 来电')
   } catch (error) {
-    ElMessage.error(error?.message || '拒绝 RTC 来电失败')
+    ElMessage.error(extractErrorMessage(error, '拒绝 RTC 来电失败'))
   }
 }
 
@@ -587,7 +581,7 @@ async function handleCancel() {
     await cancelAdminRTCCall()
     ElMessage.success('已取消 RTC 呼叫')
   } catch (error) {
-    ElMessage.error(error?.message || '取消 RTC 呼叫失败')
+    ElMessage.error(extractErrorMessage(error, '取消 RTC 呼叫失败'))
   }
 }
 
@@ -597,7 +591,7 @@ async function handleEnd() {
     ElMessage.success('RTC 通话已结束')
     await loadRecentAudits()
   } catch (error) {
-    ElMessage.error(error?.message || '结束 RTC 通话失败')
+    ElMessage.error(extractErrorMessage(error, '结束 RTC 通话失败'))
   }
 }
 

@@ -1,5 +1,6 @@
 import { reactive } from 'vue';
 import { ElMessage } from 'element-plus';
+import { extractEnvelopeData, extractPaginatedItems } from '@infinitech/contracts';
 
 import request from './request';
 import socketService from './socket';
@@ -103,11 +104,9 @@ function cloneDefaultRuntimeSettings() {
 }
 
 function normalizeSearchTargetsResponse(payload) {
-  if (Array.isArray(payload?.targets)) return payload.targets;
-  if (Array.isArray(payload?.data?.targets)) return payload.data.targets;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload)) return payload;
-  return [];
+  return extractPaginatedItems(payload, {
+    listKeys: ['targets', 'items', 'records', 'list'],
+  }).items;
 }
 
 function buildStatusMeta(status) {
@@ -213,7 +212,7 @@ const adminRTCState = reactive({
 
 const runtimeLoader = createRTCRuntimeSettingsLoader(async () => {
   const { data } = await request.get('/api/public/runtime-settings');
-  return data?.data || data || {};
+  return extractEnvelopeData(data) || {};
 });
 
 let rtcSocket = null;
@@ -338,7 +337,7 @@ function applyCallRecord(record, options = {}) {
   syncDerivedState();
 }
 
-async function searchChatTargets(keyword) {
+export async function searchAdminRTCTargets(keyword) {
   const q = trimValue(keyword);
   if (!q) return [];
 
@@ -432,7 +431,7 @@ async function resolveRTCTarget(context = {}) {
   );
 
   for (const keyword of searchKeywords) {
-    const targets = await searchChatTargets(keyword);
+    const targets = await searchAdminRTCTargets(keyword);
     const matched = pickSearchCandidate(targets, context, role);
     if (!matched) continue;
 
@@ -765,7 +764,7 @@ export async function startAdminRTCCall(context = {}) {
   };
 
   const { data } = await request.post('/api/rtc/calls', payload);
-  const call = data?.data || data;
+  const call = extractEnvelopeData(data) || data;
   const callId = normalizeCallId(call);
   if (!callId) {
     throw new Error('RTC 呼叫创建成功但未返回有效 callId');

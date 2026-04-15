@@ -46,7 +46,7 @@
           placeholder="业务分类"
           style="width: 160px"
         />
-        <el-button size="small" type="primary" @click="loadCampaigns">查询</el-button>
+        <el-button size="small" type="primary" @click="handleFilterQuery">查询</el-button>
       </div>
 
       <el-table :data="campaigns" size="small" stripe v-loading="loading">
@@ -316,6 +316,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { extractEnvelopeData, extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 
@@ -384,11 +385,31 @@ function formatDateTime(date) {
 }
 
 function extractList(payload, field) {
-  if (Array.isArray(payload?.[field])) return payload[field]
-  if (Array.isArray(payload?.data?.[field])) return payload.data[field]
-  if (Array.isArray(payload?.data)) return payload.data
-  if (Array.isArray(payload)) return payload
-  return []
+  return extractPaginatedItems(payload, { listKeys: [field] }).items
+}
+
+function extractHomeSlots(payload) {
+  const source = extractEnvelopeData(payload) || payload || {}
+  return {
+    products: extractList(source, 'products'),
+    shops: extractList(source, 'shops'),
+  }
+}
+
+async function withPageLoad(task, fallback = '加载首页推广数据失败') {
+  loading.value = true
+  pageError.value = ''
+  try {
+    await task()
+  } catch (error) {
+    pageError.value = extractErrorMessage(error, fallback)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function refreshPlacementData() {
+  await Promise.all([loadCampaigns(), loadSlots()])
 }
 
 function assignForm(values) {
@@ -492,7 +513,7 @@ async function loadTargets() {
 
 async function loadCampaigns() {
   const { data } = await request.get('/api/home-campaigns', { params: { ...filters } })
-  campaigns.value = Array.isArray(data?.campaigns) ? data.campaigns : []
+  campaigns.value = extractPaginatedItems(data, { listKeys: ['campaigns'] }).items
 }
 
 async function loadSlots() {
@@ -502,24 +523,19 @@ async function loadSlots() {
       businessCategory: filters.businessCategory || '',
     },
   })
-  slotProducts.value = Array.isArray(data?.products) ? data.products : []
-  slotShops.value = Array.isArray(data?.shops) ? data.shops : []
+  const slots = extractHomeSlots(data)
+  slotProducts.value = slots.products
+  slotShops.value = slots.shops
+}
+
+function handleFilterQuery() {
+  void withPageLoad(refreshPlacementData)
 }
 
 async function loadAll() {
-  loading.value = true
-  pageError.value = ''
-  try {
-    await Promise.all([loadCampaigns(), loadSlots(), loadTargets()])
-  } catch (error) {
-    pageError.value =
-      error?.response?.data?.error ||
-      error?.response?.data?.message ||
-      error?.message ||
-      '加载首页推广数据失败'
-  } finally {
-    loading.value = false
-  }
+  await withPageLoad(async () => {
+    await Promise.all([refreshPlacementData(), loadTargets()])
+  })
 }
 
 function buildPayload() {
@@ -569,12 +585,7 @@ async function submitForm() {
     dialogVisible.value = false
     await loadAll()
   } catch (error) {
-    ElMessage.error(
-      error?.response?.data?.error ||
-      error?.response?.data?.message ||
-      error?.message ||
-      '保存首页推广计划失败',
-    )
+    ElMessage.error(extractErrorMessage(error, '保存首页推广计划失败'))
   } finally {
     submitting.value = false
   }
@@ -586,12 +597,7 @@ async function changeStatus(row, action) {
     ElMessage.success('状态更新成功')
     await loadAll()
   } catch (error) {
-    ElMessage.error(
-      error?.response?.data?.error ||
-      error?.response?.data?.message ||
-      error?.message ||
-      '状态更新失败',
-    )
+    ElMessage.error(extractErrorMessage(error, '状态更新失败'))
   }
 }
 

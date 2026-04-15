@@ -270,6 +270,8 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
+import { extractSystemLogPage } from "@infinitech/admin-core";
+import { extractErrorMessage } from "@infinitech/contracts";
 import request from "@/utils/request";
 import PageStateAlert from "@/components/PageStateAlert.vue";
 
@@ -362,6 +364,30 @@ const serviceStatus = reactive({
   overall: "unknown",
   services: []
 });
+
+function applySystemLogPage(payload) {
+  const page = extractSystemLogPage(payload);
+  logs.value = page.items;
+  pagination.total = page.total;
+  summary.create = Number(page.summary.create || 0);
+  summary.delete = Number(page.summary.delete || 0);
+  summary.update = Number(page.summary.update || 0);
+  summary.read = Number(page.summary.read || 0);
+  summary.system = Number(page.summary.system || 0);
+  summary.error = Number(page.summary.error || 0);
+  serviceStatus.checkedAt = String(page.serviceStatus.checkedAt || "");
+  serviceStatus.overall = String(page.serviceStatus.overall || "unknown");
+  serviceStatus.services = Array.isArray(page.serviceStatus.services) ? page.serviceStatus.services : [];
+}
+
+function resetSystemLogPage() {
+  applySystemLogPage({
+    items: [],
+    total: 0,
+    summary: {},
+    serviceStatus: {},
+  });
+}
 
 const filters = reactive({
   source: "all",
@@ -639,35 +665,11 @@ async function loadLogs() {
     }
 
     const { data } = await request.get("/api/system-logs", { params });
-    logs.value = Array.isArray(data?.items) ? data.items : [];
-    pagination.total = Number(data?.pagination?.total || 0);
-
-    const nextSummary = data?.summary || {};
-    summary.create = Number(nextSummary.create || 0);
-    summary.delete = Number(nextSummary.delete || 0);
-    summary.update = Number(nextSummary.update || 0);
-    summary.read = Number(nextSummary.read || 0);
-    summary.system = Number(nextSummary.system || 0);
-    summary.error = Number(nextSummary.error || 0);
-
-    const nextServiceStatus = data?.serviceStatus || {};
-    serviceStatus.checkedAt = String(nextServiceStatus.checkedAt || "");
-    serviceStatus.overall = String(nextServiceStatus.overall || "unknown");
-    serviceStatus.services = Array.isArray(nextServiceStatus.services) ? nextServiceStatus.services : [];
+    applySystemLogPage(data);
   } catch (error) {
-    logs.value = [];
-    pagination.total = 0;
-    summary.create = 0;
-    summary.delete = 0;
-    summary.update = 0;
-    summary.read = 0;
-    summary.system = 0;
-    summary.error = 0;
-    serviceStatus.checkedAt = "";
-    serviceStatus.overall = "unknown";
-    serviceStatus.services = [];
-    loadError.value = error?.response?.data?.error || error?.message || "加载系统日志失败，请稍后重试";
-    ElMessage.error("加载系统日志失败");
+    resetSystemLogPage();
+    loadError.value = extractErrorMessage(error, "加载系统日志失败，请稍后重试");
+    ElMessage.error(loadError.value);
   } finally {
     loading.value = false;
   }
@@ -729,7 +731,7 @@ async function confirmDeleteLog() {
     pendingDeleteLog.value = null;
     await loadLogs();
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || "删除日志失败");
+    ElMessage.error(extractErrorMessage(error, "删除日志失败"));
   } finally {
     deleting.value = false;
   }
@@ -753,7 +755,7 @@ async function confirmClearLogs() {
     pagination.page = 1;
     await loadLogs();
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || "清空日志失败");
+    ElMessage.error(extractErrorMessage(error, "清空日志失败"));
   } finally {
     clearing.value = false;
   }

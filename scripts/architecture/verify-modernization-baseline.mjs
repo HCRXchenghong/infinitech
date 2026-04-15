@@ -395,7 +395,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs"',
+  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -538,6 +538,26 @@ assertContains(
   "extractUploadAsset(data)",
 );
 assertContains(
+  "admin-vue/src/views/HomeCampaigns.vue",
+  "extractPaginatedItems(data, { listKeys: ['campaigns'] }).items",
+);
+assertContains(
+  "admin-vue/src/views/AdminRTCConsole.vue",
+  "searchAdminRTCTargets(searchForm.keyword)",
+);
+assertContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "extractSystemLogPage(payload)",
+);
+assertContains(
+  "admin-vue/src/utils/adminRtc.js",
+  "extractPaginatedItems(payload, {",
+);
+assertContains(
+  "packages/admin-core/src/system-log-resources.js",
+  "export function extractSystemLogPage(payload = {})",
+);
+assertContains(
   "admin-vue/src/utils/officialSiteApi.js",
   "extractPaginatedItems(payload",
 );
@@ -587,6 +607,18 @@ assertNotContains(
 );
 assertNotContains(
   "admin-vue/src/utils/officialSiteApi.js",
+  "error?.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/HomeCampaigns.vue",
+  "error?.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "error?.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/AdminRTCConsole.vue",
   "error?.response?.data?.error",
 );
 assertContains(
