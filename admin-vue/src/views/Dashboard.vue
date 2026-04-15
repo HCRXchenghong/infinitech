@@ -502,7 +502,7 @@ async function loadWeather(forceRefresh = false) {
   try {
     weatherError.value = ''
     const { data } = await request.get('/api/weather')
-    weatherData.value = data || { available: false }
+    weatherData.value = extractEnvelopeData(data) || data || { available: false }
     weatherCache.value = weatherData.value
     cacheTimestamp.value.weather = now
   } catch (error) {

@@ -96,6 +96,53 @@ func TestRespondMirroredSuccessEnvelopeMirrorsMapPayloadToLegacyFields(t *testin
 	}
 }
 
+func TestRespondAdminSettingsMirroredSuccessMirrorsStructPayloadToLegacyFields(t *testing.T) {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+
+	type payload struct {
+		ServicePhone string `json:"service_phone"`
+		RTCEnabled   bool   `json:"rtc_enabled"`
+	}
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/test", nil)
+	ctx.Set("request_id", "req-test-005")
+
+	respondAdminSettingsMirroredSuccess(ctx, "mirrored-struct", payload{
+		ServicePhone: "400-800-1234",
+		RTCEnabled:   true,
+	})
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+
+	var decoded map[string]interface{}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &decoded); err != nil {
+		t.Fatalf("failed to decode payload: %v", err)
+	}
+
+	if decoded["service_phone"] != "400-800-1234" {
+		t.Fatalf("expected top-level service_phone mirror, got %v", decoded["service_phone"])
+	}
+	if decoded["rtc_enabled"] != true {
+		t.Fatalf("expected top-level rtc_enabled mirror, got %v", decoded["rtc_enabled"])
+	}
+
+	data, ok := decoded["data"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected data object, got %T", decoded["data"])
+	}
+	if data["service_phone"] != "400-800-1234" {
+		t.Fatalf("expected data.service_phone mirror, got %v", data["service_phone"])
+	}
+	if data["rtc_enabled"] != true {
+		t.Fatalf("expected data.rtc_enabled mirror, got %v", data["rtc_enabled"])
+	}
+}
+
 func TestRespondSensitiveEnvelopeSetsNoStoreHeaders(t *testing.T) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)

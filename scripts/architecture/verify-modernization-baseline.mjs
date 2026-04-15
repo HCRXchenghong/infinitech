@@ -327,6 +327,30 @@ assertContains(
 );
 assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",
+  'respondAdminSettingsMirroredSuccess(c, "服务配置加载成功", data)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  'respondAdminSettingsMirroredSuccess(c, "公共运行时配置加载成功", payload)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  'respondAdminSettingsMirroredSuccess(c, "服务配置保存成功", data)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  'respondAdminSettingsMirroredSuccess(c, "公益公开配置加载成功", payload)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  'respondAdminSettingsMirroredSuccess(c, "会员公开配置加载成功", payload)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  'respondAdminSettingsMirroredSuccess(c, "天气信息加载成功", normalized)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
   'respondAdminSettingsSuccess(c, "APP 下载配置加载成功", data)',
 );
 assertContains(
@@ -743,6 +767,10 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers.js",
+  "mergeServiceSettings(extractEnvelopeData(serviceResp.value.data) || {})",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers.js",
   "sms.value = normalizeSMSConfig(extractEnvelopeData(smsResp.value.data) || {})",
 );
 assertContains(
@@ -764,6 +792,14 @@ assertContains(
 assertContains(
   "admin-vue/src/views/settingsHelpers/weather.js",
   "mergeWeatherConfig(extractEnvelopeData(res.data) || {})",
+);
+assertContains(
+  "admin-vue/src/utils/notificationSound.js",
+  "normalizeSoundRuntime(extractEnvelopeData(data) || data || {})",
+);
+assertContains(
+  "admin-vue/src/views/Dashboard.vue",
+  "weatherData.value = extractEnvelopeData(data) || data || { available: false }",
 );
 assertContains(
   "admin-vue/src/views/dataManagementHelpers.js",

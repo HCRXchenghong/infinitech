@@ -1,3 +1,4 @@
+import { extractEnvelopeData } from '@infinitech/contracts';
 import request from '@/utils/request';
 
 const DEFAULT_SOUND_RUNTIME = {
@@ -112,7 +113,7 @@ export async function loadNotificationSoundRuntime(force = false) {
 
   loadingPromise = request.get('/api/public/runtime-settings')
     .then(({ data }) => {
-      cachedSoundRuntime = normalizeSoundRuntime(data || {});
+      cachedSoundRuntime = normalizeSoundRuntime(extractEnvelopeData(data) || data || {});
       hasLoadedSoundRuntime = true;
       return getCachedNotificationSoundRuntime();
     })

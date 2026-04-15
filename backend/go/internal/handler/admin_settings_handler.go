@@ -101,8 +101,28 @@ func respondAdminSettingsSuccess(c *gin.Context, message string, data interface{
 	respondSuccessEnvelope(c, message, data, nil)
 }
 
+func adminSettingsLegacyEnvelopeFields(data interface{}) gin.H {
+	if legacy := legacyEnvelopeFields(data); legacy != nil {
+		return legacy
+	}
+	if data == nil {
+		return nil
+	}
+
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return nil
+	}
+
+	legacy := map[string]interface{}{}
+	if err := json.Unmarshal(raw, &legacy); err != nil {
+		return nil
+	}
+	return gin.H(legacy)
+}
+
 func respondAdminSettingsMirroredSuccess(c *gin.Context, message string, data interface{}) {
-	respondMirroredSuccessEnvelope(c, message, data)
+	respondSuccessEnvelope(c, message, data, adminSettingsLegacyEnvelopeFields(data))
 }
 
 // Debug mode
@@ -197,32 +217,33 @@ func (h *AdminSettingsHandler) GetServiceSettings(c *gin.Context) {
 	data := service.DefaultServiceSettings()
 	_ = h.admin.GetSetting(c.Request.Context(), "service_settings", &data)
 	data = service.NormalizeServiceSettings(data)
-	c.JSON(http.StatusOK, data)
+	respondAdminSettingsMirroredSuccess(c, "服务配置加载成功", data)
 }
 
 func (h *AdminSettingsHandler) GetPublicRuntimeSettings(c *gin.Context) {
 	data := service.DefaultServiceSettings()
 	_ = h.admin.GetSetting(c.Request.Context(), "service_settings", &data)
 	data = service.NormalizeServiceSettings(data)
-	c.JSON(http.StatusOK, service.BuildPublicPlatformRuntimeSettings(data, h.loadPlatformRuntimeBundle(c)))
+	payload := service.BuildPublicPlatformRuntimeSettings(data, h.loadPlatformRuntimeBundle(c))
+	respondAdminSettingsMirroredSuccess(c, "公共运行时配置加载成功", payload)
 }
 
 func (h *AdminSettingsHandler) UpdateServiceSettings(c *gin.Context) {
 	data := service.DefaultServiceSettings()
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	data = service.NormalizeServiceSettings(data)
 	if err := service.ValidateServiceSettings(data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInvalidRequest(c, err.Error())
 		return
 	}
 	if err := h.admin.SaveSetting(c.Request.Context(), "service_settings", data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondAdminSettingsMirroredSuccess(c, "服务配置保存成功", data)
 }
 
 func (h *AdminSettingsHandler) GetCharitySettings(c *gin.Context) {
@@ -243,14 +264,16 @@ func (h *AdminSettingsHandler) GetPublicCharitySettings(c *gin.Context) {
 	data := service.DefaultCharitySettings()
 	_ = h.admin.GetSetting(c.Request.Context(), "charity_settings", &data)
 	data = service.NormalizeCharitySettings(data)
-	c.JSON(http.StatusOK, service.BuildPublicCharitySettings(data))
+	payload := service.BuildPublicCharitySettings(data)
+	respondAdminSettingsMirroredSuccess(c, "公益公开配置加载成功", payload)
 }
 
 func (h *AdminSettingsHandler) GetPublicVIPSettings(c *gin.Context) {
 	data := service.DefaultVIPSettings()
 	_ = h.admin.GetSetting(c.Request.Context(), "vip_settings", &data)
 	data = service.NormalizeVIPSettings(data)
-	c.JSON(http.StatusOK, service.BuildPublicVIPSettings(data))
+	payload := service.BuildPublicVIPSettings(data)
+	respondAdminSettingsMirroredSuccess(c, "会员公开配置加载成功", payload)
 }
 
 func (h *AdminSettingsHandler) UpdateCharitySettings(c *gin.Context) {
@@ -799,14 +822,15 @@ func (h *AdminSettingsHandler) UploadPackage(c *gin.Context) {
 }
 
 func (h *AdminSettingsHandler) GetWeather(c *gin.Context) {
+	respondWeatherError := func(status int, code, message string, legacy gin.H) {
+		respondEnvelope(c, status, code, message, gin.H{}, legacy)
+	}
+
 	settingData := map[string]interface{}{}
 	_ = h.admin.GetSetting(c.Request.Context(), "weather_config", &settingData)
 	cfg, err := buildWeatherConfig(settingData)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    "INVALID_PARAMETER",
-			"message": "天气配置无效，请先在管理端修正天气配置",
-		})
+		respondWeatherError(http.StatusBadRequest, "INVALID_PARAMETER", "天气配置无效，请先在管理端修正天气配置", nil)
 		return
 	}
 
@@ -815,62 +839,50 @@ func (h *AdminSettingsHandler) GetWeather(c *gin.Context) {
 		lang = cfg.Lang
 	}
 	if lang != "zh" && lang != "en" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    "INVALID_PARAMETER",
-			"message": "lang 仅支持 zh/en",
-		})
+		respondWeatherError(http.StatusBadRequest, "INVALID_PARAMETER", "lang 仅支持 zh/en", nil)
 		return
 	}
 
 	adcode := strings.TrimSpace(cfg.Adcode)
 	city := strings.TrimSpace(cfg.City)
 	if adcode == "" && city == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    "INVALID_PARAMETER",
-			"message": "请先在管理端配置天气城市或行政区编码",
-		})
+		respondWeatherError(http.StatusBadRequest, "INVALID_PARAMETER", "请先在管理端配置天气城市或行政区编码", nil)
 		return
 	}
 	if adcode != "" && !isValidAdcode(adcode) {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    "INVALID_PARAMETER",
-			"message": "adcode 格式非法",
-		})
+		respondWeatherError(http.StatusBadRequest, "INVALID_PARAMETER", "adcode 格式非法", nil)
 		return
 	}
 
 	extended, err := parseQueryBoolWithDefault(c, "extended", cfg.Extended)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": "INVALID_PARAMETER", "message": "extended 参数无效"})
+		respondWeatherError(http.StatusBadRequest, "INVALID_PARAMETER", "extended 参数无效", nil)
 		return
 	}
 	forecast, err := parseQueryBoolWithDefault(c, "forecast", cfg.Forecast)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": "INVALID_PARAMETER", "message": "forecast 参数无效"})
+		respondWeatherError(http.StatusBadRequest, "INVALID_PARAMETER", "forecast 参数无效", nil)
 		return
 	}
 	hourly, err := parseQueryBoolWithDefault(c, "hourly", cfg.Hourly)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": "INVALID_PARAMETER", "message": "hourly 参数无效"})
+		respondWeatherError(http.StatusBadRequest, "INVALID_PARAMETER", "hourly 参数无效", nil)
 		return
 	}
 	minutely, err := parseQueryBoolWithDefault(c, "minutely", cfg.Minutely)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": "INVALID_PARAMETER", "message": "minutely 参数无效"})
+		respondWeatherError(http.StatusBadRequest, "INVALID_PARAMETER", "minutely 参数无效", nil)
 		return
 	}
 	indices, err := parseQueryBoolWithDefault(c, "indices", cfg.Indices)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": "INVALID_PARAMETER", "message": "indices 参数无效"})
+		respondWeatherError(http.StatusBadRequest, "INVALID_PARAMETER", "indices 参数无效", nil)
 		return
 	}
 
 	upstreamURL, err := url.Parse(cfg.APIBaseURL)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    "INVALID_PARAMETER",
-			"message": "天气配置中的 API 地址无效",
-		})
+		respondWeatherError(http.StatusBadRequest, "INVALID_PARAMETER", "天气配置中的 API 地址无效", nil)
 		return
 	}
 
@@ -902,17 +914,14 @@ func (h *AdminSettingsHandler) GetWeather(c *gin.Context) {
 		if cached, ok := getCachedWeatherResponse(cacheKey); ok {
 			cached["cache_hit"] = true
 			cached["refresh_interval_minutes"] = cfg.RefreshMin
-			c.JSON(http.StatusOK, cached)
+			respondAdminSettingsMirroredSuccess(c, "天气信息加载成功", cached)
 			return
 		}
 	}
 
 	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, upstreamURL.String(), nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    "INTERNAL_SERVER_ERROR",
-			"message": "构建天气请求失败",
-		})
+		respondWeatherError(http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "构建天气请求失败", nil)
 		return
 	}
 
@@ -930,21 +939,14 @@ func (h *AdminSettingsHandler) GetWeather(c *gin.Context) {
 	client := &http.Client{Timeout: time.Duration(cfg.TimeoutMS) * time.Millisecond}
 	resp, err := client.Do(req)
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"code":    "SERVICE_UNAVAILABLE",
-			"message": "天气服务暂时不可用",
-			"error":   err.Error(),
-		})
+		respondWeatherError(http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "天气服务暂时不可用", nil)
 		return
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"code":    "SERVICE_UNAVAILABLE",
-			"message": "天气服务读取失败",
-		})
+		respondWeatherError(http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "天气服务读取失败", nil)
 		return
 	}
 
@@ -975,7 +977,7 @@ func (h *AdminSettingsHandler) GetWeather(c *gin.Context) {
 		if status < 400 || status > 599 {
 			status = http.StatusServiceUnavailable
 		}
-		c.JSON(status, payload)
+		respondWeatherError(status, parseString(payload["code"]), parseString(payload["message"]), gin.H(payload))
 		return
 	}
 
@@ -987,7 +989,7 @@ func (h *AdminSettingsHandler) GetWeather(c *gin.Context) {
 		normalized["cache_expires_at"] = cacheExpiresAt.Format(time.RFC3339)
 		setCachedWeatherResponse(cacheKey, normalized, cacheExpiresAt)
 	}
-	c.JSON(http.StatusOK, normalized)
+	respondAdminSettingsMirroredSuccess(c, "天气信息加载成功", normalized)
 }
 
 func defaultWeatherConfig() weatherConfig {

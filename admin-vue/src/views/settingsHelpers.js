@@ -643,7 +643,7 @@ export function useSettingsPage() {
         mergeWechatLoginConfig(extractEnvelopeData(wechatLoginResp.value.data) || {});
       }
       if (serviceResp.status === 'fulfilled' && serviceResp.value?.data) {
-        mergeServiceSettings(serviceResp.value.data);
+        mergeServiceSettings(extractEnvelopeData(serviceResp.value.data) || {});
       }
       if (charityResp.status === 'fulfilled' && charityResp.value?.data) {
         mergeCharitySettings(extractEnvelopeData(charityResp.value.data) || {});
