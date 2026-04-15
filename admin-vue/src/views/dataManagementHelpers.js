@@ -1,5 +1,10 @@
 import { computed, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import {
+  extractAdminMerchantPage,
+  extractAdminRiderPage,
+  extractAdminUserPage,
+} from '@infinitech/admin-core';
 import request from '@/utils/request';
 import { useDataManagementBundleHelpers } from './dataManagementBundleHelpers';
 
@@ -147,10 +152,16 @@ export function useDataManagementPage() {
       ].filter((item) => item.status === 'rejected').length;
 
       exportSummary.value = {
-        users: usersRes.status === 'fulfilled' ? Number(usersRes.value?.data?.total || 0) : 0,
-        riders: ridersRes.status === 'fulfilled' ? Number(ridersRes.value?.data?.total || 0) : 0,
+        users: usersRes.status === 'fulfilled'
+          ? Number(extractAdminUserPage(usersRes.value?.data).total || 0)
+          : 0,
+        riders: ridersRes.status === 'fulfilled'
+          ? Number(extractAdminRiderPage(ridersRes.value?.data).total || 0)
+          : 0,
         orders: ordersRes.status === 'fulfilled' ? Number(ordersRes.value?.data?.total || 0) : 0,
-        merchants: merchantsRes.status === 'fulfilled' ? Number(merchantsRes.value?.data?.total || 0) : 0,
+        merchants: merchantsRes.status === 'fulfilled'
+          ? Number(extractAdminMerchantPage(merchantsRes.value?.data).total || 0)
+          : 0,
         systemSettingKeys: systemRes.status === 'fulfilled'
           ? Number(systemRes.value?.data?.summary?.setting_keys || 0)
           : 0,

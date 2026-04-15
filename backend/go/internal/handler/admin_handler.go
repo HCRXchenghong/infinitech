@@ -264,10 +264,10 @@ func (h *AdminHandler) GetUsers(c *gin.Context) {
 
 	users, total, err := h.admin.ListUsers(c.Request.Context(), c.Query("search"), c.Query("type"), limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "加载用户列表失败", gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"users": users, "total": total})
+	respondPaginatedEnvelope(c, "ADMIN_USER_LISTED", "用户列表加载成功", "users", users, total, page, limit)
 }
 
 func (h *AdminHandler) CreateUser(c *gin.Context) {
@@ -367,10 +367,10 @@ func (h *AdminHandler) GetRiders(c *gin.Context) {
 
 	riders, total, err := h.admin.ListRiders(c.Request.Context(), c.Query("search"), limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "加载骑手列表失败", gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"riders": riders, "total": total})
+	respondPaginatedEnvelope(c, "ADMIN_RIDER_LISTED", "骑手列表加载成功", "riders", riders, total, page, limit)
 }
 
 func (h *AdminHandler) GetRiderByID(c *gin.Context) {
@@ -523,10 +523,10 @@ func (h *AdminHandler) GetMerchants(c *gin.Context) {
 
 	merchants, total, err := h.admin.ListMerchants(c.Request.Context(), c.Query("search"), limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "加载商户列表失败", gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"merchants": merchants, "total": total})
+	respondPaginatedEnvelope(c, "ADMIN_MERCHANT_LISTED", "商户列表加载成功", "merchants", merchants, total, page, limit)
 }
 
 func (h *AdminHandler) GetMerchant(c *gin.Context) {

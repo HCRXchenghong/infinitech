@@ -80,3 +80,48 @@ func TestRespondSensitiveEnvelopeSetsNoStoreHeaders(t *testing.T) {
 		t.Fatalf("expected nosniff header, got %q", got)
 	}
 }
+
+func TestRespondPaginatedEnvelopePreservesLegacyListKey(t *testing.T) {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/test", nil)
+	ctx.Set("request_id", "req-test-003")
+
+	respondPaginatedEnvelope(
+		ctx,
+		"ADMIN_USER_LISTED",
+		"用户列表加载成功",
+		"users",
+		[]gin.H{{"id": 1}},
+		10,
+		2,
+		20,
+	)
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to decode payload: %v", err)
+	}
+
+	data, ok := payload["data"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected data object, got %T", payload["data"])
+	}
+	items, ok := data["items"].([]interface{})
+	if !ok || len(items) != 1 {
+		t.Fatalf("expected data.items with one record, got %#v", data["items"])
+	}
+	legacyUsers, ok := payload["users"].([]interface{})
+	if !ok || len(legacyUsers) != 1 {
+		t.Fatalf("expected legacy users field with one record, got %#v", payload["users"])
+	}
+	if payload["code"] != "ADMIN_USER_LISTED" {
+		t.Fatalf("expected code ADMIN_USER_LISTED, got %v", payload["code"])
+	}
+	if payload["total"] != float64(10) {
+		t.Fatalf("expected total 10, got %v", payload["total"])
+	}
+}

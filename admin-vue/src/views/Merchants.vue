@@ -109,7 +109,10 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { extractTemporaryCredential } from '@infinitech/admin-core';
+import {
+  extractAdminMerchantPage,
+  extractTemporaryCredential,
+} from '@infinitech/admin-core';
 import {
   createDefaultInviteLinkForm,
   createEmptyInviteLinkResult,
@@ -152,14 +155,6 @@ onMounted(() => {
   loadMerchants();
 });
 
-function normalizeMerchant(raw) {
-  return {
-    ...raw,
-    owner_name: raw.owner_name || raw.name || '',
-    shopCount: 0
-  };
-}
-
 async function loadMerchants() {
   loading.value = true;
   loadError.value = '';
@@ -173,10 +168,10 @@ async function loadMerchants() {
     }
 
     const { data } = await request.get('/api/merchants', { params });
-    const list = Array.isArray(data?.merchants) ? data.merchants.map(normalizeMerchant) : [];
+    const page = extractAdminMerchantPage(data);
 
     const listWithCount = await Promise.all(
-      list.map(async (merchant) => {
+      page.items.map(async (merchant) => {
         try {
           const shopsRes = await request.get(`/api/merchants/${merchant.id}/shops`);
           const shops = shopsRes?.data?.shops || [];
@@ -194,7 +189,7 @@ async function loadMerchants() {
     );
 
     merchants.value = listWithCount;
-    total.value = Number(data?.total || 0);
+    total.value = Number(page.total || 0);
   } catch (error) {
     console.error('加载商户列表失败:', error);
     loadError.value = error?.response?.data?.error || error?.message || '加载商户列表失败，请稍后重试';

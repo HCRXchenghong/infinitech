@@ -4,7 +4,7 @@ import { ref, onMounted } from 'vue';
 import request from '@/utils/request';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, More, Delete, Sort, Plus } from '@element-plus/icons-vue';
-import { extractTemporaryCredential } from '@infinitech/admin-core';
+import { extractAdminUserPage, extractTemporaryCredential } from '@infinitech/admin-core';
 import {
   createDefaultInviteLinkForm,
   createEmptyInviteLinkResult,
@@ -89,14 +89,14 @@ async function loadUsers(forceRefresh = false) {
     }
     
     const { data } = await request.get('/api/users', { params });
-    
-    if (data && data.users) {
-      users.value = data.users;
-      total.value = data.total || 0;
-      // 缓存数据
+    const page = extractAdminUserPage(data);
+
+    if (page.items.length > 0) {
+      users.value = page.items;
+      total.value = page.total || 0;
       dataCache.value.set(key, {
-        users: [...data.users],
-        total: data.total || 0
+        users: [...page.items],
+        total: page.total || 0
       });
       // 限制缓存大小，最多缓存20页数据
       if (dataCache.value.size > 20) {
@@ -105,7 +105,7 @@ async function loadUsers(forceRefresh = false) {
       }
     } else {
       users.value = [];
-      total.value = 0;
+      total.value = page.total || 0;
     }
   } catch (e) {
     console.error('加载用户失败:', e);

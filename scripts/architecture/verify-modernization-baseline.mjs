@@ -47,6 +47,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/admin-core/src/index.js",
   "packages/admin-core/src/menu-groups.js",
   "packages/admin-core/src/temporary-credential.js",
+  "packages/admin-core/src/paginated-resources.js",
+  "packages/admin-core/src/paginated-resources.test.mjs",
   "packages/admin-core/src/DesktopShellApp.vue",
   "admin-win/src/App.vue",
   "admin-mac/src/App.vue",
@@ -393,15 +395,19 @@ assertContains(
 );
 assertContains(
   "package.json",
+  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs"',
+);
+assertContains(
+  "package.json",
   '"verify:client-sdk-tests": "node --test packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs"',
 );
 assertContains(
   "admin-vue/src/views/Users.vue",
-  "createOnboardingInviteApi",
+  "extractAdminUserPage",
 );
 assertContains(
   "admin-vue/src/views/Merchants.vue",
-  "createOnboardingInviteApi",
+  "extractAdminMerchantPage",
 );
 assertContains(
   "admin-vue/src/views/InviteLanding.vue",
@@ -410,6 +416,10 @@ assertContains(
 assertContains(
   "admin-vue/src/components/OldUserInviteFlow.vue",
   "createOnboardingInviteApi",
+);
+assertContains(
+  "admin-vue/src/views/ridersHelpers.js",
+  "extractAdminRiderPage",
 );
 assertNotContains(
   "socket-server/index.js",

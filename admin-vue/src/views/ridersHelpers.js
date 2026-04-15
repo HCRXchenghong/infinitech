@@ -1,6 +1,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import request from '@/utils/request';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { extractAdminRiderPage } from '@infinitech/admin-core';
 import {
   createDefaultInviteLinkForm,
   createEmptyInviteLinkResult,
@@ -132,17 +133,13 @@ export function useRidersPage() {
       }
 
       const { data } = await request.get('/api/riders', { params });
-      if (data && data.riders) {
-        riders.value = data.riders.map((rider) => ({
-          ...rider,
-          is_online: rider.is_online === 1 || rider.is_online === true,
-          rating: Number(rider.rating || 0),
-          rating_count: Number(rider.rating_count || rider.ratingCount || 0)
-        }));
-        total.value = data.total || 0;
+      const page = extractAdminRiderPage(data);
+      if (page.items.length > 0) {
+        riders.value = page.items;
+        total.value = page.total || 0;
         dataCache.value.set(key, {
           riders: [...riders.value],
-          total: data.total || 0
+          total: page.total || 0
         });
         if (dataCache.value.size > 20) {
           const firstKey = dataCache.value.keys().next().value;
@@ -150,7 +147,7 @@ export function useRidersPage() {
         }
       } else {
         riders.value = [];
-        total.value = 0;
+        total.value = page.total || 0;
       }
     } catch (e) {
       loadError.value = e?.response?.data?.error || e?.message || '加载骑手失败，请稍后重试';

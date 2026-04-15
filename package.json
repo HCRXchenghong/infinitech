@@ -15,13 +15,14 @@
     "verify:admin-mac-build": "npm --workspace admin-mac run build",
     "verify:admin-stack": "npm run verify:admin-vue-build && npm run verify:admin-win-types && npm run verify:admin-mac-types && npm run verify:admin-win-build && npm run verify:admin-mac-build",
     "verify:contracts-tests": "node --test packages/contracts/src/http.test.mjs",
+    "verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs",
     "verify:client-sdk-tests": "node --test packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs",
     "verify:go-tests": "cd backend/go && go test ./...",
     "verify:bff-tests": "npm --prefix backend/bff test",
     "verify:socket-check": "npm --prefix socket-server run check",
     "verify:management-tests": "node --test scripts/lib/management/management.test.mjs",
     "verify:backend-runtime": "npm run verify:go-tests && npm run verify:bff-tests && npm run verify:socket-check",
-    "verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:contracts-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"
+    "verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:contracts-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"
   },
   "workspaces": [
     "packages/*",

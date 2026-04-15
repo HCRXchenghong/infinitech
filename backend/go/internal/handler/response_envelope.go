@@ -90,6 +90,22 @@ func respondSuccessEnvelope(c *gin.Context, message string, data interface{}, le
 	respondEnvelope(c, http.StatusOK, responseCodeOK, message, data, legacy)
 }
 
+func respondPaginatedEnvelope(c *gin.Context, code, message, listKey string, items interface{}, total int64, page, limit int) {
+	data := gin.H{
+		"items": items,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	}
+	legacy := gin.H{
+		listKey: items,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	}
+	respondEnvelope(c, http.StatusOK, code, message, data, legacy)
+}
+
 func respondCreatedEnvelope(c *gin.Context, code, message string, data interface{}, legacy gin.H) {
 	respondEnvelope(c, http.StatusCreated, code, message, data, legacy)
 }

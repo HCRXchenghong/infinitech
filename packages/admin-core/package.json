@@ -10,6 +10,7 @@
     "./menu-groups": "./src/menu-groups.js",
     "./temporary-credential": "./src/temporary-credential.js",
     "./desktop-shell": "./src/desktop-shell.js",
-    "./upload": "./src/upload.js"
+    "./upload": "./src/upload.js",
+    "./paginated-resources": "./src/paginated-resources.js"
   }
 }
