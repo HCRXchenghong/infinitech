@@ -1,4 +1,5 @@
 import { createPhoneContactHelper } from './phone-contact.js'
+import { extractEnvelopeData } from '../../packages/contracts/src/http.js'
 
 function normalizePhoneNumber(value) {
   const text = String(value || '').trim()
@@ -174,7 +175,8 @@ export function createOrderListPage({
       loadAfterSales(userId) {
         fetchAfterSalesList(userId)
           .then((data) => {
-            const list = Array.isArray(data) ? data : []
+            const payload = extractEnvelopeData(data)
+            const list = Array.isArray(payload) ? payload : []
             this.afterSalesOrders = list.map((item) => mapAfterSalesItem(item))
           })
           .catch(() => {

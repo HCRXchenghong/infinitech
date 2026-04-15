@@ -1,5 +1,6 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
+import { extractPaginatedItems } from '../../packages/contracts/src/http.js'
 import {
   createMerchantGroupbuyRefund,
   deliverOrder,
@@ -147,7 +148,9 @@ export function useMerchantDashboardPage() {
     const sourceOrders = Array.isArray(orderRes?.orders) ? orderRes.orders : []
     orders.value = sourceOrders.filter((item: any) => toText(item?.shop_id || item?.shopId) === shopId)
 
-    const sourceAfterSales = Array.isArray(afterSalesRes?.list) ? afterSalesRes.list : []
+    const sourceAfterSales = extractPaginatedItems(afterSalesRes, {
+      listKeys: ['list', 'items'],
+    }).items
     afterSalesList.value = sourceAfterSales.filter((item: any) => toText(item?.shopId || item?.shop_id) === shopId)
   }
 

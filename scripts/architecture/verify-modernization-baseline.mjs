@@ -406,6 +406,18 @@ assertContains(
   'respondCouponMirroredSuccess(c, "领券链接信息加载成功", gin.H{',
 );
 assertContains(
+  "backend/go/internal/handler/after_sales_handler.go",
+  'respondAfterSalesMirroredSuccess(c, "售后申请提交成功", result)',
+);
+assertContains(
+  "backend/go/internal/handler/after_sales_handler.go",
+  'respondAfterSalesMirroredSuccess(c, "售后列表加载成功", result)',
+);
+assertContains(
+  "backend/go/internal/handler/after_sales_handler.go",
+  'respondSuccessEnvelope(c, "用户售后列表加载成功", result, nil)',
+);
+assertContains(
   "backend/bff/src/utils/apiEnvelope.js",
   "function buildSuccessEnvelopePayload(req, message, data, options = {})",
 );
@@ -452,6 +464,14 @@ assertContains(
 assertContains(
   "app-mobile/pages/profile/coupon-list/index.vue",
   "extractEnvelopeData(res)",
+);
+assertContains(
+  "shared/mobile-common/order-list-page.js",
+  "extractEnvelopeData(data)",
+);
+assertContains(
+  "merchant-app/shared-ui/merchantOrders.ts",
+  "extractPaginatedItems(afterSalesRes, {",
 );
 assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",
