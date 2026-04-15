@@ -279,7 +279,7 @@ export function useRiderActionHelpers(ctx) {
 
       deletingRider.value = rider.id;
       try {
-        const { data } = await request.delete(`/api/users/${rider.id}`);
+        const { data } = await request.delete(`/api/riders/${rider.id}`);
         if (data.success) {
           ElMessage.success('删除骑手成功');
           dataCache.value.clear();

@@ -377,6 +377,22 @@ assertContains(
   "backend/go/internal/handler/admin_handler.go",
   `"temporaryCredential": temporaryCredential`,
 );
+assertContains(
+  "backend/go/internal/handler/admin_handler.go",
+  'respondAdminSuccess(c, "管理员账号列表加载成功", admins)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_handler.go",
+  'respondAdminMirroredSuccess(c, "用户订单清理成功", gin.H{"deleted": deleted})',
+);
+assertContains(
+  "backend/go/internal/handler/admin_handler.go",
+  'respondAdminSuccess(c, "骑手详情加载成功", rider)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_handler.go",
+  'respondAdminSuccess(c, "商户详情加载成功", merchant)',
+);
 assertNotContains(
   "backend/go/internal/service/admin_service.go",
   "hashPassword(defaultAdminPassword)",
@@ -764,6 +780,10 @@ assertContains(
 assertContains(
   "backend/bff/src/services/adminSettingsService.js",
   'const data = normalizeAssetUrlFields(req, response.data, ["imageUrl", "image_url", "url", "asset_url"]);',
+);
+assertContains(
+  "admin-vue/src/views/ridersActionHelpers.js",
+  "await request.delete(`/api/riders/${rider.id}`);",
 );
 assertContains(
   "admin-vue/src/views/dashboardHelpers.js",
