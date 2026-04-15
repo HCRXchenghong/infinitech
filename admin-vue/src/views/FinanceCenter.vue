@@ -393,7 +393,8 @@ function loadAll() { loadOverview(); loadDetails(); loadCoinRatio(); loadRecentT
 async function loadCoinRatio() {
   try {
     const res = await request.get('/api/coin-ratio');
-    coinRatio.value = { ratio: res.data?.ratio || 100 };
+    const payload = extractEnvelopeData(res.data) || {};
+    coinRatio.value = { ratio: payload.ratio || 100 };
   } catch { /* ignore */ }
 }
 

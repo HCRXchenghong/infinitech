@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 
 const DEFAULT_WEATHER_CONFIG = {
@@ -50,10 +51,10 @@ export function useWeatherSettings() {
     try {
       const res = await request.get('/api/weather-config');
       if (res?.data) {
-        mergeWeatherConfig(res.data);
+        mergeWeatherConfig(extractEnvelopeData(res.data) || {});
       }
     } catch (err) {
-      error.value = err?.response?.data?.error || err?.message || '加载天气配置失败';
+      error.value = extractErrorMessage(err, '加载天气配置失败');
     } finally {
       loading.value = false;
     }
@@ -71,7 +72,7 @@ export function useWeatherSettings() {
         loadWeatherConfig();
       }, 100);
     } catch (err) {
-      const errorMsg = err?.response?.data?.error || err?.message || '保存失败';
+      const errorMsg = extractErrorMessage(err, '保存失败');
       ElMessage.error('保存失败: ' + errorMsg);
       throw err;
     } finally {

@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 import { DEFAULT_SMS_CONFIG, normalizeSMSConfig, buildSMSConfigPayload } from '../smsConfigHelpers';
 
@@ -21,10 +22,10 @@ export function useSmsSettings() {
     try {
       const res = await request.get('/api/sms-config');
       if (res?.data) {
-        sms.value = normalizeSMSConfig(res.data);
+        sms.value = normalizeSMSConfig(extractEnvelopeData(res.data) || {});
       }
     } catch (err) {
-      error.value = err?.response?.data?.error || err?.message || '加载短信配置失败';
+      error.value = extractErrorMessage(err, '加载短信配置失败');
     } finally {
       loading.value = false;
     }
@@ -43,7 +44,7 @@ export function useSmsSettings() {
         loadSmsConfig();
       }, 100);
     } catch (err) {
-      const errorMsg = err?.response?.data?.error || err?.message || '保存失败';
+      const errorMsg = extractErrorMessage(err, '保存失败');
       ElMessage.error('保存失败: ' + errorMsg);
       throw err;
     } finally {

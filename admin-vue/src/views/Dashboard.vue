@@ -234,7 +234,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { extractPaginatedItems } from '@infinitech/contracts'
+import { extractEnvelopeData, extractPaginatedItems } from '@infinitech/contracts'
 import request from '@/utils/request'
 import socketService, { SOCKET_HTTP_BASE } from '@/utils/socket'
 import { getCurrentAdminSocketIdentity } from '@/utils/runtime'
@@ -416,8 +416,9 @@ function resetWeatherTimer() {
 async function loadWeatherConfig() {
   try {
     const { data } = await request.get('/api/weather-config')
-    const refreshMinutes = normalizeRefreshMinutes(data?.refresh_interval_minutes)
-    weatherConfig.value = { ...(data || {}), refresh_interval_minutes: refreshMinutes }
+    const payload = extractEnvelopeData(data) || {}
+    const refreshMinutes = normalizeRefreshMinutes(payload?.refresh_interval_minutes)
+    weatherConfig.value = { ...payload, refresh_interval_minutes: refreshMinutes }
     weatherCacheDurationMs.value = refreshMinutes * 60 * 1000
   } catch (_error) {
     weatherConfig.value = { refresh_interval_minutes: 10 }

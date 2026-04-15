@@ -92,20 +92,20 @@ func (h *AdminSettingsHandler) GetDebugMode(c *gin.Context) {
 		"coffee":     false,
 	}
 	_ = h.admin.GetSetting(c.Request.Context(), "debug_mode", &data)
-	c.JSON(http.StatusOK, data)
+	respondAdminSettingsSuccess(c, "调试模式配置加载成功", data)
 }
 
 func (h *AdminSettingsHandler) UpdateDebugMode(c *gin.Context) {
 	var data map[string]interface{}
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if err := h.admin.SaveSetting(c.Request.Context(), "debug_mode", data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondAdminSettingsSuccess(c, "调试模式配置保存成功", data)
 }
 
 // SMS config
@@ -113,13 +113,13 @@ func (h *AdminSettingsHandler) GetSMSConfig(c *gin.Context) {
 	raw := map[string]interface{}{}
 	_ = h.admin.GetSetting(c.Request.Context(), "sms_config", &raw)
 	cfg := service.NormalizeSMSProviderConfigMap(raw)
-	c.JSON(http.StatusOK, service.BuildSMSProviderConfigAdminView(cfg))
+	respondAdminSettingsSuccess(c, "短信配置加载成功", service.BuildSMSProviderConfigAdminView(cfg))
 }
 
 func (h *AdminSettingsHandler) UpdateSMSConfig(c *gin.Context) {
 	var data map[string]interface{}
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	existingRaw := map[string]interface{}{}
@@ -129,18 +129,15 @@ func (h *AdminSettingsHandler) UpdateSMSConfig(c *gin.Context) {
 	incoming := service.NormalizeSMSProviderConfigMap(data)
 	merged := service.MergeSMSProviderConfig(incoming, existing, data)
 	if err := service.ValidateSMSProviderConfig(merged); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInvalidRequest(c, err.Error())
 		return
 	}
 
 	if err := h.admin.SaveSetting(c.Request.Context(), "sms_config", service.SerializeSMSProviderConfigForStorage(merged)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    service.BuildSMSProviderConfigAdminView(merged),
-	})
+	respondAdminSettingsSuccess(c, "短信配置保存成功", service.BuildSMSProviderConfigAdminView(merged))
 }
 
 // Weather config
@@ -148,33 +145,28 @@ func (h *AdminSettingsHandler) GetWeatherConfig(c *gin.Context) {
 	data := map[string]interface{}{}
 	_ = h.admin.GetSetting(c.Request.Context(), "weather_config", &data)
 	cfg, _ := buildWeatherConfig(data)
-	c.JSON(http.StatusOK, serializeWeatherConfig(cfg))
+	respondAdminSettingsSuccess(c, "天气配置加载成功", serializeWeatherConfig(cfg))
 }
 
 func (h *AdminSettingsHandler) UpdateWeatherConfig(c *gin.Context) {
 	var data map[string]interface{}
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 
 	cfg, err := buildWeatherConfig(data)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-			"code":    "INVALID_PARAMETER",
-			"message": "参数无效",
-		})
+		respondEnvelope(c, http.StatusBadRequest, "INVALID_PARAMETER", err.Error(), gin.H{}, nil)
 		return
 	}
 
 	if err := h.admin.SaveSetting(c.Request.Context(), "weather_config", serializeWeatherConfig(cfg)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
 	clearWeatherResponseCache()
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": serializeWeatherConfig(cfg)})
+	respondAdminSettingsSuccess(c, "天气配置保存成功", serializeWeatherConfig(cfg))
 }
 
 // Service settings
@@ -214,14 +206,14 @@ func (h *AdminSettingsHandler) GetCharitySettings(c *gin.Context) {
 	data := service.DefaultCharitySettings()
 	_ = h.admin.GetSetting(c.Request.Context(), "charity_settings", &data)
 	data = service.NormalizeCharitySettings(data)
-	c.JSON(http.StatusOK, data)
+	respondAdminSettingsSuccess(c, "公益配置加载成功", data)
 }
 
 func (h *AdminSettingsHandler) GetVIPSettings(c *gin.Context) {
 	data := service.DefaultVIPSettings()
 	_ = h.admin.GetSetting(c.Request.Context(), "vip_settings", &data)
 	data = service.NormalizeVIPSettings(data)
-	c.JSON(http.StatusOK, data)
+	respondAdminSettingsSuccess(c, "会员配置加载成功", data)
 }
 
 func (h *AdminSettingsHandler) GetPublicCharitySettings(c *gin.Context) {
@@ -241,37 +233,37 @@ func (h *AdminSettingsHandler) GetPublicVIPSettings(c *gin.Context) {
 func (h *AdminSettingsHandler) UpdateCharitySettings(c *gin.Context) {
 	data := service.DefaultCharitySettings()
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	data = service.NormalizeCharitySettings(data)
 	if err := service.ValidateCharitySettings(data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInvalidRequest(c, err.Error())
 		return
 	}
 	if err := h.admin.SaveSetting(c.Request.Context(), "charity_settings", data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondAdminSettingsSuccess(c, "公益配置保存成功", data)
 }
 
 func (h *AdminSettingsHandler) UpdateVIPSettings(c *gin.Context) {
 	data := service.DefaultVIPSettings()
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	data = service.NormalizeVIPSettings(data)
 	if err := service.ValidateVIPSettings(data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInvalidRequest(c, err.Error())
 		return
 	}
 	if err := h.admin.SaveSetting(c.Request.Context(), "vip_settings", data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondAdminSettingsSuccess(c, "会员配置保存成功", data)
 }
 
 // Payment notices
@@ -681,29 +673,29 @@ func (h *AdminSettingsHandler) GetAppDownloadConfig(c *gin.Context) {
 	if parseString(data["updated_at"]) == "" {
 		data["updated_at"] = time.Now().Format("2006-01-02")
 	}
-	c.JSON(http.StatusOK, data)
+	respondAdminSettingsSuccess(c, "APP 下载配置加载成功", data)
 }
 
 func (h *AdminSettingsHandler) UpdateAppDownloadConfig(c *gin.Context) {
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 
 	iosURL, err := sanitizeDownloadURL(parseString(req["ios_url"]))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "iOS 下载链接不合法"})
+		respondAdminSettingsInvalidRequest(c, "iOS 下载链接不合法")
 		return
 	}
 	androidURL, err := sanitizeDownloadURL(parseString(req["android_url"]))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "安卓下载链接不合法"})
+		respondAdminSettingsInvalidRequest(c, "安卓下载链接不合法")
 		return
 	}
 	miniProgramQrURL, err := sanitizeDownloadURL(parseString(req["mini_program_qr_url"]))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "小程序二维码地址不合法"})
+		respondAdminSettingsInvalidRequest(c, "小程序二维码地址不合法")
 		return
 	}
 
@@ -712,7 +704,7 @@ func (h *AdminSettingsHandler) UpdateAppDownloadConfig(c *gin.Context) {
 		updatedAt = time.Now().Format("2006-01-02")
 	}
 	if len(updatedAt) > 32 {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "更新时间格式错误"})
+		respondAdminSettingsInvalidRequest(c, "更新时间格式错误")
 		return
 	}
 
@@ -730,10 +722,10 @@ func (h *AdminSettingsHandler) UpdateAppDownloadConfig(c *gin.Context) {
 	}
 
 	if err := h.admin.SaveSetting(c.Request.Context(), "app_download_config", data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": data})
+	respondAdminSettingsSuccess(c, "APP 下载配置保存成功", data)
 }
 
 func (h *AdminSettingsHandler) UploadPackage(c *gin.Context) {
@@ -1411,60 +1403,60 @@ func parseInt64(v interface{}) int64 {
 func (h *AdminSettingsHandler) GetPayMode(c *gin.Context) {
 	data := map[string]interface{}{"isProd": false}
 	_ = h.admin.GetSetting(c.Request.Context(), "pay_mode", &data)
-	c.JSON(http.StatusOK, data)
+	respondAdminSettingsSuccess(c, "支付模式配置加载成功", data)
 }
 
 func (h *AdminSettingsHandler) UpdatePayMode(c *gin.Context) {
 	var data map[string]interface{}
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if err := h.admin.SaveSetting(c.Request.Context(), "pay_mode", data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondAdminSettingsSuccess(c, "支付模式配置保存成功", data)
 }
 
 // Wxpay config
 func (h *AdminSettingsHandler) GetWxpayConfig(c *gin.Context) {
 	data := map[string]interface{}{"appId": "", "mchId": "", "apiKey": "", "apiV3Key": "", "serialNo": "", "notifyUrl": ""}
 	_ = h.admin.GetSetting(c.Request.Context(), "wxpay_config", &data)
-	c.JSON(http.StatusOK, data)
+	respondAdminSettingsSuccess(c, "微信支付配置加载成功", data)
 }
 
 func (h *AdminSettingsHandler) UpdateWxpayConfig(c *gin.Context) {
 	var data map[string]interface{}
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if err := h.admin.SaveSetting(c.Request.Context(), "wxpay_config", data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondAdminSettingsSuccess(c, "微信支付配置保存成功", data)
 }
 
 // Alipay config
 func (h *AdminSettingsHandler) GetAlipayConfig(c *gin.Context) {
 	data := map[string]interface{}{"appId": "", "privateKey": "", "alipayPublicKey": "", "notifyUrl": "", "sandbox": true}
 	_ = h.admin.GetSetting(c.Request.Context(), "alipay_config", &data)
-	c.JSON(http.StatusOK, data)
+	respondAdminSettingsSuccess(c, "支付宝配置加载成功", data)
 }
 
 func (h *AdminSettingsHandler) UpdateAlipayConfig(c *gin.Context) {
 	var data map[string]interface{}
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if err := h.admin.SaveSetting(c.Request.Context(), "alipay_config", data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondAdminSettingsSuccess(c, "支付宝配置保存成功", data)
 }
 
 func parseBool(v interface{}) bool {
@@ -1488,18 +1480,18 @@ func parseBool(v interface{}) bool {
 func (h *AdminSettingsHandler) GetCoinRatio(c *gin.Context) {
 	data := map[string]interface{}{"ratio": 1}
 	_ = h.admin.GetSetting(c.Request.Context(), "coin_ratio", &data)
-	c.JSON(http.StatusOK, data)
+	respondAdminSettingsSuccess(c, "虚拟币比例加载成功", data)
 }
 
 func (h *AdminSettingsHandler) UpdateCoinRatio(c *gin.Context) {
 	var data map[string]interface{}
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminSettingsInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if err := h.admin.SaveSetting(c.Request.Context(), "coin_ratio", data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		respondAdminSettingsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondAdminSettingsSuccess(c, "虚拟币比例保存成功", data)
 }

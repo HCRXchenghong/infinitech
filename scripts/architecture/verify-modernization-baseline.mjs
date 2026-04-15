@@ -318,6 +318,22 @@ assertContains(
   'respondAdminSettingsInvalidRequest(c, "invalid request parameters")',
 );
 assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  'respondAdminSettingsSuccess(c, "短信配置加载成功", service.BuildSMSProviderConfigAdminView(cfg))',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  'respondAdminSettingsSuccess(c, "天气配置保存成功", serializeWeatherConfig(cfg))',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  'respondAdminSettingsSuccess(c, "APP 下载配置加载成功", data)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler.go",
+  'respondAdminSettingsSuccess(c, "虚拟币比例保存成功", data)',
+);
+assertContains(
   "backend/go/internal/handler/onboarding_invite_handler.go",
   'respondEnvelope(c, http.StatusOK, "ONBOARDING_INVITE_CREATED"',
 );
@@ -668,6 +684,30 @@ assertContains(
 assertContains(
   "admin-vue/src/views/settingsHelpers.js",
   "mergeWechatLoginConfig(extractEnvelopeData(wechatLoginResp.value.data) || {})",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers.js",
+  "sms.value = normalizeSMSConfig(extractEnvelopeData(smsResp.value.data) || {})",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers.js",
+  "mergeVIPSettings(extractEnvelopeData(vipResp.value.data) || {})",
+);
+assertContains(
+  "admin-vue/src/views/Dashboard.vue",
+  "const payload = extractEnvelopeData(data) || {}",
+);
+assertContains(
+  "admin-vue/src/views/FinanceCenter.vue",
+  "const payload = extractEnvelopeData(res.data) || {};",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers/sms.js",
+  "normalizeSMSConfig(extractEnvelopeData(res.data) || {})",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers/weather.js",
+  "mergeWeatherConfig(extractEnvelopeData(res.data) || {})",
 );
 assertContains(
   "admin-vue/src/views/apiManagementHelpers.js",

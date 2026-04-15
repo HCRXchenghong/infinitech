@@ -623,20 +623,21 @@ export function useSettingsPage() {
       const [smsResp, debugResp, weaResp, wechatLoginResp, serviceResp, charityResp, vipResp, downloadResp, payModeResp, wxResp, aliResp] = results;
 
       if (smsResp.status === 'fulfilled' && smsResp.value?.data) {
-        sms.value = normalizeSMSConfig(smsResp.value.data);
+        sms.value = normalizeSMSConfig(extractEnvelopeData(smsResp.value.data) || {});
       }
       if (debugResp.status === 'fulfilled' && debugResp.value?.data) {
+        const debugPayload = extractEnvelopeData(debugResp.value.data) || {};
         debugMode.value = {
           enabled: false,
           delivery: false,
           phone_film: false,
           massage: false,
           coffee: false,
-          ...debugResp.value.data
+          ...debugPayload
         };
       }
       if (weaResp.status === 'fulfilled' && weaResp.value?.data) {
-        mergeWeatherConfig(weaResp.value.data);
+        mergeWeatherConfig(extractEnvelopeData(weaResp.value.data) || {});
       }
       if (wechatLoginResp.status === 'fulfilled' && wechatLoginResp.value?.data) {
         mergeWechatLoginConfig(extractEnvelopeData(wechatLoginResp.value.data) || {});
@@ -645,30 +646,32 @@ export function useSettingsPage() {
         mergeServiceSettings(serviceResp.value.data);
       }
       if (charityResp.status === 'fulfilled' && charityResp.value?.data) {
-        mergeCharitySettings(charityResp.value.data);
+        mergeCharitySettings(extractEnvelopeData(charityResp.value.data) || {});
       }
       if (vipResp.status === 'fulfilled' && vipResp.value?.data) {
-        mergeVIPSettings(vipResp.value.data);
+        mergeVIPSettings(extractEnvelopeData(vipResp.value.data) || {});
       }
       if (downloadResp.status === 'fulfilled' && downloadResp.value?.data) {
+        const downloadPayload = extractEnvelopeData(downloadResp.value.data) || {};
         appDownloadConfig.value = {
-          ios_url: downloadResp.value.data.ios_url || '',
-          android_url: downloadResp.value.data.android_url || '',
-          ios_version: downloadResp.value.data.ios_version || '',
-          android_version: downloadResp.value.data.android_version || '',
-          latest_version: downloadResp.value.data.latest_version || '',
-          updated_at: downloadResp.value.data.updated_at || '',
-          mini_program_qr_url: downloadResp.value.data.mini_program_qr_url || ''
+          ios_url: downloadPayload.ios_url || '',
+          android_url: downloadPayload.android_url || '',
+          ios_version: downloadPayload.ios_version || '',
+          android_version: downloadPayload.android_version || '',
+          latest_version: downloadPayload.latest_version || '',
+          updated_at: downloadPayload.updated_at || '',
+          mini_program_qr_url: downloadPayload.mini_program_qr_url || ''
         };
       }
       if (payModeResp.status === 'fulfilled' && payModeResp.value?.data) {
-        payMode.value = { isProd: payModeResp.value.data.isProd || false };
+        const payModePayload = extractEnvelopeData(payModeResp.value.data) || {};
+        payMode.value = { isProd: payModePayload.isProd || false };
       }
       if (wxResp.status === 'fulfilled' && wxResp.value?.data) {
-        Object.assign(wxpay.value, wxResp.value.data);
+        Object.assign(wxpay.value, extractEnvelopeData(wxResp.value.data) || {});
       }
       if (aliResp.status === 'fulfilled' && aliResp.value?.data) {
-        Object.assign(alipay.value, aliResp.value.data);
+        Object.assign(alipay.value, extractEnvelopeData(aliResp.value.data) || {});
       }
 
       if (results.some((item) => item.status === 'rejected')) {
