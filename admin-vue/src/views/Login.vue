@@ -229,6 +229,7 @@ import QRCode from 'qrcode'
 
 import request from '@/utils/request'
 import { buildRuntimeUrl, clearAdminSessionStorage } from '@/utils/runtime'
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts'
 import {
   createDefaultLoginForm,
   getQrFlowErrorMessage,
@@ -436,7 +437,7 @@ async function handleCompleteBootstrap() {
       newPassword: bootstrapForm.value.newPassword,
       confirmPassword: bootstrapForm.value.confirmPassword,
     })
-    const payload = data?.token ? data : data?.data
+    const payload = extractEnvelopeData(data)
     if (!payload?.token) {
       throw new Error('首次管理员初始化失败，未返回新的登录凭证')
     }
@@ -444,7 +445,7 @@ async function handleCompleteBootstrap() {
     ElMessage.success('首次管理员初始化已完成，请使用新的管理员信息进入后台。')
     saveLoginSession(payload, 'password')
   } catch (error) {
-    ElMessage.error(error.response?.data?.error || error.message || '首次管理员初始化失败')
+    ElMessage.error(extractErrorMessage(error, '首次管理员初始化失败'))
   } finally {
     bootstrapSubmitting.value = false
   }
@@ -468,7 +469,7 @@ async function refreshQrCode(showMessage = false) {
       webOrigin: typeof window !== 'undefined' && window.location ? window.location.origin : '',
       siteOrigin: buildRuntimeUrl('site', '').replace(/\/$/, ''),
     })
-    const payload = data?.data || data
+    const payload = extractEnvelopeData(data)
     if (!payload?.ticket || !payload?.qrText) {
       throw new Error('二维码初始化失败')
     }
@@ -512,7 +513,7 @@ async function pollQrStatus() {
 
   try {
     const { data } = await request.get(`/api/qr-login/session/${encodeURIComponent(qrTicket.value)}`)
-    const payload = data?.data || data || {}
+    const payload = extractEnvelopeData(data) || {}
     if (typeof payload.remainSeconds === 'number') {
       qrRemainSeconds.value = Math.max(0, payload.remainSeconds)
     }
@@ -655,14 +656,14 @@ async function handleLogin() {
   loading.value = true
   try {
     const { data } = await request.post('/api/login', loginData)
-    const payload = data?.token ? data : data?.data
+    const payload = extractEnvelopeData(data)
     if (payload?.token) {
       saveLoginSession(payload, credentialMode.value)
     } else {
       ElMessage.error('登录失败，请稍后重试')
     }
   } catch (error) {
-    const errorMessage = error.response?.data?.error || error.message || '登录失败'
+    const errorMessage = extractErrorMessage(error, '登录失败')
     const statusCode = Number(error?.response?.status || 0)
     if ((statusCode === 400 || statusCode === 403) && errorMessage.includes('验证码登录')) {
       ElMessage.warning({

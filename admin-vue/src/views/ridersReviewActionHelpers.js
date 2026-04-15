@@ -1,4 +1,6 @@
 import { getRiderRankName, loadRiderRankSettings } from '@/utils/platform-settings';
+import { extractRiderReviewPage } from '@infinitech/admin-core';
+import { extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
 
 export function useRiderReviewActionHelpers(ctx) {
   const {
@@ -46,14 +48,16 @@ export function useRiderReviewActionHelpers(ctx) {
       const { data } = await request.get(`/api/riders/${riderId}/reviews`, {
         params: { page: 1, pageSize: 200 }
       });
-      const list = Array.isArray(data?.list) ? data.list : [];
-      riderReviews.value = list.map((item) => ({
+      const reviewPage = extractRiderReviewPage(data);
+      riderReviews.value = reviewPage.items.map((item) => ({
         ...item,
         rating: Number(item.rating || 0)
       }));
 
-      const nextRating = Number(data?.rating || reviewTargetRider.value.rating || 0);
-      const nextRatingCount = Number(data?.rating_count || data?.ratingCount || reviewTargetRider.value.rating_count || 0);
+      const nextRating = Number(reviewPage.summary.rating || reviewTargetRider.value.rating || 0);
+      const nextRatingCount = Number(
+        reviewPage.summary.rating_count || reviewPage.summary.ratingCount || reviewTargetRider.value.rating_count || 0
+      );
       reviewTargetRider.value = {
         ...reviewTargetRider.value,
         rating: nextRating,
@@ -74,7 +78,7 @@ export function useRiderReviewActionHelpers(ctx) {
       }
     } catch (error) {
       riderReviews.value = [];
-      ElMessage.error(error?.response?.data?.error || '加载骑手评论失败');
+      ElMessage.error(extractErrorMessage(error, '加载骑手评论失败'));
     } finally {
       riderReviewsLoading.value = false;
     }
@@ -115,7 +119,8 @@ export function useRiderReviewActionHelpers(ctx) {
       const { data } = await request.post('/api/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      const nextUrl = data?.url || '';
+      const asset = extractUploadAsset(data);
+      const nextUrl = asset?.url || '';
       if (!nextUrl) {
         throw new Error('上传返回地址为空');
       }
@@ -125,7 +130,7 @@ export function useRiderReviewActionHelpers(ctx) {
       riderReviewForm.value.images = [...riderReviewForm.value.images, nextUrl];
       ElMessage.success('评论图片上传成功');
     } catch (error) {
-      ElMessage.error(error?.response?.data?.error || error.message || '评论图片上传失败');
+      ElMessage.error(extractErrorMessage(error, '评论图片上传失败'));
     } finally {
       uploadingRiderReviewImage.value = false;
     }
@@ -173,7 +178,7 @@ export function useRiderReviewActionHelpers(ctx) {
       riderReviewDialogVisible.value = false;
       await loadRiderReviews(reviewTargetRider.value.id);
     } catch (error) {
-      ElMessage.error(error?.response?.data?.error || '保存骑手评论失败');
+      ElMessage.error(extractErrorMessage(error, '保存骑手评论失败'));
     } finally {
       riderReviewSaving.value = false;
     }
@@ -191,7 +196,7 @@ export function useRiderReviewActionHelpers(ctx) {
       await loadRiderReviews(reviewTargetRider.value.id);
     } catch (error) {
       if (error === 'cancel') return;
-      ElMessage.error(error?.response?.data?.error || '删除骑手评论失败');
+      ElMessage.error(extractErrorMessage(error, '删除骑手评论失败'));
     }
   }
 

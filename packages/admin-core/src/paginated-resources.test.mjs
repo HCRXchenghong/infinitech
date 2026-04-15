@@ -6,7 +6,9 @@ import {
   extractAdminMerchantPage,
   extractRTCCallAuditPage,
   extractRTCCallAuditRecord,
+  extractRiderReviewPage,
   extractAdminRiderPage,
+  extractShopReviewPage,
   extractAdminUserPage,
   normalizeAdminMerchantSummary,
   normalizeAdminRiderSummary,
@@ -197,6 +199,69 @@ test("extractRTCCallAuditPage reads rtc summary and extractRTCCallAuditRecord un
     {
       uid: "call-2",
       complaint_status: "reported",
+    },
+  );
+});
+
+test("extractShopReviewPage reads legacy review lists and pageSize metadata", () => {
+  assert.deepEqual(
+    extractShopReviewPage({
+      list: [{ id: 11, rating: 5 }],
+      total: 14,
+      page: 2,
+      pageSize: 50,
+      goodCount: 10,
+      badCount: 1,
+      avgRating: 4.8,
+    }),
+    {
+      items: [{ id: 11, rating: 5 }],
+      total: 14,
+      page: 2,
+      limit: 50,
+      summary: {
+        goodCount: 10,
+        badCount: 1,
+        avgRating: 4.8,
+      },
+      pagination: {
+        total: 14,
+        page: 2,
+        limit: 50,
+      },
+    },
+  );
+});
+
+test("extractRiderReviewPage reads enveloped rider review summaries", () => {
+  assert.deepEqual(
+    extractRiderReviewPage({
+      data: {
+        items: [{ id: 21, rating: 4 }],
+        total: 5,
+        page: 1,
+        limit: 20,
+        summary: {
+          rating: 4.9,
+          ratingCount: 18,
+        },
+      },
+    }),
+    {
+      items: [{ id: 21, rating: 4 }],
+      total: 5,
+      page: 1,
+      limit: 20,
+      summary: {
+        rating: 4.9,
+        rating_count: 18,
+        ratingCount: 18,
+      },
+      pagination: {
+        total: 5,
+        page: 1,
+        limit: 20,
+      },
     },
   );
 });

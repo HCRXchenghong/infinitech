@@ -433,6 +433,30 @@ assertContains(
   "admin-vue/src/views/AdminRTCConsole.vue",
   "extractRTCCallAuditPage",
 );
+assertContains(
+  "admin-vue/src/views/Login.vue",
+  "extractEnvelopeData(data)",
+);
+assertContains(
+  "admin-vue/src/views/ShopManageDetail.vue",
+  "extractShopReviewPage",
+);
+assertContains(
+  "admin-vue/src/views/ridersReviewActionHelpers.js",
+  "extractRiderReviewPage",
+);
+assertContains(
+  "backend/go/internal/handler/shop_handler.go",
+  'respondEnvelope(c, http.StatusOK, "SHOP_REVIEW_LISTED"',
+);
+assertContains(
+  "backend/go/internal/handler/shop_handler.go",
+  'respondSuccessEnvelope(c, "商户店铺列表加载成功"',
+);
+assertContains(
+  "backend/go/internal/handler/rider_handler.go",
+  'respondEnvelope(c, http.StatusOK, "RIDER_REVIEW_LISTED"',
+);
 assertNotContains(
   "socket-server/index.js",
   "origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : '*'",

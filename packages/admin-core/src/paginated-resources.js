@@ -8,6 +8,20 @@ function normalizeNumber(value, fallback = 0) {
   return parsed;
 }
 
+function resolveSummaryField(source = {}, key) {
+  if (!key) {
+    return undefined;
+  }
+  if (source[key] !== undefined) {
+    return source[key];
+  }
+  if (!key.includes("_")) {
+    return undefined;
+  }
+  const camelKey = key.replace(/_([a-z])/g, (_, char) => char.toUpperCase());
+  return source[camelKey];
+}
+
 function normalizePage(payload, { listKeys, normalizeItem } = {}) {
   const page = extractPaginatedItems(payload, { listKeys });
   const items = Array.isArray(page.items) ? page.items : [];
@@ -60,22 +74,27 @@ export function extractAdminMerchantPage(payload = {}) {
 function normalizeSummary(source = {}, keys = []) {
   const summary = {};
   for (const key of keys) {
-    summary[key] = normalizeNumber(source[key], 0);
+    summary[key] = normalizeNumber(resolveSummaryField(source, key), 0);
   }
   return summary;
 }
 
-function buildListResult(payload, summaryKeys = []) {
+function buildListResult(payload, options = {}) {
   const data = extractEnvelopeData(payload);
-  const page = extractPaginatedItems(payload);
+  const summaryKeys = Array.isArray(options.summaryKeys) ? options.summaryKeys : [];
+  const page = extractPaginatedItems(payload, {
+    listKeys: options.listKeys,
+  });
   const source = data && typeof data === "object" ? data : {};
+  const nestedSummary = source.summary && typeof source.summary === "object" ? source.summary : null;
+  const summarySource = nestedSummary || source;
 
   return {
     items: page.items,
     total: page.total,
     page: page.page,
     limit: page.limit,
-    summary: normalizeSummary(source.summary, summaryKeys),
+    summary: normalizeSummary(summarySource, summaryKeys),
     pagination: {
       page: page.page,
       limit: page.limit,
@@ -85,11 +104,15 @@ function buildListResult(payload, summaryKeys = []) {
 }
 
 export function extractContactPhoneAuditPage(payload = {}) {
-  return buildListResult(payload, ["total", "clicked", "opened", "failed"]);
+  return buildListResult(payload, {
+    summaryKeys: ["total", "clicked", "opened", "failed"],
+  });
 }
 
 export function extractRTCCallAuditPage(payload = {}) {
-  return buildListResult(payload, ["total", "accepted", "ended", "failed", "complaints"]);
+  return buildListResult(payload, {
+    summaryKeys: ["total", "accepted", "ended", "failed", "complaints"],
+  });
 }
 
 export function extractRTCCallAuditRecord(payload = {}) {
@@ -98,4 +121,26 @@ export function extractRTCCallAuditRecord(payload = {}) {
     return {};
   }
   return data;
+}
+
+export function extractShopReviewPage(payload = {}) {
+  return buildListResult(payload, {
+    listKeys: ["items", "list"],
+    summaryKeys: ["goodCount", "badCount", "avgRating"],
+  });
+}
+
+export function extractRiderReviewPage(payload = {}) {
+  const page = buildListResult(payload, {
+    listKeys: ["items", "list"],
+    summaryKeys: ["rating", "rating_count"],
+  });
+
+  return {
+    ...page,
+    summary: {
+      ...page.summary,
+      ratingCount: page.summary.rating_count,
+    },
+  };
 }

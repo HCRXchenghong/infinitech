@@ -67,10 +67,21 @@ export function extractPaginatedItems(payload, options = {}) {
   }
 
   normalized.total = Number(
-    data.total || pagination.total || payload?.total || normalized.items.length || 0,
+    data.total ?? pagination.total ?? payload?.total ?? normalized.items.length ?? 0,
   );
-  normalized.page = Number(data.page || pagination.page || payload?.page || 0);
-  normalized.limit = Number(data.limit || pagination.limit || payload?.limit || 0);
+  normalized.page = Number(data.page ?? pagination.page ?? payload?.page ?? 0);
+  normalized.limit = Number(
+    data.limit ??
+      data.pageSize ??
+      data.page_size ??
+      pagination.limit ??
+      pagination.pageSize ??
+      pagination.page_size ??
+      payload?.limit ??
+      payload?.pageSize ??
+      payload?.page_size ??
+      0,
+  );
   return normalized;
 }
 

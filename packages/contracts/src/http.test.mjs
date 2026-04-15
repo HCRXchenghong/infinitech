@@ -76,6 +76,21 @@ test("extractPaginatedItems supports enveloped and legacy list payloads", () => 
       limit: 15,
     },
   );
+
+  assert.deepEqual(
+    extractPaginatedItems({
+      list: [{ id: 4 }],
+      total: 8,
+      page: 3,
+      pageSize: 25,
+    }),
+    {
+      items: [{ id: 4 }],
+      total: 8,
+      page: 3,
+      limit: 25,
+    },
+  );
 });
 
 test("extractTemporaryCredential supports standardized and legacy password payloads", () => {

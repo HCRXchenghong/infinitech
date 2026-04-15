@@ -107,10 +107,42 @@ func (h *ShopHandler) GetShopReviews(c *gin.Context) {
 
 	reviews, err := h.service.GetShopReviews(c.Request.Context(), shopID, page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, reviews)
+	reviewPayload, ok := reviews.(map[string]interface{})
+	if !ok {
+		respondSuccessEnvelope(c, "店铺评论加载成功", reviews, nil)
+		return
+	}
+
+	items := reviewPayload["list"]
+	total := extractInt64Field(reviewPayload["total"], 0)
+	pageValue := extractIntField(reviewPayload["page"], page)
+	pageSizeValue := extractIntField(reviewPayload["pageSize"], pageSize)
+	goodCount := extractInt64Field(reviewPayload["goodCount"], 0)
+	badCount := extractInt64Field(reviewPayload["badCount"], 0)
+	avgRating := extractFloat64Field(reviewPayload["avgRating"], 0)
+
+	respondEnvelope(c, http.StatusOK, "SHOP_REVIEW_LISTED", "店铺评论加载成功", gin.H{
+		"items": items,
+		"total": total,
+		"page":  pageValue,
+		"limit": pageSizeValue,
+		"summary": gin.H{
+			"goodCount": goodCount,
+			"badCount":  badCount,
+			"avgRating": avgRating,
+		},
+	}, gin.H{
+		"list":      items,
+		"total":     total,
+		"page":      pageValue,
+		"pageSize":  pageSizeValue,
+		"goodCount": goodCount,
+		"badCount":  badCount,
+		"avgRating": avgRating,
+	})
 }
 
 // GetMerchantShops 获取商户的店铺列表
@@ -118,10 +150,14 @@ func (h *ShopHandler) GetMerchantShops(c *gin.Context) {
 	merchantID := c.Param("merchantId")
 	shops, err := h.service.GetMerchantShops(c.Request.Context(), merchantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"shops": shops})
+	respondSuccessEnvelope(c, "商户店铺列表加载成功", gin.H{
+		"shops": shops,
+	}, gin.H{
+		"shops": shops,
+	})
 }
 
 // CreateShop 创建店铺
@@ -339,6 +375,64 @@ func (h *ShopHandler) GetUserReviews(c *gin.Context) {
 func parseQueryBool(raw string) bool {
 	value := strings.ToLower(strings.TrimSpace(raw))
 	return value == "1" || value == "true" || value == "yes" || value == "y"
+}
+
+func extractInt64Field(value interface{}, fallback int64) int64 {
+	switch typed := value.(type) {
+	case int64:
+		return typed
+	case int:
+		return int64(typed)
+	case int32:
+		return int64(typed)
+	case uint:
+		return int64(typed)
+	case uint32:
+		return int64(typed)
+	case uint64:
+		return int64(typed)
+	case float64:
+		return int64(typed)
+	case float32:
+		return int64(typed)
+	case string:
+		parsed, err := strconv.ParseInt(strings.TrimSpace(typed), 10, 64)
+		if err == nil {
+			return parsed
+		}
+	}
+	return fallback
+}
+
+func extractIntField(value interface{}, fallback int) int {
+	return int(extractInt64Field(value, int64(fallback)))
+}
+
+func extractFloat64Field(value interface{}, fallback float64) float64 {
+	switch typed := value.(type) {
+	case float64:
+		return typed
+	case float32:
+		return float64(typed)
+	case int:
+		return float64(typed)
+	case int32:
+		return float64(typed)
+	case int64:
+		return float64(typed)
+	case uint:
+		return float64(typed)
+	case uint32:
+		return float64(typed)
+	case uint64:
+		return float64(typed)
+	case string:
+		parsed, err := strconv.ParseFloat(strings.TrimSpace(typed), 64)
+		if err == nil {
+			return parsed
+		}
+	}
+	return fallback
 }
 
 func writeServiceError(c *gin.Context, err error, fallbackStatus int) {

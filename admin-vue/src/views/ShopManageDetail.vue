@@ -3,6 +3,8 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { extractShopReviewPage } from '@infinitech/admin-core';
+import { extractEnvelopeData, extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
 import request from '@/utils/request';
 import ImageUpload from '@/components/ImageUpload.vue';
 import PageStateAlert from '@/components/PageStateAlert.vue';
@@ -147,7 +149,8 @@ async function loadShop() {
     let current = null;
     try {
       const shopsRes = await request.get(`/api/merchants/${merchantId}/shops`);
-      const list = Array.isArray(shopsRes?.data?.shops) ? shopsRes.data.shops : [];
+      const shopsPayload = extractEnvelopeData(shopsRes?.data);
+      const list = Array.isArray(shopsPayload?.shops) ? shopsPayload.shops : [];
       current = list.find((item) => String(item.id || '') === shopId) || null;
     } catch (error) {
       current = null;
@@ -155,7 +158,7 @@ async function loadShop() {
 
     if (!current) {
       const { data } = await request.get(`/api/shops/${shopId}`);
-      current = data || null;
+      current = extractEnvelopeData(data) || null;
     }
 
     if (!current) {
@@ -174,7 +177,7 @@ async function loadShop() {
       foodBusinessLicense
     };
   } catch (error) {
-    shopError.value = error?.response?.data?.error || error?.response?.data?.message || error?.message || '加载店铺详情失败，请稍后重试';
+    shopError.value = extractErrorMessage(error, '加载店铺详情失败，请稍后重试');
   } finally {
     loading.value = false;
   }
@@ -190,12 +193,11 @@ async function loadReviews() {
         pageSize: 200
       }
     });
-    const payload = data?.data || data || {};
-    const list = Array.isArray(payload.list) ? payload.list : [];
-    reviews.value = list.map((item) => normalizeReview(item, shopId));
+    const reviewPage = extractShopReviewPage(data);
+    reviews.value = reviewPage.items.map((item) => normalizeReview(item, shopId));
   } catch (error) {
     reviews.value = [];
-    reviewError.value = error?.response?.data?.error || error?.response?.data?.message || error?.message || '加载评论失败，请稍后重试';
+    reviewError.value = extractErrorMessage(error, '加载评论失败，请稍后重试');
   } finally {
     reviewsLoading.value = false;
   }
@@ -305,7 +307,8 @@ async function handleReviewImageChange(uploadFile) {
     const { data } = await request.post('/api/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
-    const nextUrl = data?.url || '';
+    const asset = extractUploadAsset(data);
+    const nextUrl = asset?.url || '';
     if (!nextUrl) {
       throw new Error('上传返回地址为空');
     }
@@ -315,7 +318,7 @@ async function handleReviewImageChange(uploadFile) {
     reviewForm.value.images = [...reviewForm.value.images, nextUrl];
     ElMessage.success('评论图片上传成功');
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error.message || '评论图片上传失败');
+    ElMessage.error(extractErrorMessage(error, '评论图片上传失败'));
   } finally {
     uploadingReviewImage.value = false;
   }
@@ -365,7 +368,7 @@ async function saveReview() {
     await Promise.all([loadReviews(), loadShop()]);
   } catch (error) {
     console.error('保存评论失败:', error);
-    ElMessage.error(error?.response?.data?.error || '保存评论失败');
+    ElMessage.error(extractErrorMessage(error, '保存评论失败'));
   } finally {
     reviewSaving.value = false;
   }
@@ -385,7 +388,7 @@ async function handleDeleteReview(row) {
   } catch (error) {
     if (error === 'cancel' || error === 'close') return;
     console.error('删除评论失败:', error);
-    ElMessage.error(error?.response?.data?.error || '删除评论失败');
+    ElMessage.error(extractErrorMessage(error, '删除评论失败'));
   }
 }
 
@@ -401,7 +404,7 @@ async function updateShop(payload, options = {}) {
     return true;
   } catch (error) {
     console.error('更新店铺失败:', error);
-    ElMessage.error(error?.response?.data?.error || '保存失败');
+    ElMessage.error(extractErrorMessage(error, '保存失败'));
     return false;
   } finally {
     saving.value = false;

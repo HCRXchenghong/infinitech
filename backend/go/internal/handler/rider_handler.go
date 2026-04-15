@@ -668,7 +668,7 @@ func (h *RiderHandler) DeleteReview(c *gin.Context) {
 func (h *RiderHandler) GetReviews(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
 	if err != nil || riderID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "骑手ID无效"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "骑手ID无效", nil)
 		return
 	}
 
@@ -691,7 +691,7 @@ func (h *RiderHandler) GetReviews(c *gin.Context) {
 
 	var reviews []repository.RiderReview
 	if err := h.db.Where("rider_id = ?", riderID).Order("created_at DESC").Limit(pageSize).Offset(offset).Find(&reviews).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "查询评价失败"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "查询评价失败", nil)
 		return
 	}
 
@@ -706,7 +706,7 @@ func (h *RiderHandler) GetReviews(c *gin.Context) {
 
 	var rider repository.Rider
 	if err := h.db.Select("id, rating, rating_count").First(&rider, riderID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "骑手不存在"})
+		respondErrorEnvelope(c, http.StatusNotFound, responseCodeNotFound, "骑手不存在", nil)
 		return
 	}
 	rating := rider.Rating
@@ -714,8 +714,16 @@ func (h *RiderHandler) GetReviews(c *gin.Context) {
 		rating = 5
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":      true,
+	respondEnvelope(c, http.StatusOK, "RIDER_REVIEW_LISTED", "骑手评论加载成功", gin.H{
+		"items": list,
+		"total": total,
+		"page":  page,
+		"limit": pageSize,
+		"summary": gin.H{
+			"rating":       rating,
+			"rating_count": rider.RatingCount,
+		},
+	}, gin.H{
 		"list":         list,
 		"total":        total,
 		"page":         page,
