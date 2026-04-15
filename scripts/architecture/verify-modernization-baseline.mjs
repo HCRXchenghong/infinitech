@@ -393,6 +393,18 @@ assertContains(
   "backend/go/internal/handler/admin_handler.go",
   'respondAdminSuccess(c, "商户详情加载成功", merchant)',
 );
+assertContains(
+  "backend/go/internal/handler/admin_handler.go",
+  'respondPaginatedEnvelope(c, "ADMIN_ORDER_LISTED", "订单列表加载成功", "orders", orders, total, page, limit)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_handler.go",
+  'respondAdminMirroredSuccess(c, "统计数据加载成功", stats)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_handler.go",
+  'respondAdminSuccess(c, "订单数据导出成功", data)',
+);
 assertNotContains(
   "backend/go/internal/service/admin_service.go",
   "hashPassword(defaultAdminPassword)",

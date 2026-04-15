@@ -701,41 +701,41 @@ func (h *AdminHandler) GetOrders(c *gin.Context) {
 	)
 	if err != nil {
 		if errors.Is(err, service.ErrUnauthorized) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			respondAdminStatusError(c, http.StatusUnauthorized, err.Error())
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "加载订单列表失败", gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"orders": orders, "total": total})
+	respondPaginatedEnvelope(c, "ADMIN_ORDER_LISTED", "订单列表加载成功", "orders", orders, total, page, limit)
 }
 
 func (h *AdminHandler) DeleteAllOrders(c *gin.Context) {
 	deleted, err := h.admin.DeleteAllOrders(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "deleted": deleted})
+	respondAdminMirroredSuccess(c, "订单清空成功", gin.H{"deleted": deleted})
 }
 
 func (h *AdminHandler) ClearAllData(c *gin.Context) {
 	result, err := h.admin.ClearAllBusinessData(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "清空业务数据失败", gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "result": result})
+	respondAdminMirroredSuccess(c, "业务数据清理成功", gin.H{"result": result})
 }
 
 // Stats & ranks
 func (h *AdminHandler) GetStats(c *gin.Context) {
 	stats, err := h.admin.GetStats(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "统计数据加载失败", gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, stats)
+	respondAdminMirroredSuccess(c, "统计数据加载成功", stats)
 }
 
 func (h *AdminHandler) GetUserRanks(c *gin.Context) {
@@ -743,57 +743,57 @@ func (h *AdminHandler) GetUserRanks(c *gin.Context) {
 	rankType := c.Query("type")
 	ranks, err := h.admin.GetUserRanks(c.Request.Context(), period, rankType)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "用户排行加载失败", gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, ranks)
+	respondAdminSuccess(c, "用户排行加载成功", ranks)
 }
 
 func (h *AdminHandler) GetRiderRanks(c *gin.Context) {
 	period := c.Query("period")
 	ranks, err := h.admin.GetRiderRanks(c.Request.Context(), period)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "骑手排行加载失败", gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, ranks)
+	respondAdminSuccess(c, "骑手排行加载成功", ranks)
 }
 
 // Export / Import
 func (h *AdminHandler) ExportUsers(c *gin.Context) {
 	data, err := h.admin.ExportUsers(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "用户数据导出失败", gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, data)
+	respondAdminSuccess(c, "用户数据导出成功", data)
 }
 
 func (h *AdminHandler) ExportRiders(c *gin.Context) {
 	data, err := h.admin.ExportRiders(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "骑手数据导出失败", gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, data)
+	respondAdminSuccess(c, "骑手数据导出成功", data)
 }
 
 func (h *AdminHandler) ExportMerchants(c *gin.Context) {
 	data, err := h.admin.ExportMerchants(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "商户数据导出失败", gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, data)
+	respondAdminSuccess(c, "商户数据导出成功", data)
 }
 
 func (h *AdminHandler) ExportOrders(c *gin.Context) {
 	data, err := h.admin.ExportOrders(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "订单数据导出失败", gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, data)
+	respondAdminSuccess(c, "订单数据导出成功", data)
 }
 
 func (h *AdminHandler) ImportUsers(c *gin.Context) {
