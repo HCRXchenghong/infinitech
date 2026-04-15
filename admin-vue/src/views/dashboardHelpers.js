@@ -1,3 +1,5 @@
+export { extractErrorMessage } from '@infinitech/contracts'
+
 function toFiniteNumber(value, fallback = 0) {
   const numeric = Number(value)
   return Number.isFinite(numeric) ? numeric : fallback
@@ -48,10 +50,6 @@ export function createDefaultStatsCards() {
     { key: 'onlineRiderCount', label: '在线骑手', value: '--', tag: '在线', desc: '当前在线骑手数量' },
     { key: 'pendingOrdersCount', label: '待处理订单', value: '--', tag: '待办', desc: '等待处理或派发的订单' }
   ]
-}
-
-export function extractErrorMessage(error, fallback) {
-  return error?.response?.data?.error || error?.response?.data?.message || error?.message || fallback
 }
 
 export function normalizeRefreshMinutes(raw) {

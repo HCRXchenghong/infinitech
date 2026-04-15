@@ -3,6 +3,7 @@
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, Refresh, More } from '@element-plus/icons-vue';
+import { extractEnvelopeData, extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts';
 import request from '@/utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 import {
@@ -35,6 +36,7 @@ const handleResize = () => {
 };
 
 const loading = ref(false);
+const saving = ref(false);
 const carouselLoading = ref(false);
 const loadError = ref('');
 const carouselError = ref('');
@@ -47,10 +49,6 @@ const carouselDetailVisible = ref(false);
 const currentCarousel = ref(null);
 const addCarouselVisible = ref(false);
 const newCarousel = reactive(createEmptyCarousel());
-
-function extractErrorMessage(error, fallback) {
-  return error?.response?.data?.error || error?.response?.data?.message || error?.message || fallback;
-}
 
 function getPushDeliveryStatusType(status) {
   const normalized = String(status || '').trim().toLowerCase();
@@ -138,7 +136,7 @@ async function loadCarouselList() {
   carouselLoading.value = true;
   try {
     const { data } = await request.get('/api/carousel');
-    carouselList.value = Array.isArray(data) ? data : [];
+    carouselList.value = extractPaginatedItems(data).items;
   } catch (error) {
     carouselList.value = [];
     carouselError.value = extractErrorMessage(error, '加载轮播图失败，请稍后重试');
@@ -150,9 +148,8 @@ async function loadCarouselList() {
 async function loadCarouselSettings() {
   try {
     const { data } = await request.get('/api/carousel-settings');
-    if (data) {
-      carouselSettings.auto_play_seconds = data.auto_play_seconds || 5;
-    }
+    const payload = extractEnvelopeData(data) || {};
+    carouselSettings.auto_play_seconds = payload.auto_play_seconds || 5;
   } catch (error) {
     loadError.value = extractErrorMessage(error, '加载轮播配置失败，请稍后重试');
   }
@@ -164,7 +161,7 @@ async function saveCarouselSettings() {
     await request.post('/api/carousel-settings', carouselSettings);
     ElMessage.success('轮播配置保存成功');
   } catch (error) {
-    ElMessage.error('保存配置失败');
+    ElMessage.error(extractErrorMessage(error, '保存轮播配置失败'));
   } finally {
     saving.value = false;
   }
@@ -202,7 +199,7 @@ async function finishEdit(row) {
     row.sort_order = row.editSortOrder;
     row.editing = false;
   } catch (error) {
-    ElMessage.error('更新失败');
+    ElMessage.error(extractErrorMessage(error, '更新轮播图失败'));
   }
 }
 
@@ -227,7 +224,7 @@ async function deleteCarousel(row) {
     loadCarouselList();
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败');
+      ElMessage.error(extractErrorMessage(error, '删除轮播图失败'));
     }
   }
 }
@@ -263,7 +260,7 @@ async function confirmAddCarousel() {
     loadCarouselList();
     cancelAddCarousel();
   } catch (error) {
-    ElMessage.error('添加失败: ' + (error?.response?.data?.error || error.message));
+    ElMessage.error(extractErrorMessage(error, '添加轮播图失败'));
   } finally {
     saving.value = false;
   }
@@ -274,16 +271,18 @@ async function handleUpload(options) {
   formData.append('image', options.file);
   
   try {
-    const response = await request.post('/api/upload-image', formData);
-    
-    if (response.data.success && response.data.imageUrl) {
-      newCarousel.image_url = response.data.imageUrl;
+    const { data } = await request.post('/api/upload-image', formData);
+    const payload = extractEnvelopeData(data) || data || {};
+    const imageUrl = String(payload.imageUrl || payload.image_url || payload.url || '').trim();
+
+    if (imageUrl) {
+      newCarousel.image_url = imageUrl;
       ElMessage.success('图片上传成功');
     } else {
-      ElMessage.error(response.data.error || '图片上传失败');
+      ElMessage.error(extractErrorMessage(data, '图片上传失败'));
     }
   } catch (error) {
-    ElMessage.error(error.response?.data?.error || '图片上传失败，请重试');
+    ElMessage.error(extractErrorMessage(error, '图片上传失败，请重试'));
   }
 }
 
@@ -321,7 +320,7 @@ async function loadPushMessages() {
   pushMessageLoading.value = true;
   try {
     const { data } = await request.get('/api/push-messages');
-    pushMessages.value = Array.isArray(data) ? data : [];
+    pushMessages.value = extractPaginatedItems(data).items;
   } catch (error) {
     loadError.value = extractErrorMessage(error, '加载推送消息失败，请稍后重试');
     pushMessages.value = [];
@@ -370,7 +369,7 @@ async function savePushMessage() {
     pushMessageDialogVisible.value = false;
     loadPushMessages();
   } catch (error) {
-    ElMessage.error('保存失败: ' + (error?.response?.data?.error || error.message));
+    ElMessage.error(extractErrorMessage(error, '保存推送消息失败'));
   } finally {
     savingPushMessage.value = false;
   }
@@ -393,7 +392,7 @@ async function deletePushMessage(message) {
     loadPushMessages();
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败: ' + (error?.response?.data?.error || error.message));
+      ElMessage.error(extractErrorMessage(error, '删除推送消息失败'));
     }
   }
 }
@@ -407,17 +406,18 @@ async function showPushMessageStats(message) {
         params: { limit: 50 }
       })
     ]);
+    const statsPayload = extractEnvelopeData(stats) || {};
     currentPushMessageStats.value = {
       ...message,
-      ...stats,
-      read_rate_display: typeof stats?.read_rate_percent === 'number'
-        ? `${stats.read_rate_percent.toFixed(2)}%`
+      ...statsPayload,
+      read_rate_display: typeof statsPayload?.read_rate_percent === 'number'
+        ? `${statsPayload.read_rate_percent.toFixed(2)}%`
         : '0.00%'
     };
-    currentPushMessageDeliveries.value = Array.isArray(deliveries?.items) ? deliveries.items : [];
+    currentPushMessageDeliveries.value = extractPaginatedItems(deliveries).items;
     pushMessageStatsVisible.value = true;
   } catch (error) {
-    ElMessage.error('获取统计信息失败: ' + (error?.response?.data?.error || error.message));
+    ElMessage.error(extractErrorMessage(error, '获取统计信息失败'));
     currentPushMessageDeliveries.value = [];
   } finally {
     pushMessageDeliveryLoading.value = false;
@@ -444,21 +444,23 @@ async function handlePushMessageUpload(options) {
   formData.append('compress', pushMessageForm.compress_image ? 'true' : 'false');
   
   try {
-    const response = await request.post('/api/upload-image', formData, {
+    const { data } = await request.post('/api/upload-image', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     });
-    
-    if (response.data.success && response.data.imageUrl) {
-      pushMessageForm.image_url = response.data.imageUrl;
+    const payload = extractEnvelopeData(data) || data || {};
+    const imageUrl = String(payload.imageUrl || payload.image_url || payload.url || '').trim();
+
+    if (imageUrl) {
+      pushMessageForm.image_url = imageUrl;
       ElMessage.success('图片上传成功');
     } else {
-      ElMessage.error(response.data.error || '图片上传失败');
+      ElMessage.error(extractErrorMessage(data, '图片上传失败'));
     }
   } catch (error) {
     console.error('上传失败:', error);
-    ElMessage.error(error.response?.data?.error || '图片上传失败，请重试');
+    ElMessage.error(extractErrorMessage(error, '图片上传失败，请重试'));
   }
 }
 

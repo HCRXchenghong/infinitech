@@ -1,7 +1,7 @@
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { extractUploadAsset } from '@infinitech/contracts';
+import { extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
 import request from '@/utils/request';
 import { useDataManagementPage } from './dataManagementHelpers';
 import { useSettingsApiManagement } from './settingsApiManagementHelpers';
@@ -187,10 +187,6 @@ export function useSettingsPage() {
     verifyAccount: '',
     verifyPassword: ''
   });
-
-  function extractErrorMessage(error, fallback) {
-    return error?.response?.data?.error || error?.response?.data?.message || error?.message || fallback;
-  }
 
   function mergeWeatherConfig(payload = {}) {
     weather.value = {
@@ -560,7 +556,6 @@ export function useSettingsPage() {
     router,
     ElMessage,
     ElMessageBox,
-    extractErrorMessage,
   });
 
   const {
@@ -718,7 +713,7 @@ export function useSettingsPage() {
         loadAll();
       }, 100);
     } catch (error) {
-      ElMessage.error('保存失败: ' + (error?.response?.data?.error || error.message));
+      ElMessage.error(extractErrorMessage(error, '保存短信配置失败'));
     } finally {
       saving.value = false;
     }
@@ -737,7 +732,7 @@ export function useSettingsPage() {
       await request.post('/api/weather-config', payload);
       ElMessage.success('天气配置保存成功');
     } catch (error) {
-      ElMessage.error('保存失败: ' + (error?.response?.data?.error || error.message));
+      ElMessage.error(extractErrorMessage(error, '保存天气配置失败'));
     } finally {
       saving.value = false;
     }
@@ -817,7 +812,7 @@ export function useSettingsPage() {
       ElMessage.success(successMessage);
       return true;
     } catch (error) {
-      ElMessage.error('保存失败: ' + (error?.response?.data?.error || error.message));
+      ElMessage.error(extractErrorMessage(error, '保存服务配置失败'));
       return false;
     } finally {
       savingServiceSettings.value = false;
@@ -907,7 +902,7 @@ export function useSettingsPage() {
         options.onError(error);
       }
       serviceSettings.value[field] = previousValue;
-      ElMessage.error(error?.response?.data?.error || error?.message || '提示音上传失败');
+      ElMessage.error(extractErrorMessage(error, '提示音上传失败'));
     } finally {
       uploadingServiceSounds[loadingKey] = false;
     }
@@ -1041,7 +1036,7 @@ export function useSettingsPage() {
       mergeCharitySettings(payload);
       ElMessage.success('公益配置保存成功');
     } catch (error) {
-      ElMessage.error('保存失败: ' + (error?.response?.data?.error || error.message));
+      ElMessage.error(extractErrorMessage(error, '保存公益配置失败'));
     } finally {
       savingCharitySettings.value = false;
     }
@@ -1055,7 +1050,7 @@ export function useSettingsPage() {
       mergeVIPSettings(payload);
       ElMessage.success('会员配置保存成功');
     } catch (error) {
-      ElMessage.error('保存失败: ' + (error?.response?.data?.error || error.message));
+      ElMessage.error(extractErrorMessage(error, '保存会员配置失败'));
     } finally {
       savingVipSettings.value = false;
     }
@@ -1080,7 +1075,7 @@ export function useSettingsPage() {
       });
       ElMessage.success('微信登录配置保存成功');
     } catch (error) {
-      ElMessage.error('保存失败: ' + (error?.response?.data?.error || error.message));
+      ElMessage.error(extractErrorMessage(error, '保存微信登录配置失败'));
     } finally {
       savingWechatLoginConfig.value = false;
     }
@@ -1092,7 +1087,7 @@ export function useSettingsPage() {
       await request.post('/api/app-download-config', appDownloadConfig.value);
       ElMessage.success('APP下载配置保存成功');
     } catch (error) {
-      ElMessage.error('保存失败: ' + (error?.response?.data?.error || error.message));
+      ElMessage.error(extractErrorMessage(error, '保存APP下载配置失败'));
     } finally {
       savingAppDownload.value = false;
     }
@@ -1153,7 +1148,7 @@ export function useSettingsPage() {
       ElMessage.success('安装包上传成功');
       options?.onSuccess?.(data);
     } catch (error) {
-      ElMessage.error(error?.response?.data?.error || error.message || '安装包上传失败');
+      ElMessage.error(extractErrorMessage(error, '安装包上传失败'));
       options?.onError?.(error);
     } finally {
       uploadingPackage[platform] = false;
@@ -1181,7 +1176,7 @@ export function useSettingsPage() {
       ElMessage.success('小程序二维码上传成功');
       options?.onSuccess?.(data);
     } catch (error) {
-      ElMessage.error(error?.response?.data?.error || error.message || '小程序二维码上传失败');
+      ElMessage.error(extractErrorMessage(error, '小程序二维码上传失败'));
       options?.onError?.(error);
     } finally {
       uploadingPackage.miniProgramQr = false;
@@ -1219,7 +1214,7 @@ export function useSettingsPage() {
       clearAllDialogVisible.value = false;
       await loadAll();
     } catch (error) {
-      ElMessage.error(error?.response?.data?.error || '清空全部信息失败');
+      ElMessage.error(extractErrorMessage(error, '清空全部信息失败'));
     } finally {
       clearingAllData.value = false;
     }

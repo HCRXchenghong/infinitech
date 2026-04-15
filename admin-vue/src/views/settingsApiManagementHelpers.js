@@ -1,4 +1,5 @@
 import { ref, reactive } from 'vue';
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import { buildApiDocumentationText, buildApiKeyMarkdownText } from './settingsDocBuilders';
 
 const RESOURCE_PERMISSIONS = ['orders', 'users', 'riders', 'merchants', 'products', 'categories', 'dashboard'];
@@ -108,7 +109,7 @@ async function copyTextToClipboard(text) {
   }
 }
 
-export function useSettingsApiManagement({ request, router, ElMessage, ElMessageBox, extractErrorMessage }) {
+export function useSettingsApiManagement({ request, router, ElMessage, ElMessageBox }) {
   const apiListError = ref('');
   const apiList = ref([]);
   const apiListLoading = ref(false);
@@ -141,13 +142,12 @@ export function useSettingsApiManagement({ request, router, ElMessage, ElMessage
     apiListLoading.value = true;
     try {
       const { data } = await request.get('/api/public-apis');
-      const rows = Array.isArray(data) ? data : [];
+      const payload = extractEnvelopeData(data);
+      const rows = Array.isArray(payload) ? payload : [];
       apiList.value = rows.map((row) => normalizeApiRecord(row));
     } catch (error) {
       apiList.value = [];
-      apiListError.value = extractErrorMessage
-        ? extractErrorMessage(error, '加载API配置失败，请稍后重试')
-        : (error?.response?.data?.error || error?.message || '加载API配置失败，请稍后重试');
+      apiListError.value = extractErrorMessage(error, '加载API配置失败，请稍后重试');
     } finally {
       apiListLoading.value = false;
     }
@@ -205,7 +205,7 @@ export function useSettingsApiManagement({ request, router, ElMessage, ElMessage
       await loadApiList();
     } catch (error) {
       if (error !== 'cancel') {
-        ElMessage.error('删除失败: ' + (error?.response?.data?.error || error.message));
+        ElMessage.error(extractErrorMessage(error, '删除API Key失败'));
       }
     }
   }
@@ -254,7 +254,7 @@ export function useSettingsApiManagement({ request, router, ElMessage, ElMessage
       apiDialogVisible.value = false;
       await loadApiList();
     } catch (error) {
-      ElMessage.error('保存失败: ' + (error?.response?.data?.error || error.message));
+      ElMessage.error(extractErrorMessage(error, '保存API Key失败'));
     } finally {
       savingApi.value = false;
     }
@@ -345,7 +345,7 @@ export function useSettingsApiManagement({ request, router, ElMessage, ElMessage
       ElMessage.success('API文档下载成功');
       downloadDialogVisible.value = false;
     } catch (error) {
-      ElMessage.error('下载失败: ' + (error?.response?.data?.error || error.message));
+      ElMessage.error(extractErrorMessage(error, '下载API文档失败'));
     } finally {
       downloadingApi.value = false;
     }

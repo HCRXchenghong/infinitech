@@ -166,6 +166,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts';
 import request from '@/utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 
@@ -214,32 +215,12 @@ function refreshCurrent() {
   return Promise.resolve();
 }
 
-function extractRecords(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== 'object') return [];
-
-  if (Array.isArray(payload.records)) return payload.records;
-  if (Array.isArray(payload.list)) return payload.list;
-
-  const nested = payload.data;
-  if (Array.isArray(nested)) return nested;
-  if (nested && typeof nested === 'object') {
-    if (Array.isArray(nested.records)) return nested.records;
-    if (Array.isArray(nested.list)) return nested.list;
-  }
-  return [];
-}
-
-function extractErrorMessage(error, fallback) {
-  return error?.response?.data?.error || error?.response?.data?.message || error?.message || fallback;
-}
-
 async function loadCooperations() {
   loadError.value = '';
   loading.value = true;
   try {
     const { data } = await request.get('/api/cooperations');
-    cooperations.value = extractRecords(data);
+    cooperations.value = extractPaginatedItems(data).items;
   } catch (e) {
     cooperations.value = [];
     loadError.value = extractErrorMessage(e, '加载反馈与合作失败，请稍后重试');
@@ -266,8 +247,8 @@ async function loadInvites() {
       request.get('/api/invite/codes'),
       request.get('/api/invite/records')
     ]);
-    inviteCodes.value = extractRecords(codesRes.data);
-    inviteRecords.value = extractRecords(recordsRes.data);
+    inviteCodes.value = extractPaginatedItems(codesRes.data).items;
+    inviteRecords.value = extractPaginatedItems(recordsRes.data).items;
   } catch (e) {
     inviteCodes.value = [];
     inviteRecords.value = [];
@@ -282,7 +263,7 @@ async function loadRedemptions() {
   loading.value = true;
   try {
     const { data } = await request.get('/api/points/redemptions');
-    redemptions.value = extractRecords(data);
+    redemptions.value = extractPaginatedItems(data).items;
   } catch (e) {
     redemptions.value = [];
     loadError.value = extractErrorMessage(e, '加载兑换记录失败，请稍后重试');
@@ -306,7 +287,7 @@ async function loadGoods() {
   loading.value = true;
   try {
     const { data } = await request.get('/api/points/goods', { params: { all: 1 } });
-    goods.value = extractRecords(data);
+    goods.value = extractPaginatedItems(data).items;
   } catch (e) {
     goods.value = [];
     loadError.value = extractErrorMessage(e, '加载积分商品失败，请稍后重试');

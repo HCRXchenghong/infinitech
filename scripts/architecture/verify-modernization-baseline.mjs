@@ -494,6 +494,54 @@ assertContains(
   "extractPaginatedItems(data",
 );
 assertContains(
+  "admin-vue/src/views/OfficialNotifications.vue",
+  "extractPaginatedItems(data).items",
+);
+assertContains(
+  "admin-vue/src/views/OfficialNotificationsPage.vue",
+  "extractPaginatedItems(data).items",
+);
+assertContains(
+  "admin-vue/src/views/OperationsCenter.vue",
+  "extractPaginatedItems(data).items",
+);
+assertContains(
+  "admin-vue/src/views/ContentSettings.vue",
+  "extractPaginatedItems(data).items",
+);
+assertContains(
+  "admin-vue/src/views/settingsApiManagementHelpers.js",
+  "extractEnvelopeData(data)",
+);
+assertContains(
+  "admin-vue/src/views/apiManagementHelpers.js",
+  "extractEnvelopeData(data)",
+);
+assertContains(
+  "admin-vue/src/views/dashboardHelpers.js",
+  "export { extractErrorMessage } from '@infinitech/contracts'",
+);
+assertNotContains(
+  "admin-vue/src/views/ContentSettings.vue",
+  "function extractErrorMessage(error, fallback)",
+);
+assertNotContains(
+  "admin-vue/src/views/OperationsCenter.vue",
+  "function extractErrorMessage(error, fallback)",
+);
+assertNotContains(
+  "admin-vue/src/views/ApiPermissions.vue",
+  "function extractErrorMessage(error, fallback)",
+);
+assertNotContains(
+  "admin-vue/src/views/settingsHelpers.js",
+  "function extractErrorMessage(error, fallback)",
+);
+assertNotContains(
+  "admin-vue/src/views/apiManagementHelpers.js",
+  "function extractErrorMessage(error, fallback)",
+);
+assertContains(
   "admin-vue/src/views/couponManagementHelpers.js",
   "extractPaginatedItems(data)",
 );

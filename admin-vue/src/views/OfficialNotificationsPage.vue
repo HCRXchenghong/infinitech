@@ -104,6 +104,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { Plus, RefreshRight } from '@element-plus/icons-vue';
+import { extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts';
 import request from '@/utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 
@@ -186,10 +187,10 @@ async function loadNotifications() {
   loading.value = true;
   try {
     const { data } = await request.get('/api/notifications/admin/all');
-    notifications.value = Array.isArray(data) ? data : [];
+    notifications.value = extractPaginatedItems(data).items;
   } catch (error) {
     notifications.value = [];
-    loadError.value = error?.response?.data?.error || error?.response?.data?.message || error?.message || '加载通知失败，请稍后重试';
+    loadError.value = extractErrorMessage(error, '加载通知失败，请稍后重试');
   } finally {
     loading.value = false;
   }
@@ -215,7 +216,7 @@ async function deleteNotification(row) {
     ElMessage.success('删除成功');
     await loadNotifications();
   } catch (error) {
-    ElMessage.error(error?.response?.data?.error || error?.response?.data?.message || error?.message || '删除失败');
+    ElMessage.error(extractErrorMessage(error, '删除失败'));
   } finally {
     deletingId.value = null;
   }

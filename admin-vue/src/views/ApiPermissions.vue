@@ -233,6 +233,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { extractErrorMessage } from '@infinitech/contracts';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 import request from '@/utils/request';
 import { useSettingsApiManagement } from './settingsApiManagementHelpers';
@@ -299,10 +300,6 @@ const permissionCatalog = [
   },
 ];
 
-function extractErrorMessage(error, fallback) {
-  return error?.response?.data?.error || error?.response?.data?.message || error?.message || fallback;
-}
-
 const {
   apiListError,
   apiList,
@@ -326,7 +323,6 @@ const {
   router,
   ElMessage,
   ElMessageBox,
-  extractErrorMessage,
 });
 
 const summary = computed(() => {
@@ -378,7 +374,7 @@ function downloadKeyDoc(row) {
     window.URL.revokeObjectURL(url);
     ElMessage.success('Key 说明已下载');
   } catch (error) {
-    ElMessage.error(error?.message || '下载失败');
+    ElMessage.error(extractErrorMessage(error, '下载失败'));
   }
 }
 

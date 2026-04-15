@@ -1,6 +1,7 @@
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 import { DEFAULT_SMS_CONFIG, normalizeSMSConfig, buildSMSConfigPayload } from './smsConfigHelpers';
 
@@ -18,10 +19,6 @@ const DEFAULT_WEATHER_CONFIG = {
   timeout_ms: 8000,
   refresh_interval_minutes: 10
 };
-
-function extractErrorMessage(error, fallback) {
-  return error?.response?.data?.error || error?.response?.data?.message || error?.message || fallback;
-}
 
 export function useApiManagementPage(options = {}) {
   const router = useRouter();
@@ -91,13 +88,13 @@ export function useApiManagementPage(options = {}) {
       let firstError = '';
 
       if (smsResp.status === 'fulfilled' && smsResp.value?.data) {
-        sms.value = normalizeSMSConfig(smsResp.value.data);
+        sms.value = normalizeSMSConfig(extractEnvelopeData(smsResp.value.data) || {});
       } else if (smsResp.status === 'rejected') {
         firstError = extractErrorMessage(smsResp.reason, '加载短信配置失败，请稍后重试');
       }
 
       if (weaResp.status === 'fulfilled' && weaResp.value?.data) {
-        mergeWeatherConfig(weaResp.value.data);
+        mergeWeatherConfig(extractEnvelopeData(weaResp.value.data) || {});
       } else if (weaResp.status === 'rejected' && !firstError) {
         firstError = extractErrorMessage(weaResp.reason, '加载天气配置失败，请稍后重试');
       }
@@ -122,7 +119,7 @@ export function useApiManagementPage(options = {}) {
       await request.post('/api/sms-config', buildSMSConfigPayload(sms.value));
       ElMessage.success('短信配置保存成功');
     } catch (error) {
-      ElMessage.error('保存失败: ' + (error?.response?.data?.error || error.message));
+      ElMessage.error(extractErrorMessage(error, '保存短信配置失败'));
     } finally {
       saving.value = false;
     }
@@ -141,7 +138,7 @@ export function useApiManagementPage(options = {}) {
       await request.post('/api/weather-config', payload);
       ElMessage.success('天气配置保存成功');
     } catch (error) {
-      ElMessage.error('保存失败: ' + (error?.response?.data?.error || error.message));
+      ElMessage.error(extractErrorMessage(error, '保存天气配置失败'));
     } finally {
       saving.value = false;
     }
@@ -158,7 +155,8 @@ export function useApiManagementPage(options = {}) {
     apiListLoading.value = true;
     try {
       const { data } = await request.get('/api/public-apis');
-      apiList.value = Array.isArray(data) ? data : [];
+      const payload = extractEnvelopeData(data);
+      apiList.value = Array.isArray(payload) ? payload : [];
       apiListCache.value = [...apiList.value];
     } catch (error) {
       apiList.value = [];
@@ -204,7 +202,7 @@ export function useApiManagementPage(options = {}) {
       loadApiList(true);
     } catch (error) {
       if (error !== 'cancel') {
-        ElMessage.error('删除失败: ' + (error?.response?.data?.error || error.message));
+        ElMessage.error(extractErrorMessage(error, '删除API接口失败'));
       }
     }
   }
@@ -248,7 +246,7 @@ export function useApiManagementPage(options = {}) {
       apiListCache.value = null;
       loadApiList(true);
     } catch (error) {
-      ElMessage.error('保存失败: ' + (error?.response?.data?.error || error.message));
+      ElMessage.error(extractErrorMessage(error, '保存API接口失败'));
     } finally {
       savingApi.value = false;
     }
@@ -394,7 +392,7 @@ ${api.is_active ? '✅ 已启用' : '❌ 已禁用'}
       ElMessage.success('API文档下载成功');
       downloadDialogVisible.value = false;
     } catch (error) {
-      ElMessage.error('下载失败: ' + (error?.response?.data?.error || error.message));
+      ElMessage.error(extractErrorMessage(error, '下载API文档失败'));
     } finally {
       downloadingApi.value = false;
     }
