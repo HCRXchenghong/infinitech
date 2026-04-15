@@ -1,4 +1,4 @@
-import { extractErrorMessage } from '@infinitech/contracts';
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 
 function formatExportDate() {
   return new Date().toISOString().split('T')[0];
@@ -60,7 +60,7 @@ export function useDataManagementBundleHelpers({
     async function getBusinessDataWithCache(endpoint, storeName) {
       try {
         const response = await request.get(endpoint);
-        return response.data;
+        return extractEnvelopeData(response.data);
       } catch (error) {
         if (error.isNetworkError || !error.response) {
           const cachedData = await getFromCache(storeName);
@@ -86,10 +86,10 @@ export function useDataManagementBundleHelpers({
       getBusinessDataWithCache('/api/riders/export', STORES.RIDERS),
       getBusinessDataWithCache('/api/orders/export', STORES.ORDERS),
       getBusinessDataWithCache('/api/merchants/export', STORES.MERCHANTS),
-      request.get('/api/data-exports/system-settings').then((res) => res.data),
-      request.get('/api/data-exports/content-config').then((res) => res.data),
-      request.get('/api/data-exports/api-config').then((res) => res.data),
-      request.get('/api/data-exports/payment-config').then((res) => res.data),
+      request.get('/api/data-exports/system-settings').then((res) => extractEnvelopeData(res.data)),
+      request.get('/api/data-exports/content-config').then((res) => extractEnvelopeData(res.data)),
+      request.get('/api/data-exports/api-config').then((res) => extractEnvelopeData(res.data)),
+      request.get('/api/data-exports/payment-config').then((res) => extractEnvelopeData(res.data)),
     ]);
 
     const payload = {

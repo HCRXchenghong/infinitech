@@ -5,7 +5,7 @@ import {
   extractAdminRiderPage,
   extractAdminUserPage,
 } from '@infinitech/admin-core';
-import { extractErrorMessage } from '@infinitech/contracts';
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 import { useDataManagementBundleHelpers } from './dataManagementBundleHelpers';
 
@@ -159,18 +159,18 @@ export function useDataManagementPage() {
           ? Number(extractAdminMerchantPage(merchantsRes.value?.data).total || 0)
           : 0,
         systemSettingKeys: systemRes.status === 'fulfilled'
-          ? Number(systemRes.value?.data?.summary?.setting_keys || 0)
+          ? Number(extractEnvelopeData(systemRes.value?.data)?.summary?.setting_keys || 0)
           : 0,
         contentItems: contentRes.status === 'fulfilled'
-          ? Number(contentRes.value?.data?.summary?.carousel_count || 0)
-            + Number(contentRes.value?.data?.summary?.push_message_count || 0)
-            + Number(contentRes.value?.data?.summary?.home_campaign_count || 0)
+          ? Number(extractEnvelopeData(contentRes.value?.data)?.summary?.carousel_count || 0)
+            + Number(extractEnvelopeData(contentRes.value?.data)?.summary?.push_message_count || 0)
+            + Number(extractEnvelopeData(contentRes.value?.data)?.summary?.home_campaign_count || 0)
           : 0,
         publicApiCount: apiRes.status === 'fulfilled'
-          ? Number(apiRes.value?.data?.summary?.public_api_count || 0)
+          ? Number(extractEnvelopeData(apiRes.value?.data)?.summary?.public_api_count || 0)
           : 0,
         paymentConfigGroups: paymentRes.status === 'fulfilled'
-          ? Number(paymentRes.value?.data?.summary?.config_groups || 0)
+          ? Number(extractEnvelopeData(paymentRes.value?.data)?.summary?.config_groups || 0)
           : 0,
       };
 
@@ -199,7 +199,7 @@ export function useDataManagementPage() {
       let data;
       try {
         const response = await request.get(endpoint);
-        data = response.data;
+        data = extractEnvelopeData(response.data);
       } catch (error) {
         if (error.isNetworkError || !error.response) {
           const { getFromCache, STORES } = await import('@/utils/cache');

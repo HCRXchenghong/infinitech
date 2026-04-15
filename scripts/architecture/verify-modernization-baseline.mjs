@@ -334,6 +334,14 @@ assertContains(
   'respondAdminSettingsSuccess(c, "虚拟币比例保存成功", data)',
 );
 assertContains(
+  "backend/go/internal/handler/admin_settings_export_handler.go",
+  'respondAdminSettingsSuccess(c, "系统配置导出成功", data)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_export_handler.go",
+  'h.importBundle(c, h.admin.ImportPaymentConfigBundle, "支付配置导入成功")',
+);
+assertContains(
   "backend/go/internal/handler/onboarding_invite_handler.go",
   'respondEnvelope(c, http.StatusOK, "ONBOARDING_INVITE_CREATED"',
 );
@@ -708,6 +716,14 @@ assertContains(
 assertContains(
   "admin-vue/src/views/settingsHelpers/weather.js",
   "mergeWeatherConfig(extractEnvelopeData(res.data) || {})",
+);
+assertContains(
+  "admin-vue/src/views/dataManagementHelpers.js",
+  "data = extractEnvelopeData(response.data);",
+);
+assertContains(
+  "admin-vue/src/views/dataManagementBundleHelpers.js",
+  "request.get('/api/data-exports/system-settings').then((res) => extractEnvelopeData(res.data))",
 );
 assertContains(
   "admin-vue/src/views/apiManagementHelpers.js",
