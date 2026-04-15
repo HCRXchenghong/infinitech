@@ -1,7 +1,7 @@
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
+import { extractEnvelopeData, extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
 import request from '@/utils/request';
 import { useDataManagementPage } from './dataManagementHelpers';
 import { useSettingsApiManagement } from './settingsApiManagementHelpers';
@@ -639,7 +639,7 @@ export function useSettingsPage() {
         mergeWeatherConfig(weaResp.value.data);
       }
       if (wechatLoginResp.status === 'fulfilled' && wechatLoginResp.value?.data) {
-        mergeWechatLoginConfig(wechatLoginResp.value.data);
+        mergeWechatLoginConfig(extractEnvelopeData(wechatLoginResp.value.data) || {});
       }
       if (serviceResp.status === 'fulfilled' && serviceResp.value?.data) {
         mergeServiceSettings(serviceResp.value.data);

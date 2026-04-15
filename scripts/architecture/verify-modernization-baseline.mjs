@@ -310,6 +310,14 @@ assertContains(
   'respondAdminSettingsInvalidRequest(c, "请求参数错误")',
 );
 assertContains(
+  "backend/go/internal/handler/admin_settings_handler_wechat.go",
+  'respondAdminSettingsSuccess(c, "微信登录配置加载成功", service.BuildWechatLoginConfigAdminView(cfg))',
+);
+assertContains(
+  "backend/go/internal/handler/admin_settings_handler_wechat.go",
+  'respondAdminSettingsInvalidRequest(c, "invalid request parameters")',
+);
+assertContains(
   "backend/go/internal/handler/onboarding_invite_handler.go",
   'respondEnvelope(c, http.StatusOK, "ONBOARDING_INVITE_CREATED"',
 );
@@ -656,6 +664,10 @@ assertContains(
 assertContains(
   "admin-vue/src/views/settingsApiManagementHelpers.js",
   "extractEnvelopeData(data)",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers.js",
+  "mergeWechatLoginConfig(extractEnvelopeData(wechatLoginResp.value.data) || {})",
 );
 assertContains(
   "admin-vue/src/views/apiManagementHelpers.js",
