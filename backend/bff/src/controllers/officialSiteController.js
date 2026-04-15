@@ -1,6 +1,10 @@
 const axios = require("axios");
 const config = require("../config");
 const {
+  buildErrorEnvelopePayload,
+  buildSuccessEnvelopePayload,
+} = require("../utils/apiEnvelope");
+const {
   proxyGet,
   proxyPost,
   proxyPut,
@@ -165,17 +169,14 @@ async function appendVisitorSupportMessage(req, res, next) {
 async function getSupportSocketToken(req, res, next) {
   const token = String(req.params.token || "").trim();
   if (!token) {
-    return res.status(400).json({ success: false, error: "token is required" });
+    return res.status(400).json(buildErrorEnvelopePayload(req, 400, "token is required"));
   }
 
   const apiSecret = String(config.socketServerApiSecret || "").trim();
   if (!apiSecret) {
     return res
       .status(503)
-      .json({
-        success: false,
-        error: "socket token issuance is not configured",
-      });
+      .json(buildErrorEnvelopePayload(req, 503, "socket token issuance is not configured"));
   }
 
   try {
@@ -186,12 +187,10 @@ async function getSupportSocketToken(req, res, next) {
     });
 
     if (sessionResponse.status < 200 || sessionResponse.status >= 300) {
-      return res.status(sessionResponse.status).json(
-        sessionResponse.data || {
-          success: false,
-          error: "support session not found",
-        },
-      );
+      const upstreamPayload =
+        sessionResponse.data ||
+        buildErrorEnvelopePayload(req, sessionResponse.status, "support session not found");
+      return res.status(sessionResponse.status).json(normalizeOfficialSitePayload(upstreamPayload, req));
     }
 
     const session = sessionResponse.data?.data || null;
@@ -199,7 +198,7 @@ async function getSupportSocketToken(req, res, next) {
     if (!session || !sessionToken) {
       return res
         .status(404)
-        .json({ success: false, error: "support session not found" });
+        .json(buildErrorEnvelopePayload(req, 404, "support session not found"));
     }
 
     const socketResponse = await axios.post(
@@ -217,23 +216,28 @@ async function getSupportSocketToken(req, res, next) {
       },
     );
 
-    return res.status(200).json({
-      success: true,
-      data: {
-        token: socketResponse.data?.token || "",
-        userId: socketResponse.data?.userId || sessionToken,
-        role: socketResponse.data?.role || "site_visitor",
-        session,
-      },
-    });
+    const payload = {
+      token: socketResponse.data?.token || "",
+      userId: socketResponse.data?.userId || sessionToken,
+      role: socketResponse.data?.role || "site_visitor",
+      session,
+    };
+
+    return res.status(200).json(
+      buildSuccessEnvelopePayload(req, "官网客服实时连接令牌签发成功", payload, {
+        legacy: payload,
+      }),
+    );
   } catch (error) {
     if (error.response) {
-      return res.status(error.response.status).json(
-        error.response.data || {
-          success: false,
-          error: error.message || "failed to issue socket token",
-        },
-      );
+      const upstreamPayload =
+        error.response.data ||
+        buildErrorEnvelopePayload(
+          req,
+          error.response.status,
+          error.message || "failed to issue socket token",
+        );
+      return res.status(error.response.status).json(normalizeOfficialSitePayload(upstreamPayload, req));
     }
     return next(error);
   }

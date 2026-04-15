@@ -366,6 +366,34 @@ assertContains(
   'respondWalletMirroredSuccess(c, "订单支付发起成功", result)',
 );
 assertContains(
+  "backend/go/internal/handler/official_site_handler.go",
+  "func respondOfficialSitePaginated(c *gin.Context, message string, records interface{}, total int64, page, limit int)",
+);
+assertContains(
+  "backend/go/internal/handler/official_site_handler.go",
+  'respondOfficialSiteMirroredSuccess(c, "官网曝光提交成功", gin.H{',
+);
+assertContains(
+  "backend/go/internal/handler/official_site_handler.go",
+  'respondOfficialSiteMirroredSuccess(c, "官网曝光素材上传成功", payload)',
+);
+assertContains(
+  "backend/go/internal/handler/official_site_handler.go",
+  'respondOfficialSitePaginated(c, "官网曝光列表加载成功", records, int64(len(records)), 1, len(records))',
+);
+assertContains(
+  "backend/go/internal/handler/official_site_handler.go",
+  'respondOfficialSitePaginated(c, "官网客服会话列表加载成功", records, total, page, limit)',
+);
+assertContains(
+  "backend/bff/src/utils/apiEnvelope.js",
+  "function buildSuccessEnvelopePayload(req, message, data, options = {})",
+);
+assertContains(
+  "backend/bff/src/controllers/officialSiteController.js",
+  'buildSuccessEnvelopePayload(req, "官网客服实时连接令牌签发成功", payload, {',
+);
+assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",
   'respondAdminSettingsSuccess(c, "APP 下载配置加载成功", data)',
 );

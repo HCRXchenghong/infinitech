@@ -50,6 +50,35 @@ function normalizeDataPayload(data) {
   return {};
 }
 
+function normalizeSuccessData(data) {
+  if (data === undefined || data === null) {
+    return {};
+  }
+  return data;
+}
+
+function buildSuccessEnvelopePayload(req, message, data, options = {}) {
+  const normalizedMessage = trimText(message) || 'ok';
+  const payload = {
+    request_id: resolveRequestId(req, options.upstreamPayload),
+    code: trimText(options.code) || 'OK',
+    message: normalizedMessage,
+    data: normalizeSuccessData(data),
+    success: true,
+  };
+
+  const legacy = options.legacy;
+  if (legacy && typeof legacy === 'object') {
+    for (const [key, value] of Object.entries(legacy)) {
+      if (payload[key] === undefined) {
+        payload[key] = value;
+      }
+    }
+  }
+
+  return payload;
+}
+
 function buildErrorEnvelopePayload(req, status, message, options = {}) {
   const normalizedMessage = trimText(message) || 'Request failed';
   const payload = {
@@ -74,6 +103,7 @@ function buildErrorEnvelopePayload(req, status, message, options = {}) {
 }
 
 module.exports = {
+  buildSuccessEnvelopePayload,
   buildErrorEnvelopePayload,
   normalizeErrorCode,
 };

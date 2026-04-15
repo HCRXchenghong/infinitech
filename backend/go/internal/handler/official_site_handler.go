@@ -19,6 +19,30 @@ func NewOfficialSiteHandler(service *service.OfficialSiteService) *OfficialSiteH
 	return &OfficialSiteHandler{service: service}
 }
 
+func respondOfficialSiteInvalidRequest(c *gin.Context, message string) {
+	respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, message, nil)
+}
+
+func respondOfficialSiteNotFound(c *gin.Context, message string) {
+	respondErrorEnvelope(c, http.StatusNotFound, responseCodeNotFound, message, nil)
+}
+
+func respondOfficialSiteInternalError(c *gin.Context, err error) {
+	if err == nil {
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "internal error", nil)
+		return
+	}
+	respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, err.Error(), nil)
+}
+
+func respondOfficialSiteMirroredSuccess(c *gin.Context, message string, data interface{}) {
+	respondMirroredSuccessEnvelope(c, message, data)
+}
+
+func respondOfficialSitePaginated(c *gin.Context, message string, records interface{}, total int64, page, limit int) {
+	respondPaginatedEnvelope(c, responseCodeOK, message, "records", records, total, page, limit)
+}
+
 func (h *OfficialSiteHandler) CreateExposure(c *gin.Context) {
 	var payload struct {
 		Content      string   `json:"content"`
@@ -28,7 +52,7 @@ func (h *OfficialSiteHandler) CreateExposure(c *gin.Context) {
 		PhotoURLs    []string `json:"photo_urls"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondOfficialSiteInvalidRequest(c, "invalid request")
 		return
 	}
 
@@ -40,23 +64,20 @@ func (h *OfficialSiteHandler) CreateExposure(c *gin.Context) {
 		PhotoURLs:    payload.PhotoURLs,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondOfficialSiteInvalidRequest(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"id":            record.UID,
-			"review_status": record.ReviewStatus,
-		},
+	respondOfficialSiteMirroredSuccess(c, "官网曝光提交成功", gin.H{
+		"id":            record.UID,
+		"review_status": record.ReviewStatus,
 	})
 }
 
 func (h *OfficialSiteHandler) UploadExposureAsset(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "没有找到上传文件"})
+		respondOfficialSiteInvalidRequest(c, "没有找到上传文件")
 		return
 	}
 
@@ -75,35 +96,31 @@ func (h *OfficialSiteHandler) UploadExposureAsset(c *gin.Context) {
 		if isUploadInternalError(err) {
 			status = http.StatusInternalServerError
 		}
-		c.JSON(status, gin.H{"success": false, "error": err.Error()})
+		respondErrorEnvelope(c, status, normalizeResponseCode("", status), err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"url":      url,
-			"filename": finalFilename,
-		},
-	})
+	payload := buildPublicAssetPayload(url, finalFilename, "official_site_exposure_asset", file.Size)
+	payload["url"] = url
+	respondOfficialSiteMirroredSuccess(c, "官网曝光素材上传成功", payload)
 }
 
 func (h *OfficialSiteHandler) ListPublicExposures(c *gin.Context) {
 	records, err := h.service.ListPublicExposures(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondOfficialSiteInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"records": records, "total": len(records)})
+	respondOfficialSitePaginated(c, "官网曝光列表加载成功", records, int64(len(records)), 1, len(records))
 }
 
 func (h *OfficialSiteHandler) GetPublicExposureDetail(c *gin.Context) {
 	record, err := h.service.GetPublicExposureDetail(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		respondOfficialSiteNotFound(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": record})
+	respondOfficialSiteMirroredSuccess(c, "官网曝光详情加载成功", record)
 }
 
 func (h *OfficialSiteHandler) ListPublicNews(c *gin.Context) {
@@ -113,19 +130,19 @@ func (h *OfficialSiteHandler) ListPublicNews(c *gin.Context) {
 		Offset: offset,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondOfficialSiteInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"records": records, "total": total, "page": page, "limit": limit})
+	respondOfficialSitePaginated(c, "官网资讯列表加载成功", records, total, page, limit)
 }
 
 func (h *OfficialSiteHandler) GetPublicNewsDetail(c *gin.Context) {
 	record, err := h.service.GetPublicNewsDetail(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		respondOfficialSiteNotFound(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": record})
+	respondOfficialSiteMirroredSuccess(c, "官网资讯详情加载成功", record)
 }
 
 func (h *OfficialSiteHandler) ListAdminExposures(c *gin.Context) {
@@ -137,10 +154,10 @@ func (h *OfficialSiteHandler) ListAdminExposures(c *gin.Context) {
 		Offset:        offset,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondOfficialSiteInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"records": records, "total": total, "page": page, "limit": limit})
+	respondOfficialSitePaginated(c, "官网曝光审核列表加载成功", records, total, page, limit)
 }
 
 func (h *OfficialSiteHandler) UpdateExposure(c *gin.Context) {
@@ -151,7 +168,7 @@ func (h *OfficialSiteHandler) UpdateExposure(c *gin.Context) {
 		ProcessRemark string `json:"process_remark"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondOfficialSiteInvalidRequest(c, "invalid request")
 		return
 	}
 
@@ -165,10 +182,10 @@ func (h *OfficialSiteHandler) UpdateExposure(c *gin.Context) {
 		AdminName:     adminName,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondOfficialSiteInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": record})
+	respondOfficialSiteMirroredSuccess(c, "官网曝光处理结果保存成功", record)
 }
 
 func (h *OfficialSiteHandler) CreateCooperation(c *gin.Context) {
@@ -178,16 +195,16 @@ func (h *OfficialSiteHandler) CreateCooperation(c *gin.Context) {
 		Direction string `json:"direction"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondOfficialSiteInvalidRequest(c, "invalid request")
 		return
 	}
 
 	record, err := h.service.CreateOfficialSiteCooperation(c.Request.Context(), payload.Nickname, payload.Contact, payload.Direction)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondOfficialSiteInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": record})
+	respondOfficialSiteMirroredSuccess(c, "官网商务合作线索提交成功", record)
 }
 
 func (h *OfficialSiteHandler) ListAdminCooperations(c *gin.Context) {
@@ -198,10 +215,10 @@ func (h *OfficialSiteHandler) ListAdminCooperations(c *gin.Context) {
 		Offset: offset,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondOfficialSiteInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"records": records, "total": total, "page": page, "limit": limit})
+	respondOfficialSitePaginated(c, "官网商务合作线索加载成功", records, total, page, limit)
 }
 
 func (h *OfficialSiteHandler) UpdateCooperation(c *gin.Context) {
@@ -210,14 +227,18 @@ func (h *OfficialSiteHandler) UpdateCooperation(c *gin.Context) {
 		Remark string `json:"remark"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondOfficialSiteInvalidRequest(c, "invalid request")
 		return
 	}
 	if err := h.service.UpdateOfficialSiteCooperation(c.Request.Context(), c.Param("id"), payload.Status, payload.Remark); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondOfficialSiteInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondOfficialSiteMirroredSuccess(c, "官网商务合作状态更新成功", gin.H{
+		"id":      c.Param("id"),
+		"updated": true,
+		"status":  payload.Status,
+	})
 }
 
 func (h *OfficialSiteHandler) CreateSupportSession(c *gin.Context) {
@@ -227,7 +248,7 @@ func (h *OfficialSiteHandler) CreateSupportSession(c *gin.Context) {
 		InitialMessage string `json:"initial_message"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondOfficialSiteInvalidRequest(c, "invalid request")
 		return
 	}
 
@@ -237,28 +258,34 @@ func (h *OfficialSiteHandler) CreateSupportSession(c *gin.Context) {
 		InitialMessage: payload.InitialMessage,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondOfficialSiteInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "session": session, "messages": messages})
+	respondOfficialSiteMirroredSuccess(c, "官网客服会话创建成功", gin.H{
+		"session":  session,
+		"messages": messages,
+	})
 }
 
 func (h *OfficialSiteHandler) GetSupportSessionByToken(c *gin.Context) {
 	session, err := h.service.GetSupportSessionByToken(c.Request.Context(), c.Param("token"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondOfficialSiteInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": session})
+	respondOfficialSiteMirroredSuccess(c, "官网客服会话加载成功", session)
 }
 
 func (h *OfficialSiteHandler) ListSupportSessionMessagesByToken(c *gin.Context) {
 	session, messages, err := h.service.GetSupportSessionMessagesByToken(c.Request.Context(), c.Param("token"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondOfficialSiteInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "session": session, "messages": messages})
+	respondOfficialSiteMirroredSuccess(c, "官网客服消息加载成功", gin.H{
+		"session":  session,
+		"messages": messages,
+	})
 }
 
 func (h *OfficialSiteHandler) AppendVisitorSupportMessage(c *gin.Context) {
@@ -266,7 +293,7 @@ func (h *OfficialSiteHandler) AppendVisitorSupportMessage(c *gin.Context) {
 		Content string `json:"content"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondOfficialSiteInvalidRequest(c, "invalid request")
 		return
 	}
 
@@ -274,10 +301,10 @@ func (h *OfficialSiteHandler) AppendVisitorSupportMessage(c *gin.Context) {
 		Content: payload.Content,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondOfficialSiteInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": message})
+	respondOfficialSiteMirroredSuccess(c, "官网访客消息发送成功", message)
 }
 
 func (h *OfficialSiteHandler) ListAdminSupportSessions(c *gin.Context) {
@@ -289,19 +316,22 @@ func (h *OfficialSiteHandler) ListAdminSupportSessions(c *gin.Context) {
 		Offset: offset,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondOfficialSiteInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"records": records, "total": total, "page": page, "limit": limit})
+	respondOfficialSitePaginated(c, "官网客服会话列表加载成功", records, total, page, limit)
 }
 
 func (h *OfficialSiteHandler) GetAdminSupportMessages(c *gin.Context) {
 	session, messages, err := h.service.GetAdminSupportSessionMessages(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondOfficialSiteInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "session": session, "messages": messages})
+	respondOfficialSiteMirroredSuccess(c, "官网客服会话消息加载成功", gin.H{
+		"session":  session,
+		"messages": messages,
+	})
 }
 
 func (h *OfficialSiteHandler) AppendAdminSupportMessage(c *gin.Context) {
@@ -309,7 +339,7 @@ func (h *OfficialSiteHandler) AppendAdminSupportMessage(c *gin.Context) {
 		Content string `json:"content"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondOfficialSiteInvalidRequest(c, "invalid request")
 		return
 	}
 
@@ -318,10 +348,10 @@ func (h *OfficialSiteHandler) AppendAdminSupportMessage(c *gin.Context) {
 		Content: payload.Content,
 	}, adminName)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondOfficialSiteInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": message})
+	respondOfficialSiteMirroredSuccess(c, "官网客服回复发送成功", message)
 }
 
 func (h *OfficialSiteHandler) UpdateSupportSession(c *gin.Context) {
@@ -330,7 +360,7 @@ func (h *OfficialSiteHandler) UpdateSupportSession(c *gin.Context) {
 		AdminRemark string `json:"admin_remark"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondOfficialSiteInvalidRequest(c, "invalid request")
 		return
 	}
 
@@ -339,10 +369,10 @@ func (h *OfficialSiteHandler) UpdateSupportSession(c *gin.Context) {
 		AdminRemark: payload.AdminRemark,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondOfficialSiteInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": session})
+	respondOfficialSiteMirroredSuccess(c, "官网客服会话状态更新成功", session)
 }
 
 func parseOfficialSitePage(c *gin.Context) (int, int, int) {
