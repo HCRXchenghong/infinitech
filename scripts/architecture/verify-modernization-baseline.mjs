@@ -43,6 +43,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/client-sdk/src/onboarding-invite.js",
   "packages/client-sdk/src/onboarding-invite.test.mjs",
   "packages/domain-core/src/index.js",
+  "packages/domain-core/src/errand-settings.js",
+  "packages/domain-core/src/errand-settings.test.mjs",
   "packages/domain-core/src/notification-content.js",
   "packages/domain-core/src/notification-content.test.mjs",
   "packages/domain-core/src/onboarding-invite-content.js",
@@ -1218,7 +1220,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:domain-core-tests": "node --test packages/domain-core/src/notification-content.test.mjs packages/domain-core/src/onboarding-invite-content.test.mjs"',
+  '"verify:domain-core-tests": "node --test packages/domain-core/src/notification-content.test.mjs packages/domain-core/src/onboarding-invite-content.test.mjs packages/domain-core/src/errand-settings.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -1965,6 +1967,26 @@ assertContains(
   "buildOnboardingInviteSubmitPayload(inviteType.value, form)",
 );
 assertContains(
+  "admin-vue/src/views/ErrandSettings.vue",
+  "@infinitech/domain-core",
+);
+assertContains(
+  "admin-vue/src/views/ErrandSettings.vue",
+  "validateErrandSettings(form)",
+);
+assertContains(
+  "admin-vue/src/views/ErrandSettings.vue",
+  "buildErrandSettingsPayload(form)",
+);
+assertContains(
+  "user-vue/pages/errand/home/index.vue",
+  "buildErrandHomeViewModel(runtime.errandSettings || {})",
+);
+assertContains(
+  "app-mobile/pages/errand/home/index.vue",
+  "buildErrandHomeViewModel(runtime.errandSettings || {})",
+);
+assertContains(
   "admin-vue/src/views/settingsApiManagementHelpers.js",
   "buildApiKeyMarkdownText",
 );
@@ -2087,6 +2109,22 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/InviteLanding.vue",
   "function formatDateTime(value)",
+);
+assertNotContains(
+  "admin-vue/src/views/ErrandSettings.vue",
+  "function createService(source = {})",
+);
+assertNotContains(
+  "admin-vue/src/views/ErrandSettings.vue",
+  "function validateServices()",
+);
+assertNotContains(
+  "user-vue/pages/errand/home/index.vue",
+  "const routes = {",
+);
+assertNotContains(
+  "app-mobile/pages/errand/home/index.vue",
+  "const routes = {",
 );
 assertNotContains(
   "admin-vue/src/views/Users.vue",

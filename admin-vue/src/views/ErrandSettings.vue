@@ -115,22 +115,22 @@
 
           <div class="preview-shell">
             <div class="hero-card">
-              <strong>{{ form.hero_title }}</strong>
-              <p>{{ form.hero_desc }}</p>
+              <strong>{{ preview.heroTitle }}</strong>
+              <p>{{ preview.heroDesc }}</p>
             </div>
             <div class="preview-list">
-              <div v-for="service in enabledServices" :key="service.key" class="preview-item">
+              <div v-for="service in preview.services" :key="service.key" class="preview-item">
                 <div class="preview-icon" :style="{ background: service.color || '#e5e7eb' }">
                   {{ service.icon || '·' }}
                 </div>
                 <div class="preview-content">
-                  <strong>{{ service.label }}</strong>
+                  <strong>{{ service.name }}</strong>
                   <span>{{ service.desc }}</span>
-                  <small>{{ service.service_fee_hint }}</small>
+                  <small>{{ service.serviceFeeHint }}</small>
                 </div>
               </div>
             </div>
-            <el-empty v-if="!enabledServices.length" description="当前没有启用中的跑腿服务" />
+            <el-empty v-if="!preview.services.length" description="当前没有启用中的跑腿服务" />
           </div>
         </el-card>
       </el-col>
@@ -142,49 +142,32 @@
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts'
+import {
+  buildErrandSettingsPayload,
+  createDefaultErrandSettings,
+  getEnabledErrandServices,
+  getSortedErrandServices,
+  normalizeErrandSettings,
+  validateErrandSettings,
+} from '@infinitech/domain-core'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 
 const loading = ref(false)
 const saving = ref(false)
 const loadError = ref('')
-const form = reactive({
-  page_title: '',
-  hero_title: '',
-  hero_desc: '',
-  detail_tip: '',
-  services: []
-})
+const form = reactive(createDefaultErrandSettings())
 
-function createService(source = {}) {
-  return {
-    key: String(source.key || '').trim(),
-    label: String(source.label || '').trim(),
-    desc: String(source.desc || '').trim(),
-    icon: String(source.icon || '').trim(),
-    color: String(source.color || '').trim(),
-    enabled: source.enabled !== false,
-    sort_order: Number(source.sort_order || 0),
-    route: String(source.route || '').trim(),
-    service_fee_hint: String(source.service_fee_hint || '').trim()
-  }
-}
-
-function normalizePayload(payload = {}) {
-  return {
-    page_title: String(payload.page_title || '').trim(),
-    hero_title: String(payload.hero_title || '').trim(),
-    hero_desc: String(payload.hero_desc || '').trim(),
-    detail_tip: String(payload.detail_tip || '').trim(),
-    services: (Array.isArray(payload.services) ? payload.services : []).map(createService)
-  }
-}
-
-const sortedServices = computed(() =>
-  [...form.services].sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
-)
-
-const enabledServices = computed(() => sortedServices.value.filter((item) => item.enabled))
+const sortedServices = computed(() => getSortedErrandServices(form.services))
+const preview = computed(() => ({
+  heroTitle: form.hero_title,
+  heroDesc: form.hero_desc,
+  services: getEnabledErrandServices(form.services).map((item) => ({
+    ...item,
+    name: item.label,
+    serviceFeeHint: item.service_fee_hint
+  }))
+}))
 
 async function loadSettings(forceRefresh = false) {
   loading.value = true
@@ -193,7 +176,7 @@ async function loadSettings(forceRefresh = false) {
     const { data } = await request.get('/api/errand-settings', {
       params: forceRefresh ? { _t: Date.now() } : undefined
     })
-    Object.assign(form, normalizePayload(extractEnvelopeData(data) || {}))
+    Object.assign(form, normalizeErrandSettings(extractEnvelopeData(data) || {}))
   } catch (error) {
     loadError.value = extractErrorMessage(error, '加载跑腿配置失败')
   } finally {
@@ -201,19 +184,10 @@ async function loadSettings(forceRefresh = false) {
   }
 }
 
-function validateServices() {
-  if (!form.hero_title) return '跑腿主标题不能为空'
-  if (!form.services.length) return '至少需要保留一个跑腿服务'
-  for (const service of form.services) {
-    if (!service.key || !service.label) return '跑腿服务 key 和名称不能为空'
-  }
-  return ''
-}
-
 async function saveSettings() {
-  const message = validateServices()
-  if (message) {
-    ElMessage.warning(message)
+  const validation = validateErrandSettings(form)
+  if (!validation.valid) {
+    ElMessage.warning(validation.message)
     return
   }
   try {
@@ -226,15 +200,9 @@ async function saveSettings() {
 
   saving.value = true
   try {
-    const payload = {
-      page_title: form.page_title,
-      hero_title: form.hero_title,
-      hero_desc: form.hero_desc,
-      detail_tip: form.detail_tip,
-      services: form.services.map((item) => ({ ...item }))
-    }
+    const payload = buildErrandSettingsPayload(form)
     const { data } = await request.post('/api/errand-settings', payload)
-    Object.assign(form, normalizePayload(extractEnvelopeData(data) || payload))
+    Object.assign(form, normalizeErrandSettings(extractEnvelopeData(data) || payload))
     ElMessage.success('跑腿配置已保存')
   } catch (error) {
     ElMessage.error(extractErrorMessage(error, '保存跑腿配置失败'))

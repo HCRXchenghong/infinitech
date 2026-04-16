@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.js",
+    "./errand-settings": "./src/errand-settings.js",
     "./identity": "./src/identity.js",
     "./notification-content": "./src/notification-content.js",
     "./onboarding-invite-content": "./src/onboarding-invite-content.js"

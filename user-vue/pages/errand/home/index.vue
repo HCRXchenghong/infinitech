@@ -71,22 +71,19 @@ import PageHeader from '@/components/PageHeader.vue'
 import { fetchOrders } from '@/shared-ui/api.js'
 import { getCurrentUserIdentity, isErrandOrder, mapErrandOrderSummary } from '@/shared-ui/errand.js'
 import { isRuntimeRouteEnabled, loadPlatformRuntimeSettings } from '@/shared-ui/platform-runtime.js'
+import { buildErrandHomeViewModel } from '../../../../packages/domain-core/src/errand-settings.js'
 
 export default {
   components: { PageHeader },
   data() {
+    const errandHome = buildErrandHomeViewModel()
     return {
       featureEnabled: true,
-      pageTitle: '跑腿',
-      heroTitle: '同城跑腿',
-      heroDesc: '帮买、帮送、帮取、帮办统一走真实订单链路',
-      detailTip: '',
-      services: [
-        { id: 'buy', name: '帮我买', desc: '代买商品', icon: '购', color: '#ff6b00' },
-        { id: 'deliver', name: '帮我送', desc: '同城配送', icon: '送', color: '#009bf5' },
-        { id: 'pickup', name: '帮我取', desc: '快递代取', icon: '取', color: '#10b981' },
-        { id: 'do', name: '帮我办', desc: '排队代办', icon: '办', color: '#8b5cf6' }
-      ],
+      pageTitle: errandHome.pageTitle,
+      heroTitle: errandHome.heroTitle,
+      heroDesc: errandHome.heroDesc,
+      detailTip: errandHome.detailTip,
+      services: errandHome.services,
       recentOrders: [],
       loadingRecent: false
     }
@@ -104,25 +101,12 @@ export default {
       try {
         const runtime = await loadPlatformRuntimeSettings()
         this.featureEnabled = isRuntimeRouteEnabled(runtime, 'feature', 'errand', 'user-vue')
-        const errandSettings = runtime.errandSettings || {}
-        this.pageTitle = errandSettings.page_title || '跑腿'
-        this.heroTitle = errandSettings.hero_title || '同城跑腿'
-        this.heroDesc = errandSettings.hero_desc || '帮买、帮送、帮取、帮办统一走真实订单链路'
-        this.detailTip = errandSettings.detail_tip || ''
-        if (Array.isArray(errandSettings.services) && errandSettings.services.length) {
-          this.services = errandSettings.services
-            .filter((item) => item && item.enabled !== false)
-            .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
-            .map((item) => ({
-              id: item.key,
-              name: item.label,
-              desc: item.desc,
-              icon: item.icon,
-              color: item.color,
-              route: item.route,
-              serviceFeeHint: item.service_fee_hint
-            }))
-        }
+        const errandHome = buildErrandHomeViewModel(runtime.errandSettings || {})
+        this.pageTitle = errandHome.pageTitle
+        this.heroTitle = errandHome.heroTitle
+        this.heroDesc = errandHome.heroDesc
+        this.detailTip = errandHome.detailTip
+        this.services = errandHome.services
       } catch (error) {
         console.error('加载跑腿 runtime 失败:', error)
       }
@@ -135,13 +119,7 @@ export default {
       if (item.serviceFeeHint) {
         uni.showToast({ title: item.serviceFeeHint, icon: 'none' })
       }
-      const routes = {
-        buy: '/pages/errand/buy/index',
-        deliver: '/pages/errand/deliver/index',
-        pickup: '/pages/errand/pickup/index',
-        do: '/pages/errand/do/index'
-      }
-      const url = item.route || routes[item.id]
+      const url = item.route
       if (url) {
         uni.navigateTo({ url })
       }
