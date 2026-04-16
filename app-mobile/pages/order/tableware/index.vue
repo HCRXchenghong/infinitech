@@ -16,30 +16,11 @@
 
 <script>
 import { useUserOrderStore } from '@/shared-ui/userOrderStore.js'
+import { createOrderTablewarePage } from '../../../../shared/mobile-common/order-support-pages.js'
 
-export default {
-  data() {
-    return {
-      value: useUserOrderStore().state.tableware,
-      options: [
-        { value: 0, label: '不需要餐具' },
-        { value: 1, label: '1 套' },
-        { value: 2, label: '2 套' },
-        { value: 3, label: '3 套以上' }
-      ]
-    }
-  },
-  onShow() {
-    this.value = useUserOrderStore().state.tableware
-  },
-  methods: {
-    select(v) {
-      this.value = v
-      useUserOrderStore().setTableware(v)
-      uni.navigateBack()
-    }
-  }
-}
+export default createOrderTablewarePage({
+  useUserOrderStore
+})
 </script>
 
 <style scoped lang="scss">

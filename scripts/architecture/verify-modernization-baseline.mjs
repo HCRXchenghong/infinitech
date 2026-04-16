@@ -66,6 +66,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/notification-detail.test.mjs",
   "packages/mobile-core/src/order-coupon.js",
   "packages/mobile-core/src/order-coupon.test.mjs",
+  "packages/mobile-core/src/order-support-pages.js",
+  "packages/mobile-core/src/order-support-pages.test.mjs",
   "packages/mobile-core/src/profile-edit.js",
   "packages/mobile-core/src/profile-edit.test.mjs",
   "packages/mobile-core/src/profile-home.js",
@@ -76,6 +78,7 @@ function assertNotContains(relativePath, unexpectedText) {
   "shared/mobile-common/message-center-pages.js",
   "shared/mobile-common/notification-detail-page.js",
   "shared/mobile-common/order-coupon-page.js",
+  "shared/mobile-common/order-support-pages.js",
   "shared/mobile-common/profile-edit-page.js",
   "shared/mobile-common/profile-home-page.js",
   "shared/mobile-common/profile-settings-pages.js",
@@ -1253,7 +1256,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-coupon.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-support-pages.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -2053,6 +2056,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./order-support-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./profile-edit.js";',
 );
 assertContains(
@@ -2074,6 +2081,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./order-coupon": "./src/order-coupon.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./order-support-pages": "./src/order-support-pages.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -2216,6 +2227,54 @@ assertContains(
 assertContains(
   "shared/mobile-common/order-confirm-page.js",
   "resolveConsumerOrderCouponUserId(profile)",
+);
+assertContains(
+  "user-vue/pages/order/remark/index.vue",
+  "../../../../shared/mobile-common/order-support-pages.js",
+);
+assertContains(
+  "app-mobile/pages/order/remark/index.vue",
+  "../../../../shared/mobile-common/order-support-pages.js",
+);
+assertContains(
+  "user-vue/pages/order/remark/index.vue",
+  "createOrderRemarkPage({",
+);
+assertContains(
+  "app-mobile/pages/order/remark/index.vue",
+  "createOrderRemarkPage({",
+);
+assertContains(
+  "user-vue/pages/order/tableware/index.vue",
+  "../../../../shared/mobile-common/order-support-pages.js",
+);
+assertContains(
+  "app-mobile/pages/order/tableware/index.vue",
+  "../../../../shared/mobile-common/order-support-pages.js",
+);
+assertContains(
+  "user-vue/pages/order/tableware/index.vue",
+  "createOrderTablewarePage({",
+);
+assertContains(
+  "app-mobile/pages/order/tableware/index.vue",
+  "createOrderTablewarePage({",
+);
+assertContains(
+  "user-vue/pages/pay/success/index.vue",
+  "../../../../shared/mobile-common/order-support-pages.js",
+);
+assertContains(
+  "app-mobile/pages/pay/success/index.vue",
+  "../../../../shared/mobile-common/order-support-pages.js",
+);
+assertContains(
+  "user-vue/pages/pay/success/index.vue",
+  "createOrderPaySuccessPage()",
+);
+assertContains(
+  "app-mobile/pages/pay/success/index.vue",
+  "createOrderPaySuccessPage()",
 );
 assertContains(
   "user-vue/pages/message/index/index.vue",
@@ -2561,6 +2620,27 @@ assertNotContains(
   "shared/mobile-common/order-confirm-page.js",
   "this.availableCoupons = res && Array.isArray(res.data) ? res.data : []",
 );
+[
+  "user-vue/pages/order/remark/index.vue",
+  "app-mobile/pages/order/remark/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "remark: useUserOrderStore().state.remark");
+  assertNotContains(relativePath, "saveRemark()");
+});
+[
+  "user-vue/pages/order/tableware/index.vue",
+  "app-mobile/pages/order/tableware/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "options: [");
+  assertNotContains(relativePath, "setTableware(v)");
+});
+[
+  "user-vue/pages/pay/success/index.vue",
+  "app-mobile/pages/pay/success/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "uni.switchTab({ url: '/pages/order/list/index' })");
+  assertNotContains(relativePath, "uni.switchTab({ url: '/pages/index/index' })");
+});
 [
   "user-vue/pages/message/index/index.vue",
   "app-mobile/pages/message/index/index.vue",

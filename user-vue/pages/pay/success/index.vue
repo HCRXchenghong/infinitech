@@ -13,16 +13,9 @@
 </template>
 
 <script>
-export default {
-  methods: {
-    goOrders() {
-      uni.switchTab({ url: '/pages/order/list/index' })
-    },
-    goHome() {
-      uni.switchTab({ url: '/pages/index/index' })
-    }
-  }
-}
+import { createOrderPaySuccessPage } from '../../../../shared/mobile-common/order-support-pages.js'
+
+export default createOrderPaySuccessPage()
 </script>
 
 <style scoped lang="scss">
@@ -90,4 +83,3 @@ export default {
   border-color: #d1d5db;
 }
 </style>
-

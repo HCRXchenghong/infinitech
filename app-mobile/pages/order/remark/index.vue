@@ -14,23 +14,11 @@
 
 <script>
 import { useUserOrderStore } from '@/shared-ui/userOrderStore.js'
+import { createOrderRemarkPage } from '../../../../shared/mobile-common/order-support-pages.js'
 
-export default {
-  data() {
-    return {
-      remark: useUserOrderStore().state.remark
-    }
-  },
-  onShow() {
-    this.remark = useUserOrderStore().state.remark
-  },
-  methods: {
-    saveRemark() {
-      useUserOrderStore().setRemark(this.remark)
-      uni.navigateBack()
-    }
-  }
-}
+export default createOrderRemarkPage({
+  useUserOrderStore
+})
 </script>
 
 <style scoped lang="scss">
