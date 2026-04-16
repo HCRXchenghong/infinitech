@@ -91,6 +91,7 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/profile-settings.js",
   "packages/mobile-core/src/profile-settings.test.mjs",
   "shared/mobile-common/home-index-page.js",
+  "shared/mobile-common/auth-password-pages.js",
   "shared/mobile-common/dining-buddy-page.js",
   "shared/mobile-common/message-center-pages.js",
   "shared/mobile-common/notification-detail-page.js",
@@ -214,6 +215,14 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../shared/mobile-common/wallet-overview-page.js",
   ],
   [
+    "app-mobile/pages/auth/reset-password/index.vue",
+    "../../../../shared/mobile-common/auth-password-pages.js",
+  ],
+  [
+    "app-mobile/pages/auth/set-password/index.vue",
+    "../../../../shared/mobile-common/auth-password-pages.js",
+  ],
+  [
     "app-mobile/pages/dining-buddy/index.vue",
     "../../../shared/mobile-common/dining-buddy-page.js",
   ],
@@ -252,6 +261,14 @@ function assertNotContains(relativePath, unexpectedText) {
   [
     "app-mobile/pages/profile/invite-friends/index.vue",
     "../../../../shared/mobile-common/profile-outreach-pages.js",
+  ],
+  [
+    "user-vue/pages/auth/reset-password/index.vue",
+    "../../../../shared/mobile-common/auth-password-pages.js",
+  ],
+  [
+    "user-vue/pages/auth/set-password/index.vue",
+    "../../../../shared/mobile-common/auth-password-pages.js",
   ],
   [
     "user-vue/pages/dining-buddy/index.vue",
@@ -2267,6 +2284,20 @@ assertContains(
   "app-mobile/pages/charity/index.vue",
   "normalizeCharityJoinUrl(url)",
 );
+[
+  "user-vue/pages/auth/reset-password/index.vue",
+  "app-mobile/pages/auth/reset-password/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "validatePhone() {");
+  assertNotContains(relativePath, "requestSMSCode(phone, 'reset')");
+});
+[
+  "user-vue/pages/auth/set-password/index.vue",
+  "app-mobile/pages/auth/set-password/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "const resetData = uni.getStorageSync('reset_password_data')");
+  assertNotContains(relativePath, "url: '/api/set-new-password'");
+});
 [
   "user-vue/pages/auth/login/index.vue",
   "app-mobile/pages/auth/login/index.vue",

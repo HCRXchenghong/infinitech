@@ -30,115 +30,20 @@
 
 <script>
 import { requestSMSCode, verifySMSCodeCheck } from '@/shared-ui/api.js'
+import { normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
 import {
   getCachedConsumerAuthRuntimeSettings,
   loadConsumerAuthRuntimeSettings
 } from '@/shared-ui/auth-runtime.js'
+import { createResetPasswordPage } from '../../../../shared/mobile-common/auth-password-pages.js'
 
-export default {
-  data() {
-    return {
-      phone: '',
-      code: '',
-      codeCooldown: 0,
-      loading: false,
-      timer: null,
-      portalRuntime: getCachedConsumerAuthRuntimeSettings()
-    }
-  },
-  onLoad() {
-    void this.loadRuntimeSettings()
-  },
-  onUnload() {
-    if (this.timer) {
-      clearInterval(this.timer)
-      this.timer = null
-    }
-  },
-  methods: {
-    async loadRuntimeSettings() {
-      this.portalRuntime = await loadConsumerAuthRuntimeSettings()
-    },
-    goLogin() {
-      uni.redirectTo({ url: '/pages/auth/login/index' })
-    },
-    validatePhone() {
-      const phone = String(this.phone || '').trim()
-      if (!/^1\d{10}$/.test(phone)) {
-        uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
-        return ''
-      }
-      return phone
-    },
-    async sendCode() {
-      if (this.codeCooldown > 0 || this.loading) {
-        return
-      }
-
-      const phone = this.validatePhone()
-      if (!phone) {
-        return
-      }
-
-      this.loading = true
-      try {
-        const res = await requestSMSCode(phone, 'reset')
-        if (res.success === false) {
-          uni.showToast({ title: res.error || res.message || '发送验证码失败', icon: 'none', duration: 2000 })
-          return
-        }
-
-        uni.showToast({ title: res.message || '验证码已发送', icon: 'success' })
-        this.codeCooldown = 60
-        if (this.timer) {
-          clearInterval(this.timer)
-          this.timer = null
-        }
-        this.timer = setInterval(() => {
-          this.codeCooldown -= 1
-          if (this.codeCooldown <= 0) {
-            clearInterval(this.timer)
-            this.timer = null
-          }
-        }, 1000)
-      } catch (err) {
-        const message = err.data?.error || err.error || err.message || '发送验证码失败'
-        uni.showToast({ title: message, icon: 'none', duration: 2000 })
-      } finally {
-        this.loading = false
-      }
-    },
-    async submit() {
-      const phone = this.validatePhone()
-      const code = String(this.code || '').trim()
-
-      if (!phone) {
-        return
-      }
-      if (!code) {
-        uni.showToast({ title: '请输入验证码', icon: 'none' })
-        return
-      }
-
-      this.loading = true
-      try {
-        const verifyRes = await verifySMSCodeCheck(phone, 'reset', code)
-        if (!verifyRes.success) {
-          throw new Error(verifyRes.error || '验证码错误')
-        }
-
-        uni.setStorageSync('reset_password_data', { phone, code })
-        uni.redirectTo({
-          url: `/pages/auth/set-password/index?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(code)}`
-        })
-      } catch (err) {
-        uni.showToast({ title: err.error || err.message || '验证失败', icon: 'none' })
-      } finally {
-        this.loading = false
-      }
-    }
-  }
-}
+export default createResetPasswordPage({
+  requestSMSCode,
+  verifySMSCodeCheck,
+  getCachedConsumerAuthRuntimeSettings,
+  loadConsumerAuthRuntimeSettings,
+  normalizeErrorMessage
+})
 </script>
 
 <style scoped lang="scss">

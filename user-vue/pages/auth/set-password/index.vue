@@ -37,106 +37,19 @@
 
 <script>
 import { request } from '@/shared-ui/api.js'
+import { normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
 import {
   getCachedConsumerAuthRuntimeSettings,
   loadConsumerAuthRuntimeSettings
 } from '@/shared-ui/auth-runtime.js'
+import { createSetPasswordPage } from '../../../../shared/mobile-common/auth-password-pages.js'
 
-export default {
-  data() {
-    return {
-      phone: '',
-      code: '',
-      password: '',
-      confirmPassword: '',
-      loading: false,
-      portalRuntime: getCachedConsumerAuthRuntimeSettings()
-    }
-  },
-  onLoad(options = {}) {
-    void this.loadRuntimeSettings()
-
-    if (options.phone) {
-      this.phone = decodeURIComponent(options.phone)
-    }
-    if (options.code) {
-      this.code = decodeURIComponent(options.code)
-    }
-
-    if (!this.phone || !this.code) {
-      const resetData = uni.getStorageSync('reset_password_data')
-      if (resetData) {
-        this.phone = resetData.phone || ''
-        this.code = resetData.code || ''
-      }
-    }
-
-    if (!this.phone || !this.code) {
-      uni.showToast({ title: '请先完成验证码校验', icon: 'none' })
-      setTimeout(() => {
-        uni.navigateBack()
-      }, 1500)
-    }
-  },
-  methods: {
-    async loadRuntimeSettings() {
-      this.portalRuntime = await loadConsumerAuthRuntimeSettings()
-    },
-    goLogin() {
-      uni.redirectTo({ url: '/pages/auth/login/index' })
-    },
-    async submit() {
-      const password = String(this.password || '').trim()
-      const confirmPassword = String(this.confirmPassword || '').trim()
-
-      if (!password) {
-        uni.showToast({ title: '请输入新密码', icon: 'none' })
-        return
-      }
-      if (password.length < 6) {
-        uni.showToast({ title: '密码至少 6 位', icon: 'none' })
-        return
-      }
-      if (password !== confirmPassword) {
-        uni.showToast({ title: '两次密码不一致', icon: 'none' })
-        return
-      }
-
-      if (!this.phone || !this.code) {
-        uni.showToast({ title: '校验信息已失效，请重新验证', icon: 'none' })
-        setTimeout(() => {
-          uni.redirectTo({ url: '/pages/auth/reset-password/index' })
-        }, 1500)
-        return
-      }
-
-      this.loading = true
-      try {
-        const res = await request({
-          url: '/api/set-new-password',
-          method: 'POST',
-          data: {
-            phone: this.phone,
-            code: this.code,
-            password
-          }
-        })
-
-        if (res.success) {
-          uni.removeStorageSync('reset_password_data')
-          uni.showToast({ title: '密码设置成功', icon: 'success' })
-          setTimeout(() => {
-            uni.redirectTo({ url: '/pages/auth/login/index' })
-          }, 1500)
-        }
-      } catch (err) {
-        uni.showToast({ title: err.error || err.message || '设置失败', icon: 'none' })
-      } finally {
-        this.loading = false
-      }
-    }
-  }
-}
+export default createSetPasswordPage({
+  request,
+  getCachedConsumerAuthRuntimeSettings,
+  loadConsumerAuthRuntimeSettings,
+  normalizeErrorMessage
+})
 </script>
 
 <style scoped lang="scss">

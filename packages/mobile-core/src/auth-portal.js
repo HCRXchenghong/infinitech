@@ -14,6 +14,24 @@ export function normalizeConsumerInviteCode(value) {
   return trimAuthPortalValue(value).toUpperCase();
 }
 
+export function normalizeConsumerAuthPhone(value) {
+  const phone = trimAuthPortalValue(value);
+  return /^1\d{10}$/.test(phone) ? phone : "";
+}
+
+function decodeConsumerAuthQueryValue(value) {
+  const raw = trimAuthPortalValue(value);
+  if (!raw) {
+    return "";
+  }
+
+  try {
+    return decodeURIComponent(raw);
+  } catch (_error) {
+    return raw;
+  }
+}
+
 function buildAuthPortalQuery(params = {}) {
   return Object.keys(params)
     .filter((key) => trimAuthPortalValue(params[key]) !== "")
@@ -29,6 +47,13 @@ function buildAuthPortalQuery(params = {}) {
 export function buildAuthPortalPageUrl(path, params = {}) {
   const query = buildAuthPortalQuery(params);
   return query ? `${path}?${query}` : path;
+}
+
+export function buildConsumerSetPasswordPageUrl(phone, code) {
+  return buildAuthPortalPageUrl("/pages/auth/set-password/index", {
+    phone,
+    code,
+  });
 }
 
 export function normalizeConsumerAuthExternalUrl(url) {
@@ -126,4 +151,49 @@ export function shouldRedirectRegisteredConsumerToLogin(message) {
   return /已注册|已存在|already registered|already exists/i.test(
     trimAuthPortalValue(message),
   );
+}
+
+export function resolveConsumerPasswordResetTicket(
+  options = {},
+  cachedResetData = {},
+) {
+  const rawOptions =
+    options && typeof options === "object" && !Array.isArray(options)
+      ? options
+      : {};
+  const rawCachedResetData =
+    cachedResetData &&
+    typeof cachedResetData === "object" &&
+    !Array.isArray(cachedResetData)
+      ? cachedResetData
+      : {};
+
+  return {
+    phone:
+      decodeConsumerAuthQueryValue(rawOptions.phone) ||
+      trimAuthPortalValue(rawCachedResetData.phone),
+    code:
+      decodeConsumerAuthQueryValue(rawOptions.code) ||
+      trimAuthPortalValue(rawCachedResetData.code),
+  };
+}
+
+export function validateConsumerNewPasswordForm(
+  passwordValue,
+  confirmPasswordValue,
+) {
+  const password = trimAuthPortalValue(passwordValue);
+  const confirmPassword = trimAuthPortalValue(confirmPasswordValue);
+
+  if (!password) {
+    return { password: "", error: "请输入新密码" };
+  }
+  if (password.length < 6) {
+    return { password: "", error: "密码至少 6 位" };
+  }
+  if (password !== confirmPassword) {
+    return { password: "", error: "两次密码不一致" };
+  }
+
+  return { password, error: "" };
 }
