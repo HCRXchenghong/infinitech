@@ -1445,6 +1445,7 @@ function withdrawUserTypeLabel(userType) {
 function paymentCallbackStatusTag(row) {
   if (row?.verified && String(row?.status || '') === 'success') return 'success'
   if (!row?.verified) return 'danger'
+  if (String(row?.status || '') === 'processing') return 'warning'
   if (String(row?.status || '') === 'pending') return 'warning'
   if (String(row?.status || '') === 'ignored') return 'info'
   return 'info'
@@ -1455,6 +1456,7 @@ function paymentCallbackStatusLabel(row) {
   const status = String(row.status || '')
   if (!row.verified) return '验签失败'
   if (status === 'success') return '已处理'
+  if (status === 'processing') return '处理中'
   if (status === 'pending') return '待处理'
   if (status === 'ignored') return '已忽略'
   if (status === 'failed') return '处理失败'

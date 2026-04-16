@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"net/http"
 	"net/url"
 	"strings"
 
@@ -70,6 +69,10 @@ func (h *PaymentHandler) AlipayPayoutCallback(c *gin.Context) {
 
 func (h *PaymentHandler) BankCardCallback(c *gin.Context) {
 	h.handleCallback(c, "bank_card")
+}
+
+func writePaymentCallbackAcknowledgement(c *gin.Context, ack service.PaymentCallbackAcknowledgement) {
+	c.Data(200, ack.ContentType, []byte(ack.Body))
 }
 
 func (h *PaymentHandler) handleCallback(c *gin.Context, channel string) {
@@ -143,16 +146,16 @@ func (h *PaymentHandler) handleCallback(c *gin.Context, channel string) {
 		RawBody: string(rawBody),
 		// Public callbacks must always enter the real verifier chain first.
 		Verified:    false,
-		Response:    "ok",
 		HTTPRequest: c.Request.Clone(c.Request.Context()),
 	}
 
 	result, err := h.payment.RecordCallback(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		writePaymentCallbackAcknowledgement(c, service.BuildPaymentCallbackAcknowledgement(channel, false))
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	verified, _ := result["verified"].(bool)
+	writePaymentCallbackAcknowledgement(c, service.BuildPaymentCallbackAcknowledgement(channel, verified))
 }
 
 func firstNonEmptyQueryValue(c *gin.Context, keys ...string) string {

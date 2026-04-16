@@ -882,6 +882,14 @@ assertContains(
   'respondAdminSuccess(c, "订单数据导出成功", data)',
 );
 assertNotContains(
+  "backend/go/internal/handler/payment_handler.go",
+  "c.JSON(",
+);
+assertContains(
+  "backend/go/internal/handler/payment_handler.go",
+  "writePaymentCallbackAcknowledgement(c, service.BuildPaymentCallbackAcknowledgement(channel, verified))",
+);
+assertNotContains(
   "backend/go/internal/service/admin_service.go",
   "hashPassword(defaultAdminPassword)",
 );
@@ -1384,6 +1392,10 @@ assertContains(
 assertContains(
   "admin-vue/src/views/Login.vue",
   "extractSMSResult(data)",
+);
+assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "if (String(row?.status || '') === 'processing') return 'warning'",
 );
 assertContains(
   "admin-vue/src/views/dataManagementHelpers.js",

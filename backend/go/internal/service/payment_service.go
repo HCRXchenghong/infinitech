@@ -494,9 +494,10 @@ func (s *PaymentService) RecordCallback(ctx context.Context, req PaymentCallback
 		verifiedReq, verifyErr := s.verifyAndNormalizeCallback(ctx, req)
 		if verifyErr == nil {
 			req = verifiedReq
-		} else if strings.TrimSpace(req.Response) == "" {
-			req.Response = verifyErr.Error()
 		}
+	}
+	if strings.TrimSpace(req.Response) == "" {
+		req.Response = BuildPaymentCallbackAcknowledgement(channel, req.Verified).Body
 	}
 
 	headersJSON, _ := json.Marshal(req.Headers)
@@ -509,10 +510,7 @@ func (s *PaymentService) RecordCallback(ctx context.Context, req PaymentCallback
 		return result, nil
 	}
 	now := time.Now()
-	status := "success"
-	if !req.Verified {
-		status = "failed"
-	}
+	status := paymentCallbackInitialStatus(req.Verified)
 
 	var resolvedTransaction *repository.WalletTransaction
 	if req.Verified {
@@ -578,9 +576,17 @@ func (s *PaymentService) RecordCallback(ctx context.Context, req PaymentCallback
 	if req.Verified {
 		settlementResult, err := s.applyVerifiedCallback(ctx, req)
 		if err != nil {
+			callback.ResponseBody = BuildPaymentCallbackAcknowledgement(channel, false).Body
+			if updateErr := s.updatePaymentCallbackOutcome(ctx, callback.ID, callback.Status, callback.ResponseBody); updateErr != nil {
+				return nil, updateErr
+			}
 			return nil, err
 		}
 		settlement = settlementResult
+		callback.Status = paymentCallbackCompletedStatus()
+		if updateErr := s.updatePaymentCallbackOutcome(ctx, callback.ID, callback.Status, callback.ResponseBody); updateErr != nil {
+			return nil, updateErr
+		}
 		s.notifyCallbackOutcome(ctx, settlement)
 	}
 
@@ -601,7 +607,7 @@ func (s *PaymentService) findDuplicatedProcessedCallback(ctx context.Context, ch
 	var callback repository.PaymentCallback
 	err := s.walletRepo.DB().WithContext(ctx).
 		Model(&repository.PaymentCallback{}).
-		Where("channel = ? AND replay_fingerprint = ? AND verified = ?", channel, fingerprint, true).
+		Where("channel = ? AND replay_fingerprint = ? AND verified = ? AND status = ?", channel, fingerprint, true, paymentCallbackDuplicateEligibleStatus()).
 		Order("id DESC").
 		First(&callback).Error
 	if err != nil {
@@ -620,6 +626,16 @@ func (s *PaymentService) findDuplicatedProcessedCallback(ctx context.Context, ch
 		"processedAt": callback.ProcessedAt,
 	}
 	return true, result, nil
+}
+
+func (s *PaymentService) updatePaymentCallbackOutcome(ctx context.Context, callbackID uint, status, responseBody string) error {
+	return s.walletRepo.DB().WithContext(ctx).
+		Model(&repository.PaymentCallback{}).
+		Where("id = ?", callbackID).
+		Updates(map[string]interface{}{
+			"status":        strings.TrimSpace(status),
+			"response_body": strings.TrimSpace(responseBody),
+		}).Error
 }
 
 func (s *PaymentService) applyVerifiedCallback(ctx context.Context, req PaymentCallbackRequest) (map[string]interface{}, error) {
