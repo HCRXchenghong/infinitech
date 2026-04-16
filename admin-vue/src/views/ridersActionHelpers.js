@@ -161,7 +161,7 @@ export function useRiderActionHelpers(ctx) {
         await loadRiders(true);
       }
     } catch (e) {
-      ElMessage.error(e.response?.data?.error || '新增骑手失败');
+      ElMessage.error(extractErrorMessage(e, '新增骑手失败'));
     } finally {
       addingRider.value = false;
     }
@@ -189,7 +189,7 @@ export function useRiderActionHelpers(ctx) {
           await loadRiders(true);
         }
       } catch (e) {
-        ElMessage.error(e.response?.data?.error || 'ID重组失败');
+        ElMessage.error(extractErrorMessage(e, 'ID重组失败'));
       } finally {
         reorganizing.value = false;
       }
@@ -225,7 +225,7 @@ export function useRiderActionHelpers(ctx) {
         });
         ElMessage.success(`骑手密码已重置，并已下载安全回执 ${filename}`);
       } catch (e) {
-        ElMessage.error(e.response?.data?.error || '重置骑手密码失败');
+        ElMessage.error(extractErrorMessage(e, '重置骑手密码失败'));
       } finally {
         resettingPassword.value = null;
       }
@@ -255,7 +255,7 @@ export function useRiderActionHelpers(ctx) {
           ElMessage.error(data.error || '清除订单失败');
         }
       } catch (e) {
-        const errorMessage = e.response?.data?.error || e.message || '清除订单失败';
+        const errorMessage = extractErrorMessage(e, '清除订单失败');
         ElMessage.error(errorMessage);
       } finally {
         deletingOrders.value = null;
@@ -286,7 +286,7 @@ export function useRiderActionHelpers(ctx) {
           await loadRiders(true);
         }
       } catch (e) {
-        ElMessage.error(e.response?.data?.error || '删除骑手失败');
+        ElMessage.error(extractErrorMessage(e, '删除骑手失败'));
       } finally {
         deletingRider.value = null;
       }
@@ -446,7 +446,7 @@ export function useRiderActionHelpers(ctx) {
           await loadRiders(true);
         }
       } catch (e) {
-        ElMessage.error(e.response?.data?.error || '清空骑手失败');
+        ElMessage.error(extractErrorMessage(e, '清空骑手失败'));
       } finally {
         clearing.value = false;
       }

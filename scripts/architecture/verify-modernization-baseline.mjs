@@ -1386,6 +1386,14 @@ assertContains(
   "extractSMSResult(data)",
 );
 assertContains(
+  "admin-vue/src/views/dataManagementHelpers.js",
+  "const payload = extractEnvelopeData(response.data) || {};",
+);
+assertContains(
+  "admin-vue/src/views/dataManagementBundleHelpers.js",
+  "const payload = extractEnvelopeData(response.data) || {};",
+);
+assertContains(
   "backend/go/internal/handler/shop_handler.go",
   'respondShopPaginated(c, "店铺评论加载成功", "list"',
 );

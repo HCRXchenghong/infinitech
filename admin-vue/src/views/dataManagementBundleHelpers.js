@@ -275,10 +275,11 @@ export function useDataManagementBundleHelpers({
               ElMessage.warning(`用户数据验证失败: ${validation.error}`);
             } else {
               const response = await request.post('/api/users/import', { users: allData.users });
+              const payload = extractEnvelopeData(response.data) || {};
               if (response.data.success) {
                 results.users = {
-                  success: response.data.successCount || 0,
-                  error: response.data.errorCount || 0,
+                  success: Number(payload.successCount ?? response.data.successCount ?? 0),
+                  error: Number(payload.errorCount ?? response.data.errorCount ?? 0),
                 };
               }
             }
@@ -294,10 +295,11 @@ export function useDataManagementBundleHelpers({
               ElMessage.warning(`骑手数据验证失败: ${validation.error}`);
             } else {
               const response = await request.post('/api/riders/import', { riders: allData.riders });
+              const payload = extractEnvelopeData(response.data) || {};
               if (response.data.success) {
                 results.riders = {
-                  success: response.data.successCount || 0,
-                  error: response.data.errorCount || 0,
+                  success: Number(payload.successCount ?? response.data.successCount ?? 0),
+                  error: Number(payload.errorCount ?? response.data.errorCount ?? 0),
                 };
               }
             }
@@ -313,10 +315,11 @@ export function useDataManagementBundleHelpers({
               ElMessage.warning(`订单数据验证失败: ${validation.error}`);
             } else {
               const response = await request.post('/api/orders/import', { orders: allData.orders });
+              const payload = extractEnvelopeData(response.data) || {};
               if (response.data.success) {
                 results.orders = {
-                  success: response.data.successCount || 0,
-                  error: response.data.errorCount || 0,
+                  success: Number(payload.successCount ?? response.data.successCount ?? 0),
+                  error: Number(payload.errorCount ?? response.data.errorCount ?? 0),
                 };
               }
             }
@@ -332,10 +335,11 @@ export function useDataManagementBundleHelpers({
               ElMessage.warning(`商户数据验证失败: ${validation.error}`);
             } else {
               const response = await request.post('/api/merchants/import', { merchants: allData.merchants });
+              const payload = extractEnvelopeData(response.data) || {};
               if (response.data.success) {
                 results.merchants = {
-                  success: response.data.successCount || 0,
-                  error: response.data.errorCount || 0,
+                  success: Number(payload.successCount ?? response.data.successCount ?? 0),
+                  error: Number(payload.errorCount ?? response.data.errorCount ?? 0),
                 };
               }
             }

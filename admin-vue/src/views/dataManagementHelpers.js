@@ -481,9 +481,11 @@ export function useDataManagementPage() {
             : { merchants: data };
 
       const response = await request.post(endpoint, requestData);
+      const payload = extractEnvelopeData(response.data) || {};
 
       if (response.data.success) {
-        const { successCount, errorCount } = response.data;
+        const successCount = Number(payload.successCount ?? response.data.successCount ?? 0);
+        const errorCount = Number(payload.errorCount ?? response.data.errorCount ?? 0);
         let message = `导入完成！成功: ${successCount} 条`;
         if (errorCount > 0) {
           message += `，失败: ${errorCount} 条`;

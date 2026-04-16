@@ -206,7 +206,7 @@ async function handleResetPassword(user) {
       ElMessage.success(`密码已重置，并已下载安全回执 ${filename}`);
     } catch (e) {
       console.error('重置密码失败:', e);
-      ElMessage.error(e.response?.data?.error || '重置密码失败');
+      ElMessage.error(extractErrorMessage(e, '重置密码失败'));
     } finally {
       resettingPassword.value = null;
     }
@@ -308,7 +308,7 @@ async function handleAddUser() {
       }
   } catch (e) {
     console.error('新增用户失败:', e);
-    ElMessage.error(e.response?.data?.error || '新增用户失败');
+    ElMessage.error(extractErrorMessage(e, '新增用户失败'));
   } finally {
     addingUser.value = false;
   }
@@ -337,7 +337,7 @@ async function handleReorganizeIds() {
       }
     } catch (e) {
       console.error('ID重组失败:', e);
-      ElMessage.error(e.response?.data?.error || 'ID重组失败');
+      ElMessage.error(extractErrorMessage(e, 'ID重组失败'));
     } finally {
       reorganizing.value = false;
     }
@@ -368,7 +368,7 @@ async function handleDeleteUserOrders(user) {
       }
     } catch (e) {
       console.error('清除订单失败:', e);
-      const errorMessage = e.response?.data?.error || e.message || '清除订单失败';
+      const errorMessage = extractErrorMessage(e, '清除订单失败');
       ElMessage.error(errorMessage);
     } finally {
       deletingOrders.value = null;
@@ -402,7 +402,7 @@ async function handleDeleteUser(user) {
       }
     } catch (e) {
       console.error('删除用户失败:', e);
-      const errorMessage = e.response?.data?.error || e.message || '删除用户失败';
+      const errorMessage = extractErrorMessage(e, '删除用户失败');
       ElMessage.error(errorMessage);
     } finally {
       deletingUser.value = null;
@@ -439,7 +439,7 @@ async function handleClearAllUsers() {
       }
     } catch (e) {
       console.error('清空用户失败:', e);
-      ElMessage.error(e.response?.data?.error || '清空用户失败');
+      ElMessage.error(extractErrorMessage(e, '清空用户失败'));
     } finally {
       clearing.value = false;
     }
