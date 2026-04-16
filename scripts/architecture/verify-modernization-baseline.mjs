@@ -60,11 +60,14 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/auth-portal.test.mjs",
   "packages/mobile-core/src/home-index.js",
   "packages/mobile-core/src/home-index.test.mjs",
+  "packages/mobile-core/src/profile-edit.js",
+  "packages/mobile-core/src/profile-edit.test.mjs",
   "packages/mobile-core/src/profile-home.js",
   "packages/mobile-core/src/profile-home.test.mjs",
   "packages/mobile-core/src/profile-settings.js",
   "packages/mobile-core/src/profile-settings.test.mjs",
   "shared/mobile-common/home-index-page.js",
+  "shared/mobile-common/profile-edit-page.js",
   "shared/mobile-common/profile-home-page.js",
   "shared/mobile-common/profile-settings-pages.js",
   "packages/admin-core/src/index.js",
@@ -1241,7 +1244,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-edit.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -2029,11 +2032,19 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./profile-edit.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./profile-home.js";',
 );
 assertContains(
   "packages/mobile-core/src/index.js",
   'export * from "./profile-settings.js";',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./profile-edit": "./src/profile-edit.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -2148,6 +2159,22 @@ assertContains(
 assertContains(
   "app-mobile/pages/index/index.vue",
   "createHomeIndexPage({",
+);
+assertContains(
+  "user-vue/pages/profile/edit/index.vue",
+  "../../../../shared/mobile-common/profile-edit-page.js",
+);
+assertContains(
+  "app-mobile/pages/profile/edit/index.vue",
+  "../../../../shared/mobile-common/profile-edit-page.js",
+);
+assertContains(
+  "user-vue/pages/profile/edit/index.vue",
+  "createProfileEditPage({",
+);
+assertContains(
+  "app-mobile/pages/profile/edit/index.vue",
+  "createProfileEditPage({",
 );
 assertContains(
   "user-vue/pages/profile/index/index.vue",
@@ -2413,6 +2440,14 @@ assertNotContains(
   "app-mobile/pages/index/index.vue",
   "const featureRoutes = {",
 );
+[
+  "user-vue/pages/profile/edit/index.vue",
+  "app-mobile/pages/profile/edit/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "presetBg: [");
+  assertNotContains(relativePath, "normalizeUserPayload(payload)");
+  assertNotContains(relativePath, "async uploadImage(filePath, loadingText)");
+});
 [
   "user-vue/pages/profile/index/index.vue",
   "app-mobile/pages/profile/index/index.vue",

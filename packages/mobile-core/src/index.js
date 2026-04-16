@@ -4,5 +4,6 @@ export * from "./vip-center.js";
 export * from "./charity-page.js";
 export * from "./auth-portal.js";
 export * from "./home-index.js";
+export * from "./profile-edit.js";
 export * from "./profile-home.js";
 export * from "./profile-settings.js";
