@@ -41,11 +41,11 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { extractPaginatedItems } from '@infinitech/contracts'
+import { extractErrorMessage } from '@infinitech/contracts'
+import { extractDashboardRankItems, getRankName, getRankType } from '@infinitech/admin-core'
 import request from '@/utils/request'
 import { getCachedRiderRankSettings, loadRiderRankSettings } from '@/utils/platform-settings'
 import PageStateAlert from '@/components/PageStateAlert.vue'
-import { extractErrorMessage, getRankName, getRankType } from './dashboardHelpers'
 
 const router = useRouter()
 const route = useRoute()
@@ -86,7 +86,7 @@ async function loadRanks(forceRefresh = false) {
   loading.value = true
   try {
     const { data } = await request.get(`/api/rider-ranks?period=${period.value}`)
-    ranks.value = extractPaginatedItems(data).items
+    ranks.value = extractDashboardRankItems(data)
     dataCache.value.set(cacheKey, [...ranks.value])
   } catch (error) {
     ranks.value = []

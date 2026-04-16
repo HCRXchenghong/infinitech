@@ -234,36 +234,37 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { extractEnvelopeData, extractPaginatedItems } from '@infinitech/contracts'
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts'
 import {
+  buildDashboardPushWorkerSummary,
+  buildDashboardRuntimeHealthSummary,
+  buildDashboardStatsCards,
   createDefaultServiceHealthStatus,
+  createDefaultImStats,
+  createDefaultStatsCards,
+  extractDashboardRankItems,
   extractServiceHealthStatus,
+  formatDashboardRuntimeHealthStatus,
+  formatPresenceConnectedAt,
+  formatUpdateTime,
+  formatUptime,
+  getAqiClass,
+  getAqiText,
+  getRankName,
+  getRankType,
+  getRedisModeHint,
+  getRedisModeLabel,
+  getRedisModeTagType,
+  getWeatherIconClass,
+  normalizeOnlinePresenceSample,
+  normalizeRedisHealth,
+  normalizeRefreshMinutes,
 } from '@infinitech/admin-core'
 import request from '@/utils/request'
 import socketService, { SOCKET_HTTP_BASE } from '@/utils/socket'
 import { getCurrentAdminSocketIdentity } from '@/utils/runtime'
 import { getCachedRiderRankSettings, loadRiderRankSettings } from '@/utils/platform-settings'
 import PageStateAlert from '@/components/PageStateAlert.vue'
-import {
-  createDefaultImStats,
-  createDefaultStatsCards,
-  extractErrorMessage,
-  normalizeRefreshMinutes,
-  formatUptime,
-  getWeatherIconClass,
-  getAqiClass,
-  getAqiText,
-  formatUpdateTime,
-  formatPresenceConnectedAt,
-  formatNumber,
-  getRankName,
-  getRankType,
-  normalizeOnlinePresenceSample,
-  normalizeRedisHealth,
-  getRedisModeLabel,
-  getRedisModeTagType,
-  getRedisModeHint
-} from './dashboardHelpers'
 
 const router = useRouter()
 
@@ -314,12 +315,6 @@ const minutelyList = computed(() =>
 )
 const onlinePresenceSample = computed(() => normalizeOnlinePresenceSample(imStats.value?.onlinePresenceSample).slice(0, 8))
 const imRedis = computed(() => normalizeRedisHealth(imStats.value?.redis))
-const runtimeHealthServices = computed(() =>
-  Array.isArray(runtimeHealth.value?.services) ? runtimeHealth.value.services : []
-)
-const runtimeGoHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'go') || null)
-const runtimeSocketHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'socket') || null)
-const runtimeRedisHealth = computed(() => runtimeHealthServices.value.find((item) => item.key === 'redis') || null)
 const weatherIconText = computed(() => String(weatherData.value?.weather_main || '晴').trim().slice(0, 1) || '晴')
 const weatherTemperatureText = computed(() =>
   weatherData.value?.temperature !== undefined ? `${weatherData.value.temperature} °C` : '--'
@@ -337,42 +332,11 @@ const statsTimestampLabel = computed(() =>
   imStats.value?.timestamp ? formatUpdateTime(imStats.value.timestamp) : '等待服务上报'
 )
 
-const runtimeHealthStatusLabel = computed(() => {
-  if (runtimeHealth.value?.overall === 'ok') return '已就绪'
-  if (runtimeHealth.value?.overall === 'degraded') return '部分降级'
-  if (runtimeHealth.value?.overall === 'down') return '未就绪'
-  return '未知'
-})
+const runtimeHealthStatusLabel = computed(() => formatDashboardRuntimeHealthStatus(runtimeHealth.value?.overall))
 
-const runtimeHealthSummary = computed(() => {
-  const segments = [
-    runtimeGoHealth.value ? `Go ${runtimeGoHealth.value.status === 'up' ? '已就绪' : '异常'}` : '',
-    runtimeSocketHealth.value ? `Socket ${runtimeSocketHealth.value.status === 'up' ? '已就绪' : '异常'}` : '',
-    runtimeRedisHealth.value ? `Redis ${runtimeRedisHealth.value.status === 'up' ? '已就绪' : '异常'}` : ''
-  ].filter(Boolean)
-  return segments.join(' · ') || '系统探针暂未返回详情'
-})
+const runtimeHealthSummary = computed(() => buildDashboardRuntimeHealthSummary(runtimeHealth.value))
 
-const pushWorkerSummary = computed(() => {
-  const detail = String(runtimeGoHealth.value?.detail || '')
-  const provider = extractHealthDetail(detail, 'pushProvider')
-  const running = extractHealthDetail(detail, 'pushRunning')
-  const cycle = extractHealthDetail(detail, 'pushCycle')
-  const queue = extractHealthDetail(detail, 'pushQueue')
-  const retry = extractHealthDetail(detail, 'pushRetry')
-  const failed = extractHealthDetail(detail, 'pushFailed')
-  const lastSuccessAt = extractHealthDetail(detail, 'pushLastSuccessAt')
-  const segments = [
-    provider ? `Provider ${provider}` : '',
-    running ? `Worker ${running === 'true' ? '运行中' : '已停止'}` : '',
-    cycle ? `周期 ${cycle}` : '',
-    queue ? `队列 ${queue}` : '',
-    retry ? `重试 ${retry}` : '',
-    failed ? `失败 ${failed}` : '',
-    lastSuccessAt ? `最近成功 ${formatUpdateTime(lastSuccessAt)}` : ''
-  ].filter(Boolean)
-  return segments.join(' · ') || 'Push Worker 状态未暴露'
-})
+const pushWorkerSummary = computed(() => buildDashboardPushWorkerSummary(runtimeHealth.value))
 
 const presenceEmptyDescription = computed(() => {
   if (imRedis.value.mode === 'redis' || imRedis.value.mode === 'redis-no-adapter') {
@@ -383,16 +347,6 @@ const presenceEmptyDescription = computed(() => {
   }
   return 'Redis 未启用，暂无共享在线样本'
 })
-
-function extractHealthDetail(detail, key) {
-  const source = String(detail || '')
-  const match = source.match(new RegExp(`${key}=([^\\s|]+)`))
-  return match ? String(match[1] || '').trim() : ''
-}
-
-function extractRankItems(payload) {
-  return extractPaginatedItems(payload).items
-}
 
 function applyImStatsPatch(data) {
   const patch = data && typeof data === 'object' ? data : {}
@@ -523,10 +477,7 @@ async function loadStats(forceRefresh = false) {
     statsError.value = ''
     const { data } = await request.get('/api/stats')
     const source = data && typeof data === 'object' ? data : {}
-    const nextCards = createDefaultStatsCards().map((card) => ({
-      ...card,
-      value: formatNumber(source[card.key] || 0)
-    }))
+    const nextCards = buildDashboardStatsCards(source)
     statsCards.value = nextCards
     statsCache.value = nextCards.map((item) => ({ ...item }))
     cacheTimestamp.value.stats = now
@@ -563,13 +514,13 @@ async function loadOrders(forceRefresh = false) {
     }
 
     userRanks.value = {
-      week: weekUserRes.status === 'fulfilled' ? extractRankItems(weekUserRes.value?.data) : [],
-      month: monthUserRes.status === 'fulfilled' ? extractRankItems(monthUserRes.value?.data) : []
+      week: weekUserRes.status === 'fulfilled' ? extractDashboardRankItems(weekUserRes.value?.data) : [],
+      month: monthUserRes.status === 'fulfilled' ? extractDashboardRankItems(monthUserRes.value?.data) : []
     }
 
     allRiderRanks.value = {
-      week: weekRiderRes.status === 'fulfilled' ? extractRankItems(weekRiderRes.value?.data) : [],
-      month: monthRiderRes.status === 'fulfilled' ? extractRankItems(monthRiderRes.value?.data) : []
+      week: weekRiderRes.status === 'fulfilled' ? extractDashboardRankItems(weekRiderRes.value?.data) : [],
+      month: monthRiderRes.status === 'fulfilled' ? extractDashboardRankItems(monthRiderRes.value?.data) : []
     }
 
     ranksCache.value.set(cacheKey, {

@@ -65,6 +65,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/admin-core/src/content-settings-resources.test.mjs",
   "packages/admin-core/src/operations-center-resources.js",
   "packages/admin-core/src/operations-center-resources.test.mjs",
+  "packages/admin-core/src/dashboard-resources.js",
+  "packages/admin-core/src/dashboard-resources.test.mjs",
   "packages/admin-core/src/DesktopShellApp.vue",
   "admin-win/src/App.vue",
   "admin-mac/src/App.vue",
@@ -333,6 +335,18 @@ assertContains(
 assertContains(
   "admin-vue/src/views/OperationsCenter.vue",
   "createOperationsGoodFormState",
+);
+assertContains(
+  "admin-vue/src/views/Dashboard.vue",
+  "buildDashboardStatsCards",
+);
+assertContains(
+  "admin-vue/src/views/RiderRanks.vue",
+  "extractDashboardRankItems",
+);
+assertContains(
+  "admin-vue/src/views/dashboardHelpers.js",
+  "@infinitech/admin-core",
 );
 assertContains(
   "admin-vue/vite.config.mts",
@@ -1119,7 +1133,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs"',
+  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -1255,11 +1269,11 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/RiderRanks.vue",
-  "extractPaginatedItems(data).items",
+  "extractDashboardRankItems(data)",
 );
 assertContains(
   "admin-vue/src/views/Dashboard.vue",
-  "extractPaginatedItems(payload).items",
+  "extractDashboardRankItems(weekUserRes.value?.data)",
 );
 assertContains(
   "admin-vue/src/views/AfterSales.vue",
