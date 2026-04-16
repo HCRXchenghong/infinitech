@@ -18,3 +18,4 @@ export * from "./system-settings-resources.js";
 export * from "./order-resources.js";
 export * from "./user-management-resources.js";
 export * from "./shop-management-resources.js";
+export * from "./merchant-profile-resources.js";

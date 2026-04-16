@@ -153,7 +153,19 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { extractEnvelopeData, extractErrorMessage, extractPaginatedItems, extractUploadAsset } from '@infinitech/contracts';
+import {
+  buildAdminMerchantShopCreatePayload,
+  createAdminMerchantEditFormState,
+  createAdminMerchantShopDraft,
+  extractMerchantShopPage,
+  formatAdminMerchantOnboardingSource as formatOnboardingSource,
+  formatAdminMerchantOnboardingType as formatOnboardingType,
+  normalizeAdminMerchantProfile,
+  normalizeAdminMerchantShopSummary,
+  validateAdminMerchantLicenseFile,
+  validateAdminMerchantUpdateForm,
+} from '@infinitech/admin-core';
+import { extractEnvelopeData, extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
 import request from '@/utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 import ShopEditor from './ShopEditor.vue';
@@ -168,32 +180,12 @@ const merchantError = ref('');
 const shopsError = ref('');
 const pageError = computed(() => shopsError.value || merchantError.value || '');
 const shops = ref([]);
-const merchant = ref({
-  id: merchantId,
-  name: '',
-  owner_name: '',
-  phone: '',
-  business_license_image: '',
-  onboarding_info: null
-});
+const merchant = ref(normalizeAdminMerchantProfile({ id: merchantId }));
 
 const merchantEditVisible = ref(false);
 const savingMerchant = ref(false);
 const uploadingBusinessLicense = ref(false);
-const merchantForm = ref({
-  name: '',
-  owner_name: '',
-  phone: '',
-  business_license_image: ''
-});
-const MAX_LICENSE_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_LICENSE_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp'
-]);
-const ALLOWED_LICENSE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp']);
+const merchantForm = ref(createAdminMerchantEditFormState());
 const shopDialogVisible = ref(false);
 const shopDialogTitle = ref('新增店铺');
 const currentShop = ref(null);
@@ -213,10 +205,7 @@ async function loadMerchant() {
   try {
     const { data } = await request.get(`/api/merchant/${merchantId}`);
     const current = extractEnvelopeData(data) || {};
-    merchant.value = {
-      ...current,
-      owner_name: current.owner_name || current.name || ''
-    };
+    merchant.value = normalizeAdminMerchantProfile(current);
   } catch (error) {
     merchantError.value = extractErrorMessage(error, '加载商户信息失败，请稍后重试');
   } finally {
@@ -228,11 +217,8 @@ async function loadShops() {
   shopsError.value = '';
   try {
     const { data } = await request.get(`/api/merchants/${merchantId}/shops`);
-    const list = extractPaginatedItems(data, { listKeys: ['shops'] }).items;
-    shops.value = list.map((item) => ({
-      ...item,
-      isActive: item.isActive === true || item.isActive === 1
-    }));
+    const shopPage = extractMerchantShopPage(data);
+    shops.value = shopPage.items.map((item) => normalizeAdminMerchantShopSummary(item));
   } catch (error) {
     shops.value = [];
     shopsError.value = extractErrorMessage(error, '加载店铺信息失败，请稍后重试');
@@ -240,29 +226,16 @@ async function loadShops() {
 }
 
 function openMerchantEdit() {
-  merchantForm.value = {
-    name: merchant.value.name || '',
-    owner_name: merchant.value.owner_name || merchant.value.name || '',
-    phone: merchant.value.phone || '',
-    business_license_image: merchant.value.business_license_image || ''
-  };
+  merchantForm.value = createAdminMerchantEditFormState(merchant.value);
   merchantEditVisible.value = true;
 }
 
 async function handleBusinessLicenseChange(uploadFile) {
   const raw = uploadFile?.raw;
   if (!raw) return;
-  const fileName = String(raw.name || '').toLowerCase();
-  const extension = fileName.includes('.') ? fileName.split('.').pop() : '';
-  const hasValidMime = raw.type ? ALLOWED_LICENSE_MIME_TYPES.has(raw.type) : false;
-  const hasValidExtension = extension ? ALLOWED_LICENSE_EXTENSIONS.has(extension) : false;
-
-  if (!hasValidMime && !hasValidExtension) {
-    ElMessage.warning('营业执照仅支持 jpg/jpeg/png/gif/webp 格式');
-    return;
-  }
-  if (raw.size > MAX_LICENSE_FILE_SIZE) {
-    ElMessage.warning('营业执照图片不能超过 5MB');
+  const validation = validateAdminMerchantLicenseFile(raw);
+  if (!validation.valid) {
+    ElMessage.warning(validation.message);
     return;
   }
 
@@ -288,28 +261,15 @@ async function handleBusinessLicenseChange(uploadFile) {
 }
 
 async function saveMerchant() {
-  const payload = {
-    name: String(merchantForm.value.name || '').trim(),
-    owner_name: String(merchantForm.value.owner_name || '').trim(),
-    phone: String(merchantForm.value.phone || '').trim(),
-    business_license_image: String(merchantForm.value.business_license_image || '').trim()
-  };
-  if (!payload.owner_name) {
-    payload.owner_name = payload.name;
-  }
-
-  if (!payload.name || !payload.owner_name || !payload.phone) {
-    ElMessage.warning('请完整填写商户信息');
-    return;
-  }
-  if (!/^1[3-9]\d{9}$/.test(payload.phone)) {
-    ElMessage.warning('请输入正确的手机号');
+  const validation = validateAdminMerchantUpdateForm(merchantForm.value);
+  if (!validation.valid) {
+    ElMessage.warning(validation.message);
     return;
   }
 
   savingMerchant.value = true;
   try {
-    await request.put(`/api/merchants/${merchantId}`, payload);
+    await request.put(`/api/merchants/${merchantId}`, validation.normalized);
     ElMessage.success('商户信息已保存');
     merchantEditVisible.value = false;
     await loadMerchant();
@@ -323,39 +283,17 @@ async function saveMerchant() {
 
 function addShop() {
   shopDialogTitle.value = '新增店铺';
-  currentShop.value = {
-    name: '',
-    orderType: '外卖类',
-    businessCategory: '美食',
-    rating: 5.0,
-    monthlySales: 0,
-    perCapita: 0,
-    minPrice: 0,
-    deliveryPrice: 0,
-    deliveryTime: '30分钟',
-    address: '',
-    phone: '',
-    coverImage: '',
-    backgroundImage: '',
-    logo: '',
-    announcement: '',
-    businessHours: '09:00-22:00',
-    tags: [],
-    discounts: [],
-    isBrand: false,
-    isFranchise: false,
-    isActive: true
-  };
+  currentShop.value = createAdminMerchantShopDraft();
   shopDialogVisible.value = true;
 }
 
 async function handleShopSave(shopData) {
   shopsError.value = '';
   try {
-    const data = {
-      ...shopData,
-      merchant_id: merchant.value.id || merchantId
-    };
+    const data = buildAdminMerchantShopCreatePayload(
+      shopData,
+      merchant.value.id || merchantId
+    );
     await request.post('/api/shops', data);
     ElMessage.success('新增店铺成功');
     shopDialogVisible.value = false;
@@ -392,17 +330,6 @@ async function deleteShop(shop) {
   }
 }
 
-function formatOnboardingSource(source) {
-  if (source === 'invite') return '邀请链接';
-  if (source === 'manual') return '管理端手动创建';
-  return source || '-';
-}
-
-function formatOnboardingType(inviteType) {
-  if (inviteType === 'merchant') return '商户邀请';
-  if (inviteType === 'rider') return '骑手邀请';
-  return inviteType || '-';
-}
 </script>
 
 <style scoped>
