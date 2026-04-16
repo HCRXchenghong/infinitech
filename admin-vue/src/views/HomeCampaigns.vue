@@ -52,8 +52,8 @@
       <el-table :data="campaigns" size="small" stripe v-loading="loading">
         <el-table-column prop="objectType" label="对象类型" width="100">
           <template #default="{ row }">
-            <el-tag size="small" :type="row.objectType === 'shop' ? 'success' : 'warning'">
-              {{ row.objectType === 'shop' ? '商户' : '商品' }}
+            <el-tag size="small" :type="objectTypeTagType(row.objectType)">
+              {{ objectTypeLabel(row.objectType) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -78,8 +78,8 @@
         </el-table-column>
         <el-table-column label="锁位" width="80" align="center">
           <template #default="{ row }">
-            <el-tag size="small" :type="row.isPositionLocked ? 'danger' : 'info'">
-              {{ row.isPositionLocked ? '是' : '否' }}
+            <el-tag size="small" :type="lockTagType(row.isPositionLocked)">
+              {{ lockLabel(row.isPositionLocked) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -157,7 +157,7 @@
             </el-table-column>
             <el-table-column label="前台标识" width="120">
               <template #default="{ row }">
-                {{ row.isPromoted ? row.promoteLabel || '推广' : '-' }}
+                {{ promoteLabel(row) }}
               </template>
             </el-table-column>
           </el-table>
@@ -181,7 +181,7 @@
             </el-table-column>
             <el-table-column label="前台标识" width="120">
               <template #default="{ row }">
-                {{ row.isPromoted ? row.promoteLabel || '推广' : '-' }}
+                {{ promoteLabel(row) }}
               </template>
             </el-table-column>
           </el-table>
@@ -316,7 +316,30 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { extractEnvelopeData, extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts'
+import { extractErrorMessage } from '@infinitech/contracts'
+import {
+  buildAdminHomeCampaignListQuery,
+  buildAdminHomeCampaignPayload,
+  buildAdminHomeSlotQuery,
+  canAdminHomeCampaignPerformAction,
+  createAdminHomeCampaignFilters,
+  createAdminHomeCampaignForm,
+  createAdminHomeCampaignTargetOptions,
+  extractAdminHomeCampaignNamedList,
+  extractAdminHomeCampaignPage,
+  extractAdminHomeSlotCollections,
+  getAdminHomeCampaignDialogTitle,
+  getAdminHomeCampaignLockLabel,
+  getAdminHomeCampaignLockTagType,
+  getAdminHomeCampaignObjectTypeLabel,
+  getAdminHomeCampaignObjectTypeTagType,
+  getAdminHomeCampaignPositionSourceLabel,
+  getAdminHomeCampaignPositionSourceTagType,
+  getAdminHomeCampaignPromoteLabel,
+  getAdminHomeCampaignStatusLabel,
+  getAdminHomeCampaignStatusTagType,
+  validateAdminHomeCampaignForm,
+} from '@infinitech/admin-core'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 
@@ -331,70 +354,17 @@ const shops = ref([])
 const products = ref([])
 const pageError = ref('')
 
-const filters = reactive({
-  objectType: '',
-  status: '',
-  city: '',
-  businessCategory: '',
-})
-
-const form = reactive(createEmptyForm())
+const filters = reactive(createAdminHomeCampaignFilters())
+const form = reactive(createAdminHomeCampaignForm())
 
 const dialogTitle = computed(() => {
-  if (editingId.value) return '编辑首页推广计划'
-  if (form.isPositionLocked) return '锁定位次'
-  return '新建首页推广计划'
+  return getAdminHomeCampaignDialogTitle(editingId.value, form)
 })
 
 const targetOptions = computed(() => {
   const current = form.objectType === 'product' ? products.value : shops.value
-  return current.map((item) => ({
-    id: String(item.id || ''),
-    name: item.name || `ID ${item.id || '-'}`,
-  }))
+  return createAdminHomeCampaignTargetOptions(current)
 })
-
-function createEmptyForm() {
-  const now = new Date()
-  const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-  return {
-    objectType: 'shop',
-    targetId: '',
-    slotPosition: 1,
-    city: '',
-    businessCategory: '',
-    status: 'draft',
-    isPositionLocked: false,
-    promoteLabel: '推广',
-    contractNo: '',
-    serviceRecordNo: '',
-    remark: '',
-    startAt: formatDateTime(now),
-    endAt: formatDateTime(nextWeek),
-  }
-}
-
-function formatDateTime(date) {
-  const year = date.getFullYear()
-  const month = `${date.getMonth() + 1}`.padStart(2, '0')
-  const day = `${date.getDate()}`.padStart(2, '0')
-  const hours = `${date.getHours()}`.padStart(2, '0')
-  const minutes = `${date.getMinutes()}`.padStart(2, '0')
-  const seconds = `${date.getSeconds()}`.padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-}
-
-function extractList(payload, field) {
-  return extractPaginatedItems(payload, { listKeys: [field] }).items
-}
-
-function extractHomeSlots(payload) {
-  const source = extractEnvelopeData(payload) || payload || {}
-  return {
-    products: extractList(source, 'products'),
-    shops: extractList(source, 'shops'),
-  }
-}
 
 async function withPageLoad(task, fallback = '加载首页推广数据失败') {
   loading.value = true
@@ -412,27 +382,9 @@ async function refreshPlacementData() {
   await Promise.all([loadCampaigns(), loadSlots()])
 }
 
-function assignForm(values) {
-  Object.assign(form, createEmptyForm(), values)
-}
-
 function openDialog(row = null, locked = false) {
   editingId.value = row?.id || ''
-  assignForm({
-    objectType: row?.objectType || 'shop',
-    targetId: row?.targetId || '',
-    slotPosition: Number(row?.slotPosition || 1),
-    city: row?.city || '',
-    businessCategory: row?.businessCategory || '',
-    status: row?.status || (locked ? 'approved' : 'draft'),
-    isPositionLocked: Boolean(row?.isPositionLocked || locked),
-    promoteLabel: row?.promoteLabel || '推广',
-    contractNo: row?.contractNo || '',
-    serviceRecordNo: row?.serviceRecordNo || '',
-    remark: row?.remark || '',
-    startAt: row?.startAt ? formatDateTime(new Date(row.startAt)) : createEmptyForm().startAt,
-    endAt: row?.endAt ? formatDateTime(new Date(row.endAt)) : createEmptyForm().endAt,
-  })
+  Object.assign(form, createAdminHomeCampaignForm(row || {}, { locked }))
   dialogVisible.value = true
 }
 
@@ -440,90 +392,27 @@ function handleObjectTypeChange() {
   form.targetId = ''
 }
 
-function statusTagType(status) {
-  switch (status) {
-    case 'active':
-      return 'success'
-    case 'approved':
-    case 'scheduled':
-      return 'primary'
-    case 'paused':
-      return 'warning'
-    case 'rejected':
-    case 'ended':
-      return 'info'
-    default:
-      return ''
-  }
-}
-
-function positionSourceTagType(source) {
-  switch (source) {
-    case 'manual_locked':
-      return 'danger'
-    case 'paid_campaign':
-      return 'warning'
-    case 'featured':
-      return 'success'
-    default:
-      return 'info'
-  }
-}
-
-function formatStatus(status) {
-  const map = {
-    draft: '草稿',
-    approved: '已审核',
-    active: '投放中',
-    scheduled: '已排期',
-    paused: '已暂停',
-    rejected: '已驳回',
-    ended: '已结束',
-  }
-  return map[status] || status || '-'
-}
-
-function formatPositionSource(source) {
-  const map = {
-    featured: '推荐位',
-    organic: '自然排序',
-    paid_campaign: '付费计划',
-    manual_locked: '手工锁位',
-  }
-  return map[source] || source || '-'
-}
-
-function canAction(row, action) {
-  const status = row?.effectiveStatus || row?.status
-  if (action === 'approve') return status === 'draft' || status === 'rejected'
-  if (action === 'reject') return status === 'draft' || status === 'approved' || status === 'scheduled'
-  if (action === 'pause') return status === 'approved' || status === 'active' || status === 'scheduled'
-  if (action === 'resume') return status === 'paused'
-  return false
-}
-
 async function loadTargets() {
   const [shopsRes, productsRes] = await Promise.all([
     request.get('/api/shops'),
     request.get('/api/products'),
   ])
-  shops.value = extractList(shopsRes.data, 'shops')
-  products.value = extractList(productsRes.data, 'products')
+  shops.value = extractAdminHomeCampaignNamedList(shopsRes.data, 'shops')
+  products.value = extractAdminHomeCampaignNamedList(productsRes.data, 'products')
 }
 
 async function loadCampaigns() {
-  const { data } = await request.get('/api/home-campaigns', { params: { ...filters } })
-  campaigns.value = extractPaginatedItems(data, { listKeys: ['campaigns'] }).items
+  const { data } = await request.get('/api/home-campaigns', {
+    params: buildAdminHomeCampaignListQuery(filters),
+  })
+  campaigns.value = extractAdminHomeCampaignPage(data).items
 }
 
 async function loadSlots() {
   const { data } = await request.get('/api/home-slots', {
-    params: {
-      city: filters.city || '',
-      businessCategory: filters.businessCategory || '',
-    },
+    params: buildAdminHomeSlotQuery(filters),
   })
-  const slots = extractHomeSlots(data)
+  const slots = extractAdminHomeSlotCollections(data)
   slotProducts.value = slots.products
   slotShops.value = slots.shops
 }
@@ -538,34 +427,8 @@ async function loadAll() {
   })
 }
 
-function buildPayload() {
-  return {
-    objectType: form.objectType,
-    targetId: form.targetId,
-    slotPosition: Number(form.slotPosition || 0),
-    city: form.city,
-    businessCategory: form.businessCategory,
-    status: form.status,
-    isPositionLocked: Boolean(form.isPositionLocked),
-    promoteLabel: form.promoteLabel,
-    contractNo: form.contractNo,
-    serviceRecordNo: form.serviceRecordNo,
-    remark: form.remark,
-    startAt: form.startAt,
-    endAt: form.endAt,
-  }
-}
-
-function validateForm() {
-  if (!form.objectType) return '请选择对象类型'
-  if (!form.targetId) return '请选择投放对象'
-  if (!form.slotPosition || Number(form.slotPosition) <= 0) return '目标位次必须大于 0'
-  if (!form.startAt || !form.endAt) return '请选择投放时间范围'
-  return ''
-}
-
 async function submitForm() {
-  const validationError = validateForm()
+  const validationError = validateAdminHomeCampaignForm(form)
   if (validationError) {
     ElMessage.error(validationError)
     return
@@ -573,7 +436,7 @@ async function submitForm() {
 
   submitting.value = true
   try {
-    const payload = buildPayload()
+    const payload = buildAdminHomeCampaignPayload(form)
     if (form.isPositionLocked) {
       await request.put('/api/home-slots', payload)
     } else if (editingId.value) {
@@ -604,6 +467,17 @@ async function changeStatus(row, action) {
 onMounted(() => {
   void loadAll()
 })
+
+const objectTypeLabel = getAdminHomeCampaignObjectTypeLabel
+const objectTypeTagType = getAdminHomeCampaignObjectTypeTagType
+const statusTagType = getAdminHomeCampaignStatusTagType
+const formatStatus = getAdminHomeCampaignStatusLabel
+const positionSourceTagType = getAdminHomeCampaignPositionSourceTagType
+const formatPositionSource = getAdminHomeCampaignPositionSourceLabel
+const canAction = canAdminHomeCampaignPerformAction
+const lockLabel = getAdminHomeCampaignLockLabel
+const lockTagType = getAdminHomeCampaignLockTagType
+const promoteLabel = getAdminHomeCampaignPromoteLabel
 </script>
 
 <style scoped>
