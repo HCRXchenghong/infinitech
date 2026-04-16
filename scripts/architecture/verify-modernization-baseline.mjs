@@ -58,6 +58,9 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/charity-page.test.mjs",
   "packages/mobile-core/src/auth-portal.js",
   "packages/mobile-core/src/auth-portal.test.mjs",
+  "packages/mobile-core/src/home-index.js",
+  "packages/mobile-core/src/home-index.test.mjs",
+  "shared/mobile-common/home-index-page.js",
   "packages/admin-core/src/index.js",
   "packages/admin-core/src/menu-groups.js",
   "packages/admin-core/src/temporary-credential.js",
@@ -1232,7 +1235,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -2015,6 +2018,10 @@ assertContains(
   'export * from "./auth-portal.js";',
 );
 assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./home-index.js";',
+);
+assertContains(
   "user-vue/pages/profile/vip-center/vip-data.js",
   "packages/mobile-core/src/vip-center.js",
 );
@@ -2103,6 +2110,22 @@ assertContains(
 assertContains(
   "app-mobile/pages/auth/wechat-callback/index.vue",
   "buildConsumerAuthUserProfile(result.user)",
+);
+assertContains(
+  "user-vue/pages/index/index.vue",
+  "../../../shared/mobile-common/home-index-page.js",
+);
+assertContains(
+  "app-mobile/pages/index/index.vue",
+  "../../../shared/mobile-common/home-index-page.js",
+);
+assertContains(
+  "user-vue/pages/index/index.vue",
+  "createHomeIndexPage({",
+);
+assertContains(
+  "app-mobile/pages/index/index.vue",
+  "createHomeIndexPage({",
 );
 assertContains(
   "admin-vue/src/views/settingsApiManagementHelpers.js",
@@ -2304,6 +2327,22 @@ assertNotContains(
   assertNotContains(relativePath, "function encodeQuery(params = {}) {");
   assertNotContains(relativePath, "function buildPageUrl(path, params = {}) {");
 });
+assertNotContains(
+  "user-vue/pages/index/index.vue",
+  "function normalizeSelectedAddress(value) {",
+);
+assertNotContains(
+  "app-mobile/pages/index/index.vue",
+  "function normalizeSelectedAddress(value) {",
+);
+assertNotContains(
+  "user-vue/pages/index/index.vue",
+  "const featureRoutes = {",
+);
+assertNotContains(
+  "app-mobile/pages/index/index.vue",
+  "const featureRoutes = {",
+);
 assertNotContains(
   "admin-vue/src/views/Users.vue",
   "e.response?.data?.error",

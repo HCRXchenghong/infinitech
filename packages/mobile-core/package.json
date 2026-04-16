@@ -7,6 +7,7 @@
     ".": "./src/index.js",
     "./auth-portal": "./src/auth-portal.js",
     "./charity-page": "./src/charity-page.js",
+    "./home-index": "./src/home-index.js",
     "./medicine-home": "./src/medicine-home.js",
     "./upload": "./src/upload.js",
     "./vip-center": "./src/vip-center.js"
