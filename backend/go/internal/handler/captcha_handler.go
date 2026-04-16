@@ -16,22 +16,24 @@ func NewCaptchaHandler(svc *service.CaptchaService) *CaptchaHandler {
 	return &CaptchaHandler{service: svc}
 }
 
+func respondCaptchaError(c *gin.Context, status int, message string) {
+	respondErrorEnvelope(c, status, couponResponseCodeForStatus(status), message, nil)
+}
+
+func respondCaptchaInvalidRequest(c *gin.Context, message string) {
+	respondCaptchaError(c, http.StatusBadRequest, message)
+}
+
 func (h *CaptchaHandler) Get(c *gin.Context) {
 	sessionID := strings.TrimSpace(c.Query("sessionId"))
 	if sessionID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "sessionId is required",
-		})
+		respondCaptchaInvalidRequest(c, "sessionId is required")
 		return
 	}
 
 	svg, err := h.service.Generate(c.Request.Context(), sessionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		respondCaptchaError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 

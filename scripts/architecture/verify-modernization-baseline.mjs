@@ -1382,6 +1382,10 @@ assertContains(
   "respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, \"微信登录会话加载成功\"), result)",
 );
 assertContains(
+  "backend/go/internal/handler/captcha_handler.go",
+  "respondCaptchaInvalidRequest(c, \"sessionId is required\")",
+);
+assertContains(
   "backend/go/internal/service/auth_service.go",
   'RefreshToken string                 `json:"refreshToken,omitempty"`',
 );
