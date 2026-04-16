@@ -530,14 +530,14 @@ export const fetchInviteCode = (params) =>
     url: "/api/invite/code",
     method: "GET",
     data: params,
-  });
+  }).then((response) => extractEnvelopeData(response) || {});
 
 export const recordInviteShare = (payload) =>
   request({
     url: "/api/invite/share",
     method: "POST",
     data: payload,
-  });
+  }).then((response) => extractEnvelopeData(response) || response || {});
 
 // 商品相关 API（集成本地缓存）
 export const fetchPublicRuntimeSettings = () =>

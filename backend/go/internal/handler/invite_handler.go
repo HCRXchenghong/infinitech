@@ -16,6 +16,18 @@ func NewInviteHandler(service *service.InviteService) *InviteHandler {
 	return &InviteHandler{service: service}
 }
 
+func respondInviteError(c *gin.Context, status int, message string) {
+	respondErrorEnvelope(c, status, couponResponseCodeForStatus(status), message, nil)
+}
+
+func respondInviteInvalidRequest(c *gin.Context, message string) {
+	respondInviteError(c, http.StatusBadRequest, message)
+}
+
+func respondInviteSuccess(c *gin.Context, message string, data interface{}, legacy gin.H) {
+	respondSuccessEnvelope(c, message, data, legacy)
+}
+
 func (h *InviteHandler) GetCode(c *gin.Context) {
 	userID := c.Query("userId")
 	if userID == "" {
@@ -27,10 +39,11 @@ func (h *InviteHandler) GetCode(c *gin.Context) {
 	}
 	code, err := h.service.GetOrCreateCode(c.Request.Context(), userID, phone)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondInviteInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"code": code.Code, "userId": code.UserID})
+	payload := gin.H{"code": code.Code, "userId": code.UserID}
+	respondInviteSuccess(c, "邀请码加载成功", payload, gin.H{"inviteCode": code.Code, "userId": code.UserID})
 }
 
 func (h *InviteHandler) Share(c *gin.Context) {
@@ -40,14 +53,14 @@ func (h *InviteHandler) Share(c *gin.Context) {
 		Code   string `json:"code"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondInviteInvalidRequest(c, "invalid request")
 		return
 	}
 	if err := h.service.RecordShare(c.Request.Context(), payload.UserID, payload.Phone, payload.Code); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondInviteInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondInviteSuccess(c, "邀请分享记录成功", gin.H{"recorded": true}, gin.H{"recorded": true})
 }
 
 func (h *InviteHandler) ListCodes(c *gin.Context) {
@@ -65,10 +78,10 @@ func (h *InviteHandler) ListCodes(c *gin.Context) {
 		Offset: offset,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondInviteError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"records": list, "total": total})
+	respondPaginatedEnvelope(c, responseCodeOK, "邀请代码列表加载成功", "records", list, total, page, limit)
 }
 
 func (h *InviteHandler) ListRecords(c *gin.Context) {
@@ -86,8 +99,8 @@ func (h *InviteHandler) ListRecords(c *gin.Context) {
 		Offset: offset,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondInviteError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"records": list, "total": total})
+	respondPaginatedEnvelope(c, responseCodeOK, "邀请记录列表加载成功", "records", list, total, page, limit)
 }

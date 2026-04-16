@@ -310,6 +310,18 @@ assertContains(
   'respondDiningBuddySuccess(c, "同频饭友消息发送成功", message)',
 );
 assertContains(
+  "backend/go/internal/handler/invite_handler.go",
+  'respondInviteSuccess(c, "邀请码加载成功", payload, gin.H{"inviteCode": code.Code, "userId": code.UserID})',
+);
+assertContains(
+  "backend/go/internal/handler/invite_handler.go",
+  'respondPaginatedEnvelope(c, responseCodeOK, "邀请代码列表加载成功", "records", list, total, page, limit)',
+);
+assertContains(
+  "backend/go/internal/handler/invite_handler.go",
+  'respondPaginatedEnvelope(c, responseCodeOK, "邀请记录列表加载成功", "records", list, total, page, limit)',
+);
+assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",
   "func respondAdminSettingsSuccess(c *gin.Context, message string, data interface{})",
 );
@@ -659,6 +671,10 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/api.js",
+  "extractEnvelopeData(response) || {}",
+);
+assertContains(
+  "user-vue/shared-ui/api.js",
   'listKeys: ["messages", "items", "records", "list"]',
 );
 assertContains(
@@ -668,6 +684,10 @@ assertContains(
 assertContains(
   "app-mobile/shared-ui/api.js",
   'listKeys: ["parties", "items", "records", "list"]',
+);
+assertContains(
+  "app-mobile/shared-ui/api.js",
+  "extractEnvelopeData(response) || {}",
 );
 assertContains(
   "app-mobile/shared-ui/api.js",
