@@ -91,7 +91,10 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/admin-core/src/dining-buddy-governance-resources.test.mjs",
   "packages/admin-core/src/chat-console-resources.js",
   "packages/admin-core/src/chat-console-resources.test.mjs",
+  "packages/admin-core/src/data-management-resources.js",
+  "packages/admin-core/src/data-management-resources.test.mjs",
   "packages/admin-core/src/DesktopShellApp.vue",
+  "admin-vue/src/views/dataManagementRuntimeHelpers.js",
   "admin-win/src/App.vue",
   "admin-mac/src/App.vue",
 ].forEach(assertExists);
@@ -1213,7 +1216,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs packages/admin-core/src/system-settings-resources.test.mjs packages/admin-core/src/api-management-resources.test.mjs packages/admin-core/src/order-resources.test.mjs packages/admin-core/src/user-management-resources.test.mjs packages/admin-core/src/shop-management-resources.test.mjs packages/admin-core/src/merchant-profile-resources.test.mjs packages/admin-core/src/home-entry-resources.test.mjs packages/admin-core/src/communication-audit-resources.test.mjs packages/admin-core/src/home-campaign-resources.test.mjs packages/admin-core/src/admin-management-resources.test.mjs packages/admin-core/src/dining-buddy-governance-resources.test.mjs packages/admin-core/src/chat-console-resources.test.mjs"',
+  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs packages/admin-core/src/system-settings-resources.test.mjs packages/admin-core/src/api-management-resources.test.mjs packages/admin-core/src/order-resources.test.mjs packages/admin-core/src/user-management-resources.test.mjs packages/admin-core/src/shop-management-resources.test.mjs packages/admin-core/src/merchant-profile-resources.test.mjs packages/admin-core/src/home-entry-resources.test.mjs packages/admin-core/src/communication-audit-resources.test.mjs packages/admin-core/src/home-campaign-resources.test.mjs packages/admin-core/src/admin-management-resources.test.mjs packages/admin-core/src/dining-buddy-governance-resources.test.mjs packages/admin-core/src/chat-console-resources.test.mjs packages/admin-core/src/data-management-resources.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -1733,11 +1736,11 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/dataManagementHelpers.js",
-  "data = extractEnvelopeData(response.data);",
+  "buildDataManagementSummaryCards(exportSummary.value, summaryLoaded.value)",
 );
 assertContains(
   "admin-vue/src/views/dataManagementBundleHelpers.js",
-  "request.get('/api/data-exports/system-settings').then((res) => extractEnvelopeData(res.data))",
+  "DATA_MANAGEMENT_BUSINESS_TYPES.map(async (item) => [",
 );
 assertContains(
   "admin-vue/src/views/apiManagementHelpers.js",
@@ -1950,6 +1953,42 @@ assertContains(
 assertContains(
   "admin-vue/src/views/dataManagementBundleHelpers.js",
   "const payload = extractEnvelopeData(response.data) || {};",
+);
+assertContains(
+  "packages/admin-core/src/index.js",
+  'export * from "./data-management-resources.js";',
+);
+assertContains(
+  "admin-vue/src/views/dataManagementHelpers.js",
+  "validateDataManagementImportFile(file)",
+);
+assertContains(
+  "admin-vue/src/views/dataManagementHelpers.js",
+  "buildDataManagementImportConfirmMessage(dataType, data.length)",
+);
+assertContains(
+  "admin-vue/src/views/dataManagementBundleHelpers.js",
+  "isPlatformBackupPayload(allData)",
+);
+assertContains(
+  "admin-vue/src/views/dataManagementBundleHelpers.js",
+  "DATA_MANAGEMENT_CONFIG_SCOPES.map(async (item) => [",
+);
+assertContains(
+  "admin-vue/src/views/dataManagementRuntimeHelpers.js",
+  "extractErrorMessage(error, '未知错误')",
+);
+assertNotContains(
+  "admin-vue/src/views/dataManagementBundleHelpers.js",
+  "function buildPlatformBackupSummary(allData)",
+);
+assertNotContains(
+  "admin-vue/src/views/dataManagementBundleHelpers.js",
+  "function formatExportDate()",
+);
+assertNotContains(
+  "admin-vue/src/views/dataManagementBundleHelpers.js",
+  "function buildErrorMessage(prefix, error)",
 );
 assertNotContains(
   "admin-vue/src/views/Users.vue",

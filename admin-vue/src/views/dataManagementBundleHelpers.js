@@ -1,48 +1,16 @@
-import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
-
-function formatExportDate() {
-  return new Date().toISOString().split('T')[0];
-}
-
-function buildPlatformBackupSummary(allData) {
-  const contentSummary = allData.content_config?.summary || {};
-  const apiSummary = allData.api_config?.summary || {};
-  const paymentSummary = allData.payment_config?.summary || {};
-  const systemSummary = allData.system_settings?.summary || {};
-
-  return {
-    usersCount: Array.isArray(allData.users) ? allData.users.length : 0,
-    ridersCount: Array.isArray(allData.riders) ? allData.riders.length : 0,
-    ordersCount: Array.isArray(allData.orders) ? allData.orders.length : 0,
-    merchantsCount: Array.isArray(allData.merchants) ? allData.merchants.length : 0,
-    systemSettingKeys: Number(systemSummary.setting_keys || 0),
-    contentItemsCount:
-      Number(contentSummary.carousel_count || 0)
-      + Number(contentSummary.push_message_count || 0)
-      + Number(contentSummary.home_campaign_count || 0),
-    publicApiCount: Number(apiSummary.public_api_count || 0),
-    paymentConfigGroups: Number(paymentSummary.config_groups || 0),
-  };
-}
-
-function buildErrorMessage(prefix, error) {
-  if (error?.request && !error?.response) {
-    return `${prefix}: 网络连接失败，请检查网络或服务器状态`;
-  }
-  return `${prefix}: ${extractErrorMessage(error, '未知错误')}`;
-}
-
-function saveJsonFile(jsonString, filename) {
-  const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
-}
+import { extractEnvelopeData } from '@infinitech/contracts';
+import {
+  buildDataManagementImportPayload,
+  buildPlatformBackupSummary,
+  DATA_MANAGEMENT_BUSINESS_TYPES,
+  DATA_MANAGEMENT_CONFIG_SCOPES,
+  formatDataManagementExportDate,
+  isPlatformBackupPayload,
+} from '@infinitech/admin-core';
+import {
+  buildDataManagementErrorMessage,
+  saveDataManagementJsonFile,
+} from './dataManagementRuntimeHelpers';
 
 export function useDataManagementBundleHelpers({
   request,
@@ -56,6 +24,12 @@ export function useDataManagementBundleHelpers({
 }) {
   async function buildPlatformBackupPayload() {
     const { getFromCache, STORES } = await import('@/utils/cache');
+    const businessStoreMap = {
+      users: STORES.USERS,
+      riders: STORES.RIDERS,
+      orders: STORES.ORDERS,
+      merchants: STORES.MERCHANTS,
+    };
 
     async function getBusinessDataWithCache(endpoint, storeName) {
       try {
@@ -72,38 +46,29 @@ export function useDataManagementBundleHelpers({
       }
     }
 
-    const [
-      users,
-      riders,
-      orders,
-      merchants,
-      systemSettings,
-      contentConfig,
-      apiConfig,
-      paymentConfig,
-    ] = await Promise.all([
-      getBusinessDataWithCache('/api/users/export', STORES.USERS),
-      getBusinessDataWithCache('/api/riders/export', STORES.RIDERS),
-      getBusinessDataWithCache('/api/orders/export', STORES.ORDERS),
-      getBusinessDataWithCache('/api/merchants/export', STORES.MERCHANTS),
-      request.get('/api/data-exports/system-settings').then((res) => extractEnvelopeData(res.data)),
-      request.get('/api/data-exports/content-config').then((res) => extractEnvelopeData(res.data)),
-      request.get('/api/data-exports/api-config').then((res) => extractEnvelopeData(res.data)),
-      request.get('/api/data-exports/payment-config').then((res) => extractEnvelopeData(res.data)),
-    ]);
+    const businessEntries = await Promise.all(
+      DATA_MANAGEMENT_BUSINESS_TYPES.map(async (item) => [
+        item.key,
+        (await getBusinessDataWithCache(
+          item.exportEndpoint,
+          businessStoreMap[item.key],
+        )) || [],
+      ]),
+    );
+
+    const configEntries = await Promise.all(
+      DATA_MANAGEMENT_CONFIG_SCOPES.map(async (item) => [
+        item.key,
+        (await request.get(item.exportEndpoint).then((res) => extractEnvelopeData(res.data))) || {},
+      ]),
+    );
 
     const payload = {
       version: '2.0',
       exportDate: new Date().toISOString(),
       backupType: 'platform_snapshot',
-      users: users || [],
-      riders: riders || [],
-      orders: orders || [],
-      merchants: merchants || [],
-      system_settings: systemSettings || {},
-      content_config: contentConfig || {},
-      api_config: apiConfig || {},
-      payment_config: paymentConfig || {},
+      ...Object.fromEntries(businessEntries),
+      ...Object.fromEntries(configEntries),
     };
 
     payload.summary = buildPlatformBackupSummary(payload);
@@ -120,14 +85,12 @@ export function useDataManagementBundleHelpers({
     try {
       const allData = await buildPlatformBackupPayload();
       const result = await window.electronAPI.exportAllToFolder({
-        users: allData.users,
-        riders: allData.riders,
-        orders: allData.orders,
-        merchants: allData.merchants,
-        system_settings: allData.system_settings,
-        content_config: allData.content_config,
-        api_config: allData.api_config,
-        payment_config: allData.payment_config,
+        ...Object.fromEntries(
+          DATA_MANAGEMENT_BUSINESS_TYPES.map((item) => [item.key, allData[item.key]]),
+        ),
+        ...Object.fromEntries(
+          DATA_MANAGEMENT_CONFIG_SCOPES.map((item) => [item.key, allData[item.key]]),
+        ),
         manifest: {
           version: allData.version,
           exportDate: allData.exportDate,
@@ -146,7 +109,7 @@ export function useDataManagementBundleHelpers({
         ElMessage.error(`导出失败: ${result.error}`);
       }
     } catch (error) {
-      ElMessage.error(buildErrorMessage('导出失败', error));
+      ElMessage.error(buildDataManagementErrorMessage('导出失败', error));
     } finally {
       exportingToFolder.value = false;
     }
@@ -157,7 +120,7 @@ export function useDataManagementBundleHelpers({
     try {
       const allData = await buildPlatformBackupPayload();
       const jsonString = JSON.stringify(allData, null, 2);
-      const filename = `platform_backup_${formatExportDate()}.json`;
+      const filename = `platform_backup_${formatDataManagementExportDate()}.json`;
 
       if (window.electronAPI) {
         const result = await window.electronAPI.showSaveDialog({
@@ -178,11 +141,11 @@ export function useDataManagementBundleHelpers({
           }
         }
       } else {
-        saveJsonFile(jsonString, filename);
+        saveDataManagementJsonFile(jsonString, filename);
         ElMessage.success(`平台备份导出成功！用户 ${allData.summary.usersCount} / 骑手 ${allData.summary.ridersCount} / 订单 ${allData.summary.ordersCount} / 商户 ${allData.summary.merchantsCount}，另含系统、内容、API、支付配置快照`);
       }
     } catch (error) {
-      ElMessage.error(buildErrorMessage('打包失败', error));
+      ElMessage.error(buildDataManagementErrorMessage('打包失败', error));
     } finally {
       exportingAll.value = false;
     }
@@ -209,26 +172,22 @@ export function useDataManagementBundleHelpers({
         return;
       }
 
-      const isAllDataFormat = allData.users !== undefined
-        || allData.riders !== undefined
-        || allData.orders !== undefined
-        || allData.merchants !== undefined
-        || allData.system_settings !== undefined
-        || allData.content_config !== undefined
-        || allData.api_config !== undefined
-        || allData.payment_config !== undefined;
+      const isAllDataFormat = isPlatformBackupPayload(allData);
 
       if (isAllDataFormat) {
-        const usersCount = Array.isArray(allData.users) ? allData.users.length : 0;
-        const ridersCount = Array.isArray(allData.riders) ? allData.riders.length : 0;
-        const ordersCount = Array.isArray(allData.orders) ? allData.orders.length : 0;
-        const merchantsCount = Array.isArray(allData.merchants) ? allData.merchants.length : 0;
-        const hasConfigSections = allData.system_settings !== undefined
-          || allData.content_config !== undefined
-          || allData.api_config !== undefined
-          || allData.payment_config !== undefined;
-
-        const totalCount = usersCount + ridersCount + ordersCount + merchantsCount;
+        const businessCounts = Object.fromEntries(
+          DATA_MANAGEMENT_BUSINESS_TYPES.map((item) => [
+            item.key,
+            Array.isArray(allData[item.key]) ? allData[item.key].length : 0,
+          ]),
+        );
+        const hasConfigSections = DATA_MANAGEMENT_CONFIG_SCOPES.some(
+          (item) => allData[item.key] !== undefined,
+        );
+        const totalCount = Object.values(businessCounts).reduce(
+          (sum, count) => sum + count,
+          0,
+        );
 
         if (totalCount === 0 && !hasConfigSections) {
           ElMessage.warning('数据包为空');
@@ -237,10 +196,10 @@ export function useDataManagementBundleHelpers({
         }
 
         let confirmMessage = `即将导入综合数据包：<br/>
-        • 用户数据: ${usersCount} 条<br/>
-        • 骑手数据: ${ridersCount} 条<br/>
-        • 订单数据: ${ordersCount} 条<br/>
-        • 商户数据: ${merchantsCount} 条<br/><br/>
+        • 用户数据: ${businessCounts.users} 条<br/>
+        • 骑手数据: ${businessCounts.riders} 条<br/>
+        • 订单数据: ${businessCounts.orders} 条<br/>
+        • 商户数据: ${businessCounts.merchants} 条<br/><br/>
         总计: ${totalCount} 条业务数据<br/><br/>
         这将覆盖或创建相应的数据（包括已删除的数据）。`;
 
@@ -257,179 +216,77 @@ export function useDataManagementBundleHelpers({
           dangerouslyUseHTMLString: true,
         });
 
-        const results = {
-          users: { success: 0, error: 0 },
-          riders: { success: 0, error: 0 },
-          orders: { success: 0, error: 0 },
-          merchants: { success: 0, error: 0 },
-          systemSettings: { success: false },
-          contentConfig: { success: false },
-          apiConfig: { success: false },
-          paymentConfig: { success: false },
-        };
+        const results = Object.fromEntries(
+          DATA_MANAGEMENT_BUSINESS_TYPES.map((item) => [
+            item.key,
+            { success: 0, error: 0 },
+          ]),
+        );
+        const configResults = Object.fromEntries(
+          DATA_MANAGEMENT_CONFIG_SCOPES.map((item) => [
+            item.key,
+            { success: false },
+          ]),
+        );
 
-        if (usersCount > 0 && Array.isArray(allData.users)) {
+        for (const item of DATA_MANAGEMENT_BUSINESS_TYPES) {
+          const items = Array.isArray(allData[item.key]) ? allData[item.key] : [];
+          if (items.length === 0) {
+            continue;
+          }
           try {
-            const validation = validateDataType(allData.users, 'users');
+            const validation = validateDataType(items, item.key);
             if (!validation.valid) {
-              ElMessage.warning(`用户数据验证失败: ${validation.error}`);
-            } else {
-              const response = await request.post('/api/users/import', { users: allData.users });
-              const payload = extractEnvelopeData(response.data) || {};
-              if (response.data.success) {
-                results.users = {
-                  success: Number(payload.successCount ?? response.data.successCount ?? 0),
-                  error: Number(payload.errorCount ?? response.data.errorCount ?? 0),
-                };
-              }
+              ElMessage.warning(`${item.label}数据验证失败: ${validation.error}`);
+              continue;
             }
-          } catch (e) {
-            results.users.error = usersCount;
+
+            const response = await request.post(
+              item.importEndpoint,
+              buildDataManagementImportPayload(item.key, items),
+            );
+            const payload = extractEnvelopeData(response.data) || {};
+            if (response.data.success) {
+              results[item.key] = {
+                success: Number(payload.successCount ?? response.data.successCount ?? 0),
+                error: Number(payload.errorCount ?? response.data.errorCount ?? 0),
+              };
+            }
+          } catch (_error) {
+            results[item.key].error = items.length;
           }
         }
 
-        if (ridersCount > 0 && Array.isArray(allData.riders)) {
-          try {
-            const validation = validateDataType(allData.riders, 'riders');
-            if (!validation.valid) {
-              ElMessage.warning(`骑手数据验证失败: ${validation.error}`);
-            } else {
-              const response = await request.post('/api/riders/import', { riders: allData.riders });
-              const payload = extractEnvelopeData(response.data) || {};
-              if (response.data.success) {
-                results.riders = {
-                  success: Number(payload.successCount ?? response.data.successCount ?? 0),
-                  error: Number(payload.errorCount ?? response.data.errorCount ?? 0),
-                };
-              }
-            }
-          } catch (e) {
-            results.riders.error = ridersCount;
+        for (const item of DATA_MANAGEMENT_CONFIG_SCOPES) {
+          if (!allData[item.key]) {
+            continue;
           }
-        }
-
-        if (ordersCount > 0 && Array.isArray(allData.orders)) {
           try {
-            const validation = validateDataType(allData.orders, 'orders');
+            const validation = validateConfigBundle(allData[item.key], item.key);
             if (!validation.valid) {
-              ElMessage.warning(`订单数据验证失败: ${validation.error}`);
-            } else {
-              const response = await request.post('/api/orders/import', { orders: allData.orders });
-              const payload = extractEnvelopeData(response.data) || {};
-              if (response.data.success) {
-                results.orders = {
-                  success: Number(payload.successCount ?? response.data.successCount ?? 0),
-                  error: Number(payload.errorCount ?? response.data.errorCount ?? 0),
-                };
-              }
+              ElMessage.warning(`${item.label}验证失败: ${validation.error}`);
+              continue;
             }
-          } catch (e) {
-            results.orders.error = ordersCount;
-          }
-        }
 
-        if (merchantsCount > 0 && Array.isArray(allData.merchants)) {
-          try {
-            const validation = validateDataType(allData.merchants, 'merchants');
-            if (!validation.valid) {
-              ElMessage.warning(`商户数据验证失败: ${validation.error}`);
-            } else {
-              const response = await request.post('/api/merchants/import', { merchants: allData.merchants });
-              const payload = extractEnvelopeData(response.data) || {};
-              if (response.data.success) {
-                results.merchants = {
-                  success: Number(payload.successCount ?? response.data.successCount ?? 0),
-                  error: Number(payload.errorCount ?? response.data.errorCount ?? 0),
-                };
-              }
-            }
-          } catch (e) {
-            results.merchants.error = merchantsCount;
-          }
-        }
-
-        if (allData.system_settings) {
-          try {
-            const validation = validateConfigBundle(allData.system_settings, 'system_settings');
-            if (!validation.valid) {
-              ElMessage.warning(`系统配置验证失败: ${validation.error}`);
-            } else {
-              const response = await request.post('/api/data-imports/system-settings', allData.system_settings);
-              results.systemSettings.success = Boolean(response.data?.success);
-            }
-          } catch (e) {
-            results.systemSettings.success = false;
-          }
-        }
-
-        if (allData.content_config) {
-          try {
-            const validation = validateConfigBundle(allData.content_config, 'content_config');
-            if (!validation.valid) {
-              ElMessage.warning(`内容配置验证失败: ${validation.error}`);
-            } else {
-              const response = await request.post('/api/data-imports/content-config', allData.content_config);
-              results.contentConfig.success = Boolean(response.data?.success);
-            }
-          } catch (e) {
-            results.contentConfig.success = false;
-          }
-        }
-
-        if (allData.api_config) {
-          try {
-            const validation = validateConfigBundle(allData.api_config, 'api_config');
-            if (!validation.valid) {
-              ElMessage.warning(`API 配置验证失败: ${validation.error}`);
-            } else {
-              const response = await request.post('/api/data-imports/api-config', allData.api_config);
-              results.apiConfig.success = Boolean(response.data?.success);
-            }
-          } catch (e) {
-            results.apiConfig.success = false;
-          }
-        }
-
-        if (allData.payment_config) {
-          try {
-            const validation = validateConfigBundle(allData.payment_config, 'payment_config');
-            if (!validation.valid) {
-              ElMessage.warning(`支付配置验证失败: ${validation.error}`);
-            } else {
-              const response = await request.post('/api/data-imports/payment-config', allData.payment_config);
-              results.paymentConfig.success = Boolean(response.data?.success);
-            }
-          } catch (e) {
-            results.paymentConfig.success = false;
+            const response = await request.post(item.importEndpoint, allData[item.key]);
+            configResults[item.key].success = Boolean(response.data?.success);
+          } catch (_error) {
+            configResults[item.key].success = false;
           }
         }
 
         let message = '综合数据导入完成！<br/>';
-        if (usersCount > 0) {
-          message += `用户: 成功 ${results.users.success}，失败 ${results.users.error}<br/>`;
-        }
-        if (ridersCount > 0) {
-          message += `骑手: 成功 ${results.riders.success}，失败 ${results.riders.error}<br/>`;
-        }
-        if (ordersCount > 0) {
-          message += `订单: 成功 ${results.orders.success}，失败 ${results.orders.error}<br/>`;
-        }
-        if (merchantsCount > 0) {
-          message += `商户: 成功 ${results.merchants.success}，失败 ${results.merchants.error}`;
+        for (const item of DATA_MANAGEMENT_BUSINESS_TYPES) {
+          if (businessCounts[item.key] > 0) {
+            message += `${item.label}: 成功 ${results[item.key].success}，失败 ${results[item.key].error}<br/>`;
+          }
         }
         if (hasConfigSections) {
           message += '<br/><br/>配置恢复结果：';
-          if (allData.system_settings) {
-            message += `<br/>系统配置: ${results.systemSettings.success ? '成功' : '失败'}`;
-          }
-          if (allData.content_config) {
-            message += `<br/>内容配置: ${results.contentConfig.success ? '成功' : '失败'}`;
-          }
-          if (allData.api_config) {
-            message += `<br/>API 配置: ${results.apiConfig.success ? '成功' : '失败'}`;
-          }
-          if (allData.payment_config) {
-            message += `<br/>支付配置: ${results.paymentConfig.success ? '成功' : '失败'}`;
+          for (const item of DATA_MANAGEMENT_CONFIG_SCOPES) {
+            if (allData[item.key]) {
+              message += `<br/>${item.label}: ${configResults[item.key].success ? '成功' : '失败'}`;
+            }
           }
         }
 
@@ -443,7 +300,7 @@ export function useDataManagementBundleHelpers({
       }
     } catch (error) {
       if (error !== 'cancel') {
-        ElMessage.error(buildErrorMessage('导入失败', error));
+        ElMessage.error(buildDataManagementErrorMessage('导入失败', error));
       }
     } finally {
       importingAll.value = false;

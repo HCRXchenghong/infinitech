@@ -1,36 +1,30 @@
 import { computed, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import {
+  buildDataManagementConfigImportConfirmMessage,
+  buildDataManagementContentItemCount,
+  buildDataManagementImportConfirmMessage,
+  buildDataManagementImportPayload,
+  buildDataManagementSummaryCards,
+  createDataManagementExportSummary,
+  formatDataManagementExportDate,
+  getDataManagementBusinessMeta,
+  getDataManagementConfigMeta,
+  validateDataManagementBusinessData,
+  validateDataManagementConfigBundle,
+  validateDataManagementImportFile,
   extractAdminMerchantPage,
+  extractAdminOrderPage,
   extractAdminRiderPage,
   extractAdminUserPage,
 } from '@infinitech/admin-core';
-import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
+import { extractEnvelopeData } from '@infinitech/contracts';
 import request from '@/utils/request';
+import {
+  buildDataManagementErrorMessage,
+  saveDataManagementJsonFile,
+} from './dataManagementRuntimeHelpers';
 import { useDataManagementBundleHelpers } from './dataManagementBundleHelpers';
-
-function formatExportDate() {
-  return new Date().toISOString().split('T')[0];
-}
-
-function buildErrorMessage(prefix, error) {
-  if (error?.request && !error?.response) {
-    return `${prefix}: 网络连接失败，请检查网络或服务器状态`;
-  }
-  return `${prefix}: ${extractErrorMessage(error, '未知错误')}`;
-}
-
-function saveJsonFile(jsonString, filename) {
-  const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
-}
 
 export function useDataManagementPage() {
   const loading = ref(false);
@@ -59,59 +53,41 @@ export function useDataManagementPage() {
   const exportingToFolder = ref(false);
   const importingAll = ref(false);
 
-  const exportSummary = ref({
-    users: 0,
-    riders: 0,
-    orders: 0,
-    merchants: 0,
-    systemSettingKeys: 0,
-    contentItems: 0,
-    publicApiCount: 0,
-    paymentConfigGroups: 0,
-  });
+  const exportSummary = ref(createDataManagementExportSummary());
+  const summaryCards = computed(() =>
+    buildDataManagementSummaryCards(exportSummary.value, summaryLoaded.value),
+  );
 
-  const summaryCards = computed(() => [
-    {
-      label: '用户',
-      value: summaryLoaded.value ? exportSummary.value.users : '--',
-      tip: '用户数据已校验总量',
-    },
-    {
-      label: '骑手',
-      value: summaryLoaded.value ? exportSummary.value.riders : '--',
-      tip: '骑手数据已校验总量',
-    },
-    {
-      label: '订单',
-      value: summaryLoaded.value ? exportSummary.value.orders : '--',
-      tip: '订单数据已校验总量',
-    },
-    {
-      label: '商户',
-      value: summaryLoaded.value ? exportSummary.value.merchants : '--',
-      tip: '商户数据已校验总量',
-    },
-    {
-      label: '系统配置',
-      value: summaryLoaded.value ? exportSummary.value.systemSettingKeys : '--',
-      tip: '可导出配置键数量',
-    },
-    {
-      label: '内容运营',
-      value: summaryLoaded.value ? exportSummary.value.contentItems : '--',
-      tip: '轮播、推送、首页投放总数',
-    },
-    {
-      label: 'API 配置',
-      value: summaryLoaded.value ? exportSummary.value.publicApiCount : '--',
-      tip: '第三方与开放接口数量',
-    },
-    {
-      label: '支付配置',
-      value: summaryLoaded.value ? exportSummary.value.paymentConfigGroups : '--',
-      tip: '支付配置组数量',
-    },
-  ]);
+  const businessExportLoadingRefs = {
+    users: exporting,
+    riders: exportingRiders,
+    orders: exportingOrders,
+    merchants: exportingMerchants,
+  };
+
+  const businessImportLoadingRefs = {
+    users: importing,
+    riders: importingRiders,
+    orders: importingOrders,
+    merchants: importingMerchants,
+  };
+
+  const configExportLoadingRefs = {
+    system_settings: exportingSystemSettings,
+    content_config: exportingContentConfig,
+    api_config: exportingApiConfig,
+    payment_config: exportingPaymentConfig,
+  };
+
+  const configImportLoadingRefs = {
+    system_settings: importingSystemSettings,
+    content_config: importingContentConfig,
+    api_config: importingApiConfig,
+    payment_config: importingPaymentConfig,
+  };
+
+  const validateDataType = validateDataManagementBusinessData;
+  const validateConfigBundle = validateDataManagementConfigBundle;
 
   async function refreshAll(showMessage = true) {
     loading.value = true;
@@ -154,7 +130,9 @@ export function useDataManagementPage() {
         riders: ridersRes.status === 'fulfilled'
           ? Number(extractAdminRiderPage(ridersRes.value?.data).total || 0)
           : 0,
-        orders: ordersRes.status === 'fulfilled' ? Number(ordersRes.value?.data?.total || 0) : 0,
+        orders: ordersRes.status === 'fulfilled'
+          ? Number(extractAdminOrderPage(ordersRes.value?.data).total || 0)
+          : 0,
         merchants: merchantsRes.status === 'fulfilled'
           ? Number(extractAdminMerchantPage(merchantsRes.value?.data).total || 0)
           : 0,
@@ -162,9 +140,9 @@ export function useDataManagementPage() {
           ? Number(extractEnvelopeData(systemRes.value?.data)?.summary?.setting_keys || 0)
           : 0,
         contentItems: contentRes.status === 'fulfilled'
-          ? Number(extractEnvelopeData(contentRes.value?.data)?.summary?.carousel_count || 0)
-            + Number(extractEnvelopeData(contentRes.value?.data)?.summary?.push_message_count || 0)
-            + Number(extractEnvelopeData(contentRes.value?.data)?.summary?.home_campaign_count || 0)
+          ? buildDataManagementContentItemCount(
+            extractEnvelopeData(contentRes.value?.data)?.summary || {},
+          )
           : 0,
         publicApiCount: apiRes.status === 'fulfilled'
           ? Number(extractEnvelopeData(apiRes.value?.data)?.summary?.public_api_count || 0)
@@ -186,7 +164,7 @@ export function useDataManagementPage() {
       }
     } catch (error) {
       if (showMessage) {
-        ElMessage.error(buildErrorMessage('刷新失败', error));
+        ElMessage.error(buildDataManagementErrorMessage('刷新失败', error));
       }
     } finally {
       loading.value = false;
@@ -246,163 +224,93 @@ export function useDataManagementPage() {
           }
         }
       } else {
-        saveJsonFile(jsonString, filename);
+        saveDataManagementJsonFile(jsonString, filename);
         ElMessage.success('数据导出成功');
       }
     } catch (error) {
-      ElMessage.error(buildErrorMessage('导出失败', error));
+      ElMessage.error(buildDataManagementErrorMessage('导出失败', error));
     } finally {
       loadingRef.value = false;
     }
   }
 
+  async function exportBusinessData(type) {
+    const meta = getDataManagementBusinessMeta(type);
+    const loadingRef = businessExportLoadingRefs[type];
+    if (!meta || !loadingRef) {
+      ElMessage.error('未知业务数据类型');
+      return;
+    }
+    await exportData(
+      meta.exportEndpoint,
+      `${meta.filenamePrefix}_${formatDataManagementExportDate()}.json`,
+      loadingRef,
+    );
+  }
+
+  async function exportConfigData(scope) {
+    const meta = getDataManagementConfigMeta(scope);
+    const loadingRef = configExportLoadingRefs[scope];
+    if (!meta || !loadingRef) {
+      ElMessage.error('未知配置类型');
+      return;
+    }
+    await exportData(
+      meta.exportEndpoint,
+      `${meta.filenamePrefix}_${formatDataManagementExportDate()}.json`,
+      loadingRef,
+    );
+  }
+
   async function exportUsers() {
-    await exportData('/api/users/export', `users_backup_${formatExportDate()}.json`, exporting);
+    await exportBusinessData('users');
   }
 
   async function exportRiders() {
-    await exportData('/api/riders/export', `riders_backup_${formatExportDate()}.json`, exportingRiders);
+    await exportBusinessData('riders');
   }
 
   async function exportOrders() {
-    await exportData('/api/orders/export', `orders_backup_${formatExportDate()}.json`, exportingOrders);
+    await exportBusinessData('orders');
   }
 
   async function exportMerchants() {
-    await exportData('/api/merchants/export', `merchants_backup_${formatExportDate()}.json`, exportingMerchants);
+    await exportBusinessData('merchants');
   }
 
   async function exportSystemSettings() {
-    await exportData('/api/data-exports/system-settings', `system_settings_backup_${formatExportDate()}.json`, exportingSystemSettings);
+    await exportConfigData('system_settings');
   }
 
   async function exportContentConfig() {
-    await exportData('/api/data-exports/content-config', `content_config_backup_${formatExportDate()}.json`, exportingContentConfig);
+    await exportConfigData('content_config');
   }
 
   async function exportApiConfig() {
-    await exportData('/api/data-exports/api-config', `api_config_backup_${formatExportDate()}.json`, exportingApiConfig);
+    await exportConfigData('api_config');
   }
 
   async function exportPaymentConfig() {
-    await exportData('/api/data-exports/payment-config', `payment_config_backup_${formatExportDate()}.json`, exportingPaymentConfig);
+    await exportConfigData('payment_config');
   }
 
   function beforeImport(file) {
-    if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
-      ElMessage.error('请选择JSON格式的文件');
-      return false;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      ElMessage.error('文件大小不能超过10MB');
+    const result = validateDataManagementImportFile(file);
+    if (!result.valid) {
+      ElMessage.error(result.message);
       return false;
     }
     return true;
   }
 
-  function validateDataType(data, expectedType) {
-    if (!Array.isArray(data) || data.length === 0) {
-      return { valid: false, error: '数据格式错误，应为非空数组' };
-    }
-
-    const firstItem = data[0];
-
-    if (expectedType === 'users') {
-      if (firstItem.rider_id !== undefined || firstItem.daily_order_count !== undefined) {
-        return { valid: false, error: '检测到这是骑手数据，不能导入到用户数据中！' };
-      }
-      if (firstItem.daily_order_id !== undefined || firstItem.order_status !== undefined) {
-        return { valid: false, error: '检测到这是订单数据，不能导入到用户数据中！' };
-      }
-      if (firstItem.merchant_id !== undefined || firstItem.merchant_name !== undefined) {
-        return { valid: false, error: '检测到这是商户数据，不能导入到用户数据中！' };
-      }
-    } else if (expectedType === 'riders') {
-      if (firstItem.customer_id !== undefined || firstItem.order_count_today !== undefined) {
-        return { valid: false, error: '检测到这是用户数据，不能导入到骑手数据中！' };
-      }
-      if (firstItem.daily_order_id !== undefined || firstItem.order_status !== undefined) {
-        return { valid: false, error: '检测到这是订单数据，不能导入到骑手数据中！' };
-      }
-      if (firstItem.merchant_id !== undefined || firstItem.merchant_name !== undefined) {
-        return { valid: false, error: '检测到这是商户数据，不能导入到骑手数据中！' };
-      }
-    } else if (expectedType === 'orders') {
-      if (firstItem.rider_id !== undefined && firstItem.daily_order_count !== undefined) {
-        return { valid: false, error: '检测到这是骑手数据，不能导入到订单数据中！' };
-      }
-      if (firstItem.customer_id !== undefined && firstItem.order_count_today !== undefined) {
-        return { valid: false, error: '检测到这是用户数据，不能导入到订单数据中！' };
-      }
-      if (firstItem.merchant_id !== undefined && firstItem.merchant_name !== undefined && firstItem.daily_order_id === undefined) {
-        return { valid: false, error: '检测到这是商户数据，不能导入到订单数据中！' };
-      }
-    } else if (expectedType === 'merchants') {
-      if (firstItem.rider_id !== undefined || firstItem.daily_order_count !== undefined) {
-        return { valid: false, error: '检测到这是骑手数据，不能导入到商户数据中！' };
-      }
-      if (firstItem.customer_id !== undefined || firstItem.order_count_today !== undefined) {
-        return { valid: false, error: '检测到这是用户数据，不能导入到商户数据中！' };
-      }
-      if (firstItem.daily_order_id !== undefined || firstItem.order_status !== undefined) {
-        return { valid: false, error: '检测到这是订单数据，不能导入到商户数据中！' };
-      }
-    }
-
-    return { valid: true };
-  }
-
-  function validateConfigBundle(data, expectedScope) {
-    if (!data || typeof data !== 'object' || Array.isArray(data)) {
-      return { valid: false, error: '配置文件格式错误，应为对象格式' };
-    }
-
-    const scopeSignatures = {
-      system_settings: ['debug_mode', 'service_settings', 'charity_settings', 'vip_settings', 'coin_ratio', 'app_download_config'],
-      content_config: ['carousel_settings', 'carousels', 'push_messages', 'home_campaigns'],
-      api_config: ['sms_config', 'weather_config', 'wechat_login_config', 'public_apis'],
-      payment_config: ['pay_mode', 'wxpay_config', 'alipay_config', 'payment_notices'],
-    };
-
-    if (data.scope && data.scope !== expectedScope) {
-      return {
-        valid: false,
-        error: `检测到这是 ${data.scope} 导出文件，不能导入到 ${expectedScope} 中！`,
-      };
-    }
-
-    const expectedKeys = scopeSignatures[expectedScope] || [];
-    const matchedCount = expectedKeys.filter((key) => data[key] !== undefined).length;
-    if (matchedCount === 0) {
-      return { valid: false, error: '未检测到当前配置类型的关键字段' };
-    }
-
-    const otherScopes = Object.entries(scopeSignatures)
-      .filter(([scope]) => scope !== expectedScope)
-      .map(([scope, keys]) => ({
-        scope,
-        matched: keys.filter((key) => data[key] !== undefined).length,
-      }));
-
-    const conflict = otherScopes.find((item) => item.matched > matchedCount);
-    if (conflict) {
-      return {
-        valid: false,
-        error: `检测到这是 ${conflict.scope} 导出文件，不能导入到 ${expectedScope} 中！`,
-      };
-    }
-
-    return { valid: true };
-  }
-
   async function handleImport(options, dataType) {
-    const loadingRef = dataType === 'users'
-      ? importing
-      : dataType === 'riders'
-        ? importingRiders
-        : dataType === 'orders'
-          ? importingOrders
-          : importingMerchants;
+    const meta = getDataManagementBusinessMeta(dataType);
+    const loadingRef = businessImportLoadingRefs[dataType];
+
+    if (!meta || !loadingRef) {
+      ElMessage.error('未知业务数据类型');
+      return;
+    }
 
     loadingRef.value = true;
     try {
@@ -425,13 +333,13 @@ export function useDataManagementPage() {
       }
 
       if (!Array.isArray(data)) {
-        ElMessage.error(`${dataType === 'users' ? '用户' : dataType === 'riders' ? '骑手' : dataType === 'orders' ? '订单' : '商户'}数据格式错误，应为数组格式`);
+        ElMessage.error(`${meta.label}数据格式错误，应为数组格式`);
         loadingRef.value = false;
         return;
       }
 
       if (data.length === 0) {
-        ElMessage.warning(`${dataType === 'users' ? '用户' : dataType === 'riders' ? '骑手' : dataType === 'orders' ? '订单' : '商户'}数据为空`);
+        ElMessage.warning(`${meta.label}数据为空`);
         loadingRef.value = false;
         return;
       }
@@ -446,16 +354,8 @@ export function useDataManagementPage() {
         return;
       }
 
-      const typeName = dataType === 'users'
-        ? '用户'
-        : dataType === 'riders'
-          ? '骑手'
-          : dataType === 'orders'
-            ? '订单'
-            : '商户';
-
       await ElMessageBox.confirm(
-        `即将导入 ${data.length} 条${typeName}数据，这将覆盖或创建${typeName}（包括已删除的${typeName}）。是否继续？`,
+        buildDataManagementImportConfirmMessage(dataType, data.length),
         '确认导入',
         {
           confirmButtonText: '确定导入',
@@ -464,23 +364,10 @@ export function useDataManagementPage() {
         },
       );
 
-      const endpoint = dataType === 'users'
-        ? '/api/users/import'
-        : dataType === 'riders'
-          ? '/api/riders/import'
-          : dataType === 'orders'
-            ? '/api/orders/import'
-            : '/api/merchants/import';
-
-      const requestData = dataType === 'users'
-        ? { users: data }
-        : dataType === 'riders'
-          ? { riders: data }
-          : dataType === 'orders'
-            ? { orders: data }
-            : { merchants: data };
-
-      const response = await request.post(endpoint, requestData);
+      const response = await request.post(
+        meta.importEndpoint,
+        buildDataManagementImportPayload(dataType, data),
+      );
       const payload = extractEnvelopeData(response.data) || {};
 
       if (response.data.success) {
@@ -496,7 +383,7 @@ export function useDataManagementPage() {
       }
     } catch (error) {
       if (error !== 'cancel') {
-        ElMessage.error(buildErrorMessage('导入失败', error));
+        ElMessage.error(buildDataManagementErrorMessage('导入失败', error));
       }
     } finally {
       loadingRef.value = false;
@@ -504,36 +391,15 @@ export function useDataManagementPage() {
   }
 
   async function handleConfigImport(options, scope) {
-    const scopeMeta = {
-      system_settings: {
-        label: '系统配置',
-        endpoint: '/api/data-imports/system-settings',
-        loadingRef: importingSystemSettings,
-      },
-      content_config: {
-        label: '内容配置',
-        endpoint: '/api/data-imports/content-config',
-        loadingRef: importingContentConfig,
-      },
-      api_config: {
-        label: 'API 配置',
-        endpoint: '/api/data-imports/api-config',
-        loadingRef: importingApiConfig,
-      },
-      payment_config: {
-        label: '支付配置',
-        endpoint: '/api/data-imports/payment-config',
-        loadingRef: importingPaymentConfig,
-      },
-    };
+    const meta = getDataManagementConfigMeta(scope);
+    const loadingRef = configImportLoadingRefs[scope];
 
-    const meta = scopeMeta[scope];
-    if (!meta) {
+    if (!meta || !loadingRef) {
       ElMessage.error('未知配置类型');
       return;
     }
 
-    meta.loadingRef.value = true;
+    loadingRef.value = true;
     try {
       const file = options.file;
       const text = await file.text();
@@ -561,7 +427,7 @@ export function useDataManagementPage() {
       }
 
       await ElMessageBox.confirm(
-        `即将导入${meta.label}，这会按备份内容覆盖或创建对应配置。是否继续？`,
+        buildDataManagementConfigImportConfirmMessage(scope),
         '确认导入',
         {
           confirmButtonText: '确定导入',
@@ -570,7 +436,7 @@ export function useDataManagementPage() {
         },
       );
 
-      const response = await request.post(meta.endpoint, data);
+      const response = await request.post(meta.importEndpoint, data);
       if (response.data?.success) {
         ElMessage.success(`${meta.label}导入完成`);
       } else {
@@ -578,10 +444,10 @@ export function useDataManagementPage() {
       }
     } catch (error) {
       if (error !== 'cancel') {
-        ElMessage.error(buildErrorMessage('导入失败', error));
+        ElMessage.error(buildDataManagementErrorMessage('导入失败', error));
       }
     } finally {
-      meta.loadingRef.value = false;
+      loadingRef.value = false;
     }
   }
 
