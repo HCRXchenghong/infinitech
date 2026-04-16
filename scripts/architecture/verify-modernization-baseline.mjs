@@ -66,6 +66,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/message-center.test.mjs",
   "packages/mobile-core/src/notification-detail.js",
   "packages/mobile-core/src/notification-detail.test.mjs",
+  "packages/mobile-core/src/order-after-sales.js",
+  "packages/mobile-core/src/order-after-sales.test.mjs",
   "packages/mobile-core/src/order-coupon.js",
   "packages/mobile-core/src/order-coupon.test.mjs",
   "packages/mobile-core/src/order-support-pages.js",
@@ -98,6 +100,7 @@ function assertNotContains(relativePath, unexpectedText) {
   "shared/mobile-common/search-page.js",
   "shared/mobile-common/message-center-pages.js",
   "shared/mobile-common/notification-detail-page.js",
+  "shared/mobile-common/order-after-sales-pages.js",
   "shared/mobile-common/order-coupon-page.js",
   "shared/mobile-common/order-support-pages.js",
   "shared/mobile-common/profile-address-pages.js",
@@ -190,6 +193,14 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../shared/mobile-common/customer-service-page.js",
   ],
   [
+    "app-mobile/pages/order/refund/index.vue",
+    "../../../../shared/mobile-common/order-after-sales-pages.js",
+  ],
+  [
+    "app-mobile/pages/order/review/index.vue",
+    "../../../../shared/mobile-common/order-after-sales-pages.js",
+  ],
+  [
     "app-mobile/pages/profile/wallet/index.vue",
     "../../../../shared/mobile-common/wallet-overview-page.js",
   ],
@@ -212,6 +223,14 @@ function assertNotContains(relativePath, unexpectedText) {
   [
     "user-vue/pages/profile/customer-service/page-logic.js",
     "../../../../shared/mobile-common/customer-service-page.js",
+  ],
+  [
+    "user-vue/pages/order/refund/index.vue",
+    "../../../../shared/mobile-common/order-after-sales-pages.js",
+  ],
+  [
+    "user-vue/pages/order/review/index.vue",
+    "../../../../shared/mobile-common/order-after-sales-pages.js",
   ],
   [
     "user-vue/pages/profile/wallet/index.vue",
@@ -1389,7 +1408,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/dining-buddy.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/search-page.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-my-reviews.test.mjs packages/mobile-core/src/profile-points-mall.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-support-pages.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/dining-buddy.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/search-page.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-my-reviews.test.mjs packages/mobile-core/src/profile-points-mall.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-after-sales.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-support-pages.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -2189,6 +2208,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./order-after-sales.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./order-coupon.js";',
 );
 assertContains(
@@ -2226,6 +2249,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./notification-detail": "./src/notification-detail.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./order-after-sales": "./src/order-after-sales.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -2789,6 +2816,20 @@ assertNotContains(
   assertNotContains(relativePath, "function formatDiscountLabel(amount) {");
   assertNotContains(relativePath, "extractEnvelopeData(res)");
   assertNotContains(relativePath, "const userId = profile.phone || profile.id || profile.userId");
+});
+[
+  "user-vue/pages/order/refund/index.vue",
+  "app-mobile/pages/order/refund/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "normalizeBizType(bizType) {");
+  assertNotContains(relativePath, "formatOrderData(data) {");
+});
+[
+  "user-vue/pages/order/review/index.vue",
+  "app-mobile/pages/order/review/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "formatOrderData(data) {");
+  assertNotContains(relativePath, "const shop = data.shop || {}");
 });
 assertNotContains(
   "shared/mobile-common/order-confirm-page.js",

@@ -12,6 +12,7 @@
     "./search-page": "./src/search-page.js",
     "./message-center": "./src/message-center.js",
     "./notification-detail": "./src/notification-detail.js",
+    "./order-after-sales": "./src/order-after-sales.js",
     "./order-coupon": "./src/order-coupon.js",
     "./order-support-pages": "./src/order-support-pages.js",
     "./profile-address": "./src/profile-address.js",
