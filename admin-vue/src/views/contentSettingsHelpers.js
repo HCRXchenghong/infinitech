@@ -1,13 +1,12 @@
+import {
+  createAdminCarouselForm,
+  createAdminPushMessageForm,
+  normalizeAdminPushMessageFormState,
+  validateAdminImageFile,
+} from '@infinitech/admin-core';
+
 export function createEmptyPushMessageForm() {
-  return {
-    title: '',
-    content: '',
-    image_url: '',
-    compress_image: true,
-    is_active: false,
-    scheduled_start_time: '',
-    scheduled_end_time: ''
-  };
+  return createAdminPushMessageForm();
 }
 
 export function resetPushMessageForm(target) {
@@ -15,26 +14,11 @@ export function resetPushMessageForm(target) {
 }
 
 export function fillPushMessageForm(target, message = {}) {
-  Object.assign(target, {
-    title: message.title || '',
-    content: message.content || '',
-    image_url: message.image_url || '',
-    compress_image: true,
-    is_active: message.is_active === 1 || message.is_active === true,
-    scheduled_start_time: message.scheduled_start_time || '',
-    scheduled_end_time: message.scheduled_end_time || ''
-  });
+  Object.assign(target, normalizeAdminPushMessageFormState(message));
 }
 
 export function createEmptyCarousel() {
-  return {
-    title: '',
-    image_url: '',
-    link_url: '',
-    link_type: 'external',
-    sort_order: 0,
-    is_active: true
-  };
+  return createAdminCarouselForm();
 }
 
 export function resetCarousel(target) {
@@ -42,16 +26,7 @@ export function resetCarousel(target) {
 }
 
 export function validateImageFile(file, maxMB = 10) {
-  const isImage = Boolean(file?.type) && file.type.startsWith('image/');
-  const isLtLimit = Number(file?.size || 0) / 1024 / 1024 < maxMB;
-
-  if (!isImage) {
-    return { valid: false, message: '只能上传图片文件!' };
-  }
-  if (!isLtLimit) {
-    return { valid: false, message: `图片大小不能超过 ${maxMB}MB!` };
-  }
-  return { valid: true, message: '' };
+  return validateAdminImageFile(file, maxMB);
 }
 
 function dataUrlToJpegFile(dataUrl, fileName) {

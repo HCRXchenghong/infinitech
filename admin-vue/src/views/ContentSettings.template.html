@@ -613,15 +613,15 @@
             <el-table-column prop="user_id" label="用户ID" min-width="120" />
             <el-table-column label="状态" width="110">
               <template #default="{ row }">
-                <el-tag size="small" :type="getPushDeliveryStatusType(row.status)">
+                <el-tag size="small" :type="getPushDeliveryStatusTagType(row.status)">
                   {{ row.status || 'unknown' }}
                 </el-tag>
               </template>
             </el-table-column>
             <el-table-column label="回执" width="110">
               <template #default="{ row }">
-                <el-tag size="small" :type="getPushDeliveryActionType(row.action)">
-                  {{ getPushDeliveryActionLabel(row.action) }}
+                <el-tag size="small" :type="getPushDeliveryActionTagType(row.action)">
+                  {{ formatPushDeliveryActionLabel(row.action) }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -660,4 +660,3 @@
     </el-dialog>
   </div>
 </template>
-

@@ -3,7 +3,18 @@
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, Refresh, More } from '@element-plus/icons-vue';
-import { extractEnvelopeData, extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts';
+import {
+  buildAdminPushMessageStats,
+  extractAdminCarouselPage,
+  extractAdminPushDeliveryPage,
+  extractAdminPushMessagePage,
+  formatPushDeliveryActionLabel,
+  formatPushDeliveryError,
+  formatPushDeliveryTime,
+  getPushDeliveryActionTagType,
+  getPushDeliveryStatusTagType,
+} from '@infinitech/admin-core';
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 import {
@@ -50,56 +61,6 @@ const currentCarousel = ref(null);
 const addCarouselVisible = ref(false);
 const newCarousel = reactive(createEmptyCarousel());
 
-function getPushDeliveryStatusType(status) {
-  const normalized = String(status || '').trim().toLowerCase();
-  if (normalized === 'acknowledged') return 'success';
-  if (normalized === 'sent') return 'primary';
-  if (normalized === 'dispatching' || normalized === 'retry_pending') return 'warning';
-  if (normalized === 'failed') return 'danger';
-  return 'info';
-}
-
-function getPushDeliveryActionType(action) {
-  const normalized = String(action || '').trim().toLowerCase();
-  if (normalized === 'opened') return 'success';
-  if (normalized === 'received') return 'primary';
-  return 'info';
-}
-
-function getPushDeliveryActionLabel(action) {
-  const normalized = String(action || '').trim().toLowerCase();
-  if (normalized === 'opened') return '已打开';
-  if (normalized === 'received') return '已送达';
-  if (normalized === 'dismissed') return '已忽略';
-  if (!normalized) return '未回执';
-  return normalized;
-}
-
-function formatPushDeliveryTime(value) {
-  const text = String(value || '').trim();
-  if (!text) return '—';
-  const parsed = new Date(text);
-  if (Number.isNaN(parsed.getTime())) return text;
-  return parsed.toLocaleString('zh-CN', {
-    hour12: false,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-}
-
-function formatPushDeliveryError(row) {
-  const code = String(row?.error_code || '').trim();
-  const message = String(row?.error_message || '').trim();
-  if (code && message) return `${code}: ${message}`;
-  if (message) return message;
-  if (code) return code;
-  return '—';
-}
-
 onMounted(() => {
   loadAll();
   window.addEventListener('resize', handleResize);
@@ -136,7 +97,7 @@ async function loadCarouselList() {
   carouselLoading.value = true;
   try {
     const { data } = await request.get('/api/carousel');
-    carouselList.value = extractPaginatedItems(data).items;
+    carouselList.value = extractAdminCarouselPage(data).items;
   } catch (error) {
     carouselList.value = [];
     carouselError.value = extractErrorMessage(error, '加载轮播图失败，请稍后重试');
@@ -320,7 +281,7 @@ async function loadPushMessages() {
   pushMessageLoading.value = true;
   try {
     const { data } = await request.get('/api/push-messages');
-    pushMessages.value = extractPaginatedItems(data).items;
+    pushMessages.value = extractAdminPushMessagePage(data).items;
   } catch (error) {
     loadError.value = extractErrorMessage(error, '加载推送消息失败，请稍后重试');
     pushMessages.value = [];
@@ -407,14 +368,8 @@ async function showPushMessageStats(message) {
       })
     ]);
     const statsPayload = extractEnvelopeData(stats) || {};
-    currentPushMessageStats.value = {
-      ...message,
-      ...statsPayload,
-      read_rate_display: typeof statsPayload?.read_rate_percent === 'number'
-        ? `${statsPayload.read_rate_percent.toFixed(2)}%`
-        : '0.00%'
-    };
-    currentPushMessageDeliveries.value = extractPaginatedItems(deliveries).items;
+    currentPushMessageStats.value = buildAdminPushMessageStats(message, statsPayload);
+    currentPushMessageDeliveries.value = extractAdminPushDeliveryPage(deliveries).items;
     pushMessageStatsVisible.value = true;
   } catch (error) {
     ElMessage.error(extractErrorMessage(error, '获取统计信息失败'));

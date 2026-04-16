@@ -61,6 +61,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/admin-core/src/financial-transaction-resources.test.mjs",
   "packages/admin-core/src/notification-resources.js",
   "packages/admin-core/src/notification-resources.test.mjs",
+  "packages/admin-core/src/content-settings-resources.js",
+  "packages/admin-core/src/content-settings-resources.test.mjs",
   "packages/admin-core/src/DesktopShellApp.vue",
   "admin-win/src/App.vue",
   "admin-mac/src/App.vue",
@@ -309,6 +311,18 @@ assertContains(
 assertContains(
   "admin-vue/src/views/notificationEditorHelpers.js",
   "@infinitech/domain-core",
+);
+assertContains(
+  "admin-vue/src/views/ContentSettings.vue",
+  "extractAdminCarouselPage",
+);
+assertContains(
+  "admin-vue/src/views/ContentSettings.vue",
+  "buildAdminPushMessageStats",
+);
+assertContains(
+  "admin-vue/src/views/contentSettingsHelpers.js",
+  "@infinitech/admin-core",
 );
 assertContains(
   "admin-vue/vite.config.mts",
@@ -1095,7 +1109,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs"',
+  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -1211,7 +1225,7 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/ContentSettings.vue",
-  "extractPaginatedItems(data).items",
+  "extractAdminCarouselPage(data).items",
 );
 assertContains(
   "admin-vue/src/views/ShopMenuManage.vue",
