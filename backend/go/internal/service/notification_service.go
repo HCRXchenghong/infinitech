@@ -51,7 +51,7 @@ type NotificationStats struct {
 	LatestSummary string `json:"latest_summary,omitempty"`
 }
 
-func (s *NotificationService) GetNotificationList(ctx context.Context, page, pageSize int) ([]NotificationListItem, error) {
+func (s *NotificationService) GetNotificationList(ctx context.Context, page, pageSize int) ([]NotificationListItem, int64, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -60,19 +60,24 @@ func (s *NotificationService) GetNotificationList(ctx context.Context, page, pag
 	}
 
 	offset := (page - 1) * pageSize
+	total, err := s.repo.CountPublishedNotifications(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	notifications, err := s.repo.GetNotificationList(ctx, pageSize, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	actorType, actorID, err := s.resolveActor(ctx)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	readStatus, err := s.getReadStatusMap(ctx, notifications, actorType, actorID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	result := make([]NotificationListItem, 0, len(notifications))
@@ -88,7 +93,7 @@ func (s *NotificationService) GetNotificationList(ctx context.Context, page, pag
 		})
 	}
 
-	return result, nil
+	return result, total, nil
 }
 
 func (s *NotificationService) GetNotificationStats(ctx context.Context) (*NotificationStats, error) {
@@ -240,7 +245,7 @@ func (s *NotificationService) extractSummary(contentJSON string) string {
 	return "查看详情"
 }
 
-func (s *NotificationService) GetAllNotifications(ctx context.Context, page, pageSize int) ([]repository.Notification, error) {
+func (s *NotificationService) GetAllNotifications(ctx context.Context, page, pageSize int) ([]repository.Notification, int64, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -249,7 +254,16 @@ func (s *NotificationService) GetAllNotifications(ctx context.Context, page, pag
 	}
 
 	offset := (page - 1) * pageSize
-	return s.repo.GetAllNotifications(ctx, pageSize, offset)
+	total, err := s.repo.CountAllNotifications(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	records, err := s.repo.GetAllNotifications(ctx, pageSize, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	return records, total, nil
 }
 
 func (s *NotificationService) GetNotificationByIDAdmin(ctx context.Context, id string) (*repository.Notification, error) {

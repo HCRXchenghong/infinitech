@@ -44,6 +44,7 @@ type NotificationRepository interface {
 	DB() *gorm.DB
 	// GetNotificationList 获取通知列表（只返回已发布的）
 	GetNotificationList(ctx context.Context, limit, offset int) ([]Notification, error)
+	CountPublishedNotifications(ctx context.Context) (int64, error)
 	// GetNotificationByID 根据 ID 获取通知详情
 	GetNotificationByID(ctx context.Context, id uint) (*Notification, error)
 	// GetNotificationByIDAnyStatus 根据 ID 获取通知详情（包含未发布）
@@ -56,6 +57,7 @@ type NotificationRepository interface {
 	DeleteNotification(ctx context.Context, id uint) error
 	// GetAllNotifications 获取所有通知（管理后台使用，包括未发布的）
 	GetAllNotifications(ctx context.Context, limit, offset int) ([]Notification, error)
+	CountAllNotifications(ctx context.Context) (int64, error)
 }
 
 type notificationRepository struct {
@@ -79,6 +81,15 @@ func (r *notificationRepository) GetNotificationList(ctx context.Context, limit,
 		Offset(offset).
 		Find(&notifications).Error
 	return notifications, err
+}
+
+func (r *notificationRepository) CountPublishedNotifications(ctx context.Context) (int64, error) {
+	var total int64
+	err := r.db.WithContext(ctx).
+		Model(&Notification{}).
+		Where("is_published = ?", true).
+		Count(&total).Error
+	return total, err
 }
 
 func (r *notificationRepository) GetNotificationByID(ctx context.Context, id uint) (*Notification, error) {
@@ -128,4 +139,12 @@ func (r *notificationRepository) GetAllNotifications(ctx context.Context, limit,
 		Offset(offset).
 		Find(&notifications).Error
 	return notifications, err
+}
+
+func (r *notificationRepository) CountAllNotifications(ctx context.Context) (int64, error) {
+	var total int64
+	err := r.db.WithContext(ctx).
+		Model(&Notification{}).
+		Count(&total).Error
+	return total, err
 }

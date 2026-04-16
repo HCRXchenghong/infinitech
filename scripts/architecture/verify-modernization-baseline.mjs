@@ -458,6 +458,22 @@ assertContains(
   'respondHomeFeedMirroredSuccess(c, "首页推广计划创建成功", gin.H{"campaign": campaign})',
 );
 assertContains(
+  "backend/go/internal/handler/notification_handler.go",
+  "func writeNotificationServiceError(c *gin.Context, err error, fallbackStatus int)",
+);
+assertContains(
+  "backend/go/internal/handler/notification_handler.go",
+  'respondSuccessEnvelope(c, "通知列表加载成功", payload, gin.H{',
+);
+assertContains(
+  "backend/go/internal/handler/notification_handler.go",
+  'respondNotificationMirroredSuccess(c, "通知详情加载成功", detail)',
+);
+assertContains(
+  "backend/go/internal/handler/notification_handler.go",
+  'respondNotificationPaginated(c, "管理通知列表加载成功", "notifications", list, total, page, pageSize)',
+);
+assertContains(
   "backend/go/internal/handler/medicine_handler.go",
   'respondMirroredSuccessEnvelope(c, "问药咨询结果加载成功", result)',
 );
@@ -532,6 +548,14 @@ assertContains(
 assertContains(
   "app-mobile/shared-ui/api.js",
   "extractEnvelopeData(payload) || {}",
+);
+assertContains(
+  "user-vue/shared-ui/api.js",
+  'const paginated = extractPaginatedItems(response, {',
+);
+assertContains(
+  "app-mobile/shared-ui/api.js",
+  'const paginated = extractPaginatedItems(response, {',
 );
 assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",

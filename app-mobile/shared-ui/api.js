@@ -3,7 +3,10 @@
 import config from "./config";
 import { buildAuthorizationHeaders } from "../../packages/client-sdk/src/auth.js";
 import { createMobilePushApi } from "../../packages/client-sdk/src/mobile-capabilities.js";
-import { extractEnvelopeData } from "../../packages/contracts/src/http.js";
+import {
+  extractEnvelopeData,
+  extractPaginatedItems,
+} from "../../packages/contracts/src/http.js";
 import {
   readStoredBearerToken,
   uploadAuthenticatedAsset,
@@ -802,13 +805,53 @@ export const fetchNotificationList = (params = {}, legacyPageSize) => {
   const { page = 1, pageSize = 20 } = normalized;
   return request({
     url: `/api/notifications?page=${page}&pageSize=${pageSize}`,
+  }).then((response) => {
+    const data = extractEnvelopeData(response) || {};
+    const paginated = extractPaginatedItems(response, {
+      listKeys: ["items", "records", "list"],
+    });
+    const unreadCount = Number(
+      data.unreadCount ?? data.unread_count ?? response?.unreadCount ?? response?.unread_count ?? 0,
+    );
+    const latestAt =
+      data.latestAt ?? data.latest_at ?? response?.latestAt ?? response?.latest_at ?? "";
+    const latestTitle =
+      data.latestTitle ?? data.latest_title ?? response?.latestTitle ?? response?.latest_title ?? "";
+    const latestSummary =
+      data.latestSummary ??
+      data.latest_summary ??
+      response?.latestSummary ??
+      response?.latest_summary ??
+      "";
+
+    return {
+      ...response,
+      success: response?.success !== false,
+      data: paginated.items,
+      items: paginated.items,
+      total: paginated.total,
+      page: paginated.page || page,
+      pageSize: paginated.limit || pageSize,
+      unreadCount,
+      unread_count: unreadCount,
+      latestAt,
+      latest_at: latestAt,
+      latestTitle,
+      latest_title: latestTitle,
+      latestSummary,
+      latest_summary: latestSummary,
+    };
   });
 };
 
 export const fetchNotificationDetail = (id) =>
   request({
     url: `/api/notifications/${id}`,
-  });
+  }).then((response) => ({
+    ...response,
+    success: response?.success !== false,
+    data: extractEnvelopeData(response) || null,
+  }));
 
 export const markNotificationRead = (id) =>
   request({
