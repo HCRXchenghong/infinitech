@@ -60,7 +60,13 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/auth-portal.test.mjs",
   "packages/mobile-core/src/home-index.js",
   "packages/mobile-core/src/home-index.test.mjs",
+  "packages/mobile-core/src/profile-home.js",
+  "packages/mobile-core/src/profile-home.test.mjs",
+  "packages/mobile-core/src/profile-settings.js",
+  "packages/mobile-core/src/profile-settings.test.mjs",
   "shared/mobile-common/home-index-page.js",
+  "shared/mobile-common/profile-home-page.js",
+  "shared/mobile-common/profile-settings-pages.js",
   "packages/admin-core/src/index.js",
   "packages/admin-core/src/menu-groups.js",
   "packages/admin-core/src/temporary-credential.js",
@@ -1235,7 +1241,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -2022,6 +2028,22 @@ assertContains(
   'export * from "./home-index.js";',
 );
 assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./profile-home.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./profile-settings.js";',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./profile-home": "./src/profile-home.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./profile-settings": "./src/profile-settings.js"',
+);
+assertContains(
   "user-vue/pages/profile/vip-center/vip-data.js",
   "packages/mobile-core/src/vip-center.js",
 );
@@ -2126,6 +2148,54 @@ assertContains(
 assertContains(
   "app-mobile/pages/index/index.vue",
   "createHomeIndexPage({",
+);
+assertContains(
+  "user-vue/pages/profile/index/index.vue",
+  "../../../../shared/mobile-common/profile-home-page.js",
+);
+assertContains(
+  "app-mobile/pages/profile/index/index.vue",
+  "../../../../shared/mobile-common/profile-home-page.js",
+);
+assertContains(
+  "user-vue/pages/profile/index/index.vue",
+  "createProfileHomePage({",
+);
+assertContains(
+  "app-mobile/pages/profile/index/index.vue",
+  "createProfileHomePage({",
+);
+assertContains(
+  "user-vue/pages/profile/settings/index.vue",
+  "../../../../../shared/mobile-common/profile-settings-pages.js",
+);
+assertContains(
+  "app-mobile/pages/profile/settings/index.vue",
+  "../../../../../shared/mobile-common/profile-settings-pages.js",
+);
+assertContains(
+  "user-vue/pages/profile/settings/index.vue",
+  "createProfileSettingsPage({",
+);
+assertContains(
+  "app-mobile/pages/profile/settings/index.vue",
+  "createProfileSettingsPage({",
+);
+assertContains(
+  "user-vue/pages/profile/settings/detail/index.vue",
+  "../../../../../../shared/mobile-common/profile-settings-pages.js",
+);
+assertContains(
+  "app-mobile/pages/profile/settings/detail/index.vue",
+  "../../../../../../shared/mobile-common/profile-settings-pages.js",
+);
+assertContains(
+  "user-vue/pages/profile/settings/detail/index.vue",
+  "createProfileSettingsDetailPage({",
+);
+assertContains(
+  "app-mobile/pages/profile/settings/detail/index.vue",
+  "createProfileSettingsDetailPage({",
 );
 assertContains(
   "admin-vue/src/views/settingsApiManagementHelpers.js",
@@ -2343,6 +2413,30 @@ assertNotContains(
   "app-mobile/pages/index/index.vue",
   "const featureRoutes = {",
 );
+[
+  "user-vue/pages/profile/index/index.vue",
+  "app-mobile/pages/profile/index/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "const DEFAULT_TOOLS = [");
+  assertNotContains(relativePath, "const DEFAULT_MORE_ENTRIES = [");
+  assertNotContains(relativePath, "normalizeUserPayload(payload)");
+});
+[
+  "user-vue/pages/profile/settings/index.vue",
+  "app-mobile/pages/profile/settings/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "const SETTINGS_STORAGE_KEY = 'appSettings'");
+  assertNotContains(relativePath, "const DEFAULT_SETTINGS = {");
+  assertNotContains(relativePath, "phoneMasked()");
+});
+[
+  "user-vue/pages/profile/settings/detail/index.vue",
+  "app-mobile/pages/profile/settings/detail/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "const SETTINGS_STORAGE_KEY = 'appSettings'");
+  assertNotContains(relativePath, "const DEFAULT_SETTINGS = {");
+  assertNotContains(relativePath, "calculateCacheSize()");
+});
 assertNotContains(
   "admin-vue/src/views/Users.vue",
   "e.response?.data?.error",

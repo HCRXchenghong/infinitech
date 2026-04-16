@@ -163,148 +163,15 @@ import { clearAllCache } from '@/shared-ui/cache-cleaner'
 import { forceLogout } from '@/shared-ui/request-interceptor'
 import { getCachedLegalRuntimeSettings, loadLegalRuntimeSettings } from '@/shared-ui/legal-runtime.js'
 import { getAppVersionLabel } from '@/shared-ui/app-version.js'
+import { createProfileSettingsDetailPage } from '../../../../../../shared/mobile-common/profile-settings-pages.js'
 
-const SETTINGS_STORAGE_KEY = 'appSettings'
-const DEFAULT_SETTINGS = {
-  orderNotice: true,
-  marketingNotice: true,
-  location: true,
-  personalized: true
-}
-
-export default {
-  data() {
-    const legalRuntime = getCachedLegalRuntimeSettings()
-    return {
-      nickname: '悦享e食用户',
-      phone: '',
-      appVersionLabel: getAppVersionLabel(),
-      cacheSize: '0 MB',
-      settings: { ...DEFAULT_SETTINGS },
-      aboutSummary: legalRuntime.aboutSummary,
-      privacyPolicySummary: legalRuntime.privacyPolicySummary,
-      userAgreementSummary: legalRuntime.userAgreementSummary
-    }
-  },
-  computed: {
-    phoneMasked() {
-      const phone = String(this.phone || '').trim()
-      if (/^1\d{10}$/.test(phone)) {
-        return phone.replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2')
-      }
-      return '未绑定'
-    }
-  },
-  onShow() {
-    this.loadUserInfo()
-    this.loadSettings()
-    this.calculateCacheSize()
-    this.loadLegalRuntimeConfig()
-  },
-  methods: {
-    back() {
-      uni.navigateBack()
-    },
-    loadUserInfo() {
-      const profile = uni.getStorageSync('userProfile') || {}
-      this.nickname = profile.nickname || profile.name || '悦享e食用户'
-      this.phone = profile.phone || ''
-    },
-    loadSettings() {
-      const savedSettings = uni.getStorageSync(SETTINGS_STORAGE_KEY) || {}
-      this.settings = {
-        ...DEFAULT_SETTINGS,
-        ...savedSettings
-      }
-    },
-    async loadLegalRuntimeConfig() {
-      const legalRuntime = await loadLegalRuntimeSettings()
-      this.aboutSummary = legalRuntime.aboutSummary
-      this.privacyPolicySummary = legalRuntime.privacyPolicySummary
-      this.userAgreementSummary = legalRuntime.userAgreementSummary
-    },
-    saveSettings() {
-      uni.setStorageSync(SETTINGS_STORAGE_KEY, {
-        ...(uni.getStorageSync(SETTINGS_STORAGE_KEY) || {}),
-        ...this.settings
-      })
-    },
-    toggleSetting(key, event) {
-      this.settings[key] = !!event.detail.value
-      this.saveSettings()
-    },
-    goToPage(path) {
-      uni.navigateTo({ url: path })
-    },
-    calculateCacheSize() {
-      try {
-        const info = uni.getStorageInfoSync()
-        const sizeKb = Number(info.currentSize || 0)
-        if (sizeKb < 1024) {
-          this.cacheSize = `${sizeKb.toFixed(0)} KB`
-        } else {
-          this.cacheSize = `${(sizeKb / 1024).toFixed(1)} MB`
-        }
-      } catch (error) {
-        this.cacheSize = '0 MB'
-      }
-    },
-    clearCache() {
-      uni.showModal({
-        title: '清理缓存',
-        content: '确定要清理缓存吗？这不会影响当前登录状态。',
-        success: (res) => {
-          if (!res.confirm) {
-            return
-          }
-          clearAllCache()
-          this.cacheSize = '0 MB'
-          uni.showToast({ title: '缓存已清理', icon: 'success' })
-        }
-      })
-    },
-    checkUpdate() {
-      uni.showModal({
-        title: '检查更新',
-        content: `当前版本 ${this.appVersionLabel}，已是当前安装版本。`,
-        showCancel: false
-      })
-    },
-    showAboutUs() {
-      uni.showModal({
-        title: '关于悦享e食',
-        content: this.aboutSummary,
-        showCancel: false
-      })
-    },
-    showPrivacy() {
-      uni.showModal({
-        title: '隐私政策',
-        content: this.privacyPolicySummary,
-        showCancel: false
-      })
-    },
-    showUserAgreement() {
-      uni.showModal({
-        title: '用户协议',
-        content: this.userAgreementSummary,
-        showCancel: false
-      })
-    },
-    logout() {
-      uni.showModal({
-        title: '退出登录',
-        content: '确认退出当前账号？',
-        confirmColor: '#ef4444',
-        success: (res) => {
-          if (res.confirm) {
-            forceLogout()
-          }
-        }
-      })
-    }
-  }
-}
+export default createProfileSettingsDetailPage({
+  clearAllCache,
+  forceLogout,
+  getCachedLegalRuntimeSettings,
+  loadLegalRuntimeSettings,
+  getAppVersionLabel
+})
 </script>
 
 <style scoped lang="scss">
