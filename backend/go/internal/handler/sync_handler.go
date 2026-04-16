@@ -16,6 +16,10 @@ func NewSyncHandler(service *service.SyncService) *SyncHandler {
 	return &SyncHandler{service: service}
 }
 
+func respondSyncError(c *gin.Context, status int, message string) {
+	respondErrorEnvelope(c, status, couponResponseCodeForStatus(status), message, nil)
+}
+
 // GetSyncState 获取同步状态（各数据集版本号）
 // @Summary 获取同步状态
 // @Tags 同步
@@ -25,10 +29,10 @@ func NewSyncHandler(service *service.SyncService) *SyncHandler {
 func (h *SyncHandler) GetSyncState(c *gin.Context) {
 	state, err := h.service.GetSyncState(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondSyncError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, state)
+	respondMirroredSuccessEnvelope(c, "同步状态加载成功", state)
 }
 
 // GetSyncData 获取增量同步数据
@@ -46,11 +50,11 @@ func (h *SyncHandler) GetSyncData(c *gin.Context) {
 	data, err := h.service.GetSyncData(c.Request.Context(), dataset, since)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidSyncDataset) || errors.Is(err, service.ErrInvalidSince) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			respondSyncError(c, http.StatusBadRequest, err.Error())
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondSyncError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, data)
+	respondMirroredSuccessEnvelope(c, "增量同步数据加载成功", data)
 }

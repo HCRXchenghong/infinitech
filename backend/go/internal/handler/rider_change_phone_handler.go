@@ -12,7 +12,7 @@ import (
 func (h *RiderHandler) SecureChangePhone(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效骑手ID"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "无效骑手ID", nil)
 		return
 	}
 
@@ -24,7 +24,7 @@ func (h *RiderHandler) SecureChangePhone(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "参数错误"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "参数错误", nil)
 		return
 	}
 
@@ -34,57 +34,57 @@ func (h *RiderHandler) SecureChangePhone(c *gin.Context) {
 	req.NewCode = strings.TrimSpace(req.NewCode)
 
 	if req.OldPhone == "" || req.OldCode == "" || req.NewPhone == "" || req.NewCode == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请完整填写换绑信息"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "请完整填写换绑信息", nil)
 		return
 	}
 	if req.OldPhone == req.NewPhone {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "新手机号不能与原手机号相同"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "新手机号不能与原手机号相同", nil)
 		return
 	}
 
 	var rider repository.Rider
 	if err := h.db.Where("id = ?", riderID).First(&rider).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "骑手不存在"})
+		respondErrorEnvelope(c, http.StatusNotFound, responseCodeNotFound, "骑手不存在", nil)
 		return
 	}
 	if strings.TrimSpace(rider.Phone) != req.OldPhone {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "原手机号与当前账号不匹配"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "原手机号与当前账号不匹配", nil)
 		return
 	}
 
 	ctx := c.Request.Context()
 	oldOK, err := svc.VerifySMSCodeWithFallback(ctx, h.db, h.redis, "change_phone_verify", req.OldPhone, req.OldCode, true)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "验证码服务异常，请稍后重试"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "验证码服务异常，请稍后重试", nil)
 		return
 	}
 	if !oldOK {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "原手机号验证码错误或已过期"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "原手机号验证码错误或已过期", nil)
 		return
 	}
 
 	newOK, err := svc.VerifySMSCodeWithFallback(ctx, h.db, h.redis, "change_phone_new", req.NewPhone, req.NewCode, true)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "验证码服务异常，请稍后重试"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "验证码服务异常，请稍后重试", nil)
 		return
 	}
 	if !newOK {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "新手机号验证码错误或已过期"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "新手机号验证码错误或已过期", nil)
 		return
 	}
 
 	var count int64
 	if err := h.db.Model(&repository.Rider{}).Where("phone = ? AND id <> ?", req.NewPhone, riderID).Count(&count).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "手机号校验失败"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "手机号校验失败", nil)
 		return
 	}
 	if count > 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "该手机号已被其他骑手使用"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "该手机号已被其他骑手使用", nil)
 		return
 	}
 
 	if err := h.db.Model(&repository.Rider{}).Where("id = ?", riderID).Update("phone", req.NewPhone).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "修改手机号失败"})
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "修改手机号失败", nil)
 		return
 	}
 
@@ -106,5 +106,5 @@ func (h *RiderHandler) SecureChangePhone(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, response)
+	respondMirroredSuccessEnvelope(c, "手机号修改成功", response)
 }

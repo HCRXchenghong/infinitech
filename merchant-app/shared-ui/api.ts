@@ -413,7 +413,11 @@ export const createMerchantGroupbuyRefund = (payload: Record<string, any>) =>
 
 // Categories
 export const fetchCategories = (shopId: string | number) =>
-  apiGet<any[]>("/api/categories", { shopId });
+  apiGet<any[]>("/api/categories", { shopId }).then((payload) =>
+    extractPaginatedItems(payload, {
+      listKeys: ["categories", "items", "records", "list"],
+    }).items,
+  );
 
 export const createCategory = (payload: {
   shopId: number;
@@ -436,10 +440,14 @@ export const deleteCategory = (
 export const fetchProducts = (params: {
   shopId: string | number;
   categoryId?: string | number;
-}) => apiGet<any[]>("/api/products", params);
+}) => apiGet<any[]>("/api/products", params).then((payload) =>
+  extractPaginatedItems(payload, {
+    listKeys: ["products", "items", "records", "list"],
+  }).items,
+);
 
 export const fetchProductDetail = (productId: string | number) =>
-  apiGet(`/api/products/${productId}`);
+  apiGet(`/api/products/${productId}`).then((payload) => extractEnvelopeData(payload) || payload || null);
 
 export const createProduct = (payload: Record<string, any>) =>
   apiPost("/api/products", payload);
@@ -456,7 +464,11 @@ export const deleteProduct = (
 
 // Banners / Decoration
 export const fetchBanners = (shopId: string | number) =>
-  apiGet<any[]>("/api/banners", { shopId });
+  apiGet<any[]>("/api/banners", { shopId }).then((payload) =>
+    extractPaginatedItems(payload, {
+      listKeys: ["banners", "items", "records", "list"],
+    }).items,
+  );
 
 export const createBanner = (payload: Record<string, any>) =>
   apiPost("/api/banners", payload);

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,9 +25,15 @@ func NewProductService(repo repository.ProductRepository, redis *redis.Client) *
 }
 
 func (s *ProductService) GetCategories(ctx context.Context, shopID string) (interface{}, error) {
+	resolvedShopID, err := resolveOptionalEntityID(ctx, s.repo.DB(), "shops", shopID)
+	if err != nil {
+		return nil, err
+	}
+	normalizedShopID := normalizeLookupStringID(shopID, resolvedShopID)
+
 	// 先尝试从 Redis 获取
 	if s.redis != nil {
-		cacheKey := fmt.Sprintf("cache:shop:%s:categories", shopID)
+		cacheKey := fmt.Sprintf("cache:shop:%s:categories", normalizedShopID)
 		cached, err := s.redis.Get(ctx, cacheKey).Result()
 		if err == nil {
 			var categories []interface{}
@@ -37,7 +44,7 @@ func (s *ProductService) GetCategories(ctx context.Context, shopID string) (inte
 	}
 
 	// Redis 没有，从数据库获取
-	categories, err := s.repo.GetCategories(ctx, shopID)
+	categories, err := s.repo.GetCategories(ctx, normalizedShopID)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +52,7 @@ func (s *ProductService) GetCategories(ctx context.Context, shopID string) (inte
 	// 存入 Redis（缓存 10 分钟）
 	if s.redis != nil && categories != nil {
 		if data, err := json.Marshal(categories); err == nil {
-			s.redis.Set(ctx, fmt.Sprintf("cache:shop:%s:categories", shopID), data, 10*time.Minute)
+			s.redis.Set(ctx, fmt.Sprintf("cache:shop:%s:categories", normalizedShopID), data, 10*time.Minute)
 		}
 	}
 
@@ -53,9 +60,20 @@ func (s *ProductService) GetCategories(ctx context.Context, shopID string) (inte
 }
 
 func (s *ProductService) GetProducts(ctx context.Context, shopID string, categoryID string) (interface{}, error) {
+	resolvedShopID, err := resolveOptionalEntityID(ctx, s.repo.DB(), "shops", shopID)
+	if err != nil {
+		return nil, err
+	}
+	resolvedCategoryID, err := resolveOptionalEntityID(ctx, s.repo.DB(), "categories", categoryID)
+	if err != nil {
+		return nil, err
+	}
+	normalizedShopID := normalizeLookupStringID(shopID, resolvedShopID)
+	normalizedCategoryID := normalizeLookupStringID(categoryID, resolvedCategoryID)
+
 	// 先尝试从 Redis 获取
 	if s.redis != nil {
-		cacheKey := fmt.Sprintf("cache:shop:%s:category:%s:products", shopID, categoryID)
+		cacheKey := fmt.Sprintf("cache:shop:%s:category:%s:products", normalizedShopID, normalizedCategoryID)
 		cached, err := s.redis.Get(ctx, cacheKey).Result()
 		if err == nil {
 			var products []interface{}
@@ -66,7 +84,7 @@ func (s *ProductService) GetProducts(ctx context.Context, shopID string, categor
 	}
 
 	// Redis 没有，从数据库获取
-	products, err := s.repo.GetProducts(ctx, shopID, categoryID)
+	products, err := s.repo.GetProducts(ctx, normalizedShopID, normalizedCategoryID)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +92,7 @@ func (s *ProductService) GetProducts(ctx context.Context, shopID string, categor
 	// 存入 Redis（缓存 5 分钟）
 	if s.redis != nil && products != nil {
 		if data, err := json.Marshal(products); err == nil {
-			s.redis.Set(ctx, fmt.Sprintf("cache:shop:%s:category:%s:products", shopID, categoryID), data, 5*time.Minute)
+			s.redis.Set(ctx, fmt.Sprintf("cache:shop:%s:category:%s:products", normalizedShopID, normalizedCategoryID), data, 5*time.Minute)
 		}
 	}
 
@@ -82,9 +100,15 @@ func (s *ProductService) GetProducts(ctx context.Context, shopID string, categor
 }
 
 func (s *ProductService) GetProductDetail(ctx context.Context, productID string) (interface{}, error) {
+	resolvedProductID, err := resolveEntityID(ctx, s.repo.DB(), "products", productID)
+	if err != nil {
+		return nil, err
+	}
+	normalizedProductID := strconv.FormatUint(uint64(resolvedProductID), 10)
+
 	// 先尝试从 Redis 获取
 	if s.redis != nil {
-		cacheKey := fmt.Sprintf("cache:product:%s", productID)
+		cacheKey := fmt.Sprintf("cache:product:%s", normalizedProductID)
 		cached, err := s.redis.Get(ctx, cacheKey).Result()
 		if err == nil {
 			var product map[string]interface{}
@@ -95,7 +119,7 @@ func (s *ProductService) GetProductDetail(ctx context.Context, productID string)
 	}
 
 	// Redis 没有，从数据库获取
-	product, err := s.repo.GetProductDetail(ctx, productID)
+	product, err := s.repo.GetProductDetail(ctx, normalizedProductID)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +127,7 @@ func (s *ProductService) GetProductDetail(ctx context.Context, productID string)
 	// 存入 Redis（缓存 10 分钟）
 	if s.redis != nil && product != nil {
 		if data, err := json.Marshal(product); err == nil {
-			s.redis.Set(ctx, fmt.Sprintf("cache:product:%s", productID), data, 10*time.Minute)
+			s.redis.Set(ctx, fmt.Sprintf("cache:product:%s", normalizedProductID), data, 10*time.Minute)
 		}
 	}
 
@@ -111,9 +135,15 @@ func (s *ProductService) GetProductDetail(ctx context.Context, productID string)
 }
 
 func (s *ProductService) GetBanners(ctx context.Context, shopID string) (interface{}, error) {
+	resolvedShopID, err := resolveOptionalEntityID(ctx, s.repo.DB(), "shops", shopID)
+	if err != nil {
+		return nil, err
+	}
+	normalizedShopID := normalizeLookupStringID(shopID, resolvedShopID)
+
 	// 先尝试从 Redis 获取
 	if s.redis != nil {
-		cacheKey := fmt.Sprintf("cache:shop:%s:banners", shopID)
+		cacheKey := fmt.Sprintf("cache:shop:%s:banners", normalizedShopID)
 		cached, err := s.redis.Get(ctx, cacheKey).Result()
 		if err == nil {
 			var banners []interface{}
@@ -124,7 +154,7 @@ func (s *ProductService) GetBanners(ctx context.Context, shopID string) (interfa
 	}
 
 	// Redis 没有，从数据库获取
-	banners, err := s.repo.GetBanners(ctx, shopID)
+	banners, err := s.repo.GetBanners(ctx, normalizedShopID)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +162,7 @@ func (s *ProductService) GetBanners(ctx context.Context, shopID string) (interfa
 	// 存入 Redis（缓存 10 分钟）
 	if s.redis != nil && banners != nil {
 		if data, err := json.Marshal(banners); err == nil {
-			s.redis.Set(ctx, fmt.Sprintf("cache:shop:%s:banners", shopID), data, 10*time.Minute)
+			s.redis.Set(ctx, fmt.Sprintf("cache:shop:%s:banners", normalizedShopID), data, 10*time.Minute)
 		}
 	}
 
@@ -557,4 +587,11 @@ func parseUintField(data map[string]interface{}, keys ...string) (uint, bool) {
 		return uint(parsed), true
 	}
 	return 0, false
+}
+
+func normalizeLookupStringID(raw string, resolved uint) string {
+	if resolved > 0 {
+		return strconv.FormatUint(uint64(resolved), 10)
+	}
+	return strings.TrimSpace(raw)
 }

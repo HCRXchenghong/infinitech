@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yuexiang/go-api/internal/repository"
 	"github.com/yuexiang/go-api/internal/service"
+	"gorm.io/gorm"
 )
 
 type ProductHandler struct {
@@ -19,15 +20,68 @@ func NewProductHandler(service *service.ProductService) *ProductHandler {
 	return &ProductHandler{service: service}
 }
 
+func respondProductError(c *gin.Context, status int, message string) {
+	respondErrorEnvelope(c, status, couponResponseCodeForStatus(status), message, nil)
+}
+
+func respondProductInvalidRequest(c *gin.Context, message string) {
+	respondProductError(c, http.StatusBadRequest, message)
+}
+
+func respondProductMirroredSuccess(c *gin.Context, message string, data interface{}) {
+	respondMirroredSuccessEnvelope(c, message, data)
+}
+
+func respondProductPaginated(c *gin.Context, message, listKey string, items interface{}, total int64) {
+	limit := int(total)
+	if limit < 0 {
+		limit = 0
+	}
+	respondPaginatedEnvelope(c, responseCodeOK, message, listKey, items, total, 1, limit)
+}
+
+func writeProductServiceError(c *gin.Context, err error, fallbackStatus int) {
+	if errors.Is(err, service.ErrUnauthorized) {
+		respondProductError(c, http.StatusUnauthorized, err.Error())
+		return
+	}
+	if errors.Is(err, service.ErrForbidden) {
+		respondProductError(c, http.StatusForbidden, err.Error())
+		return
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) || strings.Contains(strings.ToLower(err.Error()), "not found") {
+		respondProductError(c, http.StatusNotFound, err.Error())
+		return
+	}
+	if strings.Contains(strings.ToLower(err.Error()), "invalid") {
+		respondProductError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	respondProductError(c, fallbackStatus, err.Error())
+}
+
+func countProductItems(items interface{}) int64 {
+	switch typed := items.(type) {
+	case []map[string]interface{}:
+		return int64(len(typed))
+	case []interface{}:
+		return int64(len(typed))
+	case []string:
+		return int64(len(typed))
+	default:
+		return 0
+	}
+}
+
 // GetCategories 获取分类列表
 func (h *ProductHandler) GetCategories(c *gin.Context) {
 	shopID := c.Query("shopId")
 	categories, err := h.service.GetCategories(c.Request.Context(), shopID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		writeProductServiceError(c, err, http.StatusInternalServerError)
 		return
 	}
-	c.JSON(http.StatusOK, categories)
+	respondProductPaginated(c, "分类列表加载成功", "categories", categories, countProductItems(categories))
 }
 
 // GetProducts 获取商品列表
@@ -37,10 +91,10 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 
 	products, err := h.service.GetProducts(c.Request.Context(), shopID, categoryID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		writeProductServiceError(c, err, http.StatusInternalServerError)
 		return
 	}
-	c.JSON(http.StatusOK, products)
+	respondProductPaginated(c, "商品列表加载成功", "products", products, countProductItems(products))
 }
 
 // GetFeaturedProducts 获取今日推荐商品
@@ -52,10 +106,10 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 func (h *ProductHandler) GetFeaturedProducts(c *gin.Context) {
 	products, err := h.service.GetFeaturedProducts(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		writeProductServiceError(c, err, http.StatusInternalServerError)
 		return
 	}
-	c.JSON(http.StatusOK, products)
+	respondProductMirroredSuccess(c, "今日推荐商品加载成功", gin.H{"products": products})
 }
 
 // GetProductDetail 获取商品详情
@@ -69,14 +123,14 @@ func (h *ProductHandler) GetProductDetail(c *gin.Context) {
 	productID := c.Param("id")
 	product, err := h.service.GetProductDetail(c.Request.Context(), productID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		writeProductServiceError(c, err, http.StatusInternalServerError)
 		return
 	}
 	if product == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
+		respondProductError(c, http.StatusNotFound, "product not found")
 		return
 	}
-	c.JSON(http.StatusOK, product)
+	respondProductMirroredSuccess(c, "商品详情加载成功", product)
 }
 
 // GetBanners 获取轮播图列表
@@ -84,10 +138,10 @@ func (h *ProductHandler) GetBanners(c *gin.Context) {
 	shopID := c.Query("shopId")
 	banners, err := h.service.GetBanners(c.Request.Context(), shopID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		writeProductServiceError(c, err, http.StatusInternalServerError)
 		return
 	}
-	c.JSON(http.StatusOK, banners)
+	respondProductPaginated(c, "轮播图列表加载成功", "banners", banners, countProductItems(banners))
 }
 
 // CreateCategory creates a new category
@@ -100,7 +154,7 @@ func (h *ProductHandler) CreateCategory(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondProductInvalidRequest(c, err.Error())
 		return
 	}
 
@@ -121,20 +175,20 @@ func (h *ProductHandler) CreateCategory(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"id": category.UID, "message": "Category created successfully"})
+	respondCreatedEnvelope(c, responseCodeOK, "分类创建成功", category, gin.H{"id": category.UID})
 }
 
 // UpdateCategory updates a category
 func (h *ProductHandler) UpdateCategory(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
+		respondProductInvalidRequest(c, "invalid category id")
 		return
 	}
 
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondProductInvalidRequest(c, err.Error())
 		return
 	}
 
@@ -150,14 +204,14 @@ func (h *ProductHandler) UpdateCategory(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Category updated successfully"})
+	respondProductMirroredSuccess(c, "分类更新成功", gin.H{"id": id, "updated": true})
 }
 
 // DeleteCategory deletes a category
 func (h *ProductHandler) DeleteCategory(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
+		respondProductInvalidRequest(c, "invalid category id")
 		return
 	}
 
@@ -168,7 +222,7 @@ func (h *ProductHandler) DeleteCategory(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Category deleted successfully"})
+	respondProductMirroredSuccess(c, "分类删除成功", gin.H{"id": id, "deleted": true})
 }
 
 // CreateProduct creates a new product
@@ -194,7 +248,7 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondProductInvalidRequest(c, err.Error())
 		return
 	}
 
@@ -233,20 +287,20 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"id": product.UID, "message": "Product created successfully"})
+	respondCreatedEnvelope(c, responseCodeOK, "商品创建成功", product, gin.H{"id": product.UID})
 }
 
 // UpdateProduct updates a product
 func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
+		respondProductInvalidRequest(c, "invalid product id")
 		return
 	}
 
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondProductInvalidRequest(c, err.Error())
 		return
 	}
 
@@ -269,14 +323,14 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Product updated successfully"})
+	respondProductMirroredSuccess(c, "商品更新成功", gin.H{"id": id, "updated": true})
 }
 
 // DeleteProduct deletes a product
 func (h *ProductHandler) DeleteProduct(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
+		respondProductInvalidRequest(c, "invalid product id")
 		return
 	}
 
@@ -288,7 +342,7 @@ func (h *ProductHandler) DeleteProduct(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Product deleted successfully"})
+	respondProductMirroredSuccess(c, "商品删除成功", gin.H{"id": id, "deleted": true})
 }
 
 // CreateBanner creates a new banner
@@ -304,7 +358,7 @@ func (h *ProductHandler) CreateBanner(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondProductInvalidRequest(c, err.Error())
 		return
 	}
 
@@ -328,20 +382,20 @@ func (h *ProductHandler) CreateBanner(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"id": banner.UID, "message": "Banner created successfully"})
+	respondCreatedEnvelope(c, responseCodeOK, "轮播图创建成功", banner, gin.H{"id": banner.UID})
 }
 
 // UpdateBanner updates a banner
 func (h *ProductHandler) UpdateBanner(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid banner ID"})
+		respondProductInvalidRequest(c, "invalid banner id")
 		return
 	}
 
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondProductInvalidRequest(c, err.Error())
 		return
 	}
 
@@ -357,14 +411,14 @@ func (h *ProductHandler) UpdateBanner(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Banner updated successfully"})
+	respondProductMirroredSuccess(c, "轮播图更新成功", gin.H{"id": id, "updated": true})
 }
 
 // DeleteBanner deletes a banner
 func (h *ProductHandler) DeleteBanner(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid banner ID"})
+		respondProductInvalidRequest(c, "invalid banner id")
 		return
 	}
 
@@ -375,17 +429,5 @@ func (h *ProductHandler) DeleteBanner(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Banner deleted successfully"})
-}
-
-func writeProductServiceError(c *gin.Context, err error, fallbackStatus int) {
-	if errors.Is(err, service.ErrUnauthorized) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		return
-	}
-	if errors.Is(err, service.ErrForbidden) {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(fallbackStatus, gin.H{"error": err.Error()})
+	respondProductMirroredSuccess(c, "轮播图删除成功", gin.H{"id": id, "deleted": true})
 }

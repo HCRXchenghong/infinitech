@@ -502,6 +502,34 @@ assertContains(
   'respondOpNotificationMirroredSuccess(c, "运营通知已标记为已读", gin.H{"id": idRaw, "read": true})',
 );
 assertContains(
+  "backend/go/internal/handler/product_handler.go",
+  "func respondProductPaginated(c *gin.Context, message, listKey string, items interface{}, total int64)",
+);
+assertContains(
+  "backend/go/internal/handler/product_handler.go",
+  'respondProductPaginated(c, "商品列表加载成功", "products", products, countProductItems(products))',
+);
+assertContains(
+  "backend/go/internal/handler/product_handler.go",
+  'respondProductMirroredSuccess(c, "商品详情加载成功", product)',
+);
+assertContains(
+  "backend/go/internal/handler/product_handler.go",
+  'respondProductMirroredSuccess(c, "今日推荐商品加载成功", gin.H{"products": products})',
+);
+assertContains(
+  "backend/go/internal/handler/sync_handler.go",
+  'respondMirroredSuccessEnvelope(c, "同步状态加载成功", state)',
+);
+assertContains(
+  "backend/go/internal/handler/sync_handler.go",
+  'respondMirroredSuccessEnvelope(c, "增量同步数据加载成功", data)',
+);
+assertContains(
+  "backend/go/internal/handler/rider_change_phone_handler.go",
+  'respondMirroredSuccessEnvelope(c, "手机号修改成功", response)',
+);
+assertContains(
   "backend/go/internal/handler/medicine_handler.go",
   'respondMirroredSuccessEnvelope(c, "问药咨询结果加载成功", result)',
 );
@@ -596,6 +624,22 @@ assertContains(
 assertContains(
   "merchant-app/shared-ui/api.ts",
   'listKeys: ["conversations", "items", "records", "list"]',
+);
+assertContains(
+  "merchant-app/shared-ui/api.ts",
+  'listKeys: ["products", "items", "records", "list"]',
+);
+assertContains(
+  "merchant-app/shared-ui/api.ts",
+  'listKeys: ["categories", "items", "records", "list"]',
+);
+assertContains(
+  "user-vue/shared-ui/api.js",
+  'listKeys: ["categories", "items", "records", "list"]',
+);
+assertContains(
+  "app-mobile/shared-ui/api.js",
+  'listKeys: ["banners", "items", "records", "list"]',
 );
 assertContains(
   "rider-app/shared-ui/api.ts",

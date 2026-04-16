@@ -555,7 +555,11 @@ export const fetchPublicVIPSettings = () =>
 export const fetchCategories = (shopId) =>
   request({
     url: `/api/categories?shopId=${shopId}`,
-  });
+  }).then((payload) =>
+    extractPaginatedItems(payload, {
+      listKeys: ["categories", "items", "records", "list"],
+    }).items,
+  );
 
 export const fetchProducts = async (shopId, categoryId) => {
   const response = await syncService.getData(
@@ -593,7 +597,11 @@ export const fetchMenuItems = async (shopId) => {
 export const fetchBanners = (shopId) =>
   request({
     url: `/api/banners?shopId=${shopId}`,
-  });
+  }).then((payload) =>
+    extractPaginatedItems(payload, {
+      listKeys: ["banners", "items", "records", "list"],
+    }).items,
+  );
 
 export const fetchProductDetail = async (productId) => {
   // 优先从本地缓存读取
@@ -602,9 +610,10 @@ export const fetchProductDetail = async (productId) => {
     return localData[0];
   }
   // 本地没有，请求服务器
-  return await request({
+  const payload = await request({
     url: `/api/products/${productId}`,
   });
+  return extractEnvelopeData(payload) || payload || null;
 };
 
 export const fetchHomeFeed = async (params = {}) => {
