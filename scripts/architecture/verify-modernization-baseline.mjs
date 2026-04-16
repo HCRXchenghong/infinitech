@@ -1385,6 +1385,18 @@ assertContains(
   "backend/go/internal/handler/captcha_handler.go",
   "respondCaptchaInvalidRequest(c, \"sessionId is required\")",
 );
+assertNotContains(
+  "backend/go/internal/handler/rider_handler.go",
+  "c.JSON(",
+);
+assertContains(
+  "backend/go/internal/handler/rider_handler.go",
+  "respondRiderMirroredSuccess(c, \"骑手资料加载成功\", payload)",
+);
+assertContains(
+  "backend/go/internal/handler/rider_handler.go",
+  "respondRiderMirroredSuccess(c, \"骑手在线状态更新成功\", gin.H{",
+);
 assertContains(
   "backend/go/internal/service/auth_service.go",
   'RefreshToken string                 `json:"refreshToken,omitempty"`',

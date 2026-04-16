@@ -31,6 +31,79 @@ func NewRiderHandler(db *gorm.DB, redis *redis.Client, auth *svc.AuthService) *R
 	}
 }
 
+func respondRiderError(c *gin.Context, status int, message string) {
+	respondErrorEnvelope(c, status, couponResponseCodeForStatus(status), message, nil)
+}
+
+func respondRiderInvalidRequest(c *gin.Context, message string) {
+	respondRiderError(c, http.StatusBadRequest, message)
+}
+
+func respondRiderNotFound(c *gin.Context, message string) {
+	respondRiderError(c, http.StatusNotFound, message)
+}
+
+func respondRiderInternalError(c *gin.Context, message string) {
+	respondRiderError(c, http.StatusInternalServerError, message)
+}
+
+func respondRiderMirroredSuccess(c *gin.Context, message string, data interface{}) {
+	respondMirroredSuccessEnvelope(c, message, data)
+}
+
+func (h *RiderHandler) loadRiderByID(riderID uint, fields ...string) (*repository.Rider, error) {
+	query := h.db
+	if len(fields) > 0 {
+		query = query.Select(fields)
+	}
+
+	var rider repository.Rider
+	if err := query.Where("id = ?", riderID).First(&rider).Error; err != nil {
+		return nil, err
+	}
+	return &rider, nil
+}
+
+func riderTruthy(value interface{}) bool {
+	switch typed := value.(type) {
+	case bool:
+		return typed
+	case string:
+		normalized := strings.TrimSpace(strings.ToLower(typed))
+		return normalized == "1" || normalized == "true" || normalized == "yes" || normalized == "on"
+	case int:
+		return typed != 0
+	case int64:
+		return typed != 0
+	case float64:
+		return typed != 0
+	default:
+		return false
+	}
+}
+
+func riderVerificationFieldValue(updates map[string]interface{}, key, fallback string) string {
+	if updates != nil {
+		if value, ok := updates[key]; ok {
+			return strings.TrimSpace(fmt.Sprint(value))
+		}
+	}
+	return strings.TrimSpace(fallback)
+}
+
+func riderVerificationReady(current *repository.Rider, updates map[string]interface{}) bool {
+	if current == nil {
+		return false
+	}
+
+	realName := riderVerificationFieldValue(updates, "real_name", current.RealName)
+	idCardNumber := riderVerificationFieldValue(updates, "id_card_number", current.IDCardNumber)
+	idCardFront := riderVerificationFieldValue(updates, "id_card_front", current.IDCardFront)
+	idCardBack := riderVerificationFieldValue(updates, "id_card_back", current.IDCardBack)
+
+	return realName != "" && idCardNumber != "" && idCardFront != "" && idCardBack != ""
+}
+
 func (h *RiderHandler) resolveRiderID(raw string) (uint, error) {
 	idText := strings.TrimSpace(raw)
 	if idText == "" {
@@ -61,36 +134,44 @@ func (h *RiderHandler) resolveRiderID(raw string) (uint, error) {
 func (h *RiderHandler) UpdateAvatar(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效骑手ID"})
+		respondRiderInvalidRequest(c, "无效骑手ID")
+		return
+	}
+	if _, err := h.loadRiderByID(riderID, "id"); err != nil {
+		respondRiderNotFound(c, "骑手不存在")
 		return
 	}
 	var req struct {
 		Avatar string `json:"avatar"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "参数错误"})
+		respondRiderInvalidRequest(c, "参数错误")
 		return
 	}
 
-	if err := h.db.Model(&repository.Rider{}).Where("id = ?", riderID).Update("avatar", req.Avatar).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "更新失败"})
+	update := h.db.Model(&repository.Rider{}).Where("id = ?", riderID).Update("avatar", req.Avatar)
+	if update.Error != nil {
+		respondRiderInternalError(c, "更新失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondRiderMirroredSuccess(c, "骑手头像更新成功", gin.H{
+		"updated": true,
+		"avatar":  strings.TrimSpace(req.Avatar),
+	})
 }
 
 // GetProfile 获取骑手资料
 func (h *RiderHandler) GetProfile(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效骑手ID"})
+		respondRiderInvalidRequest(c, "无效骑手ID")
 		return
 	}
 	var rider repository.Rider
 
 	if err := h.db.Where("id = ?", riderID).First(&rider).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "骑手不存在"})
+		respondRiderNotFound(c, "骑手不存在")
 		return
 	}
 
@@ -102,23 +183,27 @@ func (h *RiderHandler) GetProfile(c *gin.Context) {
 	payload["id_card_back_preview_url"] = buildRiderCertPreviewURL(rider.ID, "id_card_back", rider.IDCardBack)
 	payload["health_cert_preview_url"] = buildRiderCertPreviewURL(rider.ID, "health_cert", rider.HealthCert)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    payload,
-	})
+	respondRiderMirroredSuccess(c, "骑手资料加载成功", payload)
 }
 
 // UpdateProfile 更新骑手资料
 func (h *RiderHandler) UpdateProfile(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效骑手ID"})
+		respondRiderInvalidRequest(c, "无效骑手ID")
 		return
 	}
+
+	currentRider, err := h.loadRiderByID(riderID, "id", "real_name", "id_card_number", "id_card_front", "id_card_back", "is_verified")
+	if err != nil {
+		respondRiderNotFound(c, "骑手不存在")
+		return
+	}
+
 	var req map[string]interface{}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "参数错误"})
+		respondRiderInvalidRequest(c, "参数错误")
 		return
 	}
 
@@ -137,7 +222,7 @@ func (h *RiderHandler) UpdateProfile(c *gin.Context) {
 				}
 				nextRef, _, normalizeErr := promoteLegacyRiderCertReference(riderID, field, normalized)
 				if normalizeErr != nil {
-					c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": normalizeErr.Error()})
+					respondRiderInvalidRequest(c, normalizeErr.Error())
 					return
 				}
 				updates[field] = nextRef
@@ -147,36 +232,55 @@ func (h *RiderHandler) UpdateProfile(c *gin.Context) {
 		}
 	}
 
-	// 如果提交了完整的实名信息，标记为已认证
-	if req["real_name"] != nil && req["id_card_number"] != nil &&
-		req["id_card_front"] != nil && req["id_card_back"] != nil {
-		updates["is_verified"] = true
-	}
+	fullVerificationPayload := req["real_name"] != nil &&
+		req["id_card_number"] != nil &&
+		req["id_card_front"] != nil &&
+		req["id_card_back"] != nil
+	verifyRequested := riderTruthy(req["is_verified"])
 
-	if err := h.db.Model(&repository.Rider{}).Where("id = ?", riderID).Updates(updates).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "更新失败"})
+	if verifyRequested && !riderVerificationReady(currentRider, updates) {
+		respondRiderInvalidRequest(c, "请先完善实名认证资料")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	if verifyRequested || (fullVerificationPayload && riderVerificationReady(currentRider, updates)) {
+		updates["is_verified"] = true
+	}
+
+	if len(updates) == 0 {
+		respondRiderMirroredSuccess(c, "骑手资料已是最新状态", gin.H{
+			"updated": false,
+		})
+		return
+	}
+
+	if err := h.db.Model(&repository.Rider{}).Where("id = ?", riderID).Updates(updates).Error; err != nil {
+		respondRiderInternalError(c, "更新失败")
+		return
+	}
+
+	respondRiderMirroredSuccess(c, "骑手资料更新成功", gin.H{
+		"updated": true,
+		"fields":  updates,
+	})
 }
 
 // DownloadCert 鉴权下载骑手私有证件
 func (h *RiderHandler) DownloadCert(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效骑手ID"})
+		respondRiderInvalidRequest(c, "无效骑手ID")
 		return
 	}
 	field, ok := normalizeRiderCertField(c.Query("field"))
 	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "不支持的证件字段"})
+		respondRiderInvalidRequest(c, "不支持的证件字段")
 		return
 	}
 
 	var rider repository.Rider
 	if err := h.db.Select("id", "id_card_front", "id_card_back", "health_cert").Where("id = ?", riderID).First(&rider).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "骑手不存在"})
+		respondRiderNotFound(c, "骑手不存在")
 		return
 	}
 
@@ -192,7 +296,7 @@ func (h *RiderHandler) DownloadCert(c *gin.Context) {
 
 	ref, absPath, contentType, changed, resolveErr := resolveStoredRiderCertFile(riderID, field, storedValue)
 	if resolveErr != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": resolveErr.Error()})
+		respondRiderNotFound(c, resolveErr.Error())
 		return
 	}
 	if changed {
@@ -209,18 +313,24 @@ func (h *RiderHandler) DownloadCert(c *gin.Context) {
 func (h *RiderHandler) UploadCert(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效骑手ID"})
+		respondRiderInvalidRequest(c, "无效骑手ID")
 		return
 	}
 	field, ok := normalizeRiderCertField(c.PostForm("field"))
 	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "不支持的证件字段"})
+		respondRiderInvalidRequest(c, "不支持的证件字段")
 		return
 	}
 
 	file, err := c.FormFile("image")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "未找到图片"})
+		respondRiderInvalidRequest(c, "未找到图片")
+		return
+	}
+
+	currentRider, err := h.loadRiderByID(riderID, "id", "id_card_front", "id_card_back", "health_cert")
+	if err != nil {
+		respondRiderNotFound(c, "骑手不存在")
 		return
 	}
 
@@ -232,42 +342,36 @@ func (h *RiderHandler) UploadCert(c *gin.Context) {
 			strings.Contains(saveErr.Error(), "图片处理失败") {
 			status = http.StatusInternalServerError
 		}
-		c.JSON(status, gin.H{"success": false, "error": saveErr.Error()})
+		respondRiderError(c, status, saveErr.Error())
 		return
 	}
 
-	var previous repository.Rider
-	_ = h.db.Select(field).Where("id = ?", riderID).First(&previous).Error
-
 	if err := h.db.Model(&repository.Rider{}).Where("id = ?", riderID).Update(field, nextRef).Error; err != nil {
 		cleanupRiderCertReference(riderID, field, nextRef)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "更新失败"})
+		respondRiderInternalError(c, "更新失败")
 		return
 	}
 
 	switch field {
 	case "id_card_front":
-		cleanupRiderCertReference(riderID, field, previous.IDCardFront)
+		cleanupRiderCertReference(riderID, field, currentRider.IDCardFront)
 	case "id_card_back":
-		cleanupRiderCertReference(riderID, field, previous.IDCardBack)
+		cleanupRiderCertReference(riderID, field, currentRider.IDCardBack)
 	case "health_cert":
-		cleanupRiderCertReference(riderID, field, previous.HealthCert)
+		cleanupRiderCertReference(riderID, field, currentRider.HealthCert)
 	}
 
 	previewURL := buildRiderCertPreviewURL(riderID, field, nextRef)
-	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"imageUrl":   nextRef,
-		"assetRef":   nextRef,
-		"previewUrl": previewURL,
-		"data": gin.H{
-			"asset_id":      nextRef,
-			"asset_url":     previewURL,
-			"access_policy": "private",
-			"content_type":  contentType,
-			"owner_scope":   fmt.Sprintf("rider:%d:%s", riderID, field),
-			"filename":      filename,
-		},
+	respondRiderMirroredSuccess(c, "骑手证件上传成功", gin.H{
+		"asset_id":      nextRef,
+		"asset_url":     previewURL,
+		"access_policy": "private",
+		"content_type":  contentType,
+		"owner_scope":   fmt.Sprintf("rider:%d:%s", riderID, field),
+		"filename":      filename,
+		"imageUrl":      nextRef,
+		"assetRef":      nextRef,
+		"previewUrl":    previewURL,
 	})
 }
 
@@ -275,7 +379,13 @@ func (h *RiderHandler) UploadCert(c *gin.Context) {
 func (h *RiderHandler) ChangePhone(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效骑手ID"})
+		respondRiderInvalidRequest(c, "无效骑手ID")
+		return
+	}
+
+	rider, err := h.loadRiderByID(riderID, "id", "uid", "name", "nickname", "phone")
+	if err != nil {
+		respondRiderNotFound(c, "骑手不存在")
 		return
 	}
 
@@ -287,56 +397,93 @@ func (h *RiderHandler) ChangePhone(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "参数错误"})
+		respondRiderInvalidRequest(c, "参数错误")
 		return
 	}
 
+	req.OldPhone = strings.TrimSpace(req.OldPhone)
+	req.OldCode = strings.TrimSpace(req.OldCode)
+	req.NewPhone = strings.TrimSpace(req.NewPhone)
+	req.NewCode = strings.TrimSpace(req.NewCode)
+
 	ctx := c.Request.Context()
+
+	if req.OldPhone == "" || req.OldCode == "" || req.NewPhone == "" || req.NewCode == "" {
+		respondRiderInvalidRequest(c, "请完整填写换绑信息")
+		return
+	}
+	if req.OldPhone == req.NewPhone {
+		respondRiderInvalidRequest(c, "新手机号不能与原手机号相同")
+		return
+	}
+	if strings.TrimSpace(rider.Phone) != req.OldPhone {
+		respondRiderInvalidRequest(c, "原手机号与当前账号不匹配")
+		return
+	}
 
 	// 验证原手机号验证码
 	oldOK, err := svc.VerifySMSCodeWithFallback(ctx, h.db, h.redis, "change_phone_verify", req.OldPhone, req.OldCode, true)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "验证码服务异常，请稍后重试"})
+		respondRiderInternalError(c, "验证码服务异常，请稍后重试")
 		return
 	}
 	if !oldOK {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "原手机号验证码错误或已过期"})
+		respondRiderInvalidRequest(c, "原手机号验证码错误或已过期")
 		return
 	}
 
 	// 验证新手机号验证码
 	newOK, err := svc.VerifySMSCodeWithFallback(ctx, h.db, h.redis, "change_phone_new", req.NewPhone, req.NewCode, true)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "验证码服务异常，请稍后重试"})
+		respondRiderInternalError(c, "验证码服务异常，请稍后重试")
 		return
 	}
 	if !newOK {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "新手机号验证码错误或已过期"})
+		respondRiderInvalidRequest(c, "新手机号验证码错误或已过期")
 		return
 	}
 
 	// 检查新手机号是否已被使用
 	var count int64
-	h.db.Model(&repository.Rider{}).Where("phone = ? AND id != ?", req.NewPhone, riderID).Count(&count)
+	if err := h.db.Model(&repository.Rider{}).Where("phone = ? AND id != ?", req.NewPhone, riderID).Count(&count).Error; err != nil {
+		respondRiderInternalError(c, "手机号校验失败")
+		return
+	}
 	if count > 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "该手机号已被使用"})
+		respondRiderInvalidRequest(c, "该手机号已被使用")
 		return
 	}
 
 	// 更新手机号
 	if err := h.db.Model(&repository.Rider{}).Where("id = ?", riderID).Update("phone", req.NewPhone).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "更新失败"})
+		respondRiderInternalError(c, "更新失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "手机号修改成功"})
+	response := gin.H{
+		"updated": true,
+		"phone":   req.NewPhone,
+		"user": gin.H{
+			"id":       rider.UID,
+			"phone":    req.NewPhone,
+			"name":     rider.Name,
+			"nickname": rider.Nickname,
+		},
+	}
+	if h.auth != nil {
+		if token, tokenErr := h.auth.IssueAccessToken(req.NewPhone, int64(riderID)); tokenErr == nil && strings.TrimSpace(token) != "" {
+			response["token"] = token
+		}
+	}
+
+	respondRiderMirroredSuccess(c, "手机号修改成功", response)
 }
 
 // ChangePassword 修改密码
 func (h *RiderHandler) ChangePassword(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效骑手ID"})
+		respondRiderInvalidRequest(c, "无效骑手ID")
 		return
 	}
 
@@ -349,19 +496,19 @@ func (h *RiderHandler) ChangePassword(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "参数错误"})
+		respondRiderInvalidRequest(c, "参数错误")
 		return
 	}
 
 	// 验证新密码长度
 	if len(req.NewPassword) < 6 {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "密码至少6位"})
+		respondRiderInvalidRequest(c, "密码至少6位")
 		return
 	}
 
 	var rider repository.Rider
 	if err := h.db.Where("id = ?", riderID).First(&rider).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "骑手不存在"})
+		respondRiderNotFound(c, "骑手不存在")
 		return
 	}
 
@@ -369,52 +516,54 @@ func (h *RiderHandler) ChangePassword(c *gin.Context) {
 	if req.VerifyType == "password" {
 		// 原密码验证
 		if err := bcrypt.CompareHashAndPassword([]byte(rider.PasswordHash), []byte(req.OldPassword)); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "原密码错误"})
+			respondRiderInvalidRequest(c, "原密码错误")
 			return
 		}
 	} else if req.VerifyType == "code" {
 		// 验证码验证
 		ok, err := svc.VerifySMSCodeWithFallback(c.Request.Context(), h.db, h.redis, "rider_change_password", req.Phone, req.Code, true)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "验证码服务异常，请稍后重试"})
+			respondRiderInternalError(c, "验证码服务异常，请稍后重试")
 			return
 		}
 		if !ok {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "验证码错误或已过期"})
+			respondRiderInvalidRequest(c, "验证码错误或已过期")
 			return
 		}
 	} else {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "验证方式错误"})
+		respondRiderInvalidRequest(c, "验证方式错误")
 		return
 	}
 
 	// 加密新密码
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "密码处理失败"})
+		respondRiderInternalError(c, "密码处理失败")
 		return
 	}
 
 	// 更新密码
 	if err := h.db.Model(&repository.Rider{}).Where("id = ?", riderID).Update("password_hash", string(hash)).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "密码更新失败"})
+		respondRiderInternalError(c, "密码更新失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "密码修改成功"})
+	respondRiderMirroredSuccess(c, "密码修改成功", gin.H{
+		"updated": true,
+	})
 }
 
 // GetRank 获取骑手段位信息
 func (h *RiderHandler) GetRank(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效骑手ID"})
+		respondRiderInvalidRequest(c, "无效骑手ID")
 		return
 	}
 	var rider repository.Rider
 
 	if err := h.db.Where("id = ?", riderID).First(&rider).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "骑手不存在"})
+		respondRiderNotFound(c, "骑手不存在")
 		return
 	}
 	rating := rider.Rating
@@ -433,16 +582,14 @@ func (h *RiderHandler) GetRank(c *gin.Context) {
 		weekOrders = int(count)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"level":            rider.Level,
-			"totalOrders":      totalOrders,
-			"weekOrders":       weekOrders,
-			"consecutiveWeeks": rider.ConsecutiveWeeks,
-			"rating":           rating,
-			"ratingCount":      rider.RatingCount,
-		},
+	respondRiderMirroredSuccess(c, "骑手段位信息加载成功", gin.H{
+		"level":            rider.Level,
+		"totalOrders":      totalOrders,
+		"weekOrders":       weekOrders,
+		"consecutiveWeeks": rider.ConsecutiveWeeks,
+		"rating":           rating,
+		"ratingCount":      rider.RatingCount,
+		"rating_count":     rider.RatingCount,
 	})
 }
 
@@ -475,7 +622,7 @@ rating, phone, is_online`,
 	)
 
 	if err := query.Order("orders DESC").Order("rating DESC").Order("id ASC").Limit(50).Find(&riders).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "查询失败"})
+		respondRiderInternalError(c, "查询失败")
 		return
 	}
 	for i := range riders {
@@ -484,9 +631,10 @@ rating, phone, is_online`,
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    riders,
+	respondRiderMirroredSuccess(c, "骑手排行榜加载成功", gin.H{
+		"items": riders,
+		"list":  riders,
+		"type":  firstNonEmptyText(rankType, "month"),
 	})
 }
 
@@ -532,13 +680,13 @@ func (h *RiderHandler) countCompletedOrders(riderID uint, riderPhone string, sta
 func (h *RiderHandler) CreateReview(c *gin.Context) {
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "参数错误"})
+		respondRiderInvalidRequest(c, "参数错误")
 		return
 	}
 
 	riderID := uint(toIntValue(pickFirstValue(req, "rider_id", "riderId")))
 	if riderID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "rider_id 不能为空"})
+		respondRiderInvalidRequest(c, "rider_id 不能为空")
 		return
 	}
 
@@ -566,7 +714,7 @@ func (h *RiderHandler) CreateReview(c *gin.Context) {
 
 	var rider repository.Rider
 	if err := h.db.First(&rider, riderID).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "骑手不存在"})
+		respondRiderNotFound(c, "骑手不存在")
 		return
 	}
 
@@ -576,13 +724,12 @@ func (h *RiderHandler) CreateReview(c *gin.Context) {
 		}
 		return h.syncRiderRating(tx, riderID)
 	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "创建评价失败"})
+		respondRiderInternalError(c, "创建评价失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"review":  riderReviewToMap(review),
+	respondRiderMirroredSuccess(c, "骑手评论创建成功", gin.H{
+		"review": riderReviewToMap(review),
 	})
 }
 
@@ -591,13 +738,13 @@ func (h *RiderHandler) UpdateReview(c *gin.Context) {
 	reviewID := c.Param("id")
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "参数错误"})
+		respondRiderInvalidRequest(c, "参数错误")
 		return
 	}
 
 	var review repository.RiderReview
 	if err := h.db.Where("id = ?", reviewID).First(&review).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "评价不存在"})
+		respondRiderNotFound(c, "评价不存在")
 		return
 	}
 
@@ -625,7 +772,9 @@ func (h *RiderHandler) UpdateReview(c *gin.Context) {
 	}
 
 	if len(updates) == 0 {
-		c.JSON(http.StatusOK, gin.H{"success": true})
+		respondRiderMirroredSuccess(c, "骑手评论已是最新状态", gin.H{
+			"updated": false,
+		})
 		return
 	}
 
@@ -635,11 +784,13 @@ func (h *RiderHandler) UpdateReview(c *gin.Context) {
 		}
 		return h.syncRiderRating(tx, review.RiderID)
 	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "更新评价失败"})
+		respondRiderInternalError(c, "更新评价失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondRiderMirroredSuccess(c, "骑手评论更新成功", gin.H{
+		"updated": true,
+	})
 }
 
 // DeleteReview 删除骑手评价
@@ -647,7 +798,7 @@ func (h *RiderHandler) DeleteReview(c *gin.Context) {
 	reviewID := c.Param("id")
 	var review repository.RiderReview
 	if err := h.db.Where("id = ?", reviewID).First(&review).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "评价不存在"})
+		respondRiderNotFound(c, "评价不存在")
 		return
 	}
 
@@ -657,18 +808,20 @@ func (h *RiderHandler) DeleteReview(c *gin.Context) {
 		}
 		return h.syncRiderRating(tx, review.RiderID)
 	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "删除评价失败"})
+		respondRiderInternalError(c, "删除评价失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondRiderMirroredSuccess(c, "骑手评论删除成功", gin.H{
+		"deleted": true,
+	})
 }
 
 // GetReviews 获取骑手评价（管理端）
 func (h *RiderHandler) GetReviews(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
 	if err != nil || riderID == 0 {
-		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "骑手ID无效", nil)
+		respondRiderInvalidRequest(c, "骑手ID无效")
 		return
 	}
 
@@ -691,7 +844,7 @@ func (h *RiderHandler) GetReviews(c *gin.Context) {
 
 	var reviews []repository.RiderReview
 	if err := h.db.Where("rider_id = ?", riderID).Order("created_at DESC").Limit(pageSize).Offset(offset).Find(&reviews).Error; err != nil {
-		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "查询评价失败", nil)
+		respondRiderInternalError(c, "查询评价失败")
 		return
 	}
 
@@ -706,7 +859,7 @@ func (h *RiderHandler) GetReviews(c *gin.Context) {
 
 	var rider repository.Rider
 	if err := h.db.Select("id, rating, rating_count").First(&rider, riderID).Error; err != nil {
-		respondErrorEnvelope(c, http.StatusNotFound, responseCodeNotFound, "骑手不存在", nil)
+		respondRiderNotFound(c, "骑手不存在")
 		return
 	}
 	rating := rider.Rating
@@ -715,10 +868,11 @@ func (h *RiderHandler) GetReviews(c *gin.Context) {
 	}
 
 	respondEnvelope(c, http.StatusOK, "RIDER_REVIEW_LISTED", "骑手评论加载成功", gin.H{
-		"items": list,
-		"total": total,
-		"page":  page,
-		"limit": pageSize,
+		"items":    list,
+		"total":    total,
+		"page":     page,
+		"limit":    pageSize,
+		"pageSize": pageSize,
 		"summary": gin.H{
 			"rating":       rating,
 			"rating_count": rider.RatingCount,
@@ -738,12 +892,12 @@ func (h *RiderHandler) GetReviews(c *gin.Context) {
 func (h *RiderHandler) GetRating(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "骑手ID无效"})
+		respondRiderInvalidRequest(c, "骑手ID无效")
 		return
 	}
 	var rider repository.Rider
 	if err := h.db.Select("id, rating, rating_count").Where("id = ?", riderID).First(&rider).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "骑手不存在"})
+		respondRiderNotFound(c, "骑手不存在")
 		return
 	}
 	rating := rider.Rating
@@ -751,13 +905,12 @@ func (h *RiderHandler) GetRating(c *gin.Context) {
 		rating = 5
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"riderId":     rider.ID,
-			"rating":      rating,
-			"ratingCount": rider.RatingCount,
-		},
+	respondRiderMirroredSuccess(c, "骑手评分摘要加载成功", gin.H{
+		"riderId":      rider.ID,
+		"rider_id":     rider.ID,
+		"rating":       rating,
+		"ratingCount":  rider.RatingCount,
+		"rating_count": rider.RatingCount,
 	})
 }
 
@@ -765,20 +918,20 @@ func (h *RiderHandler) GetRating(c *gin.Context) {
 func (h *RiderHandler) UpdateOnlineStatus(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "骑手ID无效"})
+		respondRiderInvalidRequest(c, "骑手ID无效")
 		return
 	}
 	var req struct {
 		IsOnline bool `json:"is_online"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "参数错误"})
+		respondRiderInvalidRequest(c, "参数错误")
 		return
 	}
 
 	var rider repository.Rider
 	if err := h.db.Where("id = ?", riderID).First(&rider).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "骑手不存在"})
+		respondRiderNotFound(c, "骑手不存在")
 		return
 	}
 
@@ -811,28 +964,32 @@ func (h *RiderHandler) UpdateOnlineStatus(c *gin.Context) {
 	}
 
 	if err := h.db.Model(&repository.Rider{}).Where("id = ?", riderID).Updates(updates).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "更新失败"})
+		respondRiderInternalError(c, "更新失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondRiderMirroredSuccess(c, "骑手在线状态更新成功", gin.H{
+		"updated":   true,
+		"is_online": req.IsOnline,
+		"isOnline":  req.IsOnline,
+	})
 }
 
 // Heartbeat 更新骑手在线心跳（仅在线骑手）
 func (h *RiderHandler) Heartbeat(c *gin.Context) {
 	riderID, err := h.resolveRiderID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "骑手ID无效"})
+		respondRiderInvalidRequest(c, "骑手ID无效")
 		return
 	}
 
 	var exists int64
 	if err := h.db.Model(&repository.Rider{}).Where("id = ?", riderID).Count(&exists).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "查询失败"})
+		respondRiderInternalError(c, "查询失败")
 		return
 	}
 	if exists == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "骑手不存在"})
+		respondRiderNotFound(c, "骑手不存在")
 		return
 	}
 
@@ -840,11 +997,15 @@ func (h *RiderHandler) Heartbeat(c *gin.Context) {
 	if err := h.db.Model(&repository.Rider{}).
 		Where("id = ? AND is_online = ?", riderID, true).
 		UpdateColumn("updated_at", now).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "心跳更新失败"})
+		respondRiderInternalError(c, "心跳更新失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondRiderMirroredSuccess(c, "骑手心跳更新成功", gin.H{
+		"updated":      true,
+		"heartbeatAt":  now,
+		"heartbeat_at": now,
+	})
 }
 
 func (h *RiderHandler) syncRiderRating(tx *gorm.DB, riderID uint) error {
