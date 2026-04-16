@@ -56,7 +56,11 @@
 
 <script>
 import { fetchPointsBalance, fetchPointsGoods, redeemPoints, fetchPublicVIPSettings } from '@/shared-ui/api.js'
-import { DEFAULT_VIP_CENTER_SETTINGS, normalizeVIPCenterSettings } from '../vip-center/vip-data.js'
+import {
+  DEFAULT_VIP_CENTER_SETTINGS,
+  mapVIPPointRewardList,
+  normalizeVIPCenterSettings
+} from '../vip-center/vip-data.js'
 
 export default {
   data() {
@@ -106,16 +110,7 @@ export default {
       fetchPointsGoods()
         .then((list) => {
           if (Array.isArray(list)) {
-            this.goods = list.map((item) => ({
-              id: item.id,
-              name: item.name,
-              points: item.points,
-              shipFee: Number(item.ship_fee || item.shipFee || 0),
-              emoji: item.type === 'vip' ? '👑' : '🎁',
-              colorClass: item.type === 'vip' ? 'gold-bg' : 'blue-bg',
-              tag: item.tag || (item.type === 'vip' ? 'VIP' : '实物'),
-              desc: item.desc || ''
-            }))
+            this.goods = mapVIPPointRewardList(list)
           }
         })
         .catch(() => {})

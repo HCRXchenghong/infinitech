@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.js",
-    "./upload": "./src/upload.js"
+    "./upload": "./src/upload.js",
+    "./vip-center": "./src/vip-center.js"
   }
 }

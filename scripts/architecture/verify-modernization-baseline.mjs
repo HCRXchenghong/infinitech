@@ -50,6 +50,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/domain-core/src/onboarding-invite-content.js",
   "packages/domain-core/src/onboarding-invite-content.test.mjs",
   "packages/mobile-core/src/index.js",
+  "packages/mobile-core/src/vip-center.js",
+  "packages/mobile-core/src/vip-center.test.mjs",
   "packages/admin-core/src/index.js",
   "packages/admin-core/src/menu-groups.js",
   "packages/admin-core/src/temporary-credential.js",
@@ -1224,11 +1226,15 @@ assertContains(
 );
 assertContains(
   "package.json",
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs"',
+);
+assertContains(
+  "package.json",
   '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs packages/admin-core/src/system-settings-resources.test.mjs packages/admin-core/src/api-management-resources.test.mjs packages/admin-core/src/order-resources.test.mjs packages/admin-core/src/user-management-resources.test.mjs packages/admin-core/src/shop-management-resources.test.mjs packages/admin-core/src/merchant-profile-resources.test.mjs packages/admin-core/src/home-entry-resources.test.mjs packages/admin-core/src/communication-audit-resources.test.mjs packages/admin-core/src/home-campaign-resources.test.mjs packages/admin-core/src/admin-management-resources.test.mjs packages/admin-core/src/dining-buddy-governance-resources.test.mjs packages/admin-core/src/chat-console-resources.test.mjs packages/admin-core/src/data-management-resources.test.mjs packages/admin-core/src/coupon-resources.test.mjs packages/admin-core/src/api-documentation-resources.test.mjs"',
 );
 assertContains(
   "package.json",
-  '"verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"',
+  '"verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"',
 );
 assertContains(
   "package.json",
@@ -1987,6 +1993,34 @@ assertContains(
   "buildErrandHomeViewModel(runtime.errandSettings || {})",
 );
 assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./vip-center.js";',
+);
+assertContains(
+  "user-vue/pages/profile/vip-center/vip-data.js",
+  "packages/mobile-core/src/vip-center.js",
+);
+assertContains(
+  "app-mobile/pages/profile/vip-center/vip-data.js",
+  "packages/mobile-core/src/vip-center.js",
+);
+assertContains(
+  "user-vue/pages/profile/vip-center/page-options.js",
+  "mapVIPPointRewardList(list, {",
+);
+assertContains(
+  "app-mobile/pages/profile/vip-center/page-options.js",
+  "mapVIPPointRewardList(list, {",
+);
+assertContains(
+  "user-vue/pages/profile/points-mall/index.vue",
+  "mapVIPPointRewardList(list)",
+);
+assertContains(
+  "app-mobile/pages/profile/points-mall/index.vue",
+  "mapVIPPointRewardList(list)",
+);
+assertContains(
   "admin-vue/src/views/settingsApiManagementHelpers.js",
   "buildApiKeyMarkdownText",
 );
@@ -2125,6 +2159,22 @@ assertNotContains(
 assertNotContains(
   "app-mobile/pages/errand/home/index.vue",
   "const routes = {",
+);
+assertNotContains(
+  "user-vue/pages/profile/vip-center/page-options.js",
+  "function mapRewardList(list = [])",
+);
+assertNotContains(
+  "app-mobile/pages/profile/vip-center/page-options.js",
+  "function mapRewardList(list = [])",
+);
+assertNotContains(
+  "user-vue/pages/profile/vip-center/page-options.js",
+  "const EMPTY_LEVEL = {",
+);
+assertNotContains(
+  "app-mobile/pages/profile/vip-center/page-options.js",
+  "const EMPTY_LEVEL = {",
 );
 assertNotContains(
   "admin-vue/src/views/Users.vue",

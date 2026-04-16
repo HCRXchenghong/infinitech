@@ -1,30 +1,15 @@
 import { fetchPointsBalance, fetchPointsGoods, fetchPublicVIPSettings } from '@/shared-ui/api.js'
-import { DEFAULT_VIP_CENTER_SETTINGS, normalizeVIPCenterSettings } from './vip-data.js'
-
-const EMPTY_LEVEL = {
-  name: '',
-  style_class: 'level-quality',
-  tagline: '',
-  threshold_label: '',
-  threshold_value: 1,
-  multiplier: 1,
-  is_black_gold: false,
-  benefits: []
-}
-
-function mapRewardList(list = []) {
-  const colors = ['red-bg', 'blue-bg', 'green-bg', 'yellow-bg', 'orange-bg', 'black-bg']
-  return Array.isArray(list)
-    ? list.map((item, index) => ({
-        name: item.name,
-        points: item.points,
-        shipFee: Number(item.ship_fee || item.shipFee || 0),
-        colorClass: colors[index % colors.length],
-        emoji: item.type === 'vip' ? 'VIP' : '礼',
-        tag: item.tag || (item.type === 'vip' ? 'VIP' : '实物')
-      }))
-    : []
-}
+import {
+  buildVIPNextThresholdText,
+  DEFAULT_VIP_CENTER_SETTINGS,
+  EMPTY_VIP_LEVEL,
+  formatVIPProgressPercent,
+  formatVIPProgressValueText,
+  mapVIPPointRewardList,
+  normalizeVIPCenterSettings,
+  resolveVIPLevelIndex,
+  summarizeVIPBenefits
+} from './vip-data.js'
 
 export default {
   data() {
@@ -50,10 +35,10 @@ export default {
       return Array.isArray(this.vipConfig.growth_tasks) ? this.vipConfig.growth_tasks : []
     },
     currentLevel() {
-      return this.vipLevels[this.activeTab] || this.vipLevels[0] || EMPTY_LEVEL
+      return this.vipLevels[this.activeTab] || this.vipLevels[0] || EMPTY_VIP_LEVEL
     },
     currentUserLevelIndex() {
-      return this.resolveLevelIndex(this.points)
+      return resolveVIPLevelIndex(this.vipLevels, this.points)
     },
     currentUserLevel() {
       return this.vipLevels[this.currentUserLevelIndex] || this.currentLevel
@@ -91,36 +76,22 @@ export default {
       } catch (error) {
         this.vipConfig = normalizeVIPCenterSettings(DEFAULT_VIP_CENTER_SETTINGS)
       }
-      this.activeTab = this.resolveLevelIndex(this.points)
+      this.activeTab = resolveVIPLevelIndex(this.vipLevels, this.points)
     },
     resolveLevelIndex(points) {
-      const currentPoints = Number(points || 0)
-      let resolved = 0
-      this.vipLevels.forEach((level, index) => {
-        if (currentPoints >= Number(level.threshold_value || 0)) resolved = index
-      })
-      return resolved
+      return resolveVIPLevelIndex(this.vipLevels, points)
     },
     progressPercent(level) {
-      const threshold = Number(level && level.threshold_value ? level.threshold_value : 0)
-      if (!threshold) return '0%'
-      const percent = Math.min(100, Math.max(0, (Number(this.points || 0) / threshold) * 100))
-      return `${percent.toFixed(2)}%`
+      return formatVIPProgressPercent(level, this.points)
     },
     progressValueText(level) {
-      const threshold = Number(level && level.threshold_value ? level.threshold_value : 0)
-      const currentPoints = Math.max(0, Number(this.points || 0))
-      if (!threshold) return `${currentPoints}/0`
-      return `${Math.min(currentPoints, threshold)}/${threshold}`
+      return formatVIPProgressValueText(level, this.points)
     },
     nextThresholdText(index) {
-      const nextLevel = this.vipLevels[index + 1]
-      if (!nextLevel) return '已达当前配置的最高会员等级'
-      return `下一档门槛：${nextLevel.threshold_label || `成长值 ${nextLevel.threshold_value}`}`
+      return buildVIPNextThresholdText(this.vipLevels, index)
     },
     summarizeBenefits(benefits) {
-      const list = Array.isArray(benefits) ? benefits : []
-      return list.map((item) => item.title).filter(Boolean).join('、')
+      return summarizeVIPBenefits(benefits)
     },
     loadPoints() {
       const profile = uni.getStorageSync('userProfile') || {}
@@ -130,13 +101,18 @@ export default {
         if (res && typeof res.balance === 'number') {
           this.points = res.balance
           uni.setStorageSync('pointsBalance', res.balance)
-          if (!this.showRulesModal && !this.showModal) this.activeTab = this.resolveLevelIndex(res.balance)
+          if (!this.showRulesModal && !this.showModal) {
+            this.activeTab = resolveVIPLevelIndex(this.vipLevels, res.balance)
+          }
         }
       }).catch(() => {})
     },
     loadRewards() {
       fetchPointsGoods().then((list) => {
-        this.pointRewards = mapRewardList(list)
+        this.pointRewards = mapVIPPointRewardList(list, {
+          vipEmoji: 'VIP',
+          defaultEmoji: '礼'
+        })
       }).catch(() => {
         this.pointRewards = []
       })
