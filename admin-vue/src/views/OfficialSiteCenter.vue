@@ -396,6 +396,17 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
+import {
+  buildAdminOfficialSiteSupportSummaryCards,
+  createAdminOfficialSiteExposureDraft,
+  mergeOfficialSiteSupportMessages,
+  mergeOfficialSiteSupportSession,
+  officialSiteExposureProcessLabel as processLabel,
+  officialSiteExposureProcessTagType as processTagType,
+  officialSiteExposureReviewLabel as reviewLabel,
+  officialSiteExposureReviewTagType as reviewTagType,
+  upsertOfficialSiteSupportSessions,
+} from '@infinitech/admin-core';
 import socketService from '@/utils/socket';
 import {
   appendAdminOfficialSiteSupportMessage,
@@ -445,7 +456,7 @@ const exposureFilters = reactive({
   process_status: ''
 });
 const exposureDialogVisible = ref(false);
-const exposureDraft = reactive(createExposureDraft());
+const exposureDraft = reactive(createAdminOfficialSiteExposureDraft());
 
 const cooperationLoading = ref(false);
 const cooperations = ref([]);
@@ -454,31 +465,11 @@ const cooperationFilters = reactive({
 });
 
 const supportSummaryCards = computed(() => {
-  const sessions = Array.isArray(supportSessions.value) ? supportSessions.value : [];
-  const openCount = sessions.filter((item) => item?.status !== 'closed').length;
-  const unreadCount = sessions.reduce((total, item) => total + Number(item?.unread_admin_count || 0), 0);
-  return [
-    {
-      label: '实时链路',
-      value: supportRealtimeConnected.value ? '在线' : '兜底',
-      desc: supportRealtimeConnected.value ? '官网客服新消息即时推送。' : '当前改为自动轮询同步。'
-    },
-    {
-      label: '进行中会话',
-      value: String(openCount),
-      desc: '当前仍在推进中的官网客服会话数量。'
-    },
-    {
-      label: '待看消息',
-      value: String(unreadCount),
-      desc: '来自官网访客、后台尚未查看的未读消息数。'
-    },
-    {
-      label: '当前选中',
-      value: selectedSupportSession.value?.nickname || '待选择',
-      desc: '选择会话后可直接查看消息、改状态和发送回复。'
-    }
-  ];
+  return buildAdminOfficialSiteSupportSummaryCards({
+    sessions: supportSessions.value,
+    realtimeConnected: supportRealtimeConnected.value,
+    selectedSession: selectedSupportSession.value,
+  });
 });
 
 let supportPollTimer = 0;
@@ -632,9 +623,9 @@ function handleSupportRealtimeMessage(payload) {
 
   upsertSupportSession(sessionPayload);
   if (selectedSupportId.value === sessionPayload.id) {
-    selectedSupportSession.value = mergeSupportSessionPayload(selectedSupportSession.value, sessionPayload);
+    selectedSupportSession.value = mergeOfficialSiteSupportSession(selectedSupportSession.value, sessionPayload);
     if (payload?.message) {
-      supportMessages.value = mergeSupportMessages(supportMessages.value, [payload.message]);
+      supportMessages.value = mergeOfficialSiteSupportMessages(supportMessages.value, [payload.message]);
     }
     if (payload?.message?.sender_type === 'visitor') {
       scheduleSelectedSupportSync();
@@ -652,7 +643,7 @@ function handleSupportRealtimeSession(payload) {
 
   upsertSupportSession(sessionPayload);
   if (selectedSupportId.value === sessionPayload.id) {
-    selectedSupportSession.value = mergeSupportSessionPayload(selectedSupportSession.value, sessionPayload);
+    selectedSupportSession.value = mergeOfficialSiteSupportSession(selectedSupportSession.value, sessionPayload);
   }
 
   scheduleSupportSessionsRefresh();
@@ -678,7 +669,7 @@ async function loadSupportSessions(silent = false) {
         supportMessages.value = [];
       } else {
         const selectedFromList = supportSessions.value.find((item) => item.id === selectedSupportId.value);
-        selectedSupportSession.value = mergeSupportSessionPayload(selectedSupportSession.value, selectedFromList);
+        selectedSupportSession.value = mergeOfficialSiteSupportSession(selectedSupportSession.value, selectedFromList);
       }
     }
 
@@ -777,7 +768,7 @@ async function loadExposures() {
 }
 
 function openExposureDialog(row) {
-  Object.assign(exposureDraft, createExposureDraft(), {
+  Object.assign(exposureDraft, createAdminOfficialSiteExposureDraft(), {
     ...row,
     photo_urls: Array.isArray(row.photo_urls) ? [...row.photo_urls] : []
   });
@@ -832,110 +823,8 @@ async function saveCooperation(row) {
   }
 }
 
-function createExposureDraft() {
-  return {
-    id: '',
-    content: '',
-    amount: 0,
-    appeal: '',
-    contact_phone: '',
-    photo_urls: [],
-    review_status: 'pending',
-    review_remark: '',
-    process_status: 'unresolved',
-    process_remark: '',
-    created_at: '',
-    handled_at: ''
-  };
-}
-
-function reviewLabel(status) {
-  if (status === 'approved') return '已通过';
-  if (status === 'rejected') return '已驳回';
-  return '待审核';
-}
-
-function reviewTagType(status) {
-  if (status === 'approved') return 'success';
-  if (status === 'rejected') return 'danger';
-  return 'warning';
-}
-
-function processLabel(status) {
-  if (status === 'resolved') return '已处理';
-  if (status === 'processing') return '处理中';
-  return '未处理';
-}
-
-function processTagType(status) {
-  if (status === 'resolved') return 'success';
-  if (status === 'processing') return 'warning';
-  return 'danger';
-}
-
-function mergeSupportSessionPayload(currentValue, payload) {
-  if (!payload || typeof payload !== 'object') {
-    return currentValue || null;
-  }
-  return {
-    ...(currentValue || {}),
-    ...payload
-  };
-}
-
 function upsertSupportSession(payload) {
-  if (!payload?.id) {
-    return;
-  }
-
-  const records = Array.isArray(supportSessions.value) ? [...supportSessions.value] : [];
-  const index = records.findIndex((item) => item.id === payload.id);
-  if (index >= 0) {
-    records[index] = {
-      ...records[index],
-      ...payload
-    };
-  } else {
-    records.unshift(payload);
-  }
-
-  records.sort(compareSupportSessions);
-  supportSessions.value = records;
-}
-
-function compareSupportSessions(left, right) {
-  const leftTime = Date.parse(left?.last_message_at || left?.created_at || '') || 0;
-  const rightTime = Date.parse(right?.last_message_at || right?.created_at || '') || 0;
-  if (leftTime !== rightTime) {
-    return rightTime - leftTime;
-  }
-  return String(left?.id || '').localeCompare(String(right?.id || ''));
-}
-
-function mergeSupportMessages(existing, incoming) {
-  const merged = new Map();
-  [...(Array.isArray(existing) ? existing : []), ...(Array.isArray(incoming) ? incoming : [])].forEach((item) => {
-    if (!item || typeof item !== 'object') {
-      return;
-    }
-    merged.set(supportMessageKey(item), item);
-  });
-  return Array.from(merged.values()).sort(compareSupportMessages);
-}
-
-function supportMessageKey(message) {
-  if (message?.id) return `id:${message.id}`;
-  if (message?.legacy_id) return `legacy:${message.legacy_id}`;
-  return `${message?.sender_type || 'unknown'}:${message?.created_at || ''}:${message?.content || ''}`;
-}
-
-function compareSupportMessages(left, right) {
-  const leftTime = Date.parse(left?.created_at || '') || 0;
-  const rightTime = Date.parse(right?.created_at || '') || 0;
-  if (leftTime !== rightTime) {
-    return leftTime - rightTime;
-  }
-  return supportMessageKey(left).localeCompare(supportMessageKey(right));
+  supportSessions.value = upsertOfficialSiteSupportSessions(supportSessions.value, payload);
 }
 </script>
 

@@ -1,33 +1,15 @@
 import {
   extractEnvelopeData,
   extractErrorMessage as extractContractErrorMessage,
-  extractPaginatedItems,
   extractUploadAsset,
 } from "@infinitech/contracts";
+import {
+  extractOfficialSiteRecordCollection,
+  extractOfficialSiteSupportMessageBundle,
+} from "@infinitech/admin-core";
 import request from "@/utils/request";
 
 export const extractErrorMessage = extractContractErrorMessage;
-
-function extractRecordCollection(payload, options = {}) {
-  const page = extractPaginatedItems(payload, {
-    listKeys: ["records", "list", "items"],
-    ...(options || {}),
-  });
-  return {
-    records: page.items,
-    total: Number(page.total || 0),
-    page: Number(page.page || 0),
-    limit: Number(page.limit || 0),
-  };
-}
-
-function normalizeSupportMessageBundle(payload) {
-  const source = extractEnvelopeData(payload) || payload || {};
-  return {
-    session: source?.session || null,
-    messages: Array.isArray(source?.messages) ? source.messages : [],
-  };
-}
 
 export function resolveOfficialSiteMediaUrl(value) {
   const raw = String(value || "").trim();
@@ -122,7 +104,7 @@ export async function getPublicAppDownloadConfig() {
 
 export async function listPublicOfficialSiteExposures() {
   const { data } = await request.get("/api/official-site/exposures");
-  const page = extractRecordCollection(data);
+  const page = extractOfficialSiteRecordCollection(data);
   const records = page.records.map((item) => ({
     ...item,
     photo_urls: normalizeOfficialSiteMediaList(item?.photo_urls),
@@ -149,7 +131,7 @@ export async function getPublicOfficialSiteExposureDetail(id) {
 
 export async function listPublicOfficialSiteNews(params = {}) {
   const { data } = await request.get("/api/official-site/news", { params });
-  const page = extractRecordCollection(data);
+  const page = extractOfficialSiteRecordCollection(data);
   const records = page.records.map((item) => ({
     ...item,
     cover: resolveOfficialSiteMediaUrl(item?.cover),
@@ -202,14 +184,14 @@ export async function createOfficialSiteSupportSession(payload) {
     "/api/official-site/support/sessions",
     payload,
   );
-  return normalizeSupportMessageBundle(data);
+  return extractOfficialSiteSupportMessageBundle(data);
 }
 
 export async function getOfficialSiteSupportMessages(token) {
   const { data } = await request.get(
     `/api/official-site/support/sessions/${token}/messages`,
   );
-  return normalizeSupportMessageBundle(data);
+  return extractOfficialSiteSupportMessageBundle(data);
 }
 
 export async function appendOfficialSiteSupportMessage(token, payload) {
@@ -231,7 +213,7 @@ export async function listAdminOfficialSiteExposures(params = {}) {
   const { data } = await request.get("/api/admin/official-site/exposures", {
     params,
   });
-  const page = extractRecordCollection(data);
+  const page = extractOfficialSiteRecordCollection(data);
   return {
     records: page.records.map((item) => ({
       ...item,
@@ -255,7 +237,7 @@ export async function listAdminOfficialSiteCooperations(params = {}) {
   const { data } = await request.get("/api/admin/official-site/cooperations", {
     params,
   });
-  const page = extractRecordCollection(data);
+  const page = extractOfficialSiteRecordCollection(data);
   return {
     records: page.records,
     total: page.total,
@@ -277,7 +259,7 @@ export async function listAdminOfficialSiteSupportSessions(params = {}) {
     "/api/admin/official-site/support/sessions",
     { params },
   );
-  const page = extractRecordCollection(data);
+  const page = extractOfficialSiteRecordCollection(data);
   return {
     records: page.records,
     total: page.total,
@@ -290,7 +272,7 @@ export async function getAdminOfficialSiteSupportMessages(id) {
   const { data } = await request.get(
     `/api/admin/official-site/support/sessions/${id}/messages`,
   );
-  return normalizeSupportMessageBundle(data);
+  return extractOfficialSiteSupportMessageBundle(data);
 }
 
 export async function appendAdminOfficialSiteSupportMessage(id, payload) {

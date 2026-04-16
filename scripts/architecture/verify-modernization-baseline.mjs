@@ -53,6 +53,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/admin-core/src/payment-center-resources.test.mjs",
   "packages/admin-core/src/service-health-resources.js",
   "packages/admin-core/src/service-health-resources.test.mjs",
+  "packages/admin-core/src/official-site-resources.js",
+  "packages/admin-core/src/official-site-resources.test.mjs",
   "packages/admin-core/src/DesktopShellApp.vue",
   "admin-win/src/App.vue",
   "admin-mac/src/App.vue",
@@ -261,6 +263,14 @@ assertContains(
 assertContains(
   "admin-vue/src/views/Dashboard.vue",
   "extractServiceHealthStatus",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "buildAdminOfficialSiteSupportSummaryCards",
+);
+assertContains(
+  "admin-vue/src/utils/officialSiteApi.js",
+  "extractOfficialSiteRecordCollection",
 );
 assertContains(
   "backend/go/internal/handler/sms_handler.go",
@@ -1039,7 +1049,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs"',
+  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -1239,7 +1249,7 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/utils/officialSiteApi.js",
-  "extractPaginatedItems(payload",
+  "extractOfficialSiteRecordCollection",
 );
 assertContains(
   "admin-vue/src/utils/officialSiteApi.js",

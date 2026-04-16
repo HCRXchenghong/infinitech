@@ -14,6 +14,7 @@
     "./paginated-resources": "./src/paginated-resources.js",
     "./system-log-resources": "./src/system-log-resources.js",
     "./payment-center-resources": "./src/payment-center-resources.js",
-    "./service-health-resources": "./src/service-health-resources.js"
+    "./service-health-resources": "./src/service-health-resources.js",
+    "./official-site-resources": "./src/official-site-resources.js"
   }
 }
