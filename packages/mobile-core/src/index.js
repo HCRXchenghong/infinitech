@@ -5,6 +5,7 @@ export * from "./charity-page.js";
 export * from "./dining-buddy.js";
 export * from "./auth-portal.js";
 export * from "./home-index.js";
+export * from "./search-page.js";
 export * from "./message-center.js";
 export * from "./notification-detail.js";
 export * from "./order-coupon.js";

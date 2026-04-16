@@ -90,9 +90,12 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/profile-outreach.test.mjs",
   "packages/mobile-core/src/profile-settings.js",
   "packages/mobile-core/src/profile-settings.test.mjs",
+  "packages/mobile-core/src/search-page.js",
+  "packages/mobile-core/src/search-page.test.mjs",
   "shared/mobile-common/home-index-page.js",
   "shared/mobile-common/auth-password-pages.js",
   "shared/mobile-common/dining-buddy-page.js",
+  "shared/mobile-common/search-page.js",
   "shared/mobile-common/message-center-pages.js",
   "shared/mobile-common/notification-detail-page.js",
   "shared/mobile-common/order-coupon-page.js",
@@ -223,6 +226,10 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../shared/mobile-common/auth-password-pages.js",
   ],
   [
+    "app-mobile/pages/search/index/index.vue",
+    "../../../../shared/mobile-common/search-page.js",
+  ],
+  [
     "app-mobile/pages/dining-buddy/index.vue",
     "../../../shared/mobile-common/dining-buddy-page.js",
   ],
@@ -269,6 +276,10 @@ function assertNotContains(relativePath, unexpectedText) {
   [
     "user-vue/pages/auth/set-password/index.vue",
     "../../../../shared/mobile-common/auth-password-pages.js",
+  ],
+  [
+    "user-vue/pages/search/index/index.vue",
+    "../../../../shared/mobile-common/search-page.js",
   ],
   [
     "user-vue/pages/dining-buddy/index.vue",
@@ -1378,7 +1389,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/dining-buddy.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-my-reviews.test.mjs packages/mobile-core/src/profile-points-mall.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-support-pages.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/dining-buddy.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/search-page.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-my-reviews.test.mjs packages/mobile-core/src/profile-points-mall.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-support-pages.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -2166,6 +2177,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./search-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./message-center.js";',
 );
 assertContains(
@@ -2199,6 +2214,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./dining-buddy": "./src/dining-buddy.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./search-page": "./src/search-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -2297,6 +2316,13 @@ assertContains(
 ].forEach((relativePath) => {
   assertNotContains(relativePath, "const resetData = uni.getStorageSync('reset_password_data')");
   assertNotContains(relativePath, "url: '/api/set-new-password'");
+});
+[
+  "user-vue/pages/search/index/index.vue",
+  "app-mobile/pages/search/index/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "const HISTORY_KEY = 'searchHistory'");
+  assertNotContains(relativePath, "function normalizeShopList(response) {");
 });
 [
   "user-vue/pages/auth/login/index.vue",

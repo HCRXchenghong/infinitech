@@ -31,7 +31,7 @@
           <view class="tag-list">
             <view
               v-for="(item, index) in searchHistory"
-              :key="item"
+              :key="'history-' + index"
               class="tag-item"
               @tap="searchByHistory(item)"
             >
@@ -47,7 +47,7 @@
           <view class="tag-list">
             <view
               v-for="(item, index) in hotKeywords"
-              :key="item"
+              :key="'hot-' + index"
               class="tag-item"
               :class="{ 'tag-item-hot': index < 3 }"
               @tap="searchByHistory(item)"
@@ -102,167 +102,11 @@
 
 <script>
 import { fetchShops } from '@/shared-ui/api.js'
+import { createSearchPage } from '../../../../shared/mobile-common/search-page.js'
 
-const HISTORY_KEY = 'searchHistory'
-const HOT_KEYWORDS = ['奶茶', '汉堡', '火锅', '咖啡', '烧烤', '水果', '便利店', '药店']
-
-function normalizeShopList(response) {
-  if (Array.isArray(response)) {
-    return response
-  }
-  if (response && Array.isArray(response.data)) {
-    return response.data
-  }
-  if (response && Array.isArray(response.shops)) {
-    return response.shops
-  }
-  return []
-}
-
-export default {
-  data() {
-    return {
-      keyword: '',
-      searchHistory: [],
-      hotKeywords: HOT_KEYWORDS,
-      searchResults: [],
-      searching: false,
-      allShops: []
-    }
-  },
-
-  onLoad() {
-    const history = uni.getStorageSync(HISTORY_KEY)
-    if (Array.isArray(history)) {
-      this.searchHistory = history.filter(Boolean).slice(0, 10)
-    }
-    this.loadShops()
-  },
-
-  methods: {
-    async loadShops() {
-      try {
-        const response = await fetchShops()
-        this.allShops = normalizeShopList(response)
-        if (this.keyword.trim()) {
-          this.doSearch()
-        }
-      } catch (error) {
-        console.error('加载商家列表失败:', error)
-        this.allShops = []
-      }
-    },
-
-    onInput(event) {
-      const detail = event && typeof event === 'object' ? event.detail : null
-      this.keyword = (detail && detail.value) || ''
-      if (this.keyword.trim()) {
-        this.doSearch()
-      } else {
-        this.searchResults = []
-        this.searching = false
-      }
-    },
-
-    doSearch() {
-      const keyword = this.keyword.trim()
-      if (!keyword) {
-        this.searchResults = []
-        this.searching = false
-        return
-      }
-
-      const needle = keyword.toLowerCase()
-      this.searching = true
-      this.searchResults = this.allShops.filter((shop) => {
-        const safeShop = shop && typeof shop === 'object' ? shop : {}
-        const tags = this.normalizeTags(shop).join(' ')
-        const source = [
-          safeShop.name || '',
-          safeShop.category || '',
-          safeShop.description || '',
-          tags
-        ].join(' ').toLowerCase()
-        return source.includes(needle)
-      })
-      this.searching = false
-      this.persistHistory(keyword)
-    },
-
-    persistHistory(keyword) {
-      if (!keyword) return
-      const nextHistory = [keyword, ...this.searchHistory.filter((item) => item !== keyword)].slice(0, 10)
-      this.searchHistory = nextHistory
-      uni.setStorageSync(HISTORY_KEY, nextHistory)
-    },
-
-    clearKeyword() {
-      this.keyword = ''
-      this.searchResults = []
-      this.searching = false
-    },
-
-    cancel() {
-      uni.navigateBack()
-    },
-
-    clearHistory() {
-      this.searchHistory = []
-      uni.removeStorageSync(HISTORY_KEY)
-    },
-
-    searchByHistory(keyword) {
-      this.keyword = keyword
-      this.doSearch()
-    },
-
-    goShopDetail(id) {
-      if (!id) {
-        uni.showToast({ title: '商家信息异常', icon: 'none' })
-        return
-      }
-      uni.navigateTo({ url: `/pages/shop/detail/index?id=${id}` })
-    },
-
-    normalizeTags(shop) {
-      const safeShop = shop && typeof shop === 'object' ? shop : {}
-      if (Array.isArray(safeShop.tags)) {
-        return safeShop.tags.filter(Boolean).slice(0, 3)
-      }
-      if (typeof safeShop.tags === 'string' && safeShop.tags.trim()) {
-        return safeShop.tags.split(/[、，,]/).map((item) => item.trim()).filter(Boolean).slice(0, 3)
-      }
-      return []
-    },
-
-    getShopInitial(name) {
-      const text = String(name || '').trim()
-      if (!text) return '店铺'
-      return text.slice(0, 2)
-    },
-
-    formatRating(value) {
-      const rating = Number(value)
-      if (!Number.isFinite(rating) || rating <= 0) {
-        return '暂无评分'
-      }
-      return `评分 ${rating.toFixed(1)}`
-    },
-
-    formatSales(value) {
-      const sales = Number(value)
-      if (!Number.isFinite(sales) || sales < 0) {
-        return '暂无销量'
-      }
-      return `月售 ${sales}`
-    },
-
-    formatDistance(value) {
-      const text = String(value || '').trim()
-      return text || '距离未知'
-    }
-  }
-}
+export default createSearchPage({
+  fetchShops
+})
 </script>
 
 <style scoped lang="scss">
