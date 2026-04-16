@@ -1,6 +1,16 @@
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
+import {
+  createIncomingDisplayMessage,
+  createOutgoingTempMessage,
+  createSeenMessageTracker,
+  isAdminSender,
+  mapLoadedChats,
+  mapLoadedMessages,
+  normalizeChatId,
+  sortChats,
+} from '@infinitech/admin-core';
 import socketService from '@/utils/socket';
 import request from '@/utils/request';
 import { getCurrentAdminSocketIdentity } from '@/utils/runtime';
@@ -10,16 +20,6 @@ import {
   fetchMessageHistory,
   markMessageConversationRead
 } from './chatConsoleApi';
-import {
-  normalizeChatId,
-  createSeenMessageTracker,
-  isAdminSender,
-  mapLoadedChats,
-  mapLoadedMessages,
-  sortChats,
-  createOutgoingTempMessage,
-  createIncomingDisplayMessage,
-} from './chatConsoleHelpers';
 
 export function useChatConsole(options = {}) {
   const {
