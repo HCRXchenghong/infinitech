@@ -97,6 +97,7 @@ function assertNotContains(relativePath, unexpectedText) {
   "shared/mobile-common/profile-favorites-page.js",
   "shared/mobile-common/profile-my-reviews-page.js",
   "shared/mobile-common/profile-points-mall-page.js",
+  "shared/mobile-common/profile-vip-center-page-options.js",
   "shared/mobile-common/profile-edit-page.js",
   "shared/mobile-common/profile-coupon-list-page.js",
   "shared/mobile-common/profile-home-page.js",
@@ -2201,11 +2202,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/profile/vip-center/page-options.js",
-  "mapVIPPointRewardList(list, {",
+  "../../../../shared/mobile-common/profile-vip-center-page-options.js",
 );
 assertContains(
   "app-mobile/pages/profile/vip-center/page-options.js",
-  "mapVIPPointRewardList(list, {",
+  "../../../../shared/mobile-common/profile-vip-center-page-options.js",
 );
 assertContains(
   "user-vue/pages/profile/points-mall/index.vue",
