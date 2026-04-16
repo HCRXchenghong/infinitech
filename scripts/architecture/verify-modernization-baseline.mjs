@@ -311,6 +311,34 @@ assertContains(
   "normalizeServiceHealthStatus",
 );
 assertContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "createSystemLogFilters",
+);
+assertContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "buildSystemLogListQuery",
+);
+assertContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "getSystemLogServiceSignals",
+);
+assertContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "SYSTEM_LOG_SOURCE_OPTIONS",
+);
+assertContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "buildSystemLogDeletePayload",
+);
+assertNotContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "function actionTagType(actionType)",
+);
+assertNotContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "function parseServiceDetail(detail)",
+);
+assertContains(
   "admin-vue/src/views/Dashboard.vue",
   "extractServiceHealthStatus",
 );

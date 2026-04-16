@@ -98,18 +98,20 @@
     <el-card class="card">
       <div class="toolbar">
         <el-select v-model="filters.source" size="small" style="width: 140px" @change="handleSearch">
-          <el-option label="全部来源" value="all" />
-          <el-option label="来自 BFF" value="bff" />
-          <el-option label="来自 Go" value="go" />
+          <el-option
+            v-for="option in SYSTEM_LOG_SOURCE_OPTIONS"
+            :key="option.value"
+            :label="option.label"
+            :value="option.value"
+          />
         </el-select>
         <el-select v-model="filters.action" size="small" style="width: 140px" @change="handleSearch">
-          <el-option label="全部操作" value="all" />
-          <el-option label="新增" value="create" />
-          <el-option label="删除" value="delete" />
-          <el-option label="修改" value="update" />
-          <el-option label="查询" value="read" />
-          <el-option label="系统" value="system" />
-          <el-option label="异常" value="error" />
+          <el-option
+            v-for="option in SYSTEM_LOG_ACTION_OPTIONS"
+            :key="option.value"
+            :label="option.label"
+            :value="option.value"
+          />
         </el-select>
         <el-input
           v-model="filters.keyword"
@@ -271,81 +273,32 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 import {
+  buildSystemLogClearPayload,
+  buildSystemLogDeletePayload,
+  buildSystemLogListQuery,
   createDefaultServiceHealthStatus,
+  createDefaultSystemLogSummary,
+  createSystemLogFilters,
+  createSystemLogPagination,
+  createSystemLogVerifyForm,
   extractSystemLogPage,
-  formatAdminDateTime,
+  formatSystemLogMethodPath,
+  formatSystemLogProbeType,
+  formatSystemLogTime,
+  getSystemLogActionTagType,
+  getSystemLogClearSourceLabel,
+  getSystemLogServiceSignals,
+  resolveSystemLogServiceSummary,
   normalizeServiceHealthStatus,
   serviceHealthOverallStatusLabel as overallStatusText,
   serviceHealthStatusLabel as serviceStatusText,
   serviceHealthStatusTag as serviceTagType,
+  SYSTEM_LOG_ACTION_OPTIONS,
+  SYSTEM_LOG_SOURCE_OPTIONS,
 } from "@infinitech/admin-core";
 import { extractErrorMessage } from "@infinitech/contracts";
 import request from "@/utils/request";
 import PageStateAlert from "@/components/PageStateAlert.vue";
-
-const SIGNAL_LABELS = {
-  error: "错误",
-  redisConnected: "Redis 连接",
-  redisMode: "Redis 模式",
-  adapterEnabled: "Adapter 已启用",
-  goApiOk: "Go 可用",
-  goApiProbe: "Go 探针",
-  goApiError: "Go 错误",
-  pushWorkerOk: "推送 Worker",
-  pushEnabled: "推送已启用",
-  pushRunning: "推送运行中",
-  pushProvider: "推送通道",
-  pushProductionReady: "推送生产就绪",
-  pushProductionIssues: "推送生产问题",
-  pushWebhookTarget: "Webhook 目标",
-  pushWebhookSecure: "Webhook 安全传输",
-  pushWebhookPrivate: "Webhook 私有目标",
-  pushWebhookAuth: "Webhook 鉴权",
-  pushWebhookSignature: "Webhook 签名",
-  pushFcmProject: "FCM 项目",
-  pushFcmConfigured: "FCM 已配置",
-  pushFcmTokenTarget: "FCM Token 目标",
-  pushFcmTokenSecure: "FCM Token 安全传输",
-  pushFcmTokenPrivate: "FCM Token 私有目标",
-  pushFcmApiTarget: "FCM API 目标",
-  pushFcmApiSecure: "FCM API 安全传输",
-  pushFcmApiPrivate: "FCM API 私有目标",
-  pushCycle: "最近周期",
-  pushLastSuccessAt: "最近成功",
-  pushConsecutiveFailures: "连续失败",
-  pushProcessed: "最近处理数",
-  pushError: "推送错误",
-  pushQueue: "推送队列",
-  pushQueued: "待派发",
-  pushRetry: "待重试",
-  pushDispatching: "派发中",
-  pushFailed: "失败数",
-  pushOldestQueuedAt: "最老排队时间",
-  pushOldestQueuedAgeSeconds: "最老排队年龄",
-  pushOldestRetryPendingAt: "最老重试时间",
-  pushOldestRetryPendingAgeSeconds: "最老重试年龄",
-  pushOldestDispatchingAt: "最老派发时间",
-  pushOldestDispatchingAgeSeconds: "最老派发年龄",
-  pushLatestSentAt: "最近派发",
-  pushLatestFailedAt: "最近失败",
-  pushLatestAcknowledgedAt: "最近确认"
-};
-
-const TIME_SIGNAL_KEYS = new Set([
-  "pushLastSuccessAt",
-  "pushOldestQueuedAt",
-  "pushOldestRetryPendingAt",
-  "pushOldestDispatchingAt",
-  "pushLatestSentAt",
-  "pushLatestFailedAt",
-  "pushLatestAcknowledgedAt"
-]);
-
-const AGE_SIGNAL_KEYS = new Set([
-  "pushOldestQueuedAgeSeconds",
-  "pushOldestRetryPendingAgeSeconds",
-  "pushOldestDispatchingAgeSeconds"
-]);
 
 const loading = ref(false);
 const loadError = ref("");
@@ -358,14 +311,7 @@ const pendingDeleteLog = ref(null);
 const clearDialogVisible = ref(false);
 const clearing = ref(false);
 
-const summary = reactive({
-  create: 0,
-  delete: 0,
-  update: 0,
-  read: 0,
-  system: 0,
-  error: 0
-});
+const summary = reactive(createDefaultSystemLogSummary());
 
 const serviceStatus = reactive(createDefaultServiceHealthStatus());
 
@@ -395,248 +341,31 @@ function resetSystemLogPage() {
   });
 }
 
-const filters = reactive({
-  source: "all",
-  action: "all",
-  keyword: ""
-});
+const filters = reactive(createSystemLogFilters());
 
-const pagination = reactive({
-  page: 1,
-  limit: 50,
-  total: 0
-});
+const pagination = reactive(createSystemLogPagination());
 
-const deleteVerifyForm = reactive({
-  verifyAccount: "",
-  verifyPassword: ""
-});
+const deleteVerifyForm = reactive(createSystemLogVerifyForm());
 
-const clearVerifyForm = reactive({
-  verifyAccount: "",
-  verifyPassword: ""
-});
+const clearVerifyForm = reactive(createSystemLogVerifyForm());
 
 const clearSourceLabel = computed(() => {
-  if (filters.source === "bff") return "BFF 来源";
-  if (filters.source === "go") return "Go 来源";
-  return "全部来源";
+  return getSystemLogClearSourceLabel(filters.source);
 });
 
-function actionTagType(actionType) {
-  if (actionType === "create") return "success";
-  if (actionType === "delete") return "danger";
-  if (actionType === "update") return "warning";
-  if (actionType === "read") return "info";
-  if (actionType === "error") return "danger";
-  return "";
-}
-
-function formatProbeType(probe) {
-  if (probe === "ready") return "/ready";
-  if (probe === "health") return "/health";
-  if (probe === "tcp") return "TCP";
-  return String(probe || "-");
-}
-
-function formatTime(raw) {
-  return formatAdminDateTime(raw, { includeSeconds: true });
-}
-
-function formatMethodPath(item) {
-  if (item?.method && item?.path) {
-    return `${item.method} ${item.path}`;
-  }
-  return item?.message || "-";
-}
-
-function toDisplayLabel(key) {
-  if (SIGNAL_LABELS[key]) {
-    return SIGNAL_LABELS[key];
-  }
-  return String(key || "")
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/_/g, " ")
-    .trim();
-}
-
-function formatAgeSeconds(seconds) {
-  const numeric = Number(seconds);
-  if (!Number.isFinite(numeric) || numeric <= 0) return "0 秒";
-  if (numeric < 60) return `${numeric} 秒`;
-  const minutes = Math.floor(numeric / 60);
-  if (minutes < 60) return `${minutes} 分钟`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时`;
-  const days = Math.floor(hours / 24);
-  return `${days} 天`;
-}
-
-function formatAgeMs(ms) {
-  const numeric = Number(ms);
-  if (!Number.isFinite(numeric) || numeric <= 0) return "0 秒";
-  return formatAgeSeconds(Math.floor(numeric / 1000));
-}
-
-function normalizeSignalValue(key, value) {
-  const text = String(value ?? "").trim();
-  if (!text) return "";
-
-  if (text === "true") return "正常";
-  if (text === "false") return "异常";
-
-  if (AGE_SIGNAL_KEYS.has(key) && /^\d+$/.test(text)) {
-    return formatAgeSeconds(text);
-  }
-
-  if (TIME_SIGNAL_KEYS.has(key)) {
-    return formatTime(text);
-  }
-
-  return text;
-}
-
-function resolveSignalType(key, rawValue) {
-  const value = String(rawValue ?? "").trim();
-  const numeric = Number(value);
-
-  if (
-    key.endsWith("Error") ||
-    key === "error" ||
-    key === "pushError" ||
-    key === "goApiError" ||
-    key === "pushProductionIssues"
-  ) {
-    return "danger";
-  }
-
-  if (
-    [
-      "redisConnected",
-      "adapterEnabled",
-      "goApiOk",
-      "pushWorkerOk",
-      "pushEnabled",
-      "pushRunning",
-      "pushProductionReady",
-      "pushWebhookSecure",
-      "pushWebhookAuth",
-      "pushWebhookSignature",
-      "pushFcmConfigured",
-      "pushFcmTokenSecure",
-      "pushFcmApiSecure"
-    ].includes(key)
-  ) {
-    return value === "true" ? "success" : "danger";
-  }
-
-  if (["pushWebhookPrivate", "pushFcmTokenPrivate", "pushFcmApiPrivate"].includes(key)) {
-    return value === "true" ? "danger" : "success";
-  }
-
-  if (key === "redisMode") {
-    if (value === "redis") return "success";
-    if (value) return "warning";
-  }
-
-  if (key === "goApiProbe") {
-    return "info";
-  }
-
-  if (key === "pushCycle") {
-    if (value === "ok") return "success";
-    if (value === "dispatching") return "info";
-    return "warning";
-  }
-
-  if (
-    [
-      "pushQueue",
-      "pushQueued",
-      "pushRetry",
-      "pushDispatching",
-      "pushFailed",
-      "pushConsecutiveFailures",
-      "pushOldestQueuedAgeSeconds",
-      "pushOldestRetryPendingAgeSeconds",
-      "pushOldestDispatchingAgeSeconds"
-    ].includes(key)
-  ) {
-    if (!Number.isFinite(numeric) || numeric <= 0) {
-      return "info";
-    }
-    if (["pushFailed", "pushConsecutiveFailures"].includes(key)) {
-      return numeric >= 3 ? "danger" : "warning";
-    }
-    if (AGE_SIGNAL_KEYS.has(key)) {
-      return numeric >= 900 ? "danger" : "warning";
-    }
-    return "warning";
-  }
-
-  return "info";
-}
-
-function parseServiceDetail(detail) {
-  return String(detail || "")
-    .split("|")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((part) => {
-      const separatorIndex = part.indexOf("=");
-      if (separatorIndex === -1) {
-        return {
-          key: part,
-          label: part,
-          value: "",
-          rawValue: "",
-          type: "info"
-        };
-      }
-
-      const key = part.slice(0, separatorIndex).trim();
-      const rawValue = part.slice(separatorIndex + 1).trim();
-      return {
-        key,
-        label: toDisplayLabel(key),
-        value: normalizeSignalValue(key, rawValue),
-        rawValue,
-        type: resolveSignalType(key, rawValue)
-      };
-    });
-}
-
-function getServiceSignals(item) {
-  return parseServiceDetail(item?.detail)
-    .filter((signal) => signal.key !== "status")
-    .slice(0, 14);
-}
-
-function resolveServiceSummary(item) {
-  if (!item?.detail) return "";
-  const signals = parseServiceDetail(item.detail);
-  if (signals.length === 0) return "";
-  return signals
-    .slice(0, 4)
-    .map((signal) => `${signal.label}${signal.value ? `：${signal.value}` : ""}`)
-    .join("，");
-}
+const actionTagType = getSystemLogActionTagType;
+const formatProbeType = formatSystemLogProbeType;
+const formatTime = formatSystemLogTime;
+const formatMethodPath = formatSystemLogMethodPath;
+const getServiceSignals = getSystemLogServiceSignals;
+const resolveServiceSummary = resolveSystemLogServiceSummary;
 
 async function loadLogs() {
   loading.value = true;
   loadError.value = "";
 
   try {
-    const params = {
-      page: pagination.page,
-      limit: pagination.limit,
-      source: filters.source,
-      action: filters.action
-    };
-    if (filters.keyword.trim()) {
-      params.keyword = filters.keyword.trim();
-    }
-
+    const params = buildSystemLogListQuery(filters, pagination);
     const { data } = await request.get("/api/system-logs", { params });
     applySystemLogPage(data);
   } catch (error) {
@@ -659,9 +388,7 @@ function handlePageSizeChange() {
 }
 
 function resetFilters() {
-  filters.source = "all";
-  filters.action = "all";
-  filters.keyword = "";
+  Object.assign(filters, createSystemLogFilters());
   pagination.page = 1;
   void loadLogs();
 }
@@ -673,14 +400,12 @@ function openDetail(item) {
 
 function openDeleteDialog(item) {
   pendingDeleteLog.value = item;
-  deleteVerifyForm.verifyAccount = "";
-  deleteVerifyForm.verifyPassword = "";
+  Object.assign(deleteVerifyForm, createSystemLogVerifyForm());
   deleteDialogVisible.value = true;
 }
 
 function openClearDialog() {
-  clearVerifyForm.verifyAccount = "";
-  clearVerifyForm.verifyPassword = "";
+  Object.assign(clearVerifyForm, createSystemLogVerifyForm());
   clearDialogVisible.value = true;
 }
 
@@ -693,12 +418,10 @@ async function confirmDeleteLog() {
 
   deleting.value = true;
   try {
-    await request.post("/api/system-logs/delete", {
-      source: pendingDeleteLog.value.source,
-      raw: pendingDeleteLog.value.raw,
-      verifyAccount: deleteVerifyForm.verifyAccount,
-      verifyPassword: deleteVerifyForm.verifyPassword
-    });
+    await request.post(
+      "/api/system-logs/delete",
+      buildSystemLogDeletePayload(pendingDeleteLog.value, deleteVerifyForm),
+    );
     ElMessage.success("日志已删除");
     deleteDialogVisible.value = false;
     pendingDeleteLog.value = null;
@@ -718,11 +441,10 @@ async function confirmClearLogs() {
 
   clearing.value = true;
   try {
-    await request.post("/api/system-logs/clear", {
-      source: filters.source,
-      verifyAccount: clearVerifyForm.verifyAccount,
-      verifyPassword: clearVerifyForm.verifyPassword
-    });
+    await request.post(
+      "/api/system-logs/clear",
+      buildSystemLogClearPayload(filters.source, clearVerifyForm),
+    );
     ElMessage.success("系统日志已清空");
     clearDialogVisible.value = false;
     pagination.page = 1;
