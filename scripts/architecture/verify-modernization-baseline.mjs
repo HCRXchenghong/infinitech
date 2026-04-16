@@ -334,6 +334,30 @@ assertContains(
   'respondUserAddressSuccess(c, "默认地址设置成功", gin.H{"address": result}, gin.H{"address": result})',
 );
 assertContains(
+  "backend/go/internal/handler/order_handler.go",
+  'respondOrderMirroredSuccess(c, "订单创建成功", result)',
+);
+assertContains(
+  "backend/go/internal/handler/order_handler.go",
+  'respondPaginatedEnvelope(c, responseCodeOK, "用户订单列表加载成功", "orders", result, int64(len(items)), 1, len(items))',
+);
+assertContains(
+  "backend/go/internal/handler/order_handler.go",
+  'respondOrderMirroredSuccess(c, "订单异常已上报", result)',
+);
+assertContains(
+  "backend/go/internal/handler/user_handler.go",
+  'respondUserMirroredSuccess(c, "用户资料加载成功", result)',
+);
+assertContains(
+  "backend/go/internal/handler/user_handler.go",
+  'respondSuccessEnvelope(c, "用户资料更新成功", gin.H{"user": result}, gin.H{"user": result})',
+);
+assertContains(
+  "backend/go/internal/handler/user_handler.go",
+  'respondUserMirroredSuccess(c, firstNonEmptyText(extractMapText(result, "message"), "手机号修改成功"), result)',
+);
+assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",
   "func respondAdminSettingsSuccess(c *gin.Context, message string, data interface{})",
 );
@@ -691,6 +715,10 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/api.js",
+  'listKeys: ["orders", "items", "records", "list"]',
+);
+assertContains(
+  "user-vue/shared-ui/api.js",
   'listKeys: ["messages", "items", "records", "list"]',
 );
 assertContains(
@@ -708,6 +736,10 @@ assertContains(
 assertContains(
   "app-mobile/shared-ui/api.js",
   'listKeys: ["addresses", "items", "records", "list"]',
+);
+assertContains(
+  "app-mobile/shared-ui/api.js",
+  'listKeys: ["orders", "items", "records", "list"]',
 );
 assertContains(
   "app-mobile/shared-ui/api.js",

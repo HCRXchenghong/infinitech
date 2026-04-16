@@ -145,17 +145,21 @@ export const fetchShopMenu = async (shopId) => {
 // 订单相关 API（直接调用后端API，不使用本地缓存）
 export const fetchOrders = async (userId) => {
   // 直接请求服务器获取最新订单数据
-  return await request({
+  const payload = await request({
     url: `/api/orders/user/${userId}`,
   });
+  return extractPaginatedItems(payload, {
+    listKeys: ["orders", "items", "records", "list"],
+  }).items;
 };
 
 export const fetchOrderDetail = async (orderId) => {
   // 详情优先请求服务器，确保拿到骑手评分等最新字段；失败时再回退本地缓存
   try {
-    return await request({
+    const payload = await request({
       url: `/api/orders/${orderId}`,
     });
+    return extractEnvelopeData(payload) || payload || null;
   } catch (error) {
     const localData = await syncService.getData("orders", { id: orderId });
     if (localData && localData.length > 0) {
@@ -170,7 +174,7 @@ export const createOrder = (payload) =>
     url: "/api/orders",
     method: "POST",
     data: payload,
-  });
+  }).then((response) => extractEnvelopeData(response) || response || {});
 
 export const consultMedicineAssistant = (payload) =>
   request({
@@ -284,7 +288,7 @@ export const readAuthorizationHeader = () => {
 export const fetchUser = (userId) =>
   request({
     url: `/api/user/${userId}`,
-  });
+  }).then((response) => extractEnvelopeData(response) || response || {});
 
 export const fetchUserFavorites = (userId, params = {}) =>
   request({
@@ -374,14 +378,14 @@ export const changeUserPhone = (userId, payload) =>
     url: `/api/user/${encodeURIComponent(userId)}/change-phone`,
     method: "POST",
     data: payload,
-  });
+  }).then((response) => extractEnvelopeData(response) || response || {});
 
 export const updateUserProfile = (userId, payload) =>
   request({
     url: `/api/user/${encodeURIComponent(userId)}`,
     method: "PUT",
     data: payload,
-  });
+  }).then((response) => extractEnvelopeData(response) || response || {});
 
 export const fetchUserAddresses = async (userId) => {
   const payload = await request({
