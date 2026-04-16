@@ -2,17 +2,34 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildBankPayoutCompletePayload,
+  buildPaymentCallbackQuery,
+  buildWithdrawHistoryTarget,
+  buildWithdrawReviewPayload,
+  canReplayPaymentCallback,
+  canWithdrawAction,
+  createBankPayoutFormState,
+  createPaymentCallbackFilterState,
+  createPaymentCallbackReplayPayload,
+  createWithdrawHistoryTargetState,
   createDefaultPaymentGatewaySummary,
   extractPaymentCallbackDetail,
   extractPaymentCallbackPage,
   extractWithdrawRequestPage,
+  formatAdminWalletOperationActor,
   formatAdminDateTime,
+  getPaymentCallbackId,
   getWithdrawAutoRetry,
+  getWithdrawRequestId,
+  getWithdrawReviewActionTitle,
+  getWithdrawTransactionId,
+  isWithdrawGatewaySubmitted,
   maskCardNo,
   normalizePaymentCenterConfig,
   normalizePaymentGatewaySummary,
   paymentCallbackStatusLabel,
   paymentCallbackStatusTag,
+  validateBankPayoutForm,
   withdrawAutoRetryHint,
   withdrawAutoRetryLabel,
   withdrawAutoRetryTag,
@@ -185,6 +202,115 @@ test("extractPaymentCallbackPage and detail normalize callback aliases", () => {
   assert.deepEqual(detail.request_body, { out_trade_no: "ORDER-1" });
   assert.equal(detail.responseBodyRaw, "{\"result\":\"fail\"}");
   assert.equal(paymentCallbackStatusLabel(detail), "验签失败");
+});
+
+test("payment center callback helpers keep filter and replay semantics stable", () => {
+  assert.deepEqual(createPaymentCallbackFilterState(), {
+    channel: "",
+    eventType: "",
+    status: "",
+    verified: "",
+    transactionId: "",
+    thirdPartyOrderId: "",
+  });
+  assert.deepEqual(
+    buildPaymentCallbackQuery({
+      channel: "wechat",
+      verified: "true",
+      transactionId: "TX-1",
+    }),
+    {
+      page: 1,
+      limit: 50,
+      channel: "wechat",
+      verified: "true",
+      transactionId: "TX-1",
+    },
+  );
+  assert.equal(getPaymentCallbackId({ callbackId: "CB-1" }), "CB-1");
+  assert.equal(canReplayPaymentCallback({ verified: true, channel: "alipay" }), true);
+  assert.equal(canReplayPaymentCallback({ verified: false, channel: "wechat" }), false);
+  assert.deepEqual(createPaymentCallbackReplayPayload("  后台重放  "), {
+    remark: "后台重放",
+  });
+});
+
+test("payment center withdraw helpers keep review and bank payout semantics stable", () => {
+  assert.deepEqual(createWithdrawHistoryTargetState(), {
+    requestId: "",
+    method: "",
+    userType: "",
+    amount: 0,
+  });
+  assert.deepEqual(
+    buildWithdrawHistoryTarget({
+      requestId: "WR-9",
+      withdrawMethod: "bank_card",
+      userType: "merchant",
+      amount: "3200",
+    }),
+    {
+      requestId: "WR-9",
+      method: "bank_card",
+      userType: "merchant",
+      amount: 3200,
+    },
+  );
+  assert.equal(getWithdrawRequestId({ request_id: "WR-9" }), "WR-9");
+  assert.equal(getWithdrawTransactionId({ transactionId: "TX-9" }), "TX-9");
+  assert.equal(formatAdminWalletOperationActor({ admin_name: "Ops", admin_id: "7" }), "Ops / 7");
+
+  const bankForm = createBankPayoutFormState({
+    requestId: "WR-10",
+    payout_reference_no: "REF-10",
+    payout_source_bank_name: "ICBC",
+    payout_source_bank_branch: "Shanghai",
+    payout_source_card_no: "6222021234567890",
+    payout_source_account_name: "Infinitech",
+    payout_voucher_url: "https://cdn.example/voucher.png",
+  });
+  assert.equal(bankForm.requestId, "WR-10");
+  assert.equal(bankForm.transferResult, "已人工完成银行卡打款");
+  assert.equal(validateBankPayoutForm({}), "缺少提现申请单号");
+  assert.deepEqual(buildBankPayoutCompletePayload(bankForm), {
+    requestId: "WR-10",
+    action: "complete",
+    remark: "已人工完成银行卡打款",
+    transferResult: "已人工完成银行卡打款",
+    payoutVoucherUrl: "https://cdn.example/voucher.png",
+    payoutReferenceNo: "REF-10",
+    payoutSourceBankName: "ICBC",
+    payoutSourceBankBranch: "Shanghai",
+    payoutSourceCardNo: "6222021234567890",
+    payoutSourceAccountName: "Infinitech",
+    thirdPartyOrderId: "REF-10",
+  });
+
+  assert.equal(
+    isWithdrawGatewaySubmitted({
+      responseData: { sidecarUrl: "https://sidecar.example" },
+    }),
+    true,
+  );
+  assert.equal(
+    canWithdrawAction({ status: "pending_transfer", withdraw_method: "wechat" }, "execute"),
+    true,
+  );
+  assert.equal(
+    canWithdrawAction({ status: "pending_transfer", withdraw_method: "bank_card" }, "sync_gateway_status"),
+    false,
+  );
+  assert.equal(getWithdrawReviewActionTitle("supplement_fail"), "补记打款失败");
+  assert.deepEqual(
+    buildWithdrawReviewPayload("WR-11", "reject", { remark: "资料不全" }),
+    {
+      requestId: "WR-11",
+      action: "reject",
+      remark: "资料不全",
+      rejectReason: "资料不全",
+      transferResult: "资料不全",
+    },
+  );
 });
 
 test("shared payment-center formatting helpers are stable", () => {

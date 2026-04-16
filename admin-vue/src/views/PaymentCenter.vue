@@ -922,7 +922,7 @@
       title="银行卡人工打款完成"
       width="720px"
       destroy-on-close
-      @closed="resetBankPayoutForm"
+      @closed="handleBankPayoutDialogClosed"
     >
       <el-form label-width="120px">
         <el-form-item label="提现单号">
@@ -1070,11 +1070,27 @@ import {
   extractPaginatedItems,
 } from '@infinitech/contracts'
 import {
+  buildBankPayoutCompletePayload,
+  buildPaymentCallbackQuery,
+  buildWithdrawHistoryTarget,
+  buildWithdrawReviewPayload,
+  canReplayPaymentCallback,
+  canWithdrawAction,
+  createBankPayoutFormState,
+  createPaymentCallbackFilterState,
+  createPaymentCallbackReplayPayload,
+  createWithdrawHistoryTargetState,
   extractPaymentCallbackDetail,
   extractPaymentCallbackPage,
   extractWithdrawRequestPage,
+  formatAdminWalletOperationActor,
   formatAdminDateTime as formatDateTime,
+  getPaymentCallbackId,
   getWithdrawAutoRetry,
+  getWithdrawRequestId,
+  getWithdrawReviewActionTitle,
+  getWithdrawTransactionId,
+  isWithdrawGatewaySubmitted,
   maskCardNo,
   normalizePaymentCenterConfig,
   paymentCallbackChannelLabel,
@@ -1088,6 +1104,7 @@ import {
   withdrawOperationTypeLabel,
   withdrawStatusLabel,
   withdrawUserTypeLabel,
+  validateBankPayoutForm,
 } from '@infinitech/admin-core'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
@@ -1139,21 +1156,11 @@ const state = reactive({
 })
 
 const bankPayoutForm = reactive({
-  requestId: '',
-  payoutVoucherUrl: '',
-  payoutReferenceNo: '',
-  payoutSourceBankName: '',
-  payoutSourceBankBranch: '',
-  payoutSourceCardNo: '',
-  payoutSourceAccountName: '',
-  transferResult: '',
+  ...createBankPayoutFormState(),
 })
 
 const withdrawHistoryTarget = reactive({
-  requestId: '',
-  method: '',
-  userType: '',
-  amount: 0,
+  ...createWithdrawHistoryTargetState(),
 })
 
 const previewForm = reactive({
@@ -1172,12 +1179,7 @@ const withdrawFilter = reactive({
 })
 
 const callbackFilter = reactive({
-  channel: '',
-  eventType: '',
-  status: '',
-  verified: '',
-  transactionId: '',
-  thirdPartyOrderId: '',
+  ...createPaymentCallbackFilterState(),
 })
 
 function normalizeListPayload(payload) {
@@ -1250,16 +1252,7 @@ async function loadPaymentCallbacks() {
   pageError.value = ''
   try {
     const { data } = await request.get('/api/admin/wallet/payment-callbacks', {
-      params: {
-        page: 1,
-        limit: 50,
-        channel: callbackFilter.channel || undefined,
-        eventType: callbackFilter.eventType || undefined,
-        status: callbackFilter.status || undefined,
-        verified: callbackFilter.verified || undefined,
-        transactionId: callbackFilter.transactionId || undefined,
-        thirdPartyOrderId: callbackFilter.thirdPartyOrderId || undefined,
-      },
+      params: buildPaymentCallbackQuery(callbackFilter),
     })
     state.paymentCallbacks = extractPaymentCallbackPage(data).items
   } catch (error) {
@@ -1270,12 +1263,7 @@ async function loadPaymentCallbacks() {
 }
 
 function resetCallbackFilters() {
-  callbackFilter.channel = ''
-  callbackFilter.eventType = ''
-  callbackFilter.status = ''
-  callbackFilter.verified = ''
-  callbackFilter.transactionId = ''
-  callbackFilter.thirdPartyOrderId = ''
+  Object.assign(callbackFilter, createPaymentCallbackFilterState())
   loadPaymentCallbacks()
 }
 
@@ -1376,7 +1364,7 @@ function resetSettlementOrder() {
 }
 
 async function openPaymentCallbackDetail(row) {
-  const callbackId = row?.callback_id || row?.callbackId
+  const callbackId = getPaymentCallbackId(row)
   if (!callbackId) return
   callbackDetailLoading.value = true
   pageError.value = ''
@@ -1391,14 +1379,8 @@ async function openPaymentCallbackDetail(row) {
   }
 }
 
-function canReplayPaymentCallback(row) {
-  if (!row || !row.verified) return false
-  const channel = String(row.channel || '').trim()
-  return channel === 'wechat' || channel === 'alipay' || channel === 'bank_card'
-}
-
 async function replayPaymentCallback(row) {
-  const callbackId = row?.callback_id || row?.callbackId
+  const callbackId = getPaymentCallbackId(row)
   if (!callbackId || !canReplayPaymentCallback(row)) return
 
   const prompt = await ElMessageBox.prompt('请输入这次重放的备注，方便后续审计追踪。', '重放已验签回调', {
@@ -1412,9 +1394,10 @@ async function replayPaymentCallback(row) {
   callbackReplayLoading.value = callbackId
   pageError.value = ''
   try {
-    const { data } = await request.post(`/api/admin/wallet/payment-callbacks/${encodeURIComponent(callbackId)}/replay`, {
-      remark: String(prompt.value || '').trim(),
-    })
+    const { data } = await request.post(
+      `/api/admin/wallet/payment-callbacks/${encodeURIComponent(callbackId)}/replay`,
+      createPaymentCallbackReplayPayload(prompt.value),
+    )
     ElMessage.success(data?.duplicated ? '回调已被处理过，已按当前状态回填' : '回调已重放处理')
     await loadPaymentCallbacks()
     const nextCallbackId = data?.callbackId || callbackId
@@ -1429,21 +1412,11 @@ async function replayPaymentCallback(row) {
 
 function resetWithdrawHistory() {
   withdrawActionHistory.value = []
-  withdrawHistoryTarget.requestId = ''
-  withdrawHistoryTarget.method = ''
-  withdrawHistoryTarget.userType = ''
-  withdrawHistoryTarget.amount = 0
-}
-
-function formatAdminOperationActor(row) {
-  const name = String(row?.admin_name || '').trim()
-  const id = String(row?.admin_id || '').trim()
-  if (name && id) return `${name} / ${id}`
-  return name || id || '-'
+  Object.assign(withdrawHistoryTarget, createWithdrawHistoryTargetState())
 }
 
 async function openWithdrawHistory(row) {
-  const transactionId = String(row?.transaction_id || row?.transactionId || '').trim()
+  const transactionId = getWithdrawTransactionId(row)
   if (!transactionId) {
     ElMessage.warning('当前提现单缺少关联交易号，暂时无法加载处理轨迹')
     return
@@ -1451,10 +1424,7 @@ async function openWithdrawHistory(row) {
   withdrawHistoryDialogVisible.value = true
   withdrawHistoryLoading.value = true
   resetWithdrawHistory()
-  withdrawHistoryTarget.requestId = String(row?.request_id || row?.requestId || '').trim()
-  withdrawHistoryTarget.method = String(row?.withdraw_method || row?.withdrawMethod || '').trim()
-  withdrawHistoryTarget.userType = String(row?.user_type || row?.userType || '').trim()
-  withdrawHistoryTarget.amount = Number(row?.amount || 0)
+  Object.assign(withdrawHistoryTarget, buildWithdrawHistoryTarget(row))
   try {
     const { data } = await request.get('/api/pay-center/operations', {
       params: {
@@ -1480,94 +1450,24 @@ function openBankVoucher(url) {
   }
 }
 
-function resetBankPayoutForm() {
-  bankPayoutForm.requestId = ''
-  bankPayoutForm.payoutVoucherUrl = ''
-  bankPayoutForm.payoutReferenceNo = ''
-  bankPayoutForm.payoutSourceBankName = ''
-  bankPayoutForm.payoutSourceBankBranch = ''
-  bankPayoutForm.payoutSourceCardNo = ''
-  bankPayoutForm.payoutSourceAccountName = ''
-  bankPayoutForm.transferResult = ''
-}
-
 function openBankPayoutDialog(row) {
-  resetBankPayoutForm()
-  bankPayoutForm.requestId = row?.request_id || row?.requestId || ''
-  bankPayoutForm.payoutVoucherUrl = row?.payout_voucher_url || ''
-  bankPayoutForm.payoutReferenceNo = row?.payout_reference_no || row?.third_party_order_id || ''
-  bankPayoutForm.payoutSourceBankName = row?.payout_source_bank_name || ''
-  bankPayoutForm.payoutSourceBankBranch = row?.payout_source_bank_branch || ''
-  bankPayoutForm.payoutSourceCardNo = row?.payout_source_card_no || ''
-  bankPayoutForm.payoutSourceAccountName = row?.payout_source_account_name || ''
-  bankPayoutForm.transferResult = row?.transfer_result || '已人工完成银行卡打款'
+  Object.assign(bankPayoutForm, createBankPayoutFormState(row))
   bankPayoutDialogVisible.value = true
 }
 
-function canWithdrawAction(row, action) {
-  const status = String(row?.status || '')
-  const method = String(row?.withdraw_method || '')
-  if (action === 'approve' || action === 'reject') {
-    return status === 'pending' || status === 'pending_review'
-  }
-  if (action === 'sync_gateway_status') {
-    if (method !== 'wechat' && method !== 'alipay' && method !== 'bank_card') return false
-    if (status === 'transferring') return true
-    if (status !== 'pending_transfer') return false
-    return isWithdrawGatewaySubmitted(row)
-  }
-  if (action === 'execute') {
-    return status === 'pending_transfer'
-  }
-  if (action === 'mark_processing') {
-    return status === 'pending_transfer'
-  }
-  if (action === 'complete' || action === 'fail') {
-    return status === 'pending_transfer' || status === 'transferring'
-  }
-  if (action === 'retry_payout') {
-    return status === 'failed'
-  }
-  if (action === 'supplement_success' || action === 'supplement_fail') {
-    return (status === 'pending_transfer' || status === 'transferring') && (method === 'wechat' || method === 'alipay' || method === 'bank_card')
-  }
-  return false
-}
-
-function isWithdrawGatewaySubmitted(row) {
-  if (row?.gateway_submitted === true || row?.gatewaySubmitted === true) return true
-  if (String(row?.third_party_order_id || row?.thirdPartyOrderId || '').trim()) return true
-  const responseData = row?.response_data || row?.responseData
-  if (!responseData || typeof responseData !== 'object') return false
-  return [
-    'gateway',
-    'integrationTarget',
-    'submittedAt',
-    'sidecarUrl',
-    'outBatchNo',
-    'outDetailNo',
-    'batchId',
-    'processingMode',
-    'notifyUrl',
-  ].some((key) => String(responseData[key] ?? '').trim())
+function handleBankPayoutDialogClosed() {
+  Object.assign(bankPayoutForm, createBankPayoutFormState())
 }
 
 async function submitWithdrawAction(row, action) {
-  const requestId = row?.request_id || row?.requestId
+  const requestId = getWithdrawRequestId(row)
   if (!requestId) return
   if (action === 'complete' && String(row?.withdraw_method || '') === 'bank_card') {
     openBankPayoutDialog(row)
     return
   }
 
-  const actionTitle = {
-    approve: '通过提现审核',
-    reject: '驳回提现申请',
-    execute: '发起打款',
-    mark_processing: '标记为转账中',
-    complete: '标记为打款成功',
-    fail: '标记为打款失败',
-  }[action]
+  const actionTitle = getWithdrawReviewActionTitle(action)
 
   let note = ''
   if (action === 'reject' || action === 'fail') {
@@ -1591,13 +1491,10 @@ async function submitWithdrawAction(row, action) {
   withdrawActionLoading.value = `${requestId}:${action}`
   pageError.value = ''
   try {
-    await request.post('/api/pay-center/withdraw-requests/review', {
-      requestId,
-      action,
-      remark: note,
-      rejectReason: action === 'reject' ? note : '',
-      transferResult: note,
-    })
+    await request.post(
+      '/api/pay-center/withdraw-requests/review',
+      buildWithdrawReviewPayload(requestId, action, { remark: note }),
+    )
     ElMessage.success(`${actionTitle}已提交`)
     await loadAll()
   } catch (error) {
@@ -1609,25 +1506,9 @@ async function submitWithdrawAction(row, action) {
 }
 
 async function submitBankPayoutComplete() {
-  if (!bankPayoutForm.requestId) return
-  if (!String(bankPayoutForm.payoutVoucherUrl || '').trim()) {
-    ElMessage.error('\u8bf7\u5148\u4e0a\u4f20\u6253\u6b3e\u51ed\u8bc1')
-    return
-  }
-  if (!String(bankPayoutForm.payoutSourceBankName || '').trim()) {
-    ElMessage.error('\u8bf7\u586b\u5199\u51fa\u6b3e\u94f6\u884c\u540d\u79f0')
-    return
-  }
-  if (!String(bankPayoutForm.payoutSourceBankBranch || '').trim()) {
-    ElMessage.error('\u8bf7\u586b\u5199\u51fa\u6b3e\u94f6\u884c\u652f\u884c')
-    return
-  }
-  if (!String(bankPayoutForm.payoutSourceCardNo || '').trim()) {
-    ElMessage.error('\u8bf7\u586b\u5199\u51fa\u6b3e\u5361\u53f7')
-    return
-  }
-  if (!String(bankPayoutForm.payoutSourceAccountName || '').trim()) {
-    ElMessage.error('\u8bf7\u586b\u5199\u51fa\u6b3e\u8d26\u6237\u540d\u79f0')
+  const validationMessage = validateBankPayoutForm(bankPayoutForm)
+  if (validationMessage) {
+    ElMessage.error(validationMessage)
     return
   }
 
@@ -1635,22 +1516,13 @@ async function submitBankPayoutComplete() {
   withdrawActionLoading.value = `${bankPayoutForm.requestId}:complete`
   pageError.value = ''
   try {
-    await request.post('/api/pay-center/withdraw-requests/review', {
-      requestId: bankPayoutForm.requestId,
-      action: 'complete',
-      remark: String(bankPayoutForm.transferResult || '').trim(),
-      transferResult: String(bankPayoutForm.transferResult || '').trim(),
-      payoutVoucherUrl: String(bankPayoutForm.payoutVoucherUrl || '').trim(),
-      payoutReferenceNo: String(bankPayoutForm.payoutReferenceNo || '').trim(),
-      payoutSourceBankName: String(bankPayoutForm.payoutSourceBankName || '').trim(),
-      payoutSourceBankBranch: String(bankPayoutForm.payoutSourceBankBranch || '').trim(),
-      payoutSourceCardNo: String(bankPayoutForm.payoutSourceCardNo || '').trim(),
-      payoutSourceAccountName: String(bankPayoutForm.payoutSourceAccountName || '').trim(),
-      thirdPartyOrderId: String(bankPayoutForm.payoutReferenceNo || '').trim(),
-    })
+    await request.post(
+      '/api/pay-center/withdraw-requests/review',
+      buildBankPayoutCompletePayload(bankPayoutForm),
+    )
     ElMessage.success('\u5df2\u6807\u8bb0\u4e3a\u5df2\u6253\u6b3e\u5e76\u4fdd\u5b58\u51ed\u8bc1')
     bankPayoutDialogVisible.value = false
-    resetBankPayoutForm()
+    Object.assign(bankPayoutForm, createBankPayoutFormState())
     await loadAll()
   } catch (error) {
     pageError.value = extractErrorMessage(error, '\u4fdd\u5b58\u94f6\u884c\u5361\u6253\u6b3e\u8bb0\u5f55\u5931\u8d25')
@@ -1662,15 +1534,15 @@ async function submitBankPayoutComplete() {
 }
 
 async function syncWithdrawStatus(row) {
-  const requestId = row?.request_id || row?.requestId
+  const requestId = getWithdrawRequestId(row)
   if (!requestId) return
   withdrawActionLoading.value = `${requestId}:sync_gateway_status`
   pageError.value = ''
   try {
-    const { data } = await request.post('/api/pay-center/withdraw-requests/review', {
-      requestId,
-      action: 'sync_gateway_status',
-    })
+    const { data } = await request.post(
+      '/api/pay-center/withdraw-requests/review',
+      buildWithdrawReviewPayload(requestId, 'sync_gateway_status'),
+    )
     ElMessage.success(`同步完成，当前状态：${withdrawStatusLabel(data?.status || row?.status)}`)
     await loadAll()
   } catch (error) {
@@ -1682,7 +1554,7 @@ async function syncWithdrawStatus(row) {
 }
 
 async function retryWithdrawPayout(row) {
-  const requestId = row?.request_id || row?.requestId
+  const requestId = getWithdrawRequestId(row)
   if (!requestId) return
   const confirmed = await ElMessageBox.confirm('确认重试这笔提现打款吗？如果网关未就绪，会先恢复为待打款状态。', '重试打款', {
     confirmButtonText: '确认重试',
@@ -1694,12 +1566,12 @@ async function retryWithdrawPayout(row) {
   withdrawActionLoading.value = `${requestId}:retry_payout`
   pageError.value = ''
   try {
-    const { data } = await request.post('/api/pay-center/withdraw-requests/review', {
-      requestId,
-      action: 'retry_payout',
-      remark: '后台重试打款',
-      transferResult: '后台重试打款',
-    })
+    const { data } = await request.post(
+      '/api/pay-center/withdraw-requests/review',
+      buildWithdrawReviewPayload(requestId, 'retry_payout', {
+        remark: '后台重试打款',
+      }),
+    )
     if (data?.warning) {
       ElMessage.warning(data.warning)
     } else {
@@ -1715,11 +1587,11 @@ async function retryWithdrawPayout(row) {
 }
 
 async function supplementWithdraw(row, action) {
-  const requestId = row?.request_id || row?.requestId
+  const requestId = getWithdrawRequestId(row)
   if (!requestId) return
 
   const isSuccess = action === 'supplement_success'
-  const actionTitle = isSuccess ? '补记打款成功' : '补记打款失败'
+  const actionTitle = getWithdrawReviewActionTitle(action)
   const defaultRemark = isSuccess ? '后台补记成功' : '后台补记失败'
   const defaultThirdPartyOrderId = row?.third_party_order_id || row?.thirdPartyOrderId || requestId
 
@@ -1742,13 +1614,13 @@ async function supplementWithdraw(row, action) {
   withdrawActionLoading.value = `${requestId}:${action}`
   pageError.value = ''
   try {
-    const { data } = await request.post('/api/pay-center/withdraw-requests/review', {
-      requestId,
-      action,
-      remark: String(prompt.value || defaultRemark).trim() || defaultRemark,
-      transferResult: String(prompt.value || defaultRemark).trim() || defaultRemark,
-      thirdPartyOrderId: String(thirdPartyPrompt.value || defaultThirdPartyOrderId).trim() || defaultThirdPartyOrderId,
-    })
+    const { data } = await request.post(
+      '/api/pay-center/withdraw-requests/review',
+      buildWithdrawReviewPayload(requestId, action, {
+        remark: String(prompt.value || defaultRemark).trim() || defaultRemark,
+        thirdPartyOrderId: String(thirdPartyPrompt.value || defaultThirdPartyOrderId).trim() || defaultThirdPartyOrderId,
+      }),
+    )
     if (data?.duplicated) {
       ElMessage.warning(`${actionTitle}已存在，已按最新状态回写`)
     } else {
@@ -1762,6 +1634,8 @@ async function supplementWithdraw(row, action) {
     withdrawActionLoading.value = ''
   }
 }
+
+const formatAdminOperationActor = formatAdminWalletOperationActor
 
 async function saveAll() {
   saving.value = true

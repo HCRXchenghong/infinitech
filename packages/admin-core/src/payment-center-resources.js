@@ -50,6 +50,33 @@ const DEFAULT_BANK_CARD_CONFIG = {
   allow_stub: false,
 };
 
+const DEFAULT_PAYMENT_CALLBACK_FILTER = {
+  channel: "",
+  eventType: "",
+  status: "",
+  verified: "",
+  transactionId: "",
+  thirdPartyOrderId: "",
+};
+
+const DEFAULT_BANK_PAYOUT_FORM = {
+  requestId: "",
+  payoutVoucherUrl: "",
+  payoutReferenceNo: "",
+  payoutSourceBankName: "",
+  payoutSourceBankBranch: "",
+  payoutSourceCardNo: "",
+  payoutSourceAccountName: "",
+  transferResult: "",
+};
+
+const DEFAULT_WITHDRAW_HISTORY_TARGET = {
+  requestId: "",
+  method: "",
+  userType: "",
+  amount: 0,
+};
+
 function asRecord(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
@@ -693,4 +720,279 @@ export function maskCardNo(value) {
     return raw;
   }
   return `${raw.slice(0, 4)} **** **** ${raw.slice(-4)}`;
+}
+
+export function createPaymentCallbackFilterState(overrides = {}) {
+  return {
+    ...DEFAULT_PAYMENT_CALLBACK_FILTER,
+    ...overrides,
+    channel: normalizeText(overrides.channel),
+    eventType: normalizeText(overrides.eventType),
+    status: normalizeText(overrides.status),
+    verified: normalizeText(overrides.verified),
+    transactionId: normalizeText(overrides.transactionId),
+    thirdPartyOrderId: normalizeText(overrides.thirdPartyOrderId),
+  };
+}
+
+export function buildPaymentCallbackQuery(filter = {}) {
+  const normalized = createPaymentCallbackFilterState(filter);
+  const query = {
+    page: 1,
+    limit: 50,
+  };
+
+  if (normalized.channel) {
+    query.channel = normalized.channel;
+  }
+  if (normalized.eventType) {
+    query.eventType = normalized.eventType;
+  }
+  if (normalized.status) {
+    query.status = normalized.status;
+  }
+  if (normalized.verified) {
+    query.verified = normalized.verified;
+  }
+  if (normalized.transactionId) {
+    query.transactionId = normalized.transactionId;
+  }
+  if (normalized.thirdPartyOrderId) {
+    query.thirdPartyOrderId = normalized.thirdPartyOrderId;
+  }
+
+  return query;
+}
+
+export function getPaymentCallbackId(row = {}) {
+  return firstText(row.callback_id, row.callbackId);
+}
+
+export function canReplayPaymentCallback(row = {}) {
+  if (!row || row.verified !== true) {
+    return false;
+  }
+  const channel = normalizeText(row.channel);
+  return channel === "wechat" || channel === "alipay" || channel === "bank_card";
+}
+
+export function createPaymentCallbackReplayPayload(remark = "") {
+  return {
+    remark: normalizeText(remark),
+  };
+}
+
+export function createWithdrawHistoryTargetState(overrides = {}) {
+  return {
+    ...DEFAULT_WITHDRAW_HISTORY_TARGET,
+    ...overrides,
+    requestId: normalizeText(overrides.requestId),
+    method: normalizeText(overrides.method),
+    userType: normalizeText(overrides.userType),
+    amount: normalizeNumber(overrides.amount, 0),
+  };
+}
+
+export function getWithdrawRequestId(row = {}) {
+  return firstText(row.request_id, row.requestId);
+}
+
+export function getWithdrawTransactionId(row = {}) {
+  return firstText(row.transaction_id, row.transactionId);
+}
+
+export function buildWithdrawHistoryTarget(row = {}) {
+  return createWithdrawHistoryTargetState({
+    requestId: getWithdrawRequestId(row),
+    method: firstText(row.withdraw_method, row.withdrawMethod),
+    userType: firstText(row.user_type, row.userType),
+    amount: normalizeNumber(row.amount, 0),
+  });
+}
+
+export function formatAdminWalletOperationActor(row = {}) {
+  const name = firstText(row.admin_name, row.adminName);
+  const id = firstText(row.admin_id, row.adminId);
+  if (name && id) {
+    return `${name} / ${id}`;
+  }
+  return name || id || "-";
+}
+
+export function createBankPayoutFormState(row = {}) {
+  return {
+    ...DEFAULT_BANK_PAYOUT_FORM,
+    requestId: getWithdrawRequestId(row),
+    payoutVoucherUrl: firstText(row.payout_voucher_url, row.payoutVoucherUrl),
+    payoutReferenceNo: firstText(
+      row.payout_reference_no,
+      row.payoutReferenceNo,
+      row.third_party_order_id,
+      row.thirdPartyOrderId,
+    ),
+    payoutSourceBankName: firstText(
+      row.payout_source_bank_name,
+      row.payoutSourceBankName,
+    ),
+    payoutSourceBankBranch: firstText(
+      row.payout_source_bank_branch,
+      row.payoutSourceBankBranch,
+    ),
+    payoutSourceCardNo: firstText(
+      row.payout_source_card_no,
+      row.payoutSourceCardNo,
+    ),
+    payoutSourceAccountName: firstText(
+      row.payout_source_account_name,
+      row.payoutSourceAccountName,
+    ),
+    transferResult: firstText(row.transfer_result, row.transferResult)
+      || (hasAnyKeys(asRecord(row)) ? "已人工完成银行卡打款" : ""),
+  };
+}
+
+export function validateBankPayoutForm(form = {}) {
+  const normalized = createBankPayoutFormState(form);
+  if (!normalized.requestId) {
+    return "缺少提现申请单号";
+  }
+  if (!normalized.payoutVoucherUrl) {
+    return "请先上传打款凭证";
+  }
+  if (!normalized.payoutSourceBankName) {
+    return "请填写出款银行名称";
+  }
+  if (!normalized.payoutSourceBankBranch) {
+    return "请填写出款银行支行";
+  }
+  if (!normalized.payoutSourceCardNo) {
+    return "请填写出款卡号";
+  }
+  if (!normalized.payoutSourceAccountName) {
+    return "请填写出款账户名称";
+  }
+  return "";
+}
+
+export function buildBankPayoutCompletePayload(form = {}) {
+  const normalized = createBankPayoutFormState(form);
+  return {
+    requestId: normalized.requestId,
+    action: "complete",
+    remark: normalized.transferResult,
+    transferResult: normalized.transferResult,
+    payoutVoucherUrl: normalized.payoutVoucherUrl,
+    payoutReferenceNo: normalized.payoutReferenceNo,
+    payoutSourceBankName: normalized.payoutSourceBankName,
+    payoutSourceBankBranch: normalized.payoutSourceBankBranch,
+    payoutSourceCardNo: normalized.payoutSourceCardNo,
+    payoutSourceAccountName: normalized.payoutSourceAccountName,
+    thirdPartyOrderId: normalized.payoutReferenceNo,
+  };
+}
+
+export function isWithdrawGatewaySubmitted(row = {}) {
+  if (row?.gateway_submitted === true || row?.gatewaySubmitted === true) {
+    return true;
+  }
+  if (firstText(row.third_party_order_id, row.thirdPartyOrderId)) {
+    return true;
+  }
+  const responseData = firstDefined(row.response_data, row.responseData);
+  if (!responseData || typeof responseData !== "object" || Array.isArray(responseData)) {
+    return false;
+  }
+  return [
+    "gateway",
+    "integrationTarget",
+    "submittedAt",
+    "sidecarUrl",
+    "outBatchNo",
+    "outDetailNo",
+    "batchId",
+    "processingMode",
+    "notifyUrl",
+  ].some((key) => normalizeText(responseData[key]));
+}
+
+export function canWithdrawAction(row = {}, action) {
+  const status = normalizeText(row.status);
+  const method = firstText(row.withdraw_method, row.withdrawMethod);
+  if (action === "approve" || action === "reject") {
+    return status === "pending" || status === "pending_review";
+  }
+  if (action === "sync_gateway_status") {
+    if (method !== "wechat" && method !== "alipay" && method !== "bank_card") {
+      return false;
+    }
+    if (status === "transferring") {
+      return true;
+    }
+    if (status !== "pending_transfer") {
+      return false;
+    }
+    return isWithdrawGatewaySubmitted(row);
+  }
+  if (action === "execute" || action === "mark_processing") {
+    return status === "pending_transfer";
+  }
+  if (action === "complete" || action === "fail") {
+    return status === "pending_transfer" || status === "transferring";
+  }
+  if (action === "retry_payout") {
+    return status === "failed";
+  }
+  if (action === "supplement_success" || action === "supplement_fail") {
+    return (status === "pending_transfer" || status === "transferring")
+      && (method === "wechat" || method === "alipay" || method === "bank_card");
+  }
+  return false;
+}
+
+export function getWithdrawReviewActionTitle(action) {
+  return {
+    approve: "通过提现审核",
+    reject: "驳回提现申请",
+    execute: "发起打款",
+    mark_processing: "标记为转账中",
+    complete: "标记为打款成功",
+    fail: "标记为打款失败",
+    sync_gateway_status: "同步网关状态",
+    retry_payout: "重试打款",
+    supplement_success: "补记打款成功",
+    supplement_fail: "补记打款失败",
+  }[normalizeText(action)] || normalizeText(action, "处理提现");
+}
+
+export function buildWithdrawReviewPayload(requestId, action, options = {}) {
+  const payload = {
+    requestId: normalizeText(requestId),
+    action: normalizeText(action),
+  };
+  const remark = normalizeText(options.remark);
+  const transferResult = normalizeText(
+    firstDefined(options.transferResult, options.remark),
+  );
+  const thirdPartyOrderId = normalizeText(options.thirdPartyOrderId);
+
+  if (remark || options.remark !== undefined) {
+    payload.remark = remark;
+  }
+  if (action === "reject") {
+    payload.rejectReason = remark;
+  }
+  if (
+    transferResult
+    || action === "reject"
+    || action === "fail"
+    || action === "retry_payout"
+    || action === "supplement_success"
+    || action === "supplement_fail"
+  ) {
+    payload.transferResult = transferResult;
+  }
+  if (thirdPartyOrderId) {
+    payload.thirdPartyOrderId = thirdPartyOrderId;
+  }
+  return payload;
 }

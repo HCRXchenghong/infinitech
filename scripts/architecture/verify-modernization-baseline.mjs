@@ -287,6 +287,14 @@ assertContains(
   "extractPaymentCallbackDetail",
 );
 assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "buildPaymentCallbackQuery",
+);
+assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "createPaymentCallbackFilterState",
+);
+assertContains(
   "admin-vue/src/views/BlankPage.vue",
   "createDefaultPaymentGatewaySummary",
 );
@@ -1254,6 +1262,34 @@ assertContains(
   "extractPaymentCallbackPage",
 );
 assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "buildWithdrawReviewPayload",
+);
+assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "buildBankPayoutCompletePayload",
+);
+assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "formatAdminWalletOperationActor",
+);
+assertNotContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "function canReplayPaymentCallback(row)",
+);
+assertNotContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "function canWithdrawAction(row, action)",
+);
+assertNotContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "function isWithdrawGatewaySubmitted(row)",
+);
+assertNotContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "resetBankPayoutForm",
+);
+assertContains(
   "admin-vue/src/views/BlankPage.vue",
   "extractWithdrawRequestPage",
 );
@@ -1724,6 +1760,10 @@ assertContains(
 assertContains(
   "admin-vue/src/views/PaymentCenter.vue",
   "paymentCallbackStatusTag",
+);
+assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "getWithdrawReviewActionTitle",
 );
 assertContains(
   "admin-vue/src/views/dataManagementHelpers.js",
