@@ -70,6 +70,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/order-support-pages.test.mjs",
   "packages/mobile-core/src/profile-edit.js",
   "packages/mobile-core/src/profile-edit.test.mjs",
+  "packages/mobile-core/src/profile-coupon-list.js",
+  "packages/mobile-core/src/profile-coupon-list.test.mjs",
   "packages/mobile-core/src/profile-home.js",
   "packages/mobile-core/src/profile-home.test.mjs",
   "packages/mobile-core/src/profile-outreach.js",
@@ -82,6 +84,7 @@ function assertNotContains(relativePath, unexpectedText) {
   "shared/mobile-common/order-coupon-page.js",
   "shared/mobile-common/order-support-pages.js",
   "shared/mobile-common/profile-edit-page.js",
+  "shared/mobile-common/profile-coupon-list-page.js",
   "shared/mobile-common/profile-home-page.js",
   "shared/mobile-common/profile-outreach-pages.js",
   "shared/mobile-common/profile-settings-pages.js",
@@ -196,12 +199,20 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../shared/mobile-common/profile-outreach-pages.js",
   ],
   [
+    "app-mobile/pages/profile/coupon-list/index.vue",
+    "../../../../shared/mobile-common/profile-coupon-list-page.js",
+  ],
+  [
     "app-mobile/pages/profile/invite-friends/index.vue",
     "../../../../shared/mobile-common/profile-outreach-pages.js",
   ],
   [
     "user-vue/pages/profile/cooperation/index.vue",
     "../../../../shared/mobile-common/profile-outreach-pages.js",
+  ],
+  [
+    "user-vue/pages/profile/coupon-list/index.vue",
+    "../../../../shared/mobile-common/profile-coupon-list-page.js",
   ],
   [
     "user-vue/pages/profile/invite-friends/index.vue",
@@ -963,11 +974,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/profile/coupon-list/index.vue",
-  "extractEnvelopeData(res)",
+  "../../../../shared/mobile-common/profile-coupon-list-page.js",
 );
 assertContains(
   "app-mobile/pages/profile/coupon-list/index.vue",
-  "extractEnvelopeData(res)",
+  "../../../../shared/mobile-common/profile-coupon-list-page.js",
 );
 assertContains(
   "shared/mobile-common/order-list-page.js",
@@ -1275,7 +1286,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-support-pages.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-support-pages.test.mjs"',
 );
 assertContains(
   "package.json",
