@@ -65,88 +65,38 @@
 import { fetchPublicRuntimeSettings, recordPhoneContactClick } from '@/shared-ui/api.js'
 import { ensureRuntimeFeatureOpen } from '@/shared-ui/feature-runtime.js'
 import { createPhoneContactHelper } from '../../../shared/mobile-common/phone-contact.js'
+import {
+  buildMedicineSupportModalCopy,
+  buildMedicineSupportModalTitle,
+  DEFAULT_MEDICINE_RUNTIME_SETTINGS,
+  MEDICINE_HOME_TEXTS,
+  normalizeMedicineRuntimeSettings,
+  resolveMedicineHotlinePhone
+} from '../../../packages/mobile-core/src/medicine-home.js'
 
 const phoneContactHelper = createPhoneContactHelper({ recordPhoneContactClick })
-
-const TEXTS = {
-  pageTitle: '\u60a8\u54ea\u91cc\u4e0d\u8212\u670d\uff1f',
-  pageSubtitle: '\u5168\u5929\u5019\u533b\u836f\u5b88\u62a4',
-  aiTitle: 'AI \u667a\u80fd\u95ee\u8bca',
-  aiDesc: '\u63cf\u8ff0\u75c7\u72b6\uff0c\u5feb\u901f\u83b7\u53d6\u7528\u836f\u5efa\u8bae',
-  startConsult: '\u5f00\u59cb\u54a8\u8be2',
-  fastTitle: '\u6781\u901f\u4e70\u836f',
-  seasonTipLabel: '\u5b63\u8282\u63d0\u9192\uff1a',
-  cancel: '\u53d6\u6d88',
-  callNow: '\u7acb\u5373\u62e8\u6253',
-  supportModalFallback:
-    '\u5f53\u524d\u533b\u836f\u70ed\u7ebf\u4ee5\u5e73\u53f0\u53d1\u5e03\u4e3a\u51c6\uff0c\u5982\u9700\u5e2e\u52a9\u8bf7\u5148\u8054\u7cfb\u5728\u7ebf\u5ba2\u670d\u3002',
-  hotlineUnavailable: '\u533b\u836f\u70ed\u7ebf\u6682\u672a\u5f00\u653e',
-  callFailed: '\u65e0\u6cd5\u62e8\u6253\u7535\u8bdd\uff0c\u8bf7\u68c0\u67e5\u6743\u9650',
-  contactPrefix: '\u8054\u7cfb'
-}
-
-const DEFAULT_RUNTIME_SETTINGS = {
-  service_phone: '',
-  medicine_support_phone: '',
-  medicine_support_title: '\u4e00\u952e\u533b\u52a1\u5ba4',
-  medicine_support_subtitle: '\u7d27\u6025\u60c5\u51b5\u53ef\u8054\u7cfb\u4eba\u5de5\u670d\u52a1',
-  medicine_delivery_description: '24\u5c0f\u65f6\u914d\u9001\n\u5e73\u574730\u5206\u949f\u8fbe',
-  medicine_season_tip:
-    '\u8fd1\u671f\u6d41\u611f\u9ad8\u53d1\uff0c\u5efa\u8bae\u5e38\u5907\u5e38\u7528\u836f\u3002\u5982\u9047\u9ad8\u70ed\u4e0d\u9000\u8bf7\u53ca\u65f6\u5c31\u533b\u3002'
-}
-
-function normalizeText(value, fallback) {
-  const text = String(value || '').replace(/\\n/g, '\n').trim()
-  return text || fallback
-}
-
-function normalizeRuntimeSettings(raw) {
-  const payload = raw && typeof raw === 'object' ? raw : {}
-  return {
-    service_phone: normalizeText(payload.service_phone, DEFAULT_RUNTIME_SETTINGS.service_phone),
-    medicine_support_phone: normalizeText(
-      payload.medicine_support_phone,
-      DEFAULT_RUNTIME_SETTINGS.medicine_support_phone
-    ),
-    medicine_support_title: normalizeText(
-      payload.medicine_support_title,
-      DEFAULT_RUNTIME_SETTINGS.medicine_support_title
-    ),
-    medicine_support_subtitle: normalizeText(
-      payload.medicine_support_subtitle,
-      DEFAULT_RUNTIME_SETTINGS.medicine_support_subtitle
-    ),
-    medicine_delivery_description: normalizeText(
-      payload.medicine_delivery_description,
-      DEFAULT_RUNTIME_SETTINGS.medicine_delivery_description
-    ),
-    medicine_season_tip: normalizeText(
-      payload.medicine_season_tip,
-      DEFAULT_RUNTIME_SETTINGS.medicine_season_tip
-    )
-  }
-}
 
 export default {
   data() {
     return {
-      texts: TEXTS,
+      texts: MEDICINE_HOME_TEXTS,
       showCallModal: false,
-      runtimeSettings: { ...DEFAULT_RUNTIME_SETTINGS }
+      runtimeSettings: { ...DEFAULT_MEDICINE_RUNTIME_SETTINGS }
     }
   },
   computed: {
     hotlinePhone() {
-      return this.runtimeSettings.medicine_support_phone || this.runtimeSettings.service_phone || ''
+      return resolveMedicineHotlinePhone(this.runtimeSettings)
     },
     modalTitle() {
-      return `${this.texts.contactPrefix}${this.runtimeSettings.medicine_support_title}`
+      return buildMedicineSupportModalTitle(this.texts, this.runtimeSettings)
     },
     supportModalCopy() {
-      if (!this.hotlinePhone) {
-        return this.texts.supportModalFallback
-      }
-      return `\u5373\u5c06\u62e8\u6253 ${this.hotlinePhone}\n${this.runtimeSettings.medicine_support_subtitle}`
+      return buildMedicineSupportModalCopy(
+        this.texts,
+        this.hotlinePhone,
+        this.runtimeSettings
+      )
     }
   },
   async onLoad() {
@@ -160,9 +110,9 @@ export default {
     async loadRuntimeSettings() {
       try {
         const response = await fetchPublicRuntimeSettings()
-        this.runtimeSettings = normalizeRuntimeSettings(response)
+        this.runtimeSettings = normalizeMedicineRuntimeSettings(response)
       } catch (_error) {
-        this.runtimeSettings = { ...DEFAULT_RUNTIME_SETTINGS }
+        this.runtimeSettings = { ...DEFAULT_MEDICINE_RUNTIME_SETTINGS }
       }
     },
     goChat() {

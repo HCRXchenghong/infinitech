@@ -50,6 +50,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/domain-core/src/onboarding-invite-content.js",
   "packages/domain-core/src/onboarding-invite-content.test.mjs",
   "packages/mobile-core/src/index.js",
+  "packages/mobile-core/src/medicine-home.js",
+  "packages/mobile-core/src/medicine-home.test.mjs",
   "packages/mobile-core/src/vip-center.js",
   "packages/mobile-core/src/vip-center.test.mjs",
   "packages/admin-core/src/index.js",
@@ -1226,7 +1228,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -1997,6 +1999,10 @@ assertContains(
   'export * from "./vip-center.js";',
 );
 assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./medicine-home.js";',
+);
+assertContains(
   "user-vue/pages/profile/vip-center/vip-data.js",
   "packages/mobile-core/src/vip-center.js",
 );
@@ -2019,6 +2025,14 @@ assertContains(
 assertContains(
   "app-mobile/pages/profile/points-mall/index.vue",
   "mapVIPPointRewardList(list)",
+);
+assertContains(
+  "user-vue/pages/medicine/home.vue",
+  "normalizeMedicineRuntimeSettings(response)",
+);
+assertContains(
+  "app-mobile/pages/medicine/home.vue",
+  "normalizeMedicineRuntimeSettings(response)",
 );
 assertContains(
   "admin-vue/src/views/settingsApiManagementHelpers.js",
@@ -2175,6 +2189,14 @@ assertNotContains(
 assertNotContains(
   "app-mobile/pages/profile/vip-center/page-options.js",
   "const EMPTY_LEVEL = {",
+);
+assertNotContains(
+  "user-vue/pages/medicine/home.vue",
+  "function normalizeRuntimeSettings(raw)",
+);
+assertNotContains(
+  "app-mobile/pages/medicine/home.vue",
+  "function normalizeRuntimeSettings(raw)",
 );
 assertNotContains(
   "admin-vue/src/views/Users.vue",
