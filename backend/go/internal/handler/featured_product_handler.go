@@ -17,21 +17,29 @@ func NewFeaturedProductHandler(service service.FeaturedProductService) *Featured
 	return &FeaturedProductHandler{service: service}
 }
 
+func respondFeaturedProductError(c *gin.Context, status int, message string) {
+	respondErrorEnvelope(c, status, couponResponseCodeForStatus(status), message, nil)
+}
+
+func respondFeaturedProductInvalidRequest(c *gin.Context, message string) {
+	respondFeaturedProductError(c, http.StatusBadRequest, message)
+}
+
+func respondFeaturedProductSuccess(c *gin.Context, message string, data interface{}) {
+	respondMirroredSuccessEnvelope(c, message, data)
+}
+
 // GetFeaturedProducts 获取今日推荐商品列表
 func (h *FeaturedProductHandler) GetFeaturedProducts(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	products, err := h.service.GetFeaturedProducts(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get featured products",
-		})
+		respondFeaturedProductError(c, http.StatusInternalServerError, "今日推荐商品加载失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"products": products,
-	})
+	respondFeaturedProductSuccess(c, "今日推荐商品加载成功", gin.H{"products": products})
 }
 
 // AddFeaturedProduct 添加今日推荐商品
@@ -44,30 +52,22 @@ func (h *FeaturedProductHandler) AddFeaturedProduct(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request body",
-		})
+		respondFeaturedProductInvalidRequest(c, "invalid request body")
 		return
 	}
 
 	productID := strings.TrimSpace(fmt.Sprintf("%v", req.ProductID))
 	if productID == "" || productID == "<nil>" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid product ID",
-		})
+		respondFeaturedProductInvalidRequest(c, "invalid product id")
 		return
 	}
 
 	if err := h.service.AddFeaturedProduct(ctx, productID, req.Position); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to add featured product",
-		})
+		respondFeaturedProductError(c, http.StatusInternalServerError, "今日推荐商品添加失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Featured product added successfully",
-	})
+	respondFeaturedProductSuccess(c, "今日推荐商品添加成功", gin.H{"product_id": productID, "added": true})
 }
 
 // RemoveFeaturedProduct 删除今日推荐商品
@@ -76,22 +76,16 @@ func (h *FeaturedProductHandler) RemoveFeaturedProduct(c *gin.Context) {
 
 	idStr := strings.TrimSpace(c.Param("id"))
 	if idStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid ID",
-		})
+		respondFeaturedProductInvalidRequest(c, "invalid id")
 		return
 	}
 
 	if err := h.service.RemoveFeaturedProduct(ctx, idStr); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to remove featured product",
-		})
+		respondFeaturedProductError(c, http.StatusInternalServerError, "今日推荐商品删除失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Featured product removed successfully",
-	})
+	respondFeaturedProductSuccess(c, "今日推荐商品删除成功", gin.H{"id": idStr, "deleted": true})
 }
 
 // UpdateFeaturedProductPosition 更新推荐位置
@@ -100,9 +94,7 @@ func (h *FeaturedProductHandler) UpdateFeaturedProductPosition(c *gin.Context) {
 
 	idStr := strings.TrimSpace(c.Param("id"))
 	if idStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid ID",
-		})
+		respondFeaturedProductInvalidRequest(c, "invalid id")
 		return
 	}
 
@@ -111,20 +103,14 @@ func (h *FeaturedProductHandler) UpdateFeaturedProductPosition(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request body",
-		})
+		respondFeaturedProductInvalidRequest(c, "invalid request body")
 		return
 	}
 
 	if err := h.service.UpdateFeaturedProductPosition(ctx, idStr, req.Position); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update position",
-		})
+		respondFeaturedProductError(c, http.StatusInternalServerError, "今日推荐商品位置更新失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Position updated successfully",
-	})
+	respondFeaturedProductSuccess(c, "今日推荐商品位置更新成功", gin.H{"id": idStr, "position": req.Position, "updated": true})
 }

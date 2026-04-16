@@ -358,6 +358,22 @@ assertContains(
   'respondUserMirroredSuccess(c, firstNonEmptyText(extractMapText(result, "message"), "手机号修改成功"), result)',
 );
 assertContains(
+  "backend/go/internal/handler/featured_product_handler.go",
+  'respondFeaturedProductSuccess(c, "今日推荐商品加载成功", gin.H{"products": products})',
+);
+assertContains(
+  "backend/go/internal/handler/featured_product_handler.go",
+  'respondFeaturedProductSuccess(c, "今日推荐商品位置更新成功", gin.H{"id": idStr, "position": req.Position, "updated": true})',
+);
+assertContains(
+  "backend/go/internal/handler/mobile_map_handler.go",
+  'respondMobileMapSuccess(c, "地图搜索成功", result)',
+);
+assertContains(
+  "backend/go/internal/handler/mobile_map_handler.go",
+  'respondMobileMapSuccess(c, "逆地理编码成功", result)',
+);
+assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",
   "func respondAdminSettingsSuccess(c *gin.Context, message string, data interface{})",
 );

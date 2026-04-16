@@ -17,6 +17,14 @@ func NewMobileMapHandler(svc *service.MobileMapService) *MobileMapHandler {
 	return &MobileMapHandler{service: svc}
 }
 
+func respondMobileMapError(c *gin.Context, status int, message string) {
+	respondErrorEnvelope(c, status, couponResponseCodeForStatus(status), message, nil)
+}
+
+func respondMobileMapSuccess(c *gin.Context, message string, data interface{}) {
+	respondMirroredSuccessEnvelope(c, message, data)
+}
+
 func (h *MobileMapHandler) Search(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
@@ -30,11 +38,11 @@ func (h *MobileMapHandler) Search(c *gin.Context) {
 		PageSize: pageSize,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondMobileMapError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	respondMobileMapSuccess(c, "地图搜索成功", result)
 }
 
 func (h *MobileMapHandler) ReverseGeocode(c *gin.Context) {
@@ -43,9 +51,9 @@ func (h *MobileMapHandler) ReverseGeocode(c *gin.Context) {
 		Lng: strings.TrimSpace(c.Query("lng")),
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondMobileMapError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	respondMobileMapSuccess(c, "逆地理编码成功", result)
 }
