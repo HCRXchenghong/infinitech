@@ -12,4 +12,5 @@ export * from "./profile-edit.js";
 export * from "./profile-home.js";
 export * from "./profile-coupon-list.js";
 export * from "./profile-outreach.js";
+export * from "./profile-phone-change.js";
 export * from "./profile-settings.js";
