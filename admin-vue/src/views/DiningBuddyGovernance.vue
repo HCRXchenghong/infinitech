@@ -136,14 +136,20 @@
               <span>组局列表</span>
               <div class="inline-filters">
                 <el-select v-model="partyFilters.status" clearable placeholder="状态" size="small" style="width: 120px;">
-                  <el-option label="开放中" value="open" />
-                  <el-option label="满员" value="full" />
-                  <el-option label="已关闭" value="closed" />
+                  <el-option
+                    v-for="option in DINING_BUDDY_PARTY_STATUS_OPTIONS"
+                    :key="option.value"
+                    :label="option.label"
+                    :value="option.value"
+                  />
                 </el-select>
                 <el-select v-model="partyFilters.category" clearable placeholder="分类" size="small" style="width: 120px;">
-                  <el-option label="聊天" value="chat" />
-                  <el-option label="约饭" value="food" />
-                  <el-option label="学习" value="study" />
+                  <el-option
+                    v-for="option in DINING_BUDDY_PARTY_CATEGORY_OPTIONS"
+                    :key="option.value"
+                    :label="option.label"
+                    :value="option.value"
+                  />
                 </el-select>
                 <el-input v-model="partyFilters.search" clearable placeholder="搜索标题/发起人" size="small" style="width: 220px;" />
                 <el-button size="small" :loading="partiesLoading" @click="loadParties(true)">查询</el-button>
@@ -181,10 +187,13 @@
             <div class="card-title-row">
               <span>举报列表</span>
               <div class="inline-filters">
-                <el-select v-model="reportStatus" clearable placeholder="状态" size="small" style="width: 140px;">
-                  <el-option label="待处理" value="pending" />
-                  <el-option label="已处理" value="resolved" />
-                  <el-option label="已驳回" value="rejected" />
+                <el-select v-model="reportFilters.status" clearable placeholder="状态" size="small" style="width: 140px;">
+                  <el-option
+                    v-for="option in DINING_BUDDY_REPORT_STATUS_OPTIONS"
+                    :key="option.value"
+                    :label="option.label"
+                    :value="option.value"
+                  />
                 </el-select>
                 <el-button size="small" :loading="reportsLoading" @click="loadReports(true)">查询</el-button>
               </div>
@@ -317,7 +326,7 @@
       </el-table>
     </el-drawer>
 
-    <el-dialog v-model="sensitiveDialogVisible" :title="sensitiveForm.id ? '编辑敏感词' : '新增敏感词'" width="520px">
+    <el-dialog v-model="sensitiveDialogVisible" :title="getDiningBuddySensitiveDialogTitle(sensitiveForm)" width="520px">
       <el-form label-width="90px">
         <el-form-item label="敏感词">
           <el-input v-model="sensitiveForm.word" />
@@ -335,15 +344,19 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="restrictionDialogVisible" :title="restrictionForm.id ? '编辑用户限制' : '新增用户限制'" width="560px">
+    <el-dialog v-model="restrictionDialogVisible" :title="getDiningBuddyRestrictionDialogTitle(restrictionForm)" width="560px">
       <el-form label-width="110px">
         <el-form-item label="目标用户 ID">
           <el-input v-model="restrictionForm.target_user_id" placeholder="支持数据库 ID / UID / TSID" />
         </el-form-item>
         <el-form-item label="限制类型">
           <el-select v-model="restrictionForm.restriction_type" style="width: 100%;">
-            <el-option label="禁言 mute" value="mute" />
-            <el-option label="封禁 ban" value="ban" />
+            <el-option
+              v-for="option in DINING_BUDDY_RESTRICTION_TYPE_OPTIONS"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="限制原因">
@@ -374,6 +387,34 @@
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { extractEnvelopeData, extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts'
+import {
+  buildDiningBuddyMessageDeletePayload,
+  buildDiningBuddyPartyActionPayload,
+  buildDiningBuddyPartyListQuery,
+  buildDiningBuddyReportActionPayload,
+  buildDiningBuddyReportListQuery,
+  buildDiningBuddyRestrictionPayload,
+  buildDiningBuddyRuntimePayload,
+  buildDiningBuddySensitivePayload,
+  createDiningBuddyPartyFilterState,
+  createDiningBuddyReportFilterState,
+  createDiningBuddyRestrictionForm,
+  createDiningBuddyRuntimeForm,
+  createDiningBuddyRuntimeQuestion,
+  createDiningBuddySensitiveForm,
+  DINING_BUDDY_PARTY_CATEGORY_OPTIONS,
+  DINING_BUDDY_PARTY_STATUS_OPTIONS,
+  DINING_BUDDY_REPORT_STATUS_OPTIONS,
+  DINING_BUDDY_RESTRICTION_TYPE_OPTIONS,
+  getDiningBuddyPartyActionLabel,
+  getDiningBuddyReportActionLabel,
+  getDiningBuddyRestrictionDialogTitle,
+  getDiningBuddySensitiveDialogTitle,
+  sortDiningBuddyRuntimeCategories,
+  validateDiningBuddyRestrictionForm,
+  validateDiningBuddyRuntimeForm,
+  validateDiningBuddySensitiveForm,
+} from '@infinitech/admin-core'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 
@@ -383,31 +424,27 @@ const pageError = ref('')
 
 const runtimeLoading = ref(false)
 const runtimeSaving = ref(false)
-const runtimeForm = reactive(createRuntimeForm())
+const runtimeForm = reactive(createDiningBuddyRuntimeForm())
 
 const partiesLoading = ref(false)
 const parties = ref([])
-const partyFilters = reactive({
-  status: '',
-  category: '',
-  search: ''
-})
+const partyFilters = reactive(createDiningBuddyPartyFilterState())
 
 const reportsLoading = ref(false)
 const reports = ref([])
-const reportStatus = ref('')
+const reportFilters = reactive(createDiningBuddyReportFilterState())
 
 const sensitiveLoading = ref(false)
 const sensitiveWords = ref([])
 const sensitiveDialogVisible = ref(false)
 const sensitiveSaving = ref(false)
-const sensitiveForm = reactive(createSensitiveForm())
+const sensitiveForm = reactive(createDiningBuddySensitiveForm())
 
 const restrictionsLoading = ref(false)
 const restrictions = ref([])
 const restrictionDialogVisible = ref(false)
 const restrictionSaving = ref(false)
-const restrictionForm = reactive(createRestrictionForm())
+const restrictionForm = reactive(createDiningBuddyRestrictionForm())
 
 const auditLoading = ref(false)
 const auditLogs = ref([])
@@ -420,75 +457,16 @@ const activePartyForMessages = ref(null)
 const messagesLoading = ref(false)
 const messages = ref([])
 
-function createRuntimeQuestion(source = {}) {
-  return {
-    localKey: `question-${Math.random().toString(36).slice(2, 9)}`,
-    question: String(source.question || '').trim(),
-    options: Array.isArray(source.options)
-      ? source.options.map((item) => ({
-          localKey: `option-${Math.random().toString(36).slice(2, 9)}`,
-          text: String(item?.text || '').trim(),
-          icon: String(item?.icon || '').trim()
-        }))
-      : []
-  }
-}
-
-function createRuntimeForm(source = {}) {
-  return {
-    enabled: source.enabled !== false,
-    welcome_title: String(source.welcome_title || '').trim(),
-    welcome_subtitle: String(source.welcome_subtitle || '').trim(),
-    publish_limit_per_day: Number(source.publish_limit_per_day || 5),
-    message_rate_limit_per_minute: Number(source.message_rate_limit_per_minute || 20),
-    default_max_people: Number(source.default_max_people || 4),
-    max_max_people: Number(source.max_max_people || 6),
-    auto_close_expired_hours: Number(source.auto_close_expired_hours || 24),
-    categories: Array.isArray(source.categories)
-      ? source.categories.map((item) => ({
-          id: String(item.id || '').trim(),
-          label: String(item.label || '').trim(),
-          icon: String(item.icon || '').trim(),
-          icon_type: String(item.icon_type || 'image').trim(),
-          enabled: item.enabled !== false,
-          sort_order: Number(item.sort_order || 0),
-          color: String(item.color || '').trim()
-        }))
-      : [],
-    questions: Array.isArray(source.questions) ? source.questions.map(createRuntimeQuestion) : []
-  }
-}
-
-function createSensitiveForm(source = {}) {
-  return {
-    id: source.id || '',
-    word: String(source.word || '').trim(),
-    description: String(source.description || '').trim(),
-    enabled: source.enabled !== false
-  }
-}
-
-function createRestrictionForm(source = {}) {
-  return {
-    id: source.id || '',
-    target_user_id: String(source.target_user_id || source.user_uid || source.user_id || '').trim(),
-    restriction_type: String(source.restriction_type || 'mute').trim() || 'mute',
-    reason: String(source.reason || '').trim(),
-    note: String(source.note || '').trim(),
-    expires_at: String(source.expires_at || '').trim()
-  }
-}
-
 const sortedRuntimeCategories = computed(() =>
-  [...runtimeForm.categories].sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
+  sortDiningBuddyRuntimeCategories(runtimeForm.categories)
 )
 
 function applyRuntimeSettings(payload = {}) {
-  Object.assign(runtimeForm, createRuntimeForm(payload))
+  Object.assign(runtimeForm, createDiningBuddyRuntimeForm(payload))
 }
 
 function addQuestion() {
-  runtimeForm.questions.push(createRuntimeQuestion({
+  runtimeForm.questions.push(createDiningBuddyRuntimeQuestion({
     question: '新的问卷题目',
     options: [{ text: '选项一', icon: '✨' }]
   }))
@@ -499,11 +477,9 @@ function removeQuestion(index) {
 }
 
 function addQuestionOption(index) {
-  runtimeForm.questions[index]?.options?.push({
-    localKey: `option-${Math.random().toString(36).slice(2, 9)}`,
-    text: '',
-    icon: ''
-  })
+  runtimeForm.questions[index]?.options?.push(createDiningBuddyRuntimeQuestion({
+    options: [{ text: '', icon: '' }]
+  }).options[0])
 }
 
 function removeQuestionOption(questionIndex, optionIndex) {
@@ -525,8 +501,9 @@ async function loadRuntimeSettings(forceRefresh = false) {
 }
 
 async function saveRuntimeSettings() {
-  if (!runtimeForm.welcome_title) {
-    ElMessage.warning('欢迎标题不能为空')
+  const validationMessage = validateDiningBuddyRuntimeForm(runtimeForm)
+  if (validationMessage) {
+    ElMessage.warning(validationMessage)
     return
   }
   try {
@@ -538,34 +515,7 @@ async function saveRuntimeSettings() {
   }
   runtimeSaving.value = true
   try {
-    const payload = {
-      enabled: runtimeForm.enabled,
-      welcome_title: runtimeForm.welcome_title,
-      welcome_subtitle: runtimeForm.welcome_subtitle,
-      publish_limit_per_day: runtimeForm.publish_limit_per_day,
-      message_rate_limit_per_minute: runtimeForm.message_rate_limit_per_minute,
-      default_max_people: runtimeForm.default_max_people,
-      max_max_people: runtimeForm.max_max_people,
-      auto_close_expired_hours: runtimeForm.auto_close_expired_hours,
-      categories: runtimeForm.categories.map((item) => ({
-        id: item.id,
-        label: item.label,
-        icon: item.icon,
-        icon_type: item.icon_type,
-        enabled: item.enabled,
-        sort_order: item.sort_order,
-        color: item.color
-      })),
-      questions: runtimeForm.questions.map((question) => ({
-        question: question.question,
-        options: (Array.isArray(question.options) ? question.options : [])
-          .map((option) => ({
-            text: String(option.text || '').trim(),
-            icon: String(option.icon || '').trim()
-          }))
-          .filter((option) => option.text)
-      }))
-    }
+    const payload = buildDiningBuddyRuntimePayload(runtimeForm)
     const { data } = await request.post('/api/dining-buddy-settings', payload)
     applyRuntimeSettings(extractEnvelopeData(data) || payload)
     ElMessage.success('同频饭友运行配置已保存')
@@ -581,7 +531,7 @@ async function loadParties(forceRefresh = false) {
   try {
     const { data } = await request.get('/api/admin/dining-buddy/parties', {
       params: {
-        ...partyFilters,
+        ...buildDiningBuddyPartyListQuery(partyFilters),
         _t: forceRefresh ? Date.now() : undefined
       }
     })
@@ -626,7 +576,7 @@ async function loadMessages(partyId, forceRefresh = false) {
 }
 
 async function changePartyStatus(row, action) {
-  const actionLabel = action === 'close' ? '关闭' : '重开'
+  const actionLabel = getDiningBuddyPartyActionLabel(action)
   let reason = ''
   try {
     const promptResult = await ElMessageBox.prompt(`请输入${actionLabel}组局原因`, `${actionLabel}组局`, {
@@ -639,9 +589,10 @@ async function changePartyStatus(row, action) {
     return
   }
   try {
-    await request.post(`/api/admin/dining-buddy/parties/${encodeURIComponent(row.id)}/${action}`, {
-      reason
-    })
+    await request.post(
+      `/api/admin/dining-buddy/parties/${encodeURIComponent(row.id)}/${action}`,
+      buildDiningBuddyPartyActionPayload(reason),
+    )
     ElMessage.success(`组局已${actionLabel}`)
     await Promise.all([loadParties(true), loadAuditLogs(true)])
   } catch (error) {
@@ -654,7 +605,7 @@ async function loadReports(forceRefresh = false) {
   try {
     const { data } = await request.get('/api/admin/dining-buddy/reports', {
       params: {
-        status: reportStatus.value,
+        ...buildDiningBuddyReportListQuery(reportFilters),
         _t: forceRefresh ? Date.now() : undefined
       }
     })
@@ -667,12 +618,13 @@ async function loadReports(forceRefresh = false) {
 }
 
 async function handleReport(row, action) {
+  const actionLabel = getDiningBuddyReportActionLabel(action)
   let resolutionNote = ''
   let resolutionAction = row.resolution_action || ''
   try {
     const promptResult = await ElMessageBox.prompt(
       action === 'resolve' ? '请输入处理说明' : '请输入驳回原因',
-      action === 'resolve' ? '受理举报' : '驳回举报',
+      `${actionLabel}举报`,
       {
         confirmButtonText: '确认',
         cancelButtonText: '取消'
@@ -689,11 +641,14 @@ async function handleReport(row, action) {
     }
   }
   try {
-    await request.post(`/api/admin/dining-buddy/reports/${encodeURIComponent(row.id)}/${action}`, {
-      resolution_note: resolutionNote,
-      resolution_action: resolutionAction
-    })
-    ElMessage.success(action === 'resolve' ? '举报已受理' : '举报已驳回')
+    await request.post(
+      `/api/admin/dining-buddy/reports/${encodeURIComponent(row.id)}/${action}`,
+      buildDiningBuddyReportActionPayload(action, {
+        resolutionNote,
+        resolutionAction
+      }),
+    )
+    ElMessage.success(`举报已${actionLabel}`)
     await Promise.all([loadReports(true), loadAuditLogs(true)])
   } catch (error) {
     ElMessage.error(extractErrorMessage(error, '处理举报失败'))
@@ -726,29 +681,28 @@ async function loadSensitiveWords(forceRefresh = false) {
 }
 
 function openSensitiveDialog(row = null) {
-  Object.assign(sensitiveForm, createSensitiveForm(row || {}))
+  Object.assign(sensitiveForm, createDiningBuddySensitiveForm(row || {}))
   sensitiveDialogVisible.value = true
 }
 
 async function saveSensitiveWord() {
-  if (!sensitiveForm.word) {
-    ElMessage.warning('敏感词不能为空')
+  const validationMessage = validateDiningBuddySensitiveForm(sensitiveForm)
+  if (validationMessage) {
+    ElMessage.warning(validationMessage)
     return
   }
   sensitiveSaving.value = true
   try {
     if (sensitiveForm.id) {
-      await request.put(`/api/admin/dining-buddy/sensitive-words/${encodeURIComponent(sensitiveForm.id)}`, {
-        word: sensitiveForm.word,
-        description: sensitiveForm.description,
-        enabled: sensitiveForm.enabled
-      })
+      await request.put(
+        `/api/admin/dining-buddy/sensitive-words/${encodeURIComponent(sensitiveForm.id)}`,
+        buildDiningBuddySensitivePayload(sensitiveForm),
+      )
     } else {
-      await request.post('/api/admin/dining-buddy/sensitive-words', {
-        word: sensitiveForm.word,
-        description: sensitiveForm.description,
-        enabled: sensitiveForm.enabled
-      })
+      await request.post(
+        '/api/admin/dining-buddy/sensitive-words',
+        buildDiningBuddySensitivePayload(sensitiveForm),
+      )
     }
     sensitiveDialogVisible.value = false
     ElMessage.success('敏感词已保存')
@@ -792,24 +746,22 @@ async function loadRestrictions(forceRefresh = false) {
 }
 
 function openRestrictionDialog(row = null) {
-  Object.assign(restrictionForm, createRestrictionForm(row || {}))
+  Object.assign(restrictionForm, createDiningBuddyRestrictionForm(row || {}))
   restrictionDialogVisible.value = true
 }
 
 async function saveRestriction() {
-  if (!restrictionForm.target_user_id || !restrictionForm.restriction_type) {
-    ElMessage.warning('目标用户和限制类型不能为空')
+  const validationMessage = validateDiningBuddyRestrictionForm(restrictionForm)
+  if (validationMessage) {
+    ElMessage.warning(validationMessage)
     return
   }
   restrictionSaving.value = true
   try {
-    await request.post('/api/admin/dining-buddy/user-restrictions', {
-      target_user_id: restrictionForm.target_user_id,
-      restriction_type: restrictionForm.restriction_type,
-      reason: restrictionForm.reason,
-      note: restrictionForm.note,
-      expires_at: restrictionForm.expires_at
-    })
+    await request.post(
+      '/api/admin/dining-buddy/user-restrictions',
+      buildDiningBuddyRestrictionPayload(restrictionForm),
+    )
     restrictionDialogVisible.value = false
     ElMessage.success('用户限制已保存')
     await Promise.all([loadRestrictions(true), loadAuditLogs(true)])
@@ -847,7 +799,7 @@ async function deleteMessage(row) {
   }
   try {
     await request.delete(`/api/admin/dining-buddy/messages/${encodeURIComponent(row.id)}`, {
-      data: { reason }
+      data: buildDiningBuddyMessageDeletePayload(reason)
     })
     ElMessage.success('消息已删除')
     await Promise.all([

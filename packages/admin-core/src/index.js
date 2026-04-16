@@ -23,3 +23,4 @@ export * from "./home-entry-resources.js";
 export * from "./communication-audit-resources.js";
 export * from "./home-campaign-resources.js";
 export * from "./admin-management-resources.js";
+export * from "./dining-buddy-governance-resources.js";
