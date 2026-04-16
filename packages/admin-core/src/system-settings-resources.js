@@ -1364,3 +1364,216 @@ export function normalizeVIPSettings(payload = {}) {
 export function buildVIPSettingsPayload(settings = {}) {
   return normalizeVIPSettings(settings);
 }
+
+export const SYSTEM_SETTINGS_COLLECTION_LIMITS = Object.freeze({
+  riderReportReasons: 20,
+  riderInsuranceCoverages: 10,
+  riderInsuranceClaimSteps: 10,
+  rtcIceServers: 10,
+  charityLeaderboard: 20,
+  charityNews: 20,
+  vipLevels: 8,
+  vipBenefitsPerLevel: 12,
+  vipTasks: 20,
+  vipPointRules: 20,
+});
+
+export const SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES = Object.freeze({
+  riderReportReasons: "异常上报原因最多保留 20 条",
+  riderInsuranceCoverages: "保障项目最多保留 10 项",
+  riderInsuranceClaimSteps: "理赔步骤最多保留 10 条",
+  rtcIceServers: "RTC ICE/TURN 最多保留 10 组",
+  charityLeaderboard: "善行榜单最多保留 20 条",
+  charityNews: "公益资讯最多保留 20 条",
+  vipLevels: "会员等级最多保留 8 档",
+  vipBenefitsPerLevel: "单个会员等级最多保留 12 项权益",
+  vipTasks: "成长任务最多保留 20 项",
+  vipPointRules: "积分规则最多保留 20 条",
+});
+
+function cloneArray(items = []) {
+  return Array.isArray(items) ? [...items] : [];
+}
+
+function appendLimitedCollectionItem(
+  items = [],
+  createItem,
+  { limit, normalize } = {},
+) {
+  const nextItems =
+    typeof normalize === "function" ? normalize(items) : cloneArray(items);
+
+  if (nextItems.length >= limit) {
+    return {
+      items: nextItems,
+      added: false,
+      limit,
+    };
+  }
+
+  return {
+    items: [...nextItems, createItem()],
+    added: true,
+    limit,
+  };
+}
+
+function removeIndexedCollectionItem(items = [], index) {
+  const nextItems = cloneArray(items);
+  if (index < 0 || index >= nextItems.length) {
+    return nextItems;
+  }
+  nextItems.splice(index, 1);
+  return nextItems;
+}
+
+function cloneVIPLevelsCollection(levels = []) {
+  return cloneArray(levels).map((level) => ({
+    ...asRecord(level),
+    benefits: cloneArray(level?.benefits),
+  }));
+}
+
+export function appendRiderReportReason(items = []) {
+  return appendLimitedCollectionItem(items, () => "", {
+    limit: SYSTEM_SETTINGS_COLLECTION_LIMITS.riderReportReasons,
+    normalize: (value) =>
+      normalizeServiceStringList(
+        value,
+        [],
+        SYSTEM_SETTINGS_COLLECTION_LIMITS.riderReportReasons,
+      ),
+  });
+}
+
+export function removeRiderReportReason(items = [], index) {
+  return removeIndexedCollectionItem(items, index);
+}
+
+export function appendRiderInsuranceCoverage(items = []) {
+  return appendLimitedCollectionItem(items, createEmptyRiderInsuranceCoverage, {
+    limit: SYSTEM_SETTINGS_COLLECTION_LIMITS.riderInsuranceCoverages,
+    normalize: normalizeRiderInsuranceCoverages,
+  });
+}
+
+export function removeRiderInsuranceCoverage(items = [], index) {
+  return removeIndexedCollectionItem(items, index);
+}
+
+export function appendRiderInsuranceClaimStep(items = []) {
+  return appendLimitedCollectionItem(items, () => "", {
+    limit: SYSTEM_SETTINGS_COLLECTION_LIMITS.riderInsuranceClaimSteps,
+    normalize: (value) =>
+      normalizeServiceStringList(
+        value,
+        [],
+        SYSTEM_SETTINGS_COLLECTION_LIMITS.riderInsuranceClaimSteps,
+      ),
+  });
+}
+
+export function removeRiderInsuranceClaimStep(items = [], index) {
+  return removeIndexedCollectionItem(items, index);
+}
+
+export function appendRTCIceServer(items = []) {
+  return appendLimitedCollectionItem(items, createEmptyRTCIceServer, {
+    limit: SYSTEM_SETTINGS_COLLECTION_LIMITS.rtcIceServers,
+    normalize: normalizeRTCIceServers,
+  });
+}
+
+export function removeRTCIceServer(items = [], index) {
+  return removeIndexedCollectionItem(items, index);
+}
+
+export function appendCharityLeaderboardItem(items = []) {
+  return appendLimitedCollectionItem(items, createEmptyCharityLeaderboardItem, {
+    limit: SYSTEM_SETTINGS_COLLECTION_LIMITS.charityLeaderboard,
+  });
+}
+
+export function removeCharityLeaderboardItem(items = [], index) {
+  return removeIndexedCollectionItem(items, index);
+}
+
+export function appendCharityNewsItem(items = []) {
+  return appendLimitedCollectionItem(items, createEmptyCharityNewsItem, {
+    limit: SYSTEM_SETTINGS_COLLECTION_LIMITS.charityNews,
+  });
+}
+
+export function removeCharityNewsItem(items = [], index) {
+  return removeIndexedCollectionItem(items, index);
+}
+
+export function appendVIPLevel(items = []) {
+  return appendLimitedCollectionItem(items, createEmptyVIPLevel, {
+    limit: SYSTEM_SETTINGS_COLLECTION_LIMITS.vipLevels,
+  });
+}
+
+export function removeVIPLevel(items = [], index) {
+  return removeIndexedCollectionItem(items, index);
+}
+
+export function appendVIPBenefit(levels = [], levelIndex) {
+  const nextLevels = cloneVIPLevelsCollection(levels);
+  const level = nextLevels[levelIndex];
+
+  if (!level) {
+    return {
+      levels: nextLevels,
+      added: false,
+      limit: SYSTEM_SETTINGS_COLLECTION_LIMITS.vipBenefitsPerLevel,
+    };
+  }
+
+  if (level.benefits.length >= SYSTEM_SETTINGS_COLLECTION_LIMITS.vipBenefitsPerLevel) {
+    return {
+      levels: nextLevels,
+      added: false,
+      limit: SYSTEM_SETTINGS_COLLECTION_LIMITS.vipBenefitsPerLevel,
+    };
+  }
+
+  level.benefits = [...level.benefits, createEmptyVIPBenefit()];
+  return {
+    levels: nextLevels,
+    added: true,
+    limit: SYSTEM_SETTINGS_COLLECTION_LIMITS.vipBenefitsPerLevel,
+  };
+}
+
+export function removeVIPBenefit(levels = [], levelIndex, benefitIndex) {
+  const nextLevels = cloneVIPLevelsCollection(levels);
+  const level = nextLevels[levelIndex];
+
+  if (!level) {
+    return nextLevels;
+  }
+
+  level.benefits = removeIndexedCollectionItem(level.benefits, benefitIndex);
+  return nextLevels;
+}
+
+export function appendVIPTask(items = []) {
+  return appendLimitedCollectionItem(items, createEmptyVIPTask, {
+    limit: SYSTEM_SETTINGS_COLLECTION_LIMITS.vipTasks,
+  });
+}
+
+export function removeVIPTask(items = [], index) {
+  return removeIndexedCollectionItem(items, index);
+}
+
+export function appendVIPPointRule(items = []) {
+  return appendLimitedCollectionItem(items, () => "", {
+    limit: SYSTEM_SETTINGS_COLLECTION_LIMITS.vipPointRules,
+  });
+}
+
+export function removeVIPPointRule(items = [], index) {
+  return removeIndexedCollectionItem(items, index);
+}

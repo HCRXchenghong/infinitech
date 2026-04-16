@@ -2,6 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  appendCharityLeaderboardItem,
+  appendCharityNewsItem,
+  appendRiderInsuranceClaimStep,
+  appendRiderInsuranceCoverage,
+  appendRiderReportReason,
+  appendRTCIceServer,
+  appendVIPBenefit,
+  appendVIPLevel,
+  appendVIPPointRule,
+  appendVIPTask,
   buildAlipayConfigPayload,
   buildAppDownloadConfigPayload,
   buildCharitySettingsPayload,
@@ -20,6 +30,16 @@ import {
   createEmptyCharityNewsItem,
   createEmptyRTCIceServer,
   createEmptyRiderInsuranceCoverage,
+  removeCharityLeaderboardItem,
+  removeCharityNewsItem,
+  removeRiderInsuranceClaimStep,
+  removeRiderInsuranceCoverage,
+  removeRiderReportReason,
+  removeRTCIceServer,
+  removeVIPBenefit,
+  removeVIPLevel,
+  removeVIPPointRule,
+  removeVIPTask,
   normalizeAlipayConfig,
   normalizeAppDownloadConfig,
   normalizeCharitySettings,
@@ -35,6 +55,8 @@ import {
   normalizeWechatLoginConfig,
   normalizeWxpayConfig,
   resolveAdminServiceSoundPreviewUrl,
+  SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES,
+  SYSTEM_SETTINGS_COLLECTION_LIMITS,
   validateAdminAudioFile,
   validateAdminMiniProgramQrFile,
   validateAdminPackageFile,
@@ -418,4 +440,147 @@ test("system settings resources preserve vip semantics and isolate defaults", ()
   );
 
   assert.equal(buildVIPSettingsPayload({ levels: [] }).levels.length > 0, true);
+});
+
+test("system settings resources share collection draft mutation rules", () => {
+  assert.equal(SYSTEM_SETTINGS_COLLECTION_LIMITS.riderReportReasons, 20);
+  assert.equal(
+    SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.vipBenefitsPerLevel,
+    "单个会员等级最多保留 12 项权益",
+  );
+
+  assert.deepEqual(
+    appendRiderReportReason([" 出餐慢 ", "出餐慢", "联系不上顾客"]).items,
+    ["出餐慢", "联系不上顾客", ""],
+  );
+  assert.equal(
+    appendRiderReportReason(
+      Array.from({ length: 20 }, (_, index) => `原因${index + 1}`),
+    ).added,
+    false,
+  );
+  assert.deepEqual(removeRiderReportReason(["甲", "乙", "丙"], 1), ["甲", "丙"]);
+
+  assert.deepEqual(
+    appendRiderInsuranceCoverage([{ icon: " shield ", name: " 医疗 ", amount: " 10 万 " }]).items,
+    [
+      { icon: "shield", name: "医疗", amount: "10 万" },
+      { icon: "", name: "", amount: "" },
+    ],
+  );
+  assert.deepEqual(
+    removeRiderInsuranceCoverage(
+      [
+        { icon: "a", name: "A", amount: "1" },
+        { icon: "b", name: "B", amount: "2" },
+      ],
+      0,
+    ),
+    [{ icon: "b", name: "B", amount: "2" }],
+  );
+
+  assert.deepEqual(
+    appendRiderInsuranceClaimStep([" 第一步 ", "第二步"]).items,
+    ["第一步", "第二步", ""],
+  );
+  assert.deepEqual(
+    removeRiderInsuranceClaimStep(["第一步", "第二步"], 0),
+    ["第二步"],
+  );
+
+  assert.deepEqual(
+    appendRTCIceServer([{ url: " stun:test ", username: " admin ", credential: " token " }]).items,
+    [
+      { url: "stun:test", username: "admin", credential: "token" },
+      { url: "", username: "", credential: "" },
+    ],
+  );
+  assert.deepEqual(
+    removeRTCIceServer(
+      [
+        { url: "stun:a", username: "", credential: "" },
+        { url: "stun:b", username: "", credential: "" },
+      ],
+      0,
+    ),
+    [{ url: "stun:b", username: "", credential: "" }],
+  );
+
+  assert.deepEqual(appendCharityLeaderboardItem([{ name: "匿名", amount: 8 }]).items, [
+    { name: "匿名", amount: 8 },
+    { name: "", amount: 0, time_label: "" },
+  ]);
+  assert.deepEqual(
+    removeCharityLeaderboardItem([{ name: "甲" }, { name: "乙" }], 1),
+    [{ name: "甲" }],
+  );
+
+  assert.deepEqual(appendCharityNewsItem([{ title: "头条" }]).items, [
+    { title: "头条" },
+    { title: "", summary: "", source: "", time_label: "", image_url: "" },
+  ]);
+  assert.deepEqual(
+    removeCharityNewsItem([{ title: "头条" }, { title: "次条" }], 0),
+    [{ title: "次条" }],
+  );
+
+  assert.deepEqual(appendVIPLevel([{ name: "普通会员" }]).items.at(-1), {
+    name: "",
+    style_class: "level-quality",
+    tagline: "",
+    threshold_label: "",
+    threshold_value: 1000,
+    multiplier: 1,
+    is_black_gold: false,
+    benefits: [{ icon: "/static/icons/star.svg", title: "", desc: "", detail: "" }],
+  });
+  assert.deepEqual(removeVIPLevel([{ name: "A" }, { name: "B" }], 0), [{ name: "B" }]);
+
+  assert.deepEqual(
+    appendVIPBenefit([{ name: "黄金", benefits: [{ title: "原权益" }] }], 0),
+    {
+      levels: [
+        {
+          name: "黄金",
+          benefits: [
+            { title: "原权益" },
+            { icon: "/static/icons/star.svg", title: "", desc: "", detail: "" },
+          ],
+        },
+      ],
+      added: true,
+      limit: 12,
+    },
+  );
+  assert.deepEqual(
+    removeVIPBenefit(
+      [
+        {
+          name: "黄金",
+          benefits: [{ title: "原权益" }, { title: "次权益" }],
+        },
+      ],
+      0,
+      1,
+    ),
+    [
+      {
+        name: "黄金",
+        benefits: [{ title: "原权益" }],
+      },
+    ],
+  );
+
+  assert.deepEqual(appendVIPTask([{ title: "首单" }]).items.at(-1), {
+    title: "",
+    description: "",
+    reward_text: "",
+    action_label: "去完成",
+  });
+  assert.deepEqual(removeVIPTask([{ title: "首单" }, { title: "复购" }], 0), [
+    { title: "复购" },
+  ]);
+
+  assert.deepEqual(appendVIPPointRule(["规则一"]).items, ["规则一", ""]);
+  assert.deepEqual(removeVIPPointRule(["规则一", "规则二"], 1), ["规则一"]);
 });

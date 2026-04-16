@@ -1638,6 +1638,34 @@ assertContains(
   "mergeVIPSettings(extractEnvelopeData(vipResp.value.data) || {})",
 );
 assertContains(
+  "admin-vue/src/views/settingsHelpers.js",
+  "SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers.js",
+  "buildNextRiderReportReasons(",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers.js",
+  "buildNextVIPBenefits(",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers.js",
+  "buildNextCharityLeaderboardItems(",
+);
+assertNotContains(
+  "admin-vue/src/views/settingsHelpers.js",
+  "charitySettings.value.leaderboard.push(createEmptyCharityLeaderboardItem())",
+);
+assertNotContains(
+  "admin-vue/src/views/settingsHelpers.js",
+  "vipSettings.value.levels.push(createEmptyVIPLevel())",
+);
+assertNotContains(
+  "admin-vue/src/views/settingsHelpers.js",
+  "const reasons = normalizeServiceStringList(serviceSettings.value.rider_exception_report_reasons, [], 20);",
+);
+assertContains(
   "admin-vue/src/views/Dashboard.vue",
   "const payload = extractEnvelopeData(data) || {}",
 );

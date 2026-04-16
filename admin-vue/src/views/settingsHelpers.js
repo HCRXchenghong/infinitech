@@ -3,6 +3,16 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { extractEnvelopeData, extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
 import {
+  appendCharityLeaderboardItem as buildNextCharityLeaderboardItems,
+  appendCharityNewsItem as buildNextCharityNewsItems,
+  appendRiderInsuranceClaimStep as buildNextRiderInsuranceClaimSteps,
+  appendRiderInsuranceCoverage as buildNextRiderInsuranceCoverages,
+  appendRiderReportReason as buildNextRiderReportReasons,
+  appendRTCIceServer as buildNextRTCIceServers,
+  appendVIPBenefit as buildNextVIPBenefits,
+  appendVIPLevel as buildNextVIPLevels,
+  appendVIPPointRule as buildNextVIPPointRules,
+  appendVIPTask as buildNextVIPTasks,
   buildAppDownloadConfigPayload,
   buildCharitySettingsPayload,
   buildSMSConfigPayload,
@@ -21,28 +31,29 @@ import {
   createDefaultWeatherConfig,
   createDefaultWechatLoginConfig,
   createDefaultWxpayConfig,
-  createEmptyCharityLeaderboardItem,
-  createEmptyCharityNewsItem,
-  createEmptyRTCIceServer,
-  createEmptyRiderInsuranceCoverage,
-  createEmptyVIPBenefit,
-  createEmptyVIPLevel,
-  createEmptyVIPTask,
   normalizeAlipayConfig,
   normalizeAppDownloadConfig,
   normalizeCharitySettings,
   normalizeDebugModeConfig,
   normalizePayModeConfig,
-  normalizeRTCIceServers,
-  normalizeRiderInsuranceCoverages,
   normalizeSMSConfig,
   normalizeServiceSettings,
-  normalizeServiceStringList,
   normalizeVIPSettings,
   normalizeWeatherConfig,
   normalizeWechatLoginConfig,
   normalizeWxpayConfig,
+  removeCharityLeaderboardItem as buildNextCharityLeaderboardAfterRemove,
+  removeCharityNewsItem as buildNextCharityNewsAfterRemove,
+  removeRiderInsuranceClaimStep as buildNextRiderInsuranceClaimStepsAfterRemove,
+  removeRiderInsuranceCoverage as buildNextRiderInsuranceCoveragesAfterRemove,
+  removeRiderReportReason as buildNextRiderReportReasonsAfterRemove,
+  removeRTCIceServer as buildNextRTCIceServersAfterRemove,
+  removeVIPBenefit as buildNextVIPBenefitsAfterRemove,
+  removeVIPLevel as buildNextVIPLevelsAfterRemove,
+  removeVIPPointRule as buildNextVIPPointRulesAfterRemove,
+  removeVIPTask as buildNextVIPTasksAfterRemove,
   resolveAdminServiceSoundPreviewUrl,
+  SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES,
   validateAdminAudioFile,
   validateAdminMiniProgramQrFile,
   validateAdminPackageFile,
@@ -114,83 +125,67 @@ export function useSettingsPage() {
   }
 
   function addRiderReportReason() {
-    const reasons = normalizeServiceStringList(serviceSettings.value.rider_exception_report_reasons, [], 20);
-    if (reasons.length >= 20) {
-      ElMessage.warning('异常上报原因最多保留 20 条');
+    const result = buildNextRiderReportReasons(serviceSettings.value.rider_exception_report_reasons);
+    if (!result.added) {
+      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.riderReportReasons);
       return;
     }
-    serviceSettings.value.rider_exception_report_reasons = [
-      ...reasons,
-      ''
-    ];
+    serviceSettings.value.rider_exception_report_reasons = result.items;
   }
 
   function removeRiderReportReason(index) {
-    const reasons = Array.isArray(serviceSettings.value.rider_exception_report_reasons)
-      ? [...serviceSettings.value.rider_exception_report_reasons]
-      : [];
-    reasons.splice(index, 1);
-    serviceSettings.value.rider_exception_report_reasons = reasons;
+    serviceSettings.value.rider_exception_report_reasons = buildNextRiderReportReasonsAfterRemove(
+      serviceSettings.value.rider_exception_report_reasons,
+      index,
+    );
   }
 
   function addRiderInsuranceCoverage() {
-    const items = normalizeRiderInsuranceCoverages(serviceSettings.value.rider_insurance_coverages);
-    if (items.length >= 10) {
-      ElMessage.warning('保障项目最多保留 10 项');
+    const result = buildNextRiderInsuranceCoverages(serviceSettings.value.rider_insurance_coverages);
+    if (!result.added) {
+      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.riderInsuranceCoverages);
       return;
     }
-    serviceSettings.value.rider_insurance_coverages = [
-      ...items,
-      createEmptyRiderInsuranceCoverage()
-    ];
+    serviceSettings.value.rider_insurance_coverages = result.items;
   }
 
   function removeRiderInsuranceCoverage(index) {
-    const items = Array.isArray(serviceSettings.value.rider_insurance_coverages)
-      ? [...serviceSettings.value.rider_insurance_coverages]
-      : [];
-    items.splice(index, 1);
-    serviceSettings.value.rider_insurance_coverages = items;
+    serviceSettings.value.rider_insurance_coverages = buildNextRiderInsuranceCoveragesAfterRemove(
+      serviceSettings.value.rider_insurance_coverages,
+      index,
+    );
   }
 
   function addRiderInsuranceClaimStep() {
-    const steps = normalizeServiceStringList(serviceSettings.value.rider_insurance_claim_steps, [], 10);
-    if (steps.length >= 10) {
-      ElMessage.warning('理赔步骤最多保留 10 条');
+    const result = buildNextRiderInsuranceClaimSteps(serviceSettings.value.rider_insurance_claim_steps);
+    if (!result.added) {
+      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.riderInsuranceClaimSteps);
       return;
     }
-    serviceSettings.value.rider_insurance_claim_steps = [
-      ...steps,
-      ''
-    ];
+    serviceSettings.value.rider_insurance_claim_steps = result.items;
   }
 
   function removeRiderInsuranceClaimStep(index) {
-    const steps = Array.isArray(serviceSettings.value.rider_insurance_claim_steps)
-      ? [...serviceSettings.value.rider_insurance_claim_steps]
-      : [];
-    steps.splice(index, 1);
-    serviceSettings.value.rider_insurance_claim_steps = steps;
+    serviceSettings.value.rider_insurance_claim_steps = buildNextRiderInsuranceClaimStepsAfterRemove(
+      serviceSettings.value.rider_insurance_claim_steps,
+      index,
+    );
   }
 
   function addRTCIceServer() {
-    const servers = normalizeRTCIceServers(serviceSettings.value.rtc_ice_servers);
-    if (servers.length >= 10) {
-      ElMessage.warning('RTC ICE/TURN 最多保留 10 组');
+    const result = buildNextRTCIceServers(serviceSettings.value.rtc_ice_servers);
+    if (!result.added) {
+      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.rtcIceServers);
       return;
     }
-    serviceSettings.value.rtc_ice_servers = [
-      ...servers,
-      createEmptyRTCIceServer()
-    ];
+    serviceSettings.value.rtc_ice_servers = result.items;
   }
 
   function removeRTCIceServer(index) {
-    const servers = Array.isArray(serviceSettings.value.rtc_ice_servers)
-      ? [...serviceSettings.value.rtc_ice_servers]
-      : [];
-    servers.splice(index, 1);
-    serviceSettings.value.rtc_ice_servers = servers;
+    serviceSettings.value.rtc_ice_servers = buildNextRTCIceServersAfterRemove(
+      serviceSettings.value.rtc_ice_servers,
+      index,
+    );
   }
 
   function mergeCharitySettings(payload = {}) {
@@ -540,86 +535,100 @@ export function useSettingsPage() {
   }
 
   function addCharityLeaderboardItem() {
-    if (charitySettings.value.leaderboard.length >= 20) {
-      ElMessage.warning('善行榜单最多保留 20 条');
+    const result = buildNextCharityLeaderboardItems(charitySettings.value.leaderboard);
+    if (!result.added) {
+      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.charityLeaderboard);
       return;
     }
-    charitySettings.value.leaderboard.push(createEmptyCharityLeaderboardItem());
+    charitySettings.value.leaderboard = result.items;
   }
 
   function removeCharityLeaderboardItem(index) {
-    charitySettings.value.leaderboard.splice(index, 1);
+    charitySettings.value.leaderboard = buildNextCharityLeaderboardAfterRemove(
+      charitySettings.value.leaderboard,
+      index,
+    );
   }
 
   function addCharityNewsItem() {
-    if (charitySettings.value.news_list.length >= 20) {
-      ElMessage.warning('公益资讯最多保留 20 条');
+    const result = buildNextCharityNewsItems(charitySettings.value.news_list);
+    if (!result.added) {
+      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.charityNews);
       return;
     }
-    charitySettings.value.news_list.push(createEmptyCharityNewsItem());
+    charitySettings.value.news_list = result.items;
   }
 
   function removeCharityNewsItem(index) {
-    charitySettings.value.news_list.splice(index, 1);
+    charitySettings.value.news_list = buildNextCharityNewsAfterRemove(
+      charitySettings.value.news_list,
+      index,
+    );
   }
 
   function addVIPLevel() {
-    if (vipSettings.value.levels.length >= 8) {
-      ElMessage.warning('会员等级最多保留 8 档');
+    const result = buildNextVIPLevels(vipSettings.value.levels);
+    if (!result.added) {
+      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.vipLevels);
       return;
     }
-    vipSettings.value.levels.push(createEmptyVIPLevel());
+    vipSettings.value.levels = result.items;
   }
 
   function removeVIPLevel(index) {
-    vipSettings.value.levels.splice(index, 1);
+    vipSettings.value.levels = buildNextVIPLevelsAfterRemove(
+      vipSettings.value.levels,
+      index,
+    );
   }
 
   function addVIPBenefit(levelIndex) {
-    const level = vipSettings.value.levels[levelIndex];
-    if (!level) {
+    const result = buildNextVIPBenefits(vipSettings.value.levels, levelIndex);
+    if (!result.added) {
+      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.vipBenefitsPerLevel);
       return;
     }
-    if (!Array.isArray(level.benefits)) {
-      level.benefits = [];
-    }
-    if (level.benefits.length >= 12) {
-      ElMessage.warning('单个会员等级最多保留 12 项权益');
-      return;
-    }
-    level.benefits.push(createEmptyVIPBenefit());
+    vipSettings.value.levels = result.levels;
   }
 
   function removeVIPBenefit(levelIndex, benefitIndex) {
-    const level = vipSettings.value.levels[levelIndex];
-    if (!level || !Array.isArray(level.benefits)) {
-      return;
-    }
-    level.benefits.splice(benefitIndex, 1);
+    vipSettings.value.levels = buildNextVIPBenefitsAfterRemove(
+      vipSettings.value.levels,
+      levelIndex,
+      benefitIndex,
+    );
   }
 
   function addVIPTask() {
-    if (vipSettings.value.growth_tasks.length >= 20) {
-      ElMessage.warning('成长任务最多保留 20 项');
+    const result = buildNextVIPTasks(vipSettings.value.growth_tasks);
+    if (!result.added) {
+      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.vipTasks);
       return;
     }
-    vipSettings.value.growth_tasks.push(createEmptyVIPTask());
+    vipSettings.value.growth_tasks = result.items;
   }
 
   function removeVIPTask(index) {
-    vipSettings.value.growth_tasks.splice(index, 1);
+    vipSettings.value.growth_tasks = buildNextVIPTasksAfterRemove(
+      vipSettings.value.growth_tasks,
+      index,
+    );
   }
 
   function addVIPPointRule() {
-    if (vipSettings.value.point_rules.length >= 20) {
-      ElMessage.warning('积分规则最多保留 20 条');
+    const result = buildNextVIPPointRules(vipSettings.value.point_rules);
+    if (!result.added) {
+      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.vipPointRules);
       return;
     }
-    vipSettings.value.point_rules.push('');
+    vipSettings.value.point_rules = result.items;
   }
 
   function removeVIPPointRule(index) {
-    vipSettings.value.point_rules.splice(index, 1);
+    vipSettings.value.point_rules = buildNextVIPPointRulesAfterRemove(
+      vipSettings.value.point_rules,
+      index,
+    );
   }
 
   async function saveCharitySettings() {
