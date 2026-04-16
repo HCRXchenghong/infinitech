@@ -10,6 +10,7 @@
     "./home-index": "./src/home-index.js",
     "./message-center": "./src/message-center.js",
     "./notification-detail": "./src/notification-detail.js",
+    "./order-coupon": "./src/order-coupon.js",
     "./profile-edit": "./src/profile-edit.js",
     "./medicine-home": "./src/medicine-home.js",
     "./profile-home": "./src/profile-home.js",

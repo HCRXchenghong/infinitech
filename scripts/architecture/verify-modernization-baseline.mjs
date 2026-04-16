@@ -64,6 +64,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/message-center.test.mjs",
   "packages/mobile-core/src/notification-detail.js",
   "packages/mobile-core/src/notification-detail.test.mjs",
+  "packages/mobile-core/src/order-coupon.js",
+  "packages/mobile-core/src/order-coupon.test.mjs",
   "packages/mobile-core/src/profile-edit.js",
   "packages/mobile-core/src/profile-edit.test.mjs",
   "packages/mobile-core/src/profile-home.js",
@@ -73,6 +75,7 @@ function assertNotContains(relativePath, unexpectedText) {
   "shared/mobile-common/home-index-page.js",
   "shared/mobile-common/message-center-pages.js",
   "shared/mobile-common/notification-detail-page.js",
+  "shared/mobile-common/order-coupon-page.js",
   "shared/mobile-common/profile-edit-page.js",
   "shared/mobile-common/profile-home-page.js",
   "shared/mobile-common/profile-settings-pages.js",
@@ -930,11 +933,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/order/coupon/index.vue",
-  "extractEnvelopeData(res)",
+  "../../../../shared/mobile-common/order-coupon-page.js",
 );
 assertContains(
   "app-mobile/pages/order/coupon/index.vue",
-  "extractEnvelopeData(res)",
+  "../../../../shared/mobile-common/order-coupon-page.js",
 );
 assertContains(
   "user-vue/pages/profile/coupon-list/index.vue",
@@ -1250,7 +1253,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-coupon.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -2046,6 +2049,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./order-coupon.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./profile-edit.js";',
 );
 assertContains(
@@ -2063,6 +2070,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./notification-detail": "./src/notification-detail.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./order-coupon": "./src/order-coupon.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -2181,6 +2192,30 @@ assertContains(
 assertContains(
   "app-mobile/pages/index/index.vue",
   "createHomeIndexPage({",
+);
+assertContains(
+  "user-vue/pages/order/coupon/index.vue",
+  "../../../../shared/mobile-common/order-coupon-page.js",
+);
+assertContains(
+  "app-mobile/pages/order/coupon/index.vue",
+  "../../../../shared/mobile-common/order-coupon-page.js",
+);
+assertContains(
+  "user-vue/pages/order/coupon/index.vue",
+  "createOrderCouponPage({",
+);
+assertContains(
+  "app-mobile/pages/order/coupon/index.vue",
+  "createOrderCouponPage({",
+);
+assertContains(
+  "shared/mobile-common/order-confirm-page.js",
+  "extractConsumerAvailableOrderCoupons(res)",
+);
+assertContains(
+  "shared/mobile-common/order-confirm-page.js",
+  "resolveConsumerOrderCouponUserId(profile)",
 );
 assertContains(
   "user-vue/pages/message/index/index.vue",
@@ -2509,6 +2544,22 @@ assertNotContains(
 assertNotContains(
   "app-mobile/pages/index/index.vue",
   "const featureRoutes = {",
+);
+[
+  "user-vue/pages/order/coupon/index.vue",
+  "app-mobile/pages/order/coupon/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "function formatDiscountLabel(amount) {");
+  assertNotContains(relativePath, "extractEnvelopeData(res)");
+  assertNotContains(relativePath, "const userId = profile.phone || profile.id || profile.userId");
+});
+assertNotContains(
+  "shared/mobile-common/order-confirm-page.js",
+  "const userId = profile.phone || profile.id || profile.userId",
+);
+assertNotContains(
+  "shared/mobile-common/order-confirm-page.js",
+  "this.availableCoupons = res && Array.isArray(res.data) ? res.data : []",
 );
 [
   "user-vue/pages/message/index/index.vue",

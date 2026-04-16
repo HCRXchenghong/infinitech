@@ -1,4 +1,8 @@
 import { fallbackOrderPayMethods, normalizeOrderPayMethods } from './order-payment-options.js'
+import {
+  extractConsumerAvailableOrderCoupons,
+  resolveConsumerOrderCouponUserId,
+} from '../../packages/mobile-core/src/order-coupon.js'
 
 function normalizeBizType(raw) {
   const value = String(raw || '').trim().toLowerCase()
@@ -351,7 +355,7 @@ export function createOrderConfirmPage({
       async loadAvailableCoupons(shopId) {
         try {
           const profile = uni.getStorageSync('userProfile') || {}
-          const userId = profile.phone || profile.id || profile.userId
+          const userId = resolveConsumerOrderCouponUserId(profile)
           if (!userId) return
 
           const res = await request({
@@ -364,7 +368,7 @@ export function createOrderConfirmPage({
             }
           })
 
-          this.availableCoupons = res && Array.isArray(res.data) ? res.data : []
+          this.availableCoupons = extractConsumerAvailableOrderCoupons(res)
         } catch (error) {
           const htmlPayload = (error && error.data && error.data.data) || (error && error.data)
           if (!this.isHtmlErrorPayload(htmlPayload)) {
@@ -414,7 +418,7 @@ export function createOrderConfirmPage({
         }
 
         const profile = uni.getStorageSync('userProfile') || {}
-        const userId = profile.phone || profile.id || profile.userId || ''
+        const userId = resolveConsumerOrderCouponUserId(profile)
         const token = uni.getStorageSync('token') || ''
         if (!this.selectedPayMethod) {
           uni.showToast({ title: '当前没有可用支付方式', icon: 'none' })

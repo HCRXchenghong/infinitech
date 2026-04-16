@@ -6,6 +6,7 @@ export * from "./auth-portal.js";
 export * from "./home-index.js";
 export * from "./message-center.js";
 export * from "./notification-detail.js";
+export * from "./order-coupon.js";
 export * from "./profile-edit.js";
 export * from "./profile-home.js";
 export * from "./profile-settings.js";
