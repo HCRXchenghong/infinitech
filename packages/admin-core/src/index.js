@@ -6,3 +6,4 @@ export * from "./upload.js";
 export * from "./temporary-credential.js";
 export * from "./paginated-resources.js";
 export * from "./system-log-resources.js";
+export * from "./payment-center-resources.js";

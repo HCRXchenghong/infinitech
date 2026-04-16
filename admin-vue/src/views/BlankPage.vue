@@ -185,7 +185,7 @@
                   {{ withdrawStatusLabel(row.status) }}
                 </el-tag>
                 <span v-if="getWithdrawAutoRetry(row)" class="muted-text">
-                  {{ withdrawAutoRetryLabel(row) }}
+                  {{ workbenchWithdrawAutoRetryLabel(row) }}
                 </span>
               </div>
             </template>
@@ -227,7 +227,19 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts'
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts'
+import {
+  createDefaultPaymentGatewaySummary,
+  extractWithdrawRequestPage,
+  formatAdminDateTime,
+  getWithdrawAutoRetry,
+  normalizePaymentGatewaySummary,
+  withdrawAutoRetryLabel,
+  withdrawMethodLabel,
+  withdrawStatusLabel,
+  withdrawStatusTag,
+  withdrawUserTypeLabel as userTypeLabel,
+} from '@infinitech/admin-core'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 
@@ -240,12 +252,7 @@ const serviceStatus = reactive({
   services: [],
   journeys: [],
 })
-const gatewaySummary = ref({
-  mode: { isProd: false },
-  wechat: {},
-  alipay: {},
-  bankCard: {},
-})
+const gatewaySummary = ref(createDefaultPaymentGatewaySummary())
 const riderDepositOverview = ref({})
 const withdrawRequests = ref([])
 
@@ -285,10 +292,6 @@ const recentWithdrawRequests = computed(() => {
     .slice(0, 8)
 })
 
-function normalizeListPayload(payload) {
-  return extractPaginatedItems(payload).items
-}
-
 function go(path) {
   router.push(path)
 }
@@ -298,11 +301,7 @@ function yesNo(value) {
 }
 
 function formatTime(value) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return String(value)
-  const pad = (part) => String(part).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  return formatAdminDateTime(value, { includeSeconds: true })
 }
 
 function formatFen(value) {
@@ -341,58 +340,12 @@ function formatServiceDetail(detail) {
   return summary || '暂未返回扩展说明'
 }
 
-function withdrawMethodLabel(method) {
-  return {
-    wechat: '微信提现',
-    alipay: '支付宝提现',
-    bank_card: '银行卡提现',
-  }[String(method || '')] || method || '-'
-}
-
-function userTypeLabel(userType) {
-  return {
-    customer: '用户',
-    rider: '骑手',
-    merchant: '商户',
-  }[String(userType || '')] || userType || '-'
-}
-
-function withdrawStatusLabel(status) {
-  return {
-    pending: '待审核',
-    pending_review: '待审核',
-    pending_transfer: '待打款',
-    transferring: '转账中',
-    success: '已完成',
-    failed: '已失败',
-    rejected: '已驳回',
-  }[String(status || '')] || status || '-'
-}
-
-function withdrawStatusTag(status) {
-  if (status === 'success') return 'success'
-  if (status === 'failed' || status === 'rejected') return 'danger'
-  if (status === 'pending_transfer' || status === 'transferring') return 'warning'
-  return 'info'
-}
-
-function getWithdrawAutoRetry(row) {
-  const retry = row?.auto_retry || row?.autoRetry
-  if (!retry || typeof retry !== 'object') return null
-  return retry
-}
-
-function withdrawAutoRetryLabel(row) {
-  const retry = getWithdrawAutoRetry(row)
-  if (!retry?.eligible) return ''
-  if (retry.retryExhausted) return '自动重试已耗尽'
-  if (String(retry.nextRetryAt || '').trim()) {
-    return `待自动重试：${formatTime(retry.nextRetryAt)}`
-  }
-  if (Number(retry.retryCount || 0) > 0) {
-    return `已重试 ${Number(retry.retryCount || 0)}/${Number(retry.maxRetryCount || 0) || 3}`
-  }
-  return '自动重试已启用'
+function workbenchWithdrawAutoRetryLabel(row) {
+  return withdrawAutoRetryLabel(row, {
+    disabledLabel: '',
+    includeNextRetryAt: true,
+    formatDateTime: formatTime,
+  })
 }
 
 async function loadWorkbench() {
@@ -405,14 +358,15 @@ async function loadWorkbench() {
       request.get('/api/pay-center/withdraw-requests', { params: { page: 1, limit: 20 } }),
     ])
 
-    const nextHealth = healthRes.data?.serviceStatus || {}
+    const healthPayload = extractEnvelopeData(healthRes.data) || {}
+    const nextHealth = healthPayload.serviceStatus || {}
     serviceStatus.checkedAt = String(nextHealth.checkedAt || '')
     serviceStatus.overall = String(nextHealth.overall || 'unknown')
     serviceStatus.services = Array.isArray(nextHealth.services) ? nextHealth.services : []
     serviceStatus.journeys = Array.isArray(nextHealth.journeys) ? nextHealth.journeys : []
-    gatewaySummary.value = healthRes.data?.gateway_summary || { mode: { isProd: false }, wechat: {}, alipay: {}, bankCard: {} }
-    riderDepositOverview.value = depositRes.data || {}
-    withdrawRequests.value = normalizeListPayload(withdrawRes.data)
+    gatewaySummary.value = normalizePaymentGatewaySummary(healthPayload.gateway_summary)
+    riderDepositOverview.value = extractEnvelopeData(depositRes.data) || {}
+    withdrawRequests.value = extractWithdrawRequestPage(withdrawRes.data).items
   } catch (error) {
     pageError.value = extractErrorMessage(error, '加载联调工作台失败')
   } finally {

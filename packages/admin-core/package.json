@@ -12,6 +12,7 @@
     "./desktop-shell": "./src/desktop-shell.js",
     "./upload": "./src/upload.js",
     "./paginated-resources": "./src/paginated-resources.js",
-    "./system-log-resources": "./src/system-log-resources.js"
+    "./system-log-resources": "./src/system-log-resources.js",
+    "./payment-center-resources": "./src/payment-center-resources.js"
   }
 }

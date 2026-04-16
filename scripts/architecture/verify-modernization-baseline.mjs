@@ -49,6 +49,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/admin-core/src/temporary-credential.js",
   "packages/admin-core/src/paginated-resources.js",
   "packages/admin-core/src/paginated-resources.test.mjs",
+  "packages/admin-core/src/payment-center-resources.js",
+  "packages/admin-core/src/payment-center-resources.test.mjs",
   "packages/admin-core/src/DesktopShellApp.vue",
   "admin-win/src/App.vue",
   "admin-mac/src/App.vue",
@@ -233,6 +235,18 @@ assertContains(
 assertContains(
   "admin-vue/src/views/Users.vue",
   "extractTemporaryCredential(",
+);
+assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "normalizePaymentCenterConfig",
+);
+assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "extractPaymentCallbackDetail",
+);
+assertContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "createDefaultPaymentGatewaySummary",
 );
 assertContains(
   "backend/go/internal/handler/sms_handler.go",
@@ -1011,7 +1025,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs"',
+  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -1063,11 +1077,11 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/PaymentCenter.vue",
-  "extractPaginatedItems(payload).items",
+  "extractPaymentCallbackPage",
 );
 assertContains(
   "admin-vue/src/views/BlankPage.vue",
-  "extractPaginatedItems(payload).items",
+  "extractWithdrawRequestPage",
 );
 assertContains(
   "admin-vue/src/views/NotificationEditorPage.vue",
@@ -1395,7 +1409,7 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/PaymentCenter.vue",
-  "if (String(row?.status || '') === 'processing') return 'warning'",
+  "paymentCallbackStatusTag",
 );
 assertContains(
   "admin-vue/src/views/dataManagementHelpers.js",

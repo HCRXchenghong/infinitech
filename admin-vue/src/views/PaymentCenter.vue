@@ -1064,7 +1064,31 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts'
+import {
+  extractEnvelopeData,
+  extractErrorMessage,
+  extractPaginatedItems,
+} from '@infinitech/contracts'
+import {
+  extractPaymentCallbackDetail,
+  extractPaymentCallbackPage,
+  extractWithdrawRequestPage,
+  formatAdminDateTime as formatDateTime,
+  getWithdrawAutoRetry,
+  maskCardNo,
+  normalizePaymentCenterConfig,
+  paymentCallbackChannelLabel,
+  paymentCallbackStatusLabel,
+  paymentCallbackStatusTag,
+  settlementSnapshotStatusLabel,
+  withdrawAutoRetryHint,
+  withdrawAutoRetryLabel,
+  withdrawAutoRetryTag,
+  withdrawMethodLabel,
+  withdrawOperationTypeLabel,
+  withdrawStatusLabel,
+  withdrawUserTypeLabel,
+} from '@infinitech/admin-core'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 import ImageUpload from '@/components/ImageUpload.vue'
@@ -1156,11 +1180,6 @@ const callbackFilter = reactive({
   thirdPartyOrderId: '',
 })
 
-function cloneValue(value, fallback) {
-  if (value == null) return fallback
-  return JSON.parse(JSON.stringify(value))
-}
-
 function normalizeListPayload(payload) {
   return extractPaginatedItems(payload).items
 }
@@ -1190,64 +1209,17 @@ const pendingBankWithdrawRequests = computed(() => {
 })
 
 function normalizeConfig(payload = {}) {
-  gatewaySummary.value = cloneValue(payload.gateway_summary, {
-    mode: { isProd: false },
-    wechat: {},
-    alipay: {},
-    bankCard: {},
-  })
-  state.pay_mode = { isProd: false, ...cloneValue(payload.pay_mode, {}) }
-  state.wxpay_config = {
-    appId: '',
-    mchId: '',
-    apiKey: '',
-    apiV3Key: '',
-    serialNo: '',
-    notifyUrl: '',
-    refundNotifyUrl: '',
-    payoutNotifyUrl: '',
-    payoutSceneId: '',
-    ...cloneValue(payload.wxpay_config, {}),
-  }
-  state.alipay_config = {
-    appId: '',
-    privateKey: '',
-    alipayPublicKey: '',
-    notifyUrl: '',
-    payoutNotifyUrl: '',
-    sidecarUrl: '',
-    sandbox: true,
-    ...cloneValue(payload.alipay_config, {}),
-  }
-  state.channel_matrix = cloneValue(payload.channel_matrix, [])
-  state.withdraw_fee_rules = cloneValue(payload.withdraw_fee_rules, [])
-  state.settlement_subjects = cloneValue(payload.settlement_subjects, [])
-  state.settlementRulesText = JSON.stringify(cloneValue(payload.settlement_rules, []), null, 2)
-  state.rider_deposit_policy = {
-    amount: 5000,
-    unlock_days: 7,
-    auto_approve_withdrawal: true,
-    allowed_methods: ['wechat', 'alipay'],
-    ...cloneValue(payload.rider_deposit_policy, {}),
-  }
-  state.bank_card_config = {
-    arrival_text: '24小时-48小时',
-    sidecar_url: '',
-    provider_url: '',
-    merchant_id: '',
-    api_key: '',
-    notify_url: '',
-    allow_stub: false,
-    ...cloneValue(payload.bank_card_config, {}),
-  }
-  state.bank_card_config.sidecar_url ||= ''
-  state.bank_card_config.provider_url ||= ''
-  state.bank_card_config.merchant_id ||= ''
-  state.bank_card_config.api_key ||= ''
-  state.bank_card_config.notify_url ||= ''
-  if (typeof state.bank_card_config.allow_stub !== 'boolean') {
-    state.bank_card_config.allow_stub = false
-  }
+  const normalized = normalizePaymentCenterConfig(payload)
+  gatewaySummary.value = normalized.gatewaySummary
+  state.pay_mode = normalized.pay_mode
+  state.wxpay_config = normalized.wxpay_config
+  state.alipay_config = normalized.alipay_config
+  state.channel_matrix = normalized.channel_matrix
+  state.withdraw_fee_rules = normalized.withdraw_fee_rules
+  state.settlement_subjects = normalized.settlement_subjects
+  state.settlementRulesText = JSON.stringify(normalized.settlement_rules, null, 2)
+  state.rider_deposit_policy = normalized.rider_deposit_policy
+  state.bank_card_config = normalized.bank_card_config
 }
 
 async function loadAll() {
@@ -1262,10 +1234,10 @@ async function loadAll() {
       request.get('/api/admin/wallet/payment-callbacks', { params: { page: 1, limit: 50 } }),
     ])
     normalizeConfig(configRes.data || {})
-    riderDepositOverview.value = overviewRes.data || {}
+    riderDepositOverview.value = extractEnvelopeData(overviewRes.data) || {}
     state.riderDepositRecords = normalizeListPayload(recordsRes.data)
-    state.withdrawRequests = normalizeListPayload(withdrawRes.data)
-    state.paymentCallbacks = normalizeListPayload(callbackRes.data)
+    state.withdrawRequests = extractWithdrawRequestPage(withdrawRes.data).items
+    state.paymentCallbacks = extractPaymentCallbackPage(callbackRes.data).items
   } catch (error) {
     pageError.value = extractErrorMessage(error, '加载支付中心失败')
   } finally {
@@ -1289,7 +1261,7 @@ async function loadPaymentCallbacks() {
         thirdPartyOrderId: callbackFilter.thirdPartyOrderId || undefined,
       },
     })
-    state.paymentCallbacks = normalizeListPayload(data)
+    state.paymentCallbacks = extractPaymentCallbackPage(data).items
   } catch (error) {
     pageError.value = extractErrorMessage(error, '加载回调日志失败')
   } finally {
@@ -1362,124 +1334,6 @@ function formatFenOrDash(value) {
   return formatFen(value)
 }
 
-function formatDateTime(value) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return String(value)
-  const pad = (part) => String(part).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
-
-function getWithdrawAutoRetry(row) {
-  const retry = row?.auto_retry || row?.autoRetry
-  if (!retry || typeof retry !== 'object') return null
-  return retry
-}
-
-function withdrawAutoRetryTag(row) {
-  const retry = getWithdrawAutoRetry(row)
-  if (!retry?.eligible) return 'info'
-  if (retry.retryExhausted) return 'danger'
-  if (String(retry.nextRetryAt || '').trim()) return 'warning'
-  if (Number(retry.retryCount || 0) > 0) return 'success'
-  return 'info'
-}
-
-function withdrawAutoRetryLabel(row) {
-  const retry = getWithdrawAutoRetry(row)
-  if (!retry?.eligible) return '未启用'
-  if (retry.retryExhausted) return '已耗尽'
-  if (String(retry.nextRetryAt || '').trim()) return '待自动重试'
-  if (Number(retry.retryCount || 0) > 0) {
-    return `已重试 ${Number(retry.retryCount || 0)}/${Number(retry.maxRetryCount || 0) || 3}`
-  }
-  return '自动重试已启用'
-}
-
-function withdrawAutoRetryHint(row) {
-  const retry = getWithdrawAutoRetry(row)
-  if (!retry?.eligible) return '-'
-  if (String(retry.nextRetryAt || '').trim()) {
-    return `下次重试：${formatDateTime(retry.nextRetryAt)}`
-  }
-  if (retry.retryExhausted) {
-    return String(retry.lastFailureReason || '').trim() || '已达到最大重试次数'
-  }
-  if (String(retry.lastRetryAt || '').trim()) {
-    return `最近重试：${formatDateTime(retry.lastRetryAt)}`
-  }
-  if (Number(retry.retryCount || 0) > 0) {
-    return `累计重试 ${Number(retry.retryCount || 0)} 次`
-  }
-  return '等待网关回调或人工处理'
-}
-
-function withdrawStatusLabel(status) {
-  return {
-    pending: '待审核',
-    pending_review: '待审核',
-    pending_transfer: '待打款',
-    transferring: '转账中',
-    success: '已完成',
-    failed: '已失败',
-    rejected: '已驳回',
-  }[String(status || '')] || status || '-'
-}
-
-function withdrawMethodLabel(method) {
-  return {
-    wechat: '微信提现',
-    alipay: '支付宝提现',
-    bank_card: '银行卡提现',
-  }[String(method || '')] || method || '-'
-}
-
-function withdrawUserTypeLabel(userType) {
-  return {
-    customer: '用户',
-    rider: '骑手',
-    merchant: '商户',
-  }[String(userType || '')] || userType || '-'
-}
-
-function paymentCallbackStatusTag(row) {
-  if (row?.verified && String(row?.status || '') === 'success') return 'success'
-  if (!row?.verified) return 'danger'
-  if (String(row?.status || '') === 'processing') return 'warning'
-  if (String(row?.status || '') === 'pending') return 'warning'
-  if (String(row?.status || '') === 'ignored') return 'info'
-  return 'info'
-}
-
-function paymentCallbackStatusLabel(row) {
-  if (!row) return '-'
-  const status = String(row.status || '')
-  if (!row.verified) return '验签失败'
-  if (status === 'success') return '已处理'
-  if (status === 'processing') return '处理中'
-  if (status === 'pending') return '待处理'
-  if (status === 'ignored') return '已忽略'
-  if (status === 'failed') return '处理失败'
-  return status || '-'
-}
-
-function paymentCallbackChannelLabel(channel) {
-  return {
-    wechat: '微信',
-    alipay: '支付宝',
-    bank_card: '银行卡',
-  }[String(channel || '')] || channel || '-'
-}
-
-function settlementSnapshotStatusLabel(status) {
-  return {
-    pending_settlement: '待结算',
-    settled: '已结算',
-    reversed: '已冲销',
-    missing: '未生成',
-  }[String(status || '')] || status || '-'
-}
-
 function prettyJson(value) {
   if (value == null || value === '') return '-'
   if (typeof value === 'string') {
@@ -1506,7 +1360,7 @@ async function loadSettlementOrder() {
   pageError.value = ''
   try {
     const { data } = await request.get(`/api/settlement/orders/${encodeURIComponent(orderId)}`)
-    settlementOrderDetail.value = data || null
+    settlementOrderDetail.value = extractEnvelopeData(data) || null
   } catch (error) {
     settlementOrderDetail.value = null
     pageError.value = extractErrorMessage(error, '查询订单分账失败')
@@ -1528,7 +1382,7 @@ async function openPaymentCallbackDetail(row) {
   pageError.value = ''
   try {
     const { data } = await request.get(`/api/admin/wallet/payment-callbacks/${encodeURIComponent(callbackId)}`)
-    callbackDetail.value = data || null
+    callbackDetail.value = extractPaymentCallbackDetail(data)
     callbackDetailVisible.value = true
   } catch (error) {
     pageError.value = extractErrorMessage(error, '加载回调详情失败')
@@ -1573,34 +1427,12 @@ async function replayPaymentCallback(row) {
   }
 }
 
-function maskCardNo(value) {
-  const raw = String(value || '').trim()
-  if (!raw) return '-'
-  if (raw.length <= 8) return raw
-  return `${raw.slice(0, 4)} **** **** ${raw.slice(-4)}`
-}
-
 function resetWithdrawHistory() {
   withdrawActionHistory.value = []
   withdrawHistoryTarget.requestId = ''
   withdrawHistoryTarget.method = ''
   withdrawHistoryTarget.userType = ''
   withdrawHistoryTarget.amount = 0
-}
-
-function withdrawOperationTypeLabel(value) {
-  return {
-    withdraw_approve: '审核通过',
-    withdraw_reject: '审核驳回',
-    withdraw_execute: '发起打款',
-    withdraw_mark_processing: '标记转账中',
-    withdraw_complete: '确认打款成功',
-    withdraw_fail: '标记打款失败',
-    withdraw_sync_gateway_status: '同步网关状态',
-    withdraw_retry_payout: '重试打款',
-    withdraw_supplement_success: '补记成功',
-    withdraw_supplement_fail: '补记失败',
-  }[String(value || '').trim()] || String(value || '-')
 }
 
 function formatAdminOperationActor(row) {
