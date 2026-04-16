@@ -3,7 +3,6 @@ package handler
 import (
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -18,46 +17,65 @@ func NewOpNotificationHandler(service *service.OpNotificationService) *OpNotific
 	return &OpNotificationHandler{service: service}
 }
 
+func respondOpNotificationError(c *gin.Context, status int, message string) {
+	respondErrorEnvelope(c, status, couponResponseCodeForStatus(status), message, nil)
+}
+
+func respondOpNotificationMirroredSuccess(c *gin.Context, message string, data interface{}) {
+	respondMirroredSuccessEnvelope(c, message, data)
+}
+
+func writeOpNotificationServiceError(c *gin.Context, err error, fallbackStatus int) {
+	if errors.Is(err, service.ErrUnauthorized) {
+		respondOpNotificationError(c, http.StatusUnauthorized, err.Error())
+		return
+	}
+	if errors.Is(err, service.ErrForbidden) {
+		respondOpNotificationError(c, http.StatusForbidden, err.Error())
+		return
+	}
+	if strings.Contains(strings.ToLower(err.Error()), "invalid") {
+		respondOpNotificationError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	respondOpNotificationError(c, fallbackStatus, err.Error())
+}
+
 func (h *OpNotificationHandler) List(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1)
+	limit := parsePositiveInt(c.DefaultQuery("limit", "20"), 20)
 	unread := c.DefaultQuery("unread", "false")
 	unreadOnly := unread == "1" || unread == "true" || unread == "yes"
 
 	result, err := h.service.List(c.Request.Context(), page, limit, unreadOnly)
 	if err != nil {
-		if errors.Is(err, service.ErrUnauthorized) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-			return
-		}
-		if errors.Is(err, service.ErrForbidden) {
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		writeOpNotificationServiceError(c, err, http.StatusBadRequest)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+
+	respondSuccessEnvelope(c, "运营通知列表加载成功", gin.H{
+		"items": result["list"],
+		"total": result["total"],
+		"page":  result["page"],
+		"limit": result["limit"],
+	}, gin.H{
+		"list":  result["list"],
+		"total": result["total"],
+		"page":  result["page"],
+		"limit": result["limit"],
+	})
 }
 
 func (h *OpNotificationHandler) MarkRead(c *gin.Context) {
 	idRaw := strings.TrimSpace(c.Param("id"))
 	if idRaw == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid notification id"})
+		respondOpNotificationError(c, http.StatusBadRequest, "invalid notification id")
 		return
 	}
 
 	if err := h.service.MarkRead(c.Request.Context(), idRaw); err != nil {
-		if errors.Is(err, service.ErrUnauthorized) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-			return
-		}
-		if errors.Is(err, service.ErrForbidden) {
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		writeOpNotificationServiceError(c, err, http.StatusBadRequest)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondOpNotificationMirroredSuccess(c, "运营通知已标记为已读", gin.H{"id": idRaw, "read": true})
 }

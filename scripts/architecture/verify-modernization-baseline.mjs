@@ -490,6 +490,18 @@ assertContains(
   'respondMessageMirroredSuccess(c, "消息同步成功", gin.H{',
 );
 assertContains(
+  "backend/go/internal/handler/op_notification_handler.go",
+  "func writeOpNotificationServiceError(c *gin.Context, err error, fallbackStatus int)",
+);
+assertContains(
+  "backend/go/internal/handler/op_notification_handler.go",
+  'respondSuccessEnvelope(c, "运营通知列表加载成功", gin.H{',
+);
+assertContains(
+  "backend/go/internal/handler/op_notification_handler.go",
+  'respondOpNotificationMirroredSuccess(c, "运营通知已标记为已读", gin.H{"id": idRaw, "read": true})',
+);
+assertContains(
   "backend/go/internal/handler/medicine_handler.go",
   'respondMirroredSuccessEnvelope(c, "问药咨询结果加载成功", result)',
 );
