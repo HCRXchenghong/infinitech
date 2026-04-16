@@ -78,144 +78,15 @@
 
 <script>
 import { createOrder, uploadCommonImage } from '@/shared-ui/api.js'
-import { normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
 import { buildErrandOrderPayload, requireCurrentUserIdentity } from '@/shared-ui/errand.js'
+import { createMedicineOrderPage } from '../../../shared/mobile-common/medicine-order-pages.js'
 
-const DEFAULT_ADDRESS = '请选择送药地址'
-
-export default {
-  data() {
-    return {
-      medOrderDesc: '',
-      medPrice: '',
-      hasPrescription: false,
-      prescriptionFileName: '',
-      prescriptionFileUrl: '',
-      deliveryAddress: DEFAULT_ADDRESS,
-      serviceFee: 18,
-      uploadingPrescription: false,
-      submitting: false
-    }
-  },
-  computed: {
-    medPriceNumber() {
-      const n = Number(this.medPrice)
-      return Number.isFinite(n) ? n : 0
-    },
-    canEstimate() {
-      return String(this.medOrderDesc || '').trim() !== '' && this.medPriceNumber > 0
-    },
-    canSubmit() {
-      if (!this.canEstimate) return false
-      if (!this.deliveryAddress || this.deliveryAddress === DEFAULT_ADDRESS) return false
-      if (this.hasPrescription && !this.prescriptionFileUrl) return false
-      return true
-    },
-    totalFee() {
-      return this.serviceFee + this.medPriceNumber
-    }
-  },
-  onLoad(query) {
-    if (query && query.prefill) {
-      this.medOrderDesc = decodeURIComponent(query.prefill)
-    }
-    this.syncAddress()
-  },
-  onShow() {
-    this.syncAddress()
-  },
-  methods: {
-    syncAddress() {
-      const selectedAddress = String(uni.getStorageSync('selectedAddress') || '').trim()
-      this.deliveryAddress = selectedAddress || DEFAULT_ADDRESS
-    },
-    back() {
-      uni.navigateBack()
-    },
-    onRxChange(e) {
-      this.hasPrescription = !!e.detail.value
-      if (!this.hasPrescription) {
-        this.prescriptionFileName = ''
-        this.prescriptionFileUrl = ''
-      }
-    },
-    selectAddress() {
-      uni.navigateTo({ url: '/pages/profile/address-list/index?select=1' })
-    },
-    uploadPrescription() {
-      if (this.uploadingPrescription) return
-      uni.chooseImage({
-        count: 1,
-        success: async (res) => {
-          const filePath = res.tempFilePaths && res.tempFilePaths[0]
-          if (!filePath) return
-          this.uploadingPrescription = true
-          uni.showLoading({ title: '上传处方中...', mask: true })
-          try {
-            const uploaded = await uploadCommonImage(filePath)
-            const url = String((uploaded && uploaded.url) || '').trim()
-            if (!url) {
-              throw new Error('上传失败')
-            }
-            const parts = filePath.split(/[\\/]/)
-            this.prescriptionFileName = parts[parts.length - 1] || '已上传处方'
-            this.prescriptionFileUrl = url
-          } catch (_error) {
-            uni.showToast({ title: '处方上传失败', icon: 'none' })
-          } finally {
-            uni.hideLoading()
-            this.uploadingPrescription = false
-          }
-        }
-      })
-    },
-    async submit() {
-      if (!this.canSubmit || this.submitting) return
-      const identity = requireCurrentUserIdentity()
-      if (!identity) return
-
-      this.submitting = true
-      uni.showLoading({ title: '提交中...', mask: true })
-      try {
-        const payload = buildErrandOrderPayload(
-          {
-            serviceType: 'errand_buy',
-            serviceName: '极速买药',
-            shopName: '极速买药',
-            pickup: '就近药房',
-            dropoff: this.deliveryAddress,
-            itemDescription: this.medOrderDesc,
-            estimatedAmount: this.medPriceNumber,
-            deliveryFee: this.serviceFee,
-            totalPrice: this.totalFee,
-            requestExtra: {
-              category: 'medicine',
-              hasPrescription: this.hasPrescription,
-              prescriptionFileName: this.prescriptionFileName,
-              prescriptionFileUrl: this.prescriptionFileUrl
-            },
-            requirementsExtra: {
-              deliveryAddress: this.deliveryAddress
-            }
-          },
-          identity
-        )
-
-        const result = await createOrder(payload)
-        if (!result || !result.id) {
-          throw new Error('订单创建失败')
-        }
-        uni.navigateTo({ url: `/pages/medicine/tracking?id=${encodeURIComponent(result.id)}` })
-      } catch (error) {
-        const message = normalizeErrorMessage(error, '提交失败')
-        uni.showToast({ title: message, icon: 'none' })
-      } finally {
-        uni.hideLoading()
-        this.submitting = false
-      }
-    }
-  }
-}
+export default createMedicineOrderPage({
+  createOrder,
+  uploadCommonImage,
+  buildErrandOrderPayload,
+  requireCurrentUserIdentity
+})
 </script>
 
 <style scoped lang="scss">

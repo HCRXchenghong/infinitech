@@ -52,6 +52,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/index.js",
   "packages/mobile-core/src/medicine-home.js",
   "packages/mobile-core/src/medicine-home.test.mjs",
+  "packages/mobile-core/src/medicine-order.js",
+  "packages/mobile-core/src/medicine-order.test.mjs",
   "packages/mobile-core/src/vip-center.js",
   "packages/mobile-core/src/vip-center.test.mjs",
   "packages/mobile-core/src/charity-page.js",
@@ -97,6 +99,7 @@ function assertNotContains(relativePath, unexpectedText) {
   "shared/mobile-common/home-index-page.js",
   "shared/mobile-common/auth-password-pages.js",
   "shared/mobile-common/dining-buddy-page.js",
+  "shared/mobile-common/medicine-order-pages.js",
   "shared/mobile-common/search-page.js",
   "shared/mobile-common/message-center-pages.js",
   "shared/mobile-common/notification-detail-page.js",
@@ -253,6 +256,14 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../shared/mobile-common/dining-buddy-page.js",
   ],
   [
+    "app-mobile/pages/medicine/order.vue",
+    "../../../shared/mobile-common/medicine-order-pages.js",
+  ],
+  [
+    "app-mobile/pages/medicine/tracking.vue",
+    "../../../shared/mobile-common/medicine-order-pages.js",
+  ],
+  [
     "app-mobile/pages/profile/cooperation/index.vue",
     "../../../../shared/mobile-common/profile-outreach-pages.js",
   ],
@@ -303,6 +314,14 @@ function assertNotContains(relativePath, unexpectedText) {
   [
     "user-vue/pages/dining-buddy/index.vue",
     "../../../shared/mobile-common/dining-buddy-page.js",
+  ],
+  [
+    "user-vue/pages/medicine/order.vue",
+    "../../../shared/mobile-common/medicine-order-pages.js",
+  ],
+  [
+    "user-vue/pages/medicine/tracking.vue",
+    "../../../shared/mobile-common/medicine-order-pages.js",
   ],
   [
     "user-vue/pages/profile/cooperation/index.vue",
@@ -1408,7 +1427,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/dining-buddy.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/search-page.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-my-reviews.test.mjs packages/mobile-core/src/profile-points-mall.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-after-sales.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-support-pages.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/medicine-order.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/dining-buddy.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/search-page.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-my-reviews.test.mjs packages/mobile-core/src/profile-points-mall.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-after-sales.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-support-pages.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -2184,6 +2203,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./medicine-order.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./charity-page.js";',
 );
 assertContains(
@@ -2236,7 +2259,15 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/package.json",
+  '"./medicine-order": "./src/medicine-order.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
   '"./dining-buddy": "./src/dining-buddy.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./medicine-home": "./src/medicine-home.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -2830,6 +2861,20 @@ assertNotContains(
 ].forEach((relativePath) => {
   assertNotContains(relativePath, "formatOrderData(data) {");
   assertNotContains(relativePath, "const shop = data.shop || {}");
+});
+[
+  "user-vue/pages/medicine/order.vue",
+  "app-mobile/pages/medicine/order.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "const DEFAULT_ADDRESS = '请选择送药地址'");
+  assertNotContains(relativePath, "buildErrandOrderPayload(");
+});
+[
+  "user-vue/pages/medicine/tracking.vue",
+  "app-mobile/pages/medicine/tracking.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "const TEXTS = {");
+  assertNotContains(relativePath, "createPhoneContactHelper");
 });
 assertNotContains(
   "shared/mobile-common/order-confirm-page.js",
