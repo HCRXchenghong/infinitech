@@ -2,7 +2,7 @@
   <view class="recharge-page">
     <view class="top-shell" :style="{ paddingTop: topPadding + 'px' }">
       <view class="top-bar">
-        <view class="back-btn" @tap="goBack">‹</view>
+        <view class="back-btn" @tap="goBack">&#x2039;</view>
         <text class="top-title">余额充值</text>
         <view class="right-holder"></view>
       </view>

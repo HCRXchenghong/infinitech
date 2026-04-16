@@ -3,7 +3,7 @@
     <view class="tabs">
       <view
         v-for="tab in tabs"
-        :key="tab.key"
+        :key="tab.value || 'all'"
         class="tab-item"
         :class="{ active: status === tab.value }"
         @tap="changeStatus(tab.value)"
@@ -20,10 +20,7 @@
       v-for="c in coupons"
       :key="c.id"
       class="card"
-      :class="{
-        'status-used': c.status === 'used',
-        'status-expired': c.status === 'expired'
-      }"
+      :class="`status-${c.status}`"
     >
       <view class="left">
         <text class="amount">{{ c.amountText }}</text>
@@ -32,15 +29,7 @@
       <view class="right">
         <view class="top-row">
           <text class="name">{{ c.name }}</text>
-          <text
-            class="status-tag"
-            :class="{
-              'tag-used': c.status === 'used',
-              'tag-expired': c.status === 'expired'
-            }"
-          >
-            {{ c.statusText }}
-          </text>
+          <text class="status-tag" :class="`tag-${c.status}`">{{ c.statusText }}</text>
         </view>
         <text class="time">有效期：{{ c.validity }}</text>
         <text class="time">领取时间：{{ c.receivedAtText }}</text>

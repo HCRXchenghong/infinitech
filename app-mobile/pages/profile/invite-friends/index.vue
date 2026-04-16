@@ -2,7 +2,7 @@
   <view class="page invite-page">
     <view class="header">
       <view class="back-btn" @tap="goBack">
-        <text>&lt;</text>
+        <text>&#x2039;</text>
       </view>
       <text class="title">邀请好友</text>
       <view class="placeholder" />

@@ -2,7 +2,7 @@
   <view class="withdraw-page">
     <view class="top-shell" :style="{ paddingTop: topPadding + 'px' }">
       <view class="top-bar">
-        <view class="back-btn" @tap="goBack"><</view>
+        <view class="back-btn" @tap="goBack">&#x2039;</view>
         <text class="top-title">余额提现</text>
         <view class="right-holder"></view>
       </view>

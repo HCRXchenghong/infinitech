@@ -18,7 +18,7 @@
       <view v-else class="shop-list">
         <view
           v-for="item in items"
-          :key="item.favKey"
+          :key="item.favoriteId || item.id"
           class="shop-card"
         >
           <view class="shop-main" @tap="goShop(item.id)">

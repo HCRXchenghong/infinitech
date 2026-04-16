@@ -73,7 +73,7 @@
       <view class="type-chip-row">
         <view
           v-for="item in filterOptions"
-          :key="item.key"
+          :key="item.value || 'all'"
           class="type-chip"
           :class="{ active: filterType === item.value }"
           @tap="changeFilter(item.value)"
@@ -97,12 +97,12 @@
       <view v-else class="tx-list">
         <view
           v-for="tx in transactions"
-          :key="tx.txKey"
+          :key="tx.transaction_id || tx.transactionId || tx.id"
           class="tx-row"
           @tap="openDetail(tx)"
         >
           <view class="tx-left">
-            <view class="tx-icon" :class="tx.amountClass">{{ txTypeIcon(tx.type) }}</view>
+            <view class="tx-icon" :class="amountClass(tx)">{{ txTypeIcon(tx.type) }}</view>
             <view class="tx-main">
               <text class="tx-title">{{ txTypeLabel(tx.type) }}</text>
               <text class="tx-desc">{{ txDesc(tx) }}</text>
@@ -110,7 +110,7 @@
           </view>
 
           <view class="tx-right">
-            <text class="tx-amount" :class="tx.amountClass">{{ amountText(tx) }}</text>
+            <text class="tx-amount" :class="amountClass(tx)">{{ amountText(tx) }}</text>
             <text class="tx-status">{{ statusLabel(tx.status) }}</text>
           </view>
         </view>
