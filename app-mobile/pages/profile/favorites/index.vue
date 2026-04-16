@@ -57,123 +57,12 @@
 
 <script>
 import { fetchUserFavorites, deleteUserFavorite } from '@/shared-ui/api.js'
+import { createProfileFavoritesPage } from '../../../../shared/mobile-common/profile-favorites-page.js'
 
-export default {
-  data() {
-    return {
-      userId: '',
-      items: [],
-      total: 0,
-      page: 1,
-      pageSize: 20,
-      loading: false,
-      loadingMore: false,
-      finished: false
-    }
-  },
-  onShow() {
-    this.initData()
-  },
-  methods: {
-    resolveUserId() {
-      const profile = uni.getStorageSync('userProfile') || {}
-      const raw = profile.id || profile.userId || profile.phone
-      return String(raw || '').trim()
-    },
-    initData() {
-      const userId = this.resolveUserId()
-      if (!userId) {
-        this.userId = ''
-        this.items = []
-        this.total = 0
-        uni.showToast({ title: '请先登录', icon: 'none' })
-        return
-      }
-      this.userId = userId
-      this.loadFavorites(true)
-    },
-    async loadFavorites(reset = false) {
-      if (!this.userId) return
-      if (this.loading || this.loadingMore) return
-      if (!reset && this.finished) return
-
-      if (reset) {
-        this.loading = true
-        this.page = 1
-        this.finished = false
-      } else {
-        this.loadingMore = true
-      }
-
-      try {
-        const res = await fetchUserFavorites(this.userId, {
-          page: this.page,
-          pageSize: this.pageSize
-        })
-
-        const payload = res && res.data ? res.data : (res || {})
-        const list = Array.isArray(payload.list) ? payload.list : []
-        this.total = Number(payload.total || 0)
-
-        if (reset) {
-          this.items = list
-        } else {
-          this.items = this.items.concat(list)
-        }
-
-        const loadedCount = this.items.length
-        this.finished = list.length < this.pageSize || (this.total > 0 && loadedCount >= this.total)
-        if (!this.finished) {
-          this.page += 1
-        }
-      } catch (error) {
-        console.error('加载收藏失败:', error)
-        if (reset) {
-          this.items = []
-          this.total = 0
-        }
-        uni.showToast({ title: error?.error || '加载失败', icon: 'none' })
-      } finally {
-        this.loading = false
-        this.loadingMore = false
-      }
-    },
-    loadMore() {
-      this.loadFavorites(false)
-    },
-    async removeFavorite(item) {
-      const shopId = String((item && item.id) || '').trim()
-      if (!this.userId || !shopId) return
-
-      try {
-        await deleteUserFavorite(this.userId, shopId)
-        this.items = this.items.filter(v => String(v.id || '') !== shopId)
-        this.total = Math.max(0, this.total - 1)
-        uni.showToast({ title: '已取消收藏', icon: 'none' })
-      } catch (error) {
-        console.error('取消收藏失败:', error)
-        uni.showToast({ title: error?.error || '操作失败', icon: 'none' })
-      }
-    },
-    goShop(shopId) {
-      const id = String(shopId || '').trim()
-      if (!id) return
-      uni.navigateTo({
-        url: `/pages/shop/detail/index?id=${id}`
-      })
-    },
-    formatRating(value) {
-      const num = Number(value || 0)
-      if (!Number.isFinite(num)) return '0.0'
-      return num.toFixed(1)
-    },
-    formatMoney(value) {
-      const num = Number(value || 0)
-      if (!Number.isFinite(num)) return '0.0'
-      return num.toFixed(1)
-    }
-  }
-}
+export default createProfileFavoritesPage({
+  deleteUserFavorite,
+  fetchUserFavorites
+})
 </script>
 
 <style scoped lang="scss">
