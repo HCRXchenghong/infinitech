@@ -63,7 +63,7 @@
               <template #default="{ row }">
                 <div class="permission-tags">
                   <el-tag
-                    v-for="perm in normalizePermissions(row.permissions)"
+                    v-for="perm in normalizePublicApiPermissionList(row.permissions)"
                     :key="`${row.id}-${perm}`"
                     size="small"
                   >
@@ -122,7 +122,7 @@
               <div class="mobile-label">权限分配</div>
               <div class="permission-tags">
                 <el-tag
-                  v-for="perm in normalizePermissions(row.permissions)"
+                  v-for="perm in normalizePublicApiPermissionList(row.permissions)"
                   :key="`${row.id}-${perm}`"
                   size="small"
                 >
@@ -189,14 +189,13 @@
         </el-form-item>
         <el-form-item label="权限分配" required>
           <el-checkbox-group v-model="apiForm.permissions" @change="handleApiPermissionChange">
-            <el-checkbox label="orders">订单数据</el-checkbox>
-            <el-checkbox label="users">用户数据</el-checkbox>
-            <el-checkbox label="riders">骑手数据</el-checkbox>
-            <el-checkbox label="merchants">商户数据</el-checkbox>
-            <el-checkbox label="products">商品数据</el-checkbox>
-            <el-checkbox label="categories">分类数据</el-checkbox>
-            <el-checkbox label="dashboard">仪表盘数据</el-checkbox>
-            <el-checkbox label="all">全部数据</el-checkbox>
+            <el-checkbox
+              v-for="permission in permissionOptions"
+              :key="permission.value"
+              :label="permission.value"
+            >
+              {{ permission.label }}
+            </el-checkbox>
           </el-checkbox-group>
           <div class="form-tip">勾选后系统会按权限校验该 Key 能访问的公开接口。</div>
         </el-form-item>
@@ -234,71 +233,20 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { extractErrorMessage } from '@infinitech/contracts';
+import {
+  buildPublicApiSummary,
+  normalizePublicApiPermissionList,
+  PUBLIC_API_PERMISSION_CATALOG,
+  PUBLIC_API_PERMISSION_OPTIONS,
+} from '@infinitech/admin-core';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 import request from '@/utils/request';
 import { useSettingsApiManagement } from './settingsApiManagementHelpers';
 
 const router = useRouter();
 const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
-
-const permissionCatalog = [
-  {
-    key: 'orders',
-    label: '订单数据',
-    type: 'primary',
-    description: '适合订单列表、订单详情、订单统计类调用。',
-    examples: ['/api/public/orders', '/api/public/orders/:id', '/api/public/orders/stats'],
-  },
-  {
-    key: 'users',
-    label: '用户数据',
-    type: 'success',
-    description: '适合用户列表、用户详情、用户统计类调用。',
-    examples: ['/api/public/users', '/api/public/users/:id', '/api/public/users/stats'],
-  },
-  {
-    key: 'riders',
-    label: '骑手数据',
-    type: 'warning',
-    description: '适合骑手列表、骑手详情、骑手统计类调用。',
-    examples: ['/api/public/riders', '/api/public/riders/:id', '/api/public/riders/stats'],
-  },
-  {
-    key: 'merchants',
-    label: '商户数据',
-    type: 'success',
-    description: '适合商户列表、商户详情和商户基础信息查询。',
-    examples: ['/api/public/merchants', '/api/public/merchants/:id'],
-  },
-  {
-    key: 'products',
-    label: '商品数据',
-    type: 'primary',
-    description: '适合商品列表、商品详情和商品筛选类调用。',
-    examples: ['/api/public/products', '/api/public/products/:id'],
-  },
-  {
-    key: 'categories',
-    label: '分类数据',
-    type: 'info',
-    description: '适合商品分类树、分类筛选和导航类调用。',
-    examples: ['/api/public/categories', '/api/public/categories/tree'],
-  },
-  {
-    key: 'dashboard',
-    label: '仪表盘数据',
-    type: 'info',
-    description: '适合平台统计、用户排行、骑手排行类调用。',
-    examples: ['/api/public/dashboard/stats', '/api/public/dashboard/user-ranks', '/api/public/dashboard/rider-ranks'],
-  },
-  {
-    key: 'all',
-    label: '全部数据',
-    type: 'danger',
-    description: '包含全部权限，适合内部系统或统一数据中台使用。',
-    examples: ['包含以上全部公开接口'],
-  },
-];
+const permissionCatalog = PUBLIC_API_PERMISSION_CATALOG;
+const permissionOptions = PUBLIC_API_PERMISSION_OPTIONS;
 
 const {
   apiListError,
@@ -326,31 +274,8 @@ const {
 });
 
 const summary = computed(() => {
-  const rows = Array.isArray(apiList.value) ? apiList.value : [];
-  return {
-    total: rows.length,
-    active: rows.filter((item) => Boolean(item?.is_active)).length,
-    allScoped: rows.filter((item) => normalizePermissions(item?.permissions).includes('all')).length,
-    withPath: rows.filter((item) => String(item?.path || '').trim()).length,
-  };
+  return buildPublicApiSummary(apiList.value);
 });
-
-function normalizePermissions(value) {
-  if (Array.isArray(value)) {
-    return value;
-  }
-  if (typeof value === 'string') {
-    const text = value.trim();
-    if (!text) return [];
-    try {
-      const parsed = JSON.parse(text);
-      return Array.isArray(parsed) ? parsed : [text];
-    } catch (_error) {
-      return [text];
-    }
-  }
-  return [];
-}
 
 function handleResize() {
   isMobile.value = window.innerWidth <= 768;

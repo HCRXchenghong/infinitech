@@ -3,9 +3,16 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import {
+  buildPublicApiPayload,
   buildWeatherConfigPayload,
   createDefaultWeatherConfig,
+  createPublicApiFormState,
+  generatePublicApiKey,
+  getPublicApiPermissionLabel,
+  normalizePublicApiList,
+  normalizePublicApiRecord,
   normalizeWeatherConfig,
+  resolvePublicApiPermissionSelection,
 } from '@infinitech/admin-core';
 import request from '@/utils/request';
 import { DEFAULT_SMS_CONFIG, normalizeSMSConfig, buildSMSConfigPayload } from './smsConfigHelpers';
@@ -34,20 +41,14 @@ export function useApiManagementPage(options = {}) {
   const apiDialogVisible = ref(false);
   const apiListCache = ref(null);
   const editingApi = ref(null);
-  const apiForm = reactive({
-    name: '',
-    path: '',
-    permissions: [],
-    api_key: '',
-    description: '',
-    is_active: true
-  });
+  const apiForm = reactive(createPublicApiFormState());
   const savingApi = ref(false);
 
   const downloadDialogVisible = ref(false);
   const downloadLanguage = ref('java');
   const downloadingApi = ref(false);
   const currentDownloadApi = ref(null);
+  let lastPermissionSelection = [];
 
   function mergeWeatherConfig(payload = {}) {
     weather.value = normalizeWeatherConfig(payload);
@@ -136,7 +137,7 @@ export function useApiManagementPage(options = {}) {
     try {
       const { data } = await request.get('/api/public-apis');
       const payload = extractEnvelopeData(data);
-      apiList.value = Array.isArray(payload) ? payload : [];
+      apiList.value = normalizePublicApiList(payload);
       apiListCache.value = [...apiList.value];
     } catch (error) {
       apiList.value = [];
@@ -154,20 +155,17 @@ export function useApiManagementPage(options = {}) {
   }
 
   function editApi(row) {
-    editingApi.value = row;
-    apiForm.name = row.name || '';
-    apiForm.path = row.path || '';
-    apiForm.permissions = Array.isArray(row.permissions) ? [...row.permissions] : [];
-    apiForm.api_key = row.api_key || '';
-    apiForm.description = row.description || '';
-    apiForm.is_active = row.is_active !== undefined ? row.is_active : true;
+    editingApi.value = normalizePublicApiRecord(row);
+    Object.assign(apiForm, createPublicApiFormState(editingApi.value));
+    lastPermissionSelection = [...apiForm.permissions];
     apiDialogVisible.value = true;
   }
 
   async function deleteApi(row) {
+    const target = normalizePublicApiRecord(row);
     try {
       await ElMessageBox.confirm(
-        `确定要删除API接口"${row.name}"吗？此操作不可恢复。`,
+        `确定要删除API接口"${target.name}"吗？此操作不可恢复。`,
         '确认删除',
         {
           confirmButtonText: '确定删除',
@@ -176,7 +174,7 @@ export function useApiManagementPage(options = {}) {
         }
       );
 
-      await request.delete(`/api/public-apis/${row.id}`);
+      await request.delete(`/api/public-apis/${target.id}`);
       ElMessage.success('API接口删除成功');
       apiListCache.value = null;
       loadApiList(true);
@@ -188,32 +186,25 @@ export function useApiManagementPage(options = {}) {
   }
 
   async function saveApi() {
-    if (!apiForm.name) {
+    const apiData = buildPublicApiPayload(apiForm);
+
+    if (!apiData.name) {
       ElMessage.warning('请填写接口名称');
       return;
     }
 
-    if (apiForm.permissions.length === 0) {
+    if (apiData.permissions.length === 0) {
       ElMessage.warning('请至少选择一种访问权限');
       return;
     }
 
-    if (!apiForm.api_key) {
+    if (!apiData.api_key) {
       ElMessage.warning('请生成API Key');
       return;
     }
 
     savingApi.value = true;
     try {
-      const apiData = {
-        name: apiForm.name,
-        path: apiForm.path,
-        permissions: apiForm.permissions,
-        api_key: apiForm.api_key,
-        description: apiForm.description || '',
-        is_active: apiForm.is_active ? 1 : 0
-      };
-
       if (editingApi.value) {
         await request.put(`/api/public-apis/${editingApi.value.id}`, apiData);
         ElMessage.success('API接口更新成功');
@@ -233,21 +224,12 @@ export function useApiManagementPage(options = {}) {
   }
 
   function resetApiForm() {
-    apiForm.name = '';
-    apiForm.path = '';
-    apiForm.permissions = [];
-    apiForm.api_key = '';
-    apiForm.description = '';
-    apiForm.is_active = true;
+    Object.assign(apiForm, createPublicApiFormState());
+    lastPermissionSelection = [];
   }
 
   function generateApiKey() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let key = '';
-    for (let i = 0; i < 32; i++) {
-      key += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    apiForm.api_key = key;
+    apiForm.api_key = generatePublicApiKey();
   }
 
   function copyApiKey(key) {
@@ -258,23 +240,15 @@ export function useApiManagementPage(options = {}) {
     });
   }
 
-  function getPermissionLabel(perm) {
-    const labels = {
-      orders: '订单',
-      users: '用户',
-      riders: '骑手',
-      dashboard: '仪表盘',
-      all: '全部'
-    };
-    return labels[perm] || perm;
-  }
+  const getPermissionLabel = getPublicApiPermissionLabel;
 
   function handleApiPermissionChange(value) {
-    if (value.includes('all')) {
-      apiForm.permissions = ['orders', 'users', 'riders', 'dashboard', 'all'];
-    } else if (apiForm.permissions.length === 4 && !value.includes('all')) {
-      apiForm.permissions = [...value, 'all'];
-    }
+    const nextSelection = resolvePublicApiPermissionSelection(
+      value,
+      lastPermissionSelection,
+    );
+    lastPermissionSelection = [...nextSelection];
+    apiForm.permissions = [...nextSelection];
   }
 
   function goToApiPermissions() {

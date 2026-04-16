@@ -67,6 +67,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/admin-core/src/operations-center-resources.test.mjs",
   "packages/admin-core/src/dashboard-resources.js",
   "packages/admin-core/src/dashboard-resources.test.mjs",
+  "packages/admin-core/src/api-management-resources.js",
+  "packages/admin-core/src/api-management-resources.test.mjs",
   "packages/admin-core/src/system-settings-resources.js",
   "packages/admin-core/src/system-settings-resources.test.mjs",
   "packages/admin-core/src/order-resources.js",
@@ -1211,7 +1213,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs packages/admin-core/src/system-settings-resources.test.mjs packages/admin-core/src/order-resources.test.mjs packages/admin-core/src/user-management-resources.test.mjs packages/admin-core/src/shop-management-resources.test.mjs packages/admin-core/src/merchant-profile-resources.test.mjs packages/admin-core/src/home-entry-resources.test.mjs packages/admin-core/src/communication-audit-resources.test.mjs packages/admin-core/src/home-campaign-resources.test.mjs packages/admin-core/src/admin-management-resources.test.mjs packages/admin-core/src/dining-buddy-governance-resources.test.mjs packages/admin-core/src/chat-console-resources.test.mjs"',
+  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs packages/admin-core/src/system-settings-resources.test.mjs packages/admin-core/src/api-management-resources.test.mjs packages/admin-core/src/order-resources.test.mjs packages/admin-core/src/user-management-resources.test.mjs packages/admin-core/src/shop-management-resources.test.mjs packages/admin-core/src/merchant-profile-resources.test.mjs packages/admin-core/src/home-entry-resources.test.mjs packages/admin-core/src/communication-audit-resources.test.mjs packages/admin-core/src/home-campaign-resources.test.mjs packages/admin-core/src/admin-management-resources.test.mjs packages/admin-core/src/dining-buddy-governance-resources.test.mjs packages/admin-core/src/chat-console-resources.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -1614,6 +1616,26 @@ assertContains(
   "extractEnvelopeData(data)",
 );
 assertContains(
+  "admin-vue/src/views/settingsApiManagementHelpers.js",
+  "buildPublicApiPayload(apiForm)",
+);
+assertContains(
+  "admin-vue/src/views/settingsApiManagementHelpers.js",
+  "resolvePublicApiPermissionSelection(",
+);
+assertContains(
+  "admin-vue/src/views/settingsApiManagementHelpers.js",
+  "normalizePublicApiList(payload)",
+);
+assertNotContains(
+  "admin-vue/src/views/settingsApiManagementHelpers.js",
+  "function normalizePermissionList(value)",
+);
+assertNotContains(
+  "admin-vue/src/views/settingsApiManagementHelpers.js",
+  "function normalizeApiRecord(item = {})",
+);
+assertContains(
   "admin-vue/src/views/settingsHelpers.js",
   "buildSharedServiceSettingsPayload",
 );
@@ -1726,6 +1748,18 @@ assertContains(
   "buildWeatherConfigPayload(weather.value)",
 );
 assertContains(
+  "admin-vue/src/views/apiManagementHelpers.js",
+  "createPublicApiFormState()",
+);
+assertContains(
+  "admin-vue/src/views/apiManagementHelpers.js",
+  "resolvePublicApiPermissionSelection(",
+);
+assertContains(
+  "admin-vue/src/views/apiManagementHelpers.js",
+  "normalizePublicApiList(payload)",
+);
+assertContains(
   "admin-vue/src/views/smsConfigHelpers.js",
   "@infinitech/admin-core",
 );
@@ -1768,6 +1802,22 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/ApiPermissions.vue",
   "function extractErrorMessage(error, fallback)",
+);
+assertContains(
+  "admin-vue/src/views/ApiPermissions.vue",
+  "buildPublicApiSummary(apiList.value)",
+);
+assertContains(
+  "admin-vue/src/views/ApiPermissions.vue",
+  "normalizePublicApiPermissionList(row.permissions)",
+);
+assertContains(
+  "admin-vue/src/views/ApiPermissions.vue",
+  "PUBLIC_API_PERMISSION_OPTIONS",
+);
+assertNotContains(
+  "admin-vue/src/views/ApiPermissions.vue",
+  "function normalizePermissions(value)",
 );
 assertNotContains(
   "admin-vue/src/views/settingsHelpers.js",

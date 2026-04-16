@@ -1,88 +1,16 @@
 import { ref, reactive } from 'vue';
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
+import {
+  buildPublicApiPayload,
+  createPublicApiFormState,
+  generatePublicApiKey,
+  getPublicApiPermissionLabel,
+  normalizePublicApiList,
+  normalizePublicApiPermissionList,
+  normalizePublicApiRecord,
+  resolvePublicApiPermissionSelection,
+} from '@infinitech/admin-core';
 import { buildApiDocumentationText, buildApiKeyMarkdownText } from './settingsDocBuilders';
-
-const RESOURCE_PERMISSIONS = ['orders', 'users', 'riders', 'merchants', 'products', 'categories', 'dashboard'];
-
-function normalizeBoolean(value, fallback = false) {
-  if (typeof value === 'boolean') {
-    return value;
-  }
-  if (typeof value === 'number') {
-    return value !== 0;
-  }
-  if (typeof value === 'string') {
-    const text = value.trim().toLowerCase();
-    if (['1', 'true', 'yes', 'on'].includes(text)) {
-      return true;
-    }
-    if (['0', 'false', 'no', 'off', ''].includes(text)) {
-      return false;
-    }
-  }
-  return fallback;
-}
-
-function normalizePermissionList(value) {
-  let source = [];
-
-  if (Array.isArray(value)) {
-    source = value;
-  } else if (typeof value === 'string') {
-    const text = value.trim();
-    if (!text) {
-      return [];
-    }
-
-    try {
-      const parsed = JSON.parse(text);
-      source = Array.isArray(parsed) ? parsed : [text];
-    } catch (_error) {
-      source = text.split(',').map((item) => item.trim());
-    }
-  }
-
-  const selected = new Set(
-    source
-      .map((item) => String(item || '').trim())
-      .filter(Boolean)
-  );
-  const normalized = RESOURCE_PERMISSIONS.filter((permission) => selected.has(permission));
-
-  if (selected.has('all') || normalized.length === RESOURCE_PERMISSIONS.length) {
-    return [...RESOURCE_PERMISSIONS, 'all'];
-  }
-
-  return normalized;
-}
-
-function normalizeApiRecord(item = {}) {
-  return {
-    ...item,
-    name: String(item?.name || '').trim(),
-    path: String(item?.path || '').trim(),
-    permissions: normalizePermissionList(item?.permissions),
-    api_key: String(item?.api_key || '').trim(),
-    description: String(item?.description || '').trim(),
-    is_active: normalizeBoolean(item?.is_active, true),
-  };
-}
-
-function generateRandomApiKey(length = 32) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
-    const bytes = new Uint8Array(length);
-    crypto.getRandomValues(bytes);
-    return Array.from(bytes, (byte) => chars[byte % chars.length]).join('');
-  }
-
-  let key = '';
-  for (let i = 0; i < length; i += 1) {
-    key += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return key;
-}
 
 async function copyTextToClipboard(text) {
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
@@ -115,14 +43,7 @@ export function useSettingsApiManagement({ request, router, ElMessage, ElMessage
   const apiListLoading = ref(false);
   const apiDialogVisible = ref(false);
   const editingApi = ref(null);
-  const apiForm = reactive({
-    name: '',
-    path: '',
-    permissions: [],
-    api_key: '',
-    description: '',
-    is_active: true
-  });
+  const apiForm = reactive(createPublicApiFormState());
   const savingApi = ref(false);
 
   const downloadDialogVisible = ref(false);
@@ -132,7 +53,7 @@ export function useSettingsApiManagement({ request, router, ElMessage, ElMessage
   let lastPermissionSelection = [];
 
   function syncPermissionSelection(value = apiForm.permissions) {
-    const normalized = normalizePermissionList(value);
+    const normalized = normalizePublicApiPermissionList(value);
     lastPermissionSelection = [...normalized];
     apiForm.permissions = [...normalized];
   }
@@ -143,8 +64,7 @@ export function useSettingsApiManagement({ request, router, ElMessage, ElMessage
     try {
       const { data } = await request.get('/api/public-apis');
       const payload = extractEnvelopeData(data);
-      const rows = Array.isArray(payload) ? payload : [];
-      apiList.value = rows.map((row) => normalizeApiRecord(row));
+      apiList.value = normalizePublicApiList(payload);
     } catch (error) {
       apiList.value = [];
       apiListError.value = extractErrorMessage(error, '加载API配置失败，请稍后重试');
@@ -154,17 +74,12 @@ export function useSettingsApiManagement({ request, router, ElMessage, ElMessage
   }
 
   function resetApiForm() {
-    apiForm.name = '';
-    apiForm.path = '';
-    apiForm.permissions = [];
-    apiForm.api_key = '';
-    apiForm.description = '';
-    apiForm.is_active = true;
-    syncPermissionSelection([]);
+    Object.assign(apiForm, createPublicApiFormState());
+    lastPermissionSelection = [];
   }
 
   function generateApiKey() {
-    apiForm.api_key = generateRandomApiKey();
+    apiForm.api_key = generatePublicApiKey();
   }
 
   function showAddApiDialog() {
@@ -175,20 +90,15 @@ export function useSettingsApiManagement({ request, router, ElMessage, ElMessage
   }
 
   function editApi(row) {
-    const normalizedRow = normalizeApiRecord(row);
+    const normalizedRow = normalizePublicApiRecord(row);
     editingApi.value = normalizedRow;
-    apiForm.name = normalizedRow.name;
-    apiForm.path = normalizedRow.path;
-    apiForm.permissions = [...normalizedRow.permissions];
-    apiForm.api_key = normalizedRow.api_key;
-    apiForm.description = normalizedRow.description;
-    apiForm.is_active = normalizedRow.is_active;
+    Object.assign(apiForm, createPublicApiFormState(normalizedRow));
     syncPermissionSelection(apiForm.permissions);
     apiDialogVisible.value = true;
   }
 
   async function deleteApi(row) {
-    const target = normalizeApiRecord(row);
+    const target = normalizePublicApiRecord(row);
     try {
       await ElMessageBox.confirm(
         `确定要删除 API Key "${target.name}" 吗？此操作不可恢复。`,
@@ -211,38 +121,25 @@ export function useSettingsApiManagement({ request, router, ElMessage, ElMessage
   }
 
   async function saveApi() {
-    const name = String(apiForm.name || '').trim();
-    const path = String(apiForm.path || '').trim();
-    const permissions = normalizePermissionList(apiForm.permissions);
-    const apiKey = String(apiForm.api_key || '').trim();
-    const description = String(apiForm.description || '').trim();
+    const apiData = buildPublicApiPayload(apiForm);
 
-    if (!name) {
+    if (!apiData.name) {
       ElMessage.warning('请填写调用方名称');
       return;
     }
 
-    if (permissions.length === 0) {
+    if (apiData.permissions.length === 0) {
       ElMessage.warning('请至少选择一种访问权限');
       return;
     }
 
-    if (!apiKey) {
+    if (!apiData.api_key) {
       ElMessage.warning('请生成API Key');
       return;
     }
 
     savingApi.value = true;
     try {
-      const apiData = {
-        name,
-        path,
-        permissions,
-        api_key: apiKey,
-        description,
-        is_active: Boolean(apiForm.is_active)
-      };
-
       if (editingApi.value) {
         await request.put(`/api/public-apis/${editingApi.value.id}`, apiData);
         ElMessage.success('API Key 更新成功');
@@ -268,37 +165,13 @@ export function useSettingsApiManagement({ request, router, ElMessage, ElMessage
     });
   }
 
-  function getPermissionLabel(perm) {
-    const labels = {
-      orders: '订单',
-      users: '用户',
-      riders: '骑手',
-      merchants: '商户',
-      products: '商品',
-      categories: '分类',
-      dashboard: '仪表盘',
-      all: '全部'
-    };
-    return labels[perm] || perm;
-  }
+  const getPermissionLabel = getPublicApiPermissionLabel;
 
   function handleApiPermissionChange(value) {
-    const selected = Array.isArray(value)
-      ? value.map((item) => String(item || '').trim()).filter(Boolean)
-      : [];
-    const prevHadAll = lastPermissionSelection.includes('all');
-    const currentHadAll = selected.includes('all');
-    const selectedResources = RESOURCE_PERMISSIONS.filter((permission) => selected.includes(permission));
-    let nextSelection = [...selectedResources];
-
-    if (currentHadAll && !prevHadAll) {
-      nextSelection = [...RESOURCE_PERMISSIONS, 'all'];
-    } else if (currentHadAll && prevHadAll && selectedResources.length < RESOURCE_PERMISSIONS.length) {
-      nextSelection = [...selectedResources];
-    } else if (!currentHadAll && selectedResources.length === RESOURCE_PERMISSIONS.length) {
-      nextSelection = [...RESOURCE_PERMISSIONS, 'all'];
-    }
-
+    const nextSelection = resolvePublicApiPermissionSelection(
+      value,
+      lastPermissionSelection,
+    );
     lastPermissionSelection = [...nextSelection];
     apiForm.permissions = [...nextSelection];
   }
@@ -318,7 +191,7 @@ export function useSettingsApiManagement({ request, router, ElMessage, ElMessage
   }
 
   function generateMarkdownDoc(api) {
-    return buildApiKeyMarkdownText(api, getPermissionLabel);
+    return buildApiKeyMarkdownText(api, getPublicApiPermissionLabel);
   }
 
   async function downloadApiDoc() {
