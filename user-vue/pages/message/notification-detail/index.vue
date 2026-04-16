@@ -17,7 +17,7 @@
 
       <view v-else class="article">
         <view class="title">
-          <text>{{ article.title || '通知详情' }}</text>
+          <text>{{ articleTitle() }}</text>
         </view>
         <view class="meta" v-if="article.time || article.source">
           <text v-if="article.time" class="meta-time">{{ article.time }}</text>
@@ -68,101 +68,14 @@
 <script>
 import { fetchNotificationDetail, markNotificationRead, ackPushMessage } from '@/shared-ui/api.js'
 import { parseNotificationDisplayBlocks } from '../../../../packages/domain-core/src/notification-content.js'
+import { createNotificationDetailPage } from '../../../../shared/mobile-common/notification-detail-page.js'
 
-const NOTIFICATION_READ_EVENT = 'official-notification-read'
-
-export default {
-  data() {
-    return {
-      loading: true,
-      article: {
-        title: '',
-        time: '',
-        source: '悦享e食',
-        cover: '',
-        blocks: []
-      }
-    }
-  },
-  onLoad(options) {
-    const id = options.id
-    const messageId = options.messageId
-    if (messageId) {
-      void this.ackPushOpened(messageId)
-    }
-    if (id) {
-      this.loadNotification(id)
-    } else {
-      uni.showToast({ title: '缺少通知ID', icon: 'none' })
-      setTimeout(() => {
-        uni.navigateBack()
-      }, 1500)
-    }
-  },
-  methods: {
-    async ackPushOpened(messageId) {
-      try {
-        await ackPushMessage({
-          messageId: String(messageId),
-          action: 'opened',
-          timestamp: new Date().toISOString()
-        })
-      } catch (err) {
-        console.error('推送打开回执失败:', err)
-      }
-    },
-
-    async loadNotification(id) {
-      this.loading = true
-      try {
-        const res = await fetchNotificationDetail(id)
-        if (res.success && res.data) {
-          const data = res.data
-          this.article = {
-            title: data.title || '',
-            time: data.time || '',
-            source: data.source || '悦享e食',
-            cover: data.cover || '',
-            blocks: parseNotificationDisplayBlocks(data.content)
-          }
-          this.markAsRead(id)
-        } else {
-          uni.showToast({ title: res.error || '获取通知失败', icon: 'none' })
-          setTimeout(() => {
-            uni.navigateBack()
-          }, 1500)
-        }
-      } catch (err) {
-        console.error('加载通知失败:', err)
-        uni.showToast({
-          title: err.error || err.message || '加载失败，请检查网络',
-          icon: 'none'
-        })
-        setTimeout(() => {
-          uni.navigateBack()
-        }, 1500)
-      } finally {
-        this.loading = false
-      }
-    },
-    async markAsRead(id) {
-      try {
-        await markNotificationRead(id)
-        uni.$emit(NOTIFICATION_READ_EVENT, { id: String(id) })
-      } catch (err) {
-        console.error('标记通知已读失败:', err)
-      }
-    },
-    back() {
-      uni.navigateBack()
-    },
-    preview(url) {
-      if (url) {
-        uni.previewImage({ urls: [url] })
-      }
-    }
-  }
-}
+export default createNotificationDetailPage({
+  fetchNotificationDetail,
+  markNotificationRead,
+  ackPushMessage,
+  parseNotificationDisplayBlocks
+})
 </script>
 
 <style scoped lang="scss">

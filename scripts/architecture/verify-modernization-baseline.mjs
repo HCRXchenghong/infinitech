@@ -62,6 +62,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/home-index.test.mjs",
   "packages/mobile-core/src/message-center.js",
   "packages/mobile-core/src/message-center.test.mjs",
+  "packages/mobile-core/src/notification-detail.js",
+  "packages/mobile-core/src/notification-detail.test.mjs",
   "packages/mobile-core/src/profile-edit.js",
   "packages/mobile-core/src/profile-edit.test.mjs",
   "packages/mobile-core/src/profile-home.js",
@@ -70,6 +72,7 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/profile-settings.test.mjs",
   "shared/mobile-common/home-index-page.js",
   "shared/mobile-common/message-center-pages.js",
+  "shared/mobile-common/notification-detail-page.js",
   "shared/mobile-common/profile-edit-page.js",
   "shared/mobile-common/profile-home-page.js",
   "shared/mobile-common/profile-settings-pages.js",
@@ -1247,7 +1250,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/message-center.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -2039,6 +2042,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./notification-detail.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./profile-edit.js";',
 );
 assertContains(
@@ -2052,6 +2059,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./message-center": "./src/message-center.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./notification-detail": "./src/notification-detail.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -2202,6 +2213,22 @@ assertContains(
 assertContains(
   "app-mobile/pages/message/notification-list/index.vue",
   "createNotificationListPage({",
+);
+assertContains(
+  "user-vue/pages/message/notification-detail/index.vue",
+  "../../../../shared/mobile-common/notification-detail-page.js",
+);
+assertContains(
+  "app-mobile/pages/message/notification-detail/index.vue",
+  "../../../../shared/mobile-common/notification-detail-page.js",
+);
+assertContains(
+  "user-vue/pages/message/notification-detail/index.vue",
+  "createNotificationDetailPage({",
+);
+assertContains(
+  "app-mobile/pages/message/notification-detail/index.vue",
+  "createNotificationDetailPage({",
 );
 assertContains(
   "user-vue/pages/profile/edit/index.vue",
@@ -2498,6 +2525,14 @@ assertNotContains(
   assertNotContains(relativePath, "const NOTIFICATION_READ_EVENT =");
   assertNotContains(relativePath, "async loadNotifications()");
   assertNotContains(relativePath, "handleNotificationRead(payload = {})");
+});
+[
+  "user-vue/pages/message/notification-detail/index.vue",
+  "app-mobile/pages/message/notification-detail/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "const NOTIFICATION_READ_EVENT =");
+  assertNotContains(relativePath, "async ackPushOpened(messageId)");
+  assertNotContains(relativePath, "async markAsRead(id)");
 });
 [
   "user-vue/pages/profile/edit/index.vue",
