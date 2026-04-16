@@ -401,21 +401,6 @@
   font-weight: 700;
 }
 
-.match-badge.category-chat {
-  background: rgba(236, 72, 153, 0.12);
-  color: #ec4899;
-}
-
-.match-badge.category-food {
-  background: rgba(249, 115, 22, 0.12);
-  color: #f97316;
-}
-
-.match-badge.category-study {
-  background: rgba(99, 102, 241, 0.12);
-  color: #6366f1;
-}
-
 .match-icon {
   margin-right: 4px;
 }
@@ -513,18 +498,6 @@
   color: white;
   font-size: 12px;
   font-weight: 700;
-}
-
-.join-btn.category-chat {
-  background: #ec4899;
-}
-
-.join-btn.category-food {
-  background: #f97316;
-}
-
-.join-btn.category-study {
-  background: #6366f1;
 }
 
 .chat-screen {
@@ -738,21 +711,6 @@
 
 .category-option.active {
   border-color: transparent;
-}
-
-.category-option.option-chat.active {
-  background: #ec4899;
-  color: #ffffff;
-}
-
-.category-option.option-food.active {
-  background: #f97316;
-  color: #ffffff;
-}
-
-.category-option.option-study.active {
-  background: #6366f1;
-  color: #ffffff;
 }
 
 .category-option-icon {

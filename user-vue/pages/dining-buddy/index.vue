@@ -75,7 +75,7 @@
             @tap="joinParty(party)"
           >
             <view class="card-header">
-              <view class="match-badge" :class="'category-' + party.category">
+              <view class="match-badge" :style="{ background: getCategoryColor(party.category, 0.1), color: getCategoryColor(party.category) }">
                 <image src="/static/icons/sparkle.svg" mode="aspectFit" class="match-icon-svg" />
                 <text class="match-score">{{ party.matchScore }}% 匹配</text>
               </view>
@@ -105,14 +105,14 @@
 
             <view class="party-footer">
               <view class="members-avatars">
-                <view v-for="slot in buildPartySeatSlots(party, 'filled')" :key="slot.key" class="avatar-item filled"></view>
-                <view v-for="slot in buildPartySeatSlots(party, 'empty')" :key="slot.key" class="avatar-item empty">+</view>
+                <view v-for="index in party.current" :key="'filled-' + party.id + '-' + index" class="avatar-item filled"></view>
+                <view v-for="index in Math.max(party.max - party.current, 0)" :key="'empty-' + party.id + '-' + index" class="avatar-item empty">+</view>
               </view>
               <view class="party-footer-actions">
                 <text class="report-link" @tap.stop="reportParty(party)">举报组局</text>
                 <view
                   class="join-btn"
-                  :class="['category-' + party.category, { disabled: isPartyFull(party) && !party.joined }]"
+                  :style="{ background: getCategoryColor(party.category), opacity: isPartyFull(party) && !party.joined ? 0.6 : 1 }"
                 >
                   <text class="join-text">{{ party.joined ? '进入聊天' : (isPartyFull(party) ? '已满员' : '加入') }}</text>
                 </view>
@@ -191,7 +191,8 @@
                 v-for="cat in categories"
                 :key="cat.id"
                 class="category-option"
-                :class="['option-' + cat.id, { active: newParty.category === cat.id }]"
+                :class="{ active: newParty.category === cat.id }"
+                :style="newParty.category === cat.id ? { background: cat.color, color: '#fff' } : {}"
                 @tap="newParty.category = cat.id"
               >
                 <image :src="cat.iconSvg" mode="aspectFit" class="category-option-icon" />
@@ -251,456 +252,20 @@ import {
   createDiningBuddyReport
 } from '@/shared-ui/api.js'
 import { isRuntimeRouteEnabled, loadPlatformRuntimeSettings } from '@/shared-ui/platform-runtime.js'
+import { createDiningBuddyPage } from '../../../shared/mobile-common/dining-buddy-page.js'
 
-const QUIZ_STORAGE_KEY = 'diningBuddyQuizCompleted'
-
-function pickErrorMessage(error, fallback = '操作失败，请稍后再试') {
-  const payload = error && typeof error === 'object' ? error : {}
-  const data = payload.data && typeof payload.data === 'object' ? payload.data : {}
-  return data.error || payload.error || payload.message || fallback
-}
-
-function normalizePartyListResponse(response) {
-  if (Array.isArray(response)) {
-    return response
-  }
-  if (response && Array.isArray(response.parties)) {
-    return response.parties
-  }
-  if (response && response.data && Array.isArray(response.data.parties)) {
-    return response.data.parties
-  }
-  return []
-}
-
-function normalizeMessageListResponse(response) {
-  if (Array.isArray(response)) {
-    return response
-  }
-  if (response && Array.isArray(response.messages)) {
-    return response.messages
-  }
-  if (response && response.data && Array.isArray(response.data.messages)) {
-    return response.data.messages
-  }
-  return []
-}
-
-function createDefaultPartyForm() {
-  return {
-    category: 'food',
-    title: '',
-    location: '',
-    time: '',
-    description: '',
-    maxPeople: 4
-  }
-}
-
-export default {
-  components: { PageHeader },
-
-  data() {
-    return {
-      featureEnabled: true,
-      diningTitle: '同频饭友',
-      diningSubtitle: '约饭、聊天、学习，快速找到同频搭子。',
-      defaultMaxPeople: 4,
-      maxPeopleLimit: 6,
-      view: 'welcome',
-      activeCategory: 'food',
-      showCreateModal: false,
-      quizStep: 0,
-      parties: [],
-      activeParty: null,
-      messages: [],
-      chatInput: '',
-      chatScrollTo: '',
-      loadingParties: false,
-      creatingParty: false,
-      openingPartyId: '',
-      sendingMessage: false,
-      pollTimer: null,
-      categories: [
-        { id: 'chat', label: '聊天', iconSvg: '/static/icons/chat-bubble.svg', color: '#ec4899' },
-        { id: 'food', label: '约饭', iconSvg: '/static/icons/food-bowl.svg', color: '#f97316' },
-        { id: 'study', label: '学习', iconSvg: '/static/icons/study-book.svg', color: '#6366f1' }
-      ],
-      questions: [
-        {
-          question: '你更想先从哪种搭子开始？',
-          options: [
-            { text: '先找个能聊天的人', icon: '💬' },
-            { text: '先约一顿饭最直接', icon: '🍜' },
-            { text: '先找学习监督搭子', icon: '📚' }
-          ]
-        }
-      ],
-      newParty: createDefaultPartyForm()
-    }
-  },
-
-  computed: {
-    currentQuestion() {
-      return this.questions[this.quizStep] || this.questions[0]
-    },
-    quizProgress() {
-      return this.questions.length ? ((this.quizStep + 1) / this.questions.length) * 100 : 100
-    },
-    filteredParties() {
-      return this.parties.filter((party) => party.category === this.activeCategory)
-    },
-    currentCategoryLabel() {
-      const current = this.categories.find((item) => item.id === this.activeCategory)
-      return current ? current.label : '约饭'
-    }
-  },
-
-  onLoad() {
-    this.loadRuntime()
-    const quizCompleted = !!uni.getStorageSync(QUIZ_STORAGE_KEY)
-    this.view = quizCompleted ? 'home' : 'welcome'
-    this.loadParties()
-  },
-
-  onUnload() {
-    this.stopMessagePolling()
-  },
-
-  methods: {
-    async loadRuntime() {
-      try {
-        const runtime = await loadPlatformRuntimeSettings()
-        this.featureEnabled = isRuntimeRouteEnabled(runtime, 'feature', 'dining_buddy', 'user-vue')
-        const settings = runtime.diningBuddySettings || {}
-        this.diningTitle = settings.welcome_title || '同频饭友'
-        this.diningSubtitle = settings.welcome_subtitle || '约饭、聊天、学习，快速找到同频搭子。'
-        this.categories = Array.isArray(settings.categories)
-          ? settings.categories
-              .filter((item) => item && item.enabled !== false)
-              .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
-              .map((item) => ({
-                id: item.id,
-                label: item.label,
-                iconSvg: item.icon,
-                color: item.color
-              }))
-          : this.categories
-        this.questions = Array.isArray(settings.questions) && settings.questions.length
-          ? settings.questions
-          : this.questions
-        this.defaultMaxPeople = Number(settings.default_max_people || 4)
-        this.maxPeopleLimit = Number(settings.max_max_people || 6)
-        if (!this.categories.find((item) => item.id === this.activeCategory)) {
-          this.activeCategory = (this.categories[0] && this.categories[0].id) || 'food'
-        }
-        this.newParty.maxPeople = this.defaultMaxPeople
-        this.newParty.category = this.activeCategory
-      } catch (error) {
-        console.error('加载饭友 runtime 失败:', error)
-      }
-    },
-    startQuiz() {
-      if (!this.featureEnabled) {
-        uni.showToast({ title: '当前服务暂未开放', icon: 'none' })
-        return
-      }
-      this.view = 'quiz'
-      this.quizStep = 0
-    },
-
-    handleQuizAnswer() {
-      if (this.quizStep < this.questions.length - 1) {
-        this.quizStep += 1
-        return
-      }
-      this.completeQuiz()
-    },
-
-    completeQuiz() {
-      this.view = 'matching'
-      uni.setStorageSync(QUIZ_STORAGE_KEY, true)
-      setTimeout(() => {
-        this.view = 'home'
-        this.loadParties()
-      }, 1200)
-    },
-
-    switchCategory(categoryId) {
-      this.activeCategory = categoryId
-      this.newParty.category = categoryId
-    },
-    buildPartySeatSlots(party, type) {
-      const safeParty = party && typeof party === 'object' ? party : {}
-      const current = Math.max(0, Number(safeParty.current || 0))
-      const max = Math.max(current, Number(safeParty.max || 0))
-      const total = type === 'filled' ? current : Math.max(max - current, 0)
-      const slots = []
-
-      for (let index = 0; index < total; index += 1) {
-        slots.push({
-          key: `${type}_${safeParty.id || 'party'}_${index + 1}`
-        })
-      }
-
-      return slots
-    },
-
-    isPartyFull(party) {
-      return Number(party.current || 0) >= Number(party.max || 0)
-    },
-
-    async loadParties() {
-      if (!this.featureEnabled) {
-        this.parties = []
-        return
-      }
-      this.loadingParties = true
-      try {
-        const response = await listDiningBuddyParties()
-        this.parties = normalizePartyListResponse(response)
-      } catch (error) {
-        uni.showToast({
-          title: pickErrorMessage(error, '加载组局失败'),
-          icon: 'none'
-        })
-      } finally {
-        this.loadingParties = false
-      }
-    },
-
-    async joinParty(party) {
-      if (!this.featureEnabled) {
-        uni.showToast({ title: '当前服务暂未开放', icon: 'none' })
-        return
-      }
-      if (!party || !party.id) {
-        return
-      }
-      if (this.isPartyFull(party) && !party.joined) {
-        uni.showToast({ title: '该组局已满员', icon: 'none' })
-        return
-      }
-      if (this.openingPartyId === party.id) {
-        return
-      }
-
-      this.openingPartyId = party.id
-      uni.showLoading({ title: '进入中...' })
-      try {
-        const activeParty = party.joined ? party : await joinDiningBuddyParty(party.id)
-        this.activeParty = activeParty
-        this.view = 'chat'
-        await this.loadMessages(activeParty.id)
-        await this.loadParties()
-        this.startMessagePolling()
-      } catch (error) {
-        uni.showToast({
-          title: pickErrorMessage(error, '进入组局失败'),
-          icon: 'none'
-        })
-      } finally {
-        this.openingPartyId = ''
-        uni.hideLoading()
-      }
-    },
-
-    async loadMessages(partyId) {
-      const response = await fetchDiningBuddyMessages(partyId)
-      this.messages = normalizeMessageListResponse(response)
-      this.scrollToLatestMessage()
-    },
-
-    async sendMessage() {
-      if (!this.featureEnabled) {
-        uni.showToast({ title: '当前服务暂未开放', icon: 'none' })
-        return
-      }
-      const content = this.chatInput.trim()
-      if (!content || !this.activeParty || !this.activeParty.id || this.sendingMessage) {
-        return
-      }
-
-      this.sendingMessage = true
-      try {
-        const message = await sendDiningBuddyMessage(this.activeParty.id, { content })
-        this.messages.push(message)
-        this.chatInput = ''
-        this.scrollToLatestMessage()
-      } catch (error) {
-        uni.showToast({
-          title: pickErrorMessage(error, '发送失败'),
-          icon: 'none'
-        })
-      } finally {
-        this.sendingMessage = false
-      }
-    },
-
-    startMessagePolling() {
-      this.stopMessagePolling()
-      this.pollTimer = setInterval(() => {
-        if (this.view === 'chat' && this.activeParty && this.activeParty.id) {
-          this.loadMessages(this.activeParty.id).catch(() => {})
-        }
-      }, 5000)
-    },
-
-    stopMessagePolling() {
-      if (this.pollTimer) {
-        clearInterval(this.pollTimer)
-        this.pollTimer = null
-      }
-    },
-
-    handleChatBack() {
-      this.stopMessagePolling()
-      this.view = 'home'
-      this.chatInput = ''
-      this.chatScrollTo = ''
-      this.messages = []
-      this.activeParty = null
-    },
-
-    scrollToLatestMessage() {
-      this.$nextTick(() => {
-        const latest = this.messages[this.messages.length - 1]
-        this.chatScrollTo = latest ? `msg-${latest.id}` : ''
-      })
-    },
-
-    getPlaceholder(field) {
-      if (field === 'title') {
-        if (this.newParty.category === 'study') return '例如：考研晚自习'
-        if (this.newParty.category === 'chat') return '例如：下班吐槽局'
-        return '例如：火锅搭子局'
-      }
-      if (field === 'location') {
-        if (this.newParty.category === 'chat') return '线上语音 / 咖啡店 / 公园'
-        return '例如：万象城海底捞'
-      }
-      return ''
-    },
-
-    adjustPeople(delta) {
-      const nextValue = Number(this.newParty.maxPeople || 4) + delta
-      if (nextValue >= 2 && nextValue <= this.maxPeopleLimit) {
-        this.newParty.maxPeople = nextValue
-      }
-    },
-
-    openCreateModal() {
-      if (!this.featureEnabled) {
-        uni.showToast({ title: '当前服务暂未开放', icon: 'none' })
-        return
-      }
-      this.newParty.category = this.activeCategory
-      this.newParty.maxPeople = this.defaultMaxPeople
-      this.showCreateModal = true
-    },
-
-    async createParty() {
-      if (!this.featureEnabled) {
-        uni.showToast({ title: '当前服务暂未开放', icon: 'none' })
-        return
-      }
-      if (this.creatingParty) {
-        return
-      }
-      if (!this.newParty.title.trim() || !this.newParty.location.trim()) {
-        uni.showToast({ title: '请填写完整信息', icon: 'none' })
-        return
-      }
-
-      this.creatingParty = true
-      try {
-        const party = await createDiningBuddyParty({
-          category: this.newParty.category,
-          title: this.newParty.title.trim(),
-          location: this.newParty.location.trim(),
-          time: this.newParty.time.trim(),
-          description: this.newParty.description.trim(),
-          maxPeople: this.newParty.maxPeople
-        })
-
-        this.parties.unshift(party)
-        this.activeCategory = party.category || this.newParty.category
-        this.showCreateModal = false
-        this.newParty = createDefaultPartyForm()
-        this.newParty.category = this.activeCategory
-        this.newParty.maxPeople = this.defaultMaxPeople
-        uni.showToast({ title: '发布成功', icon: 'success' })
-      } catch (error) {
-        uni.showToast({
-          title: pickErrorMessage(error, '发布失败'),
-          icon: 'none'
-        })
-      } finally {
-        this.creatingParty = false
-      }
-    },
-
-    async submitReport(targetType, targetId, reason, description = '') {
-      try {
-        await createDiningBuddyReport({
-          target_type: targetType,
-          target_id: String(targetId || '').trim(),
-          reason,
-          description
-        })
-        uni.showToast({ title: '举报已提交', icon: 'success' })
-      } catch (error) {
-        uni.showToast({
-          title: pickErrorMessage(error, '举报失败'),
-          icon: 'none'
-        })
-      }
-    },
-
-    chooseReportReason(targetType, callback) {
-      const itemMap = {
-        party: ['虚假组局', '骚扰引流', '不当内容'],
-        message: ['辱骂骚扰', '广告引流', '不当内容'],
-        user: ['骚扰他人', '欺诈风险', '违规引流']
-      }
-      const options = itemMap[targetType] || ['内容违规']
-      uni.showActionSheet({
-        itemList: options,
-        success: (result) => {
-          const reason = options[result.tapIndex]
-          if (reason && typeof callback === 'function') {
-            callback(reason)
-          }
-        }
-      })
-    },
-
-    reportParty(party) {
-      if (!party || !party.id) return
-      this.chooseReportReason('party', (reason) => {
-        this.submitReport('party', party.id, reason)
-      })
-    },
-
-    reportMessage(message) {
-      if (!message || !message.id) return
-      this.chooseReportReason('message', (reason) => {
-        this.submitReport('message', message.id, reason)
-      })
-    },
-
-    reportUser(userId) {
-      if (!userId) return
-      this.chooseReportReason('user', (reason) => {
-        this.submitReport('user', userId, reason)
-      })
-    },
-
-    goBackHome() {
-      uni.switchTab({ url: '/pages/index/index' })
-    }
-  }
-}
+export default createDiningBuddyPage({
+  clientId: 'user-vue',
+  PageHeader,
+  createDiningBuddyParty,
+  createDiningBuddyReport,
+  fetchDiningBuddyMessages,
+  isRuntimeRouteEnabled,
+  joinDiningBuddyParty,
+  listDiningBuddyParties,
+  loadPlatformRuntimeSettings,
+  sendDiningBuddyMessage
+})
 </script>
 
 <style scoped lang="scss" src="./index.scss"></style>
