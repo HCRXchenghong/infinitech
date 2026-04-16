@@ -151,6 +151,10 @@ export default defineConfig(({ mode }) => {
           __dirname,
           "../packages/client-sdk/src",
         ),
+        "@infinitech/domain-core": path.resolve(
+          __dirname,
+          "../packages/domain-core/src",
+        ),
         "@infinitech/contracts": path.resolve(
           __dirname,
           "../packages/contracts/src",

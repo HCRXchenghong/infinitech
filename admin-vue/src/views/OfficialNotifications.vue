@@ -36,15 +36,15 @@
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.is_published ? 'success' : 'info'">
-              {{ row.is_published ? '已发布' : '草稿' }}
+            <el-tag :type="getAdminNotificationStatusTagType(row.is_published)">
+              {{ formatAdminNotificationStatus(row.is_published) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="source" label="来源" width="120" />
         <el-table-column prop="created_at" label="创建时间" width="170">
           <template #default="{ row }">
-            {{ formatTime(row.created_at) }}
+            {{ formatAdminNotificationTime(row.created_at) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="240" fixed="right">
@@ -66,7 +66,13 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, RefreshRight } from '@element-plus/icons-vue'
-import { extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts'
+import {
+  extractAdminNotificationPage,
+  formatAdminNotificationStatus,
+  formatAdminNotificationTime,
+  getAdminNotificationStatusTagType,
+} from '@infinitech/admin-core'
+import { extractErrorMessage } from '@infinitech/contracts'
 import { useRouter } from 'vue-router'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 import request from '@/utils/request'
@@ -83,7 +89,7 @@ const loadNotifications = async () => {
   loading.value = true
   try {
     const { data } = await request.get('/api/notifications/admin/all')
-    notifications.value = extractPaginatedItems(data).items
+    notifications.value = extractAdminNotificationPage(data).items
   } catch (error) {
     notifications.value = []
     loadError.value = extractErrorMessage(error, '加载通知失败，请稍后重试')
@@ -132,19 +138,6 @@ const deleteNotification = async (row) => {
   } finally {
     deletingId.value = null
   }
-}
-
-// 格式化时间
-const formatTime = (time) => {
-  if (!time) return '-'
-  const date = new Date(time)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 onMounted(() => {

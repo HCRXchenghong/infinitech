@@ -33,11 +33,11 @@
         </el-select>
       </div>
 
-      <div class="stats-row">
-        <el-tag type="info">总计 {{ normalizedNotifications.length }}</el-tag>
-        <el-tag type="success">已发布 {{ publishedCount }}</el-tag>
-        <el-tag>草稿 {{ draftCount }}</el-tag>
-      </div>
+        <div class="stats-row">
+          <el-tag type="info">总计 {{ normalizedNotifications.length }}</el-tag>
+          <el-tag type="success">已发布 {{ publishedCount }}</el-tag>
+          <el-tag>草稿 {{ draftCount }}</el-tag>
+        </div>
 
       <el-table :data="pagedNotifications" v-loading="loading" stripe>
         <el-table-column type="index" label="#" width="56" />
@@ -57,15 +57,15 @@
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.is_published ? 'success' : 'info'">
-              {{ row.is_published ? '已发布' : '草稿' }}
+            <el-tag :type="getAdminNotificationStatusTagType(row.is_published)">
+              {{ formatAdminNotificationStatus(row.is_published) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="source" label="来源" width="120" />
         <el-table-column prop="updated_at" label="更新时间" width="180">
           <template #default="{ row }">
-            {{ formatTime(row.updated_at || row.created_at) }}
+            {{ formatAdminNotificationTime(row.updated_at || row.created_at) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="280" fixed="right">
@@ -104,7 +104,16 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { Plus, RefreshRight } from '@element-plus/icons-vue';
-import { extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts';
+import {
+  buildAdminNotificationSummary,
+  extractAdminNotificationPage,
+  filterAdminNotifications,
+  formatAdminNotificationStatus,
+  formatAdminNotificationTime,
+  getAdminNotificationStatusTagType,
+  sortAdminNotificationsByUpdatedAt,
+} from '@infinitech/admin-core';
+import { extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 
@@ -119,34 +128,14 @@ const statusFilter = ref('all');
 const currentPage = ref(1);
 const pageSize = ref(10);
 
-function timeToNumber(raw) {
-  if (!raw) return 0;
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return 0;
-  return d.getTime();
-}
-
 const normalizedNotifications = computed(() => {
-  return [...notifications.value]
-    .map((item) => ({ ...item, is_published: Boolean(item?.is_published) }))
-    .sort((a, b) => timeToNumber(b.updated_at || b.created_at) - timeToNumber(a.updated_at || a.created_at));
+  return sortAdminNotificationsByUpdatedAt(notifications.value);
 });
 
 const filteredNotifications = computed(() => {
-  const q = keyword.value.trim().toLowerCase();
-  return normalizedNotifications.value.filter((item) => {
-    const title = String(item?.title || '').toLowerCase();
-    const source = String(item?.source || '').toLowerCase();
-    const matchKeyword = !q || title.includes(q) || source.includes(q);
-
-    let matchStatus = true;
-    if (statusFilter.value === 'published') {
-      matchStatus = item.is_published;
-    } else if (statusFilter.value === 'draft') {
-      matchStatus = !item.is_published;
-    }
-
-    return matchKeyword && matchStatus;
+  return filterAdminNotifications(normalizedNotifications.value, {
+    keyword: keyword.value,
+    status: statusFilter.value,
   });
 });
 
@@ -156,8 +145,9 @@ const pagedNotifications = computed(() => {
   return filteredNotifications.value.slice(start, end);
 });
 
-const publishedCount = computed(() => normalizedNotifications.value.filter((item) => item.is_published).length);
-const draftCount = computed(() => normalizedNotifications.value.filter((item) => !item.is_published).length);
+const notificationSummary = computed(() => buildAdminNotificationSummary(normalizedNotifications.value));
+const publishedCount = computed(() => notificationSummary.value.published);
+const draftCount = computed(() => notificationSummary.value.draft);
 
 watch([keyword, statusFilter], () => {
   currentPage.value = 1;
@@ -170,24 +160,12 @@ watch([filteredNotifications, pageSize], () => {
   }
 });
 
-function formatTime(raw) {
-  if (!raw) return '-';
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return raw;
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const h = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  return `${y}-${m}-${day} ${h}:${min}`;
-}
-
 async function loadNotifications() {
   loadError.value = '';
   loading.value = true;
   try {
     const { data } = await request.get('/api/notifications/admin/all');
-    notifications.value = extractPaginatedItems(data).items;
+    notifications.value = extractAdminNotificationPage(data).items;
   } catch (error) {
     notifications.value = [];
     loadError.value = extractErrorMessage(error, '加载通知失败，请稍后重试');

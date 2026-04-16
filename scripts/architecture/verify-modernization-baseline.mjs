@@ -43,6 +43,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/client-sdk/src/onboarding-invite.js",
   "packages/client-sdk/src/onboarding-invite.test.mjs",
   "packages/domain-core/src/index.js",
+  "packages/domain-core/src/notification-content.js",
+  "packages/domain-core/src/notification-content.test.mjs",
   "packages/mobile-core/src/index.js",
   "packages/admin-core/src/index.js",
   "packages/admin-core/src/menu-groups.js",
@@ -57,6 +59,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/admin-core/src/official-site-resources.test.mjs",
   "packages/admin-core/src/financial-transaction-resources.js",
   "packages/admin-core/src/financial-transaction-resources.test.mjs",
+  "packages/admin-core/src/notification-resources.js",
+  "packages/admin-core/src/notification-resources.test.mjs",
   "packages/admin-core/src/DesktopShellApp.vue",
   "admin-win/src/App.vue",
   "admin-mac/src/App.vue",
@@ -219,6 +223,14 @@ assertContains(
   "createMobilePushApi",
 );
 assertContains(
+  "user-vue/pages/message/notification-detail/index.vue",
+  "../../../../packages/domain-core/src/notification-content.js",
+);
+assertContains(
+  "app-mobile/pages/message/notification-detail/index.vue",
+  "../../../../packages/domain-core/src/notification-content.js",
+);
+assertContains(
   "user-vue/shared-ui/api.js",
   "extractSMSResult",
 );
@@ -281,6 +293,26 @@ assertContains(
 assertContains(
   "admin-vue/src/views/TransactionLogs.vue",
   "formatFinancialTransactionType",
+);
+assertContains(
+  "admin-vue/src/views/OfficialNotificationsPage.vue",
+  "extractAdminNotificationPage",
+);
+assertContains(
+  "admin-vue/src/views/NotificationPreviewPage.vue",
+  "parseNotificationDisplayBlocks",
+);
+assertContains(
+  "admin-vue/src/views/notificationEditorPageHelpers.js",
+  "@infinitech/domain-core",
+);
+assertContains(
+  "admin-vue/src/views/notificationEditorHelpers.js",
+  "@infinitech/domain-core",
+);
+assertContains(
+  "admin-vue/vite.config.mts",
+  '"@infinitech/domain-core"',
 );
 assertContains(
   "backend/go/internal/handler/sms_handler.go",
@@ -1059,7 +1091,15 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs"',
+  '"verify:domain-core-tests": "node --test packages/domain-core/src/notification-content.test.mjs"',
+);
+assertContains(
+  "package.json",
+  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs"',
+);
+assertContains(
+  "package.json",
+  '"verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"',
 );
 assertContains(
   "package.json",
@@ -1159,11 +1199,11 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/OfficialNotifications.vue",
-  "extractPaginatedItems(data).items",
+  "extractAdminNotificationPage(data).items",
 );
 assertContains(
   "admin-vue/src/views/OfficialNotificationsPage.vue",
-  "extractPaginatedItems(data).items",
+  "extractAdminNotificationPage(data).items",
 );
 assertContains(
   "admin-vue/src/views/OperationsCenter.vue",

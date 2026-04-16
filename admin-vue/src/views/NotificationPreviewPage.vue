@@ -12,8 +12,8 @@
       <template #header>
         <div class="header-row">
           <span class="header-title">通知预览</span>
-          <el-tag :type="notification.is_published ? 'success' : 'info'">
-            {{ notification.is_published ? '已发布' : '草稿' }}
+          <el-tag :type="getAdminNotificationStatusTagType(notification.is_published)">
+            {{ formatAdminNotificationStatus(notification.is_published) }}
           </el-tag>
         </div>
       </template>
@@ -34,7 +34,7 @@
         <div class="article-meta">
           <span>{{ notification.source || '悦享e食' }}</span>
           <span>·</span>
-          <span>{{ formatTime(notification.updated_at || notification.created_at) }}</span>
+          <span>{{ formatAdminNotificationTime(notification.updated_at || notification.created_at) }}</span>
         </div>
 
         <el-image
@@ -76,7 +76,14 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowLeft } from '@element-plus/icons-vue';
+import {
+  formatAdminNotificationStatus,
+  formatAdminNotificationTime,
+  getAdminNotificationStatusTagType,
+  normalizeAdminNotificationRecord,
+} from '@infinitech/admin-core';
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
+import { parseNotificationDisplayBlocks } from '@infinitech/domain-core';
 import request from '@/utils/request';
 
 const route = useRoute();
@@ -86,72 +93,9 @@ const loading = ref(false);
 const loadError = ref('');
 const notification = ref({});
 
-function normalizeBlocks(raw) {
-  if (!raw) return [];
-  if (Array.isArray(raw)) {
-    return raw;
-  }
-  if (typeof raw === 'object' && Array.isArray(raw.blocks)) {
-    return raw.blocks;
-  }
-  if (typeof raw === 'string') {
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.blocks)) {
-        return parsed.blocks;
-      }
-      return [];
-    } catch (error) {
-      return raw
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line) => ({ type: 'p', text: line }));
-    }
-  }
-  return [];
-}
-
 const blocks = computed(() => {
-  return normalizeBlocks(notification.value.content)
-    .map((item) => {
-      const type = String(item?.type || 'p');
-      if (type === 'ul') {
-        const items = Array.isArray(item?.items)
-          ? item.items.map((v) => String(v || '').trim()).filter(Boolean)
-          : [];
-        return { type: 'ul', items };
-      }
-      if (type === 'img') {
-        return {
-          type: 'img',
-          url: String(item?.url || '').trim(),
-          caption: String(item?.caption || '').trim()
-        };
-      }
-      return {
-        type: ['h2', 'quote'].includes(type) ? type : 'p',
-        text: String(item?.text || '').trim()
-      };
-    })
-    .filter((item) => {
-      if (item.type === 'ul') return item.items.length > 0;
-      if (item.type === 'img') return Boolean(item.url);
-      return Boolean(item.text);
-    });
+  return parseNotificationDisplayBlocks(notification.value.content);
 });
-
-function formatTime(raw) {
-  if (!raw) return '-';
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return raw;
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const h = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  return `${y}-${m}-${day} ${h}:${min}`;
-}
 
 async function loadNotification() {
   loading.value = true;
@@ -159,7 +103,7 @@ async function loadNotification() {
   try {
     const id = route.params.id;
     const { data } = await request.get(`/api/notifications/admin/${id}`);
-    notification.value = extractEnvelopeData(data) || {};
+    notification.value = normalizeAdminNotificationRecord(extractEnvelopeData(data) || {});
   } catch (error) {
     notification.value = {};
     loadError.value = extractErrorMessage(error, '加载通知失败');

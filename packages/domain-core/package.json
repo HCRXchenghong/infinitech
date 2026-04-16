@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.js",
-    "./identity": "./src/identity.js"
+    "./identity": "./src/identity.js",
+    "./notification-content": "./src/notification-content.js"
   }
 }

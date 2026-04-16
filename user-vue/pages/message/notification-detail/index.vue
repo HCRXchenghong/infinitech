@@ -67,6 +67,7 @@
 
 <script>
 import { fetchNotificationDetail, markNotificationRead, ackPushMessage } from '@/shared-ui/api.js'
+import { parseNotificationDisplayBlocks } from '../../../../packages/domain-core/src/notification-content.js'
 
 const NOTIFICATION_READ_EVENT = 'official-notification-read'
 
@@ -122,7 +123,7 @@ export default {
             time: data.time || '',
             source: data.source || '悦享e食',
             cover: data.cover || '',
-            blocks: this.parseContent(data.content)
+            blocks: parseNotificationDisplayBlocks(data.content)
           }
           this.markAsRead(id)
         } else {
@@ -151,27 +152,6 @@ export default {
       } catch (err) {
         console.error('标记通知已读失败:', err)
       }
-    },
-    parseContent(content) {
-      if (!content) return []
-
-      if (content.blocks && Array.isArray(content.blocks)) {
-        return content.blocks
-      }
-
-      if (typeof content === 'object') {
-        const blocks = []
-        if (content.text) {
-          blocks.push({ type: 'p', text: content.text })
-        }
-        return blocks.length > 0 ? blocks : [{ type: 'p', text: '暂无内容' }]
-      }
-
-      if (typeof content === 'string') {
-        return [{ type: 'p', text: content }]
-      }
-
-      return []
     },
     back() {
       uni.navigateBack()
