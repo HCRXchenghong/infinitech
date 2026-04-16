@@ -230,10 +230,16 @@ import { useRouter } from 'vue-router'
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts'
 import {
   createDefaultPaymentGatewaySummary,
+  createDefaultServiceHealthStatus,
+  extractServiceHealthStatus,
   extractWithdrawRequestPage,
+  formatServiceHealthDetail as formatServiceDetail,
   formatAdminDateTime,
   getWithdrawAutoRetry,
   normalizePaymentGatewaySummary,
+  serviceHealthJourneyStatusLabel as journeyStatusLabel,
+  serviceHealthStatusLabel,
+  serviceHealthStatusTag as statusTagType,
   withdrawAutoRetryLabel,
   withdrawMethodLabel,
   withdrawStatusLabel,
@@ -246,12 +252,7 @@ import PageStateAlert from '@/components/PageStateAlert.vue'
 const router = useRouter()
 const loading = ref(false)
 const pageError = ref('')
-const serviceStatus = reactive({
-  checkedAt: '',
-  overall: 'unknown',
-  services: [],
-  journeys: [],
-})
+const serviceStatus = reactive(createDefaultServiceHealthStatus())
 const gatewaySummary = ref(createDefaultPaymentGatewaySummary())
 const riderDepositOverview = ref({})
 const withdrawRequests = ref([])
@@ -308,38 +309,6 @@ function formatFen(value) {
   return (Number(value || 0) / 100).toFixed(2)
 }
 
-function statusTagType(status) {
-  if (status === 'ok' || status === 'ready' || status === 'up') return 'success'
-  if (status === 'degraded') return 'warning'
-  if (status === 'down' || status === 'error') return 'danger'
-  return 'info'
-}
-
-function serviceStatusLabel(status) {
-  if (status === 'ok' || status === 'ready' || status === 'up') return '在线'
-  if (status === 'degraded') return '降级'
-  if (status === 'down' || status === 'error') return '异常'
-  return '未知'
-}
-
-function journeyStatusLabel(status) {
-  if (status === 'ok' || status === 'ready') return '正常'
-  if (status === 'degraded') return '降级'
-  if (status === 'down' || status === 'error') return '阻断'
-  return '未知'
-}
-
-function formatServiceDetail(detail) {
-  if (!detail) return '暂未返回扩展说明'
-  const summary = String(detail)
-    .split('|')
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .slice(0, 4)
-    .join('，')
-  return summary || '暂未返回扩展说明'
-}
-
 function workbenchWithdrawAutoRetryLabel(row) {
   return withdrawAutoRetryLabel(row, {
     disabledLabel: '',
@@ -358,12 +327,12 @@ async function loadWorkbench() {
       request.get('/api/pay-center/withdraw-requests', { params: { page: 1, limit: 20 } }),
     ])
 
+    const nextHealth = extractServiceHealthStatus(healthRes.data, { path: 'serviceStatus' })
     const healthPayload = extractEnvelopeData(healthRes.data) || {}
-    const nextHealth = healthPayload.serviceStatus || {}
-    serviceStatus.checkedAt = String(nextHealth.checkedAt || '')
-    serviceStatus.overall = String(nextHealth.overall || 'unknown')
-    serviceStatus.services = Array.isArray(nextHealth.services) ? nextHealth.services : []
-    serviceStatus.journeys = Array.isArray(nextHealth.journeys) ? nextHealth.journeys : []
+    serviceStatus.checkedAt = nextHealth.checkedAt
+    serviceStatus.overall = nextHealth.overall
+    serviceStatus.services = nextHealth.services
+    serviceStatus.journeys = nextHealth.journeys
     gatewaySummary.value = normalizePaymentGatewaySummary(healthPayload.gateway_summary)
     riderDepositOverview.value = extractEnvelopeData(depositRes.data) || {}
     withdrawRequests.value = extractWithdrawRequestPage(withdrawRes.data).items

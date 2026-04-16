@@ -235,6 +235,10 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { extractEnvelopeData, extractPaginatedItems } from '@infinitech/contracts'
+import {
+  createDefaultServiceHealthStatus,
+  extractServiceHealthStatus,
+} from '@infinitech/admin-core'
 import request from '@/utils/request'
 import socketService, { SOCKET_HTTP_BASE } from '@/utils/socket'
 import { getCurrentAdminSocketIdentity } from '@/utils/runtime'
@@ -265,7 +269,7 @@ const router = useRouter()
 
 const imStats = ref(createDefaultImStats())
 const statsCards = ref(createDefaultStatsCards())
-const runtimeHealth = ref({ overall: 'unknown', services: [] })
+const runtimeHealth = ref(createDefaultServiceHealthStatus())
 
 const userTab = ref('week')
 const riderTab = ref('week')
@@ -431,13 +435,9 @@ async function loadWeatherConfig() {
 async function loadSystemHealth() {
   try {
     const { data } = await request.get('/api/system-health')
-    const serviceStatus = data?.serviceStatus || {}
-    runtimeHealth.value = {
-      overall: String(serviceStatus.overall || 'unknown'),
-      services: Array.isArray(serviceStatus.services) ? serviceStatus.services : []
-    }
+    runtimeHealth.value = extractServiceHealthStatus(data, { path: 'serviceStatus' })
   } catch (_error) {
-    runtimeHealth.value = { overall: 'unknown', services: [] }
+    runtimeHealth.value = createDefaultServiceHealthStatus()
   }
 }
 

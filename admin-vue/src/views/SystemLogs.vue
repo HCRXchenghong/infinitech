@@ -270,7 +270,15 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
-import { extractSystemLogPage } from "@infinitech/admin-core";
+import {
+  createDefaultServiceHealthStatus,
+  extractSystemLogPage,
+  formatAdminDateTime,
+  normalizeServiceHealthStatus,
+  serviceHealthOverallStatusLabel as overallStatusText,
+  serviceHealthStatusLabel as serviceStatusText,
+  serviceHealthStatusTag as serviceTagType,
+} from "@infinitech/admin-core";
 import { extractErrorMessage } from "@infinitech/contracts";
 import request from "@/utils/request";
 import PageStateAlert from "@/components/PageStateAlert.vue";
@@ -359,14 +367,11 @@ const summary = reactive({
   error: 0
 });
 
-const serviceStatus = reactive({
-  checkedAt: "",
-  overall: "unknown",
-  services: []
-});
+const serviceStatus = reactive(createDefaultServiceHealthStatus());
 
 function applySystemLogPage(payload) {
   const page = extractSystemLogPage(payload);
+  const nextServiceStatus = normalizeServiceHealthStatus(page.serviceStatus);
   logs.value = page.items;
   pagination.total = page.total;
   summary.create = Number(page.summary.create || 0);
@@ -375,9 +380,10 @@ function applySystemLogPage(payload) {
   summary.read = Number(page.summary.read || 0);
   summary.system = Number(page.summary.system || 0);
   summary.error = Number(page.summary.error || 0);
-  serviceStatus.checkedAt = String(page.serviceStatus.checkedAt || "");
-  serviceStatus.overall = String(page.serviceStatus.overall || "unknown");
-  serviceStatus.services = Array.isArray(page.serviceStatus.services) ? page.serviceStatus.services : [];
+  serviceStatus.checkedAt = nextServiceStatus.checkedAt;
+  serviceStatus.overall = nextServiceStatus.overall;
+  serviceStatus.services = nextServiceStatus.services;
+  serviceStatus.journeys = nextServiceStatus.journeys;
 }
 
 function resetSystemLogPage() {
@@ -426,20 +432,6 @@ function actionTagType(actionType) {
   return "";
 }
 
-function serviceTagType(status) {
-  if (status === "up" || status === "ok" || status === "ready") return "success";
-  if (status === "degraded") return "warning";
-  if (status === "down" || status === "error") return "danger";
-  return "info";
-}
-
-function serviceStatusText(status) {
-  if (status === "up" || status === "ok" || status === "ready") return "在线";
-  if (status === "degraded") return "降级";
-  if (status === "down" || status === "error") return "异常";
-  return "未知";
-}
-
 function formatProbeType(probe) {
   if (probe === "ready") return "/ready";
   if (probe === "health") return "/health";
@@ -447,27 +439,8 @@ function formatProbeType(probe) {
   return String(probe || "-");
 }
 
-function overallStatusText(status) {
-  if (status === "ok" || status === "ready") return "整体正常";
-  if (status === "degraded") return "核心正常，存在降级";
-  if (status === "down") return "核心异常";
-  return "状态未知";
-}
-
 function formatTime(raw) {
-  if (!raw) return "-";
-  const date = new Date(raw);
-  if (Number.isNaN(date.getTime())) {
-    return String(raw);
-  }
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-  const second = String(date.getSeconds()).padStart(2, "0");
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+  return formatAdminDateTime(raw, { includeSeconds: true });
 }
 
 function formatMethodPath(item) {

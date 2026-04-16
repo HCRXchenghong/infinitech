@@ -45,6 +45,7 @@ test("extractSystemLogPage unwraps enveloped system log payloads", () => {
         checkedAt: "2026-04-16T00:00:00Z",
         overall: "healthy",
         services: [{ key: "go", status: "healthy" }],
+        journeys: [],
       },
       files: {},
       pagination: {
@@ -85,6 +86,7 @@ test("extractSystemLogPage supports legacy root payloads and fills defaults", ()
         checkedAt: "2026-04-16 08:00:00",
         overall: "unknown",
         services: [],
+        journeys: [],
       },
       files: {
         goExists: true,

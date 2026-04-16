@@ -1,4 +1,5 @@
 import { extractEnvelopeData, extractPaginatedItems } from "../../contracts/src/http.js";
+import { normalizeServiceHealthStatus } from "./service-health-resources.js";
 
 function normalizeNumber(value, fallback = 0) {
   const parsed = Number(value);
@@ -6,15 +7,6 @@ function normalizeNumber(value, fallback = 0) {
     return fallback;
   }
   return parsed;
-}
-
-function normalizeServiceStatus(raw = {}) {
-  const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
-  return {
-    checkedAt: String(source.checkedAt || source.checked_at || "").trim(),
-    overall: String(source.overall || "unknown").trim() || "unknown",
-    services: Array.isArray(source.services) ? source.services : [],
-  };
 }
 
 function normalizeSystemLogSummary(raw = {}) {
@@ -43,11 +35,11 @@ export function extractSystemLogPage(payload = {}) {
     total: page.total,
     page: page.page,
     limit: page.limit,
-    summary: normalizeSystemLogSummary(summarySource),
-    serviceStatus: normalizeServiceStatus(source.serviceStatus),
-    files: source.files && typeof source.files === "object" && !Array.isArray(source.files)
-      ? source.files
-      : {},
+      summary: normalizeSystemLogSummary(summarySource),
+      serviceStatus: normalizeServiceHealthStatus(source.serviceStatus),
+      files: source.files && typeof source.files === "object" && !Array.isArray(source.files)
+        ? source.files
+        : {},
     pagination: {
       total: page.total,
       page: page.page,
