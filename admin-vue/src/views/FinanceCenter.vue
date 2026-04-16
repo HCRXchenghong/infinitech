@@ -54,7 +54,7 @@
             </el-descriptions-item>
             <el-descriptions-item label="最近充值">
               <span v-if="lastRecharge" style="color:#374151;font-size:13px;">
-                {{ lastRecharge.userType === 'user' ? '用户' : lastRecharge.userType === 'rider' ? '骑手' : '商户' }}
+                {{ formatUserType(lastRecharge.userType) }}
                 #{{ lastRecharge.userId }} 充值 ¥{{ (lastRecharge.amount / 100).toFixed(2) }}
               </span>
               <span v-else style="color:#9ca3af;font-size:13px;">暂无记录</span>
@@ -73,7 +73,7 @@
             </el-descriptions-item>
             <el-descriptions-item label="最近扣款">
               <span v-if="lastDeduct" style="color:#374151;font-size:13px;">
-                {{ lastDeduct.userType === 'user' ? '用户' : lastDeduct.userType === 'rider' ? '骑手' : '商户' }}
+                {{ formatUserType(lastDeduct.userType) }}
                 #{{ lastDeduct.userId }} 扣款 ¥{{ (lastDeduct.amount / 100).toFixed(2) }}
               </span>
               <span v-else style="color:#9ca3af;font-size:13px;">暂无记录</span>
@@ -152,9 +152,9 @@
         <el-descriptions-item label="最近更新">
           <span v-if="transactionLogs.length > 0" style="color:#374151;font-size:13px;">
             {{ formatTransactionType(transactionLogs[0].type) }} ·
-            {{ transactionLogs[0].userType === 'customer' ? '用户' : transactionLogs[0].userType === 'rider' ? '骑手' : '商户' }}
+            {{ formatUserType(transactionLogs[0].userType) }}
             #{{ transactionLogs[0].userId }} ·
-            {{ isIncomeType(transactionLogs[0].type) ? '+' : '-' }}¥{{ fen2yuan(transactionLogs[0].amount) }}
+            {{ transactionDirection(transactionLogs[0].type) }}¥{{ fen2yuan(transactionLogs[0].amount) }}
           </span>
           <span v-else style="color:#9ca3af;font-size:13px;">暂无记录</span>
         </el-descriptions-item>
@@ -167,8 +167,8 @@
         <el-descriptions-item label="数值">{{ kpiDialogData.value }}</el-descriptions-item>
         <el-descriptions-item label="说明">{{ kpiDialogData.desc }}</el-descriptions-item>
         <el-descriptions-item label="统计周期">
-          {{ overview.periodStart ? fmtDate(overview.periodStart) : '-' }} ~
-          {{ overview.periodEnd ? fmtDate(overview.periodEnd) : '-' }}
+          {{ formatFinanceDate(overview.periodStart) }} ~
+          {{ formatFinanceDate(overview.periodEnd) }}
         </el-descriptions-item>
       </el-descriptions>
       <template #footer>
@@ -261,12 +261,24 @@ import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { extractEnvelopeData, extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts';
 import {
+  buildFinanceCenterParams,
+  buildFinanceExportFilename,
   buildFinanceOverviewKpiCards,
+  buildFinanceRecentTransactionParams,
+  buildFinanceRechargePayload,
   buildFinanceRefundCards,
+  buildFinanceUserDetailsParams,
+  buildFinanceDeductPayload,
+  createFinanceCoinRatioState,
+  createFinanceWalletActionForm,
+  createFinanceWalletActionRecord,
   extractFinancialTransactionLogPage,
+  formatFinanceCenterDate,
   formatFinancialAmountYuan as fen2yuan,
   formatFinancialTransactionType as formatTransactionType,
-  isFinancialTransactionIncomeType as isIncomeType,
+  formatFinancialTransactionUserType as formatUserType,
+  getFinanceTransactionDirectionSign,
+  validateFinanceWalletActionForm,
 } from '@infinitech/admin-core';
 import request from '../utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
@@ -295,28 +307,22 @@ const userDialogType = ref('rider');
 const rechargeDialogVisible = ref(false);
 const recharging = ref(false);
 const lastRecharge = ref(null);
-const rechargeForm = ref({ userType: 'user', userId: '', amountYuan: 10, note: '' });
+const rechargeForm = ref(createFinanceWalletActionForm());
 
 // 扣款
 const deductDialogVisible = ref(false);
 const deducting = ref(false);
 const lastDeduct = ref(null);
-const deductForm = ref({ userType: 'user', userId: '', amountYuan: 10, note: '' });
+const deductForm = ref(createFinanceWalletActionForm());
 
 // 虚拟币比例
-const coinRatio = ref({ ratio: 100 });
+const coinRatio = ref(createFinanceCoinRatioState());
 const savingCoinRatio = ref(false);
 
 // 财务日志
 const transactionLogs = ref([]);
 const logsLoading = ref(false);
 
-function fmtDate(d) { return d ? String(d).slice(0, 10) : '-'; }
-function buildParams() {
-  const p = { periodType: periodType.value };
-  if (statDate.value) p.statDate = statDate.value;
-  return p;
-}
 const kpiCards = computed(() => buildFinanceOverviewKpiCards(overview.value));
 
 const refundCards = computed(() => buildFinanceRefundCards(overview.value));
@@ -334,7 +340,9 @@ async function loadOverview() {
   overviewLoading.value = true;
   overviewError.value = '';
   try {
-    const res = await request.get('/api/financial/overview', { params: buildParams() });
+    const res = await request.get('/api/financial/overview', {
+      params: buildFinanceCenterParams({ periodType: periodType.value, statDate: statDate.value }),
+    });
     overview.value = extractEnvelopeData(res.data) || {};
   } catch (error) {
     overview.value = {};
@@ -347,10 +355,10 @@ async function loadDetails() {
   detailsLoading.value = true;
   detailsError.value = '';
   try {
-    const params = { ...buildParams(), limit: 20, sortBy: 'total_income', sortOrder: 'desc' };
+    const filters = { periodType: periodType.value, statDate: statDate.value };
     const [rRes, mRes] = await Promise.all([
-      request.get('/api/financial/user-details', { params: { ...params, userType: 'rider' } }),
-      request.get('/api/financial/user-details', { params: { ...params, userType: 'merchant' } }),
+      request.get('/api/financial/user-details', { params: buildFinanceUserDetailsParams(filters, 'rider') }),
+      request.get('/api/financial/user-details', { params: buildFinanceUserDetailsParams(filters, 'merchant') }),
     ]);
     riderDetails.value = extractPaginatedItems(rRes.data).items;
     merchantDetails.value = extractPaginatedItems(mRes.data).items;
@@ -368,7 +376,7 @@ async function loadCoinRatio() {
   try {
     const res = await request.get('/api/coin-ratio');
     const payload = extractEnvelopeData(res.data) || {};
-    coinRatio.value = { ratio: payload.ratio || 100 };
+    coinRatio.value = createFinanceCoinRatioState(payload);
   } catch { /* ignore */ }
 }
 
@@ -376,7 +384,9 @@ async function loadRecentTransactions() {
   logsLoading.value = true;
   logsError.value = '';
   try {
-    const res = await request.get('/api/financial/transaction-logs', { params: { page: 1, limit: 1 } });
+    const res = await request.get('/api/financial/transaction-logs', {
+      params: buildFinanceRecentTransactionParams(),
+    });
     transactionLogs.value = extractFinancialTransactionLogPage(res.data).items;
   } catch (error) {
     transactionLogs.value = [];
@@ -391,76 +401,67 @@ async function saveCoinRatio() {
   try {
     await request.post('/api/coin-ratio', coinRatio.value);
     ElMessage.success('虚拟币比例保存成功');
-  } catch (e) {
-    ElMessage.error('保存失败');
+  } catch (error) {
+    ElMessage.error(extractErrorMessage(error, '保存虚拟币比例失败'));
   } finally { savingCoinRatio.value = false; }
 }
 
 async function doRecharge() {
-  if (!rechargeForm.value.userId) return ElMessage.warning('请输入账号ID');
+  const validationMessage = validateFinanceWalletActionForm(rechargeForm.value);
+  if (validationMessage) return ElMessage.warning(validationMessage);
   recharging.value = true;
   try {
-    await request.post('/api/admin/wallet/recharge', {
-      user_id: String(rechargeForm.value.userId),
-      user_type: rechargeForm.value.userType,
-      amount: Math.round(rechargeForm.value.amountYuan * 100),
-      note: rechargeForm.value.note,
-    });
+    await request.post('/api/admin/wallet/recharge', buildFinanceRechargePayload(rechargeForm.value));
     ElMessage.success('充值成功');
-    lastRecharge.value = {
-      userId: rechargeForm.value.userId,
-      userType: rechargeForm.value.userType,
-      amount: Math.round(rechargeForm.value.amountYuan * 100),
-    };
+    lastRecharge.value = createFinanceWalletActionRecord(rechargeForm.value);
     rechargeDialogVisible.value = false;
-    rechargeForm.value = { userType: 'user', userId: '', amountYuan: 10, note: '' };
-    loadRecentTransactions();
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.error || '充值失败');
+    rechargeForm.value = createFinanceWalletActionForm();
+    void loadRecentTransactions();
+  } catch (error) {
+    ElMessage.error(extractErrorMessage(error, '充值失败'));
   } finally { recharging.value = false; }
 }
 
 async function doDeduct() {
-  if (!deductForm.value.userId) return ElMessage.warning('请输入账号ID');
+  const validationMessage = validateFinanceWalletActionForm(deductForm.value);
+  if (validationMessage) return ElMessage.warning(validationMessage);
   deducting.value = true;
   try {
-    await request.post('/api/admin/wallet/deduct-balance', {
-      targetUserId: String(deductForm.value.userId),
-      targetUserType: deductForm.value.userType,
-      amount: Math.round(deductForm.value.amountYuan * 100),
-      reason: 'manual_deduct',
-      remark: deductForm.value.note,
-    });
+    await request.post('/api/admin/wallet/deduct-balance', buildFinanceDeductPayload(deductForm.value));
     ElMessage.success('扣款成功');
-    lastDeduct.value = {
-      userId: deductForm.value.userId,
-      userType: deductForm.value.userType,
-      amount: Math.round(deductForm.value.amountYuan * 100),
-    };
+    lastDeduct.value = createFinanceWalletActionRecord(deductForm.value);
     deductDialogVisible.value = false;
-    deductForm.value = { userType: 'user', userId: '', amountYuan: 10, note: '' };
-    loadRecentTransactions();
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.error || '扣款失败');
+    deductForm.value = createFinanceWalletActionForm();
+    void loadRecentTransactions();
+  } catch (error) {
+    ElMessage.error(extractErrorMessage(error, '扣款失败'));
   } finally { deducting.value = false; }
 }
 
 async function doExport() {
   exporting.value = true;
   try {
-    const res = await request.get('/api/financial/export', { params: buildParams() });
+    const filters = { periodType: periodType.value, statDate: statDate.value };
+    const res = await request.get('/api/financial/export', {
+      params: buildFinanceCenterParams(filters),
+    });
     const payload = extractEnvelopeData(res.data) || res.data || {};
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const a = Object.assign(document.createElement('a'), {
       href: URL.createObjectURL(blob),
-      download: `finance-report-${periodType.value}-${statDate.value || 'latest'}.json`,
+      download: buildFinanceExportFilename(filters),
     });
     a.click(); URL.revokeObjectURL(a.href);
-  } catch { /* ignore */ }
+  } catch (error) {
+    ElMessage.error(extractErrorMessage(error, '下载报表失败'));
+  }
   finally { exporting.value = false; }
 }
 
 onMounted(loadAll);
+
+const formatFinanceDate = formatFinanceCenterDate;
+const transactionDirection = getFinanceTransactionDirectionSign;
 </script>
 
 <style scoped lang="css" src="./FinanceCenter.css"></style>

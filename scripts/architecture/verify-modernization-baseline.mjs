@@ -1490,6 +1490,18 @@ assertContains(
   "const payload = extractEnvelopeData(res.data) || res.data || {};",
 );
 assertContains(
+  "admin-vue/src/views/FinanceCenter.vue",
+  "buildFinanceCenterParams",
+);
+assertContains(
+  "admin-vue/src/views/FinanceCenter.vue",
+  "createFinanceWalletActionForm",
+);
+assertContains(
+  "admin-vue/src/views/FinanceCenter.vue",
+  "buildFinanceDeductPayload",
+);
+assertContains(
   "admin-vue/src/views/settingsHelpers/sms.js",
   "normalizeSMSConfig(extractEnvelopeData(res.data) || {})",
 );
@@ -1606,6 +1618,10 @@ assertNotContains(
   "error?.response?.data?.error",
 );
 assertNotContains(
+  "admin-vue/src/views/FinanceCenter.vue",
+  "error?.response?.data?.error",
+);
+assertNotContains(
   "admin-vue/src/views/TransactionLogs.vue",
   "error?.response?.data?.error",
 );
@@ -1644,6 +1660,14 @@ assertContains(
 assertContains(
   "admin-vue/src/views/FinanceCenter.vue",
   "extractEnvelopeData(res.data)",
+);
+assertNotContains(
+  "admin-vue/src/views/FinanceCenter.vue",
+  "function buildParams()",
+);
+assertNotContains(
+  "admin-vue/src/views/FinanceCenter.vue",
+  "function fmtDate(d)",
 );
 assertContains(
   "admin-vue/src/views/Login.vue",

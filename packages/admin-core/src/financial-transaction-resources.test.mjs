@@ -2,26 +2,41 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildFinanceCenterParams,
+  buildFinanceExportFilename,
   buildFinanceOverviewKpiCards,
+  buildFinanceRecentTransactionParams,
+  buildFinanceRechargePayload,
   buildFinanceRefundCards,
+  buildFinanceUserDetailsParams,
+  buildFinanceDeductPayload,
+  createFinanceCoinRatioState,
+  createFinanceWalletActionForm,
+  createFinanceWalletActionRecord,
+  formatFinanceCenterDate,
   formatFinancialAmountYuan,
   formatFinancialTransactionStatus,
   formatFinancialTransactionType,
   formatFinancialTransactionUserType,
+  getFinanceTransactionDirectionSign,
   getFinancialTransactionStatusTagType,
   getFinancialTransactionTypeTagType,
   isFinancialTransactionIncomeType,
+  validateFinanceWalletActionForm,
 } from "./financial-transaction-resources.js";
 
 test("financial transaction presentation helpers keep type and status semantics", () => {
   assert.equal(formatFinancialAmountYuan(12345), "123.45");
   assert.equal(formatFinancialTransactionType("admin_add_balance"), "管理员充值");
   assert.equal(formatFinancialTransactionUserType("customer"), "用户");
+  assert.equal(formatFinancialTransactionUserType("user"), "用户");
   assert.equal(formatFinancialTransactionStatus("processing"), "处理中");
   assert.equal(isFinancialTransactionIncomeType("refund"), true);
   assert.equal(isFinancialTransactionIncomeType("payment"), false);
   assert.equal(getFinancialTransactionTypeTagType("withdraw"), "warning");
   assert.equal(getFinancialTransactionStatusTagType("failed"), "danger");
+  assert.equal(getFinanceTransactionDirectionSign("payment"), "-");
+  assert.equal(getFinanceTransactionDirectionSign("refund"), "+");
 });
 
 test("finance overview card builders derive stable card collections", () => {
@@ -62,4 +77,70 @@ test("finance overview card builders derive stable card collections", () => {
       { label: "赔付笔数", value: 2, desc: "周期内赔付总笔数" },
     ],
   );
+});
+
+test("finance center helpers keep query and wallet action semantics stable", () => {
+  assert.equal(formatFinanceCenterDate("2026-04-16T08:09:10Z"), "2026-04-16");
+  assert.equal(formatFinanceCenterDate(""), "-");
+
+  assert.deepEqual(
+    buildFinanceCenterParams({ periodType: "weekly", statDate: "2026-04-16" }),
+    { periodType: "weekly", statDate: "2026-04-16" },
+  );
+  assert.deepEqual(buildFinanceCenterParams({}), { periodType: "daily" });
+
+  assert.deepEqual(
+    buildFinanceUserDetailsParams({ periodType: "monthly" }, "merchant"),
+    {
+      periodType: "monthly",
+      limit: 20,
+      sortBy: "total_income",
+      sortOrder: "desc",
+      userType: "merchant",
+    },
+  );
+  assert.deepEqual(buildFinanceRecentTransactionParams(), { page: 1, limit: 1 });
+  assert.equal(
+    buildFinanceExportFilename({ periodType: "quarterly", statDate: "2026-04-01" }),
+    "finance-report-quarterly-2026-04-01.json",
+  );
+  assert.equal(buildFinanceExportFilename({ periodType: "daily" }), "finance-report-daily-latest.json");
+
+  assert.deepEqual(createFinanceWalletActionForm(), {
+    userType: "user",
+    userId: "",
+    amountYuan: 10,
+    note: "",
+  });
+  assert.equal(validateFinanceWalletActionForm({ userType: "user", userId: "", amountYuan: 10 }), "请输入账号ID");
+  assert.equal(validateFinanceWalletActionForm({ userType: "user", userId: "88", amountYuan: 0 }), "请输入有效金额");
+  assert.equal(validateFinanceWalletActionForm({ userType: "merchant", userId: "m-1", amountYuan: 10.23 }), "");
+
+  const form = {
+    userType: "merchant",
+    userId: "m-9",
+    amountYuan: 10.23,
+    note: "manual-adjust",
+  };
+
+  assert.deepEqual(buildFinanceRechargePayload(form), {
+    user_id: "m-9",
+    user_type: "merchant",
+    amount: 1023,
+    note: "manual-adjust",
+  });
+  assert.deepEqual(buildFinanceDeductPayload(form), {
+    targetUserId: "m-9",
+    targetUserType: "merchant",
+    amount: 1023,
+    reason: "manual_deduct",
+    remark: "manual-adjust",
+  });
+  assert.deepEqual(createFinanceWalletActionRecord(form), {
+    userId: "m-9",
+    userType: "merchant",
+    amount: 1023,
+  });
+  assert.deepEqual(createFinanceCoinRatioState({ ratio: 256 }), { ratio: 256 });
+  assert.deepEqual(createFinanceCoinRatioState({ ratio: 0 }), { ratio: 100 });
 });

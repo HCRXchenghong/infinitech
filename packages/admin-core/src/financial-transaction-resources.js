@@ -6,6 +6,14 @@ function normalizeAmountCent(value) {
   return amount;
 }
 
+function normalizeYuanAmountCent(value) {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return 0;
+  }
+  return Math.round(amount * 100);
+}
+
 export function formatFinancialAmountYuan(value) {
   return (normalizeAmountCent(value) / 100).toFixed(2);
 }
@@ -43,9 +51,11 @@ export function getFinancialTransactionTypeTagType(type) {
 
 export function formatFinancialTransactionUserType(type) {
   const typeMap = {
+    user: "用户",
     customer: "用户",
     rider: "骑手",
     merchant: "商户",
+    admin: "管理员",
   };
   return typeMap[type] || type;
 }
@@ -142,4 +152,102 @@ export function buildFinanceRefundCards(overview = {}) {
       desc: "周期内赔付总笔数",
     },
   ];
+}
+
+export function formatFinanceCenterDate(value) {
+  return value ? String(value).slice(0, 10) : "-";
+}
+
+export function buildFinanceCenterParams(filters = {}) {
+  const params = {
+    periodType: filters.periodType || "daily",
+  };
+
+  if (filters.statDate) {
+    params.statDate = filters.statDate;
+  }
+
+  return params;
+}
+
+export function buildFinanceUserDetailsParams(filters = {}, userType, overrides = {}) {
+  return {
+    ...buildFinanceCenterParams(filters),
+    limit: 20,
+    sortBy: "total_income",
+    sortOrder: "desc",
+    ...overrides,
+    ...(userType ? { userType } : {}),
+  };
+}
+
+export function buildFinanceRecentTransactionParams(overrides = {}) {
+  return {
+    page: 1,
+    limit: 1,
+    ...overrides,
+  };
+}
+
+export function createFinanceWalletActionForm(overrides = {}) {
+  return {
+    userType: "user",
+    userId: "",
+    amountYuan: 10,
+    note: "",
+    ...overrides,
+  };
+}
+
+export function validateFinanceWalletActionForm(form = {}) {
+  if (!String(form.userId || "").trim()) {
+    return "请输入账号ID";
+  }
+  if (normalizeYuanAmountCent(form.amountYuan) <= 0) {
+    return "请输入有效金额";
+  }
+  return "";
+}
+
+export function buildFinanceRechargePayload(form = {}) {
+  return {
+    user_id: String(form.userId ?? ""),
+    user_type: form.userType || "user",
+    amount: normalizeYuanAmountCent(form.amountYuan),
+    note: form.note || "",
+  };
+}
+
+export function buildFinanceDeductPayload(form = {}) {
+  return {
+    targetUserId: String(form.userId ?? ""),
+    targetUserType: form.userType || "user",
+    amount: normalizeYuanAmountCent(form.amountYuan),
+    reason: "manual_deduct",
+    remark: form.note || "",
+  };
+}
+
+export function createFinanceWalletActionRecord(form = {}) {
+  return {
+    userId: String(form.userId ?? ""),
+    userType: form.userType || "user",
+    amount: normalizeYuanAmountCent(form.amountYuan),
+  };
+}
+
+export function createFinanceCoinRatioState(payload = {}) {
+  const ratio = Number(payload.ratio);
+  return {
+    ratio: Number.isFinite(ratio) && ratio > 0 ? Math.round(ratio) : 100,
+  };
+}
+
+export function buildFinanceExportFilename(filters = {}) {
+  const params = buildFinanceCenterParams(filters);
+  return `finance-report-${params.periodType}-${params.statDate || "latest"}.json`;
+}
+
+export function getFinanceTransactionDirectionSign(type) {
+  return isFinancialTransactionIncomeType(type) ? "+" : "-";
 }
