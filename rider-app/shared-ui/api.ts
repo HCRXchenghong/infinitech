@@ -11,6 +11,7 @@ import {
 import {
   extractEnvelopeData,
   extractPaginatedItems,
+  extractSMSResult,
 } from '../../packages/contracts/src/http.js'
 import {
   readStoredBearerToken,
@@ -152,13 +153,13 @@ export const requestSMSCode = (phone: string, scene: string = 'rider_login', ext
   url: '/api/request-sms-code',
   method: 'POST',
   data: { phone, scene, ...extra }
-})
+}).then((response: any) => extractSMSResult(response))
 
 export const verifySMSCodeCheck = (phone: string, scene: string, code: string) => request({
   url: '/api/verify-sms-code-check',
   method: 'POST',
   data: { phone, scene, code }
-})
+}).then((response: any) => extractSMSResult(response))
 
 export const fetchConversations = () => request({
   url: '/api/messages/conversations',

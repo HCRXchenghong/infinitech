@@ -113,6 +113,10 @@ func isUploadInternalError(err error) bool {
 		strings.Contains(message, "HEIC 图片转换失败")
 }
 
+func respondUploadError(c *gin.Context, status int, message string) {
+	respondErrorEnvelope(c, status, couponResponseCodeForStatus(status), message, nil)
+}
+
 func buildPublicAssetPayload(url, filename, ownerScope string, size int64) gin.H {
 	return gin.H{
 		"asset_id":      strings.TrimSpace(url),
@@ -125,13 +129,20 @@ func buildPublicAssetPayload(url, filename, ownerScope string, size int64) gin.H
 	}
 }
 
+func buildMirroredPublicAssetPayload(url, filename, ownerScope string, size int64) gin.H {
+	payload := buildPublicAssetPayload(url, filename, ownerScope, size)
+	payload["url"] = strings.TrimSpace(url)
+	return payload
+}
+
+func respondUploadSuccess(c *gin.Context, message string, payload gin.H) {
+	respondMirroredSuccessEnvelope(c, message, payload)
+}
+
 func (h *FileUploadHandler) Upload(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "没有找到上传文件",
-		})
+		respondUploadError(c, http.StatusBadRequest, "没有找到上传文件")
 		return
 	}
 
@@ -141,17 +152,9 @@ func (h *FileUploadHandler) Upload(c *gin.Context) {
 		if isUploadInternalError(err) {
 			status = http.StatusInternalServerError
 		}
-		c.JSON(status, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		respondUploadError(c, status, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":  true,
-		"url":      url,
-		"filename": finalFilename,
-		"data":     buildPublicAssetPayload(url, finalFilename, "authenticated_upload", file.Size),
-	})
+	respondUploadSuccess(c, "文件上传成功", buildMirroredPublicAssetPayload(url, finalFilename, "authenticated_upload", file.Size))
 }

@@ -191,8 +191,16 @@ assertContains(
   "createMobilePushApi",
 );
 assertContains(
+  "merchant-app/shared-ui/api.ts",
+  "extractSMSResult",
+);
+assertContains(
   "rider-app/shared-ui/api.ts",
   "createMobilePushApi",
+);
+assertContains(
+  "rider-app/shared-ui/api.ts",
+  "extractSMSResult",
 );
 assertContains(
   "rider-app/shared-ui/api.ts",
@@ -203,8 +211,16 @@ assertContains(
   "createMobilePushApi",
 );
 assertContains(
+  "user-vue/shared-ui/api.js",
+  "extractSMSResult",
+);
+assertContains(
   "app-mobile/shared-ui/api.js",
   "createMobilePushApi",
+);
+assertContains(
+  "app-mobile/shared-ui/api.js",
+  "extractSMSResult",
 );
 assertContains(
   "rider-app/pages/profile/order-settings.vue",
@@ -217,6 +233,18 @@ assertContains(
 assertContains(
   "admin-vue/src/views/Users.vue",
   "extractTemporaryCredential(",
+);
+assertContains(
+  "backend/go/internal/handler/sms_handler.go",
+  "respondSMSRequestSuccess",
+);
+assertContains(
+  "backend/go/internal/handler/file_upload_handler.go",
+  "respondUploadSuccess(c, \"文件上传成功\"",
+);
+assertContains(
+  "backend/go/internal/handler/upload_handler.go",
+  "buildMirroredPublicAssetPayload(url, finalFilename, \"merchant_or_admin_image\"",
 );
 assertContains(
   "admin-vue/src/views/Merchants.vue",

@@ -7,6 +7,7 @@ import {
   extractEnvelopeMessage,
   extractEnvelopeRequestId,
   extractPaginatedItems,
+  extractSMSResult,
   extractTemporaryCredential,
   extractUploadAsset,
 } from "./http.js";
@@ -134,6 +135,41 @@ test("extractUploadAsset reads standardized asset payloads", () => {
       asset_url: "https://cdn.example.com/file.png",
       filename: "file.png",
       url: "https://cdn.example.com/file.png",
+    },
+  );
+});
+
+test("extractSMSResult preserves sms debug code from enveloped payloads", () => {
+  assert.deepEqual(
+    extractSMSResult({
+      request_id: "req_sms_1",
+      code: "OK",
+      message: "验证码已发送",
+      success: true,
+      data: {
+        success: true,
+        message: "验证码已发送",
+        code: "123456",
+        needCaptcha: false,
+        sessionId: "session_1",
+      },
+    }),
+    {
+      request_id: "req_sms_1",
+      code: "123456",
+      message: "验证码已发送",
+      success: true,
+      data: {
+        success: true,
+        message: "验证码已发送",
+        code: "123456",
+        needCaptcha: false,
+        sessionId: "session_1",
+      },
+      error: "",
+      needCaptcha: false,
+      sessionId: "session_1",
+      smsCode: "123456",
     },
   );
 });

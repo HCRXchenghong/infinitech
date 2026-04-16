@@ -6,6 +6,7 @@ import { createMobilePushApi } from "../../packages/client-sdk/src/mobile-capabi
 import {
   extractEnvelopeData,
   extractPaginatedItems,
+  extractSMSResult,
 } from "../../packages/contracts/src/http.js";
 import {
   readStoredBearerToken,
@@ -360,7 +361,7 @@ export const requestSMSCode = (phone, scene, extra = {}) =>
       scene,
       ...extra,
     },
-  });
+  }).then((response) => extractSMSResult(response));
 
 export const verifySMSCodeCheck = (phone, scene, code) =>
   request({
@@ -371,7 +372,7 @@ export const verifySMSCodeCheck = (phone, scene, code) =>
       scene,
       code,
     },
-  });
+  }).then((response) => extractSMSResult(response));
 
 export const changeUserPhone = (userId, payload) =>
   request({

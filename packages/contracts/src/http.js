@@ -134,6 +134,55 @@ export function extractUploadAsset(payload) {
   };
 }
 
+export function extractSMSResult(payload) {
+  if (!payload || typeof payload !== "object") {
+    return {};
+  }
+
+  const data = extractEnvelopeData(payload);
+  const source = data && typeof data === "object" ? data : payload;
+  const successValue =
+    source.success !== undefined ? source.success : payload.success;
+  const success =
+    successValue === undefined ? undefined : Boolean(successValue);
+  const message = trimText(
+    source.message || payload.message || payload.error,
+  );
+  const explicitError = trimText(payload.error || source.error);
+  const smsCode = trimText(
+    source.code ||
+      source.sms_code ||
+      source.smsCode ||
+      source.verification_code ||
+      source.verificationCode ||
+      payload.sms_code ||
+      payload.smsCode ||
+      payload.verification_code ||
+      payload.verificationCode,
+  );
+
+  return {
+    ...payload,
+    success,
+    message,
+    error: explicitError || (success === false ? message : ""),
+    needCaptcha: Boolean(
+      source.needCaptcha ??
+        source.need_captcha ??
+        payload.needCaptcha ??
+        payload.need_captcha,
+    ),
+    sessionId: trimText(
+      source.sessionId ||
+        source.session_id ||
+        payload.sessionId ||
+        payload.session_id,
+    ),
+    code: smsCode,
+    smsCode,
+  };
+}
+
 export function extractErrorMessage(payload, fallback = "请求失败") {
   if (!payload) {
     return fallback;

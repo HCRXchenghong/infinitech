@@ -3,6 +3,7 @@ import { createMobilePushApi } from "../../packages/client-sdk/src/mobile-capabi
 import {
   extractEnvelopeData,
   extractPaginatedItems,
+  extractSMSResult,
 } from "../../packages/contracts/src/http.js";
 import {
   readStoredBearerToken,
@@ -345,13 +346,17 @@ export const merchantLogin = (credentials: {
 export const requestSMSCode = (
   phone: string,
   scene: string = "merchant_login",
-) => apiPost("/api/request-sms-code", { phone, scene }, false);
+) => apiPost("/api/request-sms-code", { phone, scene }, false).then((response) =>
+  extractSMSResult(response),
+);
 
 export const verifySMSCodeCheck = (payload: {
   phone: string;
   code: string;
   scene?: string;
-}) => apiPost("/api/verify-sms-code-check", payload, false);
+}) => apiPost("/api/verify-sms-code-check", payload, false).then((response) =>
+  extractSMSResult(response),
+);
 
 export const merchantSetNewPassword = (payload: {
   phone: string;
