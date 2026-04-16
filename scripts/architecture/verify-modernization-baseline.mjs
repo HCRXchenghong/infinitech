@@ -294,6 +294,22 @@ assertContains(
   'respondDiningBuddyInvalidRequest(c, "invalid request payload")',
 );
 assertContains(
+  "backend/go/internal/handler/dining_buddy_handler.go",
+  'respondDiningBuddyPaginated(c, "同频饭友组局列表加载成功", "parties", parties, countDiningBuddyItems(parties), limit)',
+);
+assertContains(
+  "backend/go/internal/handler/dining_buddy_handler.go",
+  'respondDiningBuddySuccess(c, "同频饭友组局创建成功", party)',
+);
+assertContains(
+  "backend/go/internal/handler/dining_buddy_handler.go",
+  'respondDiningBuddyPaginated(c, "同频饭友消息列表加载成功", "messages", messages, total, int(total))',
+);
+assertContains(
+  "backend/go/internal/handler/dining_buddy_handler.go",
+  'respondDiningBuddySuccess(c, "同频饭友消息发送成功", message)',
+);
+assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",
   "func respondAdminSettingsSuccess(c *gin.Context, message string, data interface{})",
 );
@@ -638,8 +654,24 @@ assertContains(
   'listKeys: ["categories", "items", "records", "list"]',
 );
 assertContains(
+  "user-vue/shared-ui/api.js",
+  'listKeys: ["parties", "items", "records", "list"]',
+);
+assertContains(
+  "user-vue/shared-ui/api.js",
+  'listKeys: ["messages", "items", "records", "list"]',
+);
+assertContains(
   "app-mobile/shared-ui/api.js",
   'listKeys: ["banners", "items", "records", "list"]',
+);
+assertContains(
+  "app-mobile/shared-ui/api.js",
+  'listKeys: ["parties", "items", "records", "list"]',
+);
+assertContains(
+  "app-mobile/shared-ui/api.js",
+  'listKeys: ["messages", "items", "records", "list"]',
 );
 assertContains(
   "rider-app/shared-ui/api.ts",

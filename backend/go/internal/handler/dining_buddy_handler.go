@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -19,140 +20,151 @@ func NewDiningBuddyHandler(service *service.DiningBuddyService) *DiningBuddyHand
 	return &DiningBuddyHandler{service: service}
 }
 
+func respondDiningBuddyError(c *gin.Context, status int, message string) {
+	respondErrorEnvelope(c, status, couponResponseCodeForStatus(status), message, nil)
+}
+
+func respondDiningBuddyPaginated(c *gin.Context, message, listKey string, items interface{}, total int64, limit int) {
+	if limit < 0 {
+		limit = 0
+	}
+	respondPaginatedEnvelope(c, responseCodeOK, message, listKey, items, total, 1, limit)
+}
+
+func writeDiningBuddyServiceError(c *gin.Context, err error, fallbackStatus int) {
+	normalizedError := strings.ToLower(err.Error())
+
+	if errors.Is(err, service.ErrUnauthorized) {
+		respondDiningBuddyError(c, http.StatusUnauthorized, err.Error())
+		return
+	}
+	if errors.Is(err, service.ErrForbidden) {
+		respondDiningBuddyError(c, http.StatusForbidden, err.Error())
+		return
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) || strings.Contains(normalizedError, "not found") {
+		respondDiningBuddyError(c, http.StatusNotFound, err.Error())
+		return
+	}
+	if strings.Contains(normalizedError, "required") ||
+		strings.Contains(normalizedError, "too long") ||
+		strings.Contains(normalizedError, "invalid") {
+		respondDiningBuddyInvalidRequest(c, err.Error())
+		return
+	}
+	respondDiningBuddyError(c, fallbackStatus, err.Error())
+}
+
+func countDiningBuddyItems(items interface{}) int64 {
+	value := reflect.ValueOf(items)
+	if !value.IsValid() {
+		return 0
+	}
+	switch value.Kind() {
+	case reflect.Array, reflect.Slice:
+		return int64(value.Len())
+	default:
+		return 0
+	}
+}
+
 func (h *DiningBuddyHandler) ListParties(c *gin.Context) {
 	currentUserID, err := diningBuddyCurrentUserID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		respondDiningBuddyError(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
 	limit := 50
 	if raw := strings.TrimSpace(c.Query("limit")); raw != "" {
-		if parsed, parseErr := strconv.Atoi(raw); parseErr == nil {
+		if parsed, parseErr := strconv.Atoi(raw); parseErr == nil && parsed > 0 {
 			limit = parsed
 		}
 	}
 
 	parties, err := h.service.ListParties(c.Request.Context(), currentUserID, c.Query("category"), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		writeDiningBuddyServiceError(c, err, http.StatusInternalServerError)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"parties": parties})
+	respondDiningBuddyPaginated(c, "同频饭友组局列表加载成功", "parties", parties, countDiningBuddyItems(parties), limit)
 }
 
 func (h *DiningBuddyHandler) CreateParty(c *gin.Context) {
 	currentUserID, err := diningBuddyCurrentUserID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		respondDiningBuddyError(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
 	var req service.DiningBuddyCreatePartyInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
+		respondDiningBuddyInvalidRequest(c, "invalid request payload")
 		return
 	}
 
 	party, err := h.service.CreateParty(c.Request.Context(), currentUserID, req)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrUnauthorized):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		case errors.Is(err, service.ErrForbidden):
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		case strings.Contains(err.Error(), "required"), strings.Contains(err.Error(), "too long"):
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		}
+		writeDiningBuddyServiceError(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	c.JSON(http.StatusOK, party)
+	respondDiningBuddySuccess(c, "同频饭友组局创建成功", party)
 }
 
 func (h *DiningBuddyHandler) JoinParty(c *gin.Context) {
 	currentUserID, err := diningBuddyCurrentUserID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		respondDiningBuddyError(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
 	party, err := h.service.JoinParty(c.Request.Context(), currentUserID, c.Param("id"))
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrUnauthorized):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		case errors.Is(err, service.ErrForbidden):
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		case errors.Is(err, gorm.ErrRecordNotFound):
-			c.JSON(http.StatusNotFound, gin.H{"error": "party not found"})
-		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		}
+		writeDiningBuddyServiceError(c, err, http.StatusBadRequest)
 		return
 	}
 
-	c.JSON(http.StatusOK, party)
+	respondDiningBuddySuccess(c, "同频饭友组局加入成功", party)
 }
 
 func (h *DiningBuddyHandler) ListMessages(c *gin.Context) {
 	currentUserID, err := diningBuddyCurrentUserID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		respondDiningBuddyError(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
 	messages, err := h.service.ListMessages(c.Request.Context(), currentUserID, c.Param("id"))
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrUnauthorized):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		case errors.Is(err, service.ErrForbidden):
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		case errors.Is(err, gorm.ErrRecordNotFound):
-			c.JSON(http.StatusNotFound, gin.H{"error": "party not found"})
-		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		}
+		writeDiningBuddyServiceError(c, err, http.StatusBadRequest)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"messages": messages})
+	total := countDiningBuddyItems(messages)
+	respondDiningBuddyPaginated(c, "同频饭友消息列表加载成功", "messages", messages, total, int(total))
 }
 
 func (h *DiningBuddyHandler) SendMessage(c *gin.Context) {
 	currentUserID, err := diningBuddyCurrentUserID(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		respondDiningBuddyError(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
 	var req service.DiningBuddySendMessageInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
+		respondDiningBuddyInvalidRequest(c, "invalid request payload")
 		return
 	}
 
 	message, err := h.service.SendMessage(c.Request.Context(), currentUserID, c.Param("id"), req)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrUnauthorized):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		case errors.Is(err, service.ErrForbidden):
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		case errors.Is(err, gorm.ErrRecordNotFound):
-			c.JSON(http.StatusNotFound, gin.H{"error": "party not found"})
-		case strings.Contains(err.Error(), "required"), strings.Contains(err.Error(), "too long"):
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		}
+		writeDiningBuddyServiceError(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	c.JSON(http.StatusOK, message)
+	respondDiningBuddySuccess(c, "同频饭友消息发送成功", message)
 }
 
 func diningBuddyCurrentUserID(c *gin.Context) (uint, error) {

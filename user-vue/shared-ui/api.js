@@ -186,40 +186,48 @@ export const listDiningBuddyParties = (params = {}) =>
     url: "/api/dining-buddy/parties",
     method: "GET",
     data: params,
-  });
+  }).then((payload) =>
+    extractPaginatedItems(payload, {
+      listKeys: ["parties", "items", "records", "list"],
+    }).items,
+  );
 
 export const createDiningBuddyParty = (payload) =>
   request({
     url: "/api/dining-buddy/parties",
     method: "POST",
     data: payload,
-  });
+  }).then((response) => extractEnvelopeData(response) || response || {});
 
 export const joinDiningBuddyParty = (partyId) =>
   request({
     url: `/api/dining-buddy/parties/${encodeURIComponent(partyId)}/join`,
     method: "POST",
-  });
+  }).then((response) => extractEnvelopeData(response) || response || {});
 
 export const fetchDiningBuddyMessages = (partyId) =>
   request({
     url: `/api/dining-buddy/parties/${encodeURIComponent(partyId)}/messages`,
     method: "GET",
-  });
+  }).then((payload) =>
+    extractPaginatedItems(payload, {
+      listKeys: ["messages", "items", "records", "list"],
+    }).items,
+  );
 
 export const sendDiningBuddyMessage = (partyId, payload) =>
   request({
     url: `/api/dining-buddy/parties/${encodeURIComponent(partyId)}/messages`,
     method: "POST",
     data: payload,
-  });
+  }).then((response) => extractEnvelopeData(response) || response || {});
 
 export const createDiningBuddyReport = (payload) =>
   request({
     url: "/api/dining-buddy/reports",
     method: "POST",
     data: payload,
-  });
+  }).then((response) => extractEnvelopeData(response) || response || {});
 
 export const createAfterSales = (payload) =>
   request({
