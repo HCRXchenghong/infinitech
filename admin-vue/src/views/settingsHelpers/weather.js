@@ -1,28 +1,20 @@
 import { ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
+import {
+  buildWeatherConfigPayload,
+  createDefaultWeatherConfig,
+  normalizeWeatherConfig,
+} from '@infinitech/admin-core';
 import request from '@/utils/request';
 
-const DEFAULT_WEATHER_CONFIG = {
-  api_base_url: 'https://uapis.cn/api/v1/misc/weather',
-  api_key: '',
-  city: '',
-  adcode: '',
-  lang: 'zh',
-  extended: true,
-  forecast: true,
-  hourly: true,
-  minutely: true,
-  indices: true,
-  timeout_ms: 8000,
-  refresh_interval_minutes: 10
-};
+const DEFAULT_WEATHER_CONFIG = createDefaultWeatherConfig();
 
 /**
  * 天气配置模块
  */
 export function useWeatherSettings() {
-  const weather = ref({ ...DEFAULT_WEATHER_CONFIG });
+  const weather = ref(createDefaultWeatherConfig());
   const saving = ref(false);
   const loading = ref(false);
   const error = ref('');
@@ -31,15 +23,7 @@ export function useWeatherSettings() {
    * 合并天气配置
    */
   function mergeWeatherConfig(payload = {}) {
-    weather.value = {
-      ...DEFAULT_WEATHER_CONFIG,
-      ...(payload || {})
-    };
-    // 兼容旧字段
-    if (!weather.value.city && weather.value.location) {
-      weather.value.city = weather.value.location;
-    }
-    weather.value.refresh_interval_minutes = Number(weather.value.refresh_interval_minutes || 10);
+    weather.value = normalizeWeatherConfig(payload);
   }
 
   /**
@@ -66,7 +50,9 @@ export function useWeatherSettings() {
   async function saveWeatherConfig() {
     saving.value = true;
     try {
-      await request.post('/api/weather-config', weather.value);
+      const payload = buildWeatherConfigPayload(weather.value);
+      await request.post('/api/weather-config', payload);
+      weather.value = normalizeWeatherConfig(payload);
       ElMessage.success('天气配置保存成功');
       setTimeout(() => {
         loadWeatherConfig();

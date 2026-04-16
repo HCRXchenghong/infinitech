@@ -67,6 +67,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/admin-core/src/operations-center-resources.test.mjs",
   "packages/admin-core/src/dashboard-resources.js",
   "packages/admin-core/src/dashboard-resources.test.mjs",
+  "packages/admin-core/src/system-settings-resources.js",
+  "packages/admin-core/src/system-settings-resources.test.mjs",
   "packages/admin-core/src/DesktopShellApp.vue",
   "admin-win/src/App.vue",
   "admin-mac/src/App.vue",
@@ -1133,7 +1135,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs"',
+  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs packages/admin-core/src/system-settings-resources.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -1349,6 +1351,14 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers.js",
+  "buildSharedServiceSettingsPayload",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers.js",
+  "@infinitech/admin-core",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers.js",
   "mergeWechatLoginConfig(extractEnvelopeData(wechatLoginResp.value.data) || {})",
 );
 assertContains(
@@ -1381,6 +1391,10 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers/weather.js",
+  "buildWeatherConfigPayload(weather.value)",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers/weather.js",
   "mergeWeatherConfig(extractEnvelopeData(res.data) || {})",
 );
 assertContains(
@@ -1402,6 +1416,18 @@ assertContains(
 assertContains(
   "admin-vue/src/views/apiManagementHelpers.js",
   "extractEnvelopeData(data)",
+);
+assertContains(
+  "admin-vue/src/views/apiManagementHelpers.js",
+  "buildWeatherConfigPayload(weather.value)",
+);
+assertContains(
+  "admin-vue/src/views/smsConfigHelpers.js",
+  "@infinitech/admin-core",
+);
+assertContains(
+  "admin-vue/src/views/vipSettingsHelpers.js",
+  "@infinitech/admin-core",
 );
 assertContains(
   "scripts/push-delivery-drill.mjs",

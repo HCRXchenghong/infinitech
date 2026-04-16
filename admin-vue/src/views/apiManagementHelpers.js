@@ -2,23 +2,15 @@ import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
+import {
+  buildWeatherConfigPayload,
+  createDefaultWeatherConfig,
+  normalizeWeatherConfig,
+} from '@infinitech/admin-core';
 import request from '@/utils/request';
 import { DEFAULT_SMS_CONFIG, normalizeSMSConfig, buildSMSConfigPayload } from './smsConfigHelpers';
 
-const DEFAULT_WEATHER_CONFIG = {
-  api_base_url: 'https://uapis.cn/api/v1/misc/weather',
-  api_key: '',
-  city: '',
-  adcode: '',
-  lang: 'zh',
-  extended: true,
-  forecast: true,
-  hourly: true,
-  minutely: true,
-  indices: true,
-  timeout_ms: 8000,
-  refresh_interval_minutes: 10
-};
+const DEFAULT_WEATHER_CONFIG = createDefaultWeatherConfig();
 
 export function useApiManagementPage(options = {}) {
   const router = useRouter();
@@ -35,7 +27,7 @@ export function useApiManagementPage(options = {}) {
   const apiListError = ref('');
   const pageError = computed(() => settingsError.value || apiListError.value || '');
   const sms = ref({ ...DEFAULT_SMS_CONFIG });
-  const weather = ref({ ...DEFAULT_WEATHER_CONFIG });
+  const weather = ref(createDefaultWeatherConfig());
 
   const apiList = ref([]);
   const apiListLoading = ref(false);
@@ -58,14 +50,7 @@ export function useApiManagementPage(options = {}) {
   const currentDownloadApi = ref(null);
 
   function mergeWeatherConfig(payload = {}) {
-    weather.value = {
-      ...DEFAULT_WEATHER_CONFIG,
-      ...(payload || {})
-    };
-    if (!weather.value.city && weather.value.location) {
-      weather.value.city = weather.value.location;
-    }
-    weather.value.refresh_interval_minutes = Number(weather.value.refresh_interval_minutes || 10);
+    weather.value = normalizeWeatherConfig(payload);
   }
 
   onMounted(() => {
@@ -128,14 +113,9 @@ export function useApiManagementPage(options = {}) {
   async function saveWeather() {
     saving.value = true;
     try {
-      const payload = {
-        ...weather.value,
-        city: (weather.value.city || '').trim(),
-        adcode: (weather.value.adcode || '').trim(),
-        lang: weather.value.lang || 'zh',
-        refresh_interval_minutes: Number(weather.value.refresh_interval_minutes || 10)
-      };
+      const payload = buildWeatherConfigPayload(weather.value);
       await request.post('/api/weather-config', payload);
+      weather.value = normalizeWeatherConfig(payload);
       ElMessage.success('天气配置保存成功');
     } catch (error) {
       ElMessage.error(extractErrorMessage(error, '保存天气配置失败'));

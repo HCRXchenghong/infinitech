@@ -2,19 +2,55 @@ import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { extractEnvelopeData, extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
+import {
+  buildAppDownloadConfigPayload,
+  buildCharitySettingsPayload,
+  buildSMSConfigPayload,
+  buildServiceSettingsPayload as buildSharedServiceSettingsPayload,
+  buildVIPSettingsPayload,
+  buildWeatherConfigPayload,
+  buildWechatLoginConfigPayload,
+  createDefaultAlipayConfig,
+  createDefaultAppDownloadConfig,
+  createDefaultCharitySettings,
+  createDefaultDebugMode,
+  createDefaultPayMode,
+  createDefaultServiceSettings,
+  createDefaultSMSConfig,
+  createDefaultVIPSettings,
+  createDefaultWeatherConfig,
+  createDefaultWechatLoginConfig,
+  createDefaultWxpayConfig,
+  createEmptyCharityLeaderboardItem,
+  createEmptyCharityNewsItem,
+  createEmptyRTCIceServer,
+  createEmptyRiderInsuranceCoverage,
+  createEmptyVIPBenefit,
+  createEmptyVIPLevel,
+  createEmptyVIPTask,
+  normalizeAlipayConfig,
+  normalizeAppDownloadConfig,
+  normalizeCharitySettings,
+  normalizeDebugModeConfig,
+  normalizePayModeConfig,
+  normalizeRTCIceServers,
+  normalizeRiderInsuranceCoverages,
+  normalizeSMSConfig,
+  normalizeServiceSettings,
+  normalizeServiceStringList,
+  normalizeVIPSettings,
+  normalizeWeatherConfig,
+  normalizeWechatLoginConfig,
+  normalizeWxpayConfig,
+  resolveAdminServiceSoundPreviewUrl,
+  validateAdminAudioFile,
+  validateAdminMiniProgramQrFile,
+  validateAdminPackageFile,
+} from '@infinitech/admin-core';
 import request from '@/utils/request';
 import { useDataManagementPage } from './dataManagementHelpers';
 import { useSettingsApiManagement } from './settingsApiManagementHelpers';
 import { useSettingsActionHelpers } from './settingsActionHelpers';
-import { DEFAULT_SMS_CONFIG, normalizeSMSConfig, buildSMSConfigPayload } from './smsConfigHelpers';
-import {
-  DEFAULT_VIP_SETTINGS,
-  normalizeVIPSettings,
-  buildVIPSettingsPayload,
-  createEmptyVIPLevel,
-  createEmptyVIPBenefit,
-  createEmptyVIPTask,
-} from './vipSettingsHelpers';
 
 export function useSettingsPage() {
   const router = useRouter();
@@ -25,146 +61,27 @@ export function useSettingsPage() {
   const saving = ref(false);
   const loadError = ref('');
 
-  const sms = ref({ ...DEFAULT_SMS_CONFIG });
-  const DEFAULT_WEATHER_CONFIG = {
-    api_base_url: 'https://uapis.cn/api/v1/misc/weather',
-    api_key: '',
-    city: '',
-    adcode: '',
-    lang: 'zh',
-    extended: true,
-    forecast: true,
-    hourly: true,
-    minutely: true,
-    indices: true,
-    timeout_ms: 8000,
-    refresh_interval_minutes: 10
-  };
-  const weather = ref({ ...DEFAULT_WEATHER_CONFIG });
-  const DEFAULT_RIDER_EXCEPTION_REPORT_REASONS = [
-    '商家出餐慢',
-    '联系不上顾客',
-    '顾客位置错误',
-    '车辆故障',
-    '恶劣天气',
-    '道路拥堵',
-    '订单信息错误',
-    '其他原因'
-  ];
-  const DEFAULT_RIDER_INSURANCE_CLAIM_STEPS = [
-    '发生意外后第一时间联系客服或站点负责人',
-    '准备相关证明材料（医疗票据、诊断证明、事故说明等）',
-    '按平台指引提交理赔申请与补充材料',
-    '等待保险审核与回款通知'
-  ];
-  const DEFAULT_SERVICE_SETTINGS = {
-    service_phone: '',
-    support_chat_title: '平台客服',
-    support_chat_welcome_message: '您好！我是平台客服，有什么可以帮助您的吗？',
-    merchant_chat_welcome_message: '欢迎光临，有什么可以帮您的？',
-    rider_chat_welcome_message: '您好，您的骑手正在配送中。',
-    message_notification_sound_url: '',
-    order_notification_sound_url: '',
-    rider_about_summary: '骑手端聚焦接单、配送、收入与保障场景，帮助骑手稳定履约并提升效率。',
-    rider_portal_title: '骑手登录',
-    rider_portal_subtitle: '悦享e食 · 骑手端',
-    rider_portal_login_footer: '骑手账号由平台邀约开通',
-    merchant_portal_title: '商户工作台',
-    merchant_portal_subtitle: '悦享e食 · Merchant Console',
-    merchant_portal_login_footer: '账号由平台管理员分配，登录后可直接管理订单和商品',
-    merchant_privacy_policy: '我们会在必要范围内处理商户信息，用于订单履约、结算和风控，详细条款请联系平台管理员获取。',
-    merchant_service_agreement: '使用商户端即表示你同意平台商户服务协议，包含店铺经营规范、结算与售后条款。',
-    consumer_portal_title: '欢迎使用悦享e食',
-    consumer_portal_subtitle: '一站式本地生活服务平台',
-    consumer_portal_login_footer: '登录后可同步订单、消息、地址与优惠权益',
-    consumer_about_summary: '悦享e食专注本地生活即时服务，覆盖外卖、跑腿、到店和会员等场景，持续优化用户体验。',
-    consumer_privacy_policy: '平台仅在提供服务所必需的范围内处理账号、定位和订单信息，并遵循最小必要原则。',
-    consumer_user_agreement: '使用平台服务前，请确认已阅读并同意用户协议、隐私政策及相关活动规则。',
-    invite_landing_url: '',
-    wechat_login_enabled: false,
-    wechat_login_entry_url: '',
-    medicine_support_phone: '',
-    medicine_support_title: '一键医务室',
-    medicine_support_subtitle: '紧急连线\n人工服务',
-    medicine_delivery_description: '24小时配送\n平均30分钟达',
-    medicine_season_tip: '近期流感高发，建议常备布洛芬、连花清瘟。如遇高热不退请及时就医。',
-    rider_insurance_status_title: '骑手保障信息',
-    rider_insurance_status_desc: '保障内容、承保信息和理赔入口以平台发布为准',
-    rider_insurance_policy_number: '',
-    rider_insurance_provider: '',
-    rider_insurance_effective_date: '',
-    rider_insurance_expire_date: '',
-    rider_insurance_claim_url: '',
-    rider_insurance_detail_url: '',
-    rider_insurance_claim_button_text: '联系平台处理',
-    rider_insurance_detail_button_text: '查看保障说明',
-    rider_insurance_coverages: [],
-    rider_insurance_claim_steps: [...DEFAULT_RIDER_INSURANCE_CLAIM_STEPS],
-    rtc_enabled: true,
-    rtc_timeout_seconds: 35,
-    rtc_ice_servers: [{ url: 'stun:stun.l.google.com:19302', username: '', credential: '' }],
-    map_provider: 'proxy',
-    map_search_url: '',
-    map_reverse_url: '',
-    map_api_key: '',
-    map_tile_template: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    map_timeout_seconds: 5
-  };
-  DEFAULT_SERVICE_SETTINGS.rider_exception_report_reasons = [...DEFAULT_RIDER_EXCEPTION_REPORT_REASONS];
-  const serviceSettings = ref({ ...DEFAULT_SERVICE_SETTINGS });
+  const sms = ref(createDefaultSMSConfig());
+  const DEFAULT_WEATHER_CONFIG = createDefaultWeatherConfig();
+  const weather = ref(createDefaultWeatherConfig());
+  const DEFAULT_SERVICE_SETTINGS = createDefaultServiceSettings();
+  const serviceSettings = ref(createDefaultServiceSettings());
   const savingServiceSettings = ref(false);
   const uploadingServiceSounds = reactive({
     message: false,
     order: false,
   });
-  const DEFAULT_CHARITY_SETTINGS = {
-    enabled: true,
-    page_title: '悦享公益',
-    page_subtitle: '让每一份善意都被看见',
-    hero_image_url: 'https://images.unsplash.com/photo-1593113598332-cd288d649433?w=1200',
-    hero_tagline: '以长期、透明、可配置的方式，把平台善意送到真正需要帮助的人手里。',
-    hero_days_running: 0,
-    fund_pool_amount: 0,
-    today_donation_count: 0,
-    project_status_text: '筹备中',
-    leaderboard_title: '善行榜单',
-    news_title: '公益资讯',
-    mission_title: '初心',
-    mission_paragraph_one: '悦享e食不只是生活服务平台，也希望成为连接商户、用户与城市善意的长期基础设施。',
-    mission_paragraph_two: '公益页面展示、参与入口与说明文案均以管理端发布为准，避免前端静态内容误导用户。',
-    matching_plan_title: '公益参与计划',
-    matching_plan_description: '平台会根据运营策略配置公益参与方式，当前展示内容和入口均可在管理端统一调整。',
-    action_label: '了解参与方式',
-    action_note: 'OPERATED BY CHARITY OPS',
-    participation_notice: '公益参与方式由平台统一发布。若当前未开放线上参与，请留意后续活动公告。',
-    join_url: '',
-    leaderboard: [],
-    news_list: [],
-  };
-  const charitySettings = ref({ ...DEFAULT_CHARITY_SETTINGS });
+  const DEFAULT_CHARITY_SETTINGS = createDefaultCharitySettings();
+  const charitySettings = ref(createDefaultCharitySettings());
   const savingCharitySettings = ref(false);
-  const vipSettings = ref({ ...DEFAULT_VIP_SETTINGS });
+  const DEFAULT_VIP_SETTINGS = createDefaultVIPSettings();
+  const vipSettings = ref(createDefaultVIPSettings());
   const savingVipSettings = ref(false);
-  const DEFAULT_WECHAT_LOGIN_CONFIG = {
-    enabled: false,
-    app_id: '',
-    app_secret: '',
-    has_app_secret: false,
-    callback_url: '',
-    scope: 'snsapi_userinfo'
-  };
-  const wechatLoginConfig = ref({ ...DEFAULT_WECHAT_LOGIN_CONFIG });
+  const DEFAULT_WECHAT_LOGIN_CONFIG = createDefaultWechatLoginConfig();
+  const wechatLoginConfig = ref(createDefaultWechatLoginConfig());
   const savingWechatLoginConfig = ref(false);
 
-  const appDownloadConfig = ref({
-    ios_url: '',
-    android_url: '',
-    ios_version: '',
-    android_version: '',
-    latest_version: '',
-    updated_at: '',
-    mini_program_qr_url: ''
-  });
+  const appDownloadConfig = ref(createDefaultAppDownloadConfig());
   const savingAppDownload = ref(false);
   const uploadingPackage = reactive({
     ios: false,
@@ -172,13 +89,13 @@ export function useSettingsPage() {
     miniProgramQr: false
   });
 
-  const debugMode = ref({ enabled: false, delivery: false, phone_film: false, massage: false, coffee: false });
+  const debugMode = ref(createDefaultDebugMode());
   const savingDebugMode = ref(false);
-  const payMode = ref({ isProd: false });
+  const payMode = ref(createDefaultPayMode());
   const savingPayMode = ref(false);
-  const wxpay = ref({ appId: '', mchId: '', apiKey: '', apiV3Key: '', serialNo: '', notifyUrl: '' });
+  const wxpay = ref(createDefaultWxpayConfig());
   const savingWx = ref(false);
-  const alipay = ref({ appId: '', privateKey: '', alipayPublicKey: '', notifyUrl: '', sandbox: true });
+  const alipay = ref(createDefaultAlipayConfig());
   const savingAli = ref(false);
 
   const clearAllDialogVisible = ref(false);
@@ -189,147 +106,15 @@ export function useSettingsPage() {
   });
 
   function mergeWeatherConfig(payload = {}) {
-    weather.value = {
-      ...DEFAULT_WEATHER_CONFIG,
-      ...(payload || {})
-    };
-    if (!weather.value.city && weather.value.location) {
-      weather.value.city = weather.value.location;
-    }
-    weather.value.refresh_interval_minutes = Number(weather.value.refresh_interval_minutes || 10);
-  }
-
-  function normalizeServiceStringList(items = [], fallback = []) {
-    const source = Array.isArray(items) ? items : fallback;
-    const seen = new Set();
-    return source
-      .map((item) => String(item || '').trim())
-      .filter((item) => {
-        if (!item || seen.has(item)) {
-          return false;
-        }
-        seen.add(item);
-        return true;
-      })
-      .slice(0, 20);
-  }
-
-  function normalizeServiceText(value, fallback = '') {
-    const normalized = String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
-    return normalized || fallback;
-  }
-
-  function normalizeRiderInsuranceCoverages(items = []) {
-    if (!Array.isArray(items)) {
-      return [];
-    }
-    return items
-      .map((item) => ({
-        icon: normalizeServiceText(item?.icon, ''),
-        name: normalizeServiceText(item?.name, ''),
-        amount: normalizeServiceText(item?.amount, ''),
-      }))
-      .filter((item) => item.icon || item.name || item.amount)
-      .slice(0, 10);
-  }
-
-  function createEmptyRiderInsuranceCoverage() {
-    return {
-      icon: '',
-      name: '',
-      amount: '',
-    };
-  }
-
-  function normalizeRTCIceServers(items = []) {
-    if (!Array.isArray(items)) {
-      return [];
-    }
-    return items
-      .map((item) => ({
-        url: String(item?.url || '').trim(),
-        username: String(item?.username || '').trim(),
-        credential: String(item?.credential || '').trim(),
-      }))
-      .filter((item) => item.url || item.username || item.credential)
-      .slice(0, 10);
-  }
-
-  function createEmptyRTCIceServer() {
-    return {
-      url: '',
-      username: '',
-      credential: '',
-    };
+    weather.value = normalizeWeatherConfig(payload);
   }
 
   function mergeServiceSettings(payload = {}) {
-    serviceSettings.value = {
-      ...DEFAULT_SERVICE_SETTINGS,
-      ...(payload || {})
-    };
-    serviceSettings.value.service_phone = String(serviceSettings.value.service_phone || '').trim();
-    serviceSettings.value.support_chat_title = String(serviceSettings.value.support_chat_title || DEFAULT_SERVICE_SETTINGS.support_chat_title).trim() || DEFAULT_SERVICE_SETTINGS.support_chat_title;
-    serviceSettings.value.support_chat_welcome_message = String(serviceSettings.value.support_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.support_chat_welcome_message).trim() || DEFAULT_SERVICE_SETTINGS.support_chat_welcome_message;
-    serviceSettings.value.merchant_chat_welcome_message = String(serviceSettings.value.merchant_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.merchant_chat_welcome_message).trim() || DEFAULT_SERVICE_SETTINGS.merchant_chat_welcome_message;
-    serviceSettings.value.rider_chat_welcome_message = String(serviceSettings.value.rider_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.rider_chat_welcome_message).trim() || DEFAULT_SERVICE_SETTINGS.rider_chat_welcome_message;
-    serviceSettings.value.message_notification_sound_url = String(serviceSettings.value.message_notification_sound_url || '').trim();
-    serviceSettings.value.order_notification_sound_url = String(serviceSettings.value.order_notification_sound_url || '').trim();
-    serviceSettings.value.rider_about_summary = normalizeServiceText(serviceSettings.value.rider_about_summary, DEFAULT_SERVICE_SETTINGS.rider_about_summary);
-    serviceSettings.value.rider_portal_title = String(serviceSettings.value.rider_portal_title || DEFAULT_SERVICE_SETTINGS.rider_portal_title).trim() || DEFAULT_SERVICE_SETTINGS.rider_portal_title;
-    serviceSettings.value.rider_portal_subtitle = String(serviceSettings.value.rider_portal_subtitle || DEFAULT_SERVICE_SETTINGS.rider_portal_subtitle).trim() || DEFAULT_SERVICE_SETTINGS.rider_portal_subtitle;
-    serviceSettings.value.rider_portal_login_footer = normalizeServiceText(serviceSettings.value.rider_portal_login_footer, DEFAULT_SERVICE_SETTINGS.rider_portal_login_footer);
-    serviceSettings.value.merchant_portal_title = String(serviceSettings.value.merchant_portal_title || DEFAULT_SERVICE_SETTINGS.merchant_portal_title).trim() || DEFAULT_SERVICE_SETTINGS.merchant_portal_title;
-    serviceSettings.value.merchant_portal_subtitle = String(serviceSettings.value.merchant_portal_subtitle || DEFAULT_SERVICE_SETTINGS.merchant_portal_subtitle).trim() || DEFAULT_SERVICE_SETTINGS.merchant_portal_subtitle;
-    serviceSettings.value.merchant_portal_login_footer = normalizeServiceText(serviceSettings.value.merchant_portal_login_footer, DEFAULT_SERVICE_SETTINGS.merchant_portal_login_footer);
-    serviceSettings.value.merchant_privacy_policy = normalizeServiceText(serviceSettings.value.merchant_privacy_policy, DEFAULT_SERVICE_SETTINGS.merchant_privacy_policy);
-    serviceSettings.value.merchant_service_agreement = normalizeServiceText(serviceSettings.value.merchant_service_agreement, DEFAULT_SERVICE_SETTINGS.merchant_service_agreement);
-    serviceSettings.value.consumer_portal_title = String(serviceSettings.value.consumer_portal_title || DEFAULT_SERVICE_SETTINGS.consumer_portal_title).trim() || DEFAULT_SERVICE_SETTINGS.consumer_portal_title;
-    serviceSettings.value.consumer_portal_subtitle = String(serviceSettings.value.consumer_portal_subtitle || DEFAULT_SERVICE_SETTINGS.consumer_portal_subtitle).trim() || DEFAULT_SERVICE_SETTINGS.consumer_portal_subtitle;
-    serviceSettings.value.consumer_portal_login_footer = normalizeServiceText(serviceSettings.value.consumer_portal_login_footer, DEFAULT_SERVICE_SETTINGS.consumer_portal_login_footer);
-    serviceSettings.value.consumer_about_summary = normalizeServiceText(serviceSettings.value.consumer_about_summary, DEFAULT_SERVICE_SETTINGS.consumer_about_summary);
-    serviceSettings.value.consumer_privacy_policy = normalizeServiceText(serviceSettings.value.consumer_privacy_policy, DEFAULT_SERVICE_SETTINGS.consumer_privacy_policy);
-    serviceSettings.value.consumer_user_agreement = normalizeServiceText(serviceSettings.value.consumer_user_agreement, DEFAULT_SERVICE_SETTINGS.consumer_user_agreement);
-    serviceSettings.value.invite_landing_url = String(serviceSettings.value.invite_landing_url || '').trim();
-    serviceSettings.value.wechat_login_enabled = Boolean(serviceSettings.value.wechat_login_enabled);
-    serviceSettings.value.wechat_login_entry_url = String(serviceSettings.value.wechat_login_entry_url || '').trim();
-    serviceSettings.value.medicine_support_phone = String(serviceSettings.value.medicine_support_phone || '').trim();
-    serviceSettings.value.medicine_support_title = String(serviceSettings.value.medicine_support_title || DEFAULT_SERVICE_SETTINGS.medicine_support_title).trim() || DEFAULT_SERVICE_SETTINGS.medicine_support_title;
-    serviceSettings.value.medicine_support_subtitle = String(serviceSettings.value.medicine_support_subtitle || DEFAULT_SERVICE_SETTINGS.medicine_support_subtitle).trim() || DEFAULT_SERVICE_SETTINGS.medicine_support_subtitle;
-    serviceSettings.value.medicine_delivery_description = String(serviceSettings.value.medicine_delivery_description || DEFAULT_SERVICE_SETTINGS.medicine_delivery_description).trim() || DEFAULT_SERVICE_SETTINGS.medicine_delivery_description;
-    serviceSettings.value.medicine_season_tip = String(serviceSettings.value.medicine_season_tip || DEFAULT_SERVICE_SETTINGS.medicine_season_tip).trim() || DEFAULT_SERVICE_SETTINGS.medicine_season_tip;
-    serviceSettings.value.rider_insurance_status_title = normalizeServiceText(serviceSettings.value.rider_insurance_status_title, DEFAULT_SERVICE_SETTINGS.rider_insurance_status_title);
-    serviceSettings.value.rider_insurance_status_desc = normalizeServiceText(serviceSettings.value.rider_insurance_status_desc, DEFAULT_SERVICE_SETTINGS.rider_insurance_status_desc);
-    serviceSettings.value.rider_insurance_policy_number = String(serviceSettings.value.rider_insurance_policy_number || '').trim();
-    serviceSettings.value.rider_insurance_provider = String(serviceSettings.value.rider_insurance_provider || '').trim();
-    serviceSettings.value.rider_insurance_effective_date = String(serviceSettings.value.rider_insurance_effective_date || '').trim();
-    serviceSettings.value.rider_insurance_expire_date = String(serviceSettings.value.rider_insurance_expire_date || '').trim();
-    serviceSettings.value.rider_insurance_claim_url = String(serviceSettings.value.rider_insurance_claim_url || '').trim();
-    serviceSettings.value.rider_insurance_detail_url = String(serviceSettings.value.rider_insurance_detail_url || '').trim();
-    serviceSettings.value.rider_insurance_claim_button_text = normalizeServiceText(serviceSettings.value.rider_insurance_claim_button_text, DEFAULT_SERVICE_SETTINGS.rider_insurance_claim_button_text);
-    serviceSettings.value.rider_insurance_detail_button_text = normalizeServiceText(serviceSettings.value.rider_insurance_detail_button_text, DEFAULT_SERVICE_SETTINGS.rider_insurance_detail_button_text);
-    serviceSettings.value.rider_insurance_coverages = normalizeRiderInsuranceCoverages(serviceSettings.value.rider_insurance_coverages);
-    serviceSettings.value.rider_insurance_claim_steps = normalizeServiceStringList(
-      serviceSettings.value.rider_insurance_claim_steps,
-      DEFAULT_RIDER_INSURANCE_CLAIM_STEPS
-    );
-    serviceSettings.value.rtc_enabled = Boolean(serviceSettings.value.rtc_enabled);
-    serviceSettings.value.rtc_timeout_seconds = Number(serviceSettings.value.rtc_timeout_seconds || DEFAULT_SERVICE_SETTINGS.rtc_timeout_seconds);
-    serviceSettings.value.rtc_ice_servers = normalizeRTCIceServers(serviceSettings.value.rtc_ice_servers);
-    serviceSettings.value.map_provider = String(serviceSettings.value.map_provider || DEFAULT_SERVICE_SETTINGS.map_provider).trim() || DEFAULT_SERVICE_SETTINGS.map_provider;
-    serviceSettings.value.map_search_url = String(serviceSettings.value.map_search_url || '').trim();
-    serviceSettings.value.map_reverse_url = String(serviceSettings.value.map_reverse_url || '').trim();
-    serviceSettings.value.map_api_key = String(serviceSettings.value.map_api_key || '').trim();
-    serviceSettings.value.map_tile_template = String(serviceSettings.value.map_tile_template || DEFAULT_SERVICE_SETTINGS.map_tile_template).trim() || DEFAULT_SERVICE_SETTINGS.map_tile_template;
-    serviceSettings.value.map_timeout_seconds = Number(serviceSettings.value.map_timeout_seconds || DEFAULT_SERVICE_SETTINGS.map_timeout_seconds);
-    serviceSettings.value.rider_exception_report_reasons = normalizeServiceStringList(
-      serviceSettings.value.rider_exception_report_reasons,
-      DEFAULT_RIDER_EXCEPTION_REPORT_REASONS
-    );
+    serviceSettings.value = normalizeServiceSettings(payload);
   }
 
   function addRiderReportReason() {
-    const reasons = normalizeServiceStringList(serviceSettings.value.rider_exception_report_reasons, []);
+    const reasons = normalizeServiceStringList(serviceSettings.value.rider_exception_report_reasons, [], 20);
     if (reasons.length >= 20) {
       ElMessage.warning('异常上报原因最多保留 20 条');
       return;
@@ -369,7 +154,7 @@ export function useSettingsPage() {
   }
 
   function addRiderInsuranceClaimStep() {
-    const steps = normalizeServiceStringList(serviceSettings.value.rider_insurance_claim_steps, []);
+    const steps = normalizeServiceStringList(serviceSettings.value.rider_insurance_claim_steps, [], 10);
     if (steps.length >= 10) {
       ElMessage.warning('理赔步骤最多保留 10 条');
       return;
@@ -408,92 +193,12 @@ export function useSettingsPage() {
     serviceSettings.value.rtc_ice_servers = servers;
   }
 
-  function normalizeCharityText(value, fallback = '') {
-    const normalized = String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
-    return normalized || fallback;
-  }
-
-  function normalizeCharityLeaderboard(items = []) {
-    if (!Array.isArray(items)) {
-      return [];
-    }
-    return items
-      .map((item) => ({
-        name: normalizeCharityText(item?.name, ''),
-        amount: Math.max(0, Number(item?.amount || 0)),
-        time_label: normalizeCharityText(item?.time_label, ''),
-      }))
-      .filter((item) => item.name || item.amount > 0 || item.time_label)
-      .slice(0, 20);
-  }
-
-  function normalizeCharityNewsList(items = []) {
-    if (!Array.isArray(items)) {
-      return [];
-    }
-    return items
-      .map((item) => ({
-        title: normalizeCharityText(item?.title, ''),
-        summary: normalizeCharityText(item?.summary, ''),
-        source: normalizeCharityText(item?.source, ''),
-        time_label: normalizeCharityText(item?.time_label, ''),
-        image_url: normalizeCharityText(item?.image_url, ''),
-      }))
-      .filter((item) => item.title || item.summary || item.source || item.time_label || item.image_url)
-      .slice(0, 20);
-  }
-
-  function createEmptyCharityLeaderboardItem() {
-    return { name: '', amount: 0, time_label: '' };
-  }
-
-  function createEmptyCharityNewsItem() {
-    return { title: '', summary: '', source: '', time_label: '', image_url: '' };
-  }
-
   function mergeCharitySettings(payload = {}) {
-    const merged = {
-      ...DEFAULT_CHARITY_SETTINGS,
-      ...(payload || {})
-    };
-
-    charitySettings.value = {
-      enabled: Boolean(merged.enabled),
-      page_title: normalizeCharityText(merged.page_title, DEFAULT_CHARITY_SETTINGS.page_title),
-      page_subtitle: normalizeCharityText(merged.page_subtitle, DEFAULT_CHARITY_SETTINGS.page_subtitle),
-      hero_image_url: normalizeCharityText(merged.hero_image_url, DEFAULT_CHARITY_SETTINGS.hero_image_url),
-      hero_tagline: normalizeCharityText(merged.hero_tagline, DEFAULT_CHARITY_SETTINGS.hero_tagline),
-      hero_days_running: Math.max(0, Number(merged.hero_days_running || 0)),
-      fund_pool_amount: Math.max(0, Number(merged.fund_pool_amount || 0)),
-      today_donation_count: Math.max(0, Number(merged.today_donation_count || 0)),
-      project_status_text: normalizeCharityText(merged.project_status_text, DEFAULT_CHARITY_SETTINGS.project_status_text),
-      leaderboard_title: normalizeCharityText(merged.leaderboard_title, DEFAULT_CHARITY_SETTINGS.leaderboard_title),
-      news_title: normalizeCharityText(merged.news_title, DEFAULT_CHARITY_SETTINGS.news_title),
-      mission_title: normalizeCharityText(merged.mission_title, DEFAULT_CHARITY_SETTINGS.mission_title),
-      mission_paragraph_one: normalizeCharityText(merged.mission_paragraph_one, DEFAULT_CHARITY_SETTINGS.mission_paragraph_one),
-      mission_paragraph_two: normalizeCharityText(merged.mission_paragraph_two, DEFAULT_CHARITY_SETTINGS.mission_paragraph_two),
-      matching_plan_title: normalizeCharityText(merged.matching_plan_title, DEFAULT_CHARITY_SETTINGS.matching_plan_title),
-      matching_plan_description: normalizeCharityText(merged.matching_plan_description, DEFAULT_CHARITY_SETTINGS.matching_plan_description),
-      action_label: normalizeCharityText(merged.action_label, DEFAULT_CHARITY_SETTINGS.action_label),
-      action_note: normalizeCharityText(merged.action_note, DEFAULT_CHARITY_SETTINGS.action_note),
-      participation_notice: normalizeCharityText(merged.participation_notice, DEFAULT_CHARITY_SETTINGS.participation_notice),
-      join_url: normalizeCharityText(merged.join_url, ''),
-      leaderboard: normalizeCharityLeaderboard(merged.leaderboard),
-      news_list: normalizeCharityNewsList(merged.news_list),
-    };
+    charitySettings.value = normalizeCharitySettings(payload);
   }
 
   function mergeWechatLoginConfig(payload = {}) {
-    wechatLoginConfig.value = {
-      ...DEFAULT_WECHAT_LOGIN_CONFIG,
-      ...(payload || {})
-    };
-    wechatLoginConfig.value.enabled = Boolean(wechatLoginConfig.value.enabled);
-    wechatLoginConfig.value.app_id = String(wechatLoginConfig.value.app_id || '').trim();
-    wechatLoginConfig.value.app_secret = String(wechatLoginConfig.value.app_secret || '').trim();
-    wechatLoginConfig.value.has_app_secret = Boolean(wechatLoginConfig.value.has_app_secret);
-    wechatLoginConfig.value.callback_url = String(wechatLoginConfig.value.callback_url || '').trim();
-    wechatLoginConfig.value.scope = String(wechatLoginConfig.value.scope || DEFAULT_WECHAT_LOGIN_CONFIG.scope).trim() || DEFAULT_WECHAT_LOGIN_CONFIG.scope;
+    wechatLoginConfig.value = normalizeWechatLoginConfig(payload);
   }
 
   function mergeVIPSettings(payload = {}) {
@@ -626,15 +331,7 @@ export function useSettingsPage() {
         sms.value = normalizeSMSConfig(extractEnvelopeData(smsResp.value.data) || {});
       }
       if (debugResp.status === 'fulfilled' && debugResp.value?.data) {
-        const debugPayload = extractEnvelopeData(debugResp.value.data) || {};
-        debugMode.value = {
-          enabled: false,
-          delivery: false,
-          phone_film: false,
-          massage: false,
-          coffee: false,
-          ...debugPayload
-        };
+        debugMode.value = normalizeDebugModeConfig(extractEnvelopeData(debugResp.value.data) || {});
       }
       if (weaResp.status === 'fulfilled' && weaResp.value?.data) {
         mergeWeatherConfig(extractEnvelopeData(weaResp.value.data) || {});
@@ -652,26 +349,16 @@ export function useSettingsPage() {
         mergeVIPSettings(extractEnvelopeData(vipResp.value.data) || {});
       }
       if (downloadResp.status === 'fulfilled' && downloadResp.value?.data) {
-        const downloadPayload = extractEnvelopeData(downloadResp.value.data) || {};
-        appDownloadConfig.value = {
-          ios_url: downloadPayload.ios_url || '',
-          android_url: downloadPayload.android_url || '',
-          ios_version: downloadPayload.ios_version || '',
-          android_version: downloadPayload.android_version || '',
-          latest_version: downloadPayload.latest_version || '',
-          updated_at: downloadPayload.updated_at || '',
-          mini_program_qr_url: downloadPayload.mini_program_qr_url || ''
-        };
+        appDownloadConfig.value = normalizeAppDownloadConfig(extractEnvelopeData(downloadResp.value.data) || {});
       }
       if (payModeResp.status === 'fulfilled' && payModeResp.value?.data) {
-        const payModePayload = extractEnvelopeData(payModeResp.value.data) || {};
-        payMode.value = { isProd: payModePayload.isProd || false };
+        payMode.value = normalizePayModeConfig(extractEnvelopeData(payModeResp.value.data) || {});
       }
       if (wxResp.status === 'fulfilled' && wxResp.value?.data) {
-        Object.assign(wxpay.value, extractEnvelopeData(wxResp.value.data) || {});
+        wxpay.value = normalizeWxpayConfig(extractEnvelopeData(wxResp.value.data) || {});
       }
       if (aliResp.status === 'fulfilled' && aliResp.value?.data) {
-        Object.assign(alipay.value, extractEnvelopeData(aliResp.value.data) || {});
+        alipay.value = normalizeAlipayConfig(extractEnvelopeData(aliResp.value.data) || {});
       }
 
       if (results.some((item) => item.status === 'rejected')) {
@@ -725,14 +412,9 @@ export function useSettingsPage() {
   async function saveWeather() {
     saving.value = true;
     try {
-      const payload = {
-        ...weather.value,
-        city: (weather.value.city || '').trim(),
-        adcode: (weather.value.adcode || '').trim(),
-        lang: weather.value.lang || 'zh',
-        refresh_interval_minutes: Number(weather.value.refresh_interval_minutes || 10)
-      };
+      const payload = buildWeatherConfigPayload(weather.value);
       await request.post('/api/weather-config', payload);
+      weather.value = normalizeWeatherConfig(payload);
       ElMessage.success('天气配置保存成功');
     } catch (error) {
       ElMessage.error(extractErrorMessage(error, '保存天气配置失败'));
@@ -742,67 +424,7 @@ export function useSettingsPage() {
   }
 
   function buildServiceSettingsPayload() {
-    return {
-      ...serviceSettings.value,
-      service_phone: (serviceSettings.value.service_phone || '').trim(),
-      support_chat_title: (serviceSettings.value.support_chat_title || DEFAULT_SERVICE_SETTINGS.support_chat_title).trim(),
-      support_chat_welcome_message: (serviceSettings.value.support_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.support_chat_welcome_message).trim(),
-      merchant_chat_welcome_message: (serviceSettings.value.merchant_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.merchant_chat_welcome_message).trim(),
-      rider_chat_welcome_message: (serviceSettings.value.rider_chat_welcome_message || DEFAULT_SERVICE_SETTINGS.rider_chat_welcome_message).trim(),
-      message_notification_sound_url: (serviceSettings.value.message_notification_sound_url || '').trim(),
-      order_notification_sound_url: (serviceSettings.value.order_notification_sound_url || '').trim(),
-      rider_about_summary: normalizeServiceText(serviceSettings.value.rider_about_summary, DEFAULT_SERVICE_SETTINGS.rider_about_summary),
-      rider_portal_title: (serviceSettings.value.rider_portal_title || DEFAULT_SERVICE_SETTINGS.rider_portal_title).trim(),
-      rider_portal_subtitle: (serviceSettings.value.rider_portal_subtitle || DEFAULT_SERVICE_SETTINGS.rider_portal_subtitle).trim(),
-      rider_portal_login_footer: normalizeServiceText(serviceSettings.value.rider_portal_login_footer, DEFAULT_SERVICE_SETTINGS.rider_portal_login_footer),
-      merchant_portal_title: (serviceSettings.value.merchant_portal_title || DEFAULT_SERVICE_SETTINGS.merchant_portal_title).trim(),
-      merchant_portal_subtitle: (serviceSettings.value.merchant_portal_subtitle || DEFAULT_SERVICE_SETTINGS.merchant_portal_subtitle).trim(),
-      merchant_portal_login_footer: normalizeServiceText(serviceSettings.value.merchant_portal_login_footer, DEFAULT_SERVICE_SETTINGS.merchant_portal_login_footer),
-      merchant_privacy_policy: normalizeServiceText(serviceSettings.value.merchant_privacy_policy, DEFAULT_SERVICE_SETTINGS.merchant_privacy_policy),
-      merchant_service_agreement: normalizeServiceText(serviceSettings.value.merchant_service_agreement, DEFAULT_SERVICE_SETTINGS.merchant_service_agreement),
-      consumer_portal_title: (serviceSettings.value.consumer_portal_title || DEFAULT_SERVICE_SETTINGS.consumer_portal_title).trim(),
-      consumer_portal_subtitle: (serviceSettings.value.consumer_portal_subtitle || DEFAULT_SERVICE_SETTINGS.consumer_portal_subtitle).trim(),
-      consumer_portal_login_footer: normalizeServiceText(serviceSettings.value.consumer_portal_login_footer, DEFAULT_SERVICE_SETTINGS.consumer_portal_login_footer),
-      consumer_about_summary: normalizeServiceText(serviceSettings.value.consumer_about_summary, DEFAULT_SERVICE_SETTINGS.consumer_about_summary),
-      consumer_privacy_policy: normalizeServiceText(serviceSettings.value.consumer_privacy_policy, DEFAULT_SERVICE_SETTINGS.consumer_privacy_policy),
-      consumer_user_agreement: normalizeServiceText(serviceSettings.value.consumer_user_agreement, DEFAULT_SERVICE_SETTINGS.consumer_user_agreement),
-      invite_landing_url: (serviceSettings.value.invite_landing_url || '').trim(),
-      wechat_login_enabled: Boolean(serviceSettings.value.wechat_login_enabled),
-      wechat_login_entry_url: (serviceSettings.value.wechat_login_entry_url || '').trim(),
-      medicine_support_phone: (serviceSettings.value.medicine_support_phone || '').trim(),
-      medicine_support_title: (serviceSettings.value.medicine_support_title || DEFAULT_SERVICE_SETTINGS.medicine_support_title).trim(),
-      medicine_support_subtitle: (serviceSettings.value.medicine_support_subtitle || DEFAULT_SERVICE_SETTINGS.medicine_support_subtitle).trim(),
-      medicine_delivery_description: (serviceSettings.value.medicine_delivery_description || DEFAULT_SERVICE_SETTINGS.medicine_delivery_description).trim(),
-      medicine_season_tip: (serviceSettings.value.medicine_season_tip || DEFAULT_SERVICE_SETTINGS.medicine_season_tip).trim(),
-      rider_insurance_status_title: normalizeServiceText(serviceSettings.value.rider_insurance_status_title, DEFAULT_SERVICE_SETTINGS.rider_insurance_status_title),
-      rider_insurance_status_desc: normalizeServiceText(serviceSettings.value.rider_insurance_status_desc, DEFAULT_SERVICE_SETTINGS.rider_insurance_status_desc),
-      rider_insurance_policy_number: (serviceSettings.value.rider_insurance_policy_number || '').trim(),
-      rider_insurance_provider: (serviceSettings.value.rider_insurance_provider || '').trim(),
-      rider_insurance_effective_date: (serviceSettings.value.rider_insurance_effective_date || '').trim(),
-      rider_insurance_expire_date: (serviceSettings.value.rider_insurance_expire_date || '').trim(),
-      rider_insurance_claim_url: (serviceSettings.value.rider_insurance_claim_url || '').trim(),
-      rider_insurance_detail_url: (serviceSettings.value.rider_insurance_detail_url || '').trim(),
-      rider_insurance_claim_button_text: normalizeServiceText(serviceSettings.value.rider_insurance_claim_button_text, DEFAULT_SERVICE_SETTINGS.rider_insurance_claim_button_text),
-      rider_insurance_detail_button_text: normalizeServiceText(serviceSettings.value.rider_insurance_detail_button_text, DEFAULT_SERVICE_SETTINGS.rider_insurance_detail_button_text),
-      rider_insurance_coverages: normalizeRiderInsuranceCoverages(serviceSettings.value.rider_insurance_coverages),
-      rider_insurance_claim_steps: normalizeServiceStringList(
-        serviceSettings.value.rider_insurance_claim_steps,
-        DEFAULT_RIDER_INSURANCE_CLAIM_STEPS
-      ),
-      rtc_enabled: Boolean(serviceSettings.value.rtc_enabled),
-      rtc_timeout_seconds: Number(serviceSettings.value.rtc_timeout_seconds || DEFAULT_SERVICE_SETTINGS.rtc_timeout_seconds),
-      rtc_ice_servers: normalizeRTCIceServers(serviceSettings.value.rtc_ice_servers),
-      rider_exception_report_reasons: normalizeServiceStringList(
-        serviceSettings.value.rider_exception_report_reasons,
-        DEFAULT_RIDER_EXCEPTION_REPORT_REASONS
-      ),
-      map_provider: (serviceSettings.value.map_provider || DEFAULT_SERVICE_SETTINGS.map_provider).trim() || DEFAULT_SERVICE_SETTINGS.map_provider,
-      map_search_url: (serviceSettings.value.map_search_url || '').trim(),
-      map_reverse_url: (serviceSettings.value.map_reverse_url || '').trim(),
-      map_api_key: (serviceSettings.value.map_api_key || '').trim(),
-      map_tile_template: (serviceSettings.value.map_tile_template || DEFAULT_SERVICE_SETTINGS.map_tile_template).trim(),
-      map_timeout_seconds: Number(serviceSettings.value.map_timeout_seconds || DEFAULT_SERVICE_SETTINGS.map_timeout_seconds)
-    };
+    return buildSharedServiceSettingsPayload(serviceSettings.value);
   }
 
   async function saveServiceSettings(options = {}) {
@@ -823,24 +445,16 @@ export function useSettingsPage() {
   }
 
   function validateSoundFile(file) {
-    const fileName = String(file?.name || '').toLowerCase();
-    const mimeType = String(file?.type || '').toLowerCase();
-    const extension = fileName.includes('.') ? `.${fileName.split('.').pop()}` : '';
-    const allowedExts = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.amr'];
-    const isAudio = mimeType.startsWith('audio/') || allowedExts.includes(extension);
-    if (!isAudio) {
-      ElMessage.warning('仅支持 mp3、m4a、aac、wav、ogg、amr 音频文件');
-      return false;
-    }
-    if (Number(file?.size || 0) > 10 * 1024 * 1024) {
-      ElMessage.warning('音频文件大小不能超过 10MB');
+    const result = validateAdminAudioFile(file, 10);
+    if (!result.valid) {
+      ElMessage.warning(result.message);
       return false;
     }
     return true;
   }
 
   function resolveDefaultSoundPreviewUrl(kind) {
-    return kind === 'order' ? '/audio/come.mp3' : '/audio/chat.mp3';
+    return resolveAdminServiceSoundPreviewUrl(kind);
   }
 
   function resolveConfiguredSoundUrl(kind) {
@@ -1011,30 +625,7 @@ export function useSettingsPage() {
   async function saveCharitySettings() {
     savingCharitySettings.value = true;
     try {
-      const payload = {
-        enabled: Boolean(charitySettings.value.enabled),
-        page_title: normalizeCharityText(charitySettings.value.page_title, DEFAULT_CHARITY_SETTINGS.page_title),
-        page_subtitle: normalizeCharityText(charitySettings.value.page_subtitle, DEFAULT_CHARITY_SETTINGS.page_subtitle),
-        hero_image_url: normalizeCharityText(charitySettings.value.hero_image_url, DEFAULT_CHARITY_SETTINGS.hero_image_url),
-        hero_tagline: normalizeCharityText(charitySettings.value.hero_tagline, DEFAULT_CHARITY_SETTINGS.hero_tagline),
-        hero_days_running: Math.max(0, Number(charitySettings.value.hero_days_running || 0)),
-        fund_pool_amount: Math.max(0, Number(charitySettings.value.fund_pool_amount || 0)),
-        today_donation_count: Math.max(0, Number(charitySettings.value.today_donation_count || 0)),
-        project_status_text: normalizeCharityText(charitySettings.value.project_status_text, DEFAULT_CHARITY_SETTINGS.project_status_text),
-        leaderboard_title: normalizeCharityText(charitySettings.value.leaderboard_title, DEFAULT_CHARITY_SETTINGS.leaderboard_title),
-        news_title: normalizeCharityText(charitySettings.value.news_title, DEFAULT_CHARITY_SETTINGS.news_title),
-        mission_title: normalizeCharityText(charitySettings.value.mission_title, DEFAULT_CHARITY_SETTINGS.mission_title),
-        mission_paragraph_one: normalizeCharityText(charitySettings.value.mission_paragraph_one, DEFAULT_CHARITY_SETTINGS.mission_paragraph_one),
-        mission_paragraph_two: normalizeCharityText(charitySettings.value.mission_paragraph_two, DEFAULT_CHARITY_SETTINGS.mission_paragraph_two),
-        matching_plan_title: normalizeCharityText(charitySettings.value.matching_plan_title, DEFAULT_CHARITY_SETTINGS.matching_plan_title),
-        matching_plan_description: normalizeCharityText(charitySettings.value.matching_plan_description, DEFAULT_CHARITY_SETTINGS.matching_plan_description),
-        action_label: normalizeCharityText(charitySettings.value.action_label, DEFAULT_CHARITY_SETTINGS.action_label),
-        action_note: normalizeCharityText(charitySettings.value.action_note, DEFAULT_CHARITY_SETTINGS.action_note),
-        participation_notice: normalizeCharityText(charitySettings.value.participation_notice, DEFAULT_CHARITY_SETTINGS.participation_notice),
-        join_url: normalizeCharityText(charitySettings.value.join_url, ''),
-        leaderboard: normalizeCharityLeaderboard(charitySettings.value.leaderboard),
-        news_list: normalizeCharityNewsList(charitySettings.value.news_list),
-      };
+      const payload = buildCharitySettingsPayload(charitySettings.value);
       await request.post('/api/charity-settings', payload);
       mergeCharitySettings(payload);
       ElMessage.success('公益配置保存成功');
@@ -1062,14 +653,7 @@ export function useSettingsPage() {
   async function saveWechatLoginConfig() {
     savingWechatLoginConfig.value = true;
     try {
-      const payload = {
-        ...wechatLoginConfig.value,
-        enabled: Boolean(wechatLoginConfig.value.enabled),
-        app_id: (wechatLoginConfig.value.app_id || '').trim(),
-        app_secret: (wechatLoginConfig.value.app_secret || '').trim(),
-        callback_url: (wechatLoginConfig.value.callback_url || '').trim(),
-        scope: (wechatLoginConfig.value.scope || DEFAULT_WECHAT_LOGIN_CONFIG.scope).trim() || DEFAULT_WECHAT_LOGIN_CONFIG.scope
-      };
+      const payload = buildWechatLoginConfigPayload(wechatLoginConfig.value);
       await request.post('/api/wechat-login-config', payload);
       mergeWechatLoginConfig({
         ...payload,
@@ -1087,7 +671,9 @@ export function useSettingsPage() {
   async function saveAppDownload() {
     savingAppDownload.value = true;
     try {
-      await request.post('/api/app-download-config', appDownloadConfig.value);
+      const payload = buildAppDownloadConfigPayload(appDownloadConfig.value);
+      await request.post('/api/app-download-config', payload);
+      appDownloadConfig.value = normalizeAppDownloadConfig(payload);
       ElMessage.success('APP下载配置保存成功');
     } catch (error) {
       ElMessage.error(extractErrorMessage(error, '保存APP下载配置失败'));
@@ -1097,30 +683,18 @@ export function useSettingsPage() {
   }
 
   function beforePackageUpload(file) {
-    const fileName = String(file?.name || '').toLowerCase();
-    const allowed = ['.ipa', '.apk', '.aab'];
-    const matched = allowed.some((ext) => fileName.endsWith(ext));
-    if (!matched) {
-      ElMessage.error('仅支持 .ipa / .apk / .aab 安装包');
-      return false;
-    }
-    if (file.size > 300 * 1024 * 1024) {
-      ElMessage.error('安装包不能超过300MB');
+    const result = validateAdminPackageFile(file, 300);
+    if (!result.valid) {
+      ElMessage.error(result.message);
       return false;
     }
     return true;
   }
 
   function beforeMiniProgramQrUpload(file) {
-    const fileName = String(file?.name || '').toLowerCase();
-    const isImage = String(file?.type || '').startsWith('image/') ||
-      ['.png', '.jpg', '.jpeg', '.webp', '.gif'].some((ext) => fileName.endsWith(ext));
-    if (!isImage) {
-      ElMessage.error('仅支持上传图片格式的小程序二维码');
-      return false;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      ElMessage.error('小程序二维码图片不能超过 10MB');
+    const result = validateAdminMiniProgramQrFile(file, 10);
+    if (!result.valid) {
+      ElMessage.error(result.message);
       return false;
     }
     return true;
@@ -1144,9 +718,15 @@ export function useSettingsPage() {
       }
 
       if (platform === 'ios') {
-        appDownloadConfig.value.ios_url = nextUrl;
+        appDownloadConfig.value = normalizeAppDownloadConfig({
+          ...appDownloadConfig.value,
+          ios_url: nextUrl
+        });
       } else {
-        appDownloadConfig.value.android_url = nextUrl;
+        appDownloadConfig.value = normalizeAppDownloadConfig({
+          ...appDownloadConfig.value,
+          android_url: nextUrl
+        });
       }
       ElMessage.success('安装包上传成功');
       options?.onSuccess?.(data);
@@ -1175,7 +755,10 @@ export function useSettingsPage() {
         throw new Error('上传返回地址为空');
       }
 
-      appDownloadConfig.value.mini_program_qr_url = nextUrl;
+      appDownloadConfig.value = normalizeAppDownloadConfig({
+        ...appDownloadConfig.value,
+        mini_program_qr_url: nextUrl
+      });
       ElMessage.success('小程序二维码上传成功');
       options?.onSuccess?.(data);
     } catch (error) {
