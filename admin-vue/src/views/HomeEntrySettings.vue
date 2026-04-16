@@ -166,6 +166,16 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  buildAdminHomeEntryPreviewEntries,
+  buildAdminHomeEntrySettingsPayload,
+  canAdminHomeEntryShowImageIcon,
+  createAdminHomeEntryDraft,
+  DEFAULT_ADMIN_HOME_ENTRY_PREVIEW_CLIENT,
+  getAdminHomeEntryRoutePlaceholder,
+  normalizeAdminHomeEntrySettings,
+  validateAdminHomeEntries
+} from '@infinitech/admin-core'
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
@@ -173,51 +183,15 @@ import PageStateAlert from '@/components/PageStateAlert.vue'
 const loading = ref(false)
 const saving = ref(false)
 const loadError = ref('')
-const previewClient = ref('user-vue')
-const form = reactive({
-  entries: []
-})
-
-function createEntry(source = {}) {
-  return {
-    localKey: `${source.key || 'entry'}-${Math.random().toString(36).slice(2, 10)}`,
-    key: String(source.key || '').trim(),
-    label: String(source.label || '').trim(),
-    icon: String(source.icon || '✨').trim() || '✨',
-    icon_type: String(source.icon_type || 'emoji').trim() || 'emoji',
-    bg_color: String(source.bg_color || '#F3F4F6').trim() || '#F3F4F6',
-    sort_order: Number(source.sort_order || 0),
-    enabled: source.enabled !== false,
-    city_scopes: Array.isArray(source.city_scopes) ? [...source.city_scopes] : [],
-    client_scopes: Array.isArray(source.client_scopes) && source.client_scopes.length ? [...source.client_scopes] : ['user-vue', 'app-mobile'],
-    route_type: String(source.route_type || 'page').trim() || 'page',
-    route_value: String(source.route_value || '').trim(),
-    badge_text: String(source.badge_text || '').trim()
-  }
-}
-
-function routePlaceholder(routeType) {
-  if (routeType === 'feature') return 'errand / medicine / dining_buddy / charity'
-  if (routeType === 'category') return 'food / groupbuy / dessert_drinks ...'
-  if (routeType === 'external') return 'https://example.com'
-  return '/pages/activity/index'
-}
-
-function normalizePayload(payload = {}) {
-  return {
-    entries: (Array.isArray(payload.entries) ? payload.entries : []).map(createEntry)
-  }
-}
+const previewClient = ref(DEFAULT_ADMIN_HOME_ENTRY_PREVIEW_CLIENT)
+const form = reactive(normalizeAdminHomeEntrySettings())
 
 const previewEntries = computed(() =>
-  form.entries
-    .filter((entry) => entry.enabled)
-    .filter((entry) => !entry.client_scopes.length || entry.client_scopes.includes(previewClient.value))
-    .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
+  buildAdminHomeEntryPreviewEntries(form.entries, previewClient.value)
 )
 
 function showImageIcon(entry) {
-  return entry.icon_type === 'image' || entry.icon_type === 'external'
+  return canAdminHomeEntryShowImageIcon(entry)
 }
 
 async function loadSettings(forceRefresh = false) {
@@ -227,7 +201,7 @@ async function loadSettings(forceRefresh = false) {
     const { data } = await request.get('/api/home-entry-settings', {
       params: forceRefresh ? { _t: Date.now() } : undefined
     })
-    Object.assign(form, normalizePayload(extractEnvelopeData(data) || {}))
+    Object.assign(form, normalizeAdminHomeEntrySettings(extractEnvelopeData(data) || {}))
   } catch (error) {
     form.entries = []
     loadError.value = extractErrorMessage(error, '加载首页入口配置失败')
@@ -237,12 +211,7 @@ async function loadSettings(forceRefresh = false) {
 }
 
 function addEntry() {
-  const maxSort = form.entries.reduce((result, item) => Math.max(result, Number(item.sort_order || 0)), 0)
-  form.entries.push(createEntry({
-    key: `custom_${form.entries.length + 1}`,
-    label: '新入口',
-    sort_order: maxSort + 10
-  }))
+  form.entries.push(createAdminHomeEntryDraft(form.entries))
 }
 
 function moveEntry(index, delta) {
@@ -264,25 +233,10 @@ async function removeEntry(index) {
   form.entries.splice(index, 1)
 }
 
-function validateEntries() {
-  if (!form.entries.length) {
-    return '至少保留一个首页入口'
-  }
-  const seen = new Set()
-  for (const entry of form.entries) {
-    if (!entry.key) return '首页入口 key 不能为空'
-    if (seen.has(entry.key)) return `首页入口 key 重复：${entry.key}`
-    seen.add(entry.key)
-    if (!entry.label) return `入口 ${entry.key} 的显示名称不能为空`
-    if (!entry.route_value) return `入口 ${entry.key} 的路由值不能为空`
-  }
-  return ''
-}
-
 async function saveSettings() {
-  const validationMessage = validateEntries()
-  if (validationMessage) {
-    ElMessage.warning(validationMessage)
+  const validation = validateAdminHomeEntries(form.entries)
+  if (!validation.valid) {
+    ElMessage.warning(validation.message)
     return
   }
 
@@ -297,11 +251,9 @@ async function saveSettings() {
 
   saving.value = true
   try {
-    const payload = {
-      entries: form.entries.map(({ localKey, ...entry }) => entry)
-    }
+    const payload = buildAdminHomeEntrySettingsPayload(form.entries)
     const { data } = await request.post('/api/home-entry-settings', payload)
-    Object.assign(form, normalizePayload(extractEnvelopeData(data) || payload))
+    Object.assign(form, normalizeAdminHomeEntrySettings(extractEnvelopeData(data) || payload))
     ElMessage.success('首页入口配置已保存')
   } catch (error) {
     ElMessage.error(extractErrorMessage(error, '保存首页入口配置失败'))
@@ -311,6 +263,8 @@ async function saveSettings() {
 }
 
 void loadSettings()
+
+const routePlaceholder = getAdminHomeEntryRoutePlaceholder
 </script>
 
 <style scoped>

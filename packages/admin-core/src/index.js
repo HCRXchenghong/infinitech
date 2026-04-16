@@ -19,3 +19,4 @@ export * from "./order-resources.js";
 export * from "./user-management-resources.js";
 export * from "./shop-management-resources.js";
 export * from "./merchant-profile-resources.js";
+export * from "./home-entry-resources.js";
