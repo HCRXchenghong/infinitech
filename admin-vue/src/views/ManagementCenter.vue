@@ -39,7 +39,7 @@
         <el-table-column prop="name" label="姓名" min-width="120" />
         <el-table-column label="角色" width="140">
           <template #default="{ row }">
-            <el-tag :type="resolveRoleTagType(row.type)">{{ resolveRoleLabel(row.type) }}</el-tag>
+            <el-tag :type="roleTagType(row.type)">{{ roleLabel(row.type) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" min-width="170">
@@ -64,7 +64,7 @@
 
     <el-dialog
       v-model="adminDialogVisible"
-      :title="editingAdmin ? '编辑管理员' : '添加管理员'"
+      :title="dialogTitle"
       width="480px"
       :close-on-click-modal="false"
     >
@@ -74,6 +74,16 @@
         </el-form-item>
         <el-form-item label="姓名" prop="name">
           <el-input v-model="adminForm.name" placeholder="请输入姓名" />
+        </el-form-item>
+        <el-form-item label="类型" prop="type">
+          <el-select v-model="adminForm.type" placeholder="请选择管理员类型" style="width: 100%;">
+            <el-option
+              v-for="option in roleOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item v-if="!editingAdmin" label="密码" prop="password">
           <el-input v-model="adminForm.password" type="password" show-password placeholder="请输入密码" />
@@ -88,223 +98,192 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, RefreshRight } from '@element-plus/icons-vue';
-import { extractTemporaryCredential } from '@infinitech/admin-core';
-import { extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts';
-import request from '@/utils/request';
-import { downloadCredentialReceipt } from '@/utils/credentialReceipt';
-import PageStateAlert from '@/components/PageStateAlert.vue';
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, RefreshRight } from '@element-plus/icons-vue'
+import {
+  ADMIN_MANAGEMENT_ROLE_OPTIONS,
+  buildAdminManagementCredentialReceiptMeta,
+  buildAdminManagementPayload,
+  createAdminManagementFormRules,
+  createAdminManagementFormState,
+  extractTemporaryCredential,
+  extractAdminManagementPage,
+  filterAdminManagementRecords,
+  formatAdminManagementTime,
+  getAdminManagementDialogTitle,
+  getAdminManagementRoleLabel,
+  getAdminManagementRoleTagType,
+  resolveAdminManagementId,
+  validateAdminManagementPayload,
+} from '@infinitech/admin-core'
+import { extractErrorMessage } from '@infinitech/contracts'
+import request from '@/utils/request'
+import { downloadCredentialReceipt } from '@/utils/credentialReceipt'
+import PageStateAlert from '@/components/PageStateAlert.vue'
 
-const loading = ref(false);
-const loadingAdmins = ref(false);
-const admins = ref([]);
-const adminsError = ref('');
-const pageError = computed(() => adminsError.value || '');
+const loading = ref(false)
+const loadingAdmins = ref(false)
+const admins = ref([])
+const adminsError = ref('')
+const pageError = computed(() => adminsError.value || '')
 
-const keyword = ref('');
-const adminDialogVisible = ref(false);
-const editingAdmin = ref(null);
-const savingAdmin = ref(false);
-const adminFormRef = ref();
-const adminForm = reactive({
-  phone: '',
-  name: '',
-  password: ''
-});
-const adminRules = {
-  phone: [
-    { required: true, message: '请输入手机号', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
-  ],
-  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
-};
+const keyword = ref('')
+const adminDialogVisible = ref(false)
+const editingAdmin = ref(null)
+const savingAdmin = ref(false)
+const adminFormRef = ref()
+const adminForm = reactive(createAdminManagementFormState())
+const isEditingAdmin = computed(() => Boolean(editingAdmin.value))
+const adminRules = computed(() =>
+  createAdminManagementFormRules({ requirePassword: !isEditingAdmin.value }),
+)
+const dialogTitle = computed(() => getAdminManagementDialogTitle(editingAdmin.value))
+const roleOptions = ADMIN_MANAGEMENT_ROLE_OPTIONS
 
 const filteredAdmins = computed(() => {
-  const k = keyword.value.trim().toLowerCase();
-  if (!k) return admins.value;
-  return admins.value.filter((item) => {
-    const phone = String(item?.phone || '').toLowerCase();
-    const name = String(item?.name || '').toLowerCase();
-    return phone.includes(k) || name.includes(k);
-  });
-});
+  return filterAdminManagementRecords(admins.value, keyword.value)
+})
 
 onMounted(() => {
-  loadAll();
-});
-
-function resolveAdminId(admin) {
-  const id = admin?.id ?? admin?.legacyId;
-  if (id === undefined || id === null || id === '') {
-    return '';
-  }
-  return String(id);
-}
-
-function resolveRoleLabel(type) {
-  const roleType = String(type || '').trim().toLowerCase();
-  if (roleType === 'super_admin') return '超级管理员';
-  if (roleType === 'admin') return '管理员';
-  return roleType || '管理员';
-}
-
-function resolveRoleTagType(type) {
-  const roleType = String(type || '').trim().toLowerCase();
-  if (roleType === 'super_admin') return 'danger';
-  if (roleType === 'admin') return '';
-  return 'info';
-}
+  loadAll()
+})
 
 async function loadAll() {
-  loading.value = true;
+  loading.value = true
   try {
-    await loadAdmins();
+    await loadAdmins()
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
 async function loadAdmins() {
-  adminsError.value = '';
-  loadingAdmins.value = true;
+  adminsError.value = ''
+  loadingAdmins.value = true
   try {
-    const { data } = await request.get('/api/admins');
-    admins.value = extractPaginatedItems(data, {
-      listKeys: ['admins', 'items']
-    }).items;
+    const { data } = await request.get('/api/admins')
+    admins.value = extractAdminManagementPage(data).items
   } catch (error) {
-    admins.value = [];
-    adminsError.value = extractErrorMessage(error, '加载管理员账号失败，请稍后重试');
+    admins.value = []
+    adminsError.value = extractErrorMessage(error, '加载管理员账号失败，请稍后重试')
   } finally {
-    loadingAdmins.value = false;
+    loadingAdmins.value = false
   }
 }
 
-function formatTime(raw) {
-  if (!raw) return '-';
-  const date = new Date(raw);
-  if (Number.isNaN(date.getTime())) return raw;
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  const h = String(date.getHours()).padStart(2, '0');
-  const min = String(date.getMinutes()).padStart(2, '0');
-  return `${y}-${m}-${d} ${h}:${min}`;
-}
-
 function resetAdminForm() {
-  adminForm.phone = '';
-  adminForm.name = '';
-  adminForm.password = '';
+  Object.assign(adminForm, createAdminManagementFormState())
 }
 
 function showAddAdminDialog() {
-  editingAdmin.value = null;
-  resetAdminForm();
-  adminDialogVisible.value = true;
+  editingAdmin.value = null
+  resetAdminForm()
+  adminDialogVisible.value = true
 }
 
 function showEditAdminDialog(admin) {
-  editingAdmin.value = admin;
-  adminForm.phone = admin.phone;
-  adminForm.name = admin.name;
-  adminForm.password = '';
-  adminDialogVisible.value = true;
+  editingAdmin.value = admin
+  Object.assign(adminForm, createAdminManagementFormState(admin))
+  adminDialogVisible.value = true
 }
 
 async function handleSaveAdmin() {
   try {
-    await adminFormRef.value?.validate();
+    await adminFormRef.value?.validate()
   } catch (error) {
-    return;
+    return
   }
 
-  savingAdmin.value = true;
+  const payload = buildAdminManagementPayload(adminForm, {
+    includePassword: !isEditingAdmin.value,
+  })
+  const validationMessage = validateAdminManagementPayload(payload, {
+    requirePassword: !isEditingAdmin.value,
+  })
+  if (validationMessage) {
+    ElMessage.error(validationMessage)
+    return
+  }
+
+  savingAdmin.value = true
   try {
     if (editingAdmin.value) {
-      const adminId = resolveAdminId(editingAdmin.value);
+      const adminId = resolveAdminManagementId(editingAdmin.value)
       if (!adminId) {
-        ElMessage.error('管理员 ID 无效，无法更新');
-        return;
+        ElMessage.error('管理员 ID 无效，无法更新')
+        return
       }
-      await request.put(`/api/admins/${adminId}`, {
-        phone: adminForm.phone,
-        name: adminForm.name
-      });
-      ElMessage.success('管理员信息更新成功');
+      await request.put(`/api/admins/${adminId}`, payload)
+      ElMessage.success('管理员信息更新成功')
     } else {
-      await request.post('/api/admins', {
-        phone: adminForm.phone,
-        name: adminForm.name,
-        password: adminForm.password
-      });
-      ElMessage.success('管理员账号创建成功');
+      await request.post('/api/admins', payload)
+      ElMessage.success('管理员账号创建成功')
     }
-    adminDialogVisible.value = false;
-    await loadAdmins();
+    adminDialogVisible.value = false
+    await loadAdmins()
   } catch (error) {
-    ElMessage.error(extractErrorMessage(error, '操作失败'));
+    ElMessage.error(extractErrorMessage(error, '操作失败'))
   } finally {
-    savingAdmin.value = false;
+    savingAdmin.value = false
   }
 }
 
 async function handleDeleteAdmin(admin) {
-  const adminId = resolveAdminId(admin);
+  const adminId = resolveAdminManagementId(admin)
   if (!adminId) {
-    ElMessage.error('管理员 ID 无效，无法删除');
-    return;
+    ElMessage.error('管理员 ID 无效，无法删除')
+    return
   }
 
   try {
     await ElMessageBox.confirm('确定要删除该管理员账号吗？', '提示', {
-      type: 'warning'
-    });
-    await request.delete(`/api/admins/${adminId}`);
-    ElMessage.success('管理员账号删除成功');
-    await loadAdmins();
+      type: 'warning',
+    })
+    await request.delete(`/api/admins/${adminId}`)
+    ElMessage.success('管理员账号删除成功')
+    await loadAdmins()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error(extractErrorMessage(error, '删除失败'));
+      ElMessage.error(extractErrorMessage(error, '删除失败'))
     }
   }
 }
 
 async function handleResetPassword(admin) {
-  const adminId = resolveAdminId(admin);
+  const adminId = resolveAdminManagementId(admin)
   if (!adminId) {
-    ElMessage.error('管理员 ID 无效，无法重置密码');
-    return;
+    ElMessage.error('管理员 ID 无效，无法重置密码')
+    return
   }
 
   try {
     await ElMessageBox.confirm(
       `确定重置 ${admin.name || admin.phone || '该管理员'} 的密码吗？`,
       '提示',
-      { type: 'warning' }
-    );
-    const { data } = await request.post(`/api/admins/${adminId}/reset-password`, {});
-    const credential = extractTemporaryCredential(data);
+      { type: 'warning' },
+    )
+    const { data } = await request.post(`/api/admins/${adminId}/reset-password`, {})
+    const credential = extractTemporaryCredential(data)
     if (credential) {
       const filename = downloadCredentialReceipt({
-        scene: 'admin-reset-password',
-        subject: `管理员 ${admin.name || admin.phone || adminId}`,
-        account: admin.phone || String(adminId || ''),
+        ...buildAdminManagementCredentialReceiptMeta(admin),
         temporaryPassword: credential.temporaryPassword,
-      });
-      ElMessage.success(`管理员密码已重置，并已下载安全回执 ${filename}`);
+      })
+      ElMessage.success(`管理员密码已重置，并已下载安全回执 ${filename}`)
     } else {
-      ElMessage.success('密码重置成功');
+      ElMessage.success('密码重置成功')
     }
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error(extractErrorMessage(error, '重置密码失败'));
+      ElMessage.error(extractErrorMessage(error, '重置密码失败'))
     }
   }
 }
+
+const roleLabel = getAdminManagementRoleLabel
+const roleTagType = getAdminManagementRoleTagType
+const formatTime = formatAdminManagementTime
 </script>
 
 <style scoped>
