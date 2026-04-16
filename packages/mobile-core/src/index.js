@@ -10,4 +10,5 @@ export * from "./order-coupon.js";
 export * from "./order-support-pages.js";
 export * from "./profile-edit.js";
 export * from "./profile-home.js";
+export * from "./profile-outreach.js";
 export * from "./profile-settings.js";

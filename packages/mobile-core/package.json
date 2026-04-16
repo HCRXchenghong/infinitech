@@ -15,6 +15,7 @@
     "./profile-edit": "./src/profile-edit.js",
     "./medicine-home": "./src/medicine-home.js",
     "./profile-home": "./src/profile-home.js",
+    "./profile-outreach": "./src/profile-outreach.js",
     "./profile-settings": "./src/profile-settings.js",
     "./upload": "./src/upload.js",
     "./vip-center": "./src/vip-center.js"

@@ -51,65 +51,11 @@
 
 <script>
 import { submitCooperation } from '@/shared-ui/api.js'
+import { createProfileCooperationPage } from '../../../../shared/mobile-common/profile-outreach-pages.js'
 
-export default {
-  data() {
-    return {
-      typeOptions: ['用户反馈', '商务合作'],
-      typeIndex: 0,
-      submitting: false,
-      form: {
-        subject: '',
-        name: '',
-        phone: '',
-        content: ''
-      }
-    }
-  },
-  methods: {
-    goBack() {
-      uni.navigateBack()
-    },
-    handleTypeChange(e) {
-      this.typeIndex = Number(e.detail.value || 0)
-    },
-    submitForm() {
-      if (this.submitting) return
-      if (!this.form.name || !this.form.phone || !this.form.content) {
-        uni.showToast({ title: '请填写联系人、电话和内容', icon: 'none' })
-        return
-      }
-
-      const payload = {
-        company: this.form.subject || '未填写主题',
-        contact_name: this.form.name,
-        contact_phone: this.form.phone,
-        cooperation_type: this.typeIndex === 0 ? 'feedback' : 'cooperation',
-        city: '',
-        description: this.form.content
-      }
-
-      this.submitting = true
-      uni.showLoading({ title: '提交中...' })
-
-      submitCooperation(payload)
-        .then(() => {
-          uni.hideLoading()
-          uni.showToast({ title: '提交成功', icon: 'success' })
-          this.form = { subject: '', name: '', phone: '', content: '' }
-          this.typeIndex = 0
-        })
-        .catch((err) => {
-          console.error('提交反馈与合作失败:', err)
-          uni.hideLoading()
-          uni.showToast({ title: '提交失败，请稍后再试', icon: 'none' })
-        })
-        .finally(() => {
-          this.submitting = false
-        })
-    }
-  }
-}
+export default createProfileCooperationPage({
+  submitCooperation
+})
 </script>
 
 <style scoped lang="scss">
