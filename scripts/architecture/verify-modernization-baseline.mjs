@@ -319,6 +319,26 @@ assertContains(
   "buildAdminOfficialSiteSupportSummaryCards",
 );
 assertContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "createAdminOfficialSiteSupportFilters",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "buildAdminOfficialSiteSupportListQuery",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "buildAdminOfficialSiteExposureUpdatePayload",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "buildAdminOfficialSiteCooperationUpdatePayload",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "OFFICIAL_SITE_SUPPORT_STATUS_OPTIONS",
+);
+assertContains(
   "admin-vue/src/utils/officialSiteApi.js",
   "extractOfficialSiteRecordCollection",
 );

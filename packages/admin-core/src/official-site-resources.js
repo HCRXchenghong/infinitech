@@ -1,5 +1,28 @@
 import { extractEnvelopeData, extractPaginatedItems } from "../../contracts/src/http.js";
 
+export const OFFICIAL_SITE_SUPPORT_STATUS_OPTIONS = [
+  { label: "进行中", value: "open" },
+  { label: "已关闭", value: "closed" },
+];
+
+export const OFFICIAL_SITE_EXPOSURE_REVIEW_STATUS_OPTIONS = [
+  { label: "待审核", value: "pending" },
+  { label: "已通过", value: "approved" },
+  { label: "已驳回", value: "rejected" },
+];
+
+export const OFFICIAL_SITE_EXPOSURE_PROCESS_STATUS_OPTIONS = [
+  { label: "未处理", value: "unresolved" },
+  { label: "处理中", value: "processing" },
+  { label: "已处理", value: "resolved" },
+];
+
+export const OFFICIAL_SITE_COOPERATION_STATUS_OPTIONS = [
+  { label: "待处理", value: "pending" },
+  { label: "处理中", value: "processing" },
+  { label: "已完成", value: "done" },
+];
+
 function cloneValue(value, fallback) {
   const source = value == null ? fallback : value;
   return JSON.parse(JSON.stringify(source));
@@ -7,6 +30,14 @@ function cloneValue(value, fallback) {
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function normalizeText(value, fallback = "") {
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+  const normalized = String(value).trim();
+  return normalized || fallback;
 }
 
 export function extractOfficialSiteRecordCollection(payload, options = {}) {
@@ -30,20 +61,108 @@ export function extractOfficialSiteSupportMessageBundle(payload) {
   };
 }
 
-export function createAdminOfficialSiteExposureDraft() {
+export function createAdminOfficialSiteSupportFilters(overrides = {}) {
   return {
-    id: "",
-    content: "",
-    amount: 0,
-    appeal: "",
-    contact_phone: "",
-    photo_urls: [],
-    review_status: "pending",
-    review_remark: "",
-    process_status: "unresolved",
-    process_remark: "",
-    created_at: "",
-    handled_at: "",
+    status: normalizeText(overrides.status),
+    search: normalizeText(overrides.search),
+  };
+}
+
+export function buildAdminOfficialSiteSupportListQuery(filters = {}, options = {}) {
+  const normalized = createAdminOfficialSiteSupportFilters(filters);
+  const query = {
+    limit: Number(options.limit || 50),
+  };
+  if (normalized.status) {
+    query.status = normalized.status;
+  }
+  if (normalized.search) {
+    query.search = normalized.search;
+  }
+  return query;
+}
+
+export function buildAdminOfficialSiteSupportSessionPayload(session = {}) {
+  return {
+    status: normalizeText(session.status),
+    admin_remark: normalizeText(session.admin_remark),
+  };
+}
+
+export function buildAdminOfficialSiteSupportReplyPayload(content = "") {
+  return {
+    content: normalizeText(content),
+  };
+}
+
+export function createAdminOfficialSiteExposureFilters(overrides = {}) {
+  return {
+    review_status: normalizeText(overrides.review_status),
+    process_status: normalizeText(overrides.process_status),
+  };
+}
+
+export function createAdminOfficialSiteExposureDraft(source = {}) {
+  return {
+    id: normalizeText(source.id),
+    content: normalizeText(source.content),
+    amount: Number(source.amount || 0),
+    appeal: normalizeText(source.appeal),
+    contact_phone: normalizeText(source.contact_phone),
+    photo_urls: Array.isArray(source.photo_urls) ? [...source.photo_urls] : [],
+    review_status: normalizeText(source.review_status, "pending"),
+    review_remark: normalizeText(source.review_remark),
+    process_status: normalizeText(source.process_status, "unresolved"),
+    process_remark: normalizeText(source.process_remark),
+    created_at: normalizeText(source.created_at),
+    handled_at: normalizeText(source.handled_at),
+  };
+}
+
+export function buildAdminOfficialSiteExposureListQuery(filters = {}, options = {}) {
+  const normalized = createAdminOfficialSiteExposureFilters(filters);
+  const query = {
+    limit: Number(options.limit || 50),
+  };
+  if (normalized.review_status) {
+    query.review_status = normalized.review_status;
+  }
+  if (normalized.process_status) {
+    query.process_status = normalized.process_status;
+  }
+  return query;
+}
+
+export function buildAdminOfficialSiteExposureUpdatePayload(draft = {}) {
+  return {
+    review_status: normalizeText(draft.review_status),
+    review_remark: normalizeText(draft.review_remark),
+    process_status: normalizeText(draft.process_status),
+    process_remark: normalizeText(draft.process_remark),
+  };
+}
+
+export function createAdminOfficialSiteCooperationFilters(overrides = {}) {
+  return {
+    status: normalizeText(overrides.status),
+  };
+}
+
+export function buildAdminOfficialSiteCooperationListQuery(filters = {}, options = {}) {
+  const normalized = createAdminOfficialSiteCooperationFilters(filters);
+  const query = {
+    limit: Number(options.limit || 50),
+  };
+  if (normalized.status) {
+    query.status = normalized.status;
+  }
+  return query;
+}
+
+export function buildAdminOfficialSiteCooperationUpdatePayload(row = {}) {
+  return {
+    status: normalizeText(row.status),
+    remark: normalizeText(row.admin_remark),
   };
 }
 

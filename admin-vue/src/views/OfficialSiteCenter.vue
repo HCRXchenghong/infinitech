@@ -54,8 +54,12 @@
                 />
                 <div class="support-toolbar-row">
                   <el-select v-model="supportFilters.status" size="small" clearable placeholder="状态">
-                    <el-option label="进行中" value="open" />
-                    <el-option label="已关闭" value="closed" />
+                    <el-option
+                      v-for="option in OFFICIAL_SITE_SUPPORT_STATUS_OPTIONS"
+                      :key="option.value"
+                      :label="option.label"
+                      :value="option.value"
+                    />
                   </el-select>
                   <el-button size="small" @click="loadSupportSessions">筛选</el-button>
                 </div>
@@ -118,8 +122,12 @@
 
                   <div class="support-detail-actions">
                     <el-select v-model="selectedSupportSession.status" size="small">
-                      <el-option label="进行中" value="open" />
-                      <el-option label="已关闭" value="closed" />
+                      <el-option
+                        v-for="option in OFFICIAL_SITE_SUPPORT_STATUS_OPTIONS"
+                        :key="option.value"
+                        :label="option.label"
+                        :value="option.value"
+                      />
                     </el-select>
                     <el-button size="small" :loading="supportSaving" @click="saveSupportSession">保存会话</el-button>
                   </div>
@@ -213,14 +221,20 @@
 
             <div class="table-toolbar center-toolbar">
               <el-select v-model="exposureFilters.review_status" size="small" clearable placeholder="审核状态">
-                <el-option label="待审核" value="pending" />
-                <el-option label="已通过" value="approved" />
-                <el-option label="已驳回" value="rejected" />
+                <el-option
+                  v-for="option in OFFICIAL_SITE_EXPOSURE_REVIEW_STATUS_OPTIONS"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
               </el-select>
               <el-select v-model="exposureFilters.process_status" size="small" clearable placeholder="处理状态">
-                <el-option label="未处理" value="unresolved" />
-                <el-option label="处理中" value="processing" />
-                <el-option label="已处理" value="resolved" />
+                <el-option
+                  v-for="option in OFFICIAL_SITE_EXPOSURE_PROCESS_STATUS_OPTIONS"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
               </el-select>
               <el-button size="small" @click="loadExposures">筛选</el-button>
             </div>
@@ -272,9 +286,12 @@
 
             <div class="table-toolbar center-toolbar">
               <el-select v-model="cooperationFilters.status" size="small" clearable placeholder="跟进状态">
-                <el-option label="待处理" value="pending" />
-                <el-option label="处理中" value="processing" />
-                <el-option label="已完成" value="done" />
+                <el-option
+                  v-for="option in OFFICIAL_SITE_COOPERATION_STATUS_OPTIONS"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
               </el-select>
               <el-button size="small" @click="loadCooperations">筛选</el-button>
             </div>
@@ -290,9 +307,12 @@
                 <el-table-column label="状态" width="150">
                   <template #default="{ row }">
                     <el-select v-model="row.status" size="small">
-                      <el-option label="待处理" value="pending" />
-                      <el-option label="处理中" value="processing" />
-                      <el-option label="已完成" value="done" />
+                      <el-option
+                        v-for="option in OFFICIAL_SITE_COOPERATION_STATUS_OPTIONS"
+                        :key="option.value"
+                        :label="option.label"
+                        :value="option.value"
+                      />
                     </el-select>
                   </template>
                 </el-table-column>
@@ -348,16 +368,22 @@
         <div class="dialog-form-grid">
           <el-form-item label="审核状态">
             <el-select v-model="exposureDraft.review_status">
-              <el-option label="待审核" value="pending" />
-              <el-option label="已通过" value="approved" />
-              <el-option label="已驳回" value="rejected" />
+              <el-option
+                v-for="option in OFFICIAL_SITE_EXPOSURE_REVIEW_STATUS_OPTIONS"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+              />
             </el-select>
           </el-form-item>
           <el-form-item label="处理状态">
             <el-select v-model="exposureDraft.process_status">
-              <el-option label="未处理" value="unresolved" />
-              <el-option label="处理中" value="processing" />
-              <el-option label="已处理" value="resolved" />
+              <el-option
+                v-for="option in OFFICIAL_SITE_EXPOSURE_PROCESS_STATUS_OPTIONS"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+              />
             </el-select>
           </el-form-item>
         </div>
@@ -397,10 +423,24 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import {
+  buildAdminOfficialSiteCooperationListQuery,
+  buildAdminOfficialSiteCooperationUpdatePayload,
+  buildAdminOfficialSiteExposureListQuery,
+  buildAdminOfficialSiteExposureUpdatePayload,
+  buildAdminOfficialSiteSupportListQuery,
+  buildAdminOfficialSiteSupportReplyPayload,
+  buildAdminOfficialSiteSupportSessionPayload,
   buildAdminOfficialSiteSupportSummaryCards,
+  createAdminOfficialSiteCooperationFilters,
   createAdminOfficialSiteExposureDraft,
+  createAdminOfficialSiteExposureFilters,
+  createAdminOfficialSiteSupportFilters,
   mergeOfficialSiteSupportMessages,
   mergeOfficialSiteSupportSession,
+  OFFICIAL_SITE_COOPERATION_STATUS_OPTIONS,
+  OFFICIAL_SITE_EXPOSURE_PROCESS_STATUS_OPTIONS,
+  OFFICIAL_SITE_EXPOSURE_REVIEW_STATUS_OPTIONS,
+  OFFICIAL_SITE_SUPPORT_STATUS_OPTIONS,
   officialSiteExposureProcessLabel as processLabel,
   officialSiteExposureProcessTagType as processTagType,
   officialSiteExposureReviewLabel as reviewLabel,
@@ -443,26 +483,18 @@ const selectedSupportSession = ref(null);
 const supportMessages = ref([]);
 const supportReply = ref('');
 const adminMessageListRef = ref(null);
-const supportFilters = reactive({
-  status: '',
-  search: ''
-});
+const supportFilters = reactive(createAdminOfficialSiteSupportFilters());
 
 const exposureLoading = ref(false);
 const exposureSaving = ref(false);
 const exposures = ref([]);
-const exposureFilters = reactive({
-  review_status: '',
-  process_status: ''
-});
+const exposureFilters = reactive(createAdminOfficialSiteExposureFilters());
 const exposureDialogVisible = ref(false);
 const exposureDraft = reactive(createAdminOfficialSiteExposureDraft());
 
 const cooperationLoading = ref(false);
 const cooperations = ref([]);
-const cooperationFilters = reactive({
-  status: ''
-});
+const cooperationFilters = reactive(createAdminOfficialSiteCooperationFilters());
 
 const supportSummaryCards = computed(() => {
   return buildAdminOfficialSiteSupportSummaryCards({
@@ -655,9 +687,7 @@ async function loadSupportSessions(silent = false) {
   }
   try {
     const data = await listAdminOfficialSiteSupportSessions({
-      status: supportFilters.status || undefined,
-      search: supportFilters.search || undefined,
-      limit: 50
+      ...buildAdminOfficialSiteSupportListQuery(supportFilters)
     });
     supportSessions.value = data.records;
 
@@ -716,8 +746,7 @@ async function saveSupportSession() {
   supportSaving.value = true;
   try {
     const data = await updateAdminOfficialSiteSupportSession(selectedSupportSession.value.id, {
-      status: selectedSupportSession.value.status,
-      admin_remark: selectedSupportSession.value.admin_remark || ''
+      ...buildAdminOfficialSiteSupportSessionPayload(selectedSupportSession.value)
     });
     selectedSupportSession.value = {
       ...selectedSupportSession.value,
@@ -739,7 +768,10 @@ async function sendSupportReply() {
   }
   supportSending.value = true;
   try {
-    await appendAdminOfficialSiteSupportMessage(selectedSupportId.value, { content });
+    await appendAdminOfficialSiteSupportMessage(
+      selectedSupportId.value,
+      buildAdminOfficialSiteSupportReplyPayload(content),
+    );
     supportReply.value = '';
     await loadSelectedSupportMessages(true);
     await loadSupportSessions(true);
@@ -755,9 +787,7 @@ async function loadExposures() {
   exposureLoading.value = true;
   try {
     const data = await listAdminOfficialSiteExposures({
-      review_status: exposureFilters.review_status || undefined,
-      process_status: exposureFilters.process_status || undefined,
-      limit: 50
+      ...buildAdminOfficialSiteExposureListQuery(exposureFilters)
     });
     exposures.value = data.records;
   } catch (error) {
@@ -768,10 +798,7 @@ async function loadExposures() {
 }
 
 function openExposureDialog(row) {
-  Object.assign(exposureDraft, createAdminOfficialSiteExposureDraft(), {
-    ...row,
-    photo_urls: Array.isArray(row.photo_urls) ? [...row.photo_urls] : []
-  });
+  Object.assign(exposureDraft, createAdminOfficialSiteExposureDraft(row));
   exposureDialogVisible.value = true;
 }
 
@@ -779,12 +806,10 @@ async function saveExposure() {
   if (!exposureDraft.id) return;
   exposureSaving.value = true;
   try {
-    await updateAdminOfficialSiteExposure(exposureDraft.id, {
-      review_status: exposureDraft.review_status,
-      review_remark: exposureDraft.review_remark,
-      process_status: exposureDraft.process_status,
-      process_remark: exposureDraft.process_remark
-    });
+    await updateAdminOfficialSiteExposure(
+      exposureDraft.id,
+      buildAdminOfficialSiteExposureUpdatePayload(exposureDraft),
+    );
     exposureDialogVisible.value = false;
     await loadExposures();
     ElMessage.success('曝光处理结果已保存');
@@ -799,8 +824,7 @@ async function loadCooperations() {
   cooperationLoading.value = true;
   try {
     const data = await listAdminOfficialSiteCooperations({
-      status: cooperationFilters.status || undefined,
-      limit: 50
+      ...buildAdminOfficialSiteCooperationListQuery(cooperationFilters)
     });
     cooperations.value = data.records;
   } catch (error) {
@@ -813,8 +837,7 @@ async function loadCooperations() {
 async function saveCooperation(row) {
   try {
     await updateAdminOfficialSiteCooperation(row.id, {
-      status: row.status,
-      remark: row.admin_remark || ''
+      ...buildAdminOfficialSiteCooperationUpdatePayload(row)
     });
     ElMessage.success('合作线索状态已更新');
   } catch (error) {

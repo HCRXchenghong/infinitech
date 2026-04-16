@@ -2,13 +2,27 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildAdminOfficialSiteCooperationListQuery,
+  buildAdminOfficialSiteCooperationUpdatePayload,
+  buildAdminOfficialSiteExposureListQuery,
+  buildAdminOfficialSiteExposureUpdatePayload,
+  buildAdminOfficialSiteSupportListQuery,
+  buildAdminOfficialSiteSupportReplyPayload,
+  buildAdminOfficialSiteSupportSessionPayload,
   buildAdminOfficialSiteSupportSummaryCards,
   compareOfficialSiteSupportMessages,
+  createAdminOfficialSiteCooperationFilters,
   createAdminOfficialSiteExposureDraft,
+  createAdminOfficialSiteExposureFilters,
+  createAdminOfficialSiteSupportFilters,
   extractOfficialSiteRecordCollection,
   extractOfficialSiteSupportMessageBundle,
   mergeOfficialSiteSupportMessages,
   mergeOfficialSiteSupportSession,
+  OFFICIAL_SITE_COOPERATION_STATUS_OPTIONS,
+  OFFICIAL_SITE_EXPOSURE_PROCESS_STATUS_OPTIONS,
+  OFFICIAL_SITE_EXPOSURE_REVIEW_STATUS_OPTIONS,
+  OFFICIAL_SITE_SUPPORT_STATUS_OPTIONS,
   officialSiteExposureProcessLabel,
   officialSiteExposureProcessTagType,
   officialSiteExposureReviewLabel,
@@ -72,6 +86,108 @@ test("official site exposure helpers keep review and process semantics", () => {
     created_at: "",
     handled_at: "",
   });
+});
+
+test("official site admin filter and payload helpers normalize support workflows", () => {
+  assert.equal(OFFICIAL_SITE_SUPPORT_STATUS_OPTIONS.length, 2);
+  assert.deepEqual(createAdminOfficialSiteSupportFilters(), {
+    status: "",
+    search: "",
+  });
+  assert.deepEqual(
+    buildAdminOfficialSiteSupportListQuery({ status: "open", search: "  alice " }),
+    {
+      status: "open",
+      search: "alice",
+      limit: 50,
+    },
+  );
+  assert.deepEqual(
+    buildAdminOfficialSiteSupportSessionPayload({ status: "closed", admin_remark: "  已处理  " }),
+    {
+      status: "closed",
+      admin_remark: "已处理",
+    },
+  );
+  assert.deepEqual(buildAdminOfficialSiteSupportReplyPayload("  请补充联系方式  "), {
+    content: "请补充联系方式",
+  });
+});
+
+test("official site admin filter and payload helpers normalize exposure and cooperation workflows", () => {
+  assert.equal(OFFICIAL_SITE_EXPOSURE_REVIEW_STATUS_OPTIONS.length, 3);
+  assert.equal(OFFICIAL_SITE_EXPOSURE_PROCESS_STATUS_OPTIONS.length, 3);
+  assert.equal(OFFICIAL_SITE_COOPERATION_STATUS_OPTIONS.length, 3);
+  assert.deepEqual(createAdminOfficialSiteExposureFilters(), {
+    review_status: "",
+    process_status: "",
+  });
+  assert.deepEqual(
+    buildAdminOfficialSiteExposureListQuery({
+      review_status: "approved",
+      process_status: "resolved",
+    }),
+    {
+      review_status: "approved",
+      process_status: "resolved",
+      limit: 50,
+    },
+  );
+  assert.deepEqual(
+    createAdminOfficialSiteExposureDraft({
+      id: "expo-1",
+      content: "  问题曝光  ",
+      amount: "88.5",
+      photo_urls: ["/a.png"],
+      review_status: "approved",
+    }),
+    {
+      id: "expo-1",
+      content: "问题曝光",
+      amount: 88.5,
+      appeal: "",
+      contact_phone: "",
+      photo_urls: ["/a.png"],
+      review_status: "approved",
+      review_remark: "",
+      process_status: "unresolved",
+      process_remark: "",
+      created_at: "",
+      handled_at: "",
+    },
+  );
+  assert.deepEqual(
+    buildAdminOfficialSiteExposureUpdatePayload({
+      review_status: "approved",
+      review_remark: "  通过  ",
+      process_status: "processing",
+      process_remark: "  跟进中  ",
+    }),
+    {
+      review_status: "approved",
+      review_remark: "通过",
+      process_status: "processing",
+      process_remark: "跟进中",
+    },
+  );
+  assert.deepEqual(createAdminOfficialSiteCooperationFilters(), { status: "" });
+  assert.deepEqual(
+    buildAdminOfficialSiteCooperationListQuery({ status: "processing" }),
+    {
+      status: "processing",
+      limit: 50,
+    },
+  );
+  assert.deepEqual(
+    buildAdminOfficialSiteCooperationUpdatePayload({
+      status: "done",
+      admin_remark: "  已完成回访  ",
+    }),
+    {
+      status: "done",
+      remark: "已完成回访",
+    },
+  );
 });
 
 test("support session helpers merge and sort by latest activity", () => {
