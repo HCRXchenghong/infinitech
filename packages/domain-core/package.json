@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.js",
     "./identity": "./src/identity.js",
-    "./notification-content": "./src/notification-content.js"
+    "./notification-content": "./src/notification-content.js",
+    "./onboarding-invite-content": "./src/onboarding-invite-content.js"
   }
 }

@@ -45,6 +45,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/domain-core/src/index.js",
   "packages/domain-core/src/notification-content.js",
   "packages/domain-core/src/notification-content.test.mjs",
+  "packages/domain-core/src/onboarding-invite-content.js",
+  "packages/domain-core/src/onboarding-invite-content.test.mjs",
   "packages/mobile-core/src/index.js",
   "packages/admin-core/src/index.js",
   "packages/admin-core/src/menu-groups.js",
@@ -1216,7 +1218,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:domain-core-tests": "node --test packages/domain-core/src/notification-content.test.mjs"',
+  '"verify:domain-core-tests": "node --test packages/domain-core/src/notification-content.test.mjs packages/domain-core/src/onboarding-invite-content.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -1951,6 +1953,18 @@ assertContains(
   "buildApiDocumentationRequestExamples(apiBaseUrl.value)",
 );
 assertContains(
+  "admin-vue/src/views/InviteLanding.vue",
+  "@infinitech/domain-core",
+);
+assertContains(
+  "admin-vue/src/views/InviteLanding.vue",
+  "validateOnboardingInviteSubmission(inviteType.value, form)",
+);
+assertContains(
+  "admin-vue/src/views/InviteLanding.vue",
+  "buildOnboardingInviteSubmitPayload(inviteType.value, form)",
+);
+assertContains(
   "admin-vue/src/views/settingsApiManagementHelpers.js",
   "buildApiKeyMarkdownText",
 );
@@ -2065,6 +2079,14 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/ApiDocumentation.vue",
   "function buildMarkdown()",
+);
+assertNotContains(
+  "admin-vue/src/views/InviteLanding.vue",
+  "function validatePhone(phone)",
+);
+assertNotContains(
+  "admin-vue/src/views/InviteLanding.vue",
+  "function formatDateTime(value)",
 );
 assertNotContains(
   "admin-vue/src/views/Users.vue",

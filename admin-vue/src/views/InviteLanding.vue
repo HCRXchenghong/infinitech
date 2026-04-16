@@ -63,7 +63,7 @@
                 {{ line }}
               </p>
               <div class="letter-meta">
-                <div>链接有效至：{{ formatDateTime(invite?.expires_at) }}</div>
+                <div>链接有效至：{{ formatOnboardingInviteDateTime(invite?.expires_at) }}</div>
               </div>
             </div>
 
@@ -227,6 +227,16 @@ import { useRoute } from "vue-router";
 import { ElMessage } from "element-plus";
 import { createOnboardingInviteApi } from "@infinitech/client-sdk";
 import {
+  buildOnboardingInviteLetterParagraphs,
+  buildOnboardingInviteSubmitPayload,
+  createOnboardingInviteForm,
+  formatOnboardingInviteDateTime,
+  getOnboardingInviteTitle,
+  getOnboardingInviteTypeLabel,
+  validateOnboardingInviteImageFile,
+  validateOnboardingInviteSubmission,
+} from "@infinitech/domain-core";
+import {
   extractErrorMessage,
 } from "@infinitech/contracts/http";
 import request from "@/utils/request";
@@ -240,17 +250,7 @@ const submitting = ref(false);
 const envelopeOpening = ref(false);
 const view = ref("envelope");
 const invite = ref(null);
-const form = reactive({
-  merchant_name: "",
-  owner_name: "",
-  phone: "",
-  business_license_image: "",
-  name: "",
-  id_card_image: "",
-  emergency_contact_name: "",
-  emergency_contact_phone: "",
-  password: "",
-});
+const form = reactive(createOnboardingInviteForm());
 const uploading = reactive({
   business_license_image: false,
   id_card_image: false,
@@ -265,38 +265,9 @@ const inviteType = computed(() => invite.value?.invite_type || "");
 const isMerchant = computed(() => inviteType.value === "merchant");
 const isRider = computed(() => inviteType.value === "rider");
 const isOldUser = computed(() => inviteType.value === "old_user");
-const inviteTypeLabel = computed(() => {
-  if (isMerchant.value) return "商户";
-  if (isRider.value) return "骑手";
-  if (isOldUser.value) return "老用户";
-  return "邀请";
-});
-const inviteTitle = computed(() => {
-  if (isMerchant.value) return "商户入驻邀请";
-  if (isRider.value) return "骑手入职邀请";
-  if (isOldUser.value) return "老用户回归邀请";
-  return "邀请函";
-});
-const letterParagraphs = computed(() => {
-  if (isMerchant.value) {
-    return [
-      "您好，诚邀您加入悦享e食商户平台，共同服务本地用户。",
-      "平台将为您提供标准化运营工具、稳定订单入口与持续的运营支持。",
-      "请点击下方按钮填写入驻基础信息，提交后我们会尽快审核。",
-    ];
-  }
-  if (isRider.value) {
-    return [
-      "您好，诚邀您加入悦享e食配送团队。",
-      "我们将为您提供稳定单量、规范培训和明确的成长路径。",
-      "请点击下方按钮填写入职基础信息，提交后我们会尽快审核。",
-    ];
-  }
-  return [
-    "该邀请类型暂不支持当前填写页。",
-    "请联系平台管理员重新生成邀请链接。",
-  ];
-});
+const inviteTypeLabel = computed(() => getOnboardingInviteTypeLabel(inviteType.value));
+const inviteTitle = computed(() => getOnboardingInviteTitle(inviteType.value));
+const letterParagraphs = computed(() => buildOnboardingInviteLetterParagraphs(inviteType.value));
 
 onMounted(() => {
   loadInvite();
@@ -312,15 +283,7 @@ function resetState() {
   loadError.value = "";
   view.value = "envelope";
   envelopeOpening.value = false;
-  form.merchant_name = "";
-  form.owner_name = "";
-  form.phone = "";
-  form.business_license_image = "";
-  form.name = "";
-  form.id_card_image = "";
-  form.emergency_contact_name = "";
-  form.emergency_contact_phone = "";
-  form.password = "";
+  Object.assign(form, createOnboardingInviteForm());
   uploading.business_license_image = false;
   uploading.id_card_image = false;
 }
@@ -356,68 +319,14 @@ function openEnvelope() {
   }, 900);
 }
 
-function validatePhone(phone) {
-  return /^1[3-9]\d{9}$/.test(String(phone || ""));
-}
-
-function validateBeforeSubmit() {
-  if (!validatePhone(form.phone)) {
-    return "请输入正确的手机号";
-  }
-  if ((form.password || "").length < 6) {
-    return "登录密码至少6位";
-  }
-
-  if (isMerchant.value) {
-    if (
-      !form.merchant_name ||
-      !form.owner_name ||
-      !form.business_license_image
-    ) {
-      return "请完整填写商户基础信息";
-    }
-    return "";
-  }
-
-  if (isRider.value) {
-    if (!form.name || !form.id_card_image || !form.emergency_contact_name) {
-      return "请完整填写骑手基础信息";
-    }
-    if (!validatePhone(form.emergency_contact_phone)) {
-      return "请输入正确的紧急联系人电话";
-    }
-    return "";
-  }
-
-  return "邀请类型不支持该填写页";
-}
-
 async function submitInvite() {
-  const errMsg = validateBeforeSubmit();
-  if (errMsg) {
-    ElMessage.warning(errMsg);
+  const validation = validateOnboardingInviteSubmission(inviteType.value, form);
+  if (!validation.valid) {
+    ElMessage.warning(validation.message);
     return;
   }
 
-  const payload = isMerchant.value
-    ? {
-        merchant_name: form.merchant_name,
-        owner_name: form.owner_name,
-        phone: form.phone,
-        business_license_image: form.business_license_image,
-        password: form.password,
-      }
-    : isRider.value
-      ? {
-          name: form.name,
-          phone: form.phone,
-          id_card_image: form.id_card_image,
-          emergency_contact_name: form.emergency_contact_name,
-          emergency_contact_phone: form.emergency_contact_phone,
-          password: form.password,
-        }
-      : null;
-
+  const payload = buildOnboardingInviteSubmitPayload(inviteType.value, form);
   if (!payload) {
     ElMessage.warning("邀请类型不支持该填写页");
     return;
@@ -443,22 +352,14 @@ function handleInviteInvalid(message) {
   loadError.value = message || "邀请链接不可用";
 }
 
-function validateImageFile(file) {
-  if (!file?.type || !file.type.startsWith("image/")) {
-    ElMessage.error("请上传图片文件");
-    return false;
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    ElMessage.error("图片不能超过5MB");
-    return false;
-  }
-  return true;
-}
-
 async function handleImageChange(field, uploadFile) {
   const raw = uploadFile?.raw;
   if (!raw) return;
-  if (!validateImageFile(raw)) return;
+  const validation = validateOnboardingInviteImageFile(raw);
+  if (!validation.valid) {
+    ElMessage.error(validation.message);
+    return;
+  }
 
   uploading[field] = true;
   try {
@@ -484,14 +385,6 @@ async function handleImageChange(field, uploadFile) {
   } finally {
     uploading[field] = false;
   }
-}
-
-function formatDateTime(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  const pad = (num) => String(num).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 </script>
 
