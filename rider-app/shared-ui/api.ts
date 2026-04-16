@@ -9,6 +9,10 @@ import {
   createRiderPreferenceApi,
 } from '../../packages/client-sdk/src/mobile-capabilities.js'
 import {
+  extractEnvelopeData,
+  extractPaginatedItems,
+} from '../../packages/contracts/src/http.js'
+import {
   readStoredBearerToken,
   uploadAuthenticatedAsset,
 } from '../../packages/mobile-core/src/upload.js'
@@ -159,13 +163,15 @@ export const verifySMSCodeCheck = (phone: string, scene: string, code: string) =
 export const fetchConversations = () => request({
   url: '/api/messages/conversations',
   method: 'GET'
-})
+}).then((payload: any) => extractPaginatedItems(payload, {
+  listKeys: ['conversations', 'items', 'records', 'list'],
+}).items)
 
 export const upsertConversation = (payload: Record<string, any>) => request({
   url: '/api/messages/conversations/upsert',
   method: 'POST',
   data: payload
-})
+}).then((response: any) => extractEnvelopeData(response) || {})
 
 export const markConversationRead = (chatId: string) => request({
   url: `/api/messages/conversations/${encodeURIComponent(chatId)}/read`,
@@ -175,7 +181,9 @@ export const markConversationRead = (chatId: string) => request({
 export const fetchHistory = (roomId: string) => request({
   url: `/api/messages/${encodeURIComponent(roomId)}`,
   method: 'GET'
-})
+}).then((payload: any) => extractPaginatedItems(payload, {
+  listKeys: ['messages', 'items', 'records', 'list'],
+}).items)
 
 // 获取骑手信息
 export const fetchRiderInfo = () => {

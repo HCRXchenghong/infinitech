@@ -19,64 +19,80 @@ func NewMessageHandler(service *service.MessageService) *MessageHandler {
 	return &MessageHandler{service: service}
 }
 
+func respondMessageError(c *gin.Context, status int, message string) {
+	respondErrorEnvelope(c, status, couponResponseCodeForStatus(status), message, nil)
+}
+
+func respondMessageInvalidRequest(c *gin.Context, message string) {
+	respondMessageError(c, http.StatusBadRequest, message)
+}
+
+func respondMessageMirroredSuccess(c *gin.Context, message string, data interface{}) {
+	respondMirroredSuccessEnvelope(c, message, data)
+}
+
+func writeMessageServiceError(c *gin.Context, err error, fallbackStatus int) {
+	if errors.Is(err, service.ErrUnauthorized) || strings.Contains(strings.ToLower(err.Error()), "unauthorized") {
+		respondMessageError(c, http.StatusUnauthorized, err.Error())
+		return
+	}
+	if errors.Is(err, service.ErrForbidden) {
+		respondMessageError(c, http.StatusForbidden, err.Error())
+		return
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) || strings.Contains(strings.ToLower(err.Error()), "not found") {
+		respondMessageError(c, http.StatusNotFound, err.Error())
+		return
+	}
+	respondMessageError(c, fallbackStatus, err.Error())
+}
+
 func (h *MessageHandler) GetConversations(c *gin.Context) {
 	conversations, err := h.service.GetConversations(c.Request.Context())
 	if err != nil {
-		status := http.StatusInternalServerError
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			status = http.StatusNotFound
-		}
-		c.JSON(status, gin.H{"error": err.Error()})
+		writeMessageServiceError(c, err, http.StatusInternalServerError)
 		return
 	}
-	c.JSON(http.StatusOK, conversations)
+	respondPaginatedEnvelope(c, responseCodeOK, "会话列表加载成功", "conversations", conversations, int64(len(conversations)), 1, len(conversations))
 }
 
 func (h *MessageHandler) GetMessageHistory(c *gin.Context) {
 	roomID := c.Param("roomId")
 	messages, err := h.service.GetMessageHistory(c.Request.Context(), roomID)
 	if err != nil {
-		status := http.StatusInternalServerError
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			status = http.StatusNotFound
-		}
-		c.JSON(status, gin.H{"error": err.Error()})
+		writeMessageServiceError(c, err, http.StatusInternalServerError)
 		return
 	}
-	c.JSON(http.StatusOK, messages)
+	respondPaginatedEnvelope(c, responseCodeOK, "消息历史加载成功", "messages", messages, int64(len(messages)), 1, len(messages))
 }
 
 func (h *MessageHandler) MarkConversationRead(c *gin.Context) {
 	chatID := strings.TrimSpace(c.Param("chatId"))
 	if chatID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "chatId 不能为空"})
+		respondMessageInvalidRequest(c, "chatId 不能为空")
 		return
 	}
 
 	if err := h.service.MarkConversationRead(c.Request.Context(), chatID); err != nil {
-		status := http.StatusInternalServerError
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			status = http.StatusNotFound
-		}
-		c.JSON(status, gin.H{"error": err.Error()})
+		writeMessageServiceError(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "chatId": chatID})
+	respondMessageMirroredSuccess(c, "会话已标记为已读", gin.H{"chatId": chatID, "read": true})
 }
 
 func (h *MessageHandler) MarkAllConversationsRead(c *gin.Context) {
 	if err := h.service.MarkAllConversationsRead(c.Request.Context()); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		writeMessageServiceError(c, err, http.StatusInternalServerError)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondMessageMirroredSuccess(c, "全部会话已标记为已读", gin.H{"readAll": true})
 }
 
 func (h *MessageHandler) SearchTargets(c *gin.Context) {
 	keyword := strings.TrimSpace(c.Query("q"))
 	if keyword == "" {
-		c.JSON(http.StatusOK, gin.H{"targets": []interface{}{}})
+		respondMessageMirroredSuccess(c, "聊天目标搜索完成", gin.H{"targets": []interface{}{}})
 		return
 	}
 
@@ -89,26 +105,26 @@ func (h *MessageHandler) SearchTargets(c *gin.Context) {
 
 	targets, err := h.service.SearchChatTargets(c.Request.Context(), keyword, limit)
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		writeMessageServiceError(c, err, http.StatusForbidden)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"targets": targets})
+	respondMessageMirroredSuccess(c, "聊天目标搜索完成", gin.H{"targets": targets})
 }
 
 func (h *MessageHandler) UpsertConversation(c *gin.Context) {
 	var req service.UpsertConversationInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
+		respondMessageInvalidRequest(c, "请求参数错误")
 		return
 	}
 
 	conversation, err := h.service.UpsertConversation(c.Request.Context(), req)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "目标用户不存在"})
+			respondMessageError(c, http.StatusNotFound, "目标用户不存在")
 			return
 		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		writeMessageServiceError(c, err, http.StatusBadRequest)
 		return
 	}
 
@@ -117,7 +133,7 @@ func (h *MessageHandler) UpsertConversation(c *gin.Context) {
 		updatedAt = *conversation.LastMessageAt
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	respondMessageMirroredSuccess(c, "会话同步成功", gin.H{
 		"id":          conversation.ChatID,
 		"chatId":      conversation.ChatID,
 		"roomId":      conversation.ChatID,
@@ -137,18 +153,18 @@ func (h *MessageHandler) UpsertConversation(c *gin.Context) {
 func (h *MessageHandler) SyncMessage(c *gin.Context) {
 	var req service.SyncMessageInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
+		respondMessageInvalidRequest(c, "请求参数错误")
 		return
 	}
 
 	if strings.TrimSpace(req.ChatID) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "chatId 不能为空"})
+		respondMessageInvalidRequest(c, "chatId 不能为空")
 		return
 	}
 
 	message, err := h.service.SyncMessage(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		writeMessageServiceError(c, err, http.StatusBadRequest)
 		return
 	}
 
@@ -157,7 +173,7 @@ func (h *MessageHandler) SyncMessage(c *gin.Context) {
 		responseID = strconv.FormatUint(uint64(message.ID), 10)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	respondMessageMirroredSuccess(c, "消息同步成功", gin.H{
 		"id":                responseID,
 		"legacyId":          message.ID,
 		"externalMessageId": strings.TrimSpace(message.ExternalMessageID),

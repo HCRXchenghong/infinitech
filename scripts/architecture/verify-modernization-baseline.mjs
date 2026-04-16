@@ -474,6 +474,22 @@ assertContains(
   'respondNotificationPaginated(c, "管理通知列表加载成功", "notifications", list, total, page, pageSize)',
 );
 assertContains(
+  "backend/go/internal/handler/message_handler.go",
+  "func writeMessageServiceError(c *gin.Context, err error, fallbackStatus int)",
+);
+assertContains(
+  "backend/go/internal/handler/message_handler.go",
+  'respondPaginatedEnvelope(c, responseCodeOK, "会话列表加载成功", "conversations", conversations, int64(len(conversations)), 1, len(conversations))',
+);
+assertContains(
+  "backend/go/internal/handler/message_handler.go",
+  'respondPaginatedEnvelope(c, responseCodeOK, "消息历史加载成功", "messages", messages, int64(len(messages)), 1, len(messages))',
+);
+assertContains(
+  "backend/go/internal/handler/message_handler.go",
+  'respondMessageMirroredSuccess(c, "消息同步成功", gin.H{',
+);
+assertContains(
   "backend/go/internal/handler/medicine_handler.go",
   'respondMirroredSuccessEnvelope(c, "问药咨询结果加载成功", result)',
 );
@@ -556,6 +572,22 @@ assertContains(
 assertContains(
   "app-mobile/shared-ui/api.js",
   'const paginated = extractPaginatedItems(response, {',
+);
+assertContains(
+  "user-vue/shared-ui/api.js",
+  'listKeys: ["conversations", "items", "records", "list"]',
+);
+assertContains(
+  "app-mobile/shared-ui/api.js",
+  'listKeys: ["conversations", "items", "records", "list"]',
+);
+assertContains(
+  "merchant-app/shared-ui/api.ts",
+  'listKeys: ["conversations", "items", "records", "list"]',
+);
+assertContains(
+  "rider-app/shared-ui/api.ts",
+  "listKeys: ['conversations', 'items', 'records', 'list']",
 );
 assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",

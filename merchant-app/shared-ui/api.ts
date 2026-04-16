@@ -1,6 +1,10 @@
 import config, { updateConfig } from "./config";
 import { createMobilePushApi } from "../../packages/client-sdk/src/mobile-capabilities.js";
 import {
+  extractEnvelopeData,
+  extractPaginatedItems,
+} from "../../packages/contracts/src/http.js";
+import {
   readStoredBearerToken,
   uploadAuthenticatedAsset,
 } from "../../packages/mobile-core/src/upload.js";
@@ -583,13 +587,24 @@ export const fetchWalletWithdrawStatus = (params: Record<string, any> = {}) => {
 };
 
 // Message (Go 目前返回空数组，占位直连)
-export const fetchConversations = () => apiGet("/api/messages/conversations");
+export const fetchConversations = () =>
+  apiGet("/api/messages/conversations").then((payload) =>
+    extractPaginatedItems(payload, {
+      listKeys: ["conversations", "items", "records", "list"],
+    }).items,
+  );
 
 export const fetchHistory = (roomId: string) =>
-  apiGet(`/api/messages/${roomId}`);
+  apiGet(`/api/messages/${roomId}`).then((payload) =>
+    extractPaginatedItems(payload, {
+      listKeys: ["messages", "items", "records", "list"],
+    }).items,
+  );
 
 export const upsertConversation = (payload: Record<string, any>) =>
-  apiPost("/api/messages/conversations/upsert", payload);
+  apiPost("/api/messages/conversations/upsert", payload).then(
+    (response) => extractEnvelopeData(response) || {},
+  );
 
 export const markConversationRead = (chatId: string) =>
   apiPost(`/api/messages/conversations/${encodeURIComponent(chatId)}/read`, {});

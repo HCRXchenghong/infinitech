@@ -772,14 +772,18 @@ export const reverseGeocode = async (lat, lng) => {
 export const fetchConversations = () =>
   request({
     url: "/api/messages/conversations",
-  });
+  }).then((response) =>
+    extractPaginatedItems(response, {
+      listKeys: ["conversations", "items", "records", "list"],
+    }).items,
+  );
 
 export const upsertConversation = (payload) =>
   request({
     url: "/api/messages/conversations/upsert",
     method: "POST",
     data: payload,
-  });
+  }).then((response) => extractEnvelopeData(response) || {});
 
 export const markConversationRead = (chatId) =>
   request({
@@ -796,7 +800,11 @@ export const markAllConversationsRead = () =>
 export const fetchHistory = (roomId) =>
   request({
     url: `/api/messages/${roomId}`,
-  });
+  }).then((response) =>
+    extractPaginatedItems(response, {
+      listKeys: ["messages", "items", "records", "list"],
+    }).items,
+  );
 
 // 通知相关 API
 export const fetchNotificationList = (params = {}, legacyPageSize) => {
