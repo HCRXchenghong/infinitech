@@ -94,6 +94,16 @@
   backdrop-filter: blur(4px);
 }
 
+.collect-star {
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.collect-star.collected {
+  color: #f59e0b;
+}
+
 // 商家信息卡片 - 悬浮效果
 .shop-card {
   position: relative;

@@ -295,7 +295,7 @@ export const shopDetailMethods = {
       uni.hideLoading()
       console.error('领取优惠券失败:', err)
       uni.showToast({
-        title: (err && err.error) || (err && err.data && err.data.error) || '领取失败',
+        title: err?.error || err?.data?.error || '领取失败',
         icon: 'none'
       })
     }
@@ -369,7 +369,7 @@ export const shopDetailMethods = {
       }
     } catch (error) {
       console.error('收藏操作失败:', error)
-      uni.showToast({ title: (error && error.error) || '操作失败', icon: 'none' })
+      uni.showToast({ title: error?.error || '操作失败', icon: 'none' })
     } finally {
       this.favoriteLoading = false
     }

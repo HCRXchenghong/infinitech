@@ -2916,6 +2916,25 @@ assertNotContains(
 ].forEach((relativePath) => {
   assertNotContains(relativePath, "idempotencyKeyPrefix: 'customer_");
 });
+[
+  "user-vue/pages/shop/detail/index.vue",
+  "app-mobile/pages/shop/detail/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(
+    relativePath,
+    `:style="{ color: isCollected ? '#f59e0b' : '#fff' }"`,
+  );
+});
+[
+  "user-vue/pages/shop/detail/shop-detail-logic.js",
+  "app-mobile/pages/shop/detail/shop-detail-logic.js",
+].forEach((relativePath) => {
+  assertNotContains(
+    relativePath,
+    "title: (err && err.error) || (err && err.data && err.data.error) || '领取失败'",
+  );
+  assertNotContains(relativePath, "title: (error && error.error) || '操作失败'");
+});
 assertNotContains(
   "shared/mobile-common/order-confirm-page.js",
   "const userId = profile.phone || profile.id || profile.userId",

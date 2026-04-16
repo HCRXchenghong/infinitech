@@ -7,7 +7,7 @@
       </view>
       <view class="nav-actions">
         <view class="action-btn" @tap="toggleCollect">
-          <text :style="{ color: isCollected ? '#f59e0b' : '#fff' }">{{ isCollected ? '★' : '☆' }}</text>
+          <text class="collect-star" :class="{ collected: isCollected }">{{ isCollected ? '★' : '☆' }}</text>
         </view>
       </view>
     </view>
