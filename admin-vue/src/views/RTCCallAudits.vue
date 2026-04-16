@@ -284,7 +284,29 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { extractRTCCallAuditPage, extractRTCCallAuditRecord } from '@infinitech/admin-core'
+import {
+  buildAdminRTCCallAuditQuery,
+  createAdminAuditPaginationState,
+  createAdminRTCCallAuditFilters,
+  createAdminRTCCallAuditSummary,
+  createAdminRTCCallReviewAction,
+  extractRTCCallAuditPage,
+  extractRTCCallAuditRecord,
+  formatAdminCommunicationAuditDateTime,
+  formatAdminCommunicationAuditMetadata,
+  formatAdminRTCCallDuration,
+  getAdminCommunicationRoleLabel,
+  getAdminRTCCallAuditRowKey,
+  getAdminRTCCallComplaintLabel,
+  getAdminRTCCallComplaintTagType,
+  getAdminRTCCallRetentionLabel,
+  getAdminRTCCallRetentionTagType,
+  getAdminRTCCallStatusLabel,
+  getAdminRTCCallStatusTagType,
+  getAdminRTCCallTypeLabel,
+  mergeAdminRTCCallAuditDetail,
+  mergeAdminRTCCallAuditRecords,
+} from '@infinitech/admin-core'
 import { extractErrorMessage } from '@infinitech/contracts'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
@@ -296,162 +318,25 @@ const detailVisible = ref(false)
 const detailRecord = ref(null)
 const actionLoading = reactive({})
 
-const filters = reactive({
-  callerRole: '',
-  calleeRole: '',
-  status: '',
-  clientKind: '',
-  complaintStatus: '',
-  keyword: '',
-})
-
-const pagination = reactive({
-  page: 1,
-  limit: 20,
-  total: 0,
-})
-
-const summary = reactive({
-  total: 0,
-  accepted: 0,
-  ended: 0,
-  failed: 0,
-  complaints: 0,
-})
-
-function rowKey(row) {
-  return row?.uid || row?.id || row?.call_id_raw || ''
-}
-
-function roleLabel(role) {
-  if (role === 'user') return '用户'
-  if (role === 'merchant') return '商户'
-  if (role === 'rider') return '骑手'
-  if (role === 'admin') return '管理员'
-  return role || '-'
-}
-
-function callTypeLabel(value) {
-  if (value === 'audio') return '语音通话'
-  return value || '-'
-}
-
-function statusLabel(value) {
-  if (value === 'initiated') return '发起中'
-  if (value === 'ringing') return '振铃中'
-  if (value === 'accepted') return '已接通'
-  if (value === 'ended') return '已结束'
-  if (value === 'rejected') return '已拒接'
-  if (value === 'busy') return '忙线'
-  if (value === 'cancelled') return '已取消'
-  if (value === 'timeout') return '超时'
-  if (value === 'failed') return '失败'
-  return value || '-'
-}
-
-function statusTagType(value) {
-  if (value === 'accepted' || value === 'ended') return 'success'
-  if (value === 'initiated' || value === 'ringing') return 'info'
-  if (value === 'busy' || value === 'timeout' || value === 'failed' || value === 'rejected') return 'danger'
-  if (value === 'cancelled') return 'warning'
-  return ''
-}
-
-function complaintLabel(value) {
-  if (value === 'none') return '无投诉'
-  if (value === 'reported') return '投诉中'
-  if (value === 'resolved') return '已处理'
-  return value || '-'
-}
-
-function complaintTagType(value) {
-  if (value === 'reported') return 'danger'
-  if (value === 'resolved') return 'success'
-  return 'info'
-}
-
-function retentionLabel(value) {
-  if (value === 'standard') return '默认保留'
-  if (value === 'frozen') return '冻结留存'
-  if (value === 'cleared') return '已标记清理'
-  return value || '-'
-}
-
-function retentionTagType(value) {
-  if (value === 'frozen') return 'warning'
-  if (value === 'cleared') return 'success'
-  return 'info'
-}
-
-function formatDateTime(value) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return String(value)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hour = String(date.getHours()).padStart(2, '0')
-  const minute = String(date.getMinutes()).padStart(2, '0')
-  const second = String(date.getSeconds()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`
-}
-
-function formatDuration(value) {
-  const numeric = Number(value || 0)
-  if (!Number.isFinite(numeric) || numeric <= 0) return '0 秒'
-  if (numeric < 60) return `${numeric} 秒`
-  const minutes = Math.floor(numeric / 60)
-  const seconds = numeric % 60
-  if (minutes < 60) return seconds > 0 ? `${minutes} 分 ${seconds} 秒` : `${minutes} 分`
-  const hours = Math.floor(minutes / 60)
-  const remainMinutes = minutes % 60
-  return remainMinutes > 0 ? `${hours} 小时 ${remainMinutes} 分` : `${hours} 小时`
-}
-
-function formatMetadata(metadata) {
-  if (!metadata) return '-'
-  const text = String(metadata).trim()
-  if (!text) return '-'
-  try {
-    return JSON.stringify(JSON.parse(text), null, 2)
-  } catch {
-    return text
-  }
-}
+const filters = reactive(createAdminRTCCallAuditFilters())
+const pagination = reactive(createAdminAuditPaginationState())
+const summary = reactive(createAdminRTCCallAuditSummary())
 
 async function loadAudits() {
   loading.value = true
   loadError.value = ''
   try {
     const { data } = await request.get('/api/rtc-call-audits', {
-      params: {
-        callerRole: filters.callerRole || undefined,
-        calleeRole: filters.calleeRole || undefined,
-        status: filters.status || undefined,
-        clientKind: filters.clientKind || undefined,
-        complaintStatus: filters.complaintStatus || undefined,
-        keyword: filters.keyword || undefined,
-        page: pagination.page,
-        limit: pagination.limit,
-      },
+      params: buildAdminRTCCallAuditQuery(filters, pagination),
     })
     const payload = extractRTCCallAuditPage(data)
     records.value = payload.items
-    const nextSummary = payload.summary || {}
-    summary.total = Number(nextSummary.total || 0)
-    summary.accepted = Number(nextSummary.accepted || 0)
-    summary.ended = Number(nextSummary.ended || 0)
-    summary.failed = Number(nextSummary.failed || 0)
-    summary.complaints = Number(nextSummary.complaints || 0)
+    Object.assign(summary, createAdminRTCCallAuditSummary(payload.summary))
     const nextPagination = payload.pagination || {}
-    pagination.total = Number(nextPagination.total || 0)
+    pagination.total = createAdminAuditPaginationState({ total: nextPagination.total }).total
   } catch (error) {
     records.value = []
-    summary.total = 0
-    summary.accepted = 0
-    summary.ended = 0
-    summary.failed = 0
-    summary.complaints = 0
+    Object.assign(summary, createAdminRTCCallAuditSummary())
     pagination.total = 0
     loadError.value = extractErrorMessage(error, '加载 RTC 通话审计失败')
     ElMessage.error('加载 RTC 通话审计失败')
@@ -466,12 +351,7 @@ function handleSearch() {
 }
 
 function resetFilters() {
-  filters.callerRole = ''
-  filters.calleeRole = ''
-  filters.status = ''
-  filters.clientKind = ''
-  filters.complaintStatus = ''
-  filters.keyword = ''
+  Object.assign(filters, createAdminRTCCallAuditFilters())
   pagination.page = 1
   void loadAudits()
 }
@@ -487,23 +367,26 @@ function openDetail(row) {
 }
 
 function syncRecord(updated) {
-  const key = rowKey(updated)
+  const key = getAdminRTCCallAuditRowKey(updated)
   if (!key) return
-  records.value = records.value.map((item) => (rowKey(item) === key ? { ...item, ...updated } : item))
-  if (detailRecord.value && rowKey(detailRecord.value) === key) {
-    detailRecord.value = { ...detailRecord.value, ...updated }
-  }
+  records.value = mergeAdminRTCCallAuditRecords(records.value, updated)
+  detailRecord.value = mergeAdminRTCCallAuditDetail(detailRecord.value, updated)
 }
 
-async function submitReview(row, payload, successMessage, confirmMessage) {
-  const key = rowKey(row)
+async function submitReview(row, kind) {
+  const action = createAdminRTCCallReviewAction(kind)
+  if (!action) {
+    ElMessage.error('不支持的 RTC 审计操作')
+    return
+  }
+  const key = getAdminRTCCallAuditRowKey(row)
   if (!key) {
     ElMessage.error('缺少 RTC 通话标识')
     return
   }
 
-  if (confirmMessage) {
-    await ElMessageBox.confirm(confirmMessage, '确认操作', {
+  if (action.confirmMessage) {
+    await ElMessageBox.confirm(action.confirmMessage, '确认操作', {
       type: 'warning',
       confirmButtonText: '继续',
       cancelButtonText: '取消',
@@ -512,10 +395,10 @@ async function submitReview(row, payload, successMessage, confirmMessage) {
 
   actionLoading[key] = true
   try {
-    const { data } = await request.post(`/api/rtc-call-audits/${encodeURIComponent(key)}/review`, payload)
+    const { data } = await request.post(`/api/rtc-call-audits/${encodeURIComponent(key)}/review`, action.payload)
     const updated = extractRTCCallAuditRecord(data)
     syncRecord(updated)
-    ElMessage.success(successMessage)
+    ElMessage.success(action.successMessage)
     await loadAudits()
   } catch (error) {
     if (error !== 'cancel') {
@@ -527,44 +410,37 @@ async function submitReview(row, payload, successMessage, confirmMessage) {
 }
 
 function markComplaint(row) {
-  return submitReview(
-    row,
-    { complaintStatus: 'reported' },
-    '已标记为投诉中，并冻结录音留存',
-    '确认将该通话标记为投诉中并冻结录音留存吗？',
-  )
+  return submitReview(row, 'markComplaint')
 }
 
 function resolveComplaint(row) {
-  return submitReview(
-    row,
-    { complaintStatus: 'resolved' },
-    '已标记为处理完成，录音留存已按策略切换',
-    '确认将该通话投诉标记为已处理吗？',
-  )
+  return submitReview(row, 'resolveComplaint')
 }
 
 function freezeRetention(row) {
-  return submitReview(
-    row,
-    { recordingRetention: 'frozen' },
-    '已冻结录音留存',
-    '确认冻结该通话的录音留存吗？',
-  )
+  return submitReview(row, 'freezeRetention')
 }
 
 function clearRetention(row) {
-  return submitReview(
-    row,
-    { recordingRetention: 'cleared' },
-    '已标记为可清理',
-    '确认将该通话标记为可清理吗？',
-  )
+  return submitReview(row, 'clearRetention')
 }
 
 onMounted(() => {
   void loadAudits()
 })
+
+const rowKey = getAdminRTCCallAuditRowKey
+const roleLabel = getAdminCommunicationRoleLabel
+const callTypeLabel = getAdminRTCCallTypeLabel
+const statusLabel = getAdminRTCCallStatusLabel
+const statusTagType = getAdminRTCCallStatusTagType
+const complaintLabel = getAdminRTCCallComplaintLabel
+const complaintTagType = getAdminRTCCallComplaintTagType
+const retentionLabel = getAdminRTCCallRetentionLabel
+const retentionTagType = getAdminRTCCallRetentionTagType
+const formatDateTime = formatAdminCommunicationAuditDateTime
+const formatDuration = formatAdminRTCCallDuration
+const formatMetadata = formatAdminCommunicationAuditMetadata
 </script>
 
 <style scoped>

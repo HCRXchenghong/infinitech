@@ -79,6 +79,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/admin-core/src/merchant-profile-resources.test.mjs",
   "packages/admin-core/src/home-entry-resources.js",
   "packages/admin-core/src/home-entry-resources.test.mjs",
+  "packages/admin-core/src/communication-audit-resources.js",
+  "packages/admin-core/src/communication-audit-resources.test.mjs",
   "packages/admin-core/src/DesktopShellApp.vue",
   "admin-win/src/App.vue",
   "admin-mac/src/App.vue",
@@ -1145,7 +1147,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs packages/admin-core/src/system-settings-resources.test.mjs packages/admin-core/src/order-resources.test.mjs packages/admin-core/src/user-management-resources.test.mjs packages/admin-core/src/shop-management-resources.test.mjs packages/admin-core/src/merchant-profile-resources.test.mjs packages/admin-core/src/home-entry-resources.test.mjs"',
+  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs packages/admin-core/src/system-settings-resources.test.mjs packages/admin-core/src/order-resources.test.mjs packages/admin-core/src/user-management-resources.test.mjs packages/admin-core/src/shop-management-resources.test.mjs packages/admin-core/src/merchant-profile-resources.test.mjs packages/admin-core/src/home-entry-resources.test.mjs packages/admin-core/src/communication-audit-resources.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -1188,12 +1190,36 @@ assertContains(
   "extractContactPhoneAuditPage",
 );
 assertContains(
+  "admin-vue/src/views/ContactPhoneAudits.vue",
+  "buildAdminContactPhoneAuditQuery",
+);
+assertContains(
+  "admin-vue/src/views/ContactPhoneAudits.vue",
+  "getAdminCommunicationRoleLabel",
+);
+assertContains(
   "admin-vue/src/views/RTCCallAudits.vue",
   "extractRTCCallAuditPage",
 );
 assertContains(
+  "admin-vue/src/views/RTCCallAudits.vue",
+  "createAdminRTCCallReviewAction",
+);
+assertContains(
+  "admin-vue/src/views/RTCCallAudits.vue",
+  "mergeAdminRTCCallAuditRecords",
+);
+assertContains(
   "admin-vue/src/views/AdminRTCConsole.vue",
   "extractRTCCallAuditPage",
+);
+assertContains(
+  "admin-vue/src/views/AdminRTCConsole.vue",
+  "getAdminRTCCallStatusLabel",
+);
+assertContains(
+  "admin-vue/src/views/AdminRTCConsole.vue",
+  "createAdminRTCCallAuditSummary",
 );
 assertContains(
   "admin-vue/src/views/Login.vue",
@@ -1274,6 +1300,18 @@ assertContains(
 assertNotContains(
   "admin-vue/src/views/HomeEntrySettings.vue",
   "function createEntry(source = {})",
+);
+assertNotContains(
+  "admin-vue/src/views/ContactPhoneAudits.vue",
+  "function roleLabel(role)",
+);
+assertNotContains(
+  "admin-vue/src/views/RTCCallAudits.vue",
+  "function statusLabel(value)",
+);
+assertNotContains(
+  "admin-vue/src/views/AdminRTCConsole.vue",
+  "function statusLabel(value)",
 );
 assertContains(
   "admin-vue/src/views/MerchantTaxonomySettings.vue",

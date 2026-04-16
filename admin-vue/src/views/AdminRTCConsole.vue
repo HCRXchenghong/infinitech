@@ -293,7 +293,19 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
-import { extractRTCCallAuditPage } from '@infinitech/admin-core'
+import {
+  buildAdminRTCCallAuditQuery,
+  createAdminRTCCallAuditSummary,
+  extractRTCCallAuditPage,
+  formatAdminCommunicationAuditDateTime,
+  formatAdminRTCCallDuration,
+  getAdminCommunicationRoleLabel,
+  getAdminRTCCallComplaintLabel,
+  getAdminRTCCallComplaintTagType,
+  getAdminRTCCallStatusLabel,
+  getAdminRTCCallStatusTagType,
+  normalizeAdminCommunicationRole,
+} from '@infinitech/admin-core'
 import { extractErrorMessage } from '@infinitech/contracts'
 
 import PageStateAlert from '@/components/PageStateAlert.vue'
@@ -336,85 +348,10 @@ const recentAudits = ref([])
 const auditsLoading = ref(false)
 const auditsError = ref('')
 
-const auditSummary = reactive({
-  total: 0,
-  accepted: 0,
-  ended: 0,
-  complaints: 0,
-})
+const auditSummary = reactive(createAdminRTCCallAuditSummary())
 
 function normalizeRole(value) {
-  const role = String(value || '').trim().toLowerCase()
-  if (role === 'shop') return 'merchant'
-  if (role === 'customer') return 'user'
-  return role
-}
-
-function roleLabel(role) {
-  if (normalizeRole(role) === 'user') return '用户'
-  if (normalizeRole(role) === 'merchant') return '商户'
-  if (normalizeRole(role) === 'rider') return '骑手'
-  if (normalizeRole(role) === 'admin') return '管理员'
-  return role || '-'
-}
-
-function statusLabel(value) {
-  if (value === 'initiated') return '发起中'
-  if (value === 'ringing') return '振铃中'
-  if (value === 'accepted') return '已接通'
-  if (value === 'ended') return '已结束'
-  if (value === 'rejected') return '已拒接'
-  if (value === 'busy') return '忙线'
-  if (value === 'cancelled') return '已取消'
-  if (value === 'timeout') return '超时'
-  if (value === 'failed') return '失败'
-  return value || '-'
-}
-
-function statusTagType(value) {
-  if (value === 'accepted' || value === 'ended') return 'success'
-  if (value === 'initiated' || value === 'ringing') return 'info'
-  if (value === 'busy' || value === 'timeout' || value === 'failed' || value === 'rejected') return 'danger'
-  if (value === 'cancelled') return 'warning'
-  return ''
-}
-
-function complaintLabel(value) {
-  if (value === 'none') return '无投诉'
-  if (value === 'reported') return '投诉中'
-  if (value === 'resolved') return '已处理'
-  return value || '-'
-}
-
-function complaintTagType(value) {
-  if (value === 'reported') return 'danger'
-  if (value === 'resolved') return 'success'
-  return 'info'
-}
-
-function formatDateTime(value) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return String(value)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hour = String(date.getHours()).padStart(2, '0')
-  const minute = String(date.getMinutes()).padStart(2, '0')
-  const second = String(date.getSeconds()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`
-}
-
-function formatDuration(value) {
-  const numeric = Number(value || 0)
-  if (!Number.isFinite(numeric) || numeric <= 0) return '0 秒'
-  if (numeric < 60) return `${numeric} 秒`
-  const minutes = Math.floor(numeric / 60)
-  const seconds = numeric % 60
-  if (minutes < 60) return seconds > 0 ? `${minutes} 分 ${seconds} 秒` : `${minutes} 分`
-  const hours = Math.floor(minutes / 60)
-  const remainMinutes = minutes % 60
-  return remainMinutes > 0 ? `${hours} 小时 ${remainMinutes} 分` : `${hours} 小时`
+  return normalizeAdminCommunicationRole(value)
 }
 
 function normalizeTarget(raw = {}) {
@@ -504,24 +441,14 @@ async function loadRecentAudits() {
   auditsError.value = ''
   try {
     const { data } = await request.get('/api/rtc-call-audits', {
-      params: {
-        page: 1,
-        limit: 8,
-      },
+      params: buildAdminRTCCallAuditQuery({}, { page: 1, limit: 8 }),
     })
     const payload = extractRTCCallAuditPage(data)
     recentAudits.value = payload.items
-    const summary = payload.summary || {}
-    auditSummary.total = Number(summary.total || 0)
-    auditSummary.accepted = Number(summary.accepted || 0)
-    auditSummary.ended = Number(summary.ended || 0)
-    auditSummary.complaints = Number(summary.complaints || 0)
+    Object.assign(auditSummary, createAdminRTCCallAuditSummary(payload.summary))
   } catch (error) {
     recentAudits.value = []
-    auditSummary.total = 0
-    auditSummary.accepted = 0
-    auditSummary.ended = 0
-    auditSummary.complaints = 0
+    Object.assign(auditSummary, createAdminRTCCallAuditSummary())
     auditsError.value = extractErrorMessage(error, '加载 RTC 通话记录失败')
     ElMessage.error(auditsError.value)
   } finally {
@@ -615,6 +542,14 @@ onMounted(() => {
   void ensureAdminRTCBridge()
   void loadRecentAudits()
 })
+
+const roleLabel = getAdminCommunicationRoleLabel
+const statusLabel = getAdminRTCCallStatusLabel
+const statusTagType = getAdminRTCCallStatusTagType
+const complaintLabel = getAdminRTCCallComplaintLabel
+const complaintTagType = getAdminRTCCallComplaintTagType
+const formatDateTime = formatAdminCommunicationAuditDateTime
+const formatDuration = formatAdminRTCCallDuration
 </script>
 
 <style scoped>

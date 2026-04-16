@@ -165,7 +165,18 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { extractContactPhoneAuditPage } from '@infinitech/admin-core'
+import {
+  buildAdminContactPhoneAuditQuery,
+  createAdminAuditPaginationState,
+  createAdminContactPhoneAuditFilters,
+  createAdminContactPhoneAuditSummary,
+  extractContactPhoneAuditPage,
+  formatAdminCommunicationAuditDateTime,
+  formatAdminCommunicationAuditMetadata,
+  getAdminCommunicationRoleLabel,
+  getAdminContactPhoneAuditResultLabel,
+  getAdminContactPhoneAuditResultTagType
+} from '@infinitech/admin-core'
 import { extractErrorMessage } from '@infinitech/contracts'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
@@ -176,103 +187,25 @@ const records = ref([])
 const detailVisible = ref(false)
 const detailRecord = ref(null)
 
-const filters = reactive({
-  actorRole: '',
-  targetRole: '',
-  clientResult: '',
-  entryPoint: '',
-  keyword: '',
-})
-
-const pagination = reactive({
-  page: 1,
-  limit: 20,
-  total: 0,
-})
-
-const summary = reactive({
-  total: 0,
-  clicked: 0,
-  opened: 0,
-  failed: 0,
-})
-
-function roleLabel(role) {
-  if (role === 'user') return '用户'
-  if (role === 'merchant') return '商户'
-  if (role === 'rider') return '骑手'
-  if (role === 'admin') return '管理员'
-  return role || '-'
-}
-
-function resultLabel(result) {
-  if (result === 'clicked') return '已点击'
-  if (result === 'opened') return '已拉起'
-  if (result === 'failed') return '失败'
-  return result || '-'
-}
-
-function resultTagType(result) {
-  if (result === 'clicked') return 'info'
-  if (result === 'opened') return 'success'
-  if (result === 'failed') return 'danger'
-  return ''
-}
-
-function formatDateTime(value) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return String(value)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hour = String(date.getHours()).padStart(2, '0')
-  const minute = String(date.getMinutes()).padStart(2, '0')
-  const second = String(date.getSeconds()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`
-}
-
-function formatMetadata(metadata) {
-  if (!metadata) return '-'
-  const text = String(metadata).trim()
-  if (!text) return '-'
-  try {
-    return JSON.stringify(JSON.parse(text), null, 2)
-  } catch {
-    return text
-  }
-}
+const filters = reactive(createAdminContactPhoneAuditFilters())
+const pagination = reactive(createAdminAuditPaginationState())
+const summary = reactive(createAdminContactPhoneAuditSummary())
 
 async function loadAudits() {
   loading.value = true
   loadError.value = ''
   try {
     const { data } = await request.get('/api/contact-phone-audits', {
-      params: {
-        actorRole: filters.actorRole || undefined,
-        targetRole: filters.targetRole || undefined,
-        clientResult: filters.clientResult || undefined,
-        entryPoint: filters.entryPoint || undefined,
-        keyword: filters.keyword || undefined,
-        page: pagination.page,
-        limit: pagination.limit,
-      },
+      params: buildAdminContactPhoneAuditQuery(filters, pagination),
     })
     const payload = extractContactPhoneAuditPage(data)
     records.value = payload.items
-    const nextSummary = payload.summary || {}
-    summary.total = Number(nextSummary.total || 0)
-    summary.clicked = Number(nextSummary.clicked || 0)
-    summary.opened = Number(nextSummary.opened || 0)
-    summary.failed = Number(nextSummary.failed || 0)
+    Object.assign(summary, createAdminContactPhoneAuditSummary(payload.summary))
     const nextPagination = payload.pagination || {}
-    pagination.total = Number(nextPagination.total || 0)
+    pagination.total = createAdminAuditPaginationState({ total: nextPagination.total }).total
   } catch (error) {
     records.value = []
-    summary.total = 0
-    summary.clicked = 0
-    summary.opened = 0
-    summary.failed = 0
+    Object.assign(summary, createAdminContactPhoneAuditSummary())
     pagination.total = 0
     loadError.value = extractErrorMessage(error, '加载电话联系审计失败')
     ElMessage.error('加载电话联系审计失败')
@@ -287,11 +220,7 @@ function handleSearch() {
 }
 
 function resetFilters() {
-  filters.actorRole = ''
-  filters.targetRole = ''
-  filters.clientResult = ''
-  filters.entryPoint = ''
-  filters.keyword = ''
+  Object.assign(filters, createAdminContactPhoneAuditFilters())
   pagination.page = 1
   void loadAudits()
 }
@@ -309,6 +238,12 @@ function openDetail(row) {
 onMounted(() => {
   void loadAudits()
 })
+
+const roleLabel = getAdminCommunicationRoleLabel
+const resultLabel = getAdminContactPhoneAuditResultLabel
+const resultTagType = getAdminContactPhoneAuditResultTagType
+const formatDateTime = formatAdminCommunicationAuditDateTime
+const formatMetadata = formatAdminCommunicationAuditMetadata
 </script>
 
 <style scoped>
