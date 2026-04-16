@@ -205,6 +205,17 @@
 import { computed, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import {
+  API_DOCUMENTATION_AUTH_HEADER_EXAMPLE,
+  API_DOCUMENTATION_ENDPOINT_GROUPS,
+  API_DOCUMENTATION_ERROR_CODES,
+  API_DOCUMENTATION_NOTES,
+  API_DOCUMENTATION_PERMISSION_ROWS,
+  API_DOCUMENTATION_RESOURCE_TYPES,
+  buildApiDocumentationMarkdown,
+  buildApiDocumentationQuickStartCurl,
+  buildApiDocumentationRequestExamples,
+} from '@infinitech/admin-core';
+import {
   Box,
   Collection,
   Document,
@@ -237,189 +248,15 @@ const apiBaseUrl = computed(() => {
   return window.location.origin;
 });
 
-const authHeaderExample = 'X-API-Key: your_api_key_here';
+const authHeaderExample = API_DOCUMENTATION_AUTH_HEADER_EXAMPLE;
 
-const quickStartCurl = computed(() => `curl -X POST "${apiBaseUrl.value}/api/v1/query" \\
-  -H "Content-Type: application/json" \\
-  -H "X-API-Key: your_api_key_here" \\
-  -d '{
-    "resource": "orders",
-    "action": "list",
-    "params": {
-      "page": 1,
-      "limit": 20
-    }
-  }'`);
-
-const permissionRows = [
-  { key: 'orders', description: '订单数据访问权限', scope: '订单列表、订单详情、订单统计' },
-  { key: 'users', description: '用户数据访问权限', scope: '用户列表、用户详情、用户统计' },
-  { key: 'riders', description: '骑手数据访问权限', scope: '骑手列表、骑手详情、骑手统计' },
-  { key: 'dashboard', description: '仪表盘访问权限', scope: '平台统计、用户排名、骑手排名' },
-  { key: 'all', description: '全部数据访问权限', scope: '包含所有公开资源' },
-];
-
-const resourceTypes = [
-  { name: 'orders', description: '订单数据，包括订单列表、详情和统计。', permissions: ['orders', 'all'], icon: 'ShoppingBag' },
-  { name: 'users', description: '用户数据，包括用户列表、详情和统计。', permissions: ['users', 'all'], icon: 'User' },
-  { name: 'riders', description: '骑手数据，包括骑手列表、详情和统计。', permissions: ['riders', 'all'], icon: 'UserFilled' },
-  { name: 'merchants', description: '商户数据，适用于统一查询接口。', permissions: ['all'], icon: 'Shop' },
-  { name: 'products', description: '商品数据，适用于统一查询接口。', permissions: ['all'], icon: 'Box' },
-  { name: 'categories', description: '分类数据，适用于统一查询接口。', permissions: ['all'], icon: 'Collection' },
-];
-
-const endpointGroups = [
-  {
-    title: '仪表盘数据',
-    endpoints: [
-      { method: 'GET', path: '/api/public/dashboard/stats', description: '获取平台统计数据。', permission: 'dashboard' },
-      {
-        method: 'GET',
-        path: '/api/public/dashboard/user-ranks',
-        description: '获取用户下单排行。',
-        permission: 'dashboard',
-        params: [{ name: 'period', type: 'string', required: false, description: 'week 或 month，默认 week' }],
-      },
-      {
-        method: 'GET',
-        path: '/api/public/dashboard/rider-ranks',
-        description: '获取骑手排行。',
-        permission: 'dashboard',
-        params: [{ name: 'period', type: 'string', required: false, description: 'day、week 或 month，默认 week' }],
-      },
-    ],
-  },
-  {
-    title: '订单数据',
-    endpoints: [
-      {
-        method: 'GET',
-        path: '/api/public/orders',
-        description: '获取订单列表，支持分页、搜索和状态筛选。',
-        permission: 'orders',
-        params: [
-          { name: 'page', type: 'number', required: false, description: '页码，默认 1' },
-          { name: 'limit', type: 'number', required: false, description: '每页数量，默认 15，最大 100' },
-          { name: 'search', type: 'string', required: false, description: '搜索关键词' },
-          { name: 'status', type: 'string', required: false, description: '订单状态筛选' },
-        ],
-      },
-      { method: 'GET', path: '/api/public/orders/:id', description: '获取单个订单详情。', permission: 'orders' },
-      { method: 'GET', path: '/api/public/orders/stats', description: '获取订单统计数据。', permission: 'orders' },
-    ],
-  },
-  {
-    title: '用户数据',
-    endpoints: [
-      {
-        method: 'GET',
-        path: '/api/public/users',
-        description: '获取用户列表，支持分页和搜索。',
-        permission: 'users',
-        params: [
-          { name: 'page', type: 'number', required: false, description: '页码，默认 1' },
-          { name: 'limit', type: 'number', required: false, description: '每页数量，默认 20' },
-          { name: 'search', type: 'string', required: false, description: '搜索关键词' },
-        ],
-      },
-      { method: 'GET', path: '/api/public/users/:id', description: '获取单个用户详情。', permission: 'users' },
-      { method: 'GET', path: '/api/public/users/stats', description: '获取用户统计数据。', permission: 'users' },
-    ],
-  },
-  {
-    title: '骑手数据',
-    endpoints: [
-      {
-        method: 'GET',
-        path: '/api/public/riders',
-        description: '获取骑手列表，支持分页和搜索。',
-        permission: 'riders',
-        params: [
-          { name: 'page', type: 'number', required: false, description: '页码，默认 1' },
-          { name: 'limit', type: 'number', required: false, description: '每页数量，默认 15' },
-          { name: 'search', type: 'string', required: false, description: '搜索关键词' },
-        ],
-      },
-      { method: 'GET', path: '/api/public/riders/:id', description: '获取单个骑手详情。', permission: 'riders' },
-      { method: 'GET', path: '/api/public/riders/stats', description: '获取骑手统计数据。', permission: 'riders' },
-    ],
-  },
-];
-
-const requestExamples = computed(() => [
-  {
-    id: 'javascript',
-    lang: 'javascript',
-    code: `fetch('${apiBaseUrl.value}/api/v1/query', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'your_api_key_here'
-  },
-  body: JSON.stringify({
-    resource: 'orders',
-    action: 'list',
-    params: {
-      page: 1,
-      limit: 20
-    }
-  })
-})
-  .then((response) => response.json())
-  .then((data) => console.log(data));`,
-  },
-  {
-    id: 'python',
-    lang: 'python',
-    code: `import requests
-
-base_url = '${apiBaseUrl.value}'
-headers = {
-    'Content-Type': 'application/json',
-    'X-API-Key': 'your_api_key_here'
-}
-payload = {
-    'resource': 'orders',
-    'action': 'list',
-    'params': {
-        'page': 1,
-        'limit': 20
-    }
-}
-
-response = requests.post(f'{base_url}/api/v1/query', json=payload, headers=headers)
-print(response.json())`,
-  },
-  {
-    id: 'java',
-    lang: 'java',
-    code: `OkHttpClient client = new OkHttpClient();
-String json = "{\\"resource\\":\\"orders\\",\\"action\\":\\"list\\",\\"params\\":{\\"page\\":1,\\"limit\\":20}}";
-
-Request request = new Request.Builder()
-    .url("${apiBaseUrl.value}/api/v1/query")
-    .post(RequestBody.create(json, MediaType.parse("application/json")))
-    .addHeader("Content-Type", "application/json")
-    .addHeader("X-API-Key", "your_api_key_here")
-    .build();`,
-  },
-]);
-
-const errorCodes = [
-  { code: '200', message: '请求成功', action: '正常处理返回数据' },
-  { code: '400', message: '请求参数错误', action: '检查 resource、action 和 params' },
-  { code: '401', message: '未提供 API Key 或 Key 无效', action: '确认请求头里的 X-API-Key' },
-  { code: '403', message: 'Key 没有访问该资源的权限', action: '去 API 权限管理中补齐权限' },
-  { code: '500', message: '服务端内部错误', action: '查看后台日志并联系技术支持' },
-];
-
-const notes = [
-  'API Key 需要先在后台启用后才能生效。',
-  '建议一套调用方对应一个 API Key，方便追踪和停用。',
-  '建议优先使用 HTTPS，避免在公网明文传输 Key。',
-  '分页接口建议将 limit 控制在 100 以内。',
-  '接口文档页负责说明怎么调，Key 与权限分配应在权限管理页维护。',
-];
+const quickStartCurl = computed(() => buildApiDocumentationQuickStartCurl(apiBaseUrl.value));
+const permissionRows = API_DOCUMENTATION_PERMISSION_ROWS;
+const resourceTypes = API_DOCUMENTATION_RESOURCE_TYPES;
+const endpointGroups = API_DOCUMENTATION_ENDPOINT_GROUPS;
+const requestExamples = computed(() => buildApiDocumentationRequestExamples(apiBaseUrl.value));
+const errorCodes = API_DOCUMENTATION_ERROR_CODES;
+const notes = API_DOCUMENTATION_NOTES;
 
 async function copyText(text) {
   try {
@@ -436,38 +273,15 @@ function refreshDocumentation() {
   }
 }
 
-function buildMarkdown() {
-  const sections = [
-    '# API 开发文档',
-    '',
-    `当前部署地址：${apiBaseUrl.value}`,
-    '',
-    '## 认证方式',
-    '',
-    `- 请求头：\`${authHeaderExample}\``,
-    '',
-    '## 权限模型',
-    ...permissionRows.map((item) => `- \`${item.key}\`：${item.description}，${item.scope}`),
-    '',
-    '## 公开接口',
-    ...endpointGroups.flatMap((group) => [
-      '',
-      `### ${group.title}`,
-      ...group.endpoints.map((endpoint) => `- [${endpoint.method}] ${endpoint.path} (${endpoint.permission}) ${endpoint.description}`),
-    ]),
-    '',
-    '## 注意事项',
-    ...notes.map((item) => `- ${item}`),
-    '',
-    `生成时间：${new Date().toLocaleString('zh-CN')}`,
-  ];
-  return sections.join('\n');
-}
-
 function downloadFullDocumentation() {
   downloading.value = true;
   try {
-    const blob = new Blob([buildMarkdown()], { type: 'text/markdown;charset=utf-8' });
+    const blob = new Blob([
+      buildApiDocumentationMarkdown({
+        apiBaseUrl: apiBaseUrl.value,
+        generatedAtText: new Date().toLocaleString('zh-CN', { hour12: false }),
+      }),
+    ], { type: 'text/markdown;charset=utf-8' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;

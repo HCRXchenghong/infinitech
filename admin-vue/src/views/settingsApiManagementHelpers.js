@@ -1,6 +1,8 @@
 import { ref, reactive } from 'vue';
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import {
+  buildApiDocumentationText,
+  buildApiKeyMarkdownText,
   buildPublicApiPayload,
   createPublicApiFormState,
   generatePublicApiKey,
@@ -10,7 +12,6 @@ import {
   normalizePublicApiRecord,
   resolvePublicApiPermissionSelection,
 } from '@infinitech/admin-core';
-import { buildApiDocumentationText, buildApiKeyMarkdownText } from './settingsDocBuilders';
 
 async function copyTextToClipboard(text) {
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {

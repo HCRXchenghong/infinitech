@@ -95,6 +95,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/admin-core/src/data-management-resources.test.mjs",
   "packages/admin-core/src/coupon-resources.js",
   "packages/admin-core/src/coupon-resources.test.mjs",
+  "packages/admin-core/src/api-documentation-resources.js",
+  "packages/admin-core/src/api-documentation-resources.test.mjs",
   "packages/admin-core/src/DesktopShellApp.vue",
   "admin-vue/src/views/dataManagementRuntimeHelpers.js",
   "admin-win/src/App.vue",
@@ -1218,7 +1220,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs packages/admin-core/src/system-settings-resources.test.mjs packages/admin-core/src/api-management-resources.test.mjs packages/admin-core/src/order-resources.test.mjs packages/admin-core/src/user-management-resources.test.mjs packages/admin-core/src/shop-management-resources.test.mjs packages/admin-core/src/merchant-profile-resources.test.mjs packages/admin-core/src/home-entry-resources.test.mjs packages/admin-core/src/communication-audit-resources.test.mjs packages/admin-core/src/home-campaign-resources.test.mjs packages/admin-core/src/admin-management-resources.test.mjs packages/admin-core/src/dining-buddy-governance-resources.test.mjs packages/admin-core/src/chat-console-resources.test.mjs packages/admin-core/src/data-management-resources.test.mjs packages/admin-core/src/coupon-resources.test.mjs"',
+  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs packages/admin-core/src/system-settings-resources.test.mjs packages/admin-core/src/api-management-resources.test.mjs packages/admin-core/src/order-resources.test.mjs packages/admin-core/src/user-management-resources.test.mjs packages/admin-core/src/shop-management-resources.test.mjs packages/admin-core/src/merchant-profile-resources.test.mjs packages/admin-core/src/home-entry-resources.test.mjs packages/admin-core/src/communication-audit-resources.test.mjs packages/admin-core/src/home-campaign-resources.test.mjs packages/admin-core/src/admin-management-resources.test.mjs packages/admin-core/src/dining-buddy-governance-resources.test.mjs packages/admin-core/src/chat-console-resources.test.mjs packages/admin-core/src/data-management-resources.test.mjs packages/admin-core/src/coupon-resources.test.mjs packages/admin-core/src/api-documentation-resources.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -1937,6 +1939,26 @@ assertContains(
   "getCouponClaimBlockedText(coupon.value)",
 );
 assertContains(
+  "admin-vue/src/views/ApiDocumentation.vue",
+  "@infinitech/admin-core",
+);
+assertContains(
+  "admin-vue/src/views/ApiDocumentation.vue",
+  "buildApiDocumentationQuickStartCurl(apiBaseUrl.value)",
+);
+assertContains(
+  "admin-vue/src/views/ApiDocumentation.vue",
+  "buildApiDocumentationRequestExamples(apiBaseUrl.value)",
+);
+assertContains(
+  "admin-vue/src/views/settingsApiManagementHelpers.js",
+  "buildApiKeyMarkdownText",
+);
+assertContains(
+  "admin-vue/src/views/settingsApiManagementHelpers.js",
+  "buildApiDocumentationText",
+);
+assertContains(
   "admin-vue/src/views/PaymentCenter.vue",
   "extractErrorMessage(error",
 );
@@ -1979,6 +2001,10 @@ assertContains(
 assertContains(
   "packages/admin-core/src/index.js",
   'export * from "./coupon-resources.js";',
+);
+assertContains(
+  "packages/admin-core/src/index.js",
+  'export * from "./api-documentation-resources.js";',
 );
 assertContains(
   "admin-vue/src/views/dataManagementHelpers.js",
@@ -2027,6 +2053,18 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/CouponLanding.vue",
   "function formatDateTime(raw)",
+);
+assertNotContains(
+  "admin-vue/src/views/settingsApiManagementHelpers.js",
+  "./settingsDocBuilders",
+);
+assertNotContains(
+  "admin-vue/src/views/ApiDocumentation.vue",
+  "const permissionRows = [",
+);
+assertNotContains(
+  "admin-vue/src/views/ApiDocumentation.vue",
+  "function buildMarkdown()",
 );
 assertNotContains(
   "admin-vue/src/views/Users.vue",
