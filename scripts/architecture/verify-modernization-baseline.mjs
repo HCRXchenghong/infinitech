@@ -56,6 +56,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/vip-center.test.mjs",
   "packages/mobile-core/src/charity-page.js",
   "packages/mobile-core/src/charity-page.test.mjs",
+  "packages/mobile-core/src/auth-portal.js",
+  "packages/mobile-core/src/auth-portal.test.mjs",
   "packages/admin-core/src/index.js",
   "packages/admin-core/src/menu-groups.js",
   "packages/admin-core/src/temporary-credential.js",
@@ -1230,7 +1232,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -2009,6 +2011,10 @@ assertContains(
   'export * from "./charity-page.js";',
 );
 assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./auth-portal.js";',
+);
+assertContains(
   "user-vue/pages/profile/vip-center/vip-data.js",
   "packages/mobile-core/src/vip-center.js",
 );
@@ -2063,6 +2069,40 @@ assertContains(
 assertContains(
   "app-mobile/pages/charity/index.vue",
   "normalizeCharityJoinUrl(url)",
+);
+[
+  "user-vue/pages/auth/login/index.vue",
+  "app-mobile/pages/auth/login/index.vue",
+  "user-vue/pages/auth/register/index.vue",
+  "app-mobile/pages/auth/register/index.vue",
+  "user-vue/pages/auth/wechat-callback/index.vue",
+  "app-mobile/pages/auth/wechat-callback/index.vue",
+].forEach((relativePath) => {
+  assertContains(relativePath, "packages/mobile-core/src/auth-portal.js");
+});
+assertContains(
+  "user-vue/pages/auth/login/index.vue",
+  "buildConsumerWechatStartUrl(",
+);
+assertContains(
+  "app-mobile/pages/auth/login/index.vue",
+  "buildConsumerWechatStartUrl(",
+);
+assertContains(
+  "user-vue/pages/auth/register/index.vue",
+  "normalizeConsumerInviteCode(",
+);
+assertContains(
+  "app-mobile/pages/auth/register/index.vue",
+  "normalizeConsumerInviteCode(",
+);
+assertContains(
+  "user-vue/pages/auth/wechat-callback/index.vue",
+  "buildConsumerAuthUserProfile(result.user)",
+);
+assertContains(
+  "app-mobile/pages/auth/wechat-callback/index.vue",
+  "buildConsumerAuthUserProfile(result.user)",
 );
 assertContains(
   "admin-vue/src/views/settingsApiManagementHelpers.js",
@@ -2252,6 +2292,18 @@ assertNotContains(
   "app-mobile/pages/charity/index.vue",
   "function normalizeText(value, fallback = '')",
 );
+[
+  "user-vue/pages/auth/login/index.vue",
+  "app-mobile/pages/auth/login/index.vue",
+  "user-vue/pages/auth/register/index.vue",
+  "app-mobile/pages/auth/register/index.vue",
+  "user-vue/pages/auth/wechat-callback/index.vue",
+  "app-mobile/pages/auth/wechat-callback/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "function trimValue(value) {");
+  assertNotContains(relativePath, "function encodeQuery(params = {}) {");
+  assertNotContains(relativePath, "function buildPageUrl(path, params = {}) {");
+});
 assertNotContains(
   "admin-vue/src/views/Users.vue",
   "e.response?.data?.error",

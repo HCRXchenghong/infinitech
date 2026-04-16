@@ -11,25 +11,15 @@
 
 <script>
 import { consumeWechatSession } from '@/shared-ui/api.js'
+import { normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
 import { saveTokenInfo } from '@/shared-ui/request-interceptor'
-
-const DEFAULT_NICKNAME = '悦享e食用户'
-
-function trimValue(value) {
-  return String(value || '').trim()
-}
-
-function encodeQuery(params = {}) {
-  return Object.keys(params)
-    .filter((key) => trimValue(params[key]) !== '')
-    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(trimValue(params[key]))}`)
-    .join('&')
-}
-
-function buildPageUrl(path, params = {}) {
-  const query = encodeQuery(params)
-  return query ? `${path}?${query}` : path
-}
+import {
+  buildAuthPortalPageUrl,
+  buildConsumerAuthUserProfile,
+  normalizeConsumerAuthMode,
+  normalizeConsumerInviteCode,
+  trimAuthPortalValue
+} from '../../../packages/mobile-core/src/auth-portal.js'
 
 export default {
   data() {
@@ -43,13 +33,13 @@ export default {
     }
   },
   onLoad(query = {}) {
-    this.mode = trimValue(query.mode) === 'register' ? 'register' : 'login'
-    this.inviteCode = trimValue(query.inviteCode).toUpperCase()
+    this.mode = normalizeConsumerAuthMode(query.mode)
+    this.inviteCode = normalizeConsumerInviteCode(query.inviteCode)
     this.handleSession(query)
   },
   methods: {
     async handleSession(query = {}) {
-      const sessionToken = trimValue(query.wechatSession)
+      const sessionToken = trimAuthPortalValue(query.wechatSession)
       if (!sessionToken) {
         this.failWith('缺少微信登录会话，请重试')
         return
@@ -59,7 +49,7 @@ export default {
         const res = await consumeWechatSession(sessionToken)
         const result = res && res.success !== false ? res.data : null
         if (!result) {
-          throw new Error(res?.error || res?.message || '微信登录处理失败')
+          throw new Error(normalizeErrorMessage(res, '微信登录处理失败'))
         }
 
         if (result.type === 'login') {
@@ -74,12 +64,12 @@ export default {
 
         throw new Error(result.message || '微信登录失败')
       } catch (error) {
-        this.failWith(error.message || '微信登录失败，请稍后重试')
+        this.failWith(normalizeErrorMessage(error, '微信登录失败，请稍后重试'))
       }
     },
     finishLogin(result) {
       saveTokenInfo(result.token, result.refreshToken, result.expiresIn || 7200)
-      uni.setStorageSync('userProfile', result.user || { nickname: DEFAULT_NICKNAME })
+      uni.setStorageSync('userProfile', buildConsumerAuthUserProfile(result.user))
       uni.setStorageSync('authMode', 'user')
       uni.setStorageSync('hasSeenWelcome', true)
 
@@ -95,7 +85,7 @@ export default {
     },
     redirectToBind(result) {
       const targetPath = this.mode === 'register' ? '/pages/auth/register/index' : '/pages/auth/login/index'
-      const targetUrl = buildPageUrl(targetPath, {
+      const targetUrl = buildAuthPortalPageUrl(targetPath, {
         inviteCode: this.inviteCode,
         wechatBindToken: result.bindToken,
         wechatNickname: result.nickname,
@@ -115,13 +105,13 @@ export default {
       this.loading = false
       this.failed = true
       this.title = '微信登录失败'
-      this.detail = trimValue(message) || '请稍后重试'
+      this.detail = trimAuthPortalValue(message) || '请稍后重试'
       uni.showToast({ title: this.detail, icon: 'none' })
     },
     goNext() {
       const path = this.mode === 'register' ? '/pages/auth/register/index' : '/pages/auth/login/index'
       uni.redirectTo({
-        url: buildPageUrl(path, {
+        url: buildAuthPortalPageUrl(path, {
           inviteCode: this.inviteCode
         })
       })

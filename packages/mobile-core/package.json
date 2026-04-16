@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.js",
+    "./auth-portal": "./src/auth-portal.js",
     "./charity-page": "./src/charity-page.js",
     "./medicine-home": "./src/medicine-home.js",
     "./upload": "./src/upload.js",

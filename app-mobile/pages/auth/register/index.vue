@@ -86,49 +86,15 @@ import {
   getCachedConsumerAuthRuntimeSettings,
   loadConsumerAuthRuntimeSettings
 } from '@/shared-ui/auth-runtime.js'
-
-const DEFAULT_NICKNAME = '悦享e食用户'
-
-function trimValue(value) {
-  return String(value || '').trim()
-}
-
-function encodeQuery(params = {}) {
-  return Object.keys(params)
-    .filter((key) => trimValue(params[key]) !== '')
-    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(trimValue(params[key]))}`)
-    .join('&')
-}
-
-function buildPageUrl(path, params = {}) {
-  const query = encodeQuery(params)
-  return query ? `${path}?${query}` : path
-}
-
-function deriveWebRootFromEntryUrl(entryUrl) {
-  const value = trimValue(entryUrl)
-  if (!value) {
-    return ''
-  }
-
-  const apiIndex = value.indexOf('/api/')
-  if (apiIndex > 0) {
-    return value.slice(0, apiIndex)
-  }
-
-  const authIndex = value.indexOf('/auth/wechat/start')
-  if (authIndex > 0) {
-    return value.slice(0, authIndex)
-  }
-
-  const match = value.match(/^(https?:\/\/[^/]+)/i)
-  return match ? match[1] : ''
-}
-
-function shouldRedirectToLogin(message) {
-  const content = trimValue(message)
-  return /已注册|已存在|already registered|already exists/i.test(content)
-}
+import {
+  buildAuthPortalPageUrl,
+  buildConsumerAuthUserProfile,
+  buildConsumerWechatStartUrl,
+  normalizeConsumerAuthExternalUrl,
+  normalizeConsumerInviteCode,
+  shouldRedirectRegisteredConsumerToLogin,
+  trimAuthPortalValue
+} from '../../../packages/mobile-core/src/auth-portal.js'
 
 export default {
   data() {
@@ -155,7 +121,7 @@ export default {
   },
   computed: {
     bindRequired() {
-      return trimValue(this.wechatBindToken) !== ''
+      return trimAuthPortalValue(this.wechatBindToken) !== ''
     },
     headerSubtitle() {
       return this.bindRequired ? '注册后会自动绑定当前微信账号' : this.portalRuntime.subtitle
@@ -167,7 +133,10 @@ export default {
       return '完成注册后会自动绑定当前微信账号。'
     },
     wechatLoginAvailable() {
-      return Boolean(this.portalRuntime.wechatLoginEnabled && trimValue(this.portalRuntime.wechatLoginEntryUrl))
+      return Boolean(
+        this.portalRuntime.wechatLoginEnabled &&
+        trimAuthPortalValue(this.portalRuntime.wechatLoginEntryUrl)
+      )
     }
   },
   onLoad(query = {}) {
@@ -185,12 +154,12 @@ export default {
   },
   methods: {
     applyQueryState(query = {}) {
-      this.inviteCode = trimValue(query.inviteCode).toUpperCase()
-      this.phone = trimValue(query.phone)
-      this.wechatBindToken = trimValue(query.wechatBindToken)
-      this.wechatNickname = trimValue(query.wechatNickname)
-      this.wechatAvatarUrl = trimValue(query.wechatAvatarUrl)
-      if (!trimValue(this.nickname) && this.wechatNickname) {
+      this.inviteCode = normalizeConsumerInviteCode(query.inviteCode)
+      this.phone = trimAuthPortalValue(query.phone)
+      this.wechatBindToken = trimAuthPortalValue(query.wechatBindToken)
+      this.wechatNickname = trimAuthPortalValue(query.wechatNickname)
+      this.wechatAvatarUrl = trimAuthPortalValue(query.wechatAvatarUrl)
+      if (!trimAuthPortalValue(this.nickname) && this.wechatNickname) {
         this.nickname = this.wechatNickname
       }
     },
@@ -213,43 +182,32 @@ export default {
         ...extra
       }
     },
-    buildWechatReturnUrl(mode) {
-      const root = deriveWebRootFromEntryUrl(this.portalRuntime.wechatLoginEntryUrl)
-      if (!root) {
-        return ''
-      }
-      return buildPageUrl(`${root}/#/pages/auth/wechat-callback/index`, {
-        mode,
-        inviteCode: this.inviteCode
-      })
-    },
     buildWechatStartUrl(mode) {
-      const entryUrl = trimValue(this.portalRuntime.wechatLoginEntryUrl)
-      const returnUrl = this.buildWechatReturnUrl(mode)
-      if (!entryUrl || !returnUrl) {
-        return ''
-      }
-      const connector = entryUrl.includes('?') ? '&' : '?'
-      return `${entryUrl}${connector}mode=${encodeURIComponent(mode)}&returnUrl=${encodeURIComponent(returnUrl)}`
+      return buildConsumerWechatStartUrl(
+        this.portalRuntime.wechatLoginEntryUrl,
+        mode,
+        { inviteCode: this.inviteCode }
+      )
     },
     openExternalLink(url) {
-      const target = trimValue(url)
+      const target = normalizeConsumerAuthExternalUrl(url)
       if (!target) {
         uni.showToast({ title: '微信登录入口未配置', icon: 'none' })
-        return
+        return false
       }
       // #ifdef H5
       window.location.href = target
-      return
+      return true
       // #endif
       if (typeof plus !== 'undefined' && plus.runtime && typeof plus.runtime.openURL === 'function') {
         plus.runtime.openURL(target)
-        return
+        return true
       }
       uni.setClipboardData({
         data: target,
         success: () => uni.showToast({ title: '登录链接已复制', icon: 'success' })
       })
+      return true
     },
     startWechatLogin(mode = 'register') {
       const target = this.buildWechatStartUrl(mode)
@@ -257,11 +215,11 @@ export default {
         uni.showToast({ title: '微信登录入口未配置', icon: 'none' })
         return
       }
-      this.openExternalLink(target)
+      void this.openExternalLink(target)
     },
     goLogin() {
       uni.redirectTo({
-        url: buildPageUrl('/pages/auth/login/index', this.buildQueryParams())
+        url: buildAuthPortalPageUrl('/pages/auth/login/index', this.buildQueryParams())
       })
     },
     async loadCaptcha() {
@@ -276,7 +234,7 @@ export default {
       void this.loadCaptcha()
     },
     validatePhone() {
-      const phone = trimValue(this.phone)
+      const phone = trimAuthPortalValue(this.phone)
       if (!/^1\d{10}$/.test(phone)) {
         uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
         return ''
@@ -299,8 +257,8 @@ export default {
       }, 1000)
     },
     maybeRedirectToLogin(message) {
-      const content = trimValue(message)
-      if (!shouldRedirectToLogin(content)) {
+      const content = trimAuthPortalValue(message)
+      if (!shouldRedirectRegisteredConsumerToLogin(content)) {
         return false
       }
       uni.showModal({
@@ -326,7 +284,7 @@ export default {
         return
       }
 
-      if (this.needCaptcha && trimValue(this.captchaCode).length !== 4) {
+      if (this.needCaptcha && trimAuthPortalValue(this.captchaCode).length !== 4) {
         uni.showToast({ title: '请输入图形验证码', icon: 'none' })
         return
       }
@@ -334,7 +292,7 @@ export default {
       this.loading = true
       try {
         const res = await requestSMSCode(phone, 'register', {
-          captcha: this.needCaptcha ? trimValue(this.captchaCode) : undefined,
+          captcha: this.needCaptcha ? trimAuthPortalValue(this.captchaCode) : undefined,
           sessionId: this.captchaSessionId
         })
 
@@ -408,18 +366,18 @@ export default {
     },
     persistLoginSuccess(res, fallbackPhone) {
       saveTokenInfo(res.token, res.refreshToken, res.expiresIn || 7200)
-      uni.setStorageSync('userProfile', res.user || { phone: fallbackPhone, nickname: DEFAULT_NICKNAME })
+      uni.setStorageSync('userProfile', buildConsumerAuthUserProfile(res.user, fallbackPhone))
       uni.setStorageSync('authMode', 'user')
       uni.setStorageSync('hasSeenWelcome', true)
       uni.showToast({ title: this.bindRequired ? '注册并绑定成功' : '注册成功', icon: 'success' })
       setTimeout(() => uni.switchTab({ url: '/pages/index/index' }), 500)
     },
     async submit() {
-      const nickname = trimValue(this.nickname)
+      const nickname = trimAuthPortalValue(this.nickname)
       const phone = this.validatePhone()
-      const password = trimValue(this.password)
-      const confirmPassword = trimValue(this.confirmPassword)
-      const code = trimValue(this.code)
+      const password = trimAuthPortalValue(this.password)
+      const confirmPassword = trimAuthPortalValue(this.confirmPassword)
+      const code = trimAuthPortalValue(this.code)
 
       if (!nickname) {
         uni.showToast({ title: '请输入昵称', icon: 'none' })
@@ -456,7 +414,7 @@ export default {
           phone,
           name: nickname,
           password,
-          inviteCode: trimValue(this.inviteCode).toUpperCase(),
+          inviteCode: normalizeConsumerInviteCode(this.inviteCode),
           wechatBindToken: this.wechatBindToken || undefined
         })
 
@@ -484,7 +442,7 @@ export default {
         })
         setTimeout(() => {
           uni.redirectTo({
-            url: buildPageUrl('/pages/auth/login/index', this.buildQueryParams({ phone }))
+            url: buildAuthPortalPageUrl('/pages/auth/login/index', this.buildQueryParams({ phone }))
           })
         }, 800)
       } catch (err) {
