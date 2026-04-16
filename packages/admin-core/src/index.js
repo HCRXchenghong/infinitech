@@ -15,3 +15,4 @@ export * from "./content-settings-resources.js";
 export * from "./operations-center-resources.js";
 export * from "./dashboard-resources.js";
 export * from "./system-settings-resources.js";
+export * from "./order-resources.js";
