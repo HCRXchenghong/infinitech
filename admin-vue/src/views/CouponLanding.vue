@@ -121,6 +121,15 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import {
+  applyCouponClaimSuccess,
+  formatCouponDisplayAmount,
+  formatCouponLandingRuleText,
+  formatCouponValidityRange,
+  getCouponClaimBlockedText,
+  getCouponLandingRemainingText,
+  isCouponPhoneValid,
+} from '@infinitech/admin-core';
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 
@@ -137,82 +146,15 @@ const toastMessage = ref('');
 
 const token = computed(() => String(route.params.token || '').trim());
 
-const displayAmount = computed(() => {
-  const item = coupon.value;
-  if (!item) return '-';
+const displayAmount = computed(() => formatCouponDisplayAmount(coupon.value));
 
-  const amount = Number(item.amount || 0);
-  if (String(item.type || '').toLowerCase() === 'percent') {
-    const discount = Math.max(0, 100 - amount);
-    if (Number.isFinite(discount)) {
-      return `${discount.toFixed(0)}折`;
-    }
-  }
+const couponRuleText = computed(() => formatCouponLandingRuleText(coupon.value));
 
-  return `¥${formatMoney(amount)}`;
-});
+const validityText = computed(() => formatCouponValidityRange(coupon.value));
 
-const couponRuleText = computed(() => {
-  const item = coupon.value;
-  if (!item) return '优惠券';
+const remainingText = computed(() => getCouponLandingRemainingText(coupon.value));
 
-  const type = String(item.type || '').toLowerCase();
-  const minAmount = Number(item.minAmount || 0);
-  const noThreshold = String(item.conditionType || '') === 'no_threshold' || minAmount <= 0;
-
-  if (type === 'fixed') {
-    if (noThreshold) return '全场通用无门槛券';
-    return `满${formatCny(minAmount)}可用`;
-  }
-
-  if (noThreshold) return '全场通用折扣券';
-  return `满${formatCny(minAmount)}可用`; 
-});
-
-const validityText = computed(() => {
-  const item = coupon.value;
-  if (!item) return '-';
-  return `${formatDateTime(item.validFrom)} - ${formatDateTime(item.validUntil)}`;
-});
-
-const remainingText = computed(() => {
-  const item = coupon.value;
-  if (!item) return '-';
-
-  const total = Number(item.totalCount || 0);
-  const remaining = Number(item.remainingCount);
-  if (total <= 0 || remaining < 0 || Number.isNaN(remaining)) {
-    return '不限';
-  }
-  return String(Math.max(0, remaining));
-});
-
-const claimBlockedText = computed(() => {
-  const item = coupon.value;
-  if (!item) return '优惠券加载中';
-
-  if (String(item.status || '') !== 'active') {
-    return '该优惠券暂不可领取';
-  }
-
-  const now = Date.now();
-  const start = new Date(item.validFrom).getTime();
-  const end = new Date(item.validUntil).getTime();
-  if (!Number.isNaN(start) && now < start) {
-    return '未到领取时间';
-  }
-  if (!Number.isNaN(end) && now > end) {
-    return '该优惠券已过期';
-  }
-
-  const total = Number(item.totalCount || 0);
-  const remaining = Number(item.remainingCount);
-  if (total > 0 && !Number.isNaN(remaining) && remaining <= 0) {
-    return '该优惠券已领完';
-  }
-
-  return '';
-});
+const claimBlockedText = computed(() => getCouponClaimBlockedText(coupon.value));
 
 const claimButtonText = computed(() => {
   if (claiming.value) return '领取中...';
@@ -279,7 +221,7 @@ async function handleClaim() {
   }
 
   const input = String(phone.value || '').trim();
-  if (!/^1[3-9]\d{9}$/.test(input)) {
+  if (!isCouponPhoneValid(input)) {
     ElMessage.warning('请输入注册手机号领取');
     return;
   }
@@ -302,19 +244,7 @@ async function handleClaim() {
 }
 
 function updateCouponAfterClaim() {
-  if (!coupon.value) return;
-
-  const next = { ...coupon.value };
-  const received = Number(next.receivedCount || 0);
-  next.receivedCount = Number.isNaN(received) ? 1 : received + 1;
-
-  const total = Number(next.totalCount || 0);
-  const remaining = Number(next.remainingCount);
-  if (total > 0 && !Number.isNaN(remaining)) {
-    next.remainingCount = Math.max(0, remaining - 1);
-  }
-
-  coupon.value = next;
+  coupon.value = applyCouponClaimSuccess(coupon.value);
 }
 
 function showToast(message) {
@@ -322,28 +252,6 @@ function showToast(message) {
   window.setTimeout(() => {
     toastMessage.value = '';
   }, 2200);
-}
-
-function formatMoney(value) {
-  const num = Number(value || 0);
-  if (!Number.isFinite(num)) return '0.00';
-  return num.toFixed(2).replace(/\.00$/, '');
-}
-
-function formatCny(value) {
-  return `¥${formatMoney(value)}`;
-}
-
-function formatDateTime(raw) {
-  if (!raw) return '-';
-  const date = new Date(raw);
-  if (Number.isNaN(date.getTime())) return String(raw);
-  const yy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  const hh = String(date.getHours()).padStart(2, '0');
-  const mi = String(date.getMinutes()).padStart(2, '0');
-  return `${yy}-${mm}-${dd} ${hh}:${mi}`;
 }
 </script>
 

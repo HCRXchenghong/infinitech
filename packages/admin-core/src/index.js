@@ -27,3 +27,4 @@ export * from "./admin-management-resources.js";
 export * from "./dining-buddy-governance-resources.js";
 export * from "./chat-console-resources.js";
 export * from "./data-management-resources.js";
+export * from "./coupon-resources.js";
