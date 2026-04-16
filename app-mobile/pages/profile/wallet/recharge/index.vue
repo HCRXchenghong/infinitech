@@ -80,10 +80,6 @@ export default createWalletRechargePageLogic({
   invokeClientPayment,
   isClientPaymentCancelled,
   shouldLaunchClientPayment,
-  platform: 'app',
-  clientPaymentPlatform: 'app',
-  idempotencyKeyPrefix: 'customer_app_recharge',
-  rechargeDescription: '用户 App 余额充值',
 })
 </script>
 

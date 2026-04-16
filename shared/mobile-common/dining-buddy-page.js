@@ -13,10 +13,11 @@ import {
   normalizeDiningBuddyRuntimeQuestions,
   pickDiningBuddyErrorMessage,
 } from "../../packages/mobile-core/src/dining-buddy.js";
+import { getMobileClientId } from "./mobile-client-context.js";
 
 export function createDiningBuddyPage({
   PageHeader,
-  clientId = "user-vue",
+  clientId = getMobileClientId(),
   listDiningBuddyParties = async () => [],
   createDiningBuddyParty = async () => ({}),
   joinDiningBuddyParty = async () => ({}),

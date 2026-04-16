@@ -100,7 +100,7 @@ export default {
     }
   },
   async onLoad() {
-    const enabled = await ensureRuntimeFeatureOpen('medicine', 'app-mobile')
+    const enabled = await ensureRuntimeFeatureOpen('medicine')
     if (!enabled) {
       return
     }

@@ -84,8 +84,6 @@ import { createWalletWithdrawPageLogic } from '../../../../../shared/mobile-comm
 export default createWalletWithdrawPageLogic({
   request,
   buildAuthorizationHeader,
-  platform: 'mini_program',
-  idempotencyKeyPrefix: 'customer_mp_withdraw',
 })
 </script>
 

@@ -255,7 +255,6 @@ import { isRuntimeRouteEnabled, loadPlatformRuntimeSettings } from '@/shared-ui/
 import { createDiningBuddyPage } from '../../../shared/mobile-common/dining-buddy-page.js'
 
 export default createDiningBuddyPage({
-  clientId: 'user-vue',
   PageHeader,
   createDiningBuddyParty,
   createDiningBuddyReport,

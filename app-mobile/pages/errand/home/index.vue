@@ -72,6 +72,7 @@ import { fetchOrders } from '@/shared-ui/api.js'
 import { getCurrentUserIdentity, isErrandOrder, mapErrandOrderSummary } from '@/shared-ui/errand.js'
 import { isRuntimeRouteEnabled, loadPlatformRuntimeSettings } from '@/shared-ui/platform-runtime.js'
 import { buildErrandHomeViewModel } from '../../../../packages/domain-core/src/errand-settings.js'
+import { getMobileClientId } from '../../../../shared/mobile-common/mobile-client-context.js'
 
 export default {
   components: { PageHeader },
@@ -100,7 +101,7 @@ export default {
     async loadRuntime() {
       try {
         const runtime = await loadPlatformRuntimeSettings()
-        this.featureEnabled = isRuntimeRouteEnabled(runtime, 'feature', 'errand', 'app-mobile')
+        this.featureEnabled = isRuntimeRouteEnabled(runtime, 'feature', 'errand', getMobileClientId())
         const errandHome = buildErrandHomeViewModel(runtime.errandSettings || {})
         this.pageTitle = errandHome.pageTitle
         this.heroTitle = errandHome.heroTitle

@@ -120,7 +120,6 @@ import { useUserOrderStore } from '@/shared-ui/userOrderStore.js'
 import { createOrderConfirmPage } from '../../../../shared/mobile-common/order-confirm-page.js'
 
 export default createOrderConfirmPage({
-  platform: 'app',
   buildAuthorizationHeader,
   createOrder,
   earnPoints,

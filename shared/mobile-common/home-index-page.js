@@ -7,9 +7,10 @@ import {
   normalizeHomeWeatherRefreshMinutes,
   shouldRefreshHomeWeather,
 } from "../../packages/mobile-core/src/home-index.js";
+import { getMobileClientId } from "./mobile-client-context.js";
 
 export function createHomeIndexPage({
-  clientId,
+  clientId = getMobileClientId(),
   HomeHeader,
   CategoryGrid,
   FeaturedSection,

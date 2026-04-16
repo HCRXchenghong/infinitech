@@ -3,6 +3,7 @@ import {
   extractConsumerAvailableOrderCoupons,
   resolveConsumerOrderCouponUserId,
 } from '../../packages/mobile-core/src/order-coupon.js'
+import { getMobileRuntimePlatform } from './mobile-client-context.js'
 
 function normalizeBizType(raw) {
   const value = String(raw || '').trim().toLowerCase()
@@ -36,7 +37,7 @@ function normalizeAddresses(raw) {
 }
 
 export function createOrderConfirmPage({
-  platform = 'app',
+  platform = getMobileRuntimePlatform(),
   buildAuthorizationHeader,
   createOrder,
   earnPoints,

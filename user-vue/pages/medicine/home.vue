@@ -100,7 +100,7 @@ export default {
     }
   },
   async onLoad() {
-    const enabled = await ensureRuntimeFeatureOpen('medicine', 'user-vue')
+    const enabled = await ensureRuntimeFeatureOpen('medicine')
     if (!enabled) {
       return
     }

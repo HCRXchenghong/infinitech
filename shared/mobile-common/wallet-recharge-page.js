@@ -1,3 +1,5 @@
+import { getWalletRechargeRuntimeProfile } from './mobile-client-context.js'
+
 export function createWalletRechargePageLogic({
   request,
   buildAuthorizationHeader,
@@ -7,12 +9,23 @@ export function createWalletRechargePageLogic({
   shouldLaunchClientPayment,
   getAuth,
   userType = 'customer',
-  platform = 'mini_program',
-  clientPaymentPlatform = platform,
-  idempotencyKeyPrefix = `${userType}_${platform}_recharge`,
-  rechargeDescription = '用户端余额充值',
+  platform,
+  clientPaymentPlatform,
+  idempotencyKeyPrefix,
+  rechargeDescription,
   presets = [20, 50, 100, 200, 500, 1000],
 } = {}) {
+  const runtimeProfile = getWalletRechargeRuntimeProfile({
+    userType,
+    rawPlatform: platform || clientPaymentPlatform,
+  })
+  const resolvedPlatform = platform || runtimeProfile.platform
+  const resolvedClientPaymentPlatform =
+    clientPaymentPlatform || runtimeProfile.clientPaymentPlatform
+  const resolvedIdempotencyKeyPrefix =
+    idempotencyKeyPrefix || runtimeProfile.idempotencyKeyPrefix
+  const resolvedRechargeDescription =
+    rechargeDescription || runtimeProfile.rechargeDescription
   const resolveAuthHeader =
     typeof buildAuthorizationHeader === 'function'
       ? buildAuthorizationHeader
@@ -153,7 +166,7 @@ export function createWalletRechargePageLogic({
             request({
               url: this.withQuery('/api/wallet/recharge/options', {
                 userType,
-                platform,
+                platform: resolvedPlatform,
                 scene: 'wallet_recharge',
               }),
               method: 'GET',
@@ -220,7 +233,7 @@ export function createWalletRechargePageLogic({
 
         this.submitting = true
         try {
-          const idempotencyKey = this.createIdempotencyKey(idempotencyKeyPrefix, userId)
+          const idempotencyKey = this.createIdempotencyKey(resolvedIdempotencyKeyPrefix, userId)
           const result = await request({
             url: '/api/wallet/recharge/intent',
             method: 'POST',
@@ -228,10 +241,10 @@ export function createWalletRechargePageLogic({
             userId,
             userType,
             amount: Math.round(this.amountYuan * 100),
-            platform,
+            platform: resolvedPlatform,
               paymentMethod: this.selectedMethod,
               paymentChannel: this.selectedMethod,
-              description: rechargeDescription,
+              description: resolvedRechargeDescription,
               idempotencyKey,
             },
             header: Object.assign({}, this.getAuthHeader(token), {
@@ -242,7 +255,7 @@ export function createWalletRechargePageLogic({
           if (canLaunchClientPayment(result)) {
             uni.showLoading({ title: '正在拉起支付', mask: true })
             try {
-              await launchClientPayment(result, clientPaymentPlatform)
+              await launchClientPayment(result, resolvedClientPaymentPlatform)
             } finally {
               uni.hideLoading()
             }

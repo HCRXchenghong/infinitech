@@ -145,7 +145,7 @@ export default {
     }
   },
   async onLoad() {
-    const enabled = await ensureRuntimeFeatureOpen('charity', 'app-mobile')
+    const enabled = await ensureRuntimeFeatureOpen('charity')
     if (!enabled) {
       return
     }

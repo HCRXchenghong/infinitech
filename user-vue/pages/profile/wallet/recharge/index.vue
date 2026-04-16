@@ -80,10 +80,6 @@ export default createWalletRechargePageLogic({
   invokeClientPayment,
   isClientPaymentCancelled,
   shouldLaunchClientPayment,
-  platform: 'mini_program',
-  clientPaymentPlatform: 'mini_program',
-  idempotencyKeyPrefix: 'customer_mp_recharge',
-  rechargeDescription: '用户端余额充值',
 })
 </script>
 

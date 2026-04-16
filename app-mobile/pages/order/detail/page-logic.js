@@ -12,7 +12,6 @@ import PhoneWarningModal from '@/components/PhoneWarningModal.vue'
 import { createOrderDetailPage } from '../../../../shared/mobile-common/order-detail-page.js'
 
 export default createOrderDetailPage({
-  platform: 'app',
   buildAuthorizationHeader,
   fetchGroupbuyVouchers,
   fetchOrderDetail,

@@ -55,7 +55,6 @@ import { buildHomeCategoriesForClient, loadPlatformRuntimeSettings } from '@/sha
 import { createHomeIndexPage } from '../../../shared/mobile-common/home-index-page.js'
 
 export default createHomeIndexPage({
-  clientId: 'app-mobile',
   HomeHeader,
   CategoryGrid,
   FeaturedSection,

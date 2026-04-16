@@ -1,14 +1,23 @@
+import { getWalletWithdrawRuntimeProfile } from './mobile-client-context.js'
+
 export function createWalletWithdrawPageLogic({
   request,
   buildAuthorizationHeader,
   getAuth,
   getWithdrawName,
   userType = 'customer',
-  platform = 'mini_program',
-  idempotencyKeyPrefix = `${userType}_${platform}_withdraw`,
+  platform,
+  idempotencyKeyPrefix,
   presets = [20, 50, 100, 200, 500],
   rejectedReasonFallback = '可重新申请或联系客服处理',
 } = {}) {
+  const runtimeProfile = getWalletWithdrawRuntimeProfile({
+    userType,
+    rawPlatform: platform,
+  })
+  const resolvedPlatform = platform || runtimeProfile.platform
+  const resolvedIdempotencyKeyPrefix =
+    idempotencyKeyPrefix || runtimeProfile.idempotencyKeyPrefix
   const resolveAuthHeader =
     typeof buildAuthorizationHeader === 'function'
       ? buildAuthorizationHeader
@@ -183,7 +192,7 @@ export function createWalletWithdrawPageLogic({
             request({
               url: this.withQuery('/api/wallet/withdraw/options', {
                 userType,
-                platform,
+                platform: resolvedPlatform,
               }),
               method: 'GET',
               header,
@@ -305,7 +314,7 @@ export function createWalletWithdrawPageLogic({
             userType,
             amount: Math.round(this.amountYuan * 100),
             withdrawMethod: this.selectedMethod,
-            platform,
+            platform: resolvedPlatform,
             },
             header: this.getAuthHeader(token),
           })
@@ -320,7 +329,7 @@ export function createWalletWithdrawPageLogic({
           })
           if (!confirmed) return
 
-          const idempotencyKey = this.createIdempotencyKey(idempotencyKeyPrefix, userId)
+          const idempotencyKey = this.createIdempotencyKey(resolvedIdempotencyKeyPrefix, userId)
           const result = await request({
             url: '/api/wallet/withdraw/apply',
             method: 'POST',
@@ -328,7 +337,7 @@ export function createWalletWithdrawPageLogic({
             userId,
             userType,
             amount: Math.round(this.amountYuan * 100),
-            platform,
+            platform: resolvedPlatform,
             withdrawMethod: this.selectedMethod,
             withdrawAccount: this.withdrawAccount,
             withdrawName: this.withdrawName || resolveWithdrawName(auth),

@@ -2,7 +2,7 @@
   <view class="charity-page">
     <view class="header">
       <view class="back-button" @tap="goBack">
-        <text>‹</text>
+        <text>&lt;</text>
       </view>
       <text class="header-title">{{ settings.page_title }}</text>
       <view class="header-placeholder" />
@@ -145,7 +145,7 @@ export default {
     }
   },
   async onLoad() {
-    const enabled = await ensureRuntimeFeatureOpen('charity', 'user-vue')
+    const enabled = await ensureRuntimeFeatureOpen('charity')
     if (!enabled) {
       return
     }

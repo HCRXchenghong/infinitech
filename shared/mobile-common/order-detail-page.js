@@ -1,6 +1,7 @@
 import { createPhoneContactHelper } from './phone-contact.js'
 import { normalizeOrderPayMethods, normalizePayChannel } from './order-payment-options.js'
 import { extractEnvelopeData } from '../../packages/contracts/src/http.js'
+import { getMobileRuntimePlatform } from './mobile-client-context.js'
 
 function normalizePhoneNumber(value) {
   const text = String(value || '').trim()
@@ -52,7 +53,7 @@ function buildOrderRTCContext(order, contactType) {
 }
 
 export function createOrderDetailPage({
-  platform = 'app',
+  platform = getMobileRuntimePlatform(),
   buildAuthorizationHeader,
   fetchGroupbuyVouchers,
   fetchOrderDetail,

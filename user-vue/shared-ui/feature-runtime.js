@@ -1,6 +1,7 @@
 import { isRuntimeRouteEnabled, loadPlatformRuntimeSettings } from './platform-runtime.js'
+import { getMobileClientId } from '../../shared/mobile-common/mobile-client-context.js'
 
-export async function ensureRuntimeFeatureOpen(featureKey, clientScope = 'user-vue') {
+export async function ensureRuntimeFeatureOpen(featureKey, clientScope = getMobileClientId()) {
   const runtime = await loadPlatformRuntimeSettings()
   const enabled = isRuntimeRouteEnabled(runtime, 'feature', featureKey, clientScope)
   if (!enabled) {
