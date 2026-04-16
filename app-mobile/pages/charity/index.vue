@@ -121,105 +121,27 @@
 <script>
 import { fetchPublicCharitySettings } from '@/shared-ui/api.js'
 import { ensureRuntimeFeatureOpen } from '@/shared-ui/feature-runtime.js'
-
-const DEFAULT_SETTINGS = {
-  enabled: true,
-  page_title: '悦享公益',
-  page_subtitle: '让每一份善意都被看见',
-  hero_image_url: 'https://images.unsplash.com/photo-1593113598332-cd288d649433?w=1200',
-  hero_tagline: '以长期、透明、可配置的方式，把平台善意送到真正需要帮助的人手里。',
-  hero_days_running: 0,
-  fund_pool_amount: 0,
-  today_donation_count: 0,
-  project_status_text: '筹备中',
-  leaderboard_title: '善行榜单',
-  news_title: '公益资讯',
-  mission_title: '初心',
-  mission_paragraph_one: '悦享e食不只是生活服务平台，也希望成为连接商户、用户与城市善意的长期基础设施。',
-  mission_paragraph_two: '公益页面展示、参与入口与说明文案均以管理端发布为准，避免前端静态内容误导用户。',
-  matching_plan_title: '公益参与计划',
-  matching_plan_description: '平台会根据运营策略配置公益参与方式，当前展示内容和入口均可在管理端统一调整。',
-  action_label: '了解参与方式',
-  action_note: 'OPERATED BY CHARITY OPS',
-  participation_notice: '公益参与方式由平台统一发布。若当前未开放线上参与，请留意后续活动公告。',
-  join_url: '',
-  leaderboard: [],
-  news_list: []
-}
-
-function normalizeText(value, fallback = '') {
-  const normalized = String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
-  return normalized || fallback
-}
-
-function normalizeLeaderboard(items = []) {
-  if (!Array.isArray(items)) {
-    return []
-  }
-  return items
-    .map((item) => ({
-      name: normalizeText(item && item.name),
-      amount: Math.max(0, Number((item && item.amount) || 0)),
-      time_label: normalizeText(item && item.time_label)
-    }))
-    .filter((item) => item.name || item.amount > 0 || item.time_label)
-}
-
-function normalizeNewsList(items = []) {
-  if (!Array.isArray(items)) {
-    return []
-  }
-  return items
-    .map((item) => ({
-      title: normalizeText(item && item.title),
-      summary: normalizeText(item && item.summary),
-      source: normalizeText(item && item.source),
-      time_label: normalizeText(item && item.time_label),
-      image_url: normalizeText(item && item.image_url)
-    }))
-    .filter((item) => item.title || item.summary || item.source || item.time_label || item.image_url)
-}
-
-function normalizeSettings(payload = {}) {
-  return {
-    enabled: payload.enabled === undefined ? Boolean(DEFAULT_SETTINGS.enabled) : Boolean(payload.enabled),
-    page_title: normalizeText(payload.page_title, DEFAULT_SETTINGS.page_title),
-    page_subtitle: normalizeText(payload.page_subtitle, DEFAULT_SETTINGS.page_subtitle),
-    hero_image_url: normalizeText(payload.hero_image_url, DEFAULT_SETTINGS.hero_image_url),
-    hero_tagline: normalizeText(payload.hero_tagline, DEFAULT_SETTINGS.hero_tagline),
-    hero_days_running: Math.max(0, Number(payload.hero_days_running || 0)),
-    fund_pool_amount: Math.max(0, Number(payload.fund_pool_amount || 0)),
-    today_donation_count: Math.max(0, Number(payload.today_donation_count || 0)),
-    project_status_text: normalizeText(payload.project_status_text, DEFAULT_SETTINGS.project_status_text),
-    leaderboard_title: normalizeText(payload.leaderboard_title, DEFAULT_SETTINGS.leaderboard_title),
-    news_title: normalizeText(payload.news_title, DEFAULT_SETTINGS.news_title),
-    mission_title: normalizeText(payload.mission_title, DEFAULT_SETTINGS.mission_title),
-    mission_paragraph_one: normalizeText(payload.mission_paragraph_one, DEFAULT_SETTINGS.mission_paragraph_one),
-    mission_paragraph_two: normalizeText(payload.mission_paragraph_two, DEFAULT_SETTINGS.mission_paragraph_two),
-    matching_plan_title: normalizeText(payload.matching_plan_title, DEFAULT_SETTINGS.matching_plan_title),
-    matching_plan_description: normalizeText(payload.matching_plan_description, DEFAULT_SETTINGS.matching_plan_description),
-    action_label: normalizeText(payload.action_label, DEFAULT_SETTINGS.action_label),
-    action_note: normalizeText(payload.action_note, DEFAULT_SETTINGS.action_note),
-    participation_notice: normalizeText(payload.participation_notice, DEFAULT_SETTINGS.participation_notice),
-    join_url: normalizeText(payload.join_url, ''),
-    leaderboard: normalizeLeaderboard(payload.leaderboard),
-    news_list: normalizeNewsList(payload.news_list)
-  }
-}
+import {
+  buildCharityLeaderboardToShow,
+  createDefaultCharitySettings,
+  formatCharityAmount,
+  normalizeCharityJoinUrl,
+  normalizeCharitySettings
+} from '../../../packages/mobile-core/src/charity-page.js'
 
 export default {
   data() {
     return {
-      settings: { ...DEFAULT_SETTINGS },
+      settings: createDefaultCharitySettings(),
       showAllLeaderboard: false
     }
   },
   computed: {
     leaderboardToShow() {
-      if (this.showAllLeaderboard) {
-        return this.settings.leaderboard
-      }
-      return this.settings.leaderboard.slice(0, 5)
+      return buildCharityLeaderboardToShow(
+        this.settings.leaderboard,
+        this.showAllLeaderboard
+      )
     }
   },
   async onLoad() {
@@ -233,13 +155,13 @@ export default {
     async loadSettings() {
       try {
         const response = await fetchPublicCharitySettings()
-        this.settings = normalizeSettings(response)
+        this.settings = normalizeCharitySettings(response)
       } catch (error) {
-        this.settings = { ...DEFAULT_SETTINGS }
+        this.settings = createDefaultCharitySettings()
       }
     },
     formatAmount(value) {
-      return Number(value || 0).toLocaleString('en-US')
+      return formatCharityAmount(value)
     },
     goBack() {
       uni.navigateBack({
@@ -249,17 +171,17 @@ export default {
       })
     },
     openExternalLink(url) {
-      const target = normalizeText(url)
+      const target = normalizeCharityJoinUrl(url)
       if (!target) {
-        return
+        return false
       }
       // #ifdef H5
       window.location.href = target
-      return
+      return true
       // #endif
       if (typeof plus !== 'undefined' && plus.runtime && typeof plus.runtime.openURL === 'function') {
         plus.runtime.openURL(target)
-        return
+        return true
       }
       uni.setClipboardData({
         data: target,
@@ -267,10 +189,10 @@ export default {
           uni.showToast({ title: '链接已复制', icon: 'success' })
         }
       })
+      return true
     },
     handleAction() {
-      if (this.settings.join_url) {
-        this.openExternalLink(this.settings.join_url)
+      if (this.openExternalLink(this.settings.join_url)) {
         return
       }
       uni.showModal({

@@ -54,6 +54,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/medicine-home.test.mjs",
   "packages/mobile-core/src/vip-center.js",
   "packages/mobile-core/src/vip-center.test.mjs",
+  "packages/mobile-core/src/charity-page.js",
+  "packages/mobile-core/src/charity-page.test.mjs",
   "packages/admin-core/src/index.js",
   "packages/admin-core/src/menu-groups.js",
   "packages/admin-core/src/temporary-credential.js",
@@ -1228,7 +1230,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -2003,6 +2005,10 @@ assertContains(
   'export * from "./medicine-home.js";',
 );
 assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./charity-page.js";',
+);
+assertContains(
   "user-vue/pages/profile/vip-center/vip-data.js",
   "packages/mobile-core/src/vip-center.js",
 );
@@ -2033,6 +2039,30 @@ assertContains(
 assertContains(
   "app-mobile/pages/medicine/home.vue",
   "normalizeMedicineRuntimeSettings(response)",
+);
+assertContains(
+  "user-vue/pages/charity/index.vue",
+  "packages/mobile-core/src/charity-page.js",
+);
+assertContains(
+  "app-mobile/pages/charity/index.vue",
+  "packages/mobile-core/src/charity-page.js",
+);
+assertContains(
+  "user-vue/pages/charity/index.vue",
+  "buildCharityLeaderboardToShow(",
+);
+assertContains(
+  "app-mobile/pages/charity/index.vue",
+  "buildCharityLeaderboardToShow(",
+);
+assertContains(
+  "user-vue/pages/charity/index.vue",
+  "normalizeCharityJoinUrl(url)",
+);
+assertContains(
+  "app-mobile/pages/charity/index.vue",
+  "normalizeCharityJoinUrl(url)",
 );
 assertContains(
   "admin-vue/src/views/settingsApiManagementHelpers.js",
@@ -2197,6 +2227,30 @@ assertNotContains(
 assertNotContains(
   "app-mobile/pages/medicine/home.vue",
   "function normalizeRuntimeSettings(raw)",
+);
+assertNotContains(
+  "user-vue/pages/charity/index.vue",
+  "const DEFAULT_SETTINGS = {",
+);
+assertNotContains(
+  "app-mobile/pages/charity/index.vue",
+  "const DEFAULT_SETTINGS = {",
+);
+assertNotContains(
+  "user-vue/pages/charity/index.vue",
+  "function normalizeSettings(payload = {})",
+);
+assertNotContains(
+  "app-mobile/pages/charity/index.vue",
+  "function normalizeSettings(payload = {})",
+);
+assertNotContains(
+  "user-vue/pages/charity/index.vue",
+  "function normalizeText(value, fallback = '')",
+);
+assertNotContains(
+  "app-mobile/pages/charity/index.vue",
+  "function normalizeText(value, fallback = '')",
 );
 assertNotContains(
   "admin-vue/src/views/Users.vue",
