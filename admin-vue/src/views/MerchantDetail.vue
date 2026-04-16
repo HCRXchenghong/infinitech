@@ -83,6 +83,7 @@
 <script setup>
 import { ref, defineProps, defineEmits } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 import ShopEditor from './ShopEditor.vue';
 import PageStateAlert from '@/components/PageStateAlert.vue';
@@ -158,8 +159,8 @@ async function handleShopSave(shopData) {
     shopDialogVisible.value = false;
     emit('refresh');
   } catch (e) {
-    loadError.value = e?.response?.data?.error || e?.response?.data?.message || e?.message || '保存店铺失败，请稍后重试';
-    ElMessage.error(e.response?.data?.error || '保存店铺失败');
+    loadError.value = extractErrorMessage(e, '保存店铺失败，请稍后重试');
+    ElMessage.error(extractErrorMessage(e, '保存店铺失败'));
   }
 }
 
@@ -182,8 +183,8 @@ async function deleteShop(shop) {
     emit('refresh');
   } catch (e) {
     if (e !== 'cancel') {
-      loadError.value = e?.response?.data?.error || e?.response?.data?.message || e?.message || '删除店铺失败，请稍后重试';
-      ElMessage.error(e.response?.data?.error || '删除店铺失败');
+      loadError.value = extractErrorMessage(e, '删除店铺失败，请稍后重试');
+      ElMessage.error(extractErrorMessage(e, '删除店铺失败'));
     }
   }
 }

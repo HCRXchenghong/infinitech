@@ -4,6 +4,7 @@ import { ref, onMounted, watch, onUnmounted } from 'vue';
 import request from '@/utils/request';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, More, Delete } from '@element-plus/icons-vue';
+import { extractErrorMessage } from '@infinitech/contracts';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 import ResponsiveActions from '@/components/ResponsiveActions.vue';
 import { useResponsiveListPage } from '@/composables/useResponsiveListPage';
@@ -232,7 +233,7 @@ async function handleClearAllOrders() {
       }
     } catch (e) {
       console.error('清空订单失败:', e);
-      ElMessage.error(e.response?.data?.error || '清空订单失败');
+      ElMessage.error(extractErrorMessage(e, '清空订单失败'));
     } finally {
       clearing.value = false;
     }
@@ -287,7 +288,7 @@ async function handleQuickDispatch(order) {
     }
   } catch (e) {
     console.error('一键派单失败:', e);
-    ElMessage.error(e.response?.data?.error || '一键派单失败');
+    ElMessage.error(extractErrorMessage(e, '一键派单失败'));
   } finally {
     dispatchingOrderId.value = null;
   }

@@ -186,6 +186,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 
@@ -211,7 +212,7 @@ async function load() {
     featuredProducts.value = data.products || [];
   } catch (e) {
     featuredProducts.value = [];
-    loadError.value = e?.response?.data?.error || e?.response?.data?.message || e?.message || '加载今日推荐失败，请稍后重试';
+    loadError.value = extractErrorMessage(e, '加载今日推荐失败，请稍后重试');
   } finally {
     loading.value = false;
   }
@@ -236,7 +237,7 @@ async function searchProducts() {
     products.value = data.products || [];
   } catch (e) {
     products.value = [];
-    productsError.value = e?.response?.data?.error || e?.response?.data?.message || e?.message || '搜索商品失败，请稍后重试';
+    productsError.value = extractErrorMessage(e, '搜索商品失败，请稍后重试');
   } finally {
     productsLoading.value = false;
   }
@@ -261,7 +262,7 @@ async function addProduct(product) {
     ElMessage.success('添加成功');
     await load();
   } catch (e) {
-    ElMessage.error(e.response?.data?.error || '添加推荐商品失败');
+    ElMessage.error(extractErrorMessage(e, '添加推荐商品失败'));
   } finally {
     operatingAction.value = '';
     operatingProductId.value = null;
@@ -291,7 +292,7 @@ async function moveUp(row, index) {
     ElMessage.success('调整成功');
     await load();
   } catch (e) {
-    ElMessage.error(e?.response?.data?.error || e?.response?.data?.message || e?.message || '调整位置失败');
+    ElMessage.error(extractErrorMessage(e, '调整位置失败'));
   } finally {
     operatingAction.value = '';
     operatingProductId.value = null;
@@ -321,7 +322,7 @@ async function moveDown(row, index) {
     ElMessage.success('调整成功');
     await load();
   } catch (e) {
-    ElMessage.error(e?.response?.data?.error || e?.response?.data?.message || e?.message || '调整位置失败');
+    ElMessage.error(extractErrorMessage(e, '调整位置失败'));
   } finally {
     operatingAction.value = '';
     operatingProductId.value = null;
@@ -349,7 +350,7 @@ async function removeProduct(row) {
     await load();
   } catch (e) {
     if (e !== 'cancel') {
-      ElMessage.error(e.response?.data?.error || '删除推荐商品失败');
+      ElMessage.error(extractErrorMessage(e, '删除推荐商品失败'));
     }
   } finally {
     operatingAction.value = '';

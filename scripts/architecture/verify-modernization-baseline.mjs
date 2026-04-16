@@ -1393,6 +1393,26 @@ assertContains(
   "admin-vue/src/views/dataManagementBundleHelpers.js",
   "const payload = extractEnvelopeData(response.data) || {};",
 );
+assertNotContains(
+  "admin-vue/src/views/Users.vue",
+  "e.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/ridersActionHelpers.js",
+  "e.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/FeaturedProducts.vue",
+  "e.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/Orders.vue",
+  "e.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/MerchantDetail.vue",
+  "e.response?.data?.error",
+);
 assertContains(
   "backend/go/internal/handler/shop_handler.go",
   'respondShopPaginated(c, "店铺评论加载成功", "list"',
