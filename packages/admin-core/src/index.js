@@ -9,3 +9,4 @@ export * from "./system-log-resources.js";
 export * from "./payment-center-resources.js";
 export * from "./service-health-resources.js";
 export * from "./official-site-resources.js";
+export * from "./financial-transaction-resources.js";

@@ -89,7 +89,7 @@
         </el-table-column>
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'success' ? 'success' : row.status === 'failed' ? 'danger' : 'warning'" size="small">
+            <el-tag :type="getFinancialTransactionStatusTagType(row.status)" size="small">
               {{ formatStatus(row.status) }}
             </el-tag>
           </template>
@@ -210,7 +210,16 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Search } from '@element-plus/icons-vue';
-import { extractFinancialTransactionLogPage } from '@infinitech/admin-core';
+import {
+  extractFinancialTransactionLogPage,
+  formatFinancialAmountYuan as fen2yuan,
+  formatFinancialTransactionStatus as formatStatus,
+  formatFinancialTransactionType as formatTransactionType,
+  formatFinancialTransactionUserType as formatUserType,
+  getFinancialTransactionStatusTagType,
+  getFinancialTransactionTypeTagType as getTypeTagType,
+  isFinancialTransactionIncomeType as isIncomeType,
+} from '@infinitech/admin-core';
 import { extractErrorMessage } from '@infinitech/contracts';
 import request from '../utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
@@ -238,53 +247,7 @@ const clearVerifyForm = reactive({
   verifyPassword: '',
 });
 
-function fen2yuan(fen) { return fen ? (fen / 100).toFixed(2) : '0.00'; }
 function formatDateTime(d) { return d ? String(d).slice(0, 19).replace('T', ' ') : '-'; }
-
-function formatTransactionType(type) {
-  const typeMap = {
-    'recharge': '充值',
-    'withdraw': '提现',
-    'payment': '支付',
-    'refund': '退款',
-    'compensation': '赔付',
-    'admin_add_balance': '管理员充值',
-    'admin_deduct_balance': '管理员扣款',
-    'income': '收入'
-  };
-  return typeMap[type] || type;
-}
-
-function formatUserType(type) {
-  const typeMap = {
-    'customer': '用户',
-    'rider': '骑手',
-    'merchant': '商户'
-  };
-  return typeMap[type] || type;
-}
-
-function formatStatus(status) {
-  const statusMap = {
-    'success': '成功',
-    'processing': '处理中',
-    'pending': '待处理',
-    'failed': '失败',
-    'cancelled': '已取消'
-  };
-  return statusMap[status] || status;
-}
-
-function isIncomeType(type) {
-  return ['recharge', 'admin_add_balance', 'income', 'refund'].includes(type);
-}
-
-function getTypeTagType(type) {
-  if (['recharge', 'admin_add_balance', 'income'].includes(type)) return 'success';
-  if (['withdraw', 'payment', 'admin_deduct_balance'].includes(type)) return 'warning';
-  if (['refund', 'compensation'].includes(type)) return 'info';
-  return '';
-}
 
 async function loadTransactionLogs() {
   logsLoading.value = true;

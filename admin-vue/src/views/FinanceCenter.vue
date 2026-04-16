@@ -260,6 +260,14 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { extractEnvelopeData, extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts';
+import {
+  buildFinanceOverviewKpiCards,
+  buildFinanceRefundCards,
+  extractFinancialTransactionLogPage,
+  formatFinancialAmountYuan as fen2yuan,
+  formatFinancialTransactionType as formatTransactionType,
+  isFinancialTransactionIncomeType as isIncomeType,
+} from '@infinitech/admin-core';
 import request from '../utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 
@@ -303,49 +311,15 @@ const savingCoinRatio = ref(false);
 const transactionLogs = ref([]);
 const logsLoading = ref(false);
 
-function fen2yuan(fen) { return fen ? (fen / 100).toFixed(2) : '0.00'; }
 function fmtDate(d) { return d ? String(d).slice(0, 10) : '-'; }
 function buildParams() {
   const p = { periodType: periodType.value };
   if (statDate.value) p.statDate = statDate.value;
   return p;
 }
+const kpiCards = computed(() => buildFinanceOverviewKpiCards(overview.value));
 
-function formatTransactionType(type) {
-  const typeMap = {
-    'recharge': '充值',
-    'withdraw': '提现',
-    'payment': '支付',
-    'refund': '退款',
-    'compensation': '赔付',
-    'admin_add_balance': '管理员充值',
-    'admin_deduct_balance': '管理员扣款',
-    'income': '收入'
-  };
-  return typeMap[type] || type;
-}
-
-function isIncomeType(type) {
-  return ['recharge', 'admin_add_balance', 'income', 'refund'].includes(type);
-}
-
-const kpiCards = computed(() => [
-  { label: '总流水', value: '¥' + fen2yuan(overview.value.totalTransactionAmount), desc: '周期内所有支付类交易总金额' },
-  { label: '充值金额', value: '¥' + fen2yuan(overview.value.totalRechargeAmount), desc: '周期内用户充值总金额' },
-  { label: '提现金额', value: '¥' + fen2yuan(overview.value.totalWithdrawAmount), desc: '周期内提现申请总金额' },
-  { label: '平台收益', value: '¥' + fen2yuan(overview.value.platformRevenue), desc: '周期内平台佣金收益' },
-  { label: '订单数', value: overview.value.totalOrderCount ?? 0, desc: '周期内新增订单总数' },
-  { label: '活跃用户', value: overview.value.activeCustomerCount ?? 0, desc: '当前活跃用户钱包账户数' },
-  { label: '活跃骑手', value: overview.value.activeRiderCount ?? 0, desc: '当前活跃骑手钱包账户数' },
-  { label: '活跃商户', value: overview.value.activeMerchantCount ?? 0, desc: '当前活跃商户钱包账户数' },
-]);
-
-const refundCards = computed(() => [
-  { label: '退款金额', value: '¥' + fen2yuan(overview.value.totalRefundAmount), desc: '周期内退款总金额' },
-  { label: '退款笔数', value: overview.value.totalRefundCount ?? 0, desc: '周期内退款总笔数' },
-  { label: '赔付金额', value: '¥' + fen2yuan(overview.value.totalCompensationAmount), desc: '周期内赔付总金额' },
-  { label: '赔付笔数', value: overview.value.totalCompensationCount ?? 0, desc: '周期内赔付总笔数' },
-]);
+const refundCards = computed(() => buildFinanceRefundCards(overview.value));
 
 const pageError = computed(() => overviewError.value || detailsError.value || logsError.value || '');
 
@@ -403,7 +377,7 @@ async function loadRecentTransactions() {
   logsError.value = '';
   try {
     const res = await request.get('/api/financial/transaction-logs', { params: { page: 1, limit: 1 } });
-    transactionLogs.value = extractPaginatedItems(res.data).items;
+    transactionLogs.value = extractFinancialTransactionLogPage(res.data).items;
   } catch (error) {
     transactionLogs.value = [];
     logsError.value = extractErrorMessage(error, '加载财务日志失败');
