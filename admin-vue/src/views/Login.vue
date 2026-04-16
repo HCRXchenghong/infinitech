@@ -229,7 +229,7 @@ import QRCode from 'qrcode'
 
 import request from '@/utils/request'
 import { buildRuntimeUrl, clearAdminSessionStorage } from '@/utils/runtime'
-import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts'
+import { extractEnvelopeData, extractErrorMessage, extractSMSResult } from '@infinitech/contracts'
 import {
   createDefaultLoginForm,
   getQrFlowErrorMessage,
@@ -594,8 +594,14 @@ async function sendCode() {
       phone: form.value.phone,
       scene: 'login',
     })
+    const result = extractSMSResult(data)
 
-    if (data?.success) {
+    if (result.needCaptcha) {
+      ElMessage.warning(result.message || '请先完成图形验证码校验')
+      return
+    }
+
+    if (result.success) {
       countdown.value = 60
       const timer = setInterval(() => {
         countdown.value -= 1
@@ -608,14 +614,14 @@ async function sendCode() {
       if (data.warning) {
         ElMessage.warning(data.warning)
       } else {
-        ElMessage.success('验证码已发送，请注意查收')
+        ElMessage.success(result.message || '验证码已发送，请注意查收')
       }
       return
     }
 
-    ElMessage.error(data?.error || '发送验证码失败')
+    ElMessage.error(result.error || result.message || '发送验证码失败')
   } catch (error) {
-    ElMessage.error(error.response?.data?.error || '网络异常，请稍后重试')
+    ElMessage.error(extractErrorMessage(error, '网络异常，请稍后重试'))
   } finally {
     sendingCode.value = false
   }

@@ -841,9 +841,21 @@ assertContains(
   "backend/go/internal/handler/admin_handler.go",
   `"temporaryCredential": temporaryCredential`,
 );
+assertNotContains(
+  "backend/go/internal/handler/admin_handler.go",
+  "c.JSON(",
+);
 assertContains(
   "backend/go/internal/handler/admin_handler.go",
   'respondAdminSuccess(c, "管理员账号列表加载成功", admins)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_handler.go",
+  'respondAdminPayload(c, code, adminPayloadMessage(resp, nil, "管理员登录成功"), resp)',
+);
+assertContains(
+  "backend/go/internal/handler/admin_handler.go",
+  'respondAdminImportSuccess(c, "用户数据导入完成", successCount, errorCount)',
 );
 assertContains(
   "backend/go/internal/handler/admin_handler.go",
@@ -1368,6 +1380,10 @@ assertContains(
 assertContains(
   "admin-vue/src/views/FinanceCenter.vue",
   "extractEnvelopeData(res.data)",
+);
+assertContains(
+  "admin-vue/src/views/Login.vue",
+  "extractSMSResult(data)",
 );
 assertContains(
   "backend/go/internal/handler/shop_handler.go",

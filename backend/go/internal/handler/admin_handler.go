@@ -35,23 +35,88 @@ func buildTemporaryCredentialPayload(password string) gin.H {
 	}
 }
 
-func respondAdminStatusError(c *gin.Context, status int, message string) {
-	code := responseCodeInternalError
-	switch status {
-	case http.StatusBadRequest:
-		code = responseCodeInvalidArgument
-	case http.StatusUnauthorized:
-		code = responseCodeUnauthorized
-	case http.StatusForbidden:
-		code = responseCodeForbidden
-	case http.StatusNotFound:
-		code = responseCodeNotFound
-	case http.StatusConflict:
-		code = responseCodeConflict
-	case http.StatusGone:
-		code = responseCodeGone
+func adminResponseCodeForStatus(status int) string {
+	if status >= http.StatusOK && status < http.StatusBadRequest {
+		return responseCodeOK
 	}
-	respondErrorEnvelope(c, status, code, message, nil)
+	return couponResponseCodeForStatus(status)
+}
+
+func adminMessageValue(value interface{}) string {
+	text, _ := value.(string)
+	return strings.TrimSpace(text)
+}
+
+func adminFirstNonEmptyText(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
+}
+
+func adminErrorText(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
+
+func adminPayloadMessage(data interface{}, err error, fallback string) string {
+	if legacy := mirroredEnvelopeFields(data); legacy != nil {
+		if message := adminFirstNonEmptyText(
+			adminMessageValue(legacy["message"]),
+			adminMessageValue(legacy["error"]),
+		); message != "" {
+			return message
+		}
+	}
+
+	return adminFirstNonEmptyText(adminErrorText(err), fallback)
+}
+
+func respondAdminPayload(c *gin.Context, status int, message string, data interface{}) {
+	respondEnvelope(
+		c,
+		status,
+		adminResponseCodeForStatus(status),
+		message,
+		data,
+		mirroredEnvelopeFields(data),
+	)
+}
+
+func respondAdminSMSPayload(c *gin.Context, status int, message string, result *service.RequestCodeResponse) {
+	legacy := mirroredEnvelopeFields(result)
+	if legacy == nil {
+		legacy = gin.H{}
+	}
+	if result != nil {
+		if smsCode := strings.TrimSpace(result.Code); smsCode != "" {
+			legacy["sms_code"] = smsCode
+		}
+	}
+
+	respondEnvelope(
+		c,
+		status,
+		adminResponseCodeForStatus(status),
+		message,
+		result,
+		legacy,
+	)
+}
+
+func respondAdminImportSuccess(c *gin.Context, message string, successCount, errorCount int) {
+	respondAdminMirroredSuccess(c, message, gin.H{
+		"successCount": successCount,
+		"errorCount":   errorCount,
+	})
+}
+
+func respondAdminStatusError(c *gin.Context, status int, message string) {
+	respondErrorEnvelope(c, status, adminResponseCodeForStatus(status), message, nil)
 }
 
 func respondAdminInvalidRequest(c *gin.Context, message string) {
@@ -69,22 +134,22 @@ func respondAdminMirroredSuccess(c *gin.Context, message string, data interface{
 func (h *AdminHandler) Login(c *gin.Context) {
 	var req service.AdminLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminInvalidRequest(c, "请求参数错误")
 		return
 	}
 
 	resp, code, err := h.admin.Login(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(code, resp)
+		respondAdminPayload(c, code, adminPayloadMessage(resp, err, "管理员登录失败"), resp)
 		return
 	}
-	c.JSON(code, resp)
+	respondAdminPayload(c, code, adminPayloadMessage(resp, nil, "管理员登录成功"), resp)
 }
 
 func (h *AdminHandler) SendAdminSMSCode(c *gin.Context) {
 	var req service.RequestCodeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if req.Scene == "" {
@@ -92,14 +157,10 @@ func (h *AdminHandler) SendAdminSMSCode(c *gin.Context) {
 	}
 	resp, err := h.sms.RequestCode(c.Request.Context(), &req)
 	if err != nil {
-		msg := "发送失败"
-		if resp != nil && resp.Message != "" {
-			msg = resp.Message
-		}
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": msg})
+		respondAdminSMSPayload(c, smsRequestErrorStatus(err), adminPayloadMessage(resp, err, "发送失败"), resp)
 		return
 	}
-	c.JSON(http.StatusOK, resp)
+	respondAdminSMSPayload(c, http.StatusOK, adminPayloadMessage(resp, nil, "验证码已发送"), resp)
 }
 
 // Admin accounts
@@ -120,7 +181,7 @@ func (h *AdminHandler) CreateAdmin(c *gin.Context) {
 		Type     string `json:"type"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if err := h.admin.CreateAdmin(c.Request.Context(), req.Phone, req.Name, req.Password, req.Type); err != nil {
@@ -174,12 +235,12 @@ func (h *AdminHandler) DeleteAdmin(c *gin.Context) {
 func (h *AdminHandler) ResetAdminPassword(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "无效ID"})
+		respondAdminInvalidRequest(c, "无效ID")
 		return
 	}
 	newPassword, err := h.admin.ResetAdminPassword(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondAdminInvalidRequest(c, err.Error())
 		return
 	}
 	temporaryCredential := buildTemporaryCredentialPayload(newPassword)
@@ -195,7 +256,7 @@ func (h *AdminHandler) ResetAdminPassword(c *gin.Context) {
 func (h *AdminHandler) CompleteBootstrapSetup(c *gin.Context) {
 	adminID := parseContextUint(c.Get("admin_id"))
 	if adminID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "登录状态已失效，请重新登录"})
+		respondAdminStatusError(c, http.StatusUnauthorized, "登录状态已失效，请重新登录")
 		return
 	}
 
@@ -206,19 +267,19 @@ func (h *AdminHandler) CompleteBootstrapSetup(c *gin.Context) {
 		ConfirmPassword string `json:"confirmPassword"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if strings.TrimSpace(req.NewPassword) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请输入新的管理员密码"})
+		respondAdminInvalidRequest(c, "请输入新的管理员密码")
 		return
 	}
 	if strings.TrimSpace(req.ConfirmPassword) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请再次确认新的管理员密码"})
+		respondAdminInvalidRequest(c, "请再次确认新的管理员密码")
 		return
 	}
 	if req.NewPassword != req.ConfirmPassword {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "两次输入的新密码不一致"})
+		respondAdminInvalidRequest(c, "两次输入的新密码不一致")
 		return
 	}
 
@@ -230,16 +291,16 @@ func (h *AdminHandler) CompleteBootstrapSetup(c *gin.Context) {
 		req.NewPassword,
 	)
 	if err != nil {
-		c.JSON(code, resp)
+		respondAdminPayload(c, code, adminPayloadMessage(resp, err, "首次管理员初始化失败"), resp)
 		return
 	}
-	c.JSON(code, resp)
+	respondAdminPayload(c, code, adminPayloadMessage(resp, nil, "首次管理员初始化已完成"), resp)
 }
 
 func (h *AdminHandler) ChangeOwnPassword(c *gin.Context) {
 	adminID := parseContextUint(c.Get("admin_id"))
 	if adminID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "登录状态已失效，请重新登录"})
+		respondAdminStatusError(c, http.StatusUnauthorized, "登录状态已失效，请重新登录")
 		return
 	}
 
@@ -249,36 +310,36 @@ func (h *AdminHandler) ChangeOwnPassword(c *gin.Context) {
 		ConfirmPassword string `json:"confirmPassword"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if strings.TrimSpace(req.CurrentPassword) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请输入当前密码"})
+		respondAdminInvalidRequest(c, "请输入当前密码")
 		return
 	}
 	if strings.TrimSpace(req.NewPassword) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请输入新密码"})
+		respondAdminInvalidRequest(c, "请输入新密码")
 		return
 	}
 	if req.ConfirmPassword != "" && req.NewPassword != req.ConfirmPassword {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "两次输入的新密码不一致"})
+		respondAdminInvalidRequest(c, "两次输入的新密码不一致")
 		return
 	}
 
 	if err := h.admin.ChangeOwnPassword(c.Request.Context(), adminID, req.CurrentPassword, req.NewPassword); err != nil {
 		if errors.Is(err, service.ErrUnauthorized) {
-			c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "登录状态已失效，请重新登录"})
+			respondAdminStatusError(c, http.StatusUnauthorized, "登录状态已失效，请重新登录")
 			return
 		}
 		if strings.Contains(err.Error(), "密码") {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+			respondAdminInvalidRequest(c, err.Error())
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "修改密码失败"})
+		respondAdminStatusError(c, http.StatusInternalServerError, "修改密码失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondAdminMirroredSuccess(c, "管理员密码修改成功", gin.H{"updated": true})
 }
 
 // Users
@@ -309,7 +370,7 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 		Type     string `json:"type"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if err := h.admin.CreateUser(c.Request.Context(), req.Phone, req.Name, req.Password, req.Type); err != nil {
@@ -425,7 +486,7 @@ func (h *AdminHandler) CreateRider(c *gin.Context) {
 		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if err := h.admin.CreateRider(c.Request.Context(), req.Phone, req.Name, req.Password); err != nil {
@@ -450,7 +511,7 @@ func (h *AdminHandler) UpdateRider(c *gin.Context) {
 		EmergencyContactPhone string `json:"emergency_contact_phone"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminInvalidRequest(c, "请求参数错误")
 		return
 	}
 
@@ -582,7 +643,7 @@ func (h *AdminHandler) CreateMerchant(c *gin.Context) {
 		Password  string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if err := h.admin.CreateMerchant(c.Request.Context(), req.Phone, req.Name, req.OwnerName, req.Password); err != nil {
@@ -605,7 +666,7 @@ func (h *AdminHandler) UpdateMerchant(c *gin.Context) {
 		BusinessLicenseImage string `json:"business_license_image"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAdminInvalidRequest(c, "请求参数错误")
 		return
 	}
 	if err := h.admin.UpdateMerchant(c.Request.Context(), id, req.Phone, req.Name, req.OwnerName, req.BusinessLicenseImage); err != nil {
@@ -797,37 +858,53 @@ func (h *AdminHandler) ExportOrders(c *gin.Context) {
 }
 
 func (h *AdminHandler) ImportUsers(c *gin.Context) {
-	items := parseItems(c, "users")
+	items, err := parseItems(c, "users")
+	if err != nil {
+		respondAdminInvalidRequest(c, "请求参数错误")
+		return
+	}
 	successCount, errorCount := h.admin.ImportUsers(c.Request.Context(), items)
-	c.JSON(http.StatusOK, gin.H{"success": true, "successCount": successCount, "errorCount": errorCount})
+	respondAdminImportSuccess(c, "用户数据导入完成", successCount, errorCount)
 }
 
 func (h *AdminHandler) ImportRiders(c *gin.Context) {
-	items := parseItems(c, "riders")
+	items, err := parseItems(c, "riders")
+	if err != nil {
+		respondAdminInvalidRequest(c, "请求参数错误")
+		return
+	}
 	successCount, errorCount := h.admin.ImportRiders(c.Request.Context(), items)
-	c.JSON(http.StatusOK, gin.H{"success": true, "successCount": successCount, "errorCount": errorCount})
+	respondAdminImportSuccess(c, "骑手数据导入完成", successCount, errorCount)
 }
 
 func (h *AdminHandler) ImportMerchants(c *gin.Context) {
-	items := parseItems(c, "merchants")
+	items, err := parseItems(c, "merchants")
+	if err != nil {
+		respondAdminInvalidRequest(c, "请求参数错误")
+		return
+	}
 	successCount, errorCount := h.admin.ImportMerchants(c.Request.Context(), items)
-	c.JSON(http.StatusOK, gin.H{"success": true, "successCount": successCount, "errorCount": errorCount})
+	respondAdminImportSuccess(c, "商户数据导入完成", successCount, errorCount)
 }
 
 func (h *AdminHandler) ImportOrders(c *gin.Context) {
-	items := parseItems(c, "orders")
+	items, err := parseItems(c, "orders")
+	if err != nil {
+		respondAdminInvalidRequest(c, "请求参数错误")
+		return
+	}
 	successCount, errorCount := h.admin.ImportOrders(c.Request.Context(), items)
-	c.JSON(http.StatusOK, gin.H{"success": true, "successCount": successCount, "errorCount": errorCount})
+	respondAdminImportSuccess(c, "订单数据导入完成", successCount, errorCount)
 }
 
-func parseItems(c *gin.Context, key string) []map[string]interface{} {
+func parseItems(c *gin.Context, key string) ([]map[string]interface{}, error) {
 	var payload map[string]interface{}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		return []map[string]interface{}{}
+		return nil, err
 	}
 	raw := payload[key]
 	if raw == nil {
-		return []map[string]interface{}{}
+		return []map[string]interface{}{}, nil
 	}
 
 	items := []map[string]interface{}{}
@@ -841,7 +918,7 @@ func parseItems(c *gin.Context, key string) []map[string]interface{} {
 	case []map[string]interface{}:
 		items = append(items, v...)
 	}
-	return items
+	return items, nil
 }
 
 func parseContextUint(value interface{}, exists bool) uint {
@@ -878,8 +955,8 @@ func parseContextUint(value interface{}, exists bool) uint {
 func (h *AdminHandler) ReorganizeRoleIds(c *gin.Context) {
 	userType := c.Param("type")
 	if err := h.admin.ReorganizeRoleIds(c.Request.Context(), userType); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		respondAdminStatusError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "ID重组成功"})
+	respondAdminMirroredSuccess(c, "ID重组成功", gin.H{"completed": true})
 }
