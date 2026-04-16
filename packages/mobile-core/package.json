@@ -15,6 +15,7 @@
     "./profile-address": "./src/profile-address.js",
     "./profile-favorites": "./src/profile-favorites.js",
     "./profile-my-reviews": "./src/profile-my-reviews.js",
+    "./profile-points-mall": "./src/profile-points-mall.js",
     "./profile-coupon-list": "./src/profile-coupon-list.js",
     "./profile-edit": "./src/profile-edit.js",
     "./medicine-home": "./src/medicine-home.js",

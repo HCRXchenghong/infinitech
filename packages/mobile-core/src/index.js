@@ -11,6 +11,7 @@ export * from "./order-support-pages.js";
 export * from "./profile-address.js";
 export * from "./profile-favorites.js";
 export * from "./profile-my-reviews.js";
+export * from "./profile-points-mall.js";
 export * from "./profile-edit.js";
 export * from "./profile-home.js";
 export * from "./profile-coupon-list.js";

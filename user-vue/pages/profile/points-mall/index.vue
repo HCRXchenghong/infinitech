@@ -15,14 +15,14 @@
           <text class="summary-value">{{ points }}</text>
         </view>
         <view class="summary-right">
-          <view v-for="rule in vipConfig.point_rules" :key="rule" class="summary-rule">{{ rule }}</view>
+          <view v-for="(rule, index) in vipConfig.point_rules" :key="`rule-${index}`" class="summary-rule">{{ rule }}</view>
         </view>
       </view>
 
       <view class="section-title">{{ vipConfig.points_section_title }}</view>
       <view class="section-tip">{{ vipConfig.points_section_tip }}</view>
       <view class="goods-list">
-        <view v-for="item in goods" :key="item.id" class="goods-card">
+        <view v-for="(item, idx) in goods" :key="item.id || `goods-${idx}`" class="goods-card">
           <view class="goods-icon" :class="item.colorClass">
             <text class="goods-emoji">{{ item.emoji }}</text>
           </view>
@@ -56,105 +56,14 @@
 
 <script>
 import { fetchPointsBalance, fetchPointsGoods, redeemPoints, fetchPublicVIPSettings } from '@/shared-ui/api.js'
-import {
-  DEFAULT_VIP_CENTER_SETTINGS,
-  mapVIPPointRewardList,
-  normalizeVIPCenterSettings
-} from '../vip-center/vip-data.js'
+import { createProfilePointsMallPage } from '../../../../shared/mobile-common/profile-points-mall-page.js'
 
-export default {
-  data() {
-    return {
-      points: 0,
-      goods: [],
-      vipConfig: normalizeVIPCenterSettings(DEFAULT_VIP_CENTER_SETTINGS)
-    }
-  },
-  onLoad() {
-    const stored = uni.getStorageSync('pointsBalance')
-    if (typeof stored === 'number') this.points = stored
-    this.loadVipSettings()
-    this.loadPoints()
-    this.loadGoods()
-  },
-  onShow() {
-    this.loadPoints()
-  },
-  methods: {
-    loadVipSettings() {
-      fetchPublicVIPSettings()
-        .then((payload) => {
-          this.vipConfig = normalizeVIPCenterSettings(payload || {})
-        })
-        .catch(() => {
-          this.vipConfig = normalizeVIPCenterSettings(DEFAULT_VIP_CENTER_SETTINGS)
-        })
-    },
-    goBack() {
-      uni.navigateBack()
-    },
-    loadPoints() {
-      const profile = uni.getStorageSync('userProfile') || {}
-      const userId = profile.id || profile.userId || profile.phone || ''
-      if (!userId) return
-      fetchPointsBalance(userId)
-        .then((res) => {
-          if (res && typeof res.balance === 'number') {
-            this.points = res.balance
-            uni.setStorageSync('pointsBalance', res.balance)
-          }
-        })
-        .catch(() => {})
-    },
-    loadGoods() {
-      fetchPointsGoods()
-        .then((list) => {
-          if (Array.isArray(list)) {
-            this.goods = mapVIPPointRewardList(list)
-          }
-        })
-        .catch(() => {})
-    },
-    exchange(item) {
-      if (this.points < item.points) {
-        uni.showToast({ title: '积分不足', icon: 'none' })
-        return
-      }
-      uni.showModal({
-        title: '确认兑换',
-        content: `确认使用 ${item.points} 积分兑换「${item.name}」吗？`,
-        confirmText: '立即兑换',
-        cancelText: '取消',
-        success: (res) => {
-          if (!res.confirm) return
-          const profile = uni.getStorageSync('userProfile') || {}
-          const payload = {
-            userId: profile.id || profile.userId || profile.phone || '',
-            phone: profile.phone || '',
-            goodId: item.id
-          }
-          uni.showLoading({ title: '兑换中...' })
-          redeemPoints(payload)
-            .then((resp) => {
-              uni.hideLoading()
-              if (resp && resp.success) {
-                const balance = typeof resp.balance === 'number' ? resp.balance : this.points
-                this.points = balance
-                uni.setStorageSync('pointsBalance', balance)
-                uni.showToast({ title: '兑换成功', icon: 'success' })
-              } else {
-                uni.showToast({ title: (resp && resp.error) || '兑换失败', icon: 'none' })
-              }
-            })
-            .catch((err) => {
-              uni.hideLoading()
-              uni.showToast({ title: (err && err.error) || '兑换失败', icon: 'none' })
-            })
-        }
-      })
-    }
-  }
-}
+export default createProfilePointsMallPage({
+  fetchPointsBalance,
+  fetchPointsGoods,
+  redeemPoints,
+  fetchPublicVIPSettings
+})
 </script>
 
 <style scoped lang="scss">
