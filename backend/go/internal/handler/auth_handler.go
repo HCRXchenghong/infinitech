@@ -3,6 +3,7 @@ package handler
 import (
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yuexiang/go-api/internal/service"
@@ -16,6 +17,102 @@ func NewAuthHandler(service *service.AuthService) *AuthHandler {
 	return &AuthHandler{service: service}
 }
 
+func authResponseCodeForStatus(status int) string {
+	if status >= http.StatusOK && status < http.StatusBadRequest {
+		return responseCodeOK
+	}
+	return couponResponseCodeForStatus(status)
+}
+
+func authMessageValue(value interface{}) string {
+	text, _ := value.(string)
+	return strings.TrimSpace(text)
+}
+
+func authPayloadMessage(data interface{}, err error, fallback string) string {
+	if legacy := mirroredEnvelopeFields(data); legacy != nil {
+		if message := firstNonEmptyText(
+			authMessageValue(legacy["message"]),
+			authMessageValue(legacy["error"]),
+		); message != "" {
+			return message
+		}
+	}
+
+	return firstNonEmptyText(errorText(err), fallback)
+}
+
+func authStatusFromMessage(message string, fallback int) int {
+	normalized := strings.ToLower(strings.TrimSpace(message))
+	if normalized == "" {
+		return fallback
+	}
+
+	switch {
+	case strings.Contains(normalized, "missing authorization header"),
+		strings.Contains(normalized, "invalid or expired token"),
+		strings.Contains(normalized, "invalid refresh token"),
+		strings.Contains(normalized, "not a refresh token"),
+		strings.Contains(normalized, "invalid refresh principal"),
+		strings.Contains(normalized, "invalid refresh subject"),
+		strings.Contains(normalized, "invalid password"),
+		strings.Contains(normalized, "token user mismatch"),
+		strings.Contains(normalized, "token subject mismatch"),
+		strings.Contains(normalized, "invalid principal type"):
+		return http.StatusUnauthorized
+	case strings.Contains(normalized, "already used"),
+		strings.Contains(normalized, "session expired"):
+		return http.StatusGone
+	case strings.Contains(normalized, "not found"),
+		strings.Contains(normalized, "please register first"),
+		strings.Contains(normalized, "please onboard first"):
+		return http.StatusNotFound
+	case strings.Contains(normalized, "db not ready"),
+		strings.Contains(normalized, "failed to "),
+		strings.Contains(normalized, "verification failed"),
+		strings.Contains(normalized, "invalid wechat session payload"):
+		return http.StatusInternalServerError
+	case strings.Contains(normalized, "phone exists"),
+		strings.Contains(normalized, "already exists"):
+		return http.StatusConflict
+	case strings.Contains(normalized, "invalid"),
+		strings.Contains(normalized, "missing"),
+		strings.Contains(normalized, "required"):
+		return http.StatusBadRequest
+	}
+
+	return fallback
+}
+
+func authFailureStatus(data interface{}, err error, fallback int) int {
+	return authStatusFromMessage(authPayloadMessage(data, err, ""), fallback)
+}
+
+func respondAuthPayload(c *gin.Context, status int, message string, data interface{}) {
+	respondEnvelope(
+		c,
+		status,
+		authResponseCodeForStatus(status),
+		message,
+		data,
+		mirroredEnvelopeFields(data),
+	)
+}
+
+func respondAuthMirroredSuccess(c *gin.Context, message string, data interface{}) {
+	respondAuthPayload(c, http.StatusOK, message, data)
+}
+
+func respondAuthInvalidRequest(c *gin.Context, message, detail string) {
+	payload := gin.H{}
+	legacy := gin.H{}
+	if trimmedDetail := strings.TrimSpace(detail); trimmedDetail != "" {
+		payload["detail"] = trimmedDetail
+		legacy["detail"] = trimmedDetail
+	}
+	respondEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, firstNonEmptyText(message, "请求参数错误"), payload, legacy)
+}
+
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req struct {
 		Phone    string `json:"phone"`
@@ -24,11 +121,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Printf("[Auth Handler] login bind failed: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "请求参数错误",
-			"message": err.Error(),
-		})
+		respondAuthInvalidRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
@@ -37,37 +130,27 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	result, err := h.service.Login(c.Request.Context(), req.Phone, req.Code, req.Password)
 	if err != nil {
 		log.Printf("[Auth Handler] login failed: %v", err)
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		respondAuthPayload(c, authFailureStatus(result, err, http.StatusUnauthorized), authPayloadMessage(result, err, "登录失败"), result)
 		return
 	}
 
 	log.Printf("[Auth Handler] login success: phone=%s", maskPhoneForLog(req.Phone))
-	c.JSON(http.StatusOK, result)
+	respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, "登录成功"), result)
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "请求参数错误",
-			"message": err.Error(),
-		})
+		respondAuthInvalidRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
 	result, err := h.service.Register(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		respondAuthPayload(c, authFailureStatus(result, err, http.StatusBadRequest), authPayloadMessage(result, err, "注册失败"), result)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, "注册成功"), result)
 }
 
 func (h *AuthHandler) RiderLogin(c *gin.Context) {
@@ -78,11 +161,7 @@ func (h *AuthHandler) RiderLogin(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Printf("[Rider Auth] bind failed: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "请求参数错误",
-			"message": err.Error(),
-		})
+		respondAuthInvalidRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
@@ -91,15 +170,12 @@ func (h *AuthHandler) RiderLogin(c *gin.Context) {
 	result, err := h.service.RiderLogin(c.Request.Context(), req.Phone, req.Code, req.Password)
 	if err != nil {
 		log.Printf("[Rider Auth] login failed: %v", err)
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		respondAuthPayload(c, authFailureStatus(result, err, http.StatusUnauthorized), authPayloadMessage(result, err, "骑手登录失败"), result)
 		return
 	}
 
 	log.Printf("[Rider Auth] login success: phone=%s", maskPhoneForLog(req.Phone))
-	c.JSON(http.StatusOK, result)
+	respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, "骑手登录成功"), result)
 }
 
 func (h *AuthHandler) MerchantLogin(c *gin.Context) {
@@ -110,11 +186,7 @@ func (h *AuthHandler) MerchantLogin(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Printf("[Merchant Auth] bind failed: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "请求参数错误",
-			"message": err.Error(),
-		})
+		respondAuthInvalidRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
@@ -123,15 +195,12 @@ func (h *AuthHandler) MerchantLogin(c *gin.Context) {
 	result, err := h.service.MerchantLogin(c.Request.Context(), req.Phone, req.Code, req.Password)
 	if err != nil {
 		log.Printf("[Merchant Auth] login failed: %v", err)
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		respondAuthPayload(c, authFailureStatus(result, err, http.StatusUnauthorized), authPayloadMessage(result, err, "商户登录失败"), result)
 		return
 	}
 
 	log.Printf("[Merchant Auth] login success: phone=%s", maskPhoneForLog(req.Phone))
-	c.JSON(http.StatusOK, result)
+	respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, "商户登录成功"), result)
 }
 
 func (h *AuthHandler) SetNewPassword(c *gin.Context) {
@@ -141,15 +210,15 @@ func (h *AuthHandler) SetNewPassword(c *gin.Context) {
 		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAuthInvalidRequest(c, "请求参数错误", err.Error())
 		return
 	}
 	result, err := h.service.SetNewPassword(c.Request.Context(), req.Phone, req.Code, req.Password)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, result)
+		respondAuthPayload(c, authFailureStatus(result, err, http.StatusBadRequest), authPayloadMessage(result, err, "密码重置失败"), result)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, "密码重置成功"), result)
 }
 
 func (h *AuthHandler) RiderSetNewPassword(c *gin.Context) {
@@ -159,15 +228,15 @@ func (h *AuthHandler) RiderSetNewPassword(c *gin.Context) {
 		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAuthInvalidRequest(c, "请求参数错误", err.Error())
 		return
 	}
 	result, err := h.service.RiderSetNewPassword(c.Request.Context(), req.Phone, req.Code, req.Password)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, result)
+		respondAuthPayload(c, authFailureStatus(result, err, http.StatusBadRequest), authPayloadMessage(result, err, "骑手密码重置失败"), result)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, "骑手密码重置成功"), result)
 }
 
 func (h *AuthHandler) MerchantSetNewPassword(c *gin.Context) {
@@ -177,23 +246,22 @@ func (h *AuthHandler) MerchantSetNewPassword(c *gin.Context) {
 		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "请求参数错误"})
+		respondAuthInvalidRequest(c, "请求参数错误", err.Error())
 		return
 	}
 	result, err := h.service.MerchantSetNewPassword(c.Request.Context(), req.Phone, req.Code, req.Password)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, result)
+		respondAuthPayload(c, authFailureStatus(result, err, http.StatusBadRequest), authPayloadMessage(result, err, "商户密码重置失败"), result)
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, "商户密码重置成功"), result)
 }
 
 func (h *AuthHandler) VerifyToken(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
+		respondAuthPayload(c, http.StatusUnauthorized, "missing authorization header", gin.H{
 			"valid": false,
-			"error": "missing authorization header",
 		})
 		return
 	}
@@ -206,15 +274,14 @@ func (h *AuthHandler) VerifyToken(c *gin.Context) {
 	identity, err := h.service.VerifyTokenIdentity(token)
 	if err != nil {
 		log.Printf("[Auth Handler] token verify failed: %v", err)
-		c.JSON(http.StatusUnauthorized, gin.H{
+		respondAuthPayload(c, authFailureStatus(nil, err, http.StatusUnauthorized), "invalid or expired token", gin.H{
 			"valid": false,
-			"error": "invalid or expired token",
 		})
 		return
 	}
 
 	log.Printf("[Auth Handler] token verify success: phone=%s userId=%d", maskPhoneForLog(identity.Phone), identity.UserID)
-	c.JSON(http.StatusOK, gin.H{
+	respondAuthMirroredSuccess(c, "令牌校验成功", gin.H{
 		"valid":         true,
 		"phone":         identity.Phone,
 		"userId":        identity.UserID,
@@ -233,17 +300,13 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Printf("[Auth Handler] refresh token bind failed: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "请求参数错误",
-		})
+		respondAuthInvalidRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
 	if req.RefreshToken == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
+		respondAuthPayload(c, http.StatusBadRequest, "refresh token is required", gin.H{
 			"success": false,
-			"error":   "refresh token is required",
 		})
 		return
 	}
@@ -252,10 +315,10 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	result, err := h.service.RefreshToken(c.Request.Context(), req.RefreshToken)
 	if err != nil {
 		log.Printf("[Auth Handler] refresh token failed: %v", err)
-		c.JSON(http.StatusUnauthorized, result)
+		respondAuthPayload(c, authFailureStatus(result, err, http.StatusUnauthorized), authPayloadMessage(result, err, "令牌刷新失败"), result)
 		return
 	}
 
 	log.Printf("[Auth Handler] refresh token success")
-	c.JSON(http.StatusOK, result)
+	respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, "令牌刷新成功"), result)
 }

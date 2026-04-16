@@ -1374,6 +1374,22 @@ assertContains(
   'respondShopPaginated(c, "店铺评论加载成功", "list"',
 );
 assertContains(
+  "backend/go/internal/handler/auth_handler.go",
+  "respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, \"登录成功\"), result)",
+);
+assertContains(
+  "backend/go/internal/handler/auth_handler_wechat.go",
+  "respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, \"微信登录会话加载成功\"), result)",
+);
+assertContains(
+  "backend/go/internal/service/auth_service.go",
+  'RefreshToken string                 `json:"refreshToken,omitempty"`',
+);
+assertContains(
+  "backend/go/internal/service/auth_service.go",
+  'ExpiresIn    int64                  `json:"expiresIn,omitempty"`',
+);
+assertContains(
   "backend/go/internal/handler/shop_handler.go",
   'respondShopPaginated(c, "商户店铺列表加载成功", "shops"',
 );

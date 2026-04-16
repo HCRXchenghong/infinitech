@@ -212,10 +212,12 @@ type RegisterRequest struct {
 
 // RegisterResponse defines the registration response payload.
 type RegisterResponse struct {
-	Success bool                   `json:"success"`
-	Token   string                 `json:"token,omitempty"`
-	User    map[string]interface{} `json:"user,omitempty"`
-	Error   string                 `json:"error,omitempty"`
+	Success      bool                   `json:"success"`
+	Token        string                 `json:"token,omitempty"`
+	RefreshToken string                 `json:"refreshToken,omitempty"`
+	ExpiresIn    int64                  `json:"expiresIn,omitempty"`
+	User         map[string]interface{} `json:"user,omitempty"`
+	Error        string                 `json:"error,omitempty"`
 }
 
 func (s *AuthService) lookupInviteCode(ctx context.Context, db *gorm.DB, code string) (*repository.InviteCode, error) {
@@ -502,15 +504,17 @@ func (s *AuthService) Register(ctx context.Context, data interface{}) (interface
 		}
 	}
 
-	token, err := s.generateToken(phone, int64(user.ID))
+	token, refreshToken, expiresIn, err := s.IssueTokenPair(phone, int64(user.ID))
 	if err != nil {
 		return &RegisterResponse{Success: false, Error: "failed to generate token"}, err
 	}
 
 	return &RegisterResponse{
-		Success: true,
-		Token:   token,
-		User:    buildUserPayload(user),
+		Success:      true,
+		Token:        token,
+		RefreshToken: refreshToken,
+		ExpiresIn:    expiresIn,
+		User:         buildUserPayload(user),
 	}, nil
 }
 
