@@ -96,6 +96,31 @@ const normalizeProductList = (response) => {
   return [];
 };
 
+const normalizeShopList = (response) => {
+  if (Array.isArray(response)) {
+    return response;
+  }
+  const data = extractEnvelopeData(response) || response;
+  if (data && Array.isArray(data.shops)) {
+    return data.shops;
+  }
+  if (data && Array.isArray(data.items)) {
+    return data.items;
+  }
+  return [];
+};
+
+const normalizeShopDetail = (response) => {
+  const data = extractEnvelopeData(response) || response;
+  if (Array.isArray(data) && data.length > 0) {
+    return data[0];
+  }
+  if (data && typeof data === "object") {
+    return data;
+  }
+  return null;
+};
+
 const sortProductsByDisplayOrder = (products = []) =>
   [...products].sort((left, right) => {
     const leftCategory = Number(left.categoryId || left.category_id || 0);
@@ -114,12 +139,16 @@ const sortProductsByDisplayOrder = (products = []) =>
   });
 
 export const fetchShopCategories = async () => {
-  return await request({ url: "/api/shops/categories" });
+  const payload = await request({ url: "/api/shops/categories" });
+  return extractPaginatedItems(payload, {
+    listKeys: ["categories", "items", "records", "list"],
+  }).items;
 };
 
 export const fetchShops = async (params) => {
   // 店铺列表使用强制刷新，避免新增店铺被本地旧缓存遮挡
-  return await syncService.getData("shops", params, { preferFresh: true });
+  const payload = await syncService.getData("shops", params, { preferFresh: true });
+  return normalizeShopList(payload);
 };
 
 export const fetchShopDetail = async (shopId) => {
@@ -129,16 +158,15 @@ export const fetchShopDetail = async (shopId) => {
     { id: shopId },
     { preferFresh: true },
   );
-  if (Array.isArray(data) && data.length > 0) {
-    return data[0];
-  }
-  if (data && typeof data === "object") {
-    return data;
+  const normalized = normalizeShopDetail(data);
+  if (normalized) {
+    return normalized;
   }
   // 本地没有，请求服务器
-  return await request({
+  const payload = await request({
     url: `/api/shops/${shopId}`,
   });
+  return normalizeShopDetail(payload);
 };
 
 export const fetchShopMenu = async (shopId) => {

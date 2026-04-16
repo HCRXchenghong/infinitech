@@ -247,6 +247,26 @@ assertContains(
   "buildMirroredPublicAssetPayload(url, finalFilename, \"merchant_or_admin_image\"",
 );
 assertContains(
+  "backend/go/internal/handler/shop_handler.go",
+  "respondShopPaginated",
+);
+assertContains(
+  "user-vue/shared-ui/sync.ts",
+  "Array.isArray(source.shops)",
+);
+assertContains(
+  "app-mobile/shared-ui/sync.ts",
+  "Array.isArray(source.shops)",
+);
+assertContains(
+  "merchant-app/shared-ui/sync.ts",
+  "Array.isArray(source.shops)",
+);
+assertContains(
+  "rider-app/shared-ui/sync.ts",
+  "Array.isArray(source.shops)",
+);
+assertContains(
   "admin-vue/src/views/Merchants.vue",
   "extractTemporaryCredential(",
 );
@@ -1351,11 +1371,11 @@ assertContains(
 );
 assertContains(
   "backend/go/internal/handler/shop_handler.go",
-  'respondEnvelope(c, http.StatusOK, "SHOP_REVIEW_LISTED"',
+  'respondShopPaginated(c, "店铺评论加载成功", "list"',
 );
 assertContains(
   "backend/go/internal/handler/shop_handler.go",
-  'respondSuccessEnvelope(c, "商户店铺列表加载成功"',
+  'respondShopPaginated(c, "商户店铺列表加载成功", "shops"',
 );
 assertContains(
   "backend/go/internal/handler/rider_handler.go",

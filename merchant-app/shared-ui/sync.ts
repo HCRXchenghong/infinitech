@@ -208,21 +208,17 @@ class SyncService {
     if (typeof serverData !== 'object') return []
     if (Object.prototype.hasOwnProperty.call(serverData, 'error')) return []
 
-    if (Array.isArray(serverData.products)) {
-      return serverData.products
-    }
+    const sources = [serverData, serverData.data].filter(
+      (value) => value && typeof value === 'object'
+    ) as Record<string, any>[]
 
-    if (serverData.data && typeof serverData.data === 'object') {
-      if (Array.isArray(serverData.data.products)) {
-        return serverData.data.products
-      }
-      if (Array.isArray(serverData.data)) {
-        return serverData.data
-      }
-    }
-
-    if (serverData.id !== undefined && serverData.id !== null) {
-      return [serverData]
+    for (const source of sources) {
+      if (Array.isArray(source.products)) return source.products
+      if (Array.isArray(source.shops)) return source.shops
+      if (Array.isArray(source.items)) return source.items
+      if (Array.isArray(source.list)) return source.list
+      if (Array.isArray(source.data)) return source.data
+      if (source.id !== undefined && source.id !== null) return [source]
     }
 
     if (config.isDev) {

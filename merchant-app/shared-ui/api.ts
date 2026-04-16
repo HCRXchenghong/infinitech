@@ -369,10 +369,21 @@ export const fetchMerchantShops = (merchantId: string | number) =>
   apiGet<{ shops: any[] }>(`/api/merchants/${merchantId}/shops`);
 
 export const fetchShopDetail = (shopId: string | number) =>
-  apiGet(`/api/shops/${shopId}`);
+  apiGet(`/api/shops/${shopId}`).then((response) =>
+    extractEnvelopeData(response) || response || null,
+  );
 
 export const fetchShopMenu = (shopId: string | number) =>
-  apiGet(`/api/shops/${shopId}/menu`);
+  apiGet(`/api/shops/${shopId}/menu`).then((response) => {
+    const data: any = extractEnvelopeData(response) || response || {};
+    if (Array.isArray(data?.products)) {
+      return data.products;
+    }
+    if (Array.isArray(data?.items)) {
+      return data.items;
+    }
+    return Array.isArray(data) ? data : [];
+  });
 
 export const updateShop = (
   shopId: string | number,
