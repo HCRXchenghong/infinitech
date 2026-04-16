@@ -16,7 +16,7 @@
             <el-table-column prop="company" label="主题" min-width="160" />
             <el-table-column label="类型" width="120">
               <template #default="{ row }">
-                <el-tag size="small" :type="row.cooperation_type === 'feedback' ? 'info' : 'success'">
+                <el-tag size="small" :type="getCooperationTypeTagType(row.cooperation_type)">
                   {{ formatCooperationType(row.cooperation_type) }}
                 </el-tag>
               </template>
@@ -166,7 +166,18 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { extractErrorMessage, extractPaginatedItems } from '@infinitech/contracts';
+import {
+  createOperationsGoodForm,
+  createOperationsGoodFormState,
+  extractOperationsCooperationPage,
+  extractOperationsGoodsPage,
+  extractOperationsInviteCodePage,
+  extractOperationsInviteRecordPage,
+  extractOperationsRedemptionPage,
+  formatCooperationType,
+  getCooperationTypeTagType,
+} from '@infinitech/admin-core';
+import { extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 
@@ -181,16 +192,7 @@ const redemptions = ref([]);
 const goods = ref([]);
 
 const goodDialogVisible = ref(false);
-const goodForm = ref({
-  id: null,
-  name: '',
-  points: 0,
-  ship_fee: 0,
-  tag: '',
-  type: 'goods',
-  desc: '',
-  is_active: true
-});
+const goodForm = ref(createOperationsGoodForm());
 
 onMounted(() => {
   refreshCurrent();
@@ -199,12 +201,6 @@ onMounted(() => {
 watch(activeTab, () => {
   refreshCurrent();
 });
-
-function formatCooperationType(type) {
-  if (type === 'feedback') return '用户反馈';
-  if (type === 'cooperation') return '商务合作';
-  return type || '未分类';
-}
 
 function refreshCurrent() {
   loadError.value = '';
@@ -220,7 +216,7 @@ async function loadCooperations() {
   loading.value = true;
   try {
     const { data } = await request.get('/api/cooperations');
-    cooperations.value = extractPaginatedItems(data).items;
+    cooperations.value = extractOperationsCooperationPage(data).items;
   } catch (e) {
     cooperations.value = [];
     loadError.value = extractErrorMessage(e, '加载反馈与合作失败，请稍后重试');
@@ -247,8 +243,8 @@ async function loadInvites() {
       request.get('/api/invite/codes'),
       request.get('/api/invite/records')
     ]);
-    inviteCodes.value = extractPaginatedItems(codesRes.data).items;
-    inviteRecords.value = extractPaginatedItems(recordsRes.data).items;
+    inviteCodes.value = extractOperationsInviteCodePage(codesRes.data).items;
+    inviteRecords.value = extractOperationsInviteRecordPage(recordsRes.data).items;
   } catch (e) {
     inviteCodes.value = [];
     inviteRecords.value = [];
@@ -263,7 +259,7 @@ async function loadRedemptions() {
   loading.value = true;
   try {
     const { data } = await request.get('/api/points/redemptions');
-    redemptions.value = extractPaginatedItems(data).items;
+    redemptions.value = extractOperationsRedemptionPage(data).items;
   } catch (e) {
     redemptions.value = [];
     loadError.value = extractErrorMessage(e, '加载兑换记录失败，请稍后重试');
@@ -287,7 +283,7 @@ async function loadGoods() {
   loading.value = true;
   try {
     const { data } = await request.get('/api/points/goods', { params: { all: 1 } });
-    goods.value = extractPaginatedItems(data).items;
+    goods.value = extractOperationsGoodsPage(data).items;
   } catch (e) {
     goods.value = [];
     loadError.value = extractErrorMessage(e, '加载积分商品失败，请稍后重试');
@@ -297,20 +293,7 @@ async function loadGoods() {
 }
 
 function openGoodDialog(row) {
-  if (row) {
-    goodForm.value = { ...row };
-  } else {
-    goodForm.value = {
-      id: null,
-      name: '',
-      points: 0,
-      ship_fee: 0,
-      tag: '',
-      type: 'goods',
-      desc: '',
-      is_active: true
-    };
-  }
+  goodForm.value = createOperationsGoodFormState(row);
   goodDialogVisible.value = true;
 }
 

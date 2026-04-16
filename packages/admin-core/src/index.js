@@ -12,3 +12,4 @@ export * from "./official-site-resources.js";
 export * from "./financial-transaction-resources.js";
 export * from "./notification-resources.js";
 export * from "./content-settings-resources.js";
+export * from "./operations-center-resources.js";
