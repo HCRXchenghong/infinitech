@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -18,47 +17,61 @@ func NewCooperationHandler(service *service.CooperationService) *CooperationHand
 	return &CooperationHandler{service: service}
 }
 
+func respondCooperationInvalidRequest(c *gin.Context, message string) {
+	respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, message, nil)
+}
+
+func respondCooperationInternalError(c *gin.Context, err error) {
+	if err == nil {
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "internal error", nil)
+		return
+	}
+	respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, err.Error(), nil)
+}
+
+func respondCooperationMirroredSuccess(c *gin.Context, message string, data interface{}) {
+	respondMirroredSuccessEnvelope(c, message, data)
+}
+
+func respondCooperationPaginated(c *gin.Context, message string, records interface{}, total int64, page, limit int) {
+	respondPaginatedEnvelope(c, responseCodeOK, message, "records", records, total, page, limit)
+}
+
 func (h *CooperationHandler) Create(c *gin.Context) {
 	var payload repository.CooperationRequest
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondCooperationInvalidRequest(c, "invalid request")
 		return
 	}
 	if err := h.service.Create(c.Request.Context(), &payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondCooperationInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": payload})
+	respondCooperationMirroredSuccess(c, "反馈与合作提交成功", payload)
 }
 
 func (h *CooperationHandler) List(c *gin.Context) {
-	page, _ := strconv.Atoi(c.Query("page"))
-	limit, _ := strconv.Atoi(c.Query("limit"))
-	if page <= 0 {
-		page = 1
-	}
-	if limit <= 0 {
-		limit = 20
-	}
+	page := parsePositiveInt(c.Query("page"), 1)
+	limit := parsePositiveInt(c.Query("limit"), 20)
 	offset := (page - 1) * limit
 
-	status := c.Query("status")
+	status := strings.TrimSpace(c.Query("status"))
 	list, total, err := h.service.List(c.Request.Context(), service.CooperationListParams{
 		Status: status,
 		Limit:  limit,
 		Offset: offset,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondCooperationInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"records": list, "total": total})
+	respondCooperationPaginated(c, "反馈与合作列表加载成功", list, total, page, limit)
 }
 
 func (h *CooperationHandler) Update(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		respondCooperationInvalidRequest(c, "invalid id")
 		return
 	}
 	var payload struct {
@@ -66,12 +79,12 @@ func (h *CooperationHandler) Update(c *gin.Context) {
 		Remark string `json:"remark"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondCooperationInvalidRequest(c, "invalid request")
 		return
 	}
 	if err := h.service.UpdateStatus(c.Request.Context(), id, payload.Status, payload.Remark); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondCooperationInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondCooperationMirroredSuccess(c, "反馈与合作状态更新成功", gin.H{"id": id, "updated": true, "status": payload.Status})
 }

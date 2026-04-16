@@ -18,15 +18,15 @@ func NewMedicineHandler(service *service.MedicineService) *MedicineHandler {
 func (h *MedicineHandler) Consult(c *gin.Context) {
 	var req service.MedicineConsultRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, "invalid request", nil)
 		return
 	}
 
 	result, err := h.service.Consult(req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondErrorEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	respondMirroredSuccessEnvelope(c, "问药咨询结果加载成功", result)
 }

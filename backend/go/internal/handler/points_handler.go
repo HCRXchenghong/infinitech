@@ -2,7 +2,7 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yuexiang/go-api/internal/repository"
@@ -17,78 +17,102 @@ func NewPointsHandler(service *service.PointsService) *PointsHandler {
 	return &PointsHandler{service: service}
 }
 
+func respondPointsError(c *gin.Context, status int, message string, legacy gin.H) {
+	respondEnvelope(c, status, couponResponseCodeForStatus(status), message, gin.H{}, legacy)
+}
+
+func respondPointsInvalidRequest(c *gin.Context, message string, legacy gin.H) {
+	respondPointsError(c, http.StatusBadRequest, message, legacy)
+}
+
+func respondPointsInternalError(c *gin.Context, err error) {
+	if err == nil {
+		respondPointsError(c, http.StatusInternalServerError, "internal error", nil)
+		return
+	}
+	respondPointsError(c, http.StatusInternalServerError, err.Error(), nil)
+}
+
+func respondPointsMirroredSuccess(c *gin.Context, message string, data interface{}) {
+	respondMirroredSuccessEnvelope(c, message, data)
+}
+
+func respondPointsPaginated(c *gin.Context, message string, records interface{}, total int64, page, limit int) {
+	respondPaginatedEnvelope(c, responseCodeOK, message, "records", records, total, page, limit)
+}
+
 func (h *PointsHandler) GetBalance(c *gin.Context) {
-	userID := c.Query("userId")
+	userID := strings.TrimSpace(c.Query("userId"))
 	if userID == "" {
-		userID = c.Query("user_id")
+		userID = strings.TrimSpace(c.Query("user_id"))
 	}
 	balance, err := h.service.GetBalance(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondPointsInvalidRequest(c, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"userId": userID, "balance": balance})
+	respondPointsMirroredSuccess(c, "积分余额加载成功", gin.H{"userId": userID, "balance": balance})
 }
 
 func (h *PointsHandler) ListGoods(c *gin.Context) {
 	includeInactive := c.Query("all") == "1"
 	goods, err := h.service.ListGoods(c.Request.Context(), includeInactive)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondPointsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, goods)
+	respondSuccessEnvelope(c, "积分商品列表加载成功", goods, nil)
 }
 
 func (h *PointsHandler) CreateGood(c *gin.Context) {
 	var payload repository.PointsGood
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondPointsInvalidRequest(c, "invalid request", nil)
 		return
 	}
 	if payload.Name == "" || payload.Points <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name and points required"})
+		respondPointsInvalidRequest(c, "name and points required", nil)
 		return
 	}
 	if err := h.service.CreateGood(c.Request.Context(), &payload); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondPointsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, payload)
+	respondPointsMirroredSuccess(c, "积分商品创建成功", payload)
 }
 
 func (h *PointsHandler) UpdateGood(c *gin.Context) {
-	id := c.Param("id")
+	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		respondPointsInvalidRequest(c, "invalid id", nil)
 		return
 	}
 	var payload map[string]interface{}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondPointsInvalidRequest(c, "invalid request", nil)
 		return
 	}
 	delete(payload, "id")
 	delete(payload, "created_at")
 	delete(payload, "createdAt")
 	if err := h.service.UpdateGood(c.Request.Context(), id, payload); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondPointsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondPointsMirroredSuccess(c, "积分商品更新成功", gin.H{"id": id, "updated": true})
 }
 
 func (h *PointsHandler) DeleteGood(c *gin.Context) {
-	id := c.Param("id")
+	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		respondPointsInvalidRequest(c, "invalid id", nil)
 		return
 	}
 	if err := h.service.DeleteGood(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondPointsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondPointsMirroredSuccess(c, "积分商品删除成功", gin.H{"id": id, "deleted": true})
 }
 
 func (h *PointsHandler) Redeem(c *gin.Context) {
@@ -98,15 +122,15 @@ func (h *PointsHandler) Redeem(c *gin.Context) {
 		GoodID uint   `json:"goodId"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondPointsInvalidRequest(c, "invalid request", nil)
 		return
 	}
 	redemption, balance, err := h.service.RedeemPoints(c.Request.Context(), payload.UserID, payload.Phone, payload.GoodID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "balance": balance})
+		respondPointsInvalidRequest(c, err.Error(), gin.H{"balance": balance})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "redemption": redemption, "balance": balance})
+	respondPointsMirroredSuccess(c, "积分兑换成功", gin.H{"redemption": redemption, "balance": balance, "success": true})
 }
 
 func (h *PointsHandler) Earn(c *gin.Context) {
@@ -117,15 +141,15 @@ func (h *PointsHandler) Earn(c *gin.Context) {
 		Multiplier int     `json:"multiplier"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondPointsInvalidRequest(c, "invalid request", nil)
 		return
 	}
 	balance, earned, err := h.service.EarnPoints(c.Request.Context(), payload.UserID, payload.OrderID, payload.Amount, payload.Multiplier)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondPointsInvalidRequest(c, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "balance": balance, "earned": earned})
+	respondPointsMirroredSuccess(c, "积分发放成功", gin.H{"balance": balance, "earned": earned, "success": true})
 }
 
 func (h *PointsHandler) Refund(c *gin.Context) {
@@ -134,28 +158,22 @@ func (h *PointsHandler) Refund(c *gin.Context) {
 		OrderID string `json:"orderId"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondPointsInvalidRequest(c, "invalid request", nil)
 		return
 	}
 	balance, refunded, err := h.service.RefundPoints(c.Request.Context(), payload.UserID, payload.OrderID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondPointsInvalidRequest(c, err.Error(), nil)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "balance": balance, "refunded": refunded})
+	respondPointsMirroredSuccess(c, "积分退回成功", gin.H{"balance": balance, "refunded": refunded, "success": true})
 }
 
 func (h *PointsHandler) ListRedemptions(c *gin.Context) {
-	page, _ := strconv.Atoi(c.Query("page"))
-	limit, _ := strconv.Atoi(c.Query("limit"))
-	if page <= 0 {
-		page = 1
-	}
-	if limit <= 0 {
-		limit = 20
-	}
+	page := parsePositiveInt(c.Query("page"), 1)
+	limit := parsePositiveInt(c.Query("limit"), 20)
 	offset := (page - 1) * limit
-	status := c.Query("status")
+	status := strings.TrimSpace(c.Query("status"))
 
 	records, total, err := h.service.ListRedemptions(c.Request.Context(), service.PointsRedemptionListParams{
 		Status: status,
@@ -163,28 +181,28 @@ func (h *PointsHandler) ListRedemptions(c *gin.Context) {
 		Offset: offset,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondPointsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"records": records, "total": total})
+	respondPointsPaginated(c, "积分兑换记录加载成功", records, total, page, limit)
 }
 
 func (h *PointsHandler) UpdateRedemption(c *gin.Context) {
-	id := c.Param("id")
+	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		respondPointsInvalidRequest(c, "invalid id", nil)
 		return
 	}
 	var payload struct {
 		Status string `json:"status"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondPointsInvalidRequest(c, "invalid request", nil)
 		return
 	}
 	if err := h.service.UpdateRedemptionStatus(c.Request.Context(), id, payload.Status); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondPointsInternalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondPointsMirroredSuccess(c, "积分兑换状态更新成功", gin.H{"id": id, "updated": true, "status": payload.Status})
 }

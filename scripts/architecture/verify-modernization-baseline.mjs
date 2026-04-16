@@ -430,6 +430,38 @@ assertContains(
   'respondGroupbuyMirroredSuccess(c, "团购券核销成功", result)',
 );
 assertContains(
+  "backend/go/internal/handler/points_handler.go",
+  'respondPointsMirroredSuccess(c, "积分余额加载成功", gin.H{"userId": userID, "balance": balance})',
+);
+assertContains(
+  "backend/go/internal/handler/points_handler.go",
+  'respondSuccessEnvelope(c, "积分商品列表加载成功", goods, nil)',
+);
+assertContains(
+  "backend/go/internal/handler/points_handler.go",
+  'respondPointsPaginated(c, "积分兑换记录加载成功", records, total, page, limit)',
+);
+assertContains(
+  "backend/go/internal/handler/cooperation_handler.go",
+  'respondCooperationMirroredSuccess(c, "反馈与合作提交成功", payload)',
+);
+assertContains(
+  "backend/go/internal/handler/cooperation_handler.go",
+  'respondCooperationPaginated(c, "反馈与合作列表加载成功", list, total, page, limit)',
+);
+assertContains(
+  "backend/go/internal/handler/home_feed_handler.go",
+  'respondHomeFeedMirroredSuccess(c, "首页信息流加载成功", data)',
+);
+assertContains(
+  "backend/go/internal/handler/home_feed_handler.go",
+  'respondHomeFeedMirroredSuccess(c, "首页推广计划创建成功", gin.H{"campaign": campaign})',
+);
+assertContains(
+  "backend/go/internal/handler/medicine_handler.go",
+  'respondMirroredSuccessEnvelope(c, "问药咨询结果加载成功", result)',
+);
+assertContains(
   "backend/bff/src/utils/apiEnvelope.js",
   "function buildSuccessEnvelopePayload(req, message, data, options = {})",
 );
@@ -492,6 +524,14 @@ assertContains(
 assertContains(
   "shared/mobile-common/order-detail-page.js",
   "extractEnvelopeData(vouchers)",
+);
+assertContains(
+  "user-vue/shared-ui/api.js",
+  "extractEnvelopeData(payload) || {}",
+);
+assertContains(
+  "app-mobile/shared-ui/api.js",
+  "extractEnvelopeData(payload) || {}",
 );
 assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",

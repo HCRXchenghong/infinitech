@@ -3,6 +3,7 @@
 import config from "./config";
 import { buildAuthorizationHeaders } from "../../packages/client-sdk/src/auth.js";
 import { createMobilePushApi } from "../../packages/client-sdk/src/mobile-capabilities.js";
+import { extractEnvelopeData } from "../../packages/contracts/src/http.js";
 import {
   readStoredBearerToken,
   uploadAuthenticatedAsset,
@@ -475,13 +476,16 @@ export const fetchPointsBalance = (userId) =>
     url: "/api/points/balance",
     method: "GET",
     data: { userId },
-  });
+  }).then((payload) => extractEnvelopeData(payload) || {});
 
 export const fetchPointsGoods = (params = {}) =>
   request({
     url: "/api/points/goods",
     method: "GET",
     data: params,
+  }).then((payload) => {
+    const data = extractEnvelopeData(payload);
+    return Array.isArray(data) ? data : [];
   });
 
 export const redeemPoints = (payload) =>
@@ -489,28 +493,28 @@ export const redeemPoints = (payload) =>
     url: "/api/points/redeem",
     method: "POST",
     data: payload,
-  });
+  }).then((response) => extractEnvelopeData(response) || {});
 
 export const earnPoints = (payload) =>
   request({
     url: "/api/points/earn",
     method: "POST",
     data: payload,
-  });
+  }).then((response) => extractEnvelopeData(response) || {});
 
 export const refundPoints = (payload) =>
   request({
     url: "/api/points/refund",
     method: "POST",
     data: payload,
-  });
+  }).then((response) => extractEnvelopeData(response) || {});
 
 export const submitCooperation = (payload) =>
   request({
     url: "/api/cooperations",
     method: "POST",
     data: payload,
-  });
+  }).then((response) => extractEnvelopeData(response) || {});
 
 export const fetchInviteCode = (params) =>
   request({
