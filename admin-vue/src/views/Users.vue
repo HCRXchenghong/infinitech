@@ -4,7 +4,19 @@ import { ref, onMounted } from 'vue';
 import request from '@/utils/request';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, More, Delete, Sort, Plus } from '@element-plus/icons-vue';
-import { extractAdminUserPage, extractTemporaryCredential } from '@infinitech/admin-core';
+import {
+  ADMIN_USER_CACHE_LIMIT,
+  buildAdminUserCreatePayload,
+  createAdminUserCacheKey,
+  createAdminUserListParams,
+  createEmptyAdminUserForm,
+  extractAdminUserPage,
+  extractTemporaryCredential,
+  formatAdminUserDateTime,
+  getAdminUserVipLabel,
+  getAdminUserVipTagType,
+  validateAdminUserCreateForm,
+} from '@infinitech/admin-core';
 import {
   createDefaultInviteLinkForm,
   createEmptyInviteLinkResult,
@@ -41,11 +53,7 @@ const reorganizing = ref(false);
 const clearing = ref(false);
 const detailVisible = ref(false);
 const detail = ref({});
-const newUser = ref({
-  phone: '',
-  name: '',
-  password: ''
-});
+const newUser = ref(createEmptyAdminUserForm());
 const inviteDialogVisible = ref(false);
 const creatingInvite = ref(false);
 const inviteForm = ref(createDefaultInviteLinkForm());
@@ -54,7 +62,11 @@ const inviteResult = ref(createEmptyInviteLinkResult());
 // 数据缓存：避免重复加载相同页面的数据
 const dataCache = ref(new Map());
 const cacheKey = () => {
-  return `${currentPage.value}-${pageSize.value}-${searchKeyword.value || ''}`;
+  return createAdminUserCacheKey({
+    page: currentPage.value,
+    limit: pageSize.value,
+    searchKeyword: searchKeyword.value,
+  });
 };
 const onboardingInviteApi = createOnboardingInviteApi({
   get: (url, config) => request.get(url, config),
@@ -78,16 +90,11 @@ async function loadUsers(forceRefresh = false) {
   
   loading.value = true;
   try {
-    const params = {
+    const params = createAdminUserListParams({
       page: currentPage.value,
       limit: pageSize.value,
-      type: 'customer' // 只获取客户类型
-    };
-    
-    if (searchKeyword.value) {
-      params.search = searchKeyword.value;
-    }
-    
+      searchKeyword: searchKeyword.value,
+    });
     const { data } = await request.get('/api/users', { params });
     const page = extractAdminUserPage(data);
 
@@ -99,7 +106,7 @@ async function loadUsers(forceRefresh = false) {
         total: page.total || 0
       });
       // 限制缓存大小，最多缓存20页数据
-      if (dataCache.value.size > 20) {
+      if (dataCache.value.size > ADMIN_USER_CACHE_LIMIT) {
         const firstKey = dataCache.value.keys().next().value;
         dataCache.value.delete(firstKey);
       }
@@ -109,7 +116,7 @@ async function loadUsers(forceRefresh = false) {
     }
   } catch (e) {
     console.error('加载用户失败:', e);
-    loadError.value = e?.response?.data?.error || e?.message || '加载用户失败，请稍后重试';
+    loadError.value = extractErrorMessage(e, '加载用户失败，请稍后重试');
     users.value = [];
     total.value = 0;
   } finally {
@@ -153,29 +160,15 @@ function handleMobileAction(command) {
 }
 
 function formatTime(timeStr) {
-  if (!timeStr) return '-';
-  const date = new Date(timeStr);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day} ${hours}:${minutes}`;
+  return formatAdminUserDateTime(timeStr);
 }
 
 function vipTagType(level) {
-  switch (level) {
-    case '至尊VIP':
-      return 'warning';
-    case '尊贵VIP':
-      return 'danger';
-    case '黄金VIP':
-      return 'success';
-    case '优质VIP':
-      return 'info';
-    default:
-      return '';
-  }
+  return getAdminUserVipTagType(level);
+}
+
+function vipLabel(level) {
+  return getAdminUserVipLabel(level);
 }
 
 async function handleResetPassword(user) {
@@ -216,11 +209,7 @@ async function handleResetPassword(user) {
 }
 
 function showAddDialog() {
-  newUser.value = {
-    phone: '',
-    name: '',
-    password: ''
-  };
+  newUser.value = createEmptyAdminUserForm();
   addDialogVisible.value = true;
 }
 
@@ -276,36 +265,23 @@ function getInviteRemainingUses() {
 }
 
 async function handleAddUser() {
-  if (!newUser.value.phone || !newUser.value.name || !newUser.value.password) {
-    ElMessage.warning('请填写完整信息');
-    return;
-  }
-
-  if (!/^1[3-9]\d{9}$/.test(newUser.value.phone)) {
-    ElMessage.warning('请输入正确的手机号');
-    return;
-  }
-
-  if (newUser.value.password.length < 6) {
-    ElMessage.warning('密码至少需要6位');
+  const validation = validateAdminUserCreateForm(newUser.value);
+  if (!validation.valid) {
+    ElMessage.warning(validation.message);
     return;
   }
 
   addingUser.value = true;
   try {
-    const { data } = await request.post('/api/users', {
-      phone: newUser.value.phone,
-      name: newUser.value.name,
-      password: newUser.value.password,
-      type: 'customer'
-    });
+    const payload = buildAdminUserCreatePayload(newUser.value);
+    const { data } = await request.post('/api/users', payload);
 
-      if (data.success) {
-        ElMessage.success('新增用户成功');
-        addDialogVisible.value = false;
-        dataCache.value.clear(); // 新增用户后清空缓存
-        await loadUsers(true);
-      }
+    if (data.success) {
+      ElMessage.success('新增用户成功');
+      addDialogVisible.value = false;
+      dataCache.value.clear(); // 新增用户后清空缓存
+      await loadUsers(true);
+    }
   } catch (e) {
     console.error('新增用户失败:', e);
     ElMessage.error(extractErrorMessage(e, '新增用户失败'));

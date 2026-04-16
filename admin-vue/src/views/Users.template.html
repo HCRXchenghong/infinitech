@@ -81,11 +81,15 @@
         </el-table-column>
         <el-table-column prop="name" label="姓名" />
         <el-table-column prop="phone" label="手机号" />
-        <el-table-column prop="created_at" label="注册时间" />
+        <el-table-column label="注册时间" width="180">
+          <template #default="{ row }">
+            {{ formatTime(row.created_at) }}
+          </template>
+        </el-table-column>
         <el-table-column label="VIP等级" width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="vipTagType(row.vip_level)" size="small" effect="plain">
-              {{ row.vip_level || '普通用户' }}
+              {{ vipLabel(row.vip_level) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -157,7 +161,7 @@
             </div>
             <div class="info-item">
               <span class="info-label">👑 VIP：</span>
-              <span class="info-value">{{ user.vip_level || '普通用户' }}</span>
+              <span class="info-value">{{ vipLabel(user.vip_level) }}</span>
             </div>
           </div>
 
@@ -204,9 +208,9 @@
           <el-descriptions-item label="角色ID">{{ detail.role_id || '-' }}</el-descriptions-item>
           <el-descriptions-item label="姓名">{{ detail.name || '-' }}</el-descriptions-item>
           <el-descriptions-item label="手机号">{{ detail.phone || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="VIP等级">{{ detail.vip_level || '普通用户' }}</el-descriptions-item>
+          <el-descriptions-item label="VIP等级">{{ vipLabel(detail.vip_level) }}</el-descriptions-item>
           <el-descriptions-item label="积分余额">{{ detail.points_balance ?? 0 }}</el-descriptions-item>
-          <el-descriptions-item label="注册时间" :span="2">{{ detail.created_at || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="注册时间" :span="2">{{ formatTime(detail.created_at) }}</el-descriptions-item>
         </el-descriptions>
         <el-descriptions title="订单统计" :column="2" size="small" border style="margin-top: 16px;">
           <el-descriptions-item label="今日订单">
@@ -267,4 +271,3 @@
     </el-dialog>
   </div>
 </template>
-
