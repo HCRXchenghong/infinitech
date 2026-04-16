@@ -8,6 +8,7 @@
     "./auth-portal": "./src/auth-portal.js",
     "./charity-page": "./src/charity-page.js",
     "./home-index": "./src/home-index.js",
+    "./message-center": "./src/message-center.js",
     "./profile-edit": "./src/profile-edit.js",
     "./medicine-home": "./src/medicine-home.js",
     "./profile-home": "./src/profile-home.js",

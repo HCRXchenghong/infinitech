@@ -55,82 +55,11 @@
 
 <script>
 import { fetchNotificationList } from '@/shared-ui/api.js'
+import { createNotificationListPage } from '../../../../shared/mobile-common/message-center-pages.js'
 
-const NOTIFICATION_READ_EVENT = 'official-notification-read'
-const REALTIME_NOTIFICATION_REFRESH_EVENT = 'realtime:refresh:notifications'
-
-export default {
-  data() {
-    return {
-      notifications: [],
-      loading: false,
-      page: 1,
-      pageSize: 20,
-      hasMore: true
-    }
-  },
-  onLoad() {
-    uni.$on(NOTIFICATION_READ_EVENT, this.handleNotificationRead)
-    uni.$off(REALTIME_NOTIFICATION_REFRESH_EVENT, this.handleRealtimeNotificationRefresh)
-    uni.$on(REALTIME_NOTIFICATION_REFRESH_EVENT, this.handleRealtimeNotificationRefresh)
-    this.refreshNotifications()
-  },
-  onUnload() {
-    uni.$off(NOTIFICATION_READ_EVENT, this.handleNotificationRead)
-    uni.$off(REALTIME_NOTIFICATION_REFRESH_EVENT, this.handleRealtimeNotificationRefresh)
-  },
-  methods: {
-    async refreshNotifications() {
-      this.notifications = []
-      this.page = 1
-      this.hasMore = true
-      await this.loadNotifications()
-    },
-    async loadNotifications() {
-      if (this.loading || !this.hasMore) return
-
-      this.loading = true
-      try {
-        const res = await fetchNotificationList({ page: this.page, pageSize: this.pageSize })
-        if (res.success && Array.isArray(res.data)) {
-          if (res.data.length < this.pageSize) {
-            this.hasMore = false
-          }
-          this.notifications = [...this.notifications, ...res.data]
-          this.page++
-        } else {
-          this.hasMore = false
-        }
-      } catch (err) {
-        console.error('加载通知失败:', err)
-        uni.showToast({ title: '加载失败', icon: 'none' })
-      } finally {
-        this.loading = false
-      }
-    },
-    handleNotificationRead(payload = {}) {
-      const targetId = String(payload.id || '')
-      if (!targetId) return
-      this.notifications = this.notifications.map(item =>
-        String(item.id) === targetId
-          ? { ...item, is_read: true, isRead: true }
-          : item
-      )
-    },
-    handleRealtimeNotificationRefresh() {
-      void this.refreshNotifications()
-    },
-    loadMore() {
-      this.loadNotifications()
-    },
-    goDetail(id) {
-      uni.navigateTo({ url: `/pages/message/notification-detail/index?id=${id}` })
-    },
-    back() {
-      uni.navigateBack()
-    }
-  }
-}
+export default createNotificationListPage({
+  fetchNotificationList
+})
 </script>
 
 <style scoped lang="scss">
