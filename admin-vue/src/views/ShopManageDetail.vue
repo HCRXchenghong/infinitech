@@ -3,7 +3,34 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { extractShopReviewPage } from '@infinitech/admin-core';
+import {
+  buildAdminShopBasicPayload,
+  buildAdminShopImagePayload,
+  buildAdminShopMenuPayload,
+  buildAdminShopReviewPayload,
+  buildAdminShopStaffPayload,
+  buildAdminShopTagPayload,
+  createAdminShopBasicFormState,
+  createAdminShopImageFormState,
+  createAdminShopMenuFormState,
+  createAdminShopReviewFormState,
+  createAdminShopReviewListParams,
+  createAdminShopStaffFormState,
+  createAdminShopTagFormState,
+  createEmptyAdminShopReviewForm,
+  extractShopReviewPage,
+  formatAdminShopAge,
+  formatAdminShopDate,
+  formatAdminShopDateTime,
+  getAdminFoodBusinessLicense,
+  getAdminMerchantQualification,
+  hasAdminShopStaffRecord,
+  normalizeAdminShopDetail,
+  normalizeAdminShopReview,
+  normalizeAdminShopTextList,
+  validateAdminShopReviewForm,
+  validateAdminShopStaffForm,
+} from '@infinitech/admin-core';
 import { extractEnvelopeData, extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
 import request from '@/utils/request';
 import ImageUpload from '@/components/ImageUpload.vue';
@@ -15,18 +42,6 @@ import {
   resolveBusinessCategoryOption,
   resolveMerchantTypeOption
 } from '@/utils/platform-settings';
-import {
-  toArray,
-  commaTextToArray,
-  parseImages,
-  getMerchantQualification,
-  getFoodBusinessLicense,
-  normalizeReview,
-  formatDateTime,
-  normalizeDateValue,
-  formatAge,
-  buildEmptyReviewForm
-} from './shopManageDetailHelpers';
 
 const route = useRoute();
 const router = useRouter();
@@ -57,60 +72,18 @@ const merchantTaxonomySettings = ref(null);
 const merchantTypeOptions = ref(buildMerchantTypeOptions());
 const businessCategoryOptions = ref(buildBusinessCategoryOptions());
 
-const basicForm = ref({});
-const imageForm = ref({});
-const tagForm = ref({
-  tagsText: '',
-  discountsText: ''
-});
-const menuForm = ref({
-  menuNotes: ''
-});
-const staffForm = ref({
-  employeeName: '',
-  employeeAge: 0,
-  employeePosition: '',
-  idCardFrontImage: '',
-  idCardBackImage: '',
-  idCardExpireAt: '',
-  healthCertFrontImage: '',
-  healthCertBackImage: '',
-  healthCertExpireAt: '',
-  employmentStartAt: '',
-  employmentEndAt: ''
-});
+const basicForm = ref(createAdminShopBasicFormState());
+const imageForm = ref(createAdminShopImageFormState());
+const tagForm = ref(createAdminShopTagFormState());
+const menuForm = ref(createAdminShopMenuFormState());
+const staffForm = ref(createAdminShopStaffFormState());
+const reviewForm = ref(createEmptyAdminShopReviewForm());
 
-const reviewForm = ref({
-  userId: '',
-  orderId: '',
-  userName: '',
-  userAvatar: '',
-  rating: 5,
-  content: '',
-  images: [],
-  reply: ''
-});
-
-const tagList = computed(() => toArray(shop.value.tags));
-const discountList = computed(() => toArray(shop.value.discounts));
-const hasStaffRecord = computed(() => {
-  const data = shop.value || {};
-  return Boolean(
-    data.employeeName
-      || Number(data.employeeAge || 0) > 0
-      || data.employeePosition
-      || data.idCardFrontImage
-      || data.idCardBackImage
-      || data.idCardExpireAt
-      || data.healthCertFrontImage
-      || data.healthCertBackImage
-      || data.healthCertExpireAt
-      || data.employmentStartAt
-      || data.employmentEndAt
-  );
-});
-const merchantQualificationImage = computed(() => getMerchantQualification(shop.value));
-const foodBusinessLicenseImage = computed(() => getFoodBusinessLicense(shop.value));
+const tagList = computed(() => normalizeAdminShopTextList(shop.value.tags));
+const discountList = computed(() => normalizeAdminShopTextList(shop.value.discounts));
+const hasStaffRecord = computed(() => hasAdminShopStaffRecord(shop.value));
+const merchantQualificationImage = computed(() => getAdminMerchantQualification(shop.value));
+const foodBusinessLicenseImage = computed(() => getAdminFoodBusinessLicense(shop.value));
 
 onMounted(async () => {
   await loadTaxonomySettings();
@@ -166,16 +139,7 @@ async function loadShop() {
       return;
     }
 
-    const merchantQualification = getMerchantQualification(current);
-    const foodBusinessLicense = getFoodBusinessLicense(current);
-    shop.value = {
-      ...current,
-      isActive: current.isActive === true || current.isActive === 1,
-      isTodayRecommended: current.isTodayRecommended === true || current.isTodayRecommended === 1,
-      todayRecommendPosition: Number(current.todayRecommendPosition || 0),
-      merchantQualification,
-      foodBusinessLicense
-    };
+    shop.value = normalizeAdminShopDetail(current);
   } catch (error) {
     shopError.value = extractErrorMessage(error, '加载店铺详情失败，请稍后重试');
   } finally {
@@ -188,13 +152,10 @@ async function loadReviews() {
   reviewsLoading.value = true;
   try {
     const { data } = await request.get(`/api/shops/${shopId}/reviews`, {
-      params: {
-        page: 1,
-        pageSize: 200
-      }
+      params: createAdminShopReviewListParams(),
     });
     const reviewPage = extractShopReviewPage(data);
-    reviews.value = reviewPage.items.map((item) => normalizeReview(item, shopId));
+    reviews.value = reviewPage.items.map((item) => normalizeAdminShopReview(item, shopId));
   } catch (error) {
     reviews.value = [];
     reviewError.value = extractErrorMessage(error, '加载评论失败，请稍后重试');
@@ -209,86 +170,42 @@ function openBasicDialog() {
     shop.value.businessCategoryKey || shop.value.business_category_key || shop.value.businessCategory || shop.value.category,
     merchantTaxonomySettings.value
   );
-  basicForm.value = {
-    name: shop.value.name || '',
-    phone: shop.value.phone || '',
-    orderType: shop.value.orderType || merchantTypeOption.legacyOrderTypeLabel || '外卖类',
-    merchantType: merchantTypeOption.key || 'takeout',
-    businessCategoryKey: businessCategoryOption.key || 'food',
-    businessCategory: businessCategoryOption.label || '美食',
-    rating: Number(shop.value.rating || 0),
-    monthlySales: Number(shop.value.monthlySales || 0),
-    businessHours: shop.value.businessHours || '',
-    address: shop.value.address || '',
-    announcement: shop.value.announcement || '',
-    isActive: shop.value.isActive === true || shop.value.isActive === 1,
-    isTodayRecommended: shop.value.isTodayRecommended === true || shop.value.isTodayRecommended === 1,
-    todayRecommendPosition: Number(shop.value.todayRecommendPosition || 1),
-    merchantQualification: getMerchantQualification(shop.value),
-    foodBusinessLicense: getFoodBusinessLicense(shop.value)
-  };
+  basicForm.value = createAdminShopBasicFormState(shop.value, {
+    merchantTypeOption,
+    businessCategoryOption,
+  });
   basicDialogVisible.value = true;
 }
 
 function openImageDialog() {
-  imageForm.value = {
-    logo: shop.value.logo || '',
-    coverImage: shop.value.coverImage || '',
-    backgroundImage: shop.value.backgroundImage || ''
-  };
+  imageForm.value = createAdminShopImageFormState(shop.value);
   imageDialogVisible.value = true;
 }
 
 function openTagDialog() {
-  tagForm.value = {
-    tagsText: tagList.value.join(','),
-    discountsText: discountList.value.join(',')
-  };
+  tagForm.value = createAdminShopTagFormState(shop.value);
   tagDialogVisible.value = true;
 }
 
 function openMenuDialog() {
-  menuForm.value = {
-    menuNotes: shop.value.menuNotes || ''
-  };
+  menuForm.value = createAdminShopMenuFormState(shop.value);
   menuDialogVisible.value = true;
 }
 
 function openStaffDialog() {
-  staffForm.value = {
-    employeeName: shop.value.employeeName || '',
-    employeeAge: Number(shop.value.employeeAge || 0),
-    employeePosition: shop.value.employeePosition || '',
-    idCardFrontImage: shop.value.idCardFrontImage || '',
-    idCardBackImage: shop.value.idCardBackImage || '',
-    idCardExpireAt: normalizeDateValue(shop.value.idCardExpireAt),
-    healthCertFrontImage: shop.value.healthCertFrontImage || '',
-    healthCertBackImage: shop.value.healthCertBackImage || '',
-    healthCertExpireAt: normalizeDateValue(shop.value.healthCertExpireAt),
-    employmentStartAt: normalizeDateValue(shop.value.employmentStartAt),
-    employmentEndAt: normalizeDateValue(shop.value.employmentEndAt)
-  };
+  staffForm.value = createAdminShopStaffFormState(shop.value);
   staffDialogVisible.value = true;
 }
 
 function openCreateReviewDialog() {
   reviewEditingId.value = '';
-  reviewForm.value = buildEmptyReviewForm();
+  reviewForm.value = createEmptyAdminShopReviewForm();
   reviewDialogVisible.value = true;
 }
 
 function openEditReviewDialog(row) {
   reviewEditingId.value = String(row.id || '');
-  reviewForm.value = {
-    userId: String(row.userId || ''),
-    orderId: String(row.orderId || ''),
-    userName: row.userName || '',
-    userAvatar: row.userAvatar || '',
-    rating: Number(row.rating || 5),
-    content: row.content || '',
-    images: parseImages(row.images),
-    reply: row.reply || ''
-  };
+  reviewForm.value = createAdminShopReviewFormState(row);
   reviewDialogVisible.value = true;
 }
 
@@ -332,27 +249,13 @@ function removeReviewImage(index) {
 }
 
 async function saveReview() {
-  if (!reviewForm.value.content || !reviewForm.value.content.trim()) {
-    ElMessage.warning('评论内容不能为空');
-    return;
-  }
-  const rating = Number(reviewForm.value.rating || 0);
-  if (rating <= 0 || rating > 5) {
-    ElMessage.warning('评分范围必须在 1 - 5 之间');
+  const validation = validateAdminShopReviewForm(reviewForm.value);
+  if (!validation.valid) {
+    ElMessage.warning(validation.message);
     return;
   }
 
-  const payload = {
-    shopId,
-    userId: String(reviewForm.value.userId || '').trim(),
-    orderId: String(reviewForm.value.orderId || '').trim(),
-    userName: reviewForm.value.userName || '匿名用户',
-    userAvatar: reviewForm.value.userAvatar || '',
-    rating,
-    content: reviewForm.value.content,
-    images: Array.isArray(reviewForm.value.images) ? reviewForm.value.images : [],
-    reply: reviewForm.value.reply || ''
-  };
+  const payload = buildAdminShopReviewPayload(reviewForm.value, shopId);
 
   reviewSaving.value = true;
   try {
@@ -412,10 +315,6 @@ async function updateShop(payload, options = {}) {
 }
 
 async function saveBasicInfo() {
-  if (!basicForm.value.name) {
-    ElMessage.warning('店铺名称不能为空');
-    return;
-  }
   const merchantTypeOption = resolveMerchantTypeOption(
     basicForm.value.merchantType || basicForm.value.orderType,
     merchantTaxonomySettings.value
@@ -424,30 +323,29 @@ async function saveBasicInfo() {
     basicForm.value.businessCategoryKey || basicForm.value.businessCategory,
     merchantTaxonomySettings.value
   );
-  const ok = await updateShop({
-    ...basicForm.value,
-    orderType: merchantTypeOption.legacyOrderTypeLabel,
-    merchantType: merchantTypeOption.key,
-    businessCategoryKey: businessCategoryOption.key,
-    businessCategory: businessCategoryOption.label
+  const payload = buildAdminShopBasicPayload(basicForm.value, {
+    merchantTypeOption,
+    businessCategoryOption,
   });
+  if (!payload.name) {
+    ElMessage.warning('店铺名称不能为空');
+    return;
+  }
+  const ok = await updateShop(payload);
   if (ok) {
     basicDialogVisible.value = false;
   }
 }
 
 async function saveImageInfo() {
-  const ok = await updateShop(imageForm.value);
+  const ok = await updateShop(buildAdminShopImagePayload(imageForm.value));
   if (ok) {
     imageDialogVisible.value = false;
   }
 }
 
 async function saveTagInfo() {
-  const payload = {
-    tags: commaTextToArray(tagForm.value.tagsText),
-    discounts: commaTextToArray(tagForm.value.discountsText)
-  };
+  const payload = buildAdminShopTagPayload(tagForm.value);
   const ok = await updateShop(payload);
   if (ok) {
     tagDialogVisible.value = false;
@@ -455,53 +353,30 @@ async function saveTagInfo() {
 }
 
 async function saveMenuInfo() {
-  const ok = await updateShop({
-    menuNotes: menuForm.value.menuNotes || ''
-  });
+  const ok = await updateShop(buildAdminShopMenuPayload(menuForm.value));
   if (ok) {
     menuDialogVisible.value = false;
   }
 }
 
 async function saveStaffInfo() {
-  if (!staffForm.value.employeeName || !staffForm.value.employeeName.trim()) {
-    ElMessage.warning('请填写员工姓名');
+  const validation = validateAdminShopStaffForm(staffForm.value);
+  if (!validation.valid) {
+    ElMessage.warning(validation.message);
     return;
   }
 
-  const age = Number(staffForm.value.employeeAge || 0);
-  if (age < 0) {
-    ElMessage.warning('年龄不能小于 0');
-    return;
-  }
-  if (
-    staffForm.value.employmentStartAt
-      && staffForm.value.employmentEndAt
-      && staffForm.value.employmentStartAt > staffForm.value.employmentEndAt
-  ) {
-    ElMessage.warning('离职时间不能早于入职时间');
-    return;
-  }
-
-  const payload = {
-    employeeName: (staffForm.value.employeeName || '').trim(),
-    employeeAge: Math.floor(age),
-    employeePosition: (staffForm.value.employeePosition || '').trim(),
-    idCardFrontImage: staffForm.value.idCardFrontImage || '',
-    idCardBackImage: staffForm.value.idCardBackImage || '',
-    idCardExpireAt: staffForm.value.idCardExpireAt || null,
-    healthCertFrontImage: staffForm.value.healthCertFrontImage || '',
-    healthCertBackImage: staffForm.value.healthCertBackImage || '',
-    healthCertExpireAt: staffForm.value.healthCertExpireAt || null,
-    employmentStartAt: staffForm.value.employmentStartAt || null,
-    employmentEndAt: staffForm.value.employmentEndAt || null
-  };
+  const payload = buildAdminShopStaffPayload(staffForm.value);
 
   const ok = await updateShop(payload);
   if (ok) {
     staffDialogVisible.value = false;
   }
 }
+
+const formatDateTime = formatAdminShopDateTime;
+const formatDate = formatAdminShopDate;
+const formatAge = formatAdminShopAge;
 </script>
 
 <style scoped lang="css" src="./ShopManageDetail.css"></style>
