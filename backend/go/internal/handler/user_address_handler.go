@@ -7,22 +7,34 @@ import (
 	"github.com/yuexiang/go-api/internal/service"
 )
 
+func respondUserAddressError(c *gin.Context, status int, message string) {
+	respondErrorEnvelope(c, status, couponResponseCodeForStatus(status), message, nil)
+}
+
+func respondUserAddressInvalidRequest(c *gin.Context, message string) {
+	respondUserAddressError(c, http.StatusBadRequest, message)
+}
+
+func respondUserAddressSuccess(c *gin.Context, message string, data interface{}, legacy gin.H) {
+	respondSuccessEnvelope(c, message, data, legacy)
+}
+
 func (h *UserHandler) ListAddresses(c *gin.Context) {
 	result, err := h.service.ListAddresses(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondUserAddressInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
+	respondPaginatedEnvelope(c, responseCodeOK, "用户地址列表加载成功", "addresses", result, int64(len(result)), 1, len(result))
 }
 
 func (h *UserHandler) GetDefaultAddress(c *gin.Context) {
 	result, err := h.service.GetDefaultAddress(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondUserAddressInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
+	respondUserAddressSuccess(c, "默认地址加载成功", gin.H{"address": result}, gin.H{"address": result})
 }
 
 func (h *UserHandler) CreateAddress(c *gin.Context) {
@@ -32,10 +44,10 @@ func (h *UserHandler) CreateAddress(c *gin.Context) {
 	}
 	result, err := h.service.CreateAddress(c.Request.Context(), c.Param("id"), input)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondUserAddressInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "address": result})
+	respondUserAddressSuccess(c, "用户地址创建成功", gin.H{"address": result}, gin.H{"address": result})
 }
 
 func (h *UserHandler) UpdateAddress(c *gin.Context) {
@@ -45,27 +57,27 @@ func (h *UserHandler) UpdateAddress(c *gin.Context) {
 	}
 	result, err := h.service.UpdateAddress(c.Request.Context(), c.Param("id"), c.Param("addressId"), input)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondUserAddressInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "address": result})
+	respondUserAddressSuccess(c, "用户地址更新成功", gin.H{"address": result}, gin.H{"address": result})
 }
 
 func (h *UserHandler) DeleteAddress(c *gin.Context) {
 	if err := h.service.DeleteAddress(c.Request.Context(), c.Param("id"), c.Param("addressId")); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondUserAddressInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	respondUserAddressSuccess(c, "用户地址删除成功", gin.H{"addressId": c.Param("addressId"), "deleted": true}, gin.H{"addressId": c.Param("addressId"), "deleted": true})
 }
 
 func (h *UserHandler) SetDefaultAddress(c *gin.Context) {
 	result, err := h.service.SetDefaultAddress(c.Request.Context(), c.Param("id"), c.Param("addressId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		respondUserAddressInvalidRequest(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "address": result})
+	respondUserAddressSuccess(c, "默认地址设置成功", gin.H{"address": result}, gin.H{"address": result})
 }
 
 func bindUserAddressInput(c *gin.Context) (service.UserAddressInput, bool) {
@@ -80,7 +92,7 @@ func bindUserAddressInput(c *gin.Context) (service.UserAddressInput, bool) {
 		IsDefault bool    `json:"isDefault"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid request payload"})
+		respondUserAddressInvalidRequest(c, "invalid request payload")
 		return service.UserAddressInput{}, false
 	}
 

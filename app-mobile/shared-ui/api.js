@@ -384,19 +384,22 @@ export const updateUserProfile = (userId, payload) =>
   });
 
 export const fetchUserAddresses = async (userId) => {
-  const res = await request({
+  const payload = await request({
     url: `/api/user/${encodeURIComponent(userId)}/addresses`,
     method: "GET",
   });
-  return Array.isArray(res?.data) ? res.data : [];
+  return extractPaginatedItems(payload, {
+    listKeys: ["addresses", "items", "records", "list"],
+  }).items;
 };
 
 export const fetchDefaultUserAddress = async (userId) => {
-  const res = await request({
+  const payload = await request({
     url: `/api/user/${encodeURIComponent(userId)}/addresses/default`,
     method: "GET",
   });
-  return res?.data || null;
+  const data = extractEnvelopeData(payload) || {};
+  return data.address || data || null;
 };
 
 const mobilePushApi = createMobilePushApi({
@@ -458,26 +461,26 @@ export const createUserAddress = (userId, payload) =>
     url: `/api/user/${encodeURIComponent(userId)}/addresses`,
     method: "POST",
     data: payload,
-  });
+  }).then((response) => extractEnvelopeData(response) || response || {});
 
 export const updateUserAddress = (userId, addressId, payload) =>
   request({
     url: `/api/user/${encodeURIComponent(userId)}/addresses/${encodeURIComponent(addressId)}`,
     method: "PUT",
     data: payload,
-  });
+  }).then((response) => extractEnvelopeData(response) || response || {});
 
 export const deleteUserAddress = (userId, addressId) =>
   request({
     url: `/api/user/${encodeURIComponent(userId)}/addresses/${encodeURIComponent(addressId)}`,
     method: "DELETE",
-  });
+  }).then((response) => extractEnvelopeData(response) || response || {});
 
 export const setDefaultUserAddress = (userId, addressId) =>
   request({
     url: `/api/user/${encodeURIComponent(userId)}/addresses/${encodeURIComponent(addressId)}/default`,
     method: "POST",
-  });
+  }).then((response) => extractEnvelopeData(response) || response || {});
 
 // 积分/邀请/合作相关
 export const fetchPointsBalance = (userId) =>

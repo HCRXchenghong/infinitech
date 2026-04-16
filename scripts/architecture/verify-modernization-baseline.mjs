@@ -322,6 +322,18 @@ assertContains(
   'respondPaginatedEnvelope(c, responseCodeOK, "邀请记录列表加载成功", "records", list, total, page, limit)',
 );
 assertContains(
+  "backend/go/internal/handler/user_address_handler.go",
+  'respondPaginatedEnvelope(c, responseCodeOK, "用户地址列表加载成功", "addresses", result, int64(len(result)), 1, len(result))',
+);
+assertContains(
+  "backend/go/internal/handler/user_address_handler.go",
+  'respondUserAddressSuccess(c, "用户地址创建成功", gin.H{"address": result}, gin.H{"address": result})',
+);
+assertContains(
+  "backend/go/internal/handler/user_address_handler.go",
+  'respondUserAddressSuccess(c, "默认地址设置成功", gin.H{"address": result}, gin.H{"address": result})',
+);
+assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",
   "func respondAdminSettingsSuccess(c *gin.Context, message string, data interface{})",
 );
@@ -675,6 +687,10 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/api.js",
+  'listKeys: ["addresses", "items", "records", "list"]',
+);
+assertContains(
+  "user-vue/shared-ui/api.js",
   'listKeys: ["messages", "items", "records", "list"]',
 );
 assertContains(
@@ -688,6 +704,10 @@ assertContains(
 assertContains(
   "app-mobile/shared-ui/api.js",
   "extractEnvelopeData(response) || {}",
+);
+assertContains(
+  "app-mobile/shared-ui/api.js",
+  'listKeys: ["addresses", "items", "records", "list"]',
 );
 assertContains(
   "app-mobile/shared-ui/api.js",
