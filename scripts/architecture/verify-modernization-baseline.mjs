@@ -72,6 +72,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/profile-address.test.mjs",
   "packages/mobile-core/src/profile-favorites.js",
   "packages/mobile-core/src/profile-favorites.test.mjs",
+  "packages/mobile-core/src/profile-my-reviews.js",
+  "packages/mobile-core/src/profile-my-reviews.test.mjs",
   "packages/mobile-core/src/profile-edit.js",
   "packages/mobile-core/src/profile-edit.test.mjs",
   "packages/mobile-core/src/profile-coupon-list.js",
@@ -91,6 +93,7 @@ function assertNotContains(relativePath, unexpectedText) {
   "shared/mobile-common/order-support-pages.js",
   "shared/mobile-common/profile-address-pages.js",
   "shared/mobile-common/profile-favorites-page.js",
+  "shared/mobile-common/profile-my-reviews-page.js",
   "shared/mobile-common/profile-edit-page.js",
   "shared/mobile-common/profile-coupon-list-page.js",
   "shared/mobile-common/profile-home-page.js",
@@ -220,6 +223,10 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../shared/mobile-common/profile-favorites-page.js",
   ],
   [
+    "app-mobile/pages/profile/my-reviews/index.vue",
+    "../../../../shared/mobile-common/profile-my-reviews-page.js",
+  ],
+  [
     "app-mobile/pages/profile/coupon-list/index.vue",
     "../../../../shared/mobile-common/profile-coupon-list-page.js",
   ],
@@ -246,6 +253,10 @@ function assertNotContains(relativePath, unexpectedText) {
   [
     "user-vue/pages/profile/favorites/index.vue",
     "../../../../shared/mobile-common/profile-favorites-page.js",
+  ],
+  [
+    "user-vue/pages/profile/my-reviews/index.vue",
+    "../../../../shared/mobile-common/profile-my-reviews-page.js",
   ],
   [
     "user-vue/pages/profile/coupon-list/index.vue",
@@ -1327,7 +1338,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-support-pages.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-my-reviews.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-support-pages.test.mjs"',
 );
 assertContains(
   "package.json",
