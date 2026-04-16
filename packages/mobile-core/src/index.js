@@ -8,6 +8,7 @@ export * from "./message-center.js";
 export * from "./notification-detail.js";
 export * from "./order-coupon.js";
 export * from "./order-support-pages.js";
+export * from "./profile-address.js";
 export * from "./profile-edit.js";
 export * from "./profile-home.js";
 export * from "./profile-coupon-list.js";

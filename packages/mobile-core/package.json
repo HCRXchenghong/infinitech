@@ -12,6 +12,7 @@
     "./notification-detail": "./src/notification-detail.js",
     "./order-coupon": "./src/order-coupon.js",
     "./order-support-pages": "./src/order-support-pages.js",
+    "./profile-address": "./src/profile-address.js",
     "./profile-coupon-list": "./src/profile-coupon-list.js",
     "./profile-edit": "./src/profile-edit.js",
     "./medicine-home": "./src/medicine-home.js",
