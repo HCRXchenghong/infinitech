@@ -1,5 +1,11 @@
 import config, { updateConfig } from "./config";
+import { buildAuthorizationHeaders } from "../../packages/client-sdk/src/auth.js";
 import { createMobilePushApi } from "../../packages/client-sdk/src/mobile-capabilities.js";
+import {
+  buildUniNetworkErrorMessage,
+  createUniRequestClient,
+  isRetryableUniNetworkError,
+} from "../../packages/client-sdk/src/uni-request.js";
 import {
   extractEnvelopeData,
   extractPaginatedItems,
@@ -174,14 +180,7 @@ async function resolveReachableBaseUrl(
 }
 
 function shouldTryFallback(errMsg: string) {
-  const text = String(errMsg || "").toLowerCase();
-  return (
-    text.includes("timeout") ||
-    text.includes("connect") ||
-    text.includes("refused") ||
-    text.includes("network") ||
-    text.includes("fail")
-  );
+  return isRetryableUniNetworkError(errMsg);
 }
 
 function uploadFileByBaseUrl(
@@ -239,80 +238,69 @@ export async function uploadImage(
 
 export function readAuthorizationHeader(): Record<string, string> {
   const token = readAuthToken();
-  return token ? { Authorization: token } : {};
+  return buildAuthorizationHeaders(token);
 }
 
-export function request<T = any>(options: RequestOptions): Promise<T> {
-  const baseUrl = normalizeBaseUrl(getBaseUrl());
-  const auth = options.auth !== false;
-  const headers: Record<string, string> = Object.assign(
-    { "Content-Type": "application/json" },
-    options.header || {},
-  );
-
-  if (auth) {
-    const token = readAuthToken();
-    if (token) {
-      headers.Authorization = token;
-    }
-  }
-
-  return new Promise((resolve, reject) => {
-    uni.request({
-      url: `${baseUrl}${options.url}`,
-      method: options.method || "GET",
-      data: options.data || {},
-      header: headers,
-      timeout: config.TIMEOUT,
-      success(res: any) {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve(res.data as T);
-          return;
-        }
-        if (auth && res.statusCode === 401) {
-          forceMerchantLogout();
-        }
-        reject(
-          buildError(res.data?.error || `请求失败: ${res.statusCode}`, {
-            data: res.data,
-            statusCode: res.statusCode,
-          }),
-        );
-      },
-      async fail(err: any) {
-        const errMsg = String(err?.errMsg || "");
-        if (!options._skipFallback && shouldTryFallback(errMsg)) {
-          try {
-            const resolved = await resolveReachableBaseUrl(baseUrl);
-            if (resolved && resolved !== baseUrl) {
-              updateConfig({
-                API_BASE_URL: resolved,
-                SOCKET_URL: resolved,
-              });
-              const retried = await request<T>({
-                ...options,
-                _skipFallback: true,
-              });
-              resolve(retried);
-              return;
-            }
-          } catch (_fallbackErr) {
-            // ignore fallback errors and continue with original error
-          }
-        }
-
-        let message = "网络请求失败";
-        if (errMsg.includes("timeout")) {
-          message = "请求超时，请检查后端服务";
-        } else if (errMsg.includes("fail") || errMsg.includes("connect")) {
-          message = `无法连接服务器：${baseUrl}（请确认 BFF 已启动，端口通常为 25500）`;
-        } else if (errMsg) {
-          message = errMsg;
-        }
-        reject(buildError(message, { data: err }));
-      },
+const requestClient = createUniRequestClient({
+  uniApp: uni,
+  getBaseUrl,
+  getTimeout: () => config.TIMEOUT,
+  getAuthToken: readAuthToken,
+  onUnauthorized() {
+    forceMerchantLogout();
+  },
+  createHttpError(payload: any, statusCode: number) {
+    return buildError(payload?.error || `请求失败: ${statusCode}`, {
+      data: payload,
+      statusCode,
     });
-  });
+  },
+  createNetworkError(error: any, { baseUrl }: { baseUrl: string }) {
+    const message = buildUniNetworkErrorMessage(
+      error,
+      { baseUrl },
+      {
+        defaultMessage: "网络请求失败",
+        timeoutMessage: "请求超时，请检查后端服务",
+        unreachableMessage: () => `无法连接服务器：${baseUrl}（请确认 BFF 已启动，端口通常为 25500）`,
+      },
+    );
+    return buildError(message, { data: error });
+  },
+  retryOnNetworkError: async ({
+    baseUrl,
+    error,
+    retryRequest,
+  }: {
+    baseUrl: string;
+    error: any;
+    retryRequest: (overrideOptions?: Partial<RequestOptions>) => Promise<any>;
+  }) => {
+    if (!shouldTryFallback(error)) {
+      return null;
+    }
+
+    const resolved = await resolveReachableBaseUrl(baseUrl);
+    if (!resolved || resolved === baseUrl) {
+      return null;
+    }
+
+    updateConfig({
+      API_BASE_URL: resolved,
+      SOCKET_URL: resolved,
+    });
+
+    return {
+      retried: true,
+      value: await retryRequest({
+        _skipFallback: true,
+      }),
+    };
+  },
+})
+
+export function request<T = any>(options: RequestOptions): Promise<T> {
+  return requestClient(options) as Promise<T>;
 }
 
 function apiGet<T = any>(url: string, data?: Record<string, any>, auth = true) {

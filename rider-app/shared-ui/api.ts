@@ -9,6 +9,11 @@ import {
   createRiderPreferenceApi,
 } from '../../packages/client-sdk/src/mobile-capabilities.js'
 import {
+  buildUniNetworkErrorMessage,
+  createUniRequestClient,
+  isRetryableUniNetworkError,
+} from '../../packages/client-sdk/src/uni-request.js'
+import {
   extractEnvelopeData,
   extractPaginatedItems,
   extractSMSResult,
@@ -38,62 +43,41 @@ function readAuthToken(): string {
   return readStoredBearerToken(uni, ['token', 'access_token'])
 }
 
-export function request(options: any) {
-  const baseUrl = getBaseUrl()
-  const token = readAuthToken()
-  const headers: Record<string, string> = Object.assign(
-    { 'Content-Type': 'application/json' },
-    options.header || {}
-  )
-  if (token && !headers.Authorization && !headers.authorization) {
-    headers.Authorization = token
-  }
-
-  return new Promise((resolve, reject) => {
-    uni.request({
-      url: baseUrl + options.url,
-      method: options.method || 'GET',
-      data: options.data || {},
-      header: headers,
-      timeout: config.TIMEOUT,
-      success(res: any) {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve(res.data)
-        } else {
-          const error = {
-            data: res.data,
-            error: res.data?.error || `请求失败: ${res.statusCode}`,
-            statusCode: res.statusCode
-          }
-          reject(error)
-        }
+const requestClient = createUniRequestClient({
+  uniApp: uni,
+  getBaseUrl,
+  getTimeout: () => config.TIMEOUT,
+  getAuthToken: readAuthToken,
+  createHttpError(payload: any, statusCode: number) {
+    return {
+      data: payload,
+      error: payload?.error || `请求失败: ${statusCode}`,
+      statusCode,
+    }
+  },
+  createNetworkError(error: any, { baseUrl }: { baseUrl: string }) {
+    const message = buildUniNetworkErrorMessage(
+      error,
+      { baseUrl },
+      {
+        defaultMessage: '网络请求失败，请检查网络连接',
+        timeoutMessage: '请求超时，请检查后端服务是否运行（端口25500）',
+        unreachableMessage: () => `无法连接到服务器，请确认后端服务已启动（${baseUrl}）`,
       },
-      fail(err: any) {
-        const isNetworkError = err.errMsg?.includes('fail') || err.errMsg?.includes('connect')
+    )
+    return {
+      error: message,
+      message,
+    }
+  },
+  shouldLogNetworkError(error: any) {
+    return !isRetryableUniNetworkError(error) || config.isDev
+  },
+  logger: console,
+})
 
-        if (!isNetworkError || config.isDev) {
-          console.error('请求失败:', err)
-        }
-
-        let errorMessage = '网络请求失败，请检查网络连接'
-
-        if (err.errMsg) {
-          if (err.errMsg.includes('timeout')) {
-            errorMessage = '请求超时，请检查后端服务是否运行（端口25500）'
-          } else if (err.errMsg.includes('fail')) {
-            errorMessage = `无法连接到服务器，请确认后端服务已启动（${baseUrl}）`
-          } else {
-            errorMessage = err.errMsg
-          }
-        }
-
-        reject({
-          error: errorMessage,
-          message: errorMessage
-        })
-      }
-    })
-  })
+export function request(options: any) {
+  return requestClient(options)
 }
 
 export function uploadImage(

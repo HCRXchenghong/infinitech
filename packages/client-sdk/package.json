@@ -8,6 +8,7 @@
     "./auth": "./src/auth.js",
     "./mobile-capabilities": "./src/mobile-capabilities.js",
     "./onboarding-invite": "./src/onboarding-invite.js",
-    "./realtime-token": "./src/realtime-token.js"
+    "./realtime-token": "./src/realtime-token.js",
+    "./uni-request": "./src/uni-request.js"
   }
 }

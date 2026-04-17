@@ -4,6 +4,11 @@ import config from "./config";
 import { buildAuthorizationHeaders } from "../../packages/client-sdk/src/auth.js";
 import { createMobilePushApi } from "../../packages/client-sdk/src/mobile-capabilities.js";
 import {
+  buildUniNetworkErrorMessage,
+  createUniRequestClient,
+  isRetryableUniNetworkError,
+} from "../../packages/client-sdk/src/uni-request.js";
+import {
   extractEnvelopeData,
   extractPaginatedItems,
   extractSMSResult,
@@ -23,59 +28,40 @@ function readAuthToken() {
   return readStoredBearerToken(uni, ["token", "access_token"]);
 }
 
+const requestClient = createUniRequestClient({
+  uniApp: uni,
+  getBaseUrl,
+  getTimeout: () => config.TIMEOUT,
+  createHttpError(payload, statusCode) {
+    return {
+      data: payload,
+      error: payload?.error || `请求失败: ${statusCode}`,
+      statusCode,
+    };
+  },
+  createNetworkError(error, { baseUrl }) {
+    const message = buildUniNetworkErrorMessage(
+      error,
+      { baseUrl },
+      {
+        defaultMessage: "网络请求失败，请检查网络连接",
+        timeoutMessage: "请求超时，请检查后端服务是否运行（端口25500）",
+        unreachableMessage: () => `无法连接到服务器，请确认后端服务已启动（${baseUrl}）`,
+      },
+    );
+    return {
+      error: message,
+      message,
+    };
+  },
+  shouldLogNetworkError(error) {
+    return !isRetryableUniNetworkError(error) || config.isDev;
+  },
+  logger: console,
+});
+
 export function request(options) {
-  const baseUrl = getBaseUrl();
-  return new Promise((resolve, reject) => {
-    uni.request({
-      url: baseUrl + options.url,
-      method: options.method || "GET",
-      data: options.data || {},
-      header: Object.assign(
-        { "Content-Type": "application/json" },
-        options.header || {},
-      ),
-      timeout: config.TIMEOUT, // 从配置读取超时时间
-      success(res) {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve(res.data);
-        } else {
-          // 将错误信息包装成统一格式
-          const error = {
-            data: res.data,
-            error: res.data?.error || `请求失败: ${res.statusCode}`,
-            statusCode: res.statusCode,
-          };
-          reject(error);
-        }
-      },
-      fail(err) {
-        // 只在开发环境或非网络错误时记录详细日志
-        const isNetworkError =
-          err.errMsg?.includes("fail") || err.errMsg?.includes("connect");
-
-        if (!isNetworkError || config.isDev) {
-          console.error("请求失败:", err);
-        }
-
-        let errorMessage = "网络请求失败，请检查网络连接";
-
-        if (err.errMsg) {
-          if (err.errMsg.includes("timeout")) {
-            errorMessage = "请求超时，请检查后端服务是否运行（端口25500）";
-          } else if (err.errMsg.includes("fail")) {
-            errorMessage = `无法连接到服务器，请确认后端服务已启动（${baseUrl}）`;
-          } else {
-            errorMessage = err.errMsg;
-          }
-        }
-
-        reject({
-          error: errorMessage,
-          message: errorMessage,
-        });
-      },
-    });
-  });
+  return requestClient(options);
 }
 
 // 商家相关 API（集成本地缓存）

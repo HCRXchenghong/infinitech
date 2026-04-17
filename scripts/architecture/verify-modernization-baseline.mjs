@@ -49,6 +49,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/client-sdk/src/onboarding-invite.test.mjs",
   "packages/client-sdk/src/realtime-token.js",
   "packages/client-sdk/src/realtime-token.test.mjs",
+  "packages/client-sdk/src/uni-request.js",
+  "packages/client-sdk/src/uni-request.test.mjs",
   "packages/domain-core/src/index.js",
   "packages/domain-core/src/errand-settings.js",
   "packages/domain-core/src/errand-settings.test.mjs",
@@ -1742,7 +1744,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/realtime-token.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
 );
 assertContains(
   "packages/client-sdk/src/realtime-token.js",
@@ -1751,6 +1753,30 @@ assertContains(
 assertContains(
   "packages/client-sdk/src/realtime-token.js",
   "export function buildSocketTokenAccountKey(userId, role) {",
+);
+assertContains(
+  "packages/client-sdk/src/uni-request.js",
+  "export function createUniRequestClient(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/uni-request.js",
+  "export function buildUniNetworkErrorMessage(error, context = {}, options = {}) {",
+);
+assertContains(
+  "user-vue/shared-ui/api.js",
+  "createUniRequestClient({",
+);
+assertContains(
+  "app-mobile/shared-ui/api.js",
+  "createUniRequestClient({",
+);
+assertContains(
+  "merchant-app/shared-ui/api.ts",
+  "createUniRequestClient({",
+);
+assertContains(
+  "rider-app/shared-ui/api.ts",
+  "createUniRequestClient({",
 );
 assertContains(
   "admin-vue/src/utils/socket.js",
