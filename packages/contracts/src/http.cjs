@@ -1,8 +1,10 @@
+"use strict";
+
 function trimText(value) {
   return String(value == null ? "" : value).trim();
 }
 
-export function normalizeErrorCode(status, explicitCode = "") {
+function normalizeErrorCode(status, explicitCode = "") {
   const code = trimText(explicitCode);
   if (code) {
     return code;
@@ -63,7 +65,7 @@ function normalizeSuccessData(data) {
   return data;
 }
 
-export function buildSuccessEnvelopePayload(source, message, data, options = {}) {
+function buildSuccessEnvelopePayload(source, message, data, options = {}) {
   const normalizedMessage = trimText(message) || "ok";
   const payload = {
     request_id: resolveEnvelopeRequestIdSource(source, options.upstreamPayload),
@@ -85,7 +87,7 @@ export function buildSuccessEnvelopePayload(source, message, data, options = {})
   return payload;
 }
 
-export function buildErrorEnvelopePayload(source, status, message, options = {}) {
+function buildErrorEnvelopePayload(source, status, message, options = {}) {
   const normalizedMessage = trimText(message) || "Request failed";
   const payload = {
     request_id: resolveEnvelopeRequestIdSource(source, options.upstreamPayload),
@@ -108,7 +110,7 @@ export function buildErrorEnvelopePayload(source, status, message, options = {})
   return payload;
 }
 
-export function extractEnvelopeData(payload) {
+function extractEnvelopeData(payload) {
   if (
     payload &&
     typeof payload === "object" &&
@@ -119,28 +121,28 @@ export function extractEnvelopeData(payload) {
   return payload;
 }
 
-export function extractEnvelopeRequestId(payload) {
+function extractEnvelopeRequestId(payload) {
   if (!payload || typeof payload !== "object") {
     return "";
   }
   return trimText(payload.request_id || payload.requestId);
 }
 
-export function extractEnvelopeCode(payload, fallback = "OK") {
+function extractEnvelopeCode(payload, fallback = "OK") {
   if (!payload || typeof payload !== "object") {
     return fallback;
   }
   return trimText(payload.code) || fallback;
 }
 
-export function extractEnvelopeMessage(payload, fallback = "") {
+function extractEnvelopeMessage(payload, fallback = "") {
   if (!payload || typeof payload !== "object") {
     return fallback;
   }
   return trimText(payload.message || payload.error) || fallback;
 }
 
-export function extractPaginatedItems(payload, options = {}) {
+function extractPaginatedItems(payload, options = {}) {
   const data = extractEnvelopeData(payload);
   const listKeys = Array.isArray(options.listKeys) && options.listKeys.length > 0
     ? options.listKeys
@@ -201,7 +203,7 @@ function resolveCredentialSource(payload = {}) {
   return null;
 }
 
-export function extractTemporaryCredential(payload = {}) {
+function extractTemporaryCredential(payload = {}) {
   const source = resolveCredentialSource(payload);
   const temporaryPassword = trimText(source?.temporaryPassword);
 
@@ -216,17 +218,15 @@ export function extractTemporaryCredential(payload = {}) {
   };
 }
 
-export function extractUploadAsset(payload) {
+function extractUploadAsset(payload) {
   const data = extractEnvelopeData(payload);
   if (!data || typeof data !== "object") {
     return null;
   }
   const assetId = String(data.asset_id || data.assetId || data.assetRef || "").trim();
   const url = String(data.asset_url || data.assetUrl || data.previewUrl || data.url || "").trim();
-  if (!url) {
-    if (!assetId) {
-      return null;
-    }
+  if (!url && !assetId) {
+    return null;
   }
   return {
     ...data,
@@ -236,7 +236,7 @@ export function extractUploadAsset(payload) {
   };
 }
 
-export function extractSMSResult(payload) {
+function extractSMSResult(payload) {
   if (!payload || typeof payload !== "object") {
     return {};
   }
@@ -285,7 +285,7 @@ export function extractSMSResult(payload) {
   };
 }
 
-export function extractErrorMessage(payload, fallback = "请求失败") {
+function extractErrorMessage(payload, fallback = "请求失败") {
   if (!payload) {
     return fallback;
   }
@@ -308,3 +308,18 @@ export function extractErrorMessage(payload, fallback = "请求失败") {
 
   return fallback;
 }
+
+module.exports = {
+  normalizeErrorCode,
+  buildSuccessEnvelopePayload,
+  buildErrorEnvelopePayload,
+  extractEnvelopeData,
+  extractEnvelopeRequestId,
+  extractEnvelopeCode,
+  extractEnvelopeMessage,
+  extractPaginatedItems,
+  extractTemporaryCredential,
+  extractUploadAsset,
+  extractSMSResult,
+  extractErrorMessage,
+};

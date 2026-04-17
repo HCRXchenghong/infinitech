@@ -36,6 +36,7 @@ function assertNotContains(relativePath, unexpectedText) {
 
 [
   "packages/contracts/src/index.js",
+  "packages/contracts/src/http.cjs",
   "packages/contracts/src/http.test.mjs",
   "packages/contracts/src/identity.cjs",
   "packages/contracts/src/identity.test.mjs",
@@ -1165,7 +1166,7 @@ assertContains(
 );
 assertContains(
   "backend/bff/src/utils/apiEnvelope.js",
-  "function buildSuccessEnvelopePayload(req, message, data, options = {})",
+  "../../../../packages/contracts/src/http.cjs",
 );
 assertContains(
   "backend/bff/src/controllers/officialSiteController.js",
@@ -1533,7 +1534,7 @@ assertContains(
 );
 assertContains(
   "backend/bff/src/utils/apiEnvelope.js",
-  "function buildErrorEnvelopePayload(req, status, message, options = {})",
+  "../../../../packages/contracts/src/http.cjs",
 );
 assertContains(
   "backend/bff/src/controllers/authController.js",
@@ -3226,6 +3227,22 @@ assertContains(
 assertContains(
   "socket-server/index.js",
   "Socket server public upload hosting is disabled. Use authenticated API asset routes instead.",
+);
+assertContains(
+  "socket-server/index.js",
+  "buildSuccessEnvelopePayload",
+);
+assertContains(
+  "socket-server/index.js",
+  "buildErrorEnvelopePayload",
+);
+assertContains(
+  "socket-server/routes.js",
+  "buildSuccessEnvelopePayload",
+);
+assertContains(
+  "socket-server/routes.js",
+  "buildErrorEnvelopePayload",
 );
 assertContains(
   "backend/bff/src/config/index.js",

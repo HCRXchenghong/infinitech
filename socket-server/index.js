@@ -17,6 +17,10 @@ import {
   getRedisHealthSnapshot,
   initRedisState
 } from './redisState.js';
+import {
+  buildErrorEnvelopePayload,
+  buildSuccessEnvelopePayload,
+} from '../packages/contracts/src/http.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -98,6 +102,14 @@ function socketIoCorsOrigin(origin, callback) {
 function writeJson(res, statusCode, payload) {
   res.writeHead(statusCode, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(payload));
+}
+
+function writeSuccessEnvelope(req, res, statusCode, message, data, options = {}) {
+  writeJson(res, statusCode, buildSuccessEnvelopePayload(req, message, data, options));
+}
+
+function writeErrorEnvelope(req, res, statusCode, message, options = {}) {
+  writeJson(res, statusCode, buildErrorEnvelopePayload(req, statusCode, message, options));
 }
 
 function logHttpRequest(req, res, pathname, requestId) {
@@ -195,7 +207,7 @@ async function enforceHttpRateLimit(req, res, pathname) {
   if (allowed) return true;
 
   res.setHeader('Retry-After', String(Math.max(1, Math.ceil(retryAfterMs / 1000))));
-  writeJson(res, 429, { error: 'Too many requests, please retry later' });
+  writeErrorEnvelope(req, res, 429, 'Too many requests, please retry later');
   return false;
 }
 
@@ -218,12 +230,25 @@ function buildRequestUrl(req) {
   return new URL(req.url || '/', `http://${req.headers.host || `127.0.0.1:${PORT}`}`);
 }
 
-function writeSocketStatus(res, statusCode, status, extra = {}) {
-  writeJson(res, statusCode, {
+function writeSocketStatus(req, res, statusCode, status, extra = {}) {
+  const payload = {
     status,
     service: 'socket-server',
     timestamp: new Date().toISOString(),
-    ...extra
+    ...extra,
+  };
+  const message = statusCode >= 400
+    ? String(extra.error || `socket server ${status}`)
+    : `socket server ${status}`;
+  if (statusCode >= 400) {
+    writeErrorEnvelope(req, res, statusCode, message, {
+      data: payload,
+      legacy: payload,
+    });
+    return;
+  }
+  writeSuccessEnvelope(req, res, statusCode, message, payload, {
+    legacy: payload,
   });
 }
 
@@ -256,7 +281,7 @@ const httpServer = createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Token-Api-Secret, X-Api-Secret');
 
   if (origin && !corsOrigin) {
-    writeJson(res, 403, { success: false, error: 'Origin not allowed' });
+    writeErrorEnvelope(req, res, 403, 'Origin not allowed');
     return;
   }
 
@@ -271,7 +296,7 @@ const httpServer = createServer(async (req, res) => {
   }
 
   if ((pathname === '/health' || pathname === '/api/health') && req.method === 'GET') {
-    writeSocketStatus(res, 200, 'ok', getSocketOperationalStatus());
+    writeSocketStatus(req, res, 200, 'ok', getSocketOperationalStatus());
     return;
   }
 
@@ -279,37 +304,41 @@ const httpServer = createServer(async (req, res) => {
     const readiness = getSocketOperationalStatus();
     const redis = readiness.redis;
     if (redis.enabled && !redis.connected) {
-      writeSocketStatus(res, 503, 'degraded', {
+      writeSocketStatus(req, res, 503, 'degraded', {
         error: 'redis not ready',
         ...readiness
       });
       return;
     }
     if (redis.enabled && redis.connected && !redis.adapterEnabled) {
-      writeSocketStatus(res, 503, 'degraded', {
+      writeSocketStatus(req, res, 503, 'degraded', {
         error: 'socket adapter not ready',
         ...readiness
       });
       return;
     }
 
-    writeSocketStatus(res, 200, 'ready', readiness);
+    writeSocketStatus(req, res, 200, 'ready', readiness);
     return;
   }
 
   if (pathname === '/api/upload' && req.method === 'POST') {
-    writeJson(res, 403, {
-      success: false,
-      error: 'Socket server direct upload is disabled. Use the authenticated BFF upload endpoint instead.',
-    });
+    writeErrorEnvelope(
+      req,
+      res,
+      403,
+      'Socket server direct upload is disabled. Use the authenticated BFF upload endpoint instead.',
+    );
     return;
   }
 
   if (pathname.startsWith('/uploads/') && req.method === 'GET') {
-    writeJson(res, 403, {
-      success: false,
-      error: 'Socket server public upload hosting is disabled. Use authenticated API asset routes instead.',
-    });
+    writeErrorEnvelope(
+      req,
+      res,
+      403,
+      'Socket server public upload hosting is disabled. Use authenticated API asset routes instead.',
+    );
     return;
   }
 
@@ -319,7 +348,9 @@ const httpServer = createServer(async (req, res) => {
     stats.onlinePresenceSample = await getOnlineUsers(20);
     stats.redis = getRedisHealthSnapshot();
     stats.supportHistoryFallback = getSupportHistoryFallbackConfig();
-    writeJson(res, 200, stats);
+    writeSuccessEnvelope(req, res, 200, 'Socket server stats loaded successfully', stats, {
+      legacy: stats,
+    });
     return;
   }
 
@@ -332,7 +363,12 @@ const httpServer = createServer(async (req, res) => {
         const userId = String(body?.userId || '').trim();
         const role = String(body?.role || '').trim().toLowerCase();
         if (!userId || !role) {
-          writeJson(res, 400, { error: 'userId and role are required for trusted socket token issuance' });
+          writeErrorEnvelope(
+            req,
+            res,
+            400,
+            'userId and role are required for trusted socket token issuance',
+          );
           return;
         }
 
@@ -361,23 +397,27 @@ const httpServer = createServer(async (req, res) => {
         }
       });
 
-      writeJson(res, 200, {
+      writeSuccessEnvelope(req, res, 200, 'Socket token issued successfully', {
         token,
         userId: identity.socketUserId,
         role: identity.role
+      }, {
+        legacy: {
+          token,
+          userId: identity.socketUserId,
+          role: identity.role,
+        },
       });
     } catch (err) {
       const statusCode = Number(err?.statusCode || 500);
-      writeJson(res, statusCode, {
-        error: err?.message || 'Failed to generate socket token'
-      });
+      writeErrorEnvelope(req, res, statusCode, err?.message || 'Failed to generate socket token');
     }
     return;
   }
 
   if (pathname === '/api/realtime/publish' && req.method === 'POST') {
     if (!isTrustedSocketApiRequest(req)) {
-      writeJson(res, 403, { error: '未授权访问' });
+      writeErrorEnvelope(req, res, 403, '未授权访问');
       return;
     }
     try {
@@ -388,20 +428,21 @@ const httpServer = createServer(async (req, res) => {
         Array.isArray(body?.recipients) ? body.recipients : [],
         body?.payload && typeof body.payload === 'object' ? body.payload : {}
       );
-      writeJson(res, 200, {
-        success: true,
-        ...result
+      writeSuccessEnvelope(req, res, 200, 'Realtime notification published successfully', result, {
+        legacy: result,
       });
     } catch (err) {
-      writeJson(res, Number(err?.statusCode || 500), {
-        error: err?.message || 'Failed to publish realtime notification'
-      });
+      writeErrorEnvelope(
+        req,
+        res,
+        Number(err?.statusCode || 500),
+        err?.message || 'Failed to publish realtime notification',
+      );
     }
     return;
   }
 
-  res.writeHead(404);
-  res.end();
+  writeErrorEnvelope(req, res, 404, `Socket route not found: ${req.method} ${pathname}`);
 });
 
 httpServer.requestTimeout = SOCKET_HTTP_REQUEST_TIMEOUT_MS;

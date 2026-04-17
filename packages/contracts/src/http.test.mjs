@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 
 import {
+  buildErrorEnvelopePayload,
+  buildSuccessEnvelopePayload,
   extractEnvelopeCode,
   extractEnvelopeData,
   extractEnvelopeMessage,
@@ -10,7 +13,11 @@ import {
   extractSMSResult,
   extractTemporaryCredential,
   extractUploadAsset,
+  normalizeErrorCode,
 } from "./http.js";
+
+const require = createRequire(import.meta.url);
+const cjsHttp = require("./http.cjs");
 
 test("extractEnvelopeData prefers explicit data envelope", () => {
   assert.deepEqual(extractEnvelopeData({ data: { ok: true } }), { ok: true });
@@ -26,6 +33,47 @@ test("extract envelope meta reads standardized request fields", () => {
   assert.equal(extractEnvelopeRequestId(payload), "req-123");
   assert.equal(extractEnvelopeCode(payload), "INVITE_CREATED");
   assert.equal(extractEnvelopeMessage(payload), "邀请链接创建成功");
+});
+
+test("http contracts build standardized success and error envelopes", () => {
+  const request = {
+    requestId: "req-http-1",
+    headers: {
+      "x-request-id": "req-http-header",
+    },
+  };
+
+  assert.deepEqual(
+    buildSuccessEnvelopePayload(request, "操作成功", { ok: true }, {
+      legacy: { status: "ok" },
+    }),
+    {
+      request_id: "req-http-1",
+      code: "OK",
+      message: "操作成功",
+      data: { ok: true },
+      success: true,
+      status: "ok",
+    },
+  );
+
+  assert.deepEqual(
+    buildErrorEnvelopePayload(request, 429, "请求过于频繁", {
+      data: { retry_after: 60 },
+      legacy: { status: "rate_limited" },
+    }),
+    {
+      request_id: "req-http-1",
+      code: "TOO_MANY_REQUESTS",
+      message: "请求过于频繁",
+      data: { retry_after: 60 },
+      success: false,
+      error: "请求过于频繁",
+      status: "rate_limited",
+    },
+  );
+
+  assert.equal(normalizeErrorCode(503), "UPSTREAM_UNAVAILABLE");
 });
 
 test("extractPaginatedItems supports enveloped and legacy list payloads", () => {
@@ -164,5 +212,17 @@ test("extractSMSResult preserves sms debug code from enveloped payloads", () => 
       sessionId: "session_1",
       smsCode: "123456",
     },
+  );
+});
+
+test("http contracts keep CommonJS bridge aligned with ESM helpers", () => {
+  const source = { requestId: "req-http-2" };
+  assert.deepEqual(
+    cjsHttp.buildSuccessEnvelopePayload(source, "ok", { id: 1 }),
+    buildSuccessEnvelopePayload(source, "ok", { id: 1 }),
+  );
+  assert.deepEqual(
+    cjsHttp.buildErrorEnvelopePayload(source, 404, "not found"),
+    buildErrorEnvelopePayload(source, 404, "not found"),
   );
 });
