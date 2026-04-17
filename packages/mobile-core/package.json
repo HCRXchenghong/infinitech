@@ -14,6 +14,7 @@
     "./location": "./src/location.js",
     "./mobile-client-context": "./src/mobile-client-context.js",
     "./medicine-order": "./src/medicine-order.js",
+    "./portal-runtime": "./src/portal-runtime.js",
     "./platform-runtime": "./src/platform-runtime.js",
     "./platform-schema": "./src/platform-schema.js",
     "./search-page": "./src/search-page.js",

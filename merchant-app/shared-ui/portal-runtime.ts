@@ -1,6 +1,7 @@
 import { fetchPublicRuntimeSettings } from './api'
+import { createPortalRuntimeStore, type PortalRuntimeSettings } from '../../packages/mobile-core/src/portal-runtime.js'
 
-export interface MerchantPortalRuntimeSettings {
+export interface MerchantPortalRuntimeSettings extends PortalRuntimeSettings {
   title: string
   subtitle: string
   loginFooter: string
@@ -16,54 +17,20 @@ export const DEFAULT_MERCHANT_PORTAL_RUNTIME_SETTINGS: MerchantPortalRuntimeSett
   serviceAgreement: '使用商户端即表示你同意平台商户服务协议，包含店铺经营规范、结算与售后条款。'
 }
 
-let cachedMerchantPortalRuntimeSettings: MerchantPortalRuntimeSettings = {
-  ...DEFAULT_MERCHANT_PORTAL_RUNTIME_SETTINGS
-}
-let hasLoadedMerchantPortalRuntimeSettings = false
-let merchantPortalRuntimePromise: Promise<MerchantPortalRuntimeSettings> | null = null
+const merchantPortalRuntimeStore = createPortalRuntimeStore<MerchantPortalRuntimeSettings>({
+  fetchRuntimeSettings: fetchPublicRuntimeSettings,
+  defaultSettings: DEFAULT_MERCHANT_PORTAL_RUNTIME_SETTINGS,
+  fieldMap: {
+    title: 'merchant_portal_title',
+    subtitle: 'merchant_portal_subtitle',
+    loginFooter: 'merchant_portal_login_footer',
+    privacyPolicy: 'merchant_privacy_policy',
+    serviceAgreement: 'merchant_service_agreement',
+  },
+})
 
-function normalizeMerchantPortalRuntimeSettings(payload: any = {}): MerchantPortalRuntimeSettings {
-  return {
-    title:
-      String(payload?.merchant_portal_title || '').trim() ||
-      DEFAULT_MERCHANT_PORTAL_RUNTIME_SETTINGS.title,
-    subtitle:
-      String(payload?.merchant_portal_subtitle || '').trim() ||
-      DEFAULT_MERCHANT_PORTAL_RUNTIME_SETTINGS.subtitle,
-    loginFooter:
-      String(payload?.merchant_portal_login_footer || '').trim() ||
-      DEFAULT_MERCHANT_PORTAL_RUNTIME_SETTINGS.loginFooter,
-    privacyPolicy:
-      String(payload?.merchant_privacy_policy || '').trim() ||
-      DEFAULT_MERCHANT_PORTAL_RUNTIME_SETTINGS.privacyPolicy,
-    serviceAgreement:
-      String(payload?.merchant_service_agreement || '').trim() ||
-      DEFAULT_MERCHANT_PORTAL_RUNTIME_SETTINGS.serviceAgreement,
-  }
-}
-
-export function getCachedMerchantPortalRuntimeSettings(): MerchantPortalRuntimeSettings {
-  return { ...cachedMerchantPortalRuntimeSettings }
-}
-
-export async function loadMerchantPortalRuntimeSettings(force = false): Promise<MerchantPortalRuntimeSettings> {
-  if (hasLoadedMerchantPortalRuntimeSettings && !force) {
-    return getCachedMerchantPortalRuntimeSettings()
-  }
-  if (merchantPortalRuntimePromise && !force) {
-    return merchantPortalRuntimePromise
-  }
-
-  merchantPortalRuntimePromise = fetchPublicRuntimeSettings()
-    .then((payload: any) => {
-      cachedMerchantPortalRuntimeSettings = normalizeMerchantPortalRuntimeSettings(payload)
-      hasLoadedMerchantPortalRuntimeSettings = true
-      return getCachedMerchantPortalRuntimeSettings()
-    })
-    .catch(() => getCachedMerchantPortalRuntimeSettings())
-    .finally(() => {
-      merchantPortalRuntimePromise = null
-    })
-
-  return merchantPortalRuntimePromise
-}
+export const {
+  getCachedPortalRuntimeSettings: getCachedMerchantPortalRuntimeSettings,
+  loadPortalRuntimeSettings: loadMerchantPortalRuntimeSettings,
+  resetPortalRuntimeSettings: resetMerchantPortalRuntimeSettings,
+} = merchantPortalRuntimeStore

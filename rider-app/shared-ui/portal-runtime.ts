@@ -1,6 +1,7 @@
 import { fetchPublicRuntimeSettings } from './api'
+import { createPortalRuntimeStore, type PortalRuntimeSettings } from '../../packages/mobile-core/src/portal-runtime.js'
 
-export interface RiderPortalRuntimeSettings {
+export interface RiderPortalRuntimeSettings extends PortalRuntimeSettings {
   title: string
   subtitle: string
   loginFooter: string
@@ -12,50 +13,18 @@ export const DEFAULT_RIDER_PORTAL_RUNTIME_SETTINGS: RiderPortalRuntimeSettings =
   loginFooter: '骑手账号由平台邀约开通',
 }
 
-let cachedRiderPortalRuntimeSettings: RiderPortalRuntimeSettings = {
-  ...DEFAULT_RIDER_PORTAL_RUNTIME_SETTINGS,
-}
-let hasLoadedRiderPortalRuntimeSettings = false
-let riderPortalRuntimePromise: Promise<RiderPortalRuntimeSettings> | null = null
+const riderPortalRuntimeStore = createPortalRuntimeStore<RiderPortalRuntimeSettings>({
+  fetchRuntimeSettings: fetchPublicRuntimeSettings,
+  defaultSettings: DEFAULT_RIDER_PORTAL_RUNTIME_SETTINGS,
+  fieldMap: {
+    title: 'rider_portal_title',
+    subtitle: 'rider_portal_subtitle',
+    loginFooter: 'rider_portal_login_footer',
+  },
+})
 
-function normalizeRiderPortalRuntimeSettings(payload: any = {}): RiderPortalRuntimeSettings {
-  return {
-    title:
-      String(payload?.rider_portal_title || '').trim() ||
-      DEFAULT_RIDER_PORTAL_RUNTIME_SETTINGS.title,
-    subtitle:
-      String(payload?.rider_portal_subtitle || '').trim() ||
-      DEFAULT_RIDER_PORTAL_RUNTIME_SETTINGS.subtitle,
-    loginFooter:
-      String(payload?.rider_portal_login_footer || '').trim() ||
-      DEFAULT_RIDER_PORTAL_RUNTIME_SETTINGS.loginFooter,
-  }
-}
-
-export function getCachedRiderPortalRuntimeSettings(): RiderPortalRuntimeSettings {
-  return { ...cachedRiderPortalRuntimeSettings }
-}
-
-export async function loadRiderPortalRuntimeSettings(
-  force = false
-): Promise<RiderPortalRuntimeSettings> {
-  if (hasLoadedRiderPortalRuntimeSettings && !force) {
-    return getCachedRiderPortalRuntimeSettings()
-  }
-  if (riderPortalRuntimePromise && !force) {
-    return riderPortalRuntimePromise
-  }
-
-  riderPortalRuntimePromise = fetchPublicRuntimeSettings()
-    .then((payload: any) => {
-      cachedRiderPortalRuntimeSettings = normalizeRiderPortalRuntimeSettings(payload)
-      hasLoadedRiderPortalRuntimeSettings = true
-      return getCachedRiderPortalRuntimeSettings()
-    })
-    .catch(() => getCachedRiderPortalRuntimeSettings())
-    .finally(() => {
-      riderPortalRuntimePromise = null
-    })
-
-  return riderPortalRuntimePromise
-}
+export const {
+  getCachedPortalRuntimeSettings: getCachedRiderPortalRuntimeSettings,
+  loadPortalRuntimeSettings: loadRiderPortalRuntimeSettings,
+  resetPortalRuntimeSettings: resetRiderPortalRuntimeSettings,
+} = riderPortalRuntimeStore

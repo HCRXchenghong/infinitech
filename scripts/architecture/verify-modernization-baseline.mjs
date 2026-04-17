@@ -92,6 +92,9 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/platform-schema.js",
   "packages/mobile-core/src/platform-schema.d.ts",
   "packages/mobile-core/src/platform-schema.test.mjs",
+  "packages/mobile-core/src/portal-runtime.js",
+  "packages/mobile-core/src/portal-runtime.d.ts",
+  "packages/mobile-core/src/portal-runtime.test.mjs",
   "packages/mobile-core/src/push-event-route.js",
   "packages/mobile-core/src/push-event-route.test.mjs",
   "packages/mobile-core/src/support-runtime.js",
@@ -949,6 +952,14 @@ assertContains(
   "export function normalizeOrderListItem(order = {}) {",
 );
 assertContains(
+  "packages/mobile-core/src/portal-runtime.js",
+  "export function normalizePortalRuntimeSettings(payload = {}, options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/portal-runtime.js",
+  "export function createPortalRuntimeStore(options = {}) {",
+);
+assertContains(
   "packages/mobile-core/src/support-runtime.js",
   "export function createSupportRuntimeStore(options = {}) {",
 );
@@ -1063,6 +1074,14 @@ assertContains(
 assertContains(
   "rider-app/shared-ui/platform-schema.js",
   "export * from '../../packages/mobile-core/src/platform-schema.js'",
+);
+assertContains(
+  "merchant-app/shared-ui/portal-runtime.ts",
+  "createPortalRuntimeStore<MerchantPortalRuntimeSettings>({",
+);
+assertContains(
+  "rider-app/shared-ui/portal-runtime.ts",
+  "createPortalRuntimeStore<RiderPortalRuntimeSettings>({",
 );
 assertContains(
   "user-vue/shared-ui/support-runtime.js",
@@ -1941,6 +1960,10 @@ assertContains(
 assertContains(
   "package.json",
   'packages/mobile-core/src/platform-schema.test.mjs',
+);
+assertContains(
+  "package.json",
+  'packages/mobile-core/src/portal-runtime.test.mjs',
 );
 assertContains(
   "package.json",

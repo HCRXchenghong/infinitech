@@ -11,6 +11,7 @@ export * from "./home-index.js";
 export * from "./location.js";
 export * from "./platform-runtime.js";
 export * from "./platform-schema.js";
+export * from "./portal-runtime.js";
 export * from "./search-page.js";
 export * from "./support-runtime.js";
 export * from "./message-center.js";
