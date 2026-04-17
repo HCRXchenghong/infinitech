@@ -782,6 +782,26 @@ assertContains(
   'return respondSettingsSuccess(req, res, "全量数据清理完成", {',
 );
 assertContains(
+  "backend/bff/src/controllers/financialController.js",
+  "function respondFinancialError(req, res, status, message, options = {})",
+);
+assertContains(
+  "backend/bff/src/controllers/riderController.js",
+  "buildNormalizedErrorPayload(req, error, status, fallbackMessage)",
+);
+assertContains(
+  "backend/bff/src/controllers/adminWalletController.js",
+  "function sendWalletSuccess(req, res, message, payload) {",
+);
+assertContains(
+  "backend/bff/src/utils/multipartProxy.js",
+  'buildErrorEnvelopePayload(req, 400, options.missingFileMessage || "没有上传文件")',
+);
+assertContains(
+  "backend/bff/src/middleware/uploadsProxy.js",
+  'buildErrorEnvelopePayload(req, 405, "Method not allowed")',
+);
+assertContains(
   "backend/bff/src/utils/authIdentity.js",
   "../../../../packages/contracts/src/identity.cjs",
 );
@@ -800,6 +820,22 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/upload.js",
   "normalizeUploadDomain(uploadDomain)",
+);
+assertContains(
+  "packages/contracts/src/http.js",
+  'case 405:',
+);
+assertContains(
+  "packages/contracts/src/http.js",
+  'return "METHOD_NOT_ALLOWED";',
+);
+assertContains(
+  "packages/contracts/src/http.cjs",
+  'case 405:',
+);
+assertContains(
+  "packages/contracts/src/http.cjs",
+  'return "METHOD_NOT_ALLOWED";',
 );
 assertContains(
   "packages/admin-core/src/upload.js",

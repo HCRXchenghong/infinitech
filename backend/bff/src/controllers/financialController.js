@@ -2,9 +2,10 @@
  * Financial center controller (admin)
  */
 
-const { proxyGet, requestGoRaw } = require("../utils/goProxy");
+const { proxyGet, requestGoRaw, buildNormalizedErrorPayload } = require("../utils/goProxy");
 const { logger } = require("../utils/logger");
 const { verifyCriticalCredential } = require("../utils/criticalActionVerify");
+const { buildErrorEnvelopePayload } = require("../utils/apiEnvelope");
 
 const FINANCIAL_LOG_VERIFY_ACCOUNT = String(
   process.env.FINANCIAL_LOG_VERIFY_ACCOUNT ||
@@ -21,11 +22,21 @@ function isMutationCredentialConfigured() {
   return Boolean(FINANCIAL_LOG_VERIFY_ACCOUNT && FINANCIAL_LOG_VERIFY_PASSWORD);
 }
 
-function buildCredentialNotConfiguredResponse() {
-  return {
-    success: false,
-    error: "\u8d22\u52a1\u65e5\u5fd7\u654f\u611f\u64cd\u4f5c\u672a\u914d\u7f6e\u4e8c\u6b21\u6821\u9a8c\u53e3\u4ee4\uff0c\u8bf7\u8054\u7cfb\u7ba1\u7406\u5458"
-  };
+function respondFinancialError(req, res, status, message, options = {}) {
+  return res.status(status).json(
+    buildErrorEnvelopePayload(req, status, message, {
+      code: options.code,
+      data: options.data,
+      legacy: options.legacy,
+    }),
+  );
+}
+
+function sendNormalizedFinancialUpstreamError(req, res, error, defaultErrorMessage) {
+  const status = Number(error.response?.status || 500);
+  return res.status(status).json(
+    buildNormalizedErrorPayload(req, error, status, defaultErrorMessage),
+  );
 }
 
 function verifyMutationCredential(req, action) {
@@ -36,7 +47,7 @@ function verifyMutationCredential(req, action) {
     return {
       ok: false,
       status: 503,
-      error: buildCredentialNotConfiguredResponse().error
+      error: "\u8d22\u52a1\u65e5\u5fd7\u654f\u611f\u64cd\u4f5c\u672a\u914d\u7f6e\u4e8c\u6b21\u6821\u9a8c\u53e3\u4ee4\uff0c\u8bf7\u8054\u7cfb\u7ba1\u7406\u5458"
     };
   }
 
@@ -113,21 +124,23 @@ function forwardMutationRequest(req, path, payload = {}) {
 async function deleteTransactionLog(req, res, next) {
   const verify = verifyMutationCredential(req, "delete");
   if (!verify.ok) {
-    return res.status(verify.status || 401).json({
-      success: false,
-      error: verify.error || "\u4e8c\u6b21\u9a8c\u8bc1\u5931\u8d25\uff0c\u8d26\u53f7\u6216\u5bc6\u7801\u9519\u8bef",
-      lockedUntil: verify.lockedUntil || null,
-    });
+    return respondFinancialError(
+      req,
+      res,
+      verify.status || 401,
+      verify.error || "\u4e8c\u6b21\u9a8c\u8bc1\u5931\u8d25\uff0c\u8d26\u53f7\u6216\u5bc6\u7801\u9519\u8bef",
+      {
+        data: { lockedUntil: verify.lockedUntil || null },
+        legacy: { lockedUntil: verify.lockedUntil || null },
+      },
+    );
   }
 
   const sourceType = String(req.body?.sourceType || "wallet_transaction").trim() || "wallet_transaction";
   const recordId = String(req.body?.recordId || req.body?.id || "").trim();
   const reason = String(req.body?.reason || "").trim();
   if (!recordId) {
-    return res.status(400).json({
-      success: false,
-      error: "\u7f3a\u5c11\u5fc5\u8981\u53c2\u6570\uff08recordId\uff09",
-    });
+    return respondFinancialError(req, res, 400, "\u7f3a\u5c11\u5fc5\u8981\u53c2\u6570\uff08recordId\uff09");
   }
 
   try {
@@ -153,7 +166,7 @@ async function deleteTransactionLog(req, res, next) {
     return res.status(response.status).json(response.data);
   } catch (error) {
     if (error.response) {
-      return res.status(error.response.status).json(error.response.data);
+      return sendNormalizedFinancialUpstreamError(req, res, error, "删除财务日志失败");
     }
     return next(error);
   }
@@ -162,11 +175,16 @@ async function deleteTransactionLog(req, res, next) {
 async function clearTransactionLogs(req, res, next) {
   const verify = verifyMutationCredential(req, "clear");
   if (!verify.ok) {
-    return res.status(verify.status || 401).json({
-      success: false,
-      error: verify.error || "\u4e8c\u6b21\u9a8c\u8bc1\u5931\u8d25\uff0c\u8d26\u53f7\u6216\u5bc6\u7801\u9519\u8bef",
-      lockedUntil: verify.lockedUntil || null,
-    });
+    return respondFinancialError(
+      req,
+      res,
+      verify.status || 401,
+      verify.error || "\u4e8c\u6b21\u9a8c\u8bc1\u5931\u8d25\uff0c\u8d26\u53f7\u6216\u5bc6\u7801\u9519\u8bef",
+      {
+        data: { lockedUntil: verify.lockedUntil || null },
+        legacy: { lockedUntil: verify.lockedUntil || null },
+      },
+    );
   }
 
   try {
@@ -187,7 +205,7 @@ async function clearTransactionLogs(req, res, next) {
     return res.status(response.status).json(response.data);
   } catch (error) {
     if (error.response) {
-      return res.status(error.response.status).json(error.response.data);
+      return sendNormalizedFinancialUpstreamError(req, res, error, "清空财务日志失败");
     }
     return next(error);
   }

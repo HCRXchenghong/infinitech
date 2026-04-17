@@ -19,6 +19,8 @@ function normalizeErrorCode(status, explicitCode = "") {
       return "FORBIDDEN";
     case 404:
       return "NOT_FOUND";
+    case 405:
+      return "METHOD_NOT_ALLOWED";
     case 409:
       return "CONFLICT";
     case 410:

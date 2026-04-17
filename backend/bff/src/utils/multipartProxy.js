@@ -1,6 +1,7 @@
 const fs = require("fs");
 const FormData = require("form-data");
-const { requestGoRaw } = require("./goProxy");
+const { requestGoRaw, buildNormalizedErrorPayload } = require("./goProxy");
+const { buildErrorEnvelopePayload } = require("./apiEnvelope");
 const { logger } = require("./logger");
 
 function appendForwardedPort(host, port, protocol) {
@@ -118,10 +119,7 @@ async function proxyMultipartUpload(req, res, next, options = {}) {
   if (!req.file) {
     res
       .status(400)
-      .json({
-        success: false,
-        error: options.missingFileMessage || "没有上传文件",
-      });
+      .json(buildErrorEnvelopePayload(req, 400, options.missingFileMessage || "没有上传文件"));
     return;
   }
 
@@ -154,7 +152,17 @@ async function proxyMultipartUpload(req, res, next, options = {}) {
     if (error.response) {
       res
         .status(error.response.status)
-        .json(normalizeUploadPayload(error.response.data, req));
+        .json(
+          normalizeUploadPayload(
+            buildNormalizedErrorPayload(
+              req,
+              error,
+              error.response.status,
+              options.defaultErrorMessage || "上传请求失败",
+            ),
+            req,
+          ),
+        );
       return;
     }
     logger.error("Multipart upload proxy error:", {

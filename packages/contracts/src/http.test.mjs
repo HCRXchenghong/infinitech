@@ -74,6 +74,7 @@ test("http contracts build standardized success and error envelopes", () => {
   );
 
   assert.equal(normalizeErrorCode(503), "UPSTREAM_UNAVAILABLE");
+  assert.equal(normalizeErrorCode(405), "METHOD_NOT_ALLOWED");
 });
 
 test("extractPaginatedItems supports enveloped and legacy list payloads", () => {

@@ -1,4 +1,5 @@
 const axios = require("axios");
+const { buildErrorEnvelopePayload } = require("../utils/apiEnvelope");
 
 function joinUrl(base, path) {
   const normalizedBase = String(base || "").replace(/\/+$/, "");
@@ -11,7 +12,7 @@ function joinUrl(base, path) {
 function createUploadsProxy({ goApiUrl, logger }) {
   return async function uploadsProxy(req, res, next) {
     if (req.method !== "GET" && req.method !== "HEAD") {
-      res.status(405).json({ error: "Method not allowed" });
+      res.status(405).json(buildErrorEnvelopePayload(req, 405, "Method not allowed"));
       return;
     }
 

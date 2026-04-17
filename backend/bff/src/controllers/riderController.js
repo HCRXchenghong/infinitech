@@ -1,6 +1,14 @@
 const fs = require('fs');
 const FormData = require('form-data');
-const { proxyGet, proxyPost, proxyPut, proxyDelete, requestGoRaw } = require('../utils/goProxy');
+const {
+  proxyGet,
+  proxyPost,
+  proxyPut,
+  proxyDelete,
+  requestGoRaw,
+  buildNormalizedErrorPayload,
+} = require('../utils/goProxy');
+const { buildErrorEnvelopePayload } = require('../utils/apiEnvelope');
 const { logger } = require('../utils/logger');
 const DEFAULT_PROXY_OPTIONS = {
   normalizeErrorResponse: true,
@@ -14,21 +22,9 @@ function withRiderProxyOptions(options = {}) {
   };
 }
 
-function forwardError(res, error, fallbackMessage) {
+function forwardError(req, res, error, fallbackMessage) {
   const status = error.response?.status || 500;
-  const data = error.response?.data;
-
-  if (data && typeof data === 'object') {
-    res.status(status).json(data);
-    return;
-  }
-
-  if (typeof data === 'string' && data.trim()) {
-    res.status(status).json({ success: false, error: data });
-    return;
-  }
-
-  res.status(status).json({ success: false, error: error.message || fallbackMessage });
+  res.status(status).json(buildNormalizedErrorPayload(req, error, status, fallbackMessage));
 }
 
 // 更新骑手在线状态
@@ -161,7 +157,7 @@ exports.uploadCert = async (req, res) => {
   const tempFilePath = req.file?.path;
 
   if (!tempFilePath) {
-    return res.status(400).json({ success: false, error: '未检测到上传文件' });
+    return res.status(400).json(buildErrorEnvelopePayload(req, 400, '未检测到上传文件'));
   }
 
   const formData = new FormData();
@@ -180,7 +176,7 @@ exports.uploadCert = async (req, res) => {
     res.status(response.status).json(response.data);
   } catch (error) {
     logger.error('上传证件失败:', error.message);
-    forwardError(res, error, '请求失败');
+    forwardError(req, res, error, '请求失败');
   } finally {
     try {
       fs.unlinkSync(tempFilePath);
