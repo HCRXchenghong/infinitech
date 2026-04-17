@@ -2,7 +2,7 @@ import { fetchPublicRuntimeSettings } from './api.js'
 import {
   DEFAULT_RTC_RUNTIME_SETTINGS,
   createRTCRuntimeSettingsLoader,
-} from '../../shared/mobile-common/rtc-runtime.js'
+} from '../../packages/client-sdk/src/rtc-runtime.js'
 
 const { getCachedRTCRuntimeSettings, loadRTCRuntimeSettings } =
   createRTCRuntimeSettingsLoader(fetchPublicRuntimeSettings)

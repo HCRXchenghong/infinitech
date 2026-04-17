@@ -1,1 +1,1 @@
-export * from '../../shared/mobile-common/rtc-media.js'
+export * from '../../packages/client-sdk/src/rtc-media.js'

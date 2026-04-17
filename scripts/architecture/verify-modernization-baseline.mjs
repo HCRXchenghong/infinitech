@@ -73,6 +73,15 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/client-sdk/src/realtime-notify.test.mjs",
   "packages/client-sdk/src/realtime-token.js",
   "packages/client-sdk/src/realtime-token.test.mjs",
+  "packages/client-sdk/src/rtc-contact.js",
+  "packages/client-sdk/src/rtc-contact.d.ts",
+  "packages/client-sdk/src/rtc-contact.test.mjs",
+  "packages/client-sdk/src/rtc-media.js",
+  "packages/client-sdk/src/rtc-media.d.ts",
+  "packages/client-sdk/src/rtc-media.test.mjs",
+  "packages/client-sdk/src/rtc-runtime.js",
+  "packages/client-sdk/src/rtc-runtime.d.ts",
+  "packages/client-sdk/src/rtc-runtime.test.mjs",
   "packages/client-sdk/src/socket-io.js",
   "packages/client-sdk/src/socket-io.d.ts",
   "packages/client-sdk/src/socket-io.test.mjs",
@@ -2009,7 +2018,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
 );
 assertContains(
   "packages/client-sdk/src/index.js",
@@ -2036,6 +2045,18 @@ assertContains(
   'export * from "./realtime-notify.js";',
 );
 assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./rtc-contact.js";',
+);
+assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./rtc-media.js";',
+);
+assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./rtc-runtime.js";',
+);
+assertContains(
   "packages/client-sdk/package.json",
   '"./local-db": "./src/local-db.js"',
 );
@@ -2058,6 +2079,18 @@ assertContains(
 assertContains(
   "packages/client-sdk/package.json",
   '"./realtime-notify": "./src/realtime-notify.js"',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./rtc-contact": "./src/rtc-contact.js"',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./rtc-media": "./src/rtc-media.js"',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./rtc-runtime": "./src/rtc-runtime.js"',
 );
 assertContains(
   "packages/client-sdk/src/local-db.js",
@@ -2128,6 +2161,30 @@ assertContains(
   "export function buildSocketTokenAccountKey(userId, role) {",
 );
 assertContains(
+  "packages/client-sdk/src/rtc-contact.js",
+  "export function createRTCContactHelper(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/rtc-contact.js",
+  "export function createUniRTCContactBridge(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/rtc-media.js",
+  "export function createRTCMediaSession(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/rtc-media.js",
+  "export function canUseRTCMedia(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/rtc-runtime.js",
+  "export function createRTCRuntimeSettingsLoader(fetcher) {",
+);
+assertContains(
+  "packages/client-sdk/src/rtc-runtime.js",
+  "export const DEFAULT_RTC_RUNTIME_SETTINGS = {",
+);
+assertContains(
   "packages/client-sdk/src/socket-io.js",
   "export default function createSocket(url, namespace = \"\", token = \"\") {",
 );
@@ -2170,6 +2227,18 @@ assertContains(
 assertContains(
   "shared/mobile-common/realtime-notify.js",
   "export * from \"../../packages/client-sdk/src/realtime-notify.js\";",
+);
+assertContains(
+  "shared/mobile-common/rtc-contact.js",
+  "export * from \"../../packages/client-sdk/src/rtc-contact.js\";",
+);
+assertContains(
+  "shared/mobile-common/rtc-media.js",
+  "export * from \"../../packages/client-sdk/src/rtc-media.js\";",
+);
+assertContains(
+  "shared/mobile-common/rtc-runtime.js",
+  "export * from \"../../packages/client-sdk/src/rtc-runtime.js\";",
 );
 assertContains(
   "shared/mobile-common/db.js",
@@ -2385,11 +2454,27 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/rtc-contact.js",
-  "buildSocketTokenAccountKey(userId, 'user')",
+  "createUniRTCContactBridge({",
 );
 assertContains(
   "app-mobile/shared-ui/rtc-contact.js",
-  "buildSocketTokenAccountKey(userId, 'user')",
+  "createUniRTCContactBridge({",
+);
+assertContains(
+  "user-vue/shared-ui/rtc-runtime.js",
+  "from '../../packages/client-sdk/src/rtc-runtime.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/rtc-runtime.js",
+  "from '../../packages/client-sdk/src/rtc-runtime.js'",
+);
+assertContains(
+  "user-vue/shared-ui/rtc-media.js",
+  "from '../../packages/client-sdk/src/rtc-media.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/rtc-media.js",
+  "from '../../packages/client-sdk/src/rtc-media.js'",
 );
 assertContains(
   "rider-app/App-logic.ts",

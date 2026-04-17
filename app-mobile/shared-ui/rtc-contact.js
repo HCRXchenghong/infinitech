@@ -1,20 +1,13 @@
 import config from '@/shared-ui/config'
 import createSocket from '@/utils/socket-io'
 import {
-  buildSocketTokenAccountKey,
-  extractSocketTokenResult,
-} from '../../packages/client-sdk/src/realtime-token.js'
-import {
   createRTCCall,
   getRTCCall,
   listRTCCallHistory,
   readAuthorizationHeader,
   updateRTCCallStatus,
 } from '@/shared-ui/api.js'
-import {
-  canUseRTCContact as canUseSharedRTCContact,
-  createRTCContactHelper,
-} from '../../shared/mobile-common/rtc-contact.js'
+import { createUniRTCContactBridge } from '../../packages/client-sdk/src/rtc-contact.js'
 import { getCachedRTCRuntimeSettings, loadRTCRuntimeSettings } from './rtc-runtime.js'
 
 function trimValue(value) {
@@ -26,171 +19,38 @@ function resolveCurrentUserId() {
   return trimValue(profile.phone || profile.id || profile.userId)
 }
 
-function normalizeCallId(value) {
-  if (!value) return ''
-  if (typeof value === 'object') {
-    return trimValue(value.uid || value.callId || value.call_id_raw || value.call_id)
-  }
-  return trimValue(value)
-}
-
-function getCurrentPageInfo() {
-  try {
-    const pages = getCurrentPages()
-    if (!Array.isArray(pages) || pages.length === 0) return null
-    return pages[pages.length - 1] || null
-  } catch (_err) {
-    return null
-  }
-}
-
-function buildIncomingCallUrl(payload) {
-  const safePayload = payload && typeof payload === 'object' ? payload : {}
-  const call = safePayload.call || safePayload || {}
-  const callId = normalizeCallId(call) || trimValue(safePayload.callId)
-  const callerRole = trimValue(call.callerRole || call.caller_role || safePayload.fromRole)
-  const callerId = trimValue(call.callerId || call.caller_id || safePayload.fromId)
-  const orderId = trimValue(call.orderId || call.order_id)
-  const conversationId = trimValue(call.conversationId || call.conversation_id)
-  const targetName =
-    callerRole === 'rider' ? 'Rider' : callerRole === 'merchant' ? 'Merchant' : 'Contact'
-
-  return (
-    `/pages/rtc/call/index?mode=incoming` +
-    `&callId=${encodeURIComponent(callId)}` +
-    `&orderId=${encodeURIComponent(orderId)}` +
-    `&conversationId=${encodeURIComponent(conversationId)}` +
-    `&targetRole=${encodeURIComponent(callerRole)}` +
-    `&targetId=${encodeURIComponent(callerId)}` +
-    `&targetName=${encodeURIComponent(targetName)}`
-  )
-}
-
-let inviteBridgeSocket = null
-const SOCKET_TOKEN_KEY = 'socket_token'
-const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key'
-
-async function ensureSocketToken() {
-  const userId = resolveCurrentUserId()
-  if (!userId) {
-    throw new Error('missing current user id')
-  }
-
-  const accountKey = buildSocketTokenAccountKey(userId, 'user')
-  const cached = trimValue(uni.getStorageSync(SOCKET_TOKEN_KEY))
-  const cachedAccountKey = trimValue(uni.getStorageSync(SOCKET_TOKEN_ACCOUNT_KEY))
-  if (cached && cachedAccountKey === accountKey) return cached
-  if (cached && cachedAccountKey !== accountKey) {
-    uni.removeStorageSync(SOCKET_TOKEN_KEY)
-    uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
-  }
-
-  const res = await new Promise((resolve, reject) => {
-    uni.request({
-      url: `${config.SOCKET_URL}/api/generate-token`,
-      method: 'POST',
-      header: Object.assign({ 'Content-Type': 'application/json' }, readAuthorizationHeader()),
-      data: { userId, role: 'user' },
-      success: resolve,
-      fail: reject,
-    })
-  })
-
-  const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
-  const token = extractSocketTokenResult(data).token
-  if (!token) {
-    throw new Error('failed to generate socket token')
-  }
-  uni.setStorageSync(SOCKET_TOKEN_KEY, token)
-  uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, accountKey)
-  return token
-}
-
-const rtcHelper = createRTCContactHelper({
+const {
+  canUseCurrentRTCContact,
+  startRTCCall,
+  connectRTCSignalSession,
+  updateRTCCall,
+  fetchRTCCall,
+  fetchRTCCallHistory,
+  ensureRTCInviteBridge,
+  disconnectRTCInviteBridge,
+} = createUniRTCContactBridge({
+  uniApp: uni,
+  role: 'user',
+  authMode: 'user',
+  clientKind: 'uni-app-mobile',
+  resolveCurrentUserId,
+  readAuthorizationHeader,
   createRTCCall,
+  getRTCCall,
+  listRTCCallHistory,
   updateRTCCallStatus,
   createSocket,
   getSocketUrl: () => config.SOCKET_URL,
-  getSocketToken: ensureSocketToken,
+  getCachedRTCRuntimeSettings,
+  loadRTCRuntimeSettings,
 })
 
-export function canUseUserRTCContact() {
-  return canUseSharedRTCContact() && getCachedRTCRuntimeSettings().enabled
-}
-
+export const canUseUserRTCContact = canUseCurrentRTCContact
 export { getCachedRTCRuntimeSettings, loadRTCRuntimeSettings }
-
-export async function startUserRTCCall(payload, handlers = {}) {
-  return rtcHelper.startCall(
-    {
-      clientKind: 'uni-app-mobile',
-      clientPlatform: trimValue(payload && payload.clientPlatform),
-      ...payload,
-    },
-    handlers
-  )
-}
-
-export async function connectUserRTCSignalSession(callId, handlers = {}) {
-  return rtcHelper.connectSignalSession(callId, handlers)
-}
-
-export async function updateUserRTCCall(callId, payload = {}) {
-  return rtcHelper.updateStatus(callId, payload)
-}
-
-export async function fetchUserRTCCall(callId) {
-  return getRTCCall(callId)
-}
-
-export async function fetchUserRTCCallHistory(params = {}) {
-  return listRTCCallHistory(params)
-}
-
-export async function ensureUserRTCInviteBridge() {
-  const token = trimValue(uni.getStorageSync('token'))
-  const authMode = trimValue(uni.getStorageSync('authMode'))
-  if (!token || authMode !== 'user') {
-    disconnectUserRTCInviteBridge()
-    return null
-  }
-
-  if (inviteBridgeSocket) {
-    return inviteBridgeSocket
-  }
-
-  const socketToken = await ensureSocketToken()
-  const socket = createSocket(config.SOCKET_URL, '/rtc', socketToken).connect()
-
-  socket.on('auth_error', () => {
-    disconnectUserRTCInviteBridge()
-  })
-
-  socket.on('rtc_invite', (payload = {}) => {
-    const safePayload = payload && typeof payload === 'object' ? payload : {}
-    const callId = normalizeCallId(safePayload.call || safePayload) || trimValue(safePayload.callId)
-    if (!callId) return
-
-    const currentPage = getCurrentPageInfo()
-    const currentRoute = currentPage && currentPage.route ? `/${currentPage.route}` : ''
-    const currentOptions = currentPage && currentPage.options ? currentPage.options : {}
-    const currentCallId = trimValue(currentOptions.callId)
-    if (currentRoute === '/pages/rtc/call/index' && currentCallId === callId) {
-      return
-    }
-
-    uni.navigateTo({
-      url: buildIncomingCallUrl(safePayload),
-      fail: () => {},
-    })
-  })
-
-  inviteBridgeSocket = socket
-  return socket
-}
-
-export function disconnectUserRTCInviteBridge() {
-  if (!inviteBridgeSocket) return
-  inviteBridgeSocket.disconnect()
-  inviteBridgeSocket = null
-}
+export const startUserRTCCall = startRTCCall
+export const connectUserRTCSignalSession = connectRTCSignalSession
+export const updateUserRTCCall = updateRTCCall
+export const fetchUserRTCCall = fetchRTCCall
+export const fetchUserRTCCallHistory = fetchRTCCallHistory
+export const ensureUserRTCInviteBridge = ensureRTCInviteBridge
+export const disconnectUserRTCInviteBridge = disconnectRTCInviteBridge
