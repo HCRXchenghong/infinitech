@@ -1,5 +1,6 @@
 import { computed, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { UPLOAD_DOMAINS } from '../../packages/contracts/src/upload.js'
 import {
   createProduct,
   deleteProduct,
@@ -87,7 +88,9 @@ export function useProductEditorPage(mode: ProductEditorMode) {
 
         uploadingImage.value = true
         try {
-          const uploaded: any = await uploadImage(filePath)
+          const uploaded: any = await uploadImage(filePath, {
+            uploadDomain: UPLOAD_DOMAINS.SHOP_MEDIA,
+          })
           const nextImage = resolveUploadedImageUrl(uploaded)
           if (!nextImage) {
             throw new Error('上传返回缺少图片地址')

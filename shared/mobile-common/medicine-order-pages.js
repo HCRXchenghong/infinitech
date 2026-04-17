@@ -22,6 +22,7 @@ import {
   resolveMedicineTrackingState,
   resolveMedicineUploadedUrl,
 } from "../../packages/mobile-core/src/medicine-order.js";
+import { UPLOAD_DOMAINS } from "../../packages/contracts/src/upload.js";
 import { createPhoneContactHelper } from "./phone-contact.js";
 
 export function createMedicineOrderPage({
@@ -99,7 +100,9 @@ export function createMedicineOrderPage({
             this.uploadingPrescription = true;
             uni.showLoading({ title: "上传处方中...", mask: true });
             try {
-              const uploadResult = await uploadCommonImage(filePath);
+              const uploadResult = await uploadCommonImage(filePath, {
+                uploadDomain: UPLOAD_DOMAINS.MEDICAL_DOCUMENT,
+              });
               const prescriptionFileUrl = resolveMedicineUploadedUrl(uploadResult);
               if (!prescriptionFileUrl) {
                 throw new Error("上传失败");

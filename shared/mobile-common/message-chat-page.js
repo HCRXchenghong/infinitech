@@ -1,3 +1,5 @@
+import { UPLOAD_DOMAINS } from "../../packages/contracts/src/upload.js";
+
 const DEFAULT_SELF_AVATAR = '/static/images/my-avatar.svg'
 const DEFAULT_OTHER_AVATAR = '/static/images/default-avatar.svg'
 const MESSAGE_CACHE_MAX_AGE = 12 * 60 * 60 * 1000
@@ -1038,7 +1040,9 @@ export function createMessageChatPage({
         if (!tempFilePath || !this.ensureSocketReady()) return
 
         uni.showLoading({ title: '上传中...' })
-        uploadCommonAsset(tempFilePath)
+        uploadCommonAsset(tempFilePath, {
+          uploadDomain: UPLOAD_DOMAINS.CHAT_ATTACHMENT,
+        })
           .then((data) => {
             uni.hideLoading()
             const imageUrl = resolveUploadedAssetUrl(data)
@@ -1059,7 +1063,9 @@ export function createMessageChatPage({
         if (!tempFilePath || !this.ensureSocketReady()) return
 
         uni.showLoading({ title: '发送语音...' })
-        uploadCommonAsset(tempFilePath)
+        uploadCommonAsset(tempFilePath, {
+          uploadDomain: UPLOAD_DOMAINS.CHAT_ATTACHMENT,
+        })
           .then((data) => {
             uni.hideLoading()
             const audioUrl = resolveUploadedAssetUrl(data)

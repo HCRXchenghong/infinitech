@@ -929,7 +929,7 @@
           <el-input :model-value="bankPayoutForm.requestId" disabled />
         </el-form-item>
         <el-form-item label="打款凭证" required>
-          <ImageUpload v-model="bankPayoutForm.payoutVoucherUrl" />
+          <ImageUpload v-model="bankPayoutForm.payoutVoucherUrl" upload-domain="admin_asset" />
         </el-form-item>
         <el-form-item label="出款银行" required>
           <el-input v-model="bankPayoutForm.payoutSourceBankName" placeholder="例如：中国工商银行" />

@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import {
+  appendAdminUploadDomain,
   buildAdminShopBasicPayload,
   buildAdminShopImagePayload,
   buildAdminShopMenuPayload,
@@ -31,7 +32,7 @@ import {
   validateAdminShopReviewForm,
   validateAdminShopStaffForm,
 } from '@infinitech/admin-core';
-import { extractEnvelopeData, extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
+import { extractEnvelopeData, extractErrorMessage, extractUploadAsset, UPLOAD_DOMAINS } from '@infinitech/contracts';
 import request from '@/utils/request';
 import ImageUpload from '@/components/ImageUpload.vue';
 import PageStateAlert from '@/components/PageStateAlert.vue';
@@ -221,6 +222,7 @@ async function handleReviewImageChange(uploadFile) {
   try {
     const formData = new FormData();
     formData.append('file', raw);
+    appendAdminUploadDomain(formData, UPLOAD_DOMAINS.REVIEW_MEDIA);
     const { data } = await request.post('/api/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });

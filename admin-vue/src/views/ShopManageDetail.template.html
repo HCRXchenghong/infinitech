@@ -288,12 +288,12 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="商家资质">
-              <ImageUpload v-model="basicForm.merchantQualification" />
+              <ImageUpload v-model="basicForm.merchantQualification" upload-domain="merchant_document" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="食品经营许可">
-              <ImageUpload v-model="basicForm.foodBusinessLicense" />
+              <ImageUpload v-model="basicForm.foodBusinessLicense" upload-domain="merchant_document" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -307,13 +307,13 @@
     <el-dialog v-model="imageDialogVisible" title="编辑图片设置" width="760px" :close-on-click-modal="false">
       <el-form :model="imageForm" label-width="100px">
         <el-form-item label="Logo">
-          <ImageUpload v-model="imageForm.logo" />
+          <ImageUpload v-model="imageForm.logo" upload-domain="shop_media" />
         </el-form-item>
         <el-form-item label="封面图">
-          <ImageUpload v-model="imageForm.coverImage" />
+          <ImageUpload v-model="imageForm.coverImage" upload-domain="shop_media" />
         </el-form-item>
         <el-form-item label="背景图">
-          <ImageUpload v-model="imageForm.backgroundImage" />
+          <ImageUpload v-model="imageForm.backgroundImage" upload-domain="shop_media" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -440,12 +440,12 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="身份证正面">
-              <ImageUpload v-model="staffForm.idCardFrontImage" />
+              <ImageUpload v-model="staffForm.idCardFrontImage" upload-domain="merchant_document" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="身份证反面">
-              <ImageUpload v-model="staffForm.idCardBackImage" />
+              <ImageUpload v-model="staffForm.idCardBackImage" upload-domain="merchant_document" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -453,12 +453,12 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="健康证正面">
-              <ImageUpload v-model="staffForm.healthCertFrontImage" />
+              <ImageUpload v-model="staffForm.healthCertFrontImage" upload-domain="merchant_document" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="健康证反面">
-              <ImageUpload v-model="staffForm.healthCertBackImage" />
+              <ImageUpload v-model="staffForm.healthCertBackImage" upload-domain="merchant_document" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -497,7 +497,7 @@
         </el-row>
 
         <el-form-item label="用户头像">
-          <ImageUpload v-model="reviewForm.userAvatar" />
+          <ImageUpload v-model="reviewForm.userAvatar" upload-domain="profile_image" />
         </el-form-item>
 
         <el-form-item label="评论内容" required>

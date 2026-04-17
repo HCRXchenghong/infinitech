@@ -134,21 +134,21 @@
         <!-- 图片设置 -->
         <el-tab-pane label="图片设置" name="images">
           <el-form-item label="封面图">
-            <ImageUpload v-model="formData.coverImage" />
+            <ImageUpload v-model="formData.coverImage" upload-domain="shop_media" />
             <div style="color: #909399; font-size: 12px; margin-top: 4px;">
               店铺列表展示的封面图
             </div>
           </el-form-item>
 
           <el-form-item label="背景图">
-            <ImageUpload v-model="formData.backgroundImage" />
+            <ImageUpload v-model="formData.backgroundImage" upload-domain="shop_media" />
             <div style="color: #909399; font-size: 12px; margin-top: 4px;">
               店铺详情页顶部背景图
             </div>
           </el-form-item>
 
           <el-form-item label="Logo">
-            <ImageUpload v-model="formData.logo" />
+            <ImageUpload v-model="formData.logo" upload-domain="shop_media" />
             <div style="color: #909399; font-size: 12px; margin-top: 4px;">
               店铺Logo图标
             </div>

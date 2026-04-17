@@ -6,6 +6,7 @@ import {
   normalizeOrder as normalizeOrderPayload,
   resolveMessageTimestamp as resolveIncomingMessageTimestamp,
 } from './customer-service-chat-utils.js'
+import { UPLOAD_DOMAINS } from "../../packages/contracts/src/upload.js";
 
 const SOCKET_TOKEN_KEY = 'socket_token'
 const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key'
@@ -499,7 +500,9 @@ export function createCustomerServicePage({
             const tempFilePath = res.tempFilePaths[0]
             uni.showLoading({ title: '上传中...' })
 
-            uploadCommonImage(tempFilePath)
+            uploadCommonImage(tempFilePath, {
+              uploadDomain: UPLOAD_DOMAINS.CHAT_ATTACHMENT,
+            })
               .then((data) => {
                 uni.hideLoading()
                 const imageUrl = resolveUploadedAssetUrl(data)

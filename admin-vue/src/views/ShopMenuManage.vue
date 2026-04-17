@@ -168,7 +168,7 @@
         </el-form-item>
 
         <el-form-item label="商品主图">
-          <ImageUpload v-model="productForm.image" />
+          <ImageUpload v-model="productForm.image" upload-domain="shop_media" />
         </el-form-item>
 
         <el-form-item label="标签">

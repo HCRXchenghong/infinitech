@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
+import { UPLOAD_DOMAINS } from '../../packages/contracts/src/upload.js'
 import createSocket from '@/utils/socket-io'
 import config from '@/shared-ui/config'
 import {
@@ -452,7 +453,9 @@ export function useMerchantChatPage() {
         if (!tempFilePath) return
 
         uni.showLoading({ title: '上传中...' })
-        uploadImage(tempFilePath)
+        uploadImage(tempFilePath, {
+          uploadDomain: UPLOAD_DOMAINS.CHAT_ATTACHMENT,
+        })
           .then((payload: any) => {
             uni.hideLoading()
             const imageUrl = normalizeUploadResult(payload)

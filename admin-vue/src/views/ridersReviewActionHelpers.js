@@ -1,6 +1,6 @@
 import { getRiderRankName, loadRiderRankSettings } from '@/utils/platform-settings';
-import { extractRiderReviewPage } from '@infinitech/admin-core';
-import { extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
+import { appendAdminUploadDomain, extractRiderReviewPage } from '@infinitech/admin-core';
+import { extractErrorMessage, extractUploadAsset, UPLOAD_DOMAINS } from '@infinitech/contracts';
 
 export function useRiderReviewActionHelpers(ctx) {
   const {
@@ -116,6 +116,7 @@ export function useRiderReviewActionHelpers(ctx) {
     try {
       const formData = new FormData();
       formData.append('file', raw);
+      appendAdminUploadDomain(formData, UPLOAD_DOMAINS.REVIEW_MEDIA);
       const { data } = await request.post('/api/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });

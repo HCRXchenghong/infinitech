@@ -16,6 +16,7 @@
 
 <script lang="ts">
 import Vue from "vue";
+import { UPLOAD_DOMAINS } from "../../../packages/contracts/src/upload.js";
 import { updateAvatar, uploadImage } from "../../shared-ui/api";
 
 export default Vue.extend({
@@ -54,7 +55,9 @@ export default Vue.extend({
 
       try {
         const riderId = uni.getStorageSync("riderId");
-        const uploadRes: any = await uploadImage(filePath);
+        const uploadRes: any = await uploadImage(filePath, {
+          uploadDomain: UPLOAD_DOMAINS.PROFILE_IMAGE,
+        });
         const imageUrl = String(uploadRes?.url || "").trim();
         if (!imageUrl) {
           throw new Error("上传返回地址为空");

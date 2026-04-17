@@ -1,7 +1,7 @@
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { extractEnvelopeData, extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
+import { extractEnvelopeData, extractErrorMessage, extractUploadAsset, UPLOAD_DOMAINS } from '@infinitech/contracts';
 import {
   appendCharityLeaderboardItem as buildNextCharityLeaderboardItems,
   appendCharityNewsItem as buildNextCharityNewsItems,
@@ -13,6 +13,7 @@ import {
   appendVIPLevel as buildNextVIPLevels,
   appendVIPPointRule as buildNextVIPPointRules,
   appendVIPTask as buildNextVIPTasks,
+  appendAdminUploadDomain,
   buildAppDownloadConfigPayload,
   buildCharitySettingsPayload,
   buildSMSConfigPayload,
@@ -489,6 +490,7 @@ export function useSettingsPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      appendAdminUploadDomain(formData, UPLOAD_DOMAINS.SERVICE_SOUND);
       const { data } = await request.post('/api/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -755,6 +757,7 @@ export function useSettingsPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      appendAdminUploadDomain(formData, UPLOAD_DOMAINS.APP_DOWNLOAD_QR);
       const { data } = await request.post('/api/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });

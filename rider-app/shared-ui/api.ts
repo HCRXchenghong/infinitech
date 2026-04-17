@@ -13,6 +13,7 @@ import {
   extractPaginatedItems,
   extractSMSResult,
 } from '../../packages/contracts/src/http.js'
+import { UPLOAD_DOMAINS } from '../../packages/contracts/src/upload.js'
 import {
   readStoredBearerToken,
   uploadAuthenticatedAsset,
@@ -95,12 +96,16 @@ export function request(options: any) {
   })
 }
 
-export function uploadImage(filePath: string) {
+export function uploadImage(
+  filePath: string,
+  options: { uploadDomain?: string } = {},
+) {
   return uploadAuthenticatedAsset({
     uniApp: uni,
     baseUrl: getBaseUrl(),
     filePath,
     token: readAuthToken(),
+    uploadDomain: options.uploadDomain || UPLOAD_DOMAINS.PROFILE_IMAGE,
   })
 }
 

@@ -12,6 +12,7 @@
       v-else
       class="upload-area"
       :action="uploadUrl"
+      :data="uploadData"
       :headers="uploadHeaders"
       :show-file-list="false"
       :before-upload="beforeUpload"
@@ -30,8 +31,11 @@
 import { computed, ref, watch } from "vue";
 import { Plus } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
-import { buildAdminUploadHeaders } from "@infinitech/admin-core/upload";
-import { extractUploadAsset } from "@infinitech/contracts";
+import {
+  buildAdminUploadData,
+  buildAdminUploadHeaders,
+} from "@infinitech/admin-core/upload";
+import { extractUploadAsset, UPLOAD_DOMAINS } from "@infinitech/contracts";
 import request from "@/utils/request";
 import { getToken } from "@/utils/runtime";
 
@@ -43,6 +47,10 @@ const props = defineProps({
   maxSize: {
     type: Number,
     default: 5,
+  },
+  uploadDomain: {
+    type: String,
+    default: UPLOAD_DOMAINS.ADMIN_ASSET,
   },
 });
 
@@ -65,6 +73,7 @@ function resolveUploadUrl() {
 
 const uploadUrl = ref(resolveUploadUrl());
 const uploadHeaders = computed(() => buildAdminUploadHeaders(getToken()));
+const uploadData = computed(() => buildAdminUploadData(props.uploadDomain));
 
 watch(
   () => props.modelValue,

@@ -1,6 +1,7 @@
 import { computed, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { createShop, fetchShopDetail, updateShop, uploadImage } from '@/shared-ui/api'
+import { UPLOAD_DOMAINS } from '../../packages/contracts/src/upload.js'
 import {
   clearMerchantContext,
   ensureMerchantShops,
@@ -68,7 +69,9 @@ async function chooseImageAndUpload({
 
       setBusy(true)
       try {
-        const uploaded: any = await uploadImage(filePath)
+        const uploaded: any = await uploadImage(filePath, {
+          uploadDomain: UPLOAD_DOMAINS.SHOP_MEDIA,
+        })
         const resourceUrl = resolveUploadedImageUrl(uploaded)
         if (!resourceUrl) {
           throw new Error('上传返回缺少资源地址')

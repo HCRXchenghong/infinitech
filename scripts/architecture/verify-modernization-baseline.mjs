@@ -37,6 +37,8 @@ function assertNotContains(relativePath, unexpectedText) {
 [
   "packages/contracts/src/index.js",
   "packages/contracts/src/http.test.mjs",
+  "packages/contracts/src/upload.js",
+  "packages/contracts/src/upload.test.mjs",
   "packages/client-sdk/src/index.js",
   "packages/client-sdk/src/mobile-capabilities.js",
   "packages/client-sdk/src/mobile-capabilities.test.mjs",
@@ -50,6 +52,7 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/domain-core/src/onboarding-invite-content.js",
   "packages/domain-core/src/onboarding-invite-content.test.mjs",
   "packages/mobile-core/src/index.js",
+  "packages/mobile-core/src/upload.test.mjs",
   "packages/mobile-core/src/medicine-home.js",
   "packages/mobile-core/src/medicine-home.test.mjs",
   "packages/mobile-core/src/medicine-order.js",
@@ -175,6 +178,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "backend/bank-payout-sidecar/runtime.test.mjs",
   "backend/alipay-sidecar/runtime.js",
   "backend/alipay-sidecar/runtime.test.mjs",
+  "backend/bff/test/controllers/uploadController.test.js",
+  "backend/go/internal/handler/file_upload_handler_test.go",
   "packages/admin-core/src/DesktopShellApp.vue",
   "admin-vue/src/views/dataManagementRuntimeHelpers.js",
   "admin-win/src/App.vue",
@@ -659,11 +664,35 @@ assertContains(
 );
 assertContains(
   "backend/go/internal/handler/file_upload_handler.go",
-  "respondUploadSuccess(c, \"文件上传成功\"",
+  "resolveGeneralUploadPolicy(c)",
+);
+assertContains(
+  "backend/go/internal/handler/file_upload_handler.go",
+  "upload_domain 不能为空",
+);
+assertContains(
+  "backend/go/internal/handler/file_upload_handler.go",
+  "buildGeneralUploadOwnerScope(c, policy.domain)",
+);
+assertContains(
+  "backend/go/internal/handler/file_upload_handler.go",
+  "uploadDomainServiceSound",
 );
 assertContains(
   "backend/go/internal/handler/upload_handler.go",
   "buildMirroredPublicAssetPayload(url, finalFilename, \"merchant_or_admin_image\"",
+);
+assertContains(
+  "backend/bff/src/controllers/uploadController.js",
+  'forwardFields: ["upload_domain"]',
+);
+assertContains(
+  "packages/mobile-core/src/upload.js",
+  "normalizeUploadDomain(uploadDomain)",
+);
+assertContains(
+  "packages/admin-core/src/upload.js",
+  'formData.append("upload_domain"',
 );
 assertContains(
   "backend/go/internal/handler/shop_handler.go",
@@ -1470,7 +1499,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:contracts-tests": "node --test packages/contracts/src/http.test.mjs"',
+  '"verify:contracts-tests": "node --test packages/contracts/src/http.test.mjs packages/contracts/src/upload.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -1478,7 +1507,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/medicine-order.test.mjs packages/mobile-core/src/mobile-client-context.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/dining-buddy.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/search-page.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-my-reviews.test.mjs packages/mobile-core/src/profile-points-mall.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-after-sales.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-support-pages.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/upload.test.mjs packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/medicine-order.test.mjs packages/mobile-core/src/mobile-client-context.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/dining-buddy.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/search-page.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-my-reviews.test.mjs packages/mobile-core/src/profile-points-mall.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-after-sales.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-support-pages.test.mjs"',
 );
 assertContains(
   "package.json",

@@ -1,5 +1,6 @@
 import { buildAuthorizationHeaders } from "../../client-sdk/src/auth.js";
 import { extractErrorMessage, extractUploadAsset } from "../../contracts/src/http.js";
+import { normalizeUploadDomain } from "../../contracts/src/upload.js";
 
 export function createAuthenticatedUploadOptions({
   baseUrl,
@@ -7,12 +8,19 @@ export function createAuthenticatedUploadOptions({
   filePath,
   fieldName = "file",
   uploadPath = "/api/upload",
+  uploadDomain,
+  formData = undefined,
 }) {
   const normalizedBaseUrl = String(baseUrl || "").replace(/\/+$/, "");
+  const normalizedUploadDomain = normalizeUploadDomain(uploadDomain);
   return {
     url: `${normalizedBaseUrl}${uploadPath}`,
     filePath,
     name: fieldName,
+    formData: {
+      ...(formData && typeof formData === "object" ? formData : {}),
+      upload_domain: normalizedUploadDomain,
+    },
     header: buildAuthorizationHeaders(token),
   };
 }
@@ -51,15 +59,21 @@ export function uploadAuthenticatedAsset({
   token = "",
   uploadPath = "/api/upload",
   fieldName = "file",
+  uploadDomain,
   formData = undefined,
   header = undefined,
   onUnauthorized = undefined,
 }) {
   const resolvedFilePath = String(filePath || "").trim();
   const resolvedBaseUrl = String(baseUrl || "").replace(/\/+$/, "");
+  const normalizedUploadDomain = normalizeUploadDomain(uploadDomain);
   const normalizedPath = String(uploadPath || "/api/upload").startsWith("/")
     ? String(uploadPath || "/api/upload")
     : `/${String(uploadPath || "/api/upload")}`;
+  const nextFormData = {
+    ...(formData && typeof formData === "object" ? formData : {}),
+    upload_domain: normalizedUploadDomain,
+  };
   const headers = {
     ...buildAuthorizationHeaders(token),
     ...(header || {}),
@@ -70,7 +84,7 @@ export function uploadAuthenticatedAsset({
       url: `${resolvedBaseUrl}${normalizedPath}`,
       filePath: resolvedFilePath,
       name: fieldName,
-      formData,
+      formData: nextFormData,
       header: headers,
       success(res) {
         let parsed = null;

@@ -18,6 +18,26 @@ type FileUploadHandler struct{}
 
 const generalUploadMaxBytes int64 = 10 * 1024 * 1024
 
+const (
+	uploadDomainAfterSalesEvidence = "after_sales_evidence"
+	uploadDomainProfileImage       = "profile_image"
+	uploadDomainChatAttachment     = "chat_attachment"
+	uploadDomainShopMedia          = "shop_media"
+	uploadDomainReviewMedia        = "review_media"
+	uploadDomainServiceSound       = "service_sound"
+	uploadDomainAppDownloadQR      = "app_download_qr"
+	uploadDomainMerchantDocument   = "merchant_document"
+	uploadDomainMedicalDocument    = "medical_document"
+	uploadDomainAdminAsset         = "admin_asset"
+)
+
+type generalUploadPolicy struct {
+	domain       string
+	maxBytes     int64
+	allowedExts  map[string]bool
+	allowedRoles map[string]bool
+}
+
 var generalUploadAllowedExts = map[string]bool{
 	".jpg":  true,
 	".jpeg": true,
@@ -35,6 +55,15 @@ var generalUploadAllowedExts = map[string]bool{
 	".amr":  true,
 }
 
+var audioUploadAllowedExts = map[string]bool{
+	".mp3": true,
+	".m4a": true,
+	".aac": true,
+	".wav": true,
+	".ogg": true,
+	".amr": true,
+}
+
 var publicImageUploadAllowedExts = map[string]bool{
 	".jpg":  true,
 	".jpeg": true,
@@ -44,6 +73,100 @@ var publicImageUploadAllowedExts = map[string]bool{
 	".bmp":  true,
 	".heic": true,
 	".heif": true,
+}
+
+var generalUploadPolicies = map[string]generalUploadPolicy{
+	uploadDomainAfterSalesEvidence: {
+		domain:      uploadDomainAfterSalesEvidence,
+		maxBytes:    generalUploadMaxBytes,
+		allowedExts: publicImageUploadAllowedExts,
+		allowedRoles: map[string]bool{
+			"user":  true,
+			"admin": true,
+		},
+	},
+	uploadDomainProfileImage: {
+		domain:      uploadDomainProfileImage,
+		maxBytes:    generalUploadMaxBytes,
+		allowedExts: publicImageUploadAllowedExts,
+		allowedRoles: map[string]bool{
+			"user":     true,
+			"merchant": true,
+			"rider":    true,
+			"admin":    true,
+		},
+	},
+	uploadDomainChatAttachment: {
+		domain:      uploadDomainChatAttachment,
+		maxBytes:    generalUploadMaxBytes,
+		allowedExts: generalUploadAllowedExts,
+		allowedRoles: map[string]bool{
+			"user":     true,
+			"merchant": true,
+			"rider":    true,
+			"admin":    true,
+		},
+	},
+	uploadDomainShopMedia: {
+		domain:      uploadDomainShopMedia,
+		maxBytes:    generalUploadMaxBytes,
+		allowedExts: publicImageUploadAllowedExts,
+		allowedRoles: map[string]bool{
+			"merchant": true,
+			"admin":    true,
+		},
+	},
+	uploadDomainReviewMedia: {
+		domain:      uploadDomainReviewMedia,
+		maxBytes:    generalUploadMaxBytes,
+		allowedExts: publicImageUploadAllowedExts,
+		allowedRoles: map[string]bool{
+			"user":  true,
+			"admin": true,
+		},
+	},
+	uploadDomainServiceSound: {
+		domain:      uploadDomainServiceSound,
+		maxBytes:    generalUploadMaxBytes,
+		allowedExts: audioUploadAllowedExts,
+		allowedRoles: map[string]bool{
+			"admin": true,
+		},
+	},
+	uploadDomainAppDownloadQR: {
+		domain:      uploadDomainAppDownloadQR,
+		maxBytes:    generalUploadMaxBytes,
+		allowedExts: publicImageUploadAllowedExts,
+		allowedRoles: map[string]bool{
+			"admin": true,
+		},
+	},
+	uploadDomainMerchantDocument: {
+		domain:      uploadDomainMerchantDocument,
+		maxBytes:    generalUploadMaxBytes,
+		allowedExts: publicImageUploadAllowedExts,
+		allowedRoles: map[string]bool{
+			"merchant": true,
+			"admin":    true,
+		},
+	},
+	uploadDomainMedicalDocument: {
+		domain:      uploadDomainMedicalDocument,
+		maxBytes:    generalUploadMaxBytes,
+		allowedExts: publicImageUploadAllowedExts,
+		allowedRoles: map[string]bool{
+			"user":  true,
+			"admin": true,
+		},
+	},
+	uploadDomainAdminAsset: {
+		domain:      uploadDomainAdminAsset,
+		maxBytes:    generalUploadMaxBytes,
+		allowedExts: publicImageUploadAllowedExts,
+		allowedRoles: map[string]bool{
+			"admin": true,
+		},
+	},
 }
 
 func NewFileUploadHandler() *FileUploadHandler {
@@ -139,14 +262,83 @@ func respondUploadSuccess(c *gin.Context, message string, payload gin.H) {
 	respondMirroredSuccessEnvelope(c, message, payload)
 }
 
+func resolveGeneralUploadPolicy(c *gin.Context) (generalUploadPolicy, int, string) {
+	if c == nil {
+		return generalUploadPolicy{}, http.StatusUnauthorized, "鉴权失败"
+	}
+
+	uploadDomain := strings.ToLower(strings.TrimSpace(c.PostForm("upload_domain")))
+	if uploadDomain == "" {
+		return generalUploadPolicy{}, http.StatusBadRequest, "upload_domain 不能为空"
+	}
+
+	policy, exists := generalUploadPolicies[uploadDomain]
+	if !exists {
+		return generalUploadPolicy{}, http.StatusBadRequest, "不支持的上传业务域"
+	}
+
+	operatorRole := strings.ToLower(strings.TrimSpace(c.GetString("operator_role")))
+	if operatorRole == "" {
+		return generalUploadPolicy{}, http.StatusUnauthorized, "鉴权失败"
+	}
+	if !policy.allowedRoles[operatorRole] {
+		return generalUploadPolicy{}, http.StatusForbidden, "当前身份无权上传该业务资源"
+	}
+
+	return policy, http.StatusOK, ""
+}
+
+func uploadActorID(c *gin.Context, operatorRole string) string {
+	if c == nil {
+		return ""
+	}
+	switch strings.ToLower(strings.TrimSpace(operatorRole)) {
+	case "admin":
+		return strings.TrimSpace(fmt.Sprint(parseContextUint(c.Get("admin_id"))))
+	case "merchant":
+		return strings.TrimSpace(fmt.Sprint(c.GetInt64("merchant_id")))
+	case "rider":
+		return strings.TrimSpace(fmt.Sprint(c.GetInt64("rider_id")))
+	case "user":
+		return strings.TrimSpace(fmt.Sprint(c.GetInt64("user_id")))
+	default:
+		return ""
+	}
+}
+
+func buildGeneralUploadOwnerScope(c *gin.Context, uploadDomain string) string {
+	operatorRole := strings.ToLower(strings.TrimSpace(c.GetString("operator_role")))
+	if operatorRole == "" {
+		return strings.TrimSpace(uploadDomain)
+	}
+
+	actorID := uploadActorID(c, operatorRole)
+	if actorID == "" || actorID == "0" {
+		return fmt.Sprintf("%s:%s", strings.TrimSpace(uploadDomain), operatorRole)
+	}
+	return fmt.Sprintf("%s:%s:%s", strings.TrimSpace(uploadDomain), operatorRole, actorID)
+}
+
 func (h *FileUploadHandler) Upload(c *gin.Context) {
+	policy, status, policyErr := resolveGeneralUploadPolicy(c)
+	if status != http.StatusOK {
+		respondUploadError(c, status, policyErr)
+		return
+	}
+
 	file, err := c.FormFile("file")
 	if err != nil {
 		respondUploadError(c, http.StatusBadRequest, "没有找到上传文件")
 		return
 	}
 
-	finalFilename, url, err := saveUploadFile(c, file, generalUploadMaxBytes, generalUploadAllowedExts)
+	finalFilename, url, err := saveUploadFile(
+		c,
+		file,
+		policy.maxBytes,
+		policy.allowedExts,
+		policy.domain,
+	)
 	if err != nil {
 		status := http.StatusBadRequest
 		if isUploadInternalError(err) {
@@ -156,5 +348,14 @@ func (h *FileUploadHandler) Upload(c *gin.Context) {
 		return
 	}
 
-	respondUploadSuccess(c, "文件上传成功", buildMirroredPublicAssetPayload(url, finalFilename, "authenticated_upload", file.Size))
+	respondUploadSuccess(
+		c,
+		"文件上传成功",
+		buildMirroredPublicAssetPayload(
+			url,
+			finalFilename,
+			buildGeneralUploadOwnerScope(c, policy.domain),
+			file.Size,
+		),
+	)
 }

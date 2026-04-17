@@ -8,6 +8,7 @@ import {
   normalizeConsumerProfileEditViewModel,
   resolveConsumerProfileUserId,
 } from "../../packages/mobile-core/src/profile-edit.js";
+import { UPLOAD_DOMAINS } from "../../packages/contracts/src/upload.js";
 
 export function createProfileEditPage({
   fetchUser = async () => ({}),
@@ -79,7 +80,9 @@ export function createProfileEditPage({
       async uploadImage(filePath, loadingText) {
         uni.showLoading({ title: loadingText, mask: true });
         try {
-          const response = await uploadCommonImage(filePath);
+          const response = await uploadCommonImage(filePath, {
+            uploadDomain: UPLOAD_DOMAINS.PROFILE_IMAGE,
+          });
           return extractConsumerUploadedImageUrl(response);
         } finally {
           uni.hideLoading();

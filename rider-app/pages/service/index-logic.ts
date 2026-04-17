@@ -1,4 +1,5 @@
 ﻿import Vue from "vue";
+import { UPLOAD_DOMAINS } from "../../../packages/contracts/src/upload.js";
 import {
   fetchHistory,
   markConversationRead,
@@ -621,7 +622,9 @@ export default Vue.extend({
           }
 
           uni.showLoading({ title: "上传中..." });
-          uploadImage(tempFilePath)
+          uploadImage(tempFilePath, {
+            uploadDomain: UPLOAD_DOMAINS.CHAT_ATTACHMENT,
+          })
             .then((data: any) => {
               uni.hideLoading();
               if (!data?.url) {

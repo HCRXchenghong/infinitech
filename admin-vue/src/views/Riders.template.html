@@ -365,7 +365,7 @@
           <el-input v-model="riderReviewForm.orderId" placeholder="请输入订单ID" />
         </el-form-item>
         <el-form-item label="用户头像">
-          <ImageUpload v-model="riderReviewForm.userAvatar" />
+          <ImageUpload v-model="riderReviewForm.userAvatar" upload-domain="profile_image" />
         </el-form-item>
         <el-form-item label="评论内容" required>
           <el-input v-model="riderReviewForm.content" type="textarea" :rows="4" maxlength="500" show-word-limit />

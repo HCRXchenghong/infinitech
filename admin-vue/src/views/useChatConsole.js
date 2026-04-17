@@ -1,7 +1,8 @@
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
+import { extractErrorMessage, extractUploadAsset, UPLOAD_DOMAINS } from '@infinitech/contracts';
 import {
+  appendAdminUploadDomain,
   createIncomingDisplayMessage,
   createOutgoingTempMessage,
   createSeenMessageTracker,
@@ -223,6 +224,7 @@ export function useChatConsole(options = {}) {
     uploadingImage.value = true;
     const formData = new FormData();
     formData.append('file', file);
+    appendAdminUploadDomain(formData, UPLOAD_DOMAINS.CHAT_ATTACHMENT);
 
     try {
       const { data } = await request.post('/api/upload', formData, {

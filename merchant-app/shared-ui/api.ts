@@ -5,6 +5,7 @@ import {
   extractPaginatedItems,
   extractSMSResult,
 } from "../../packages/contracts/src/http.js";
+import { UPLOAD_DOMAINS } from "../../packages/contracts/src/upload.js";
 import {
   readStoredBearerToken,
   uploadAuthenticatedAsset,
@@ -186,6 +187,7 @@ function shouldTryFallback(errMsg: string) {
 function uploadFileByBaseUrl(
   filePath: string,
   baseUrl: string,
+  uploadDomain: string,
 ): Promise<UploadResult> {
   const token = readAuthToken();
   return uploadAuthenticatedAsset({
@@ -193,19 +195,26 @@ function uploadFileByBaseUrl(
     baseUrl,
     filePath,
     token,
+    uploadDomain,
     onUnauthorized: token ? () => forceMerchantLogout() : undefined,
   }) as Promise<UploadResult>;
 }
 
-export async function uploadImage(filePath: string): Promise<UploadResult> {
+export async function uploadImage(
+  filePath: string,
+  options: { uploadDomain?: string } = {},
+): Promise<UploadResult> {
   const normalizedPath = String(filePath || "").trim();
   if (!normalizedPath) {
     throw buildError("缺少上传文件路径");
   }
 
   const baseUrl = normalizeBaseUrl(getBaseUrl());
+  const uploadDomain = String(
+    options.uploadDomain || UPLOAD_DOMAINS.SHOP_MEDIA,
+  ).trim();
   try {
-    return await uploadFileByBaseUrl(normalizedPath, baseUrl);
+    return await uploadFileByBaseUrl(normalizedPath, baseUrl, uploadDomain);
   } catch (err: any) {
     const errMsg = String(
       err?.error || err?.message || err?.data?.errMsg || "",
@@ -218,7 +227,7 @@ export async function uploadImage(filePath: string): Promise<UploadResult> {
             API_BASE_URL: resolved,
             SOCKET_URL: resolved,
           });
-          return await uploadFileByBaseUrl(normalizedPath, resolved);
+          return await uploadFileByBaseUrl(normalizedPath, resolved, uploadDomain);
         }
       } catch (_fallbackErr) {
         // ignore fallback errors and return original upload error

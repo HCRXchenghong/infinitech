@@ -8,6 +8,7 @@ import {
   extractPaginatedItems,
   extractSMSResult,
 } from "../../packages/contracts/src/http.js";
+import { UPLOAD_DOMAINS } from "../../packages/contracts/src/upload.js";
 import {
   readStoredBearerToken,
   uploadAuthenticatedAsset,
@@ -17,6 +18,10 @@ import {
 export const getBaseUrl = () => config.API_BASE_URL;
 // 兼容旧引用（如仍有 BASE_URL 使用）
 export const BASE_URL = getBaseUrl;
+
+function readAuthToken() {
+  return readStoredBearerToken(uni, ["token", "access_token"]);
+}
 
 export function request(options) {
   const baseUrl = getBaseUrl();
@@ -299,13 +304,24 @@ export const uploadAfterSalesEvidence = (filePath) => {
     uniApp: uni,
     baseUrl: getBaseUrl(),
     filePath,
+    token: readAuthToken(),
+    uploadDomain: UPLOAD_DOMAINS.AFTER_SALES_EVIDENCE,
   });
 };
 
-export const uploadCommonAsset = (filePath) =>
-  uploadAfterSalesEvidence(filePath);
+export const uploadCommonAsset = (filePath, options = {}) =>
+  uploadAuthenticatedAsset({
+    uniApp: uni,
+    baseUrl: getBaseUrl(),
+    filePath,
+    token: readAuthToken(),
+    uploadDomain: options.uploadDomain || UPLOAD_DOMAINS.CHAT_ATTACHMENT,
+  });
 
-export const uploadCommonImage = (filePath) => uploadCommonAsset(filePath);
+export const uploadCommonImage = (filePath, options = {}) =>
+  uploadCommonAsset(filePath, {
+    uploadDomain: options.uploadDomain || UPLOAD_DOMAINS.PROFILE_IMAGE,
+  });
 
 export const buildAuthorizationHeader = (token) =>
   buildAuthorizationHeaders(token);
