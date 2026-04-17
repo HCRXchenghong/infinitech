@@ -134,6 +134,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/portal-runtime.js",
   "packages/mobile-core/src/portal-runtime.d.ts",
   "packages/mobile-core/src/portal-runtime.test.mjs",
+  "packages/mobile-core/src/rtc-call-page.js",
+  "packages/mobile-core/src/rtc-call-page.test.mjs",
   "packages/mobile-core/src/push-event-route.js",
   "packages/mobile-core/src/push-event-route.test.mjs",
   "packages/mobile-core/src/support-runtime.js",
@@ -1982,6 +1984,10 @@ assertContains(
 );
 assertContains(
   "package.json",
+  'packages/mobile-core/src/rtc-call-page.test.mjs',
+);
+assertContains(
+  "package.json",
   'packages/mobile-core/src/consumer-auth-runtime.test.mjs',
 );
 assertContains(
@@ -2239,6 +2245,10 @@ assertContains(
 assertContains(
   "shared/mobile-common/rtc-runtime.js",
   "export * from \"../../packages/client-sdk/src/rtc-runtime.js\";",
+);
+assertContains(
+  "shared/mobile-common/rtc-call-page.js",
+  "export * from \"../../packages/mobile-core/src/rtc-call-page.js\";",
 );
 assertContains(
   "shared/mobile-common/db.js",
@@ -3298,6 +3308,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rtc-call-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./dining-buddy.js";',
 );
 assertContains(
@@ -3307,6 +3321,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./medicine-order": "./src/medicine-order.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rtc-call-page": "./src/rtc-call-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -3518,6 +3536,22 @@ assertContains(
 assertContains(
   "app-mobile/pages/order/remark/index.vue",
   "createOrderRemarkPage({",
+);
+assertContains(
+  "user-vue/pages/rtc/call/index.vue",
+  "../../../../packages/mobile-core/src/rtc-call-page.js",
+);
+assertContains(
+  "app-mobile/pages/rtc/call/index.vue",
+  "../../../../packages/mobile-core/src/rtc-call-page.js",
+);
+assertContains(
+  "user-vue/pages/rtc/call/index.vue",
+  "createRTCCallPage({",
+);
+assertContains(
+  "app-mobile/pages/rtc/call/index.vue",
+  "createRTCCallPage({",
 );
 assertContains(
   "user-vue/pages/order/tableware/index.vue",

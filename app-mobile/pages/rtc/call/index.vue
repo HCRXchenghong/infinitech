@@ -83,7 +83,7 @@ import {
   startUserRTCCall,
 } from '@/shared-ui/rtc-contact.js'
 import { canUseRTCMedia, createRTCMediaSession } from '@/shared-ui/rtc-media.js'
-import { createRTCCallPage } from '../../../../shared/mobile-common/rtc-call-page.js'
+import { createRTCCallPage } from '../../../../packages/mobile-core/src/rtc-call-page.js'
 
 export default createRTCCallPage({
   canUseRTCContact: canUseUserRTCContact,
