@@ -86,6 +86,12 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/location.js",
   "packages/mobile-core/src/location.d.ts",
   "packages/mobile-core/src/location.test.mjs",
+  "packages/mobile-core/src/platform-runtime.js",
+  "packages/mobile-core/src/platform-runtime.d.ts",
+  "packages/mobile-core/src/platform-runtime.test.mjs",
+  "packages/mobile-core/src/platform-schema.js",
+  "packages/mobile-core/src/platform-schema.d.ts",
+  "packages/mobile-core/src/platform-schema.test.mjs",
   "packages/mobile-core/src/push-event-route.js",
   "packages/mobile-core/src/push-event-route.test.mjs",
   "packages/mobile-core/src/support-runtime.js",
@@ -927,6 +933,22 @@ assertContains(
   "export function getCurrentLocation(options = {}) {",
 );
 assertContains(
+  "packages/mobile-core/src/platform-runtime.js",
+  "export function normalizePlatformRuntimeSettings(payload = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/platform-runtime.js",
+  "export function createPlatformRuntimeLoader(fetcher) {",
+);
+assertContains(
+  "packages/mobile-core/src/platform-schema.js",
+  "export function buildMerchantTypeOptions(taxonomySettings = null) {",
+);
+assertContains(
+  "packages/mobile-core/src/platform-schema.js",
+  "export function normalizeOrderListItem(order = {}) {",
+);
+assertContains(
   "packages/mobile-core/src/support-runtime.js",
   "export function createSupportRuntimeStore(options = {}) {",
 );
@@ -1001,6 +1023,46 @@ assertContains(
 assertContains(
   "rider-app/shared-ui/location.ts",
   "from '../../packages/mobile-core/src/location.js'",
+);
+assertContains(
+  "shared/mobile-common/platform-runtime.js",
+  "export * from \"../../packages/mobile-core/src/platform-runtime.js\";",
+);
+assertContains(
+  "shared/mobile-common/platform-schema.js",
+  "export * from \"../../packages/mobile-core/src/platform-schema.js\";",
+);
+assertContains(
+  "user-vue/shared-ui/platform-runtime.js",
+  "from '../../packages/mobile-core/src/platform-runtime.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/platform-runtime.js",
+  "from '../../packages/mobile-core/src/platform-runtime.js'",
+);
+assertContains(
+  "merchant-app/shared-ui/platform-runtime.ts",
+  "from '../../packages/mobile-core/src/platform-runtime.js'",
+);
+assertContains(
+  "rider-app/shared-ui/platform-runtime.ts",
+  "from '../../packages/mobile-core/src/platform-runtime.js'",
+);
+assertContains(
+  "user-vue/shared-ui/platform-schema.js",
+  "export * from '../../packages/mobile-core/src/platform-schema.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/platform-schema.js",
+  "export * from '../../packages/mobile-core/src/platform-schema.js'",
+);
+assertContains(
+  "merchant-app/shared-ui/platform-schema.js",
+  "export * from '../../packages/mobile-core/src/platform-schema.js'",
+);
+assertContains(
+  "rider-app/shared-ui/platform-schema.js",
+  "export * from '../../packages/mobile-core/src/platform-schema.js'",
 );
 assertContains(
   "user-vue/shared-ui/support-runtime.js",
@@ -1871,6 +1933,14 @@ assertContains(
 assertContains(
   "package.json",
   'packages/mobile-core/src/location.test.mjs',
+);
+assertContains(
+  "package.json",
+  'packages/mobile-core/src/platform-runtime.test.mjs',
+);
+assertContains(
+  "package.json",
+  'packages/mobile-core/src/platform-schema.test.mjs',
 );
 assertContains(
   "package.json",

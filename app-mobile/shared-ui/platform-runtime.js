@@ -4,7 +4,7 @@ import {
   createPlatformRuntimeLoader,
   isErrandServiceEnabled,
   isRuntimeRouteEnabled
-} from '../../shared/mobile-common/platform-runtime.js'
+} from '../../packages/mobile-core/src/platform-runtime.js'
 
 export const {
   getCachedPlatformRuntimeSettings,

@@ -1,5 +1,5 @@
 import { fetchPublicRuntimeSettings } from './api'
-import { createPlatformRuntimeLoader } from '../../shared/mobile-common/platform-runtime.js'
+import { createPlatformRuntimeLoader } from '../../packages/mobile-core/src/platform-runtime.js'
 
 export const {
   getCachedPlatformRuntimeSettings,

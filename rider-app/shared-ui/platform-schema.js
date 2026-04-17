@@ -1,1 +1,1 @@
-export * from '../../shared/mobile-common/platform-schema.js'
+export * from '../../packages/mobile-core/src/platform-schema.js'

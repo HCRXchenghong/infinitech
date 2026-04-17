@@ -9,6 +9,8 @@ export * from "./auth-portal.js";
 export * from "./consumer-auth-runtime.js";
 export * from "./home-index.js";
 export * from "./location.js";
+export * from "./platform-runtime.js";
+export * from "./platform-schema.js";
 export * from "./search-page.js";
 export * from "./support-runtime.js";
 export * from "./message-center.js";
