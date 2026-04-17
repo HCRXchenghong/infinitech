@@ -52,8 +52,28 @@ declare module '../../shared/mobile-common/socket' {
 }
 
 declare module '../../shared/mobile-common/db' {
-  const db: any
-  export default db
+  function getLocalDB(): {
+    init(): Promise<void>
+    createTables(): Promise<void>
+    getLocalSyncState(): Promise<{
+      shops: number
+      products: number
+      orders: number
+    }>
+    saveSyncData(dataset: string, data?: {
+      changed?: any[]
+      deleted?: Array<number | string>
+      newVersion?: number
+    }): Promise<void>
+    getLocalData(dataset: string, conditions?: {
+      id?: number | string
+      shop_id?: number | string
+      user_id?: number | string
+      featured?: boolean
+    }): Promise<any[]>
+    clearCache(): Promise<void>
+  }
+  export default getLocalDB
 }
 
 declare module '../../shared/mobile-common/utils' {

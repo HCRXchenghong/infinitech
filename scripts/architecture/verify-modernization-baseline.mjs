@@ -43,6 +43,9 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/contracts/src/upload.js",
   "packages/contracts/src/upload.test.mjs",
   "packages/client-sdk/src/index.js",
+  "packages/client-sdk/src/local-db.js",
+  "packages/client-sdk/src/local-db.d.ts",
+  "packages/client-sdk/src/local-db.test.mjs",
   "packages/client-sdk/src/mobile-capabilities.js",
   "packages/client-sdk/src/mobile-capabilities.test.mjs",
   "packages/client-sdk/src/mobile-utils.js",
@@ -1991,7 +1994,27 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+);
+assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./local-db.js";',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./local-db": "./src/local-db.js"',
+);
+assertContains(
+  "packages/client-sdk/src/local-db.js",
+  "export class LocalDB {",
+);
+assertContains(
+  "packages/client-sdk/src/local-db.js",
+  "export function createLocalDB(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/local-db.js",
+  "export function resetLocalDBForTest() {",
 );
 assertContains(
   "packages/client-sdk/src/mobile-utils.js",
@@ -2054,6 +2077,10 @@ assertContains(
   "export * from \"../../packages/client-sdk/src/notification-audio.js\";",
 );
 assertContains(
+  "shared/mobile-common/db.js",
+  "export { default } from \"../../packages/client-sdk/src/local-db.js\";",
+);
+assertContains(
   "shared/mobile-common/utils.ts",
   "export * from \"../../packages/client-sdk/src/mobile-utils.js\";",
 );
@@ -2096,6 +2123,22 @@ assertContains(
 assertContains(
   "rider-app/utils/notification.ts",
   "from '../../packages/client-sdk/src/notification-audio.js'",
+);
+assertContains(
+  "user-vue/shared-ui/db.js",
+  "from '../../packages/client-sdk/src/local-db.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/db.js",
+  "from '../../packages/client-sdk/src/local-db.js'",
+);
+assertContains(
+  "merchant-app/shared-ui/db.js",
+  "from '../../packages/client-sdk/src/local-db.js'",
+);
+assertContains(
+  "rider-app/shared-ui/db.js",
+  "from '../../packages/client-sdk/src/local-db.js'",
 );
 assertContains(
   "user-vue/shared-ui/utils.ts",

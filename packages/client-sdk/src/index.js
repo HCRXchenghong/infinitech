@@ -1,4 +1,5 @@
 export * from "./auth.js";
+export * from "./local-db.js";
 export * from "./mobile-capabilities.js";
 export * from "./mobile-utils.js";
 export * from "./notification-audio.js";

@@ -1,1 +1,1 @@
-export { default } from '../../shared/mobile-common/db'
+export { default } from '../../packages/client-sdk/src/local-db.js'
