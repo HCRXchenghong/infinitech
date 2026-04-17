@@ -19,6 +19,7 @@
     "./order-after-sales": "./src/order-after-sales.js",
     "./order-coupon": "./src/order-coupon.js",
     "./order-support-pages": "./src/order-support-pages.js",
+    "./push-event-route": "./src/push-event-route.js",
     "./profile-address": "./src/profile-address.js",
     "./profile-favorites": "./src/profile-favorites.js",
     "./profile-my-reviews": "./src/profile-my-reviews.js",

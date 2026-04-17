@@ -83,6 +83,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/client-payment.test.mjs",
   "packages/mobile-core/src/consumer-auth-runtime.js",
   "packages/mobile-core/src/consumer-auth-runtime.test.mjs",
+  "packages/mobile-core/src/push-event-route.js",
+  "packages/mobile-core/src/push-event-route.test.mjs",
   "packages/mobile-core/src/home-index.js",
   "packages/mobile-core/src/home-index.test.mjs",
   "packages/mobile-core/src/sync-service.js",
@@ -903,6 +905,14 @@ assertContains(
   "export function normalizeConsumerAuthRuntimeSettings(payload = {}) {",
 );
 assertContains(
+  "packages/mobile-core/src/push-event-route.js",
+  "export function createPushClickUrlResolver(roleOrRoles, options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/push-event-route.js",
+  "export function buildPushNotificationDetailRoute(",
+);
+assertContains(
   "user-vue/shared-ui/sync.ts",
   "createSyncService({",
 );
@@ -941,6 +951,22 @@ assertContains(
 assertContains(
   "app-mobile/shared-ui/auth-runtime.js",
   "createConsumerAuthRuntimeStore({",
+);
+assertContains(
+  "user-vue/shared-ui/push-events.js",
+  "createPushClickUrlResolver(['customer', 'user']",
+);
+assertContains(
+  "app-mobile/shared-ui/push-events.js",
+  "createPushClickUrlResolver(['customer', 'user']",
+);
+assertContains(
+  "merchant-app/shared-ui/push-events.ts",
+  "createPushClickUrlResolver('merchant')",
+);
+assertContains(
+  "rider-app/shared-ui/push-events.ts",
+  "createPushClickUrlResolver('rider')",
 );
 assertContains(
   "admin-vue/src/views/Merchants.vue",
@@ -1787,6 +1813,10 @@ assertContains(
 assertContains(
   "package.json",
   'packages/mobile-core/src/consumer-auth-runtime.test.mjs',
+);
+assertContains(
+  "package.json",
+  'packages/mobile-core/src/push-event-route.test.mjs',
 );
 assertContains(
   "package.json",

@@ -1,28 +1,13 @@
 import { ackPushMessage } from './api'
+import {
+  buildPushNotificationDetailRoute,
+  createPushClickUrlResolver,
+} from '../../packages/mobile-core/src/push-event-route.js'
 import { startPushEventBridge as startBridge } from '../../shared/mobile-common/push-events'
 
-function resolveClickUrl(envelope) {
-  const routeByUserType = envelope?.payload?.routeByUserType || {}
-  const typedRoute = routeByUserType.customer || routeByUserType.user
-  if (typedRoute) {
-    return typedRoute
-  }
-  const route = envelope.route
-  if (route) {
-    return route
-  }
-
-  const notificationId = String(envelope.notificationId || '').trim()
-  if (!notificationId) {
-    return ''
-  }
-
-  let url = `/pages/message/notification-detail/index?id=${encodeURIComponent(notificationId)}`
-  if (envelope.messageId) {
-    url += `&messageId=${encodeURIComponent(envelope.messageId)}`
-  }
-  return url
-}
+const resolveClickUrl = createPushClickUrlResolver(['customer', 'user'], {
+  buildFallbackUrl: buildPushNotificationDetailRoute,
+})
 
 export function startPushEventBridge() {
   return startBridge({
