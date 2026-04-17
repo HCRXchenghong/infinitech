@@ -7,6 +7,8 @@
     ".": "./src/index.js",
     "./auth": "./src/auth.js",
     "./local-db": "./src/local-db.js",
+    "./mobile-config": "./src/mobile-config.js",
+    "./mobile-config-helper": "./src/mobile-config-helper.js",
     "./mobile-capabilities": "./src/mobile-capabilities.js",
     "./mobile-utils": "./src/mobile-utils.js",
     "./notification-audio": "./src/notification-audio.js",

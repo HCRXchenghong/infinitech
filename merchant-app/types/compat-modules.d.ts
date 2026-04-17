@@ -35,7 +35,13 @@ declare module '../../packages/mobile-core/src/upload.js' {
 
 declare module '../../shared/mobile-common/config' {
   const config: Record<string, any>
-  export function setManifest(manifest: Record<string, unknown>): void
+  export function createMobileConfigRuntime(options?: Record<string, any>): {
+    config: Record<string, any>
+    setManifest: (manifest: Record<string, unknown> | null | undefined) => void
+    updateConfig: (payload: Record<string, any>) => Record<string, any>
+    getConfig: () => Record<string, any>
+  }
+  export function setManifest(manifest: Record<string, unknown> | null | undefined): void
   export function updateConfig(payload: Record<string, any>): void
   export function getConfig(): Record<string, any>
   export default config

@@ -46,6 +46,12 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/client-sdk/src/local-db.js",
   "packages/client-sdk/src/local-db.d.ts",
   "packages/client-sdk/src/local-db.test.mjs",
+  "packages/client-sdk/src/mobile-config.js",
+  "packages/client-sdk/src/mobile-config.d.ts",
+  "packages/client-sdk/src/mobile-config.test.mjs",
+  "packages/client-sdk/src/mobile-config-helper.js",
+  "packages/client-sdk/src/mobile-config-helper.d.ts",
+  "packages/client-sdk/src/mobile-config-helper.test.mjs",
   "packages/client-sdk/src/mobile-capabilities.js",
   "packages/client-sdk/src/mobile-capabilities.test.mjs",
   "packages/client-sdk/src/mobile-utils.js",
@@ -1994,15 +2000,31 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
 );
 assertContains(
   "packages/client-sdk/src/index.js",
   'export * from "./local-db.js";',
 );
 assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./mobile-config.js";',
+);
+assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./mobile-config-helper.js";',
+);
+assertContains(
   "packages/client-sdk/package.json",
   '"./local-db": "./src/local-db.js"',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./mobile-config": "./src/mobile-config.js"',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./mobile-config-helper": "./src/mobile-config-helper.js"',
 );
 assertContains(
   "packages/client-sdk/src/local-db.js",
@@ -2015,6 +2037,14 @@ assertContains(
 assertContains(
   "packages/client-sdk/src/local-db.js",
   "export function resetLocalDBForTest() {",
+);
+assertContains(
+  "packages/client-sdk/src/mobile-config.js",
+  "export function createMobileConfigRuntime(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/mobile-config-helper.js",
+  "export function createMobileConfigHelper(options = {}) {",
 );
 assertContains(
   "packages/client-sdk/src/mobile-utils.js",
@@ -2081,6 +2111,10 @@ assertContains(
   "export { default } from \"../../packages/client-sdk/src/local-db.js\";",
 );
 assertContains(
+  "shared/mobile-common/config.ts",
+  "from \"../../packages/client-sdk/src/mobile-config.js\"",
+);
+assertContains(
   "shared/mobile-common/utils.ts",
   "export * from \"../../packages/client-sdk/src/mobile-utils.js\";",
 );
@@ -2139,6 +2173,30 @@ assertContains(
 assertContains(
   "rider-app/shared-ui/db.js",
   "from '../../packages/client-sdk/src/local-db.js'",
+);
+assertContains(
+  "user-vue/shared-ui/config.ts",
+  "from '../../packages/client-sdk/src/mobile-config.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/config.ts",
+  "from '../../packages/client-sdk/src/mobile-config.js'",
+);
+assertContains(
+  "merchant-app/shared-ui/config.ts",
+  "from '../../packages/client-sdk/src/mobile-config.js'",
+);
+assertContains(
+  "rider-app/shared-ui/config.ts",
+  "from '../../packages/client-sdk/src/mobile-config.js'",
+);
+assertContains(
+  "user-vue/shared-ui/config-helper.ts",
+  "createMobileConfigHelper({",
+);
+assertContains(
+  "app-mobile/shared-ui/config-helper.ts",
+  "createMobileConfigHelper({",
 );
 assertContains(
   "user-vue/shared-ui/utils.ts",
