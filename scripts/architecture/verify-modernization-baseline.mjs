@@ -81,6 +81,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/auth-portal.test.mjs",
   "packages/mobile-core/src/client-payment.js",
   "packages/mobile-core/src/client-payment.test.mjs",
+  "packages/mobile-core/src/consumer-auth-runtime.js",
+  "packages/mobile-core/src/consumer-auth-runtime.test.mjs",
   "packages/mobile-core/src/home-index.js",
   "packages/mobile-core/src/home-index.test.mjs",
   "packages/mobile-core/src/sync-service.js",
@@ -893,6 +895,14 @@ assertContains(
   "export function shouldLaunchClientPayment(result) {",
 );
 assertContains(
+  "packages/mobile-core/src/consumer-auth-runtime.js",
+  "export function createConsumerAuthRuntimeStore(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-auth-runtime.js",
+  "export function normalizeConsumerAuthRuntimeSettings(payload = {}) {",
+);
+assertContains(
   "user-vue/shared-ui/sync.ts",
   "createSyncService({",
 );
@@ -923,6 +933,14 @@ assertContains(
 assertContains(
   "rider-app/shared-ui/client-payment.ts",
   "from '../../packages/mobile-core/src/client-payment.js'",
+);
+assertContains(
+  "user-vue/shared-ui/auth-runtime.js",
+  "createConsumerAuthRuntimeStore({",
+);
+assertContains(
+  "app-mobile/shared-ui/auth-runtime.js",
+  "createConsumerAuthRuntimeStore({",
 );
 assertContains(
   "admin-vue/src/views/Merchants.vue",
@@ -1765,6 +1783,10 @@ assertContains(
 assertContains(
   "package.json",
   'packages/mobile-core/src/client-payment.test.mjs',
+);
+assertContains(
+  "package.json",
+  'packages/mobile-core/src/consumer-auth-runtime.test.mjs',
 );
 assertContains(
   "package.json",
