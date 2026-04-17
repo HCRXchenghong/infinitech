@@ -7,6 +7,10 @@ const fs = require("fs");
 const { logger } = require("../utils/logger");
 const { verifyCriticalCredential } = require("../utils/criticalActionVerify");
 const {
+  buildErrorEnvelopePayload,
+  buildSuccessEnvelopePayload,
+} = require("../utils/apiEnvelope");
+const {
   DEFAULT_LIMIT,
   MAX_LIMIT,
   ALLOWED_SOURCES,
@@ -33,15 +37,30 @@ function isSystemLogMutationCredentialConfigured() {
   return Boolean(LOG_DELETE_VERIFY_ACCOUNT && LOG_DELETE_VERIFY_PASSWORD);
 }
 
-function handleControllerError(res, error, context, message) {
+function respondSystemLogError(req, res, status, message, options = {}) {
+  return res.status(status).json(
+    buildErrorEnvelopePayload(req, status, message, {
+      code: options.code,
+      data: options.data,
+      legacy: options.legacy,
+    }),
+  );
+}
+
+function respondSystemLogSuccess(req, res, message, data, options = {}) {
+  return res.status(options.status || 200).json(
+    buildSuccessEnvelopePayload(req, message, data, {
+      legacy: options.legacy || (data && typeof data === "object" && !Array.isArray(data) ? data : undefined),
+    }),
+  );
+}
+
+function handleControllerError(req, res, error, context, message) {
   logger.error(context, {
     code: error && error.code ? String(error.code) : "",
     message: error && error.message ? String(error.message) : "",
   });
-  return res.status(500).json({
-    success: false,
-    error: message
-  });
+  return respondSystemLogError(req, res, 500, message);
 }
 
 async function listSystemLogs(req, res) {
@@ -98,8 +117,7 @@ async function listSystemLogs(req, res) {
     const paged = filtered.slice(startIndex, startIndex + limit);
     const serviceStatus = await collectServiceStatus();
 
-    return res.json({
-      success: true,
+    return respondSystemLogSuccess(req, res, "系统日志加载成功", {
       items: paged,
       pagination: {
         page,
@@ -116,19 +134,18 @@ async function listSystemLogs(req, res) {
       }
     });
   } catch (error) {
-    return handleControllerError(res, error, "listSystemLogs", "加载系统日志失败");
+    return handleControllerError(req, res, error, "listSystemLogs", "加载系统日志失败");
   }
 }
 
 async function getSystemHealth(req, res) {
   try {
     const serviceStatus = await collectServiceStatus();
-    return res.json({
-      success: true,
+    return respondSystemLogSuccess(req, res, "系统健康状态加载成功", {
       serviceStatus
     });
   } catch (error) {
-    return handleControllerError(res, error, "getSystemHealth", "加载系统健康状态失败");
+    return handleControllerError(req, res, error, "getSystemHealth", "加载系统健康状态失败");
   }
 }
 
@@ -195,36 +212,26 @@ async function deleteSystemLog(req, res) {
   try {
     const verify = verifySystemLogMutation(req, "delete");
     if (!verify.ok) {
-      return res.status(verify.status).json({
-        success: false,
-        error: verify.error,
-        lockedUntil: verify.lockedUntil,
+      return respondSystemLogError(req, res, verify.status, verify.error, {
+        data: { lockedUntil: verify.lockedUntil },
+        legacy: { lockedUntil: verify.lockedUntil },
       });
     }
 
     const source = normalizeSource(req.body?.source);
     const raw = String(req.body?.raw || "");
     if (!source || !raw) {
-      return res.status(400).json({
-        success: false,
-        error: "缺少必要参数（source/raw）"
-      });
+      return respondSystemLogError(req, res, 400, "缺少必要参数（source/raw）");
     }
 
     const filePath = getFilePathBySource(source);
     if (!filePath) {
-      return res.status(400).json({
-        success: false,
-        error: "无效的日志来源"
-      });
+      return respondSystemLogError(req, res, 400, "无效的日志来源");
     }
 
     const result = removeFirstMatchedLine(filePath, raw);
     if (!result.removed) {
-      return res.status(404).json({
-        success: false,
-        error: "未找到该条日志，可能已被删除"
-      });
+      return respondSystemLogError(req, res, 404, "未找到该条日志，可能已被删除");
     }
 
     logger.info("POST /api/system-logs/delete", {
@@ -236,11 +243,11 @@ async function deleteSystemLog(req, res) {
       ip: req.ip
     });
 
-    return res.json({
-      success: true
+    return respondSystemLogSuccess(req, res, "系统日志删除成功", { deleted: true }, {
+      legacy: { deleted: true },
     });
   } catch (error) {
-    return handleControllerError(res, error, "deleteSystemLog", "删除日志失败");
+    return handleControllerError(req, res, error, "deleteSystemLog", "删除日志失败");
   }
 }
 
@@ -248,19 +255,15 @@ async function clearSystemLogs(req, res) {
   try {
     const verify = verifySystemLogMutation(req, "clear");
     if (!verify.ok) {
-      return res.status(verify.status).json({
-        success: false,
-        error: verify.error,
-        lockedUntil: verify.lockedUntil,
+      return respondSystemLogError(req, res, verify.status, verify.error, {
+        data: { lockedUntil: verify.lockedUntil },
+        legacy: { lockedUntil: verify.lockedUntil },
       });
     }
 
     const source = ALLOWED_SOURCES.has(req.body?.source) ? req.body?.source : "";
     if (!source) {
-      return res.status(400).json({
-        success: false,
-        error: "无效的日志来源"
-      });
+      return respondSystemLogError(req, res, 400, "无效的日志来源");
     }
 
     const targetSources = source === "all" ? ["bff", "go"] : [source];
@@ -288,13 +291,12 @@ async function clearSystemLogs(req, res) {
     });
 
 
-    return res.json({
-      success: true,
+    return respondSystemLogSuccess(req, res, "系统日志清空成功", {
       cleared,
       details
     });
   } catch (error) {
-    return handleControllerError(res, error, "clearSystemLogs", "清空日志失败");
+    return handleControllerError(req, res, error, "clearSystemLogs", "清空日志失败");
   }
 }
 

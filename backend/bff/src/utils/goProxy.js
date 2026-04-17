@@ -203,6 +203,7 @@ async function proxyDelete(req, res, next, path, options = {}) {
 
 module.exports = {
   goUrl,
+  buildNormalizedErrorPayload,
   requestGoRaw,
   proxyToGo,
   proxyGet,

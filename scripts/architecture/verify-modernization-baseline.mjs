@@ -758,6 +758,30 @@ assertContains(
   "createRateLimitHandler('登录尝试过于频繁，请稍后再试')",
 );
 assertContains(
+  "backend/bff/src/services/adminController/qrCommon.js",
+  "function sendAdminQrError(req, res, status, message, options = {})",
+);
+assertContains(
+  "backend/bff/src/services/adminController/qrLogin.js",
+  'return sendAdminQrSuccess(req, res, "二维码登录会话创建成功", {',
+);
+assertContains(
+  "backend/bff/src/services/systemLogsService.js",
+  'return respondSystemLogSuccess(req, res, "系统日志加载成功", {',
+);
+assertContains(
+  "backend/bff/src/services/adminSettings/proxyClient.js",
+  "buildNormalizedErrorPayload(",
+);
+assertContains(
+  "backend/bff/src/services/adminSettingsService.js",
+  'return respondSettingsError(req, res, 400, "没有上传文件");',
+);
+assertContains(
+  "backend/bff/src/services/adminSettingsService.js",
+  'return respondSettingsSuccess(req, res, "全量数据清理完成", {',
+);
+assertContains(
   "backend/bff/src/utils/authIdentity.js",
   "../../../../packages/contracts/src/identity.cjs",
 );

@@ -23,6 +23,10 @@ const {
   proxySettingsRequest,
 } = require("./adminSettings/proxyClient");
 const { safeUnlinkTempFile, clearLogFile } = require("./adminSettings/fileOps");
+const {
+  buildErrorEnvelopePayload,
+  buildSuccessEnvelopePayload,
+} = require("../utils/apiEnvelope");
 
 function createProxyHandler(method, pathResolver, optionsResolver) {
   return async function proxyHandler(req, res) {
@@ -49,6 +53,24 @@ function normalizeAssetUrlFields(req, payload, fields) {
   }
 
   return normalized;
+}
+
+function respondSettingsError(req, res, status, message, options = {}) {
+  return res.status(status).json(
+    buildErrorEnvelopePayload(req, status, message, {
+      code: options.code,
+      data: options.data,
+      legacy: options.legacy,
+    }),
+  );
+}
+
+function respondSettingsSuccess(req, res, message, data, options = {}) {
+  return res.status(options.status || 200).json(
+    buildSuccessEnvelopePayload(req, message, data, {
+      legacy: options.legacy || (data && typeof data === "object" && !Array.isArray(data) ? data : undefined),
+    }),
+  );
 }
 
 const getCarousel = createProxyHandler("get", "/api/carousel", (req) => ({ params: req.query }));
@@ -136,7 +158,7 @@ async function getAppDownloadConfig(req, res) {
     const data = normalizeAssetUrlFields(req, response.data, ["ios_url", "android_url", "mini_program_qr_url"]);
     return res.status(response.status).json(data);
   } catch (error) {
-    return handleProxyError(res, error, "getAppDownloadConfig", { success: false, error: error.message });
+    return handleProxyError(req, res, error, "getAppDownloadConfig", { success: false, error: error.message });
   }
 }
 
@@ -150,13 +172,13 @@ async function updateAppDownloadConfig(req, res) {
     });
     return res.status(response.status).json(response.data);
   } catch (error) {
-    return handleProxyError(res, error, "updateAppDownloadConfig", { success: false, error: error.message });
+    return handleProxyError(req, res, error, "updateAppDownloadConfig", { success: false, error: error.message });
   }
 }
 
 async function uploadImage(req, res) {
   if (!req.file) {
-    return res.status(400).json({ success: false, error: "没有上传文件" });
+    return respondSettingsError(req, res, 400, "没有上传文件");
   }
 
   const tempFilePath = req.file.path;
@@ -172,9 +194,9 @@ async function uploadImage(req, res) {
     });
     const data = normalizeAssetUrlFields(req, response.data, ["imageUrl", "image_url", "url", "asset_url"]);
 
-    return res.json(data);
+    return res.status(response.status).json(data);
   } catch (error) {
-    return handleProxyError(res, error, "uploadImage", { success: false, error: error.message });
+    return handleProxyError(req, res, error, "uploadImage", { success: false, error: error.message });
   } finally {
     safeUnlinkTempFile(tempFilePath);
   }
@@ -182,7 +204,7 @@ async function uploadImage(req, res) {
 
 async function uploadEditorImage(req, res) {
   if (!req.file) {
-    return res.status(400).json({ success: false, error: "没有上传文件" });
+    return respondSettingsError(req, res, 400, "没有上传文件");
   }
 
   const tempFilePath = req.file.path;
@@ -200,7 +222,7 @@ async function uploadEditorImage(req, res) {
 
     return res.status(response.status).json(data);
   } catch (error) {
-    return handleProxyError(res, error, "uploadEditorImage", { success: false, error: error.message });
+    return handleProxyError(req, res, error, "uploadEditorImage", { success: false, error: error.message });
   } finally {
     safeUnlinkTempFile(tempFilePath);
   }
@@ -208,7 +230,7 @@ async function uploadEditorImage(req, res) {
 
 async function uploadPackage(req, res) {
   if (!req.file) {
-    return res.status(400).json({ success: false, error: "没有上传文件" });
+    return respondSettingsError(req, res, 400, "没有上传文件");
   }
 
   const tempFilePath = req.file.path;
@@ -226,7 +248,7 @@ async function uploadPackage(req, res) {
 
     return res.status(response.status).json(data);
   } catch (error) {
-    return handleProxyError(res, error, "uploadPackage", { success: false, error: error.message });
+    return handleProxyError(req, res, error, "uploadPackage", { success: false, error: error.message });
   } finally {
     safeUnlinkTempFile(tempFilePath);
   }
@@ -237,10 +259,7 @@ async function clearAllData(req, res) {
     logger.error("POST /api/settings/clear-all-data", {
       action: "clear_all_data_verify_unconfigured"
     });
-    return res.status(503).json({
-      success: false,
-      error: "清空全量数据未配置二次校验口令，请联系管理员"
-    });
+    return respondSettingsError(req, res, 503, "清空全量数据未配置二次校验口令，请联系管理员");
   }
 
   const verifyAccount = String(req.body?.verifyAccount || "").trim();
@@ -266,11 +285,16 @@ async function clearAllData(req, res) {
       remainingAttempts: verified.remainingAttempts,
       lockedUntil: verified.lockedUntil || null,
     });
-    return res.status(verified.status || 401).json({
-      success: false,
-      error: verified.error || "二次验证失败，账号或密码错误",
-      lockedUntil: verified.lockedUntil || null,
-    });
+    return respondSettingsError(
+      req,
+      res,
+      verified.status || 401,
+      verified.error || "二次验证失败，账号或密码错误",
+      {
+        data: { lockedUntil: verified.lockedUntil || null },
+        legacy: { lockedUntil: verified.lockedUntil || null },
+      },
+    );
   }
 
   try {
@@ -302,14 +326,13 @@ async function clearAllData(req, res) {
       goResult: goResponse.data,
     });
 
-    return res.json({
-      success: true,
+    return respondSettingsSuccess(req, res, "全量数据清理完成", {
       goResult: goResponse.data,
       logCleared,
       logCleanup,
     });
   } catch (error) {
-    return handleProxyError(res, error, "clearAllData", {
+    return handleProxyError(req, res, error, "clearAllData", {
       success: false,
       error: error.message || "清空全部信息失败",
     });

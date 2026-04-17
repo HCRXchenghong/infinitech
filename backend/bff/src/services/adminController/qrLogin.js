@@ -17,6 +17,8 @@ const {
   isAllowedAdminType,
   validateAdminToken,
   buildVerifiedAdminUser,
+  sendAdminQrError,
+  sendAdminQrSuccess,
   verifyToken,
 } = require("./qrCommon");
 
@@ -265,19 +267,13 @@ function resolveAuthorizedAdminIdentity(req) {
 async function ensureValidAdminIdentity(req, res) {
   const auth = resolveAuthorizedAdminIdentity(req);
   if (!auth.ok) {
-    res.status(auth.status).json({
-      success: false,
-      error: auth.error,
-    });
+    sendAdminQrError(req, res, auth.status, auth.error);
     return null;
   }
 
   const valid = await validateAdminToken(auth.identity.token);
   if (!valid) {
-    res.status(401).json({
-      success: false,
-      error: "登录状态已失效，请重新登录",
-    });
+    sendAdminQrError(req, res, 401, "登录状态已失效，请重新登录");
     return null;
   }
 
@@ -307,62 +303,44 @@ async function createQrLoginSession(req, res) {
   const encryptedPayload = buildQrLoginEncryptedPayload(ticket, session.expiresAt);
   const qrText = `${webBaseUrl}${QR_LOGIN_DOWNLOAD_PATH}?${QR_LOGIN_PAYLOAD_PARAM}=${encodeURIComponent(encryptedPayload)}`;
 
-  res.json({
-    success: true,
-    data: {
-      ...buildQrSessionPublicData(session),
-      qrText,
-      encryptedPayload,
-      expiresIn: Math.ceil(QR_LOGIN_SESSION_TTL_MS / 1000),
-    },
+  return sendAdminQrSuccess(req, res, "二维码登录会话创建成功", {
+    ...buildQrSessionPublicData(session),
+    qrText,
+    encryptedPayload,
+    expiresIn: Math.ceil(QR_LOGIN_SESSION_TTL_MS / 1000),
   });
 }
 
 async function getQrLoginSessionStatus(req, res) {
   const ticket = String(req.params.ticket || "").trim();
   if (!ticket) {
-    return res.status(400).json({
-      success: false,
-      error: "缺少二维码会话编号",
-    });
+    return sendAdminQrError(req, res, 400, "缺少二维码会话编号");
   }
 
   const session = await getQrLoginSession(ticket);
   if (!session) {
-    return res.status(404).json({
-      success: false,
-      error: "二维码已失效，请刷新后重试",
-    });
+    return sendAdminQrError(req, res, 404, "二维码已失效，请刷新后重试");
   }
 
   if (session.status === "confirmed" && session.authorizedToken) {
     session.status = "consumed";
     session.consumedAt = nowMs();
     await persistQrLoginSession(session);
-    return res.json({
-      success: true,
-      data: {
-        ...buildQrSessionPublicData(session),
-        status: "confirmed",
-        token: session.authorizedToken,
-        user: session.authorizedUser,
-      },
+    return sendAdminQrSuccess(req, res, "二维码登录已确认", {
+      ...buildQrSessionPublicData(session),
+      status: "confirmed",
+      token: session.authorizedToken,
+      user: session.authorizedUser,
     });
   }
 
-  return res.json({
-    success: true,
-    data: buildQrSessionPublicData(session),
-  });
+  return sendAdminQrSuccess(req, res, "二维码登录会话状态获取成功", buildQrSessionPublicData(session));
 }
 
 async function scanQrLoginSession(req, res) {
   const ticket = resolveQrTicketFromRequest(req);
   if (!ticket) {
-    return res.status(400).json({
-      success: false,
-      error: "二维码内容无效或已过期",
-    });
+    return sendAdminQrError(req, res, 400, "二维码内容无效或已过期");
   }
 
   const identity = await ensureValidAdminIdentity(req, res);
@@ -372,31 +350,19 @@ async function scanQrLoginSession(req, res) {
 
   const session = await getQrLoginSession(ticket);
   if (!session) {
-    return res.status(404).json({
-      success: false,
-      error: "二维码已失效，请刷新后重试",
-    });
+    return sendAdminQrError(req, res, 404, "二维码已失效，请刷新后重试");
   }
 
   if (session.status === "expired") {
-    return res.status(409).json({
-      success: false,
-      error: "二维码已过期，请刷新后重试",
-    });
+    return sendAdminQrError(req, res, 409, "二维码已过期，请刷新后重试");
   }
 
   if (session.status === "rejected") {
-    return res.status(409).json({
-      success: false,
-      error: "该二维码已被拒绝，请刷新后重试",
-    });
+    return sendAdminQrError(req, res, 409, "该二维码已被拒绝，请刷新后重试");
   }
 
   if (session.status === "confirmed" || session.status === "consumed") {
-    return res.status(409).json({
-      success: false,
-      error: "该二维码已完成登录",
-    });
+    return sendAdminQrError(req, res, 409, "该二维码已完成登录");
   }
 
   const scanUser = buildFallbackAdminUser(identity, req.body?.user);
@@ -409,10 +375,7 @@ async function scanQrLoginSession(req, res) {
   };
   await persistQrLoginSession(session);
 
-  return res.json({
-    success: true,
-    data: buildQrSessionPublicData(session),
-  });
+  return sendAdminQrSuccess(req, res, "二维码扫码成功", buildQrSessionPublicData(session));
 }
 
 async function confirmQrLoginSession(req, res) {
@@ -420,10 +383,7 @@ async function confirmQrLoginSession(req, res) {
   const approve = req.body?.approve !== false;
 
   if (!ticket) {
-    return res.status(400).json({
-      success: false,
-      error: "二维码内容无效或已过期",
-    });
+    return sendAdminQrError(req, res, 400, "二维码内容无效或已过期");
   }
 
   const identity = await ensureValidAdminIdentity(req, res);
@@ -433,32 +393,20 @@ async function confirmQrLoginSession(req, res) {
 
   const session = await getQrLoginSession(ticket);
   if (!session) {
-    return res.status(404).json({
-      success: false,
-      error: "二维码已失效，请刷新后重试",
-    });
+    return sendAdminQrError(req, res, 404, "二维码已失效，请刷新后重试");
   }
 
   if (session.status === "expired") {
-    return res.status(409).json({
-      success: false,
-      error: "二维码已过期，请刷新后重试",
-    });
+    return sendAdminQrError(req, res, 409, "二维码已过期，请刷新后重试");
   }
 
   if (session.status === "consumed") {
-    return res.status(409).json({
-      success: false,
-      error: "该二维码已完成登录",
-    });
+    return sendAdminQrError(req, res, 409, "该二维码已完成登录");
   }
 
   const currentUser = buildFallbackAdminUser(identity, req.body?.user);
   if (session.scannedBy?.id && currentUser.id && session.scannedBy.id !== currentUser.id) {
-    return res.status(403).json({
-      success: false,
-      error: "请使用同一账号完成扫码确认",
-    });
+    return sendAdminQrError(req, res, 403, "请使用同一账号完成扫码确认");
   }
 
   if (!approve) {
@@ -467,10 +415,7 @@ async function confirmQrLoginSession(req, res) {
     session.authorizedToken = "";
     session.authorizedUser = null;
     await persistQrLoginSession(session);
-    return res.json({
-      success: true,
-      data: buildQrSessionPublicData(session),
-    });
+    return sendAdminQrSuccess(req, res, "二维码登录已拒绝", buildQrSessionPublicData(session));
   }
 
   const upstreamUser = buildVerifiedAdminUser(identity);
@@ -486,10 +431,7 @@ async function confirmQrLoginSession(req, res) {
   session.authorizedUser = upstreamUser || currentUser;
   await persistQrLoginSession(session);
 
-  return res.json({
-    success: true,
-    data: buildQrSessionPublicData(session),
-  });
+  return sendAdminQrSuccess(req, res, "二维码登录确认成功", buildQrSessionPublicData(session));
 }
 
 module.exports = {

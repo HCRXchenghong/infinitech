@@ -2,6 +2,10 @@ const crypto = require("crypto");
 const config = require("../../config");
 const { logger } = require("../../utils/logger");
 const {
+  buildErrorEnvelopePayload,
+  buildSuccessEnvelopePayload,
+} = require("../../utils/apiEnvelope");
+const {
   extractVerifiedAdminIdentity,
   verifyAdminTokenSignature
 } = require("../../utils/authIdentity");
@@ -272,45 +276,60 @@ function buildVerifiedAdminUser(identity) {
   };
 }
 
+function sendAdminQrError(req, res, status, message, options = {}) {
+  return res.status(status).json(
+    buildErrorEnvelopePayload(req, status, message, {
+      code: options.code,
+      data: options.data,
+      legacy: options.legacy,
+    }),
+  );
+}
+
+function sendAdminQrSuccess(req, res, message, data, options = {}) {
+  return res.status(options.status || 200).json(
+    buildSuccessEnvelopePayload(req, message, data, {
+      legacy: options.legacy || (data && typeof data === "object" && !Array.isArray(data) ? data : undefined),
+    }),
+  );
+}
+
 async function verifyToken(req, res, next) {
   const identity = extractVerifiedAdminIdentity(req, { normalizeType: true });
   if (!identity || !identity.token) {
-    return res.status(401).json({
-      valid: false,
-      error: "\u7f3a\u5c11\u9274\u6743\u4fe1\u606f"
+    return sendAdminQrError(req, res, 401, "\u7f3a\u5c11\u9274\u6743\u4fe1\u606f", {
+      legacy: { valid: false },
     });
   }
 
   if (!isAllowedAdminType(identity.type)) {
-    return res.status(403).json({
-      valid: false,
-      error: "\u6743\u9650\u4e0d\u8db3"
+    return sendAdminQrError(req, res, 403, "\u6743\u9650\u4e0d\u8db3", {
+      legacy: { valid: false },
     });
   }
 
   if (!identity.id) {
-    return res.status(401).json({
-      valid: false,
-      error: "\u65e0\u6548\u51ed\u8bc1\uff0c\u7f3a\u5c11\u8eab\u4efd\u6807\u8bc6"
+    return sendAdminQrError(req, res, 401, "\u65e0\u6548\u51ed\u8bc1\uff0c\u7f3a\u5c11\u8eab\u4efd\u6807\u8bc6", {
+      legacy: { valid: false },
     });
   }
 
   try {
     const valid = validateAdminToken(identity.token);
     if (!valid) {
-      return res.status(401).json({
-        valid: false,
-        error: "\u767b\u5f55\u72b6\u6001\u5df2\u5931\u6548\uff0c\u8bf7\u91cd\u65b0\u767b\u5f55"
+      return sendAdminQrError(req, res, 401, "\u767b\u5f55\u72b6\u6001\u5df2\u5931\u6548\uff0c\u8bf7\u91cd\u65b0\u767b\u5f55", {
+        legacy: { valid: false },
       });
     }
 
     const user = buildVerifiedAdminUser(identity);
-    return res.json({
+    const payload = {
       valid: true,
       user,
       expiresAt: getTokenExpiresAt(identity.payload),
       checkedAt: nowMs()
-    });
+    };
+    return sendAdminQrSuccess(req, res, "管理员令牌校验通过", payload);
   } catch (error) {
     logger.error("Verify admin token error:", error);
     return next(error);
@@ -331,5 +350,7 @@ module.exports = {
   isAllowedAdminType,
   validateAdminToken,
   buildVerifiedAdminUser,
+  sendAdminQrError,
+  sendAdminQrSuccess,
   verifyToken,
 };

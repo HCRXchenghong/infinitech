@@ -1,5 +1,6 @@
 const axios = require("axios");
 const { logger } = require("../../utils/logger");
+const { buildNormalizedErrorPayload } = require("../../utils/goProxy");
 const { buildForwardHeaders } = require("../../utils/forwardAuth");
 const { BACKEND_URL } = require("./constants");
 
@@ -25,7 +26,14 @@ function normalizePublicAssetUrl(req, value) {
   return value;
 }
 
-function handleProxyError(res, error, context, fallbackPayload = null) {
+function resolveFallbackProxyErrorMessage(fallbackPayload, error) {
+  if (fallbackPayload && typeof fallbackPayload === "object") {
+    return String(fallbackPayload.error || fallbackPayload.message || "").trim() || error.message;
+  }
+  return error.message || "请求后端服务失败，请稍后重试";
+}
+
+function handleProxyError(req, res, error, context, fallbackPayload = null) {
   logger.error(context, {
     code: error.code,
     message: error.message,
@@ -33,10 +41,24 @@ function handleProxyError(res, error, context, fallbackPayload = null) {
   });
 
   if (error.response) {
-    return res.status(error.response.status).json(error.response.data);
+    return res.status(error.response.status).json(
+      buildNormalizedErrorPayload(
+        req,
+        error,
+        error.response.status,
+        resolveFallbackProxyErrorMessage(fallbackPayload, error),
+      ),
+    );
   }
 
-  return res.status(502).json(fallbackPayload || { success: false, error: "请求后端服务失败，请稍后重试" });
+  return res.status(502).json(
+    buildNormalizedErrorPayload(
+      req,
+      error,
+      502,
+      resolveFallbackProxyErrorMessage(fallbackPayload, error),
+    ),
+  );
 }
 
 function buildSettingsHeaders(req, options = {}) {
@@ -81,7 +103,7 @@ async function proxySettingsRequest(req, res, method, path, options = {}) {
     });
     return res.status(response.status).json(response.data);
   } catch (error) {
-    return handleProxyError(res, error, "proxySettingsRequest");
+    return handleProxyError(req, res, error, "proxySettingsRequest");
   }
 }
 
