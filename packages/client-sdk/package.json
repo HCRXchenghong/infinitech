@@ -9,6 +9,7 @@
     "./mobile-capabilities": "./src/mobile-capabilities.js",
     "./onboarding-invite": "./src/onboarding-invite.js",
     "./realtime-token": "./src/realtime-token.js",
+    "./stored-auth-identity": "./src/stored-auth-identity.js",
     "./uni-request": "./src/uni-request.js"
   }
 }

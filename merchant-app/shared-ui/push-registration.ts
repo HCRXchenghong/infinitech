@@ -4,41 +4,27 @@ import {
   unregisterPushDevice,
   ackPushMessage as ackPushMessageApi,
 } from './api'
+import { createStoredAuthIdentityResolver } from '../../packages/client-sdk/src/stored-auth-identity.js'
 import { createPushRegistrationManager } from '../../shared/mobile-common/push-registration'
 
 declare const uni: any
 
-function resolveMerchantIdentity() {
-  const authMode = String(uni.getStorageSync('authMode') || '').trim()
-  if (authMode !== 'merchant') {
-    return null
-  }
-
-  const token = String(uni.getStorageSync('token') || '').trim()
-  if (!token) {
-    return null
-  }
-
-  const profile = uni.getStorageSync('merchantProfile') || {}
-  const userId = String(
-    profile.id ||
-    profile.role_id ||
-    profile.userId ||
-    profile.user_id ||
-    uni.getStorageSync('merchantId') ||
-    uni.getStorageSync('merchant_id') ||
-    ''
-  ).trim()
-
-  if (!userId) {
-    return null
-  }
-
-  return {
-    userId,
-    userType: 'merchant',
-  }
-}
+const resolveMerchantIdentity = createStoredAuthIdentityResolver({
+  uniApp: uni,
+  allowedAuthModes: ['merchant'],
+  tokenKeys: ['token'],
+  profileKey: 'merchantProfile',
+  idSources: [
+    'profile:id',
+    'profile:role_id',
+    'profile:userId',
+    'profile:user_id',
+    'storage:merchantId',
+    'storage:merchant_id',
+  ],
+  role: 'merchant',
+  userType: 'merchant',
+})
 
 export const {
   registerCurrentPushDevice,

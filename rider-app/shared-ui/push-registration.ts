@@ -4,39 +4,25 @@ import {
   unregisterPushDevice,
   ackPushMessage as ackPushMessageApi,
 } from './api'
+import { createStoredAuthIdentityResolver } from '../../packages/client-sdk/src/stored-auth-identity.js'
 import { createPushRegistrationManager } from '../../shared/mobile-common/push-registration'
 
 declare const uni: any
 
-function resolveRiderIdentity() {
-  const authMode = String(uni.getStorageSync('authMode') || '').trim()
-  if (authMode !== 'rider') {
-    return null
-  }
-
-  const token = String(uni.getStorageSync('token') || uni.getStorageSync('access_token') || '').trim()
-  if (!token) {
-    return null
-  }
-
-  const profile = uni.getStorageSync('riderProfile') || {}
-  const userId = String(
-    uni.getStorageSync('riderId') ||
-    profile.id ||
-    profile.userId ||
-    profile.user_id ||
-    ''
-  ).trim()
-
-  if (!userId) {
-    return null
-  }
-
-  return {
-    userId,
-    userType: 'rider',
-  }
-}
+const resolveRiderIdentity = createStoredAuthIdentityResolver({
+  uniApp: uni,
+  allowedAuthModes: ['rider'],
+  tokenKeys: ['token', 'access_token'],
+  profileKey: 'riderProfile',
+  idSources: [
+    'storage:riderId',
+    'profile:id',
+    'profile:userId',
+    'profile:user_id',
+  ],
+  role: 'rider',
+  userType: 'rider',
+})
 
 export const {
   registerCurrentPushDevice,

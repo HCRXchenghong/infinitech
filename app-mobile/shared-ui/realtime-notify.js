@@ -1,35 +1,25 @@
 import config from './config'
 import createSocket from '../utils/socket-io'
+import { createStoredAuthIdentityResolver } from '../../packages/client-sdk/src/stored-auth-identity.js'
 import { createRealtimeNotifyBridge } from '../../shared/mobile-common/realtime-notify'
 
-function resolveUserIdentity() {
-  const authMode = String(uni.getStorageSync('authMode') || '').trim()
-  if (authMode && authMode !== 'user') {
-    return null
-  }
-  const token = String(uni.getStorageSync('token') || '').trim()
-  if (!token) {
-    return null
-  }
-  const profile = uni.getStorageSync('userProfile') || {}
-  const userId = String(
-    profile.id ||
-      profile.userId ||
-      profile.user_id ||
-      uni.getStorageSync('userId') ||
-      uni.getStorageSync('user_id') ||
-      profile.phone ||
-      ''
-  ).trim()
-  if (!userId) {
-    return null
-  }
-  return {
-    userId,
-    role: 'user',
-    authToken: token,
-  }
-}
+const resolveUserIdentity = createStoredAuthIdentityResolver({
+  uniApp: uni,
+  allowedAuthModes: ['user'],
+  allowEmptyAuthMode: true,
+  tokenKeys: ['token'],
+  profileKey: 'userProfile',
+  idSources: [
+    'profile:id',
+    'profile:userId',
+    'profile:user_id',
+    'storage:userId',
+    'storage:user_id',
+    'profile:phone',
+  ],
+  role: 'user',
+  userType: 'customer',
+})
 
 export const {
   connectCurrentRealtimeChannel,

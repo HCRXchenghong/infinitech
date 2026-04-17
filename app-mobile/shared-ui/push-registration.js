@@ -1,38 +1,25 @@
 import config from './config'
 import { registerPushDevice, unregisterPushDevice, ackPushMessage as ackPushMessageApi } from './api'
+import { createStoredAuthIdentityResolver } from '../../packages/client-sdk/src/stored-auth-identity.js'
 import { createPushRegistrationManager } from '../../shared/mobile-common/push-registration'
 
-function resolveUserIdentity() {
-  const authMode = String(uni.getStorageSync('authMode') || '').trim()
-  if (authMode && authMode !== 'user') {
-    return null
-  }
-
-  const token = String(uni.getStorageSync('token') || '').trim()
-  if (!token) {
-    return null
-  }
-
-  const profile = uni.getStorageSync('userProfile') || {}
-  const userId = String(
-    profile.id ||
-    profile.userId ||
-    profile.user_id ||
-    uni.getStorageSync('userId') ||
-    uni.getStorageSync('user_id') ||
-    profile.phone ||
-    ''
-  ).trim()
-
-  if (!userId) {
-    return null
-  }
-
-  return {
-    userId,
-    userType: 'customer',
-  }
-}
+const resolveUserIdentity = createStoredAuthIdentityResolver({
+  uniApp: uni,
+  allowedAuthModes: ['user'],
+  allowEmptyAuthMode: true,
+  tokenKeys: ['token'],
+  profileKey: 'userProfile',
+  idSources: [
+    'profile:id',
+    'profile:userId',
+    'profile:user_id',
+    'storage:userId',
+    'storage:user_id',
+    'profile:phone',
+  ],
+  role: 'user',
+  userType: 'customer',
+})
 
 export const {
   registerCurrentPushDevice,

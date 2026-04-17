@@ -49,6 +49,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/client-sdk/src/onboarding-invite.test.mjs",
   "packages/client-sdk/src/realtime-token.js",
   "packages/client-sdk/src/realtime-token.test.mjs",
+  "packages/client-sdk/src/stored-auth-identity.js",
+  "packages/client-sdk/src/stored-auth-identity.test.mjs",
   "packages/client-sdk/src/uni-request.js",
   "packages/client-sdk/src/uni-request.test.mjs",
   "packages/domain-core/src/index.js",
@@ -1744,7 +1746,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
 );
 assertContains(
   "packages/client-sdk/src/realtime-token.js",
@@ -1763,6 +1765,14 @@ assertContains(
   "export function buildUniNetworkErrorMessage(error, context = {}, options = {}) {",
 );
 assertContains(
+  "packages/client-sdk/src/stored-auth-identity.js",
+  "export function createStoredAuthIdentityResolver(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/stored-auth-identity.js",
+  'return () => resolveStoredAuthIdentity(options);',
+);
+assertContains(
   "user-vue/shared-ui/api.js",
   "createUniRequestClient({",
 );
@@ -1777,6 +1787,38 @@ assertContains(
 assertContains(
   "rider-app/shared-ui/api.ts",
   "createUniRequestClient({",
+);
+assertContains(
+  "user-vue/shared-ui/push-registration.js",
+  "createStoredAuthIdentityResolver({",
+);
+assertContains(
+  "app-mobile/shared-ui/push-registration.js",
+  "createStoredAuthIdentityResolver({",
+);
+assertContains(
+  "merchant-app/shared-ui/push-registration.ts",
+  "createStoredAuthIdentityResolver({",
+);
+assertContains(
+  "rider-app/shared-ui/push-registration.ts",
+  "createStoredAuthIdentityResolver({",
+);
+assertContains(
+  "user-vue/shared-ui/realtime-notify.js",
+  "createStoredAuthIdentityResolver({",
+);
+assertContains(
+  "app-mobile/shared-ui/realtime-notify.js",
+  "createStoredAuthIdentityResolver({",
+);
+assertContains(
+  "merchant-app/shared-ui/realtime-notify.ts",
+  "createStoredAuthIdentityResolver({",
+);
+assertContains(
+  "rider-app/shared-ui/realtime-notify.ts",
+  "createStoredAuthIdentityResolver({",
 );
 assertContains(
   "admin-vue/src/utils/socket.js",
