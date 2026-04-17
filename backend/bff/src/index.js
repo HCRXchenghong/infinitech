@@ -22,6 +22,10 @@ const { createRequestIdMiddleware } = require("./middleware/requestId");
 const { createInviteRuntimeGuard } = require("./middleware/inviteRuntimeGuard");
 const { createUploadsProxy } = require("./middleware/uploadsProxy");
 const { createRedisRateLimiter } = require("./middleware/apiRateLimiter");
+const {
+  buildErrorEnvelopePayload,
+  buildSuccessEnvelopePayload,
+} = require("./utils/apiEnvelope");
 
 const app = express();
 const httpServer = createServer(app);
@@ -260,6 +264,34 @@ function resolveLanIPv4() {
   return "127.0.0.1";
 }
 
+function sendBffStatus(req, res, statusCode, status, extra = {}) {
+  const payload = {
+    status,
+    service: "bff",
+    timestamp: new Date().toISOString(),
+    ...extra,
+  };
+  const message = statusCode >= 400
+    ? String(extra.error || `bff ${status}`)
+    : `bff ${status}`;
+
+  if (statusCode >= 400) {
+    res.status(statusCode).json(
+      buildErrorEnvelopePayload(req, statusCode, message, {
+        data: payload,
+        legacy: payload,
+      }),
+    );
+    return;
+  }
+
+  res.status(statusCode).json(
+    buildSuccessEnvelopePayload(req, message, payload, {
+      legacy: payload,
+    }),
+  );
+}
+
 const corsOptions = {
   origin(origin, callback) {
     if (!origin) {
@@ -299,7 +331,7 @@ app.use(createRequestAuditMiddleware({
 app.use(createInviteRuntimeGuard({ logger }));
 
 app.get(["/health", "/api/health"], (req, res) => {
-  res.json({ status: "ok", service: "bff", timestamp: new Date().toISOString() });
+  sendBffStatus(req, res, 200, "ok");
 });
 
 app.get(["/ready", "/api/ready"], async (req, res) => {
@@ -308,30 +340,21 @@ app.get(["/ready", "/api/ready"], async (req, res) => {
     config.readiness.requireSocket ? probeSocketServerReadiness() : Promise.resolve(null)
   ]);
   if (!goApi.ok) {
-    res.status(503).json({
-      status: "degraded",
-      service: "bff",
-      timestamp: new Date().toISOString(),
+    sendBffStatus(req, res, 503, "degraded", {
       dependencies: { goApi, ...(socketServer ? { socketServer } : {}) },
-      error: "go api not ready"
+      error: "go api not ready",
     });
     return;
   }
   if (socketServer && !socketServer.ok) {
-    res.status(503).json({
-      status: "degraded",
-      service: "bff",
-      timestamp: new Date().toISOString(),
+    sendBffStatus(req, res, 503, "degraded", {
       dependencies: { goApi, socketServer },
-      error: "socket server not ready"
+      error: "socket server not ready",
     });
     return;
   }
 
-  res.json({
-    status: "ready",
-    service: "bff",
-    timestamp: new Date().toISOString(),
+  sendBffStatus(req, res, 200, "ready", {
     dependencies: { goApi, ...(socketServer ? { socketServer } : {}) }
   });
 });

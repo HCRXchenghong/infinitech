@@ -1,4 +1,5 @@
 const { createClient } = require("redis");
+const { buildErrorEnvelopePayload } = require("../utils/apiEnvelope");
 
 function createFixedWindowLimiter(windowMs, maxRequests) {
   const records = new Map();
@@ -41,12 +42,9 @@ function getClientIdentifier(req) {
   return forwarded || String(req.ip || req.socket?.remoteAddress || "unknown").trim() || "unknown";
 }
 
-function sendRateLimitResponse(res, retryAfterMs) {
+function sendRateLimitResponse(req, res, retryAfterMs) {
   res.set("Retry-After", String(Math.max(1, Math.ceil(retryAfterMs / 1000))));
-  res.status(429).json({
-    success: false,
-    error: "请求过于频繁，请稍后再试",
-  });
+  res.status(429).json(buildErrorEnvelopePayload(req, 429, "请求过于频繁，请稍后再试"));
 }
 
 function createRedisRateLimiter(options) {
@@ -134,7 +132,7 @@ function createRedisRateLimiter(options) {
       if (!client) {
         const { allowed, retryAfterMs } = localDecision();
         if (!allowed) {
-          sendRateLimitResponse(res, retryAfterMs);
+          sendRateLimitResponse(req, res, retryAfterMs);
           return;
         }
         next();
@@ -149,7 +147,7 @@ function createRedisRateLimiter(options) {
       }
       if (count > max) {
         const ttl = await client.pTTL(redisKey);
-        sendRateLimitResponse(res, ttl > 0 ? ttl : windowMs);
+        sendRateLimitResponse(req, res, ttl > 0 ? ttl : windowMs);
         return;
       }
 
@@ -160,7 +158,7 @@ function createRedisRateLimiter(options) {
       });
       const { allowed, retryAfterMs } = localDecision();
       if (!allowed) {
-        sendRateLimitResponse(res, retryAfterMs);
+        sendRateLimitResponse(req, res, retryAfterMs);
         return;
       }
       next();

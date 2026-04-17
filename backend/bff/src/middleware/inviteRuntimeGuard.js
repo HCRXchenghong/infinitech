@@ -5,6 +5,7 @@ const {
   isPublicRuntimePort,
   normalizeRequestPath,
 } = require("../utils/requestMeta");
+const { buildErrorEnvelopePayload } = require("../utils/apiEnvelope");
 
 function createInviteRuntimeGuard({ logger }) {
   return function inviteRuntimeGuard(req, res, next) {
@@ -26,10 +27,9 @@ function createInviteRuntimeGuard({ logger }) {
       origin: String(req.headers.origin || ""),
       referer: String(req.headers.referer || "")
     });
-    res.status(403).json({
-      success: false,
-      error: getPublicRuntimeGuardMessage(sourcePort)
-    });
+    res.status(403).json(
+      buildErrorEnvelopePayload(req, 403, getPublicRuntimeGuardMessage(sourcePort)),
+    );
   };
 }
 

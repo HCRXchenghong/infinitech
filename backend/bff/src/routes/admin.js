@@ -16,19 +16,30 @@ const diningBuddyController = require('../controllers/diningBuddyController');
 const officialSiteController = require('../controllers/officialSiteController');
 const financialRoutes = require('./financial');
 const adminWalletRoutes = require('./adminWallet');
+const {
+  buildErrorEnvelopePayload,
+  buildSuccessEnvelopePayload,
+} = require('../utils/apiEnvelope');
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
+
+function createRateLimitHandler(message, legacy = {}) {
+  return function rateLimitHandler(req, res, _next, options = {}) {
+    return res.status(options.statusCode || 429).json(
+      buildErrorEnvelopePayload(req, options.statusCode || 429, message, {
+        legacy,
+      }),
+    );
+  };
+}
 
 const loginRateLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
   max: Number(process.env.ADMIN_LOGIN_RATE_LIMIT_MAX || 12),
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    success: false,
-    error: '登录尝试过于频繁，请稍后再试',
-  },
+  handler: createRateLimitHandler('登录尝试过于频繁，请稍后再试'),
 });
 
 const smsRateLimiter = rateLimit({
@@ -36,10 +47,7 @@ const smsRateLimiter = rateLimit({
   max: Number(process.env.ADMIN_SMS_RATE_LIMIT_MAX || 6),
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    success: false,
-    error: '验证码请求过于频繁，请稍后再试',
-  },
+  handler: createRateLimitHandler('验证码请求过于频繁，请稍后再试'),
 });
 
 const verifyTokenRateLimiter = rateLimit({
@@ -47,10 +55,7 @@ const verifyTokenRateLimiter = rateLimit({
   max: Number(process.env.ADMIN_VERIFY_RATE_LIMIT_MAX || 60),
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    valid: false,
-    error: '校验请求过于频繁，请稍后再试',
-  },
+  handler: createRateLimitHandler('校验请求过于频繁，请稍后再试', { valid: false }),
 });
 
 const qrCreateRateLimiter = rateLimit({
@@ -58,10 +63,7 @@ const qrCreateRateLimiter = rateLimit({
   max: Number(process.env.ADMIN_QR_CREATE_RATE_LIMIT_MAX || 30),
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    success: false,
-    error: '二维码创建过于频繁，请稍后再试',
-  },
+  handler: createRateLimitHandler('二维码创建过于频繁，请稍后再试'),
 });
 
 const qrPollRateLimiter = rateLimit({
@@ -69,10 +71,7 @@ const qrPollRateLimiter = rateLimit({
   max: Number(process.env.ADMIN_QR_POLL_RATE_LIMIT_MAX || 120),
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    success: false,
-    error: '轮询过于频繁，请稍后再试',
-  },
+  handler: createRateLimitHandler('轮询过于频繁，请稍后再试'),
 });
 
 const qrActionRateLimiter = rateLimit({
@@ -80,14 +79,19 @@ const qrActionRateLimiter = rateLimit({
   max: Number(process.env.ADMIN_QR_ACTION_RATE_LIMIT_MAX || 30),
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    success: false,
-    error: '操作过于频繁，请稍后再试',
-  },
+  handler: createRateLimitHandler('操作过于频繁，请稍后再试'),
 });
 
 router.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  const payload = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+  };
+  res.json(
+    buildSuccessEnvelopePayload(req, 'admin route health ok', payload, {
+      legacy: payload,
+    }),
+  );
 });
 
 router.post('/login', loginRateLimiter, adminController.login);

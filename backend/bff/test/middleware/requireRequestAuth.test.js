@@ -44,10 +44,14 @@ describe("requireRequestAuth", () => {
     requireRequestAuth(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({
-      success: false,
-      error: "未授权，请先登录",
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        error: "未授权，请先登录",
+        code: "UNAUTHORIZED",
+        message: "未授权，请先登录",
+      }),
+    );
     expect(next).not.toHaveBeenCalled();
   });
 

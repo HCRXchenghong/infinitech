@@ -726,6 +726,38 @@ assertContains(
   "req.authIdentity = identity",
 );
 assertContains(
+  "backend/bff/src/middleware/requireRequestAuth.js",
+  'buildErrorEnvelopePayload(req, 401, "未授权，请先登录")',
+);
+assertContains(
+  "backend/bff/src/middleware/requireAdminAuth.js",
+  "buildErrorEnvelopePayload(req, 401,",
+);
+assertContains(
+  "backend/bff/src/middleware/inviteRuntimeGuard.js",
+  "buildErrorEnvelopePayload(req, 403, getPublicRuntimeGuardMessage(sourcePort))",
+);
+assertContains(
+  "backend/bff/src/middleware/apiRateLimiter.js",
+  'buildErrorEnvelopePayload(req, 429, "请求过于频繁，请稍后再试")',
+);
+assertContains(
+  "backend/bff/src/index.js",
+  'sendBffStatus(req, res, 200, "ok")',
+);
+assertContains(
+  "backend/bff/src/index.js",
+  'error: "go api not ready"',
+);
+assertContains(
+  "backend/bff/src/routes/admin.js",
+  "buildSuccessEnvelopePayload(req, 'admin route health ok', payload, {",
+);
+assertContains(
+  "backend/bff/src/routes/admin.js",
+  "createRateLimitHandler('登录尝试过于频繁，请稍后再试')",
+);
+assertContains(
   "backend/bff/src/utils/authIdentity.js",
   "../../../../packages/contracts/src/identity.cjs",
 );
