@@ -129,7 +129,7 @@ function parseOperatorFromAuthHeader(authorization) {
   };
 }
 
-function verifyAdminTokenSignature(token, secret = config.adminTokenSecret) {
+function verifySignedTokenSignature(token, secret = config.jwt.secret || config.adminTokenSecret) {
   const rawToken = normalizeBearerToken(token);
   const resolvedSecret = String(secret || "").trim();
   if (!rawToken || !resolvedSecret) {
@@ -173,13 +173,17 @@ function verifyAdminTokenSignature(token, secret = config.adminTokenSecret) {
   return { valid: true, payload };
 }
 
-function extractVerifiedAdminIdentity(req, options = {}) {
+function verifyAdminTokenSignature(token, secret = config.adminTokenSecret) {
+  return verifySignedTokenSignature(token, secret);
+}
+
+function extractVerifiedAuthIdentity(req, options = {}) {
   const identity = extractAuthIdentity(req, options);
   if (!identity || !identity.token) {
     return null;
   }
 
-  const verification = verifyAdminTokenSignature(identity.token);
+  const verification = verifySignedTokenSignature(identity.token);
   if (!verification.valid) {
     return {
       ...identity,
@@ -198,9 +202,14 @@ function extractVerifiedAdminIdentity(req, options = {}) {
     type: normalized.type || identity.type || "",
     principalType: normalized.principalType || identity.principalType || "",
     sessionId: normalized.sessionId || identity.sessionId || "",
+    tokenKind: normalized.tokenKind || "",
     payload,
     verification
   };
+}
+
+function extractVerifiedAdminIdentity(req, options = {}) {
+  return extractVerifiedAuthIdentity(req, options);
 }
 
 module.exports = {
@@ -209,6 +218,8 @@ module.exports = {
   parseTokenPayload,
   extractAuthIdentity,
   parseOperatorFromAuthHeader,
+  verifySignedTokenSignature,
   verifyAdminTokenSignature,
+  extractVerifiedAuthIdentity,
   extractVerifiedAdminIdentity
 };

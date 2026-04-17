@@ -179,6 +179,7 @@ function assertNotContains(relativePath, unexpectedText) {
   "backend/alipay-sidecar/runtime.js",
   "backend/alipay-sidecar/runtime.test.mjs",
   "backend/bff/test/controllers/uploadController.test.js",
+  "backend/bff/test/middleware/requireRequestAuth.test.js",
   "backend/go/internal/handler/file_upload_handler_test.go",
   "packages/admin-core/src/DesktopShellApp.vue",
   "admin-vue/src/views/dataManagementRuntimeHelpers.js",
@@ -685,6 +686,22 @@ assertContains(
 assertContains(
   "backend/bff/src/controllers/uploadController.js",
   'forwardFields: ["upload_domain"]',
+);
+assertContains(
+  "backend/bff/src/middleware/requireRequestAuth.js",
+  "extractVerifiedAuthIdentity(req, { normalizeType: true })",
+);
+assertContains(
+  "backend/bff/src/middleware/requireRequestAuth.js",
+  "req.authIdentity = identity",
+);
+assertContains(
+  "backend/bff/src/utils/authIdentity.js",
+  "function verifySignedTokenSignature(",
+);
+assertContains(
+  "backend/bff/src/utils/authIdentity.js",
+  "function extractVerifiedAuthIdentity(req, options = {})",
 );
 assertContains(
   "packages/mobile-core/src/upload.js",
