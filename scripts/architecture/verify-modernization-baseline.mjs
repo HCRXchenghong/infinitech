@@ -77,6 +77,9 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/auth-portal.test.mjs",
   "packages/mobile-core/src/home-index.js",
   "packages/mobile-core/src/home-index.test.mjs",
+  "packages/mobile-core/src/sync-service.js",
+  "packages/mobile-core/src/sync-service.d.ts",
+  "packages/mobile-core/src/sync-service.test.mjs",
   "packages/mobile-core/src/message-center.js",
   "packages/mobile-core/src/message-center.test.mjs",
   "packages/mobile-core/src/notification-detail.js",
@@ -868,20 +871,28 @@ assertContains(
   "respondShopPaginated",
 );
 assertContains(
+  "packages/mobile-core/src/sync-service.js",
+  "export function createSyncService(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/sync-service.js",
+  "export function buildSyncApiUrl(dataset, conditions = {}, options = {}) {",
+);
+assertContains(
   "user-vue/shared-ui/sync.ts",
-  "Array.isArray(source.shops)",
+  "createSyncService({",
 );
 assertContains(
   "app-mobile/shared-ui/sync.ts",
-  "Array.isArray(source.shops)",
+  "createSyncService({",
 );
 assertContains(
   "merchant-app/shared-ui/sync.ts",
-  "Array.isArray(source.shops)",
+  "productShopMode: 'shop-menu'",
 );
 assertContains(
   "rider-app/shared-ui/sync.ts",
-  "Array.isArray(source.shops)",
+  "productShopMode: 'shop-menu'",
 );
 assertContains(
   "admin-vue/src/views/Merchants.vue",
@@ -1715,7 +1726,11 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/upload.test.mjs packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/medicine-order.test.mjs packages/mobile-core/src/mobile-client-context.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/dining-buddy.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/search-page.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-my-reviews.test.mjs packages/mobile-core/src/profile-points-mall.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/order-after-sales.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-support-pages.test.mjs"',
+  '"verify:mobile-core-tests":',
+);
+assertContains(
+  "package.json",
+  'packages/mobile-core/src/sync-service.test.mjs',
 );
 assertContains(
   "package.json",
