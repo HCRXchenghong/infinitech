@@ -10,6 +10,7 @@ export * from "./consumer-auth-runtime.js";
 export * from "./home-index.js";
 export * from "./location.js";
 export * from "./search-page.js";
+export * from "./support-runtime.js";
 export * from "./message-center.js";
 export * from "./notification-detail.js";
 export * from "./client-payment.js";

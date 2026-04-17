@@ -88,6 +88,9 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/location.test.mjs",
   "packages/mobile-core/src/push-event-route.js",
   "packages/mobile-core/src/push-event-route.test.mjs",
+  "packages/mobile-core/src/support-runtime.js",
+  "packages/mobile-core/src/support-runtime.d.ts",
+  "packages/mobile-core/src/support-runtime.test.mjs",
   "packages/mobile-core/src/home-index.js",
   "packages/mobile-core/src/home-index.test.mjs",
   "packages/mobile-core/src/sync-service.js",
@@ -924,6 +927,14 @@ assertContains(
   "export function getCurrentLocation(options = {}) {",
 );
 assertContains(
+  "packages/mobile-core/src/support-runtime.js",
+  "export function createSupportRuntimeStore(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/support-runtime.js",
+  "export function normalizeSupportRuntimeSettings(payload = {}, defaultSettings = {}) {",
+);
+assertContains(
   "user-vue/shared-ui/sync.ts",
   "createSyncService({",
 );
@@ -990,6 +1001,22 @@ assertContains(
 assertContains(
   "rider-app/shared-ui/location.ts",
   "from '../../packages/mobile-core/src/location.js'",
+);
+assertContains(
+  "user-vue/shared-ui/support-runtime.js",
+  "createSupportRuntimeStore({",
+);
+assertContains(
+  "app-mobile/shared-ui/support-runtime.js",
+  "createSupportRuntimeStore({",
+);
+assertContains(
+  "merchant-app/shared-ui/support-runtime.ts",
+  "createSupportRuntimeStore({",
+);
+assertContains(
+  "rider-app/shared-ui/support-runtime.ts",
+  "createSupportRuntimeStore({",
 );
 assertContains(
   "admin-vue/src/views/Merchants.vue",
@@ -1844,6 +1871,10 @@ assertContains(
 assertContains(
   "package.json",
   'packages/mobile-core/src/location.test.mjs',
+);
+assertContains(
+  "package.json",
+  'packages/mobile-core/src/support-runtime.test.mjs',
 );
 assertContains(
   "package.json",
