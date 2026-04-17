@@ -7,9 +7,12 @@
     ".": "./src/index.js",
     "./auth": "./src/auth.js",
     "./mobile-capabilities": "./src/mobile-capabilities.js",
+    "./notification-audio": "./src/notification-audio.js",
     "./onboarding-invite": "./src/onboarding-invite.js",
     "./realtime-token": "./src/realtime-token.js",
+    "./socket-io": "./src/socket-io.js",
     "./stored-auth-identity": "./src/stored-auth-identity.js",
+    "./support-socket": "./src/support-socket.js",
     "./uni-request": "./src/uni-request.js"
   }
 }

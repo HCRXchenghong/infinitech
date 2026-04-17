@@ -3,7 +3,7 @@ import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from './s
 import {
   classifyNotificationEnvelopeKind,
   createUniNotificationAudioManager,
-} from '../../shared/mobile-common/notification-audio.js'
+} from '../../packages/client-sdk/src/notification-audio.js'
 
 const SETTINGS_STORAGE_KEY = 'merchantAppSettings'
 

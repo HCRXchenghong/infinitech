@@ -45,12 +45,21 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/client-sdk/src/index.js",
   "packages/client-sdk/src/mobile-capabilities.js",
   "packages/client-sdk/src/mobile-capabilities.test.mjs",
+  "packages/client-sdk/src/notification-audio.js",
+  "packages/client-sdk/src/notification-audio.d.ts",
+  "packages/client-sdk/src/notification-audio.test.mjs",
   "packages/client-sdk/src/onboarding-invite.js",
   "packages/client-sdk/src/onboarding-invite.test.mjs",
   "packages/client-sdk/src/realtime-token.js",
   "packages/client-sdk/src/realtime-token.test.mjs",
+  "packages/client-sdk/src/socket-io.js",
+  "packages/client-sdk/src/socket-io.d.ts",
+  "packages/client-sdk/src/socket-io.test.mjs",
   "packages/client-sdk/src/stored-auth-identity.js",
   "packages/client-sdk/src/stored-auth-identity.test.mjs",
+  "packages/client-sdk/src/support-socket.js",
+  "packages/client-sdk/src/support-socket.d.ts",
+  "packages/client-sdk/src/support-socket.test.mjs",
   "packages/client-sdk/src/uni-request.js",
   "packages/client-sdk/src/uni-request.test.mjs",
   "packages/domain-core/src/index.js",
@@ -1979,7 +1988,15 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+);
+assertContains(
+  "packages/client-sdk/src/notification-audio.js",
+  "export function createUniNotificationAudioManager(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/notification-audio.js",
+  "export function classifyNotificationEnvelopeKind(envelope = {}) {",
 );
 assertContains(
   "packages/client-sdk/src/realtime-token.js",
@@ -1988,6 +2005,18 @@ assertContains(
 assertContains(
   "packages/client-sdk/src/realtime-token.js",
   "export function buildSocketTokenAccountKey(userId, role) {",
+);
+assertContains(
+  "packages/client-sdk/src/socket-io.js",
+  "export default function createSocket(url, namespace = \"\", token = \"\") {",
+);
+assertContains(
+  "packages/client-sdk/src/support-socket.js",
+  "export function createSupportSocketService(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/support-socket.js",
+  "export function createUniSupportSocketBridge(options = {}) {",
 );
 assertContains(
   "packages/client-sdk/src/uni-request.js",
@@ -2004,6 +2033,50 @@ assertContains(
 assertContains(
   "packages/client-sdk/src/stored-auth-identity.js",
   'return () => resolveStoredAuthIdentity(options);',
+);
+assertContains(
+  "shared/mobile-common/notification-audio.js",
+  "export * from \"../../packages/client-sdk/src/notification-audio.js\";",
+);
+assertContains(
+  "shared/mobile-common/socket-io.ts",
+  "export { default } from \"../../packages/client-sdk/src/socket-io.js\"",
+);
+assertContains(
+  "shared/mobile-common/socket.ts",
+  "createUniSupportSocketBridge({",
+);
+assertContains(
+  "user-vue/utils/socket-io.ts",
+  "from '../../packages/client-sdk/src/socket-io.js'",
+);
+assertContains(
+  "app-mobile/utils/socket-io.ts",
+  "from '../../packages/client-sdk/src/socket-io.js'",
+);
+assertContains(
+  "merchant-app/utils/socket-io.ts",
+  "from '../../packages/client-sdk/src/socket-io.js'",
+);
+assertContains(
+  "rider-app/utils/socket-io.ts",
+  "from '../../packages/client-sdk/src/socket-io.js'",
+);
+assertContains(
+  "user-vue/shared-ui/notification-sound.js",
+  "from '../../packages/client-sdk/src/notification-audio.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/notification-sound.js",
+  "from '../../packages/client-sdk/src/notification-audio.js'",
+);
+assertContains(
+  "merchant-app/shared-ui/notification-sound.ts",
+  "from '../../packages/client-sdk/src/notification-audio.js'",
+);
+assertContains(
+  "rider-app/utils/notification.ts",
+  "from '../../packages/client-sdk/src/notification-audio.js'",
 );
 assertContains(
   "user-vue/shared-ui/api.js",

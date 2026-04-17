@@ -1,6 +1,6 @@
 import config from './config'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from './support-runtime.js'
-import { createUniNotificationAudioManager } from '../../shared/mobile-common/notification-audio.js'
+import { createUniNotificationAudioManager } from '../../packages/client-sdk/src/notification-audio.js'
 
 const SETTINGS_STORAGE_KEY = 'appSettings'
 

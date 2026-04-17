@@ -7,7 +7,7 @@ import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/s
 import {
   classifyNotificationEnvelopeKind,
   createUniNotificationAudioManager,
-} from '../../shared/mobile-common/notification-audio.js'
+} from '../../packages/client-sdk/src/notification-audio.js'
 import config from '@/shared-ui/config'
 
 declare const uni: any
