@@ -7,6 +7,10 @@ import { connectCurrentRealtimeChannel, clearRealtimeState } from './shared-ui/r
 import messageManager from './utils/message-manager'
 import createSocket from './utils/socket-io'
 import config from './shared-ui/config'
+import {
+  buildSocketTokenAccountKey,
+  extractSocketTokenResult,
+} from '../packages/client-sdk/src/realtime-token.js'
 import MessagePopup from './components/message-popup.vue'
 import DispatchPopup from './components/dispatch-popup.vue'
 import notification from './utils/notification'
@@ -21,13 +25,6 @@ function normalizeBearerToken(raw: any) {
   const token = String(raw || '').trim()
   if (!token) return ''
   return /^bearer\s+/i.test(token) ? token : `Bearer ${token}`
-}
-
-function buildSocketTokenAccountKey(userId: any, role: string) {
-  const normalizedUserId = String(userId || '').trim()
-  const normalizedRole = String(role || '').trim().toLowerCase()
-  if (!normalizedUserId || !normalizedRole) return ''
-  return `${normalizedRole}:${normalizedUserId}`
 }
 
 function clearCachedSocketToken() {
@@ -220,8 +217,9 @@ export default Vue.extend({
             }
           }
 
-          if (resData && resData.token) {
-            socketToken = resData.token
+          const tokenResult = extractSocketTokenResult(resData)
+          if (tokenResult.token) {
+            socketToken = tokenResult.token
             uni.setStorageSync(SOCKET_TOKEN_KEY, socketToken)
             uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, socketAccountKey)
           } else {

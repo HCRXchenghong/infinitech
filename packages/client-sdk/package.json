@@ -7,6 +7,7 @@
     ".": "./src/index.js",
     "./auth": "./src/auth.js",
     "./mobile-capabilities": "./src/mobile-capabilities.js",
-    "./onboarding-invite": "./src/onboarding-invite.js"
+    "./onboarding-invite": "./src/onboarding-invite.js",
+    "./realtime-token": "./src/realtime-token.js"
   }
 }

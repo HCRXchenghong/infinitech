@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client';
 import { ElMessage } from 'element-plus';
+import { extractSocketTokenResult } from '@infinitech/client-sdk';
 import {
   clearCachedSocketToken,
   getAdminSessionStorage,
@@ -85,7 +86,7 @@ async function getSocketToken() {
     }
 
     const data = await res.json();
-    token = data.token;
+    token = extractSocketTokenResult(data).token;
     if (token) {
       writeCachedSocketToken(token, identity.cacheKey);
     }

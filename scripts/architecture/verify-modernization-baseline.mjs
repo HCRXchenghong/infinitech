@@ -47,6 +47,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/client-sdk/src/mobile-capabilities.test.mjs",
   "packages/client-sdk/src/onboarding-invite.js",
   "packages/client-sdk/src/onboarding-invite.test.mjs",
+  "packages/client-sdk/src/realtime-token.js",
+  "packages/client-sdk/src/realtime-token.test.mjs",
   "packages/domain-core/src/index.js",
   "packages/domain-core/src/errand-settings.js",
   "packages/domain-core/src/errand-settings.test.mjs",
@@ -1710,7 +1712,35 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/realtime-token.test.mjs"',
+);
+assertContains(
+  "packages/client-sdk/src/realtime-token.js",
+  "export function extractSocketTokenResult(payload = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/realtime-token.js",
+  "export function buildSocketTokenAccountKey(userId, role) {",
+);
+assertContains(
+  "admin-vue/src/utils/socket.js",
+  "extractSocketTokenResult(data).token",
+);
+assertContains(
+  "merchant-app/shared-ui/merchantChatPage.ts",
+  "extractSocketTokenResult(payload).token",
+);
+assertContains(
+  "user-vue/shared-ui/rtc-contact.js",
+  "buildSocketTokenAccountKey(userId, 'user')",
+);
+assertContains(
+  "app-mobile/shared-ui/rtc-contact.js",
+  "buildSocketTokenAccountKey(userId, 'user')",
+);
+assertContains(
+  "rider-app/App-logic.ts",
+  "const tokenResult = extractSocketTokenResult(resData)",
 );
 assertContains(
   "admin-vue/src/views/Users.vue",

@@ -1,6 +1,10 @@
 import { computed, ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { UPLOAD_DOMAINS } from '../../packages/contracts/src/upload.js'
+import {
+  buildSocketTokenAccountKey,
+  extractSocketTokenResult,
+} from '../../packages/client-sdk/src/realtime-token.js'
 import createSocket from '@/utils/socket-io'
 import config from '@/shared-ui/config'
 import {
@@ -253,16 +257,9 @@ export function useMerchantChatPage() {
     return true
   }
 
-  function buildSocketTokenAccountKey(userId: string, role: string) {
-    const normalizedUserId = String(userId || '').trim()
-    const normalizedRole = String(role || '').trim().toLowerCase()
-    if (!normalizedUserId || !normalizedRole) return ''
-    return `${normalizedRole}:${normalizedUserId}`
-  }
-
-  function clearCachedSocketToken() {
-    uni.removeStorageSync(SOCKET_TOKEN_KEY)
-    uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
+function clearCachedSocketToken() {
+  uni.removeStorageSync(SOCKET_TOKEN_KEY)
+  uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
   }
 
   async function fetchSocketToken() {
@@ -292,7 +289,7 @@ export function useMerchantChatPage() {
     })
 
     const payload = typeof response?.data === 'string' ? JSON.parse(response.data) : response?.data
-    const token = payload?.token || ''
+    const token = extractSocketTokenResult(payload).token
     if (!token) throw new Error('获取 socket token 失败')
     uni.setStorageSync(SOCKET_TOKEN_KEY, token)
     uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, accountKey)

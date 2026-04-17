@@ -1,6 +1,10 @@
 import config from '@/shared-ui/config'
 import createSocket from '@/utils/socket-io'
 import {
+  buildSocketTokenAccountKey,
+  extractSocketTokenResult,
+} from '../../packages/client-sdk/src/realtime-token.js'
+import {
   createRTCCall,
   getRTCCall,
   listRTCCallHistory,
@@ -72,7 +76,7 @@ async function ensureSocketToken() {
     throw new Error('missing current user id')
   }
 
-  const accountKey = `user:${userId}`
+  const accountKey = buildSocketTokenAccountKey(userId, 'user')
   const cached = trimValue(uni.getStorageSync(SOCKET_TOKEN_KEY))
   const cachedAccountKey = trimValue(uni.getStorageSync(SOCKET_TOKEN_ACCOUNT_KEY))
   if (cached && cachedAccountKey === accountKey) return cached
@@ -93,7 +97,7 @@ async function ensureSocketToken() {
   })
 
   const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
-  const token = trimValue(data && data.token)
+  const token = extractSocketTokenResult(data).token
   if (!token) {
     throw new Error('failed to generate socket token')
   }
