@@ -3,7 +3,7 @@ import { canUseUserRTCContact, loadRTCRuntimeSettings } from '@/shared-ui/rtc-co
 import { mapAfterSalesItem, mapOrderItem } from './order-list-utils'
 import ContactModal from '@/components/ContactModal.vue'
 import PhoneWarningModal from '@/components/PhoneWarningModal.vue'
-import { createOrderListPage } from '../../../../shared/mobile-common/order-list-page.js'
+import { createOrderListPage } from '../../../../packages/mobile-core/src/order-list-page.js'
 
 export default createOrderListPage({
   fetchAfterSalesList,

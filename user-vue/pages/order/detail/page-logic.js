@@ -9,7 +9,7 @@ import {
 import { normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
 import ContactModal from '@/components/ContactModal.vue'
 import PhoneWarningModal from '@/components/PhoneWarningModal.vue'
-import { createOrderDetailPage } from '../../../../shared/mobile-common/order-detail-page.js'
+import { createOrderDetailPage } from '../../../../packages/mobile-core/src/order-detail-page.js'
 
 export default createOrderDetailPage({
   buildAuthorizationHeader,

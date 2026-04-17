@@ -117,7 +117,7 @@ import {
 } from '@/shared-ui/client-payment.js'
 import { isHtmlDocumentPayload, normalizeErrorMessage } from '@/shared-ui/foundation/error.js'
 import { useUserOrderStore } from '@/shared-ui/userOrderStore.js'
-import { createOrderConfirmPage } from '../../../../shared/mobile-common/order-confirm-page.js'
+import { createOrderConfirmPage } from '../../../../packages/mobile-core/src/order-confirm-page.js'
 
 export default createOrderConfirmPage({
   buildAuthorizationHeader,

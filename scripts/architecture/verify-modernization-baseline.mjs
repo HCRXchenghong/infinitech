@@ -160,10 +160,22 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/notification-detail.test.mjs",
   "packages/mobile-core/src/order-after-sales.js",
   "packages/mobile-core/src/order-after-sales.test.mjs",
+  "packages/mobile-core/src/order-confirm-page.js",
+  "packages/mobile-core/src/order-confirm-page.test.mjs",
+  "packages/mobile-core/src/order-contact.js",
+  "packages/mobile-core/src/order-contact.test.mjs",
   "packages/mobile-core/src/order-coupon.js",
   "packages/mobile-core/src/order-coupon.test.mjs",
+  "packages/mobile-core/src/order-detail-page.js",
+  "packages/mobile-core/src/order-detail-page.test.mjs",
+  "packages/mobile-core/src/order-list-page.js",
+  "packages/mobile-core/src/order-list-page.test.mjs",
+  "packages/mobile-core/src/order-payment-options.js",
+  "packages/mobile-core/src/order-payment-options.test.mjs",
   "packages/mobile-core/src/order-support-pages.js",
   "packages/mobile-core/src/order-support-pages.test.mjs",
+  "packages/mobile-core/src/phone-contact.js",
+  "packages/mobile-core/src/phone-contact.test.mjs",
   "packages/mobile-core/src/profile-address.js",
   "packages/mobile-core/src/profile-address.test.mjs",
   "packages/mobile-core/src/profile-favorites.js",
@@ -195,8 +207,13 @@ function assertNotContains(relativePath, unexpectedText) {
   "shared/mobile-common/message-center-pages.js",
   "shared/mobile-common/notification-detail-page.js",
   "shared/mobile-common/order-after-sales-pages.js",
+  "shared/mobile-common/order-confirm-page.js",
   "shared/mobile-common/order-coupon-page.js",
+  "shared/mobile-common/order-detail-page.js",
+  "shared/mobile-common/order-list-page.js",
+  "shared/mobile-common/order-payment-options.js",
   "shared/mobile-common/order-support-pages.js",
+  "shared/mobile-common/phone-contact.js",
   "shared/mobile-common/profile-address-pages.js",
   "shared/mobile-common/profile-favorites-page.js",
   "shared/mobile-common/profile-my-reviews-page.js",
@@ -279,15 +296,15 @@ function assertNotContains(relativePath, unexpectedText) {
 [
   [
     "app-mobile/pages/order/list/page-logic.js",
-    "../../../../shared/mobile-common/order-list-page.js",
+    "../../../../packages/mobile-core/src/order-list-page.js",
   ],
   [
     "app-mobile/pages/order/detail/page-logic.js",
-    "../../../../shared/mobile-common/order-detail-page.js",
+    "../../../../packages/mobile-core/src/order-detail-page.js",
   ],
   [
     "app-mobile/pages/order/confirm/index.vue",
-    "../../../../shared/mobile-common/order-confirm-page.js",
+    "../../../../packages/mobile-core/src/order-confirm-page.js",
   ],
   [
     "app-mobile/pages/message/chat/page-logic.js",
@@ -323,15 +340,15 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/order/list/page-logic.js",
-    "../../../../shared/mobile-common/order-list-page.js",
+    "../../../../packages/mobile-core/src/order-list-page.js",
   ],
   [
     "user-vue/pages/order/detail/page-logic.js",
-    "../../../../shared/mobile-common/order-detail-page.js",
+    "../../../../packages/mobile-core/src/order-detail-page.js",
   ],
   [
     "user-vue/pages/order/confirm/index.vue",
-    "../../../../shared/mobile-common/order-confirm-page.js",
+    "../../../../packages/mobile-core/src/order-confirm-page.js",
   ],
   [
     "user-vue/pages/message/chat/page-logic.js",
@@ -1628,7 +1645,7 @@ assertContains(
   "../../../../shared/mobile-common/profile-coupon-list-page.js",
 );
 assertContains(
-  "shared/mobile-common/order-list-page.js",
+  "packages/mobile-core/src/order-list-page.js",
   "extractEnvelopeData(data)",
 );
 assertContains(
@@ -1636,11 +1653,11 @@ assertContains(
   "extractPaginatedItems(afterSalesRes, {",
 );
 assertContains(
-  "shared/mobile-common/order-list-page.js",
+  "packages/mobile-core/src/order-list-page.js",
   "extractEnvelopeData(vouchers)",
 );
 assertContains(
-  "shared/mobile-common/order-detail-page.js",
+  "packages/mobile-core/src/order-detail-page.js",
   "extractEnvelopeData(vouchers)",
 );
 assertContains(
@@ -2289,6 +2306,26 @@ assertContains(
 assertContains(
   "shared/mobile-common/mobile-client-context.js",
   "export * from \"../../packages/mobile-core/src/mobile-client-context.js\";",
+);
+assertContains(
+  "shared/mobile-common/order-list-page.js",
+  "export * from \"../../packages/mobile-core/src/order-list-page.js\";",
+);
+assertContains(
+  "shared/mobile-common/order-detail-page.js",
+  "export * from \"../../packages/mobile-core/src/order-detail-page.js\";",
+);
+assertContains(
+  "shared/mobile-common/order-confirm-page.js",
+  "export * from \"../../packages/mobile-core/src/order-confirm-page.js\";",
+);
+assertContains(
+  "shared/mobile-common/order-payment-options.js",
+  "export * from \"../../packages/mobile-core/src/order-payment-options.js\";",
+);
+assertContains(
+  "shared/mobile-common/phone-contact.js",
+  "export * from \"../../packages/mobile-core/src/phone-contact.js\";",
 );
 assertContains(
   "shared/mobile-common/wallet-overview-page.js",
@@ -3360,6 +3397,30 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./order-confirm-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./order-contact.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./order-detail-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./order-list-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./order-payment-options.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./phone-contact.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./profile-settings.js";',
 );
 assertContains(
@@ -3440,11 +3501,35 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/package.json",
+  '"./order-confirm-page": "./src/order-confirm-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./order-contact": "./src/order-contact.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
   '"./order-coupon": "./src/order-coupon.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
+  '"./order-detail-page": "./src/order-detail-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./order-list-page": "./src/order-list-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./order-payment-options": "./src/order-payment-options.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
   '"./order-support-pages": "./src/order-support-pages.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./phone-contact": "./src/phone-contact.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -3602,11 +3687,11 @@ assertContains(
   "createOrderCouponPage({",
 );
 assertContains(
-  "shared/mobile-common/order-confirm-page.js",
-  "extractConsumerAvailableOrderCoupons(res)",
+  "packages/mobile-core/src/order-confirm-page.js",
+  "extractConsumerAvailableOrderCoupons(response)",
 );
 assertContains(
-  "shared/mobile-common/order-confirm-page.js",
+  "packages/mobile-core/src/order-confirm-page.js",
   "resolveConsumerOrderCouponUserId(profile)",
 );
 assertContains(
@@ -4094,11 +4179,11 @@ assertNotContains(
   assertNotContains(relativePath, "title: (error && error.error) || '操作失败'");
 });
 assertNotContains(
-  "shared/mobile-common/order-confirm-page.js",
+  "packages/mobile-core/src/order-confirm-page.js",
   "const userId = profile.phone || profile.id || profile.userId",
 );
 assertNotContains(
-  "shared/mobile-common/order-confirm-page.js",
+  "packages/mobile-core/src/order-confirm-page.js",
   "this.availableCoupons = res && Array.isArray(res.data) ? res.data : []",
 );
 [
