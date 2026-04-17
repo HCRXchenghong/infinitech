@@ -79,6 +79,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/dining-buddy.test.mjs",
   "packages/mobile-core/src/auth-portal.js",
   "packages/mobile-core/src/auth-portal.test.mjs",
+  "packages/mobile-core/src/client-payment.js",
+  "packages/mobile-core/src/client-payment.test.mjs",
   "packages/mobile-core/src/home-index.js",
   "packages/mobile-core/src/home-index.test.mjs",
   "packages/mobile-core/src/sync-service.js",
@@ -883,6 +885,14 @@ assertContains(
   "export function buildSyncApiUrl(dataset, conditions = {}, options = {}) {",
 );
 assertContains(
+  "packages/mobile-core/src/client-payment.js",
+  "export async function invokeClientPayment(result, platform) {",
+);
+assertContains(
+  "packages/mobile-core/src/client-payment.js",
+  "export function shouldLaunchClientPayment(result) {",
+);
+assertContains(
   "user-vue/shared-ui/sync.ts",
   "createSyncService({",
 );
@@ -897,6 +907,22 @@ assertContains(
 assertContains(
   "rider-app/shared-ui/sync.ts",
   "productShopMode: 'shop-menu'",
+);
+assertContains(
+  "user-vue/shared-ui/client-payment.js",
+  "export * from '../../packages/mobile-core/src/client-payment.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/client-payment.js",
+  "export * from '../../packages/mobile-core/src/client-payment.js'",
+);
+assertContains(
+  "merchant-app/shared-ui/client-payment.ts",
+  "from '../../packages/mobile-core/src/client-payment.js'",
+);
+assertContains(
+  "rider-app/shared-ui/client-payment.ts",
+  "from '../../packages/mobile-core/src/client-payment.js'",
 );
 assertContains(
   "admin-vue/src/views/Merchants.vue",
@@ -1735,6 +1761,10 @@ assertContains(
 assertContains(
   "package.json",
   'packages/mobile-core/src/sync-service.test.mjs',
+);
+assertContains(
+  "package.json",
+  'packages/mobile-core/src/client-payment.test.mjs',
 );
 assertContains(
   "package.json",

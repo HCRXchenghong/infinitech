@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.js",
     "./auth-portal": "./src/auth-portal.js",
+    "./client-payment": "./src/client-payment.js",
     "./charity-page": "./src/charity-page.js",
     "./dining-buddy": "./src/dining-buddy.js",
     "./home-index": "./src/home-index.js",

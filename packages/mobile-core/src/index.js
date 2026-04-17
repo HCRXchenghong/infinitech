@@ -10,6 +10,7 @@ export * from "./home-index.js";
 export * from "./search-page.js";
 export * from "./message-center.js";
 export * from "./notification-detail.js";
+export * from "./client-payment.js";
 export * from "./order-coupon.js";
 export * from "./order-after-sales.js";
 export * from "./order-support-pages.js";
