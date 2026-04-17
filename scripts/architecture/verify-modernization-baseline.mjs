@@ -83,6 +83,9 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/client-payment.test.mjs",
   "packages/mobile-core/src/consumer-auth-runtime.js",
   "packages/mobile-core/src/consumer-auth-runtime.test.mjs",
+  "packages/mobile-core/src/location.js",
+  "packages/mobile-core/src/location.d.ts",
+  "packages/mobile-core/src/location.test.mjs",
   "packages/mobile-core/src/push-event-route.js",
   "packages/mobile-core/src/push-event-route.test.mjs",
   "packages/mobile-core/src/home-index.js",
@@ -913,6 +916,14 @@ assertContains(
   "export function buildPushNotificationDetailRoute(",
 );
 assertContains(
+  "packages/mobile-core/src/location.js",
+  "export function createLocationService(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/location.js",
+  "export function getCurrentLocation(options = {}) {",
+);
+assertContains(
   "user-vue/shared-ui/sync.ts",
   "createSyncService({",
 );
@@ -967,6 +978,18 @@ assertContains(
 assertContains(
   "rider-app/shared-ui/push-events.ts",
   "createPushClickUrlResolver('rider')",
+);
+assertContains(
+  "user-vue/shared-ui/location.js",
+  "from '../../packages/mobile-core/src/location.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/location.js",
+  "from '../../packages/mobile-core/src/location.js'",
+);
+assertContains(
+  "rider-app/shared-ui/location.ts",
+  "from '../../packages/mobile-core/src/location.js'",
 );
 assertContains(
   "admin-vue/src/views/Merchants.vue",
@@ -1817,6 +1840,10 @@ assertContains(
 assertContains(
   "package.json",
   'packages/mobile-core/src/push-event-route.test.mjs',
+);
+assertContains(
+  "package.json",
+  'packages/mobile-core/src/location.test.mjs',
 );
 assertContains(
   "package.json",

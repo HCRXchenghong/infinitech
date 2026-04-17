@@ -11,6 +11,7 @@
     "./charity-page": "./src/charity-page.js",
     "./dining-buddy": "./src/dining-buddy.js",
     "./home-index": "./src/home-index.js",
+    "./location": "./src/location.js",
     "./mobile-client-context": "./src/mobile-client-context.js",
     "./medicine-order": "./src/medicine-order.js",
     "./search-page": "./src/search-page.js",
