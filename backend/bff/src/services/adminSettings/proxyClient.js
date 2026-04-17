@@ -33,6 +33,25 @@ function resolveFallbackProxyErrorMessage(fallbackPayload, error) {
   return error.message || "请求后端服务失败，请稍后重试";
 }
 
+function normalizeSettingsProxyPayload(req, response, defaultErrorMessage = "请求后端服务失败，请稍后重试") {
+  if (Number(response?.status || 200) < 400) {
+    return response?.data;
+  }
+
+  return buildNormalizedErrorPayload(
+    req,
+    {
+      message:
+        response?.data?.error ||
+        response?.data?.message ||
+        defaultErrorMessage,
+      response,
+    },
+    response.status,
+    defaultErrorMessage,
+  );
+}
+
 function handleProxyError(req, res, error, context, fallbackPayload = null) {
   logger.error(context, {
     code: error.code,
@@ -101,7 +120,13 @@ async function proxySettingsRequest(req, res, method, path, options = {}) {
         return status < 600;
       }
     });
-    return res.status(response.status).json(response.data);
+    return res.status(response.status).json(
+      normalizeSettingsProxyPayload(
+        req,
+        response,
+        options.defaultErrorMessage || "请求后端服务失败，请稍后重试",
+      ),
+    );
   } catch (error) {
     return handleProxyError(req, res, error, "proxySettingsRequest");
   }
@@ -109,6 +134,7 @@ async function proxySettingsRequest(req, res, method, path, options = {}) {
 
 module.exports = {
   normalizePublicAssetUrl,
+  normalizeSettingsProxyPayload,
   handleProxyError,
   requestSettingsRaw,
   proxySettingsRequest,

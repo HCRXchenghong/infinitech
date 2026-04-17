@@ -1,5 +1,6 @@
 jest.mock('../../src/services/adminSettings/proxyClient', () => ({
   normalizePublicAssetUrl: jest.fn((_req, url) => `https://cdn.example.com${url}`),
+  normalizeSettingsProxyPayload: jest.fn((_req, response) => response.data),
   handleProxyError: jest.fn(),
   requestSettingsRaw: jest.fn(),
   proxySettingsRequest: jest.fn(),
@@ -26,7 +27,10 @@ const {
   getAppDownloadConfig,
   normalizeAssetUrlFields,
 } = require('../../src/services/adminSettingsService');
-const { requestSettingsRaw } = require('../../src/services/adminSettings/proxyClient');
+const {
+  normalizeSettingsProxyPayload,
+  requestSettingsRaw,
+} = require('../../src/services/adminSettings/proxyClient');
 
 describe('adminSettingsService asset normalization', () => {
   beforeEach(() => {
@@ -96,6 +100,59 @@ describe('adminSettingsService asset normalization', () => {
         android_url: 'https://cdn.example.com/uploads/packages/app.apk',
         mini_program_qr_url: 'https://cdn.example.com/uploads/qr.png',
       },
+    });
+  });
+
+  it('normalizes resolved app download config errors before returning to clients', async () => {
+    requestSettingsRaw.mockResolvedValue({
+      status: 404,
+      data: {
+        success: false,
+        error: '下载配置不存在',
+        mini_program_qr_url: '/uploads/qr-missing.png',
+      },
+    });
+
+    normalizeSettingsProxyPayload.mockImplementation((_req, response) => ({
+      request_id: 'req-app-missing',
+      code: 'NOT_FOUND',
+      message: '下载配置不存在',
+      data: {
+        mini_program_qr_url: response.data.mini_program_qr_url,
+      },
+      success: false,
+      error: '下载配置不存在',
+    }));
+
+    const req = {};
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+
+    await getAppDownloadConfig(req, res);
+
+    expect(normalizeSettingsProxyPayload).toHaveBeenCalledWith(
+      req,
+      expect.objectContaining({
+        status: 404,
+        data: expect.objectContaining({
+          success: false,
+          error: '下载配置不存在',
+        }),
+      }),
+      '获取 APP 下载配置失败',
+    );
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({
+      request_id: 'req-app-missing',
+      code: 'NOT_FOUND',
+      message: '下载配置不存在',
+      data: {
+        mini_program_qr_url: 'https://cdn.example.com/uploads/qr-missing.png',
+      },
+      success: false,
+      error: '下载配置不存在',
     });
   });
 });

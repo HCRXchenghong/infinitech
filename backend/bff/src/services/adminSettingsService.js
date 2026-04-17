@@ -18,6 +18,7 @@ const {
 } = require("./adminSettings/constants");
 const {
   normalizePublicAssetUrl,
+  normalizeSettingsProxyPayload,
   handleProxyError,
   requestSettingsRaw,
   proxySettingsRequest,
@@ -71,6 +72,16 @@ function respondSettingsSuccess(req, res, message, data, options = {}) {
       legacy: options.legacy || (data && typeof data === "object" && !Array.isArray(data) ? data : undefined),
     }),
   );
+}
+
+function respondSettingsProxyResponse(req, res, response, options = {}) {
+  const payload = normalizeSettingsProxyPayload(
+    req,
+    response,
+    options.defaultErrorMessage || "请求后端服务失败，请稍后重试",
+  );
+  const normalizedPayload = normalizeAssetUrlFields(req, payload, options.assetFields || []);
+  return res.status(response.status).json(normalizedPayload);
 }
 
 const getCarousel = createProxyHandler("get", "/api/carousel", (req) => ({ params: req.query }));
@@ -155,8 +166,10 @@ async function getAppDownloadConfig(req, res) {
         return status < 500;
       }
     });
-    const data = normalizeAssetUrlFields(req, response.data, ["ios_url", "android_url", "mini_program_qr_url"]);
-    return res.status(response.status).json(data);
+    return respondSettingsProxyResponse(req, res, response, {
+      assetFields: ["ios_url", "android_url", "mini_program_qr_url"],
+      defaultErrorMessage: "获取 APP 下载配置失败",
+    });
   } catch (error) {
     return handleProxyError(req, res, error, "getAppDownloadConfig", { success: false, error: error.message });
   }
@@ -170,7 +183,9 @@ async function updateAppDownloadConfig(req, res) {
         return status < 500;
       }
     });
-    return res.status(response.status).json(response.data);
+    return respondSettingsProxyResponse(req, res, response, {
+      defaultErrorMessage: "更新 APP 下载配置失败",
+    });
   } catch (error) {
     return handleProxyError(req, res, error, "updateAppDownloadConfig", { success: false, error: error.message });
   }
@@ -192,9 +207,10 @@ async function uploadImage(req, res) {
         return status < 500;
       }
     });
-    const data = normalizeAssetUrlFields(req, response.data, ["imageUrl", "image_url", "url", "asset_url"]);
-
-    return res.status(response.status).json(data);
+    return respondSettingsProxyResponse(req, res, response, {
+      assetFields: ["imageUrl", "image_url", "url", "asset_url"],
+      defaultErrorMessage: "图片上传失败",
+    });
   } catch (error) {
     return handleProxyError(req, res, error, "uploadImage", { success: false, error: error.message });
   } finally {
@@ -218,9 +234,10 @@ async function uploadEditorImage(req, res) {
         return status < 500;
       }
     });
-    const data = normalizeAssetUrlFields(req, response.data, ["url", "asset_url"]);
-
-    return res.status(response.status).json(data);
+    return respondSettingsProxyResponse(req, res, response, {
+      assetFields: ["url", "asset_url"],
+      defaultErrorMessage: "编辑器图片上传失败",
+    });
   } catch (error) {
     return handleProxyError(req, res, error, "uploadEditorImage", { success: false, error: error.message });
   } finally {
@@ -244,9 +261,10 @@ async function uploadPackage(req, res) {
         return status < 500;
       }
     });
-    const data = normalizeAssetUrlFields(req, response.data, ["url", "asset_url"]);
-
-    return res.status(response.status).json(data);
+    return respondSettingsProxyResponse(req, res, response, {
+      assetFields: ["url", "asset_url"],
+      defaultErrorMessage: "安装包上传失败",
+    });
   } catch (error) {
     return handleProxyError(req, res, error, "uploadPackage", { success: false, error: error.message });
   } finally {
@@ -304,7 +322,9 @@ async function clearAllData(req, res) {
       validateStatus: (status) => status < 500,
     });
     if (goResponse.status >= 400) {
-      return res.status(goResponse.status).json(goResponse.data);
+      return respondSettingsProxyResponse(req, res, goResponse, {
+        defaultErrorMessage: "清空全部信息失败",
+      });
     }
 
     const logCleanup = [

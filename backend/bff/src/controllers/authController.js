@@ -2,9 +2,80 @@
  * 认证控制器
  */
 
-const { goUrl, proxyPost, requestGoRaw } = require('../utils/goProxy');
+const { goUrl, proxyPost, requestGoRaw, buildNormalizedErrorPayload } = require('../utils/goProxy');
 const { logger } = require('../utils/logger');
 const { buildErrorEnvelopePayload } = require('../utils/apiEnvelope');
+
+function isHTMLPayload(payload) {
+  return typeof payload === 'string' && payload.includes('<!DOCTYPE html>');
+}
+
+function mergeLegacyFields(payload, legacy = {}) {
+  const next = { ...(payload || {}) };
+  for (const [key, value] of Object.entries(legacy)) {
+    if (next[key] === undefined) {
+      next[key] = value;
+    }
+  }
+  return next;
+}
+
+function resolveGoAuthErrorMessage(status, payload, fallbackMessage) {
+  if (isHTMLPayload(payload) && Number(status) === 404) {
+    return 'Go 后端路由不存在，请检查路由配置';
+  }
+
+  if (payload && typeof payload === 'object') {
+    return payload.error || payload.message || fallbackMessage;
+  }
+
+  if (typeof payload === 'string' && payload.trim()) {
+    return payload;
+  }
+
+  return fallbackMessage;
+}
+
+function buildResolvedGoErrorPayload(req, status, payload, fallbackMessage, options = {}) {
+  const message = resolveGoAuthErrorMessage(status, payload, fallbackMessage);
+  if (isHTMLPayload(payload)) {
+    return buildErrorEnvelopePayload(req, status, message, {
+      legacy: options.legacy,
+    });
+  }
+
+  return mergeLegacyFields(
+    buildNormalizedErrorPayload(
+      req,
+      {
+        message,
+        response: {
+          status,
+          data: payload,
+        },
+      },
+      status,
+      message,
+    ),
+    options.legacy,
+  );
+}
+
+function sendResolvedGoResponse(req, res, response, fallbackMessage, options = {}) {
+  if (Number(response?.status || 200) < 400) {
+    return res.status(response.status).json(response.data);
+  }
+
+  return res.status(response.status).json(
+    buildResolvedGoErrorPayload(
+      req,
+      response.status,
+      response.data,
+      fallbackMessage,
+      options,
+    ),
+  );
+}
 
 /**
  * 用户登录
@@ -53,8 +124,18 @@ async function consumeWechatSession(req, res, next) {
         return status < 500;
       }
     });
-    return res.status(response.status).json(response.data);
+    return sendResolvedGoResponse(req, res, response, '微信登录会话不存在或已失效');
   } catch (error) {
+    if (error.response) {
+      return res.status(error.response.status).json(
+        buildResolvedGoErrorPayload(
+          req,
+          error.response.status,
+          error.response.data,
+          '微信登录会话不存在或已失效',
+        ),
+      );
+    }
     return next(error);
   }
 }
@@ -71,9 +152,9 @@ async function requestSMSCode(req, res, next) {
 
   function sendClientError(status, message) {
     return res.status(status).json(
-      buildErrorEnvelopePayload(req, status, message, {
+      buildResolvedGoErrorPayload(req, status, null, message, {
         legacy: { statusCode: status },
-      })
+      }),
     );
   }
 
@@ -87,19 +168,21 @@ async function requestSMSCode(req, res, next) {
         return status < 500;
       }
     });
-    return res.status(response.status).json(response.data);
+    return sendResolvedGoResponse(req, res, response, `Go 后端错误: ${response.status}`, {
+      legacy: { statusCode: response.status },
+    });
   } catch (error) {
     if (error.response) {
-      const responseData = error.response.data;
-      const isHTML = typeof responseData === 'string' && responseData.includes('<!DOCTYPE html>');
-
-      if (isHTML) {
-        return sendClientError(404, 'Go 后端路由不存在，请检查路由配置');
-      }
-
-      return sendClientError(
-        error.response.status,
-        responseData?.error || responseData?.message || `Go 后端错误: ${error.response.status}`
+      return res.status(error.response.status).json(
+        buildResolvedGoErrorPayload(
+          req,
+          error.response.status,
+          error.response.data,
+          `Go 后端错误: ${error.response.status}`,
+          {
+            legacy: { statusCode: error.response.status },
+          },
+        ),
       );
     }
 

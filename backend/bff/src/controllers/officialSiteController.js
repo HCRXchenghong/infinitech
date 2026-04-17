@@ -9,6 +9,7 @@ const {
   proxyPost,
   proxyPut,
   requestGoRaw,
+  buildNormalizedErrorPayload,
 } = require("../utils/goProxy");
 const { proxyMultipartUpload } = require("../utils/multipartProxy");
 
@@ -73,17 +74,56 @@ function normalizeOfficialSitePayload(payload, req) {
   return next;
 }
 
+function buildOfficialSiteUpstreamPayload(req, status, payload, defaultErrorMessage) {
+  if (Number(status) < 400) {
+    return normalizeOfficialSitePayload(payload, req);
+  }
+
+  return normalizeOfficialSitePayload(
+    buildNormalizedErrorPayload(
+      req,
+      {
+        message:
+          payload?.error ||
+          payload?.message ||
+          defaultErrorMessage,
+        response: {
+          status,
+          data: payload,
+        },
+      },
+      status,
+      defaultErrorMessage,
+    ),
+    req,
+  );
+}
+
+function sendOfficialSiteResponse(req, res, response, defaultErrorMessage = "官网请求失败") {
+  return res
+    .status(response.status)
+    .json(buildOfficialSiteUpstreamPayload(req, response.status, response.data, defaultErrorMessage));
+}
+
+function sendOfficialSiteUpstreamError(req, res, error, defaultErrorMessage = "官网请求失败") {
+  const status = Number(error.response?.status || 500);
+  return res
+    .status(status)
+    .json(buildOfficialSiteUpstreamPayload(req, status, error.response?.data, error.message || defaultErrorMessage));
+}
+
 async function proxyOfficialSite(req, res, next, options = {}) {
   try {
     const response = await requestGoRaw(req, options);
-    return res
-      .status(response.status)
-      .json(normalizeOfficialSitePayload(response.data, req));
+    return sendOfficialSiteResponse(req, res, response, options.defaultErrorMessage || "官网请求失败");
   } catch (error) {
     if (error.response) {
-      return res
-        .status(error.response.status)
-        .json(normalizeOfficialSitePayload(error.response.data, req));
+      return sendOfficialSiteUpstreamError(
+        req,
+        res,
+        error,
+        options.defaultErrorMessage || "官网请求失败",
+      );
     }
     return next(error);
   }
@@ -187,10 +227,7 @@ async function getSupportSocketToken(req, res, next) {
     });
 
     if (sessionResponse.status < 200 || sessionResponse.status >= 300) {
-      const upstreamPayload =
-        sessionResponse.data ||
-        buildErrorEnvelopePayload(req, sessionResponse.status, "support session not found");
-      return res.status(sessionResponse.status).json(normalizeOfficialSitePayload(upstreamPayload, req));
+      return sendOfficialSiteResponse(req, res, sessionResponse, "support session not found");
     }
 
     const session = sessionResponse.data?.data || null;
@@ -230,14 +267,12 @@ async function getSupportSocketToken(req, res, next) {
     );
   } catch (error) {
     if (error.response) {
-      const upstreamPayload =
-        error.response.data ||
-        buildErrorEnvelopePayload(
-          req,
-          error.response.status,
-          error.message || "failed to issue socket token",
-        );
-      return res.status(error.response.status).json(normalizeOfficialSitePayload(upstreamPayload, req));
+      return sendOfficialSiteUpstreamError(
+        req,
+        res,
+        error,
+        error.message || "failed to issue socket token",
+      );
     }
     return next(error);
   }

@@ -4,7 +4,10 @@ jest.mock("../../src/utils/logger", () => ({
   },
 }));
 
-const { handleProxyError } = require("../../src/services/adminSettings/proxyClient");
+const {
+  handleProxyError,
+  normalizeSettingsProxyPayload,
+} = require("../../src/services/adminSettings/proxyClient");
 
 function createResponse() {
   return {
@@ -61,5 +64,32 @@ describe("admin settings proxy client envelope normalization", () => {
         lockedUntil: 123,
       }),
     );
+  });
+
+  test("normalizes resolved proxy responses with legacy error payloads", () => {
+    const req = { requestId: "req-settings-3" };
+
+    expect(
+      normalizeSettingsProxyPayload(
+        req,
+        {
+          status: 409,
+          data: {
+            success: false,
+            error: "配置冲突",
+            lockedUntil: 456,
+          },
+        },
+        "配置请求失败",
+      ),
+    ).toEqual({
+      request_id: "req-settings-3",
+      code: "CONFLICT",
+      message: "配置冲突",
+      data: {},
+      success: false,
+      error: "配置冲突",
+      lockedUntil: 456,
+    });
   });
 });

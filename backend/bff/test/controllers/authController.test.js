@@ -1,8 +1,12 @@
-jest.mock('../../src/utils/goProxy', () => ({
-  goUrl: jest.fn(),
-  proxyPost: jest.fn(),
-  requestGoRaw: jest.fn(),
-}));
+jest.mock('../../src/utils/goProxy', () => {
+  const actual = jest.requireActual('../../src/utils/goProxy');
+  return {
+    ...actual,
+    goUrl: jest.fn(),
+    proxyPost: jest.fn(),
+    requestGoRaw: jest.fn(),
+  };
+});
 
 jest.mock('../../src/utils/logger', () => ({
   logger: {
@@ -10,7 +14,7 @@ jest.mock('../../src/utils/logger', () => ({
   },
 }));
 
-const { requestSMSCode } = require('../../src/controllers/authController');
+const { requestSMSCode, consumeWechatSession } = require('../../src/controllers/authController');
 const { goUrl, requestGoRaw } = require('../../src/utils/goProxy');
 const { logger } = require('../../src/utils/logger');
 
@@ -123,5 +127,35 @@ describe('authController requestSMSCode', () => {
     });
     expect(next).toHaveBeenCalledWith(error);
     expect(res.status).not.toHaveBeenCalled();
+  });
+});
+
+describe('authController consumeWechatSession', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('normalizes resolved upstream errors into the shared envelope', async () => {
+    requestGoRaw.mockResolvedValue({
+      status: 404,
+      data: 'session missing',
+    });
+
+    const req = { query: {}, headers: { 'x-request-id': 'req-wechat-404' } };
+    const res = createResponse();
+    const next = jest.fn();
+
+    await consumeWechatSession(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({
+      request_id: 'req-wechat-404',
+      code: 'NOT_FOUND',
+      message: 'session missing',
+      data: {},
+      success: false,
+      error: 'session missing',
+    });
+    expect(next).not.toHaveBeenCalled();
   });
 });

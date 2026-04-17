@@ -774,12 +774,20 @@ assertContains(
   "buildNormalizedErrorPayload(",
 );
 assertContains(
+  "backend/bff/src/services/adminSettings/proxyClient.js",
+  'function normalizeSettingsProxyPayload(req, response, defaultErrorMessage = "请求后端服务失败，请稍后重试") {',
+);
+assertContains(
   "backend/bff/src/services/adminSettingsService.js",
   'return respondSettingsError(req, res, 400, "没有上传文件");',
 );
 assertContains(
   "backend/bff/src/services/adminSettingsService.js",
   'return respondSettingsSuccess(req, res, "全量数据清理完成", {',
+);
+assertContains(
+  "backend/bff/src/services/adminSettingsService.js",
+  "function respondSettingsProxyResponse(req, res, response, options = {}) {",
 );
 assertContains(
   "backend/bff/src/controllers/financialController.js",
@@ -1265,6 +1273,14 @@ assertContains(
   'buildSuccessEnvelopePayload(req, "官网客服实时连接令牌签发成功", payload, {',
 );
 assertContains(
+  "backend/bff/src/controllers/officialSiteController.js",
+  "function buildOfficialSiteUpstreamPayload(req, status, payload, defaultErrorMessage) {",
+);
+assertContains(
+  "backend/bff/src/controllers/officialSiteController.js",
+  'return sendOfficialSiteResponse(req, res, sessionResponse, "support session not found");',
+);
+assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",
   'respondAdminSettingsSuccess(c, "APP 下载配置加载成功", data)',
 );
@@ -1635,6 +1651,14 @@ assertContains(
 assertContains(
   "backend/bff/src/controllers/authController.js",
   "legacy: { statusCode: status }",
+);
+assertContains(
+  "backend/bff/src/controllers/authController.js",
+  "function buildResolvedGoErrorPayload(req, status, payload, fallbackMessage, options = {}) {",
+);
+assertContains(
+  "backend/bff/src/controllers/authController.js",
+  "return sendResolvedGoResponse(req, res, response, '微信登录会话不存在或已失效');",
 );
 assertNotContains(
   "backend/bff/src/controllers/authController.js",
@@ -2222,11 +2246,11 @@ assertContains(
 );
 assertContains(
   "backend/bff/src/services/adminSettingsService.js",
-  'const data = normalizeAssetUrlFields(req, response.data, ["ios_url", "android_url", "mini_program_qr_url"]);',
+  'assetFields: ["ios_url", "android_url", "mini_program_qr_url"]',
 );
 assertContains(
   "backend/bff/src/services/adminSettingsService.js",
-  'const data = normalizeAssetUrlFields(req, response.data, ["imageUrl", "image_url", "url", "asset_url"]);',
+  'assetFields: ["imageUrl", "image_url", "url", "asset_url"]',
 );
 assertContains(
   "admin-vue/src/views/ridersActionHelpers.js",
