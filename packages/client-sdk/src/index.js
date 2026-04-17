@@ -1,5 +1,6 @@
 export * from "./auth.js";
 export * from "./mobile-capabilities.js";
+export * from "./mobile-utils.js";
 export * from "./notification-audio.js";
 export * from "./onboarding-invite.js";
 export * from "./realtime-token.js";

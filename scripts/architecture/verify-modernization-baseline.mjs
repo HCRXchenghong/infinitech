@@ -45,6 +45,9 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/client-sdk/src/index.js",
   "packages/client-sdk/src/mobile-capabilities.js",
   "packages/client-sdk/src/mobile-capabilities.test.mjs",
+  "packages/client-sdk/src/mobile-utils.js",
+  "packages/client-sdk/src/mobile-utils.d.ts",
+  "packages/client-sdk/src/mobile-utils.test.mjs",
   "packages/client-sdk/src/notification-audio.js",
   "packages/client-sdk/src/notification-audio.d.ts",
   "packages/client-sdk/src/notification-audio.test.mjs",
@@ -1988,7 +1991,19 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+);
+assertContains(
+  "packages/client-sdk/src/mobile-utils.js",
+  "export function formatUserId(id, _role) {",
+);
+assertContains(
+  "packages/client-sdk/src/mobile-utils.js",
+  "export function showConfirm(content, title = \"提示\", options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/mobile-utils.js",
+  "export function getOrderStatusColor(status) {",
 );
 assertContains(
   "packages/client-sdk/src/notification-audio.js",
@@ -2039,6 +2054,10 @@ assertContains(
   "export * from \"../../packages/client-sdk/src/notification-audio.js\";",
 );
 assertContains(
+  "shared/mobile-common/utils.ts",
+  "export * from \"../../packages/client-sdk/src/mobile-utils.js\";",
+);
+assertContains(
   "shared/mobile-common/socket-io.ts",
   "export { default } from \"../../packages/client-sdk/src/socket-io.js\"",
 );
@@ -2077,6 +2096,22 @@ assertContains(
 assertContains(
   "rider-app/utils/notification.ts",
   "from '../../packages/client-sdk/src/notification-audio.js'",
+);
+assertContains(
+  "user-vue/shared-ui/utils.ts",
+  "from '../../packages/client-sdk/src/mobile-utils.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/utils.ts",
+  "from '../../packages/client-sdk/src/mobile-utils.js'",
+);
+assertContains(
+  "merchant-app/shared-ui/utils.ts",
+  "from '../../packages/client-sdk/src/mobile-utils.js'",
+);
+assertContains(
+  "rider-app/shared-ui/utils.ts",
+  "from '../../packages/client-sdk/src/mobile-utils.js'",
 );
 assertContains(
   "user-vue/shared-ui/api.js",

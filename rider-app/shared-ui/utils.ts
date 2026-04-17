@@ -1,1 +1,1 @@
-export * from '../../shared/mobile-common/utils'
+export * from '../../packages/client-sdk/src/mobile-utils.js'
