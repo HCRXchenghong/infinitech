@@ -37,6 +37,8 @@ function assertNotContains(relativePath, unexpectedText) {
 [
   "packages/contracts/src/index.js",
   "packages/contracts/src/http.test.mjs",
+  "packages/contracts/src/identity.cjs",
+  "packages/contracts/src/identity.test.mjs",
   "packages/contracts/src/upload.js",
   "packages/contracts/src/upload.test.mjs",
   "packages/client-sdk/src/index.js",
@@ -48,6 +50,7 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/domain-core/src/errand-settings.js",
   "packages/domain-core/src/errand-settings.test.mjs",
   "packages/domain-core/src/identity.js",
+  "packages/domain-core/src/identity.cjs",
   "packages/domain-core/src/identity.test.mjs",
   "packages/domain-core/src/notification-content.js",
   "packages/domain-core/src/notification-content.test.mjs",
@@ -720,6 +723,14 @@ assertContains(
 assertContains(
   "backend/bff/src/middleware/requireRequestAuth.js",
   "req.authIdentity = identity",
+);
+assertContains(
+  "backend/bff/src/utils/authIdentity.js",
+  "../../../../packages/contracts/src/identity.cjs",
+);
+assertContains(
+  "backend/bff/src/utils/authIdentity.js",
+  "../../../../packages/domain-core/src/identity.cjs",
 );
 assertContains(
   "backend/bff/src/utils/authIdentity.js",
@@ -1542,7 +1553,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:contracts-tests": "node --test packages/contracts/src/http.test.mjs packages/contracts/src/upload.test.mjs"',
+  '"verify:contracts-tests": "node --test packages/contracts/src/http.test.mjs packages/contracts/src/identity.test.mjs packages/contracts/src/upload.test.mjs"',
 );
 assertContains(
   "package.json",

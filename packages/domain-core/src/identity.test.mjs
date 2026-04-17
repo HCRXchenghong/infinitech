@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 
 import {
   buildRuntimePrincipalIdentity,
@@ -11,6 +12,9 @@ import {
   normalizeRuntimeNumericId,
   resolveSocketSubjectId,
 } from "./identity.js";
+
+const require = createRequire(import.meta.url);
+const cjsIdentity = require("./identity.cjs");
 
 test("identity helpers normalize enterprise session claims", () => {
   const claims = {
@@ -119,4 +123,27 @@ test("identity helpers resolve socket identities with numeric preference", () =>
     role: "admin",
     cacheKey: "admin:2",
   });
+});
+
+test("identity helpers keep CommonJS bridge aligned with ESM runtime helpers", () => {
+  const payload = {
+    principal_type: "admin",
+    principal_id: "admin_uid_19",
+    principal_legacy_id: 19,
+    role: "super_admin",
+    session_id: "admin_session_19",
+  };
+
+  assert.deepEqual(
+    cjsIdentity.createSessionDescriptor(payload),
+    createSessionDescriptor(payload),
+  );
+  assert.deepEqual(
+    cjsIdentity.buildRuntimePrincipalIdentity(payload),
+    buildRuntimePrincipalIdentity(payload),
+  );
+  assert.deepEqual(
+    cjsIdentity.createSocketSessionIdentity(payload),
+    createSocketSessionIdentity(payload),
+  );
 });
