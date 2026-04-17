@@ -1607,6 +1607,21 @@ assertNotContains(
   "process.env.JWT_SECRET || DEFAULT_JWT_SECRET",
 );
 assertNotContains(
+  "socket-server/.env.example",
+  "SOCKET_ENABLE_LEGACY_LOGIN=false",
+);
+assertNotContains(
+  "socket-server/.env.example",
+  "SOCKET_LEGACY_LOGIN_USERS",
+);
+assertNotContains(
+  "socket-server/package.json",
+  "routes.js",
+);
+if (fs.existsSync(path.join(repoRoot, "socket-server/routes.js"))) {
+  throw new Error("unexpected legacy socket-server/routes.js module");
+}
+assertNotContains(
   "admin-app/pages/work-password/work-password.vue",
   "response.newPassword ? response.newPassword : '123456'",
 );
@@ -3400,14 +3415,6 @@ assertContains(
 );
 assertContains(
   "socket-server/index.js",
-  "buildErrorEnvelopePayload",
-);
-assertContains(
-  "socket-server/routes.js",
-  "buildSuccessEnvelopePayload",
-);
-assertContains(
-  "socket-server/routes.js",
   "buildErrorEnvelopePayload",
 );
 assertContains(
