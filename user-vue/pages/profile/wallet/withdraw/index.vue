@@ -79,7 +79,7 @@
 
 <script>
 import { buildAuthorizationHeader, request } from '../../../../shared-ui/api.js'
-import { createWalletWithdrawPageLogic } from '../../../../../shared/mobile-common/wallet-withdraw-page.js'
+import { createWalletWithdrawPageLogic } from '../../../../../packages/mobile-core/src/wallet-withdraw-page.js'
 
 export default createWalletWithdrawPageLogic({
   request,

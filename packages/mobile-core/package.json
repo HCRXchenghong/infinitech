@@ -38,6 +38,10 @@
     "./profile-outreach": "./src/profile-outreach.js",
     "./profile-settings": "./src/profile-settings.js",
     "./sync-service": "./src/sync-service.js",
+    "./wallet-bills-page": "./src/wallet-bills-page.js",
+    "./wallet-overview-page": "./src/wallet-overview-page.js",
+    "./wallet-recharge-page": "./src/wallet-recharge-page.js",
+    "./wallet-withdraw-page": "./src/wallet-withdraw-page.js",
     "./upload": "./src/upload.js",
     "./vip-center": "./src/vip-center.js"
   }

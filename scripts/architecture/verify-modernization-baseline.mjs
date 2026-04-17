@@ -136,6 +136,14 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/portal-runtime.test.mjs",
   "packages/mobile-core/src/rtc-call-page.js",
   "packages/mobile-core/src/rtc-call-page.test.mjs",
+  "packages/mobile-core/src/wallet-overview-page.js",
+  "packages/mobile-core/src/wallet-overview-page.test.mjs",
+  "packages/mobile-core/src/wallet-bills-page.js",
+  "packages/mobile-core/src/wallet-bills-page.test.mjs",
+  "packages/mobile-core/src/wallet-recharge-page.js",
+  "packages/mobile-core/src/wallet-recharge-page.test.mjs",
+  "packages/mobile-core/src/wallet-withdraw-page.js",
+  "packages/mobile-core/src/wallet-withdraw-page.test.mjs",
   "packages/mobile-core/src/push-event-route.js",
   "packages/mobile-core/src/push-event-route.test.mjs",
   "packages/mobile-core/src/support-runtime.js",
@@ -200,6 +208,10 @@ function assertNotContains(relativePath, unexpectedText) {
   "shared/mobile-common/profile-phone-change-page.js",
   "shared/mobile-common/profile-outreach-pages.js",
   "shared/mobile-common/profile-settings-pages.js",
+  "shared/mobile-common/wallet-overview-page.js",
+  "shared/mobile-common/wallet-bills-page.js",
+  "shared/mobile-common/wallet-recharge-page.js",
+  "shared/mobile-common/wallet-withdraw-page.js",
   "packages/admin-core/src/index.js",
   "packages/admin-core/src/menu-groups.js",
   "packages/admin-core/src/temporary-credential.js",
@@ -295,7 +307,19 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/profile/wallet/index.vue",
-    "../../../../shared/mobile-common/wallet-overview-page.js",
+    "../../../../packages/mobile-core/src/wallet-overview-page.js",
+  ],
+  [
+    "app-mobile/pages/profile/wallet/bills/page-logic.js",
+    "../../../../../packages/mobile-core/src/wallet-bills-page.js",
+  ],
+  [
+    "app-mobile/pages/profile/wallet/recharge/index.vue",
+    "../../../../../packages/mobile-core/src/wallet-recharge-page.js",
+  ],
+  [
+    "app-mobile/pages/profile/wallet/withdraw/index.vue",
+    "../../../../../packages/mobile-core/src/wallet-withdraw-page.js",
   ],
   [
     "user-vue/pages/order/list/page-logic.js",
@@ -327,7 +351,19 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/profile/wallet/index.vue",
-    "../../../../shared/mobile-common/wallet-overview-page.js",
+    "../../../../packages/mobile-core/src/wallet-overview-page.js",
+  ],
+  [
+    "user-vue/pages/profile/wallet/bills/page-logic.js",
+    "../../../../../packages/mobile-core/src/wallet-bills-page.js",
+  ],
+  [
+    "user-vue/pages/profile/wallet/recharge/index.vue",
+    "../../../../../packages/mobile-core/src/wallet-recharge-page.js",
+  ],
+  [
+    "user-vue/pages/profile/wallet/withdraw/index.vue",
+    "../../../../../packages/mobile-core/src/wallet-withdraw-page.js",
   ],
   [
     "app-mobile/pages/auth/reset-password/index.vue",
@@ -480,15 +516,15 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "rider-app/pages/profile/wallet-bills/index-logic.ts",
-    "../../../../shared/mobile-common/wallet-bills-page",
+    "../../../../packages/mobile-core/src/wallet-bills-page.js",
   ],
   [
     "rider-app/pages/profile/wallet-recharge/index.vue",
-    "../../../../shared/mobile-common/wallet-recharge-page",
+    "../../../../packages/mobile-core/src/wallet-recharge-page.js",
   ],
   [
     "rider-app/pages/profile/wallet-withdraw/index.vue",
-    "../../../../shared/mobile-common/wallet-withdraw-page",
+    "../../../../packages/mobile-core/src/wallet-withdraw-page.js",
   ],
 ].forEach(([relativePath, sharedImport]) => {
   assertContains(relativePath, sharedImport);
@@ -2251,6 +2287,26 @@ assertContains(
   "export * from \"../../packages/mobile-core/src/rtc-call-page.js\";",
 );
 assertContains(
+  "shared/mobile-common/mobile-client-context.js",
+  "export * from \"../../packages/mobile-core/src/mobile-client-context.js\";",
+);
+assertContains(
+  "shared/mobile-common/wallet-overview-page.js",
+  "export * from \"../../packages/mobile-core/src/wallet-overview-page.js\";",
+);
+assertContains(
+  "shared/mobile-common/wallet-bills-page.js",
+  "export * from \"../../packages/mobile-core/src/wallet-bills-page.js\";",
+);
+assertContains(
+  "shared/mobile-common/wallet-recharge-page.js",
+  "export * from \"../../packages/mobile-core/src/wallet-recharge-page.js\";",
+);
+assertContains(
+  "shared/mobile-common/wallet-withdraw-page.js",
+  "export * from \"../../packages/mobile-core/src/wallet-withdraw-page.js\";",
+);
+assertContains(
   "shared/mobile-common/db.js",
   "export { default } from \"../../packages/client-sdk/src/local-db.js\";",
 );
@@ -3312,6 +3368,22 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./wallet-overview-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./wallet-bills-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./wallet-recharge-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./wallet-withdraw-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./dining-buddy.js";',
 );
 assertContains(
@@ -3325,6 +3397,22 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rtc-call-page": "./src/rtc-call-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./wallet-overview-page": "./src/wallet-overview-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./wallet-bills-page": "./src/wallet-bills-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./wallet-recharge-page": "./src/wallet-recharge-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./wallet-withdraw-page": "./src/wallet-withdraw-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

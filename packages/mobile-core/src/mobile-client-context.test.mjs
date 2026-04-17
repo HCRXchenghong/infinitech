@@ -2,6 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  getMobileClientId,
+  getMobileRuntimePlatform,
+  getWalletRechargeRuntimeProfile,
+  getWalletWithdrawRuntimeProfile,
   buildWalletRechargeRuntimeProfile,
   buildWalletWithdrawRuntimeProfile,
   normalizeMobileRuntimePlatform,
@@ -60,4 +64,40 @@ test("mobile client context builds withdraw profile from runtime platform", () =
       idempotencyKeyPrefix: "customer_mini_program_withdraw",
     },
   );
+});
+
+test("mobile client context resolves runtime wrappers from uni and env fallbacks", () => {
+  const previousUni = globalThis.uni;
+  const previousUniPlatform = process.env.UNI_PLATFORM;
+
+  try {
+    process.env.UNI_PLATFORM = "app-plus";
+    globalThis.uni = {
+      getSystemInfoSync() {
+        return { uniPlatform: "mp-weixin" };
+      },
+    };
+
+    assert.equal(getMobileRuntimePlatform(), "mini_program");
+    assert.equal(getMobileClientId(), "user-vue");
+    assert.deepEqual(getWalletRechargeRuntimeProfile({ userType: "rider" }), {
+      platform: "mini_program",
+      clientId: "user-vue",
+      clientPaymentPlatform: "mini_program",
+      idempotencyKeyPrefix: "rider_mini_program_recharge",
+      rechargeDescription: "用户端余额充值",
+    });
+    assert.deepEqual(getWalletWithdrawRuntimeProfile({ userType: "rider" }), {
+      platform: "mini_program",
+      clientId: "user-vue",
+      idempotencyKeyPrefix: "rider_mini_program_withdraw",
+    });
+  } finally {
+    globalThis.uni = previousUni;
+    if (previousUniPlatform === undefined) {
+      delete process.env.UNI_PLATFORM;
+    } else {
+      process.env.UNI_PLATFORM = previousUniPlatform;
+    }
+  }
 });

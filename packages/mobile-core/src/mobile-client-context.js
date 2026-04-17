@@ -2,6 +2,28 @@ function trimValue(value) {
   return String(value || "").trim();
 }
 
+function readBuildPlatform() {
+  if (typeof process === "undefined" || !process?.env?.UNI_PLATFORM) {
+    return "";
+  }
+  return String(process.env.UNI_PLATFORM).trim();
+}
+
+function readRuntimePlatform() {
+  if (
+    typeof globalThis.uni === "undefined" ||
+    typeof globalThis.uni.getSystemInfoSync !== "function"
+  ) {
+    return "";
+  }
+  try {
+    const systemInfo = globalThis.uni.getSystemInfoSync() || {};
+    return String(systemInfo.uniPlatform || systemInfo.platform || "").trim();
+  } catch (_error) {
+    return "";
+  }
+}
+
 export function normalizeMobileRuntimePlatform(
   rawPlatform,
   fallbackPlatform = "app",
@@ -35,6 +57,20 @@ export function resolveMobileClientId(
     : "user-vue";
 }
 
+export function getMobileRuntimePlatform(fallbackPlatform = "app") {
+  return normalizeMobileRuntimePlatform(
+    readRuntimePlatform() || readBuildPlatform(),
+    fallbackPlatform,
+  );
+}
+
+export function getMobileClientId(fallbackPlatform = "app") {
+  return resolveMobileClientId(
+    getMobileRuntimePlatform(fallbackPlatform),
+    fallbackPlatform,
+  );
+}
+
 export function buildWalletRechargeRuntimeProfile({
   userType = "customer",
   rawPlatform,
@@ -62,4 +98,24 @@ export function buildWalletWithdrawRuntimeProfile({
     clientId: resolveMobileClientId(platform, fallbackPlatform),
     idempotencyKeyPrefix: `${userType}_${platform}_withdraw`,
   };
+}
+
+export function getWalletRechargeRuntimeProfile(options = {}) {
+  const fallbackPlatform = options.fallbackPlatform || "app";
+  return buildWalletRechargeRuntimeProfile({
+    userType: options.userType || "customer",
+    rawPlatform:
+      options.rawPlatform || getMobileRuntimePlatform(fallbackPlatform),
+    fallbackPlatform,
+  });
+}
+
+export function getWalletWithdrawRuntimeProfile(options = {}) {
+  const fallbackPlatform = options.fallbackPlatform || "app";
+  return buildWalletWithdrawRuntimeProfile({
+    userType: options.userType || "customer",
+    rawPlatform:
+      options.rawPlatform || getMobileRuntimePlatform(fallbackPlatform),
+    fallbackPlatform,
+  });
 }

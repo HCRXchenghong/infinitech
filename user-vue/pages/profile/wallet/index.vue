@@ -55,7 +55,7 @@
 
 <script>
 import { buildAuthorizationHeader, request } from '../../../shared-ui/api.js'
-import { createWalletOverviewPageLogic } from '../../../../shared/mobile-common/wallet-overview-page.js'
+import { createWalletOverviewPageLogic } from '../../../../packages/mobile-core/src/wallet-overview-page.js'
 
 export default createWalletOverviewPageLogic({
   request,

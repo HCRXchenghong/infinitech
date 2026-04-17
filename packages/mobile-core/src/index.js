@@ -33,3 +33,7 @@ export * from "./profile-phone-change.js";
 export * from "./profile-settings.js";
 export * from "./rtc-call-page.js";
 export * from "./sync-service.js";
+export * from "./wallet-bills-page.js";
+export * from "./wallet-overview-page.js";
+export * from "./wallet-recharge-page.js";
+export * from "./wallet-withdraw-page.js";

@@ -71,7 +71,7 @@ import {
   isClientPaymentCancelled,
   shouldLaunchClientPayment
 } from '../../../../shared-ui/client-payment.js'
-import { createWalletRechargePageLogic } from '../../../../../shared/mobile-common/wallet-recharge-page.js'
+import { createWalletRechargePageLogic } from '../../../../../packages/mobile-core/src/wallet-recharge-page.js'
 
 export default createWalletRechargePageLogic({
   request,

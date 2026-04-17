@@ -79,7 +79,7 @@
 
 <script>
 import { buildAuthorizationHeader, request } from '../../../shared-ui/api'
-import { createWalletWithdrawPageLogic } from '../../../../shared/mobile-common/wallet-withdraw-page'
+import { createWalletWithdrawPageLogic } from '../../../../packages/mobile-core/src/wallet-withdraw-page.js'
 
 function getRiderWalletAuth() {
   const profile = uni.getStorageSync('riderProfile') || {}
