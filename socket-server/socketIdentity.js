@@ -1,9 +1,12 @@
 import { REQUEST_ID_HEADER, resolveRequestId } from './requestId.js';
 import {
-  extractUnifiedPrincipalIdentity,
   normalizeBearerToken,
   parseUnifiedTokenPayload,
 } from '../packages/contracts/src/identity.js';
+import {
+  buildRuntimePrincipalIdentity,
+  resolveSocketSubjectId,
+} from '../packages/domain-core/src/identity.js';
 
 const DEFAULT_GO_API_URL = 'http://127.0.0.1:1029';
 const REQUEST_TIMEOUT_MS = Number(process.env.SOCKET_AUTH_TIMEOUT_MS || 8000);
@@ -112,7 +115,10 @@ export async function validateSocketIdentity({ role, claimedUserId, authHeader, 
   const normalizedRole = String(role || '').trim().toLowerCase();
   const normalizedAuthHeader = normalizeAuthHeader(authHeader);
   const parsedPayload = parseTokenPayload(normalizedAuthHeader);
-  const tokenIdentity = extractUnifiedPrincipalIdentity(parsedPayload || {}, { normalizeType: true }) || {};
+  const tokenIdentity = buildRuntimePrincipalIdentity(parsedPayload || {}, {
+    expectedPrincipalType: normalizedRole,
+    defaultRole: normalizedRole,
+  }) || null;
 
   if (!normalizedAuthHeader) {
     throw createHttpError(401, 'Missing business authorization for socket token');
@@ -127,9 +133,10 @@ export async function validateSocketIdentity({ role, claimedUserId, authHeader, 
 
       return {
         role: 'admin',
-        socketUserId: normalizeUserId(
-          claimedUserId || tokenIdentity.legacyId || tokenIdentity.principalId || parsedPayload?.adminId || parsedPayload?.id || 'admin'
-        ),
+        socketUserId: resolveSocketSubjectId(claimedUserId, tokenIdentity, {
+          preferNumericId: true,
+          fallbackId: 'admin',
+        }),
         authToken: normalizedAuthHeader,
         payload: parsedPayload,
         verifiedBy: '/api/stats'
@@ -142,14 +149,15 @@ export async function validateSocketIdentity({ role, claimedUserId, authHeader, 
         headers: { Authorization: normalizedAuthHeader },
         requestId
       });
-      const verifyIdentity = extractUnifiedPrincipalIdentity(verifyData || {}, { normalizeType: true }) || {};
+      const verifyIdentity = buildRuntimePrincipalIdentity(verifyData || {}, {
+        expectedPrincipalType: 'user',
+        defaultRole: 'user',
+      }) || null;
 
-      const resolvedUserId = normalizeUserId(
-        verifyData?.userId
-          || verifyIdentity.legacyId
-          || claimedUserId
-          || verifyIdentity.principalId
-          || parsedPayload?.userId
+      const resolvedUserId = resolveSocketSubjectId(
+        claimedUserId,
+        [verifyIdentity, tokenIdentity, { id: verifyData?.userId }],
+        { preferNumericId: true },
       );
       if (!resolvedUserId) {
         throw createHttpError(401, 'Unable to resolve user identity for socket auth');
@@ -165,9 +173,9 @@ export async function validateSocketIdentity({ role, claimedUserId, authHeader, 
     }
 
     case 'rider': {
-      const riderId = normalizeUserId(
-        claimedUserId || tokenIdentity.legacyId || tokenIdentity.principalId || parsedPayload?.userId
-      );
+      const riderId = resolveSocketSubjectId(claimedUserId, tokenIdentity, {
+        preferNumericId: true,
+      });
       if (!riderId) {
         throw createHttpError(400, 'Missing rider identity for socket auth');
       }
@@ -187,9 +195,9 @@ export async function validateSocketIdentity({ role, claimedUserId, authHeader, 
     }
 
     case 'merchant': {
-      const merchantId = normalizeUserId(
-        claimedUserId || tokenIdentity.legacyId || tokenIdentity.principalId || parsedPayload?.userId
-      );
+      const merchantId = resolveSocketSubjectId(claimedUserId, tokenIdentity, {
+        preferNumericId: true,
+      });
       if (!merchantId) {
         throw createHttpError(400, 'Missing merchant identity for socket auth');
       }

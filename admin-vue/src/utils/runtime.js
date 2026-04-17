@@ -1,7 +1,10 @@
 import {
-  extractUnifiedPrincipalIdentity,
   parseUnifiedTokenPayload
 } from '@infinitech/contracts/identity';
+import {
+  createAdminRuntimeIdentity,
+  createSocketSessionIdentity,
+} from '@infinitech/domain-core';
 
 export function getToken() {
   return localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
@@ -27,14 +30,6 @@ function normalizeOrigin(raw) {
   }
 }
 
-function normalizeNumericId(value) {
-  const raw = String(value ?? '').trim();
-  if (!raw || !/^\d+$/.test(raw)) {
-    return '';
-  }
-  return raw;
-}
-
 function safeJsonParse(value) {
   if (!value || typeof value !== 'string') {
     return null;
@@ -51,30 +46,7 @@ function normalizeAdminType(value) {
 }
 
 function normalizeAdminUser(user) {
-  if (!user || typeof user !== 'object') {
-    return null;
-  }
-
-  const identity = extractUnifiedPrincipalIdentity(user, { normalizeType: true }) || {};
-  const uid = String(
-    user.uid || user.id || user.adminId || user.admin_id || identity.principalId || ''
-  ).trim();
-  const numericId = normalizeNumericId(
-    user.userId || user.numericId || user.legacyId || identity.legacyId
-  );
-  const type = normalizeAdminType(
-    user.type || user.role || identity.role || (identity.principalType === 'admin' ? 'admin' : '')
-  );
-
-  return {
-    id: uid || numericId || '',
-    uid,
-    numericId,
-    phone: String(user.phone || ''),
-    name: String(user.name || user.username || '管理员'),
-    type,
-    sessionId: String(user.sessionId || user.session_id || identity.sessionId || '').trim()
-  };
+  return createAdminRuntimeIdentity(user) || null;
 }
 
 export function getAdminSessionStorage() {
@@ -98,50 +70,15 @@ export function getStoredAdminUser() {
 
 export function getCurrentAdminIdentity() {
   const payload = parseUnifiedTokenPayload(getToken()) || {};
-  const payloadIdentity = extractUnifiedPrincipalIdentity(payload, { normalizeType: true }) || {};
   const storedUser = getStoredAdminUser();
-  const type = normalizeAdminType(
-    storedUser?.type
-      || payloadIdentity.role
-      || (payloadIdentity.principalType === 'admin' ? 'admin' : '')
-      || payload.type
-      || payload.role
-  );
-
+  const identity = createAdminRuntimeIdentity([storedUser, payload], {
+    defaultName: '管理员',
+  });
+  const type = normalizeAdminType(identity?.type);
   if (type !== 'admin' && type !== 'super_admin') {
     return null;
   }
-
-  const uid = String(
-    storedUser?.uid
-      || storedUser?.id
-      || payloadIdentity.principalId
-      || payload.id
-      || payload.sub
-      || payload.adminId
-      || payload.admin_id
-      || ''
-  ).trim();
-  const numericId = normalizeNumericId(
-    storedUser?.numericId
-      || payloadIdentity.legacyId
-      || payload.userId
-  );
-  const id = uid || numericId || String(payloadIdentity.phone || payload.phone || '').trim();
-
-  if (!id) {
-    return null;
-  }
-
-  return {
-    id,
-    uid,
-    numericId,
-    phone: String(storedUser?.phone || payloadIdentity.phone || payload.phone || '').trim(),
-    name: String(storedUser?.name || payloadIdentity.name || payload.name || payload.phone || '管理员').trim() || '管理员',
-    type,
-    sessionId: String(storedUser?.sessionId || payloadIdentity.sessionId || payload.session_id || payload.sessionId || '').trim()
-  };
+  return identity;
 }
 
 export function getCurrentAdminSocketIdentity() {
@@ -149,17 +86,10 @@ export function getCurrentAdminSocketIdentity() {
   if (!identity) {
     return null;
   }
-
-  const socketUserId = String(identity.numericId || identity.id || '').trim();
-  if (!socketUserId) {
-    return null;
-  }
-
-  return {
-    userId: socketUserId,
+  return createSocketSessionIdentity(identity, {
     role: 'admin',
-    cacheKey: `admin:${socketUserId}`
-  };
+    preferNumericId: true,
+  });
 }
 
 export function clearCachedSocketToken() {

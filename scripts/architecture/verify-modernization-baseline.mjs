@@ -47,6 +47,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/domain-core/src/index.js",
   "packages/domain-core/src/errand-settings.js",
   "packages/domain-core/src/errand-settings.test.mjs",
+  "packages/domain-core/src/identity.js",
+  "packages/domain-core/src/identity.test.mjs",
   "packages/domain-core/src/notification-content.js",
   "packages/domain-core/src/notification-content.test.mjs",
   "packages/domain-core/src/onboarding-invite-content.js",
@@ -658,6 +660,30 @@ assertContains(
 assertContains(
   "admin-vue/vite.config.mts",
   '"@infinitech/domain-core"',
+);
+assertContains(
+  "admin-vue/src/utils/runtime.js",
+  "createAdminRuntimeIdentity",
+);
+assertContains(
+  "admin-vue/src/utils/runtime.js",
+  "createSocketSessionIdentity",
+);
+assertContains(
+  "socket-server/socketIdentity.js",
+  "../packages/domain-core/src/identity.js",
+);
+assertContains(
+  "socket-server/socketIdentity.js",
+  "resolveSocketSubjectId(",
+);
+assertContains(
+  "packages/domain-core/src/identity.js",
+  "export function createAdminRuntimeIdentity(",
+);
+assertContains(
+  "packages/domain-core/src/identity.js",
+  "export function createSocketSessionIdentity(",
 );
 assertContains(
   "backend/go/internal/handler/sms_handler.go",
@@ -1520,7 +1546,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:domain-core-tests": "node --test packages/domain-core/src/notification-content.test.mjs packages/domain-core/src/onboarding-invite-content.test.mjs packages/domain-core/src/errand-settings.test.mjs"',
+  '"verify:domain-core-tests": "node --test packages/domain-core/src/identity.test.mjs packages/domain-core/src/notification-content.test.mjs packages/domain-core/src/onboarding-invite-content.test.mjs packages/domain-core/src/errand-settings.test.mjs"',
 );
 assertContains(
   "package.json",
