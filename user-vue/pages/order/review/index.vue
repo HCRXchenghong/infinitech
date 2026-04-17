@@ -152,7 +152,7 @@
 
 <script>
 import { fetchOrderDetail, request } from '@/shared-ui/api.js'
-import { createOrderReviewPage } from '../../../../shared/mobile-common/order-after-sales-pages.js'
+import { createOrderReviewPage } from '../../../../packages/mobile-core/src/order-after-sales-pages.js'
 
 export default createOrderReviewPage({
   fetchOrderDetail,

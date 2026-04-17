@@ -24,6 +24,10 @@ import {
   resolveOrderReviewUserProfile,
   yuanToFen,
 } from "./order-after-sales.js";
+import {
+  createOrderRefundPage,
+  createOrderReviewPage,
+} from "./order-after-sales-pages.js";
 
 test("order after-sales helpers expose stable defaults", () => {
   assert.equal(AFTER_SALES_REFUND_TYPES.length, 3);
@@ -172,4 +176,164 @@ test("order after-sales helpers normalize review orders and payloads", () => {
     pickOrderReviewErrorMessage({ error: "提交失败" }, "评价失败"),
     "提交失败",
   );
+});
+
+test("order after-sales pages submit refund payloads and switch to refund tab", async () => {
+  const afterSalesCalls = [];
+  const emittedEvents = [];
+  let switchedTab = null;
+  const originalUni = globalThis.uni;
+  const originalSetTimeout = globalThis.setTimeout;
+
+  globalThis.setTimeout = (callback) => {
+    callback();
+    return 0;
+  };
+  globalThis.uni = {
+    getStorageSync(key) {
+      if (key === "userProfile") {
+        return { phone: "13800138000" };
+      }
+      return {};
+    },
+    showToast() {},
+    showLoading() {},
+    hideLoading() {},
+    switchTab(options) {
+      switchedTab = options.url;
+      options.success?.();
+    },
+    navigateBack() {},
+    $emit(eventName) {
+      emittedEvents.push(eventName);
+    },
+  };
+
+  try {
+    const page = createOrderRefundPage({
+      createAfterSales: async (payload) => {
+        afterSalesCalls.push(payload);
+        return { ok: true };
+      },
+      uploadAfterSalesEvidence: async (filePath) => ({
+        url: `https://cdn.example.com/${filePath}`,
+      }),
+    });
+    const instance = {
+      ...page.data(),
+      ...page.methods,
+      order: {
+        id: "order-1",
+        bizType: "takeout",
+        status: "pending",
+        totalPrice: 32,
+        productList: [
+          { name: "蛋糕", price: 20, count: 1 },
+          { title: "奶茶", sku: "中杯", price: 12, count: 2 },
+        ],
+      },
+      selectedProducts: [1],
+      problemDesc: "商品破损",
+      requestedRefundAmountYuan: "12.34",
+      uploadedImages: ["proof.png", "https://cdn.example.com/already.png"],
+      contactPhone: "13800138000",
+    };
+
+    await instance.handleSubmit();
+
+    assert.equal(afterSalesCalls.length, 1);
+    assert.deepEqual(afterSalesCalls[0], {
+      orderId: "order-1",
+      userId: "13800138000",
+      type: "refund",
+      selectedProducts: [
+        { name: "奶茶", spec: "中杯", price: 12, count: 2 },
+      ],
+      problemDesc: "商品破损",
+      contactPhone: "13800138000",
+      requestedRefundAmount: 1234,
+      evidenceImages: [
+        "https://cdn.example.com/proof.png",
+        "https://cdn.example.com/already.png",
+      ],
+    });
+    assert.equal(instance.showSuccessModal, true);
+
+    instance.handleSuccessConfirm();
+    assert.equal(switchedTab, "/pages/order/list/index");
+    assert.deepEqual(emittedEvents, ["switchToRefundTab"]);
+  } finally {
+    globalThis.uni = originalUni;
+    globalThis.setTimeout = originalSetTimeout;
+  }
+});
+
+test("order after-sales review page submits shop and rider reviews consistently", async () => {
+  const requestCalls = [];
+  const navigations = [];
+  const originalUni = globalThis.uni;
+  const originalSetTimeout = globalThis.setTimeout;
+
+  globalThis.setTimeout = (callback) => {
+    callback();
+    return 0;
+  };
+  globalThis.uni = {
+    getStorageSync(key) {
+      if (key === "userProfile") {
+        return { id: "user-99", nickname: "小张" };
+      }
+      return {};
+    },
+    showToast() {},
+    showLoading() {},
+    hideLoading() {},
+    navigateBack() {
+      navigations.push("back");
+    },
+    navigateTo({ url }) {
+      navigations.push(url);
+    },
+  };
+
+  try {
+    const page = createOrderReviewPage({
+      request: async (config) => {
+        requestCalls.push(config);
+        return { ok: true };
+      },
+    });
+    const instance = {
+      ...page.data(),
+      ...page.methods,
+      order: {
+        id: "order-9",
+        shopId: "shop-1",
+        shopName: "深夜食堂",
+        shopLogo: "shop.png",
+        userId: "user-99",
+        riderId: "rider-2",
+      },
+      shopRating: 5,
+      riderRating: 4,
+      shopReview: { content: "很好", images: ["shop-proof.png"] },
+      riderReview: { content: "很快", images: [] },
+      hasRider: true,
+    };
+
+    await instance.handleSubmit();
+    assert.deepEqual(
+      requestCalls.map((item) => item.url),
+      ["/api/reviews", "/api/rider-reviews/submit", "/api/orders/order-9/reviewed"],
+    );
+
+    instance.handleContactShop();
+    assert.equal(
+      navigations[1],
+      "/pages/message/chat/index?id=shop_shop-1&name=%E6%B7%B1%E5%A4%9C%E9%A3%9F%E5%A0%82&role=shop&avatar=shop.png",
+    );
+  } finally {
+    globalThis.uni = originalUni;
+    globalThis.setTimeout = originalSetTimeout;
+  }
 });

@@ -47,7 +47,7 @@
 
 <script>
 import { request } from '@/shared-ui/api.js'
-import { createOrderCouponPage } from '../../../../shared/mobile-common/order-coupon-page.js'
+import { createOrderCouponPage } from '../../../../packages/mobile-core/src/order-coupon-page.js'
 
 export default createOrderCouponPage({
   request

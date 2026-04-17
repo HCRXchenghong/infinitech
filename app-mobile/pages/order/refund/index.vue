@@ -183,7 +183,7 @@
 <script>
 import { fetchOrderDetail, createAfterSales, uploadAfterSalesEvidence } from '@/shared-ui/api.js'
 import SuccessModal from '@/components/SuccessModal.vue'
-import { createOrderRefundPage } from '../../../../shared/mobile-common/order-after-sales-pages.js'
+import { createOrderRefundPage } from '../../../../packages/mobile-core/src/order-after-sales-pages.js'
 
 export default createOrderRefundPage({
   fetchOrderDetail,

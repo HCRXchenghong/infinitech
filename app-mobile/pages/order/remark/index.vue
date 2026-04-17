@@ -14,7 +14,7 @@
 
 <script>
 import { useUserOrderStore } from '@/shared-ui/userOrderStore.js'
-import { createOrderRemarkPage } from '../../../../shared/mobile-common/order-support-pages.js'
+import { createOrderRemarkPage } from '../../../../packages/mobile-core/src/order-support-pages.js'
 
 export default createOrderRemarkPage({
   useUserOrderStore

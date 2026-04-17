@@ -16,7 +16,7 @@
 
 <script>
 import { useUserOrderStore } from '@/shared-ui/userOrderStore.js'
-import { createOrderTablewarePage } from '../../../../shared/mobile-common/order-support-pages.js'
+import { createOrderTablewarePage } from '../../../../packages/mobile-core/src/order-support-pages.js'
 
 export default createOrderTablewarePage({
   useUserOrderStore

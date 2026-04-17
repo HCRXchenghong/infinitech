@@ -160,12 +160,14 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/notification-detail.test.mjs",
   "packages/mobile-core/src/order-after-sales.js",
   "packages/mobile-core/src/order-after-sales.test.mjs",
+  "packages/mobile-core/src/order-after-sales-pages.js",
   "packages/mobile-core/src/order-confirm-page.js",
   "packages/mobile-core/src/order-confirm-page.test.mjs",
   "packages/mobile-core/src/order-contact.js",
   "packages/mobile-core/src/order-contact.test.mjs",
   "packages/mobile-core/src/order-coupon.js",
   "packages/mobile-core/src/order-coupon.test.mjs",
+  "packages/mobile-core/src/order-coupon-page.js",
   "packages/mobile-core/src/order-detail-page.js",
   "packages/mobile-core/src/order-detail-page.test.mjs",
   "packages/mobile-core/src/order-list-page.js",
@@ -316,11 +318,11 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/order/refund/index.vue",
-    "../../../../shared/mobile-common/order-after-sales-pages.js",
+    "../../../../packages/mobile-core/src/order-after-sales-pages.js",
   ],
   [
     "app-mobile/pages/order/review/index.vue",
-    "../../../../shared/mobile-common/order-after-sales-pages.js",
+    "../../../../packages/mobile-core/src/order-after-sales-pages.js",
   ],
   [
     "app-mobile/pages/profile/wallet/index.vue",
@@ -360,11 +362,11 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/order/refund/index.vue",
-    "../../../../shared/mobile-common/order-after-sales-pages.js",
+    "../../../../packages/mobile-core/src/order-after-sales-pages.js",
   ],
   [
     "user-vue/pages/order/review/index.vue",
-    "../../../../shared/mobile-common/order-after-sales-pages.js",
+    "../../../../packages/mobile-core/src/order-after-sales-pages.js",
   ],
   [
     "user-vue/pages/profile/wallet/index.vue",
@@ -1630,11 +1632,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/order/coupon/index.vue",
-  "../../../../shared/mobile-common/order-coupon-page.js",
+  "../../../../packages/mobile-core/src/order-coupon-page.js",
 );
 assertContains(
   "app-mobile/pages/order/coupon/index.vue",
-  "../../../../shared/mobile-common/order-coupon-page.js",
+  "../../../../packages/mobile-core/src/order-coupon-page.js",
 );
 assertContains(
   "user-vue/pages/profile/coupon-list/index.vue",
@@ -2320,8 +2322,20 @@ assertContains(
   "export * from \"../../packages/mobile-core/src/order-confirm-page.js\";",
 );
 assertContains(
+  "shared/mobile-common/order-after-sales-pages.js",
+  "export * from \"../../packages/mobile-core/src/order-after-sales-pages.js\";",
+);
+assertContains(
+  "shared/mobile-common/order-coupon-page.js",
+  "export * from \"../../packages/mobile-core/src/order-coupon-page.js\";",
+);
+assertContains(
   "shared/mobile-common/order-payment-options.js",
   "export * from \"../../packages/mobile-core/src/order-payment-options.js\";",
+);
+assertContains(
+  "shared/mobile-common/order-support-pages.js",
+  "export * from \"../../packages/mobile-core/src/order-support-pages.js\";",
 );
 assertContains(
   "shared/mobile-common/phone-contact.js",
@@ -3397,11 +3411,19 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./order-after-sales-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./order-confirm-page.js";',
 );
 assertContains(
   "packages/mobile-core/src/index.js",
   'export * from "./order-contact.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./order-coupon-page.js";',
 );
 assertContains(
   "packages/mobile-core/src/index.js",
@@ -3501,6 +3523,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/package.json",
+  '"./order-after-sales-pages": "./src/order-after-sales-pages.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
   '"./order-confirm-page": "./src/order-confirm-page.js"',
 );
 assertContains(
@@ -3510,6 +3536,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./order-coupon": "./src/order-coupon.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./order-coupon-page": "./src/order-coupon-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -3672,11 +3702,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/order/coupon/index.vue",
-  "../../../../shared/mobile-common/order-coupon-page.js",
+  "../../../../packages/mobile-core/src/order-coupon-page.js",
 );
 assertContains(
   "app-mobile/pages/order/coupon/index.vue",
-  "../../../../shared/mobile-common/order-coupon-page.js",
+  "../../../../packages/mobile-core/src/order-coupon-page.js",
 );
 assertContains(
   "user-vue/pages/order/coupon/index.vue",
@@ -3696,11 +3726,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/order/remark/index.vue",
-  "../../../../shared/mobile-common/order-support-pages.js",
+  "../../../../packages/mobile-core/src/order-support-pages.js",
 );
 assertContains(
   "app-mobile/pages/order/remark/index.vue",
-  "../../../../shared/mobile-common/order-support-pages.js",
+  "../../../../packages/mobile-core/src/order-support-pages.js",
 );
 assertContains(
   "user-vue/pages/order/remark/index.vue",
@@ -3728,11 +3758,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/order/tableware/index.vue",
-  "../../../../shared/mobile-common/order-support-pages.js",
+  "../../../../packages/mobile-core/src/order-support-pages.js",
 );
 assertContains(
   "app-mobile/pages/order/tableware/index.vue",
-  "../../../../shared/mobile-common/order-support-pages.js",
+  "../../../../packages/mobile-core/src/order-support-pages.js",
 );
 assertContains(
   "user-vue/pages/order/tableware/index.vue",
@@ -3744,11 +3774,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/pay/success/index.vue",
-  "../../../../shared/mobile-common/order-support-pages.js",
+  "../../../../packages/mobile-core/src/order-support-pages.js",
 );
 assertContains(
   "app-mobile/pages/pay/success/index.vue",
-  "../../../../shared/mobile-common/order-support-pages.js",
+  "../../../../packages/mobile-core/src/order-support-pages.js",
 );
 assertContains(
   "user-vue/pages/pay/success/index.vue",

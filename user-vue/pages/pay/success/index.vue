@@ -13,7 +13,7 @@
 </template>
 
 <script>
-import { createOrderPaySuccessPage } from '../../../../shared/mobile-common/order-support-pages.js'
+import { createOrderPaySuccessPage } from '../../../../packages/mobile-core/src/order-support-pages.js'
 
 export default createOrderPaySuccessPage()
 </script>
