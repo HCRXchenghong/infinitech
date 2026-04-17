@@ -171,6 +171,10 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/admin-core/src/coupon-resources.test.mjs",
   "packages/admin-core/src/api-documentation-resources.js",
   "packages/admin-core/src/api-documentation-resources.test.mjs",
+  "backend/bank-payout-sidecar/runtime.js",
+  "backend/bank-payout-sidecar/runtime.test.mjs",
+  "backend/alipay-sidecar/runtime.js",
+  "backend/alipay-sidecar/runtime.test.mjs",
   "packages/admin-core/src/DesktopShellApp.vue",
   "admin-vue/src/views/dataManagementRuntimeHelpers.js",
   "admin-win/src/App.vue",
@@ -1335,6 +1339,42 @@ assertNotContains(
 assertNotContains(
   "backend/docker/docker-compose.yml",
   'BANK_PAYOUT_ALLOW_STUB: ${BANK_PAYOUT_ALLOW_STUB:-true}',
+);
+assertContains(
+  "backend/docker/docker-compose.yml",
+  'ALIPAY_SIDECAR_API_SECRET: ${ALIPAY_SIDECAR_API_SECRET:?ALIPAY_SIDECAR_API_SECRET is required}',
+);
+assertContains(
+  "backend/docker/docker-compose.yml",
+  'BANK_PAYOUT_SIDECAR_API_SECRET: ${BANK_PAYOUT_SIDECAR_API_SECRET:?BANK_PAYOUT_SIDECAR_API_SECRET is required}',
+);
+assertContains(
+  "backend/docker/docker-compose.yml",
+  'ALIPAY_SIDECAR_ALLOW_STUB: ${ALIPAY_SIDECAR_ALLOW_STUB:-false}',
+);
+assertContains(
+  "package.json",
+  '"verify:sidecar-tests":',
+);
+assertContains(
+  "package.json",
+  'verify:backend-runtime',
+);
+assertContains(
+  "backend/go/internal/service/payment_runtime.go",
+  "SidecarAPISecret",
+);
+assertContains(
+  "backend/go/internal/service/sidecar_auth.go",
+  'const sidecarSecretHeader = "X-Sidecar-Secret"',
+);
+assertNotContains(
+  "backend/bank-payout-sidecar/server.js",
+  "body.allowStub",
+);
+assertNotContains(
+  "backend/bank-payout-sidecar/server.js",
+  "body.mockStatus",
 );
 assertNotContains(
   "backend/docker/docker-compose.yml",

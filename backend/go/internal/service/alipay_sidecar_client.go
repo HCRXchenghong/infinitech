@@ -29,7 +29,7 @@ type alipaySidecarEnvelope struct {
 	Error             string                 `json:"error"`
 }
 
-func callAlipaySidecar(ctx context.Context, rawURL string, payload map[string]interface{}) (*alipaySidecarEnvelope, error) {
+func callAlipaySidecar(ctx context.Context, rawURL string, apiSecret string, payload map[string]interface{}) (*alipaySidecarEnvelope, error) {
 	sidecarURL := strings.TrimSpace(rawURL)
 	if sidecarURL == "" {
 		return nil, fmt.Errorf("%w: alipay sidecar url is required", ErrInvalidArgument)
@@ -45,6 +45,9 @@ func callAlipaySidecar(ctx context.Context, rawURL string, payload map[string]in
 		return nil, err
 	}
 	request.Header.Set("Content-Type", "application/json; charset=utf-8")
+	if err := applySidecarSecretHeader(request, apiSecret, "alipay sidecar"); err != nil {
+		return nil, err
+	}
 
 	client := &http.Client{Timeout: 8 * time.Second}
 	response, err := client.Do(request)
@@ -92,7 +95,7 @@ func (s *PaymentService) createAlipaySidecarIntent(
 	amount int64,
 	description string,
 ) (*paymentIntentResult, error) {
-	envelope, err := callAlipaySidecar(ctx, strings.TrimRight(cfg.Alipay.SidecarURL, "/")+"/v1/payments/create", map[string]interface{}{
+	envelope, err := callAlipaySidecar(ctx, strings.TrimRight(cfg.Alipay.SidecarURL, "/")+"/v1/payments/create", cfg.Alipay.SidecarAPISecret, map[string]interface{}{
 		"scene":             scene,
 		"outTradeNo":        internalTransactionID,
 		"amount":            amount,
@@ -131,7 +134,7 @@ func (s *PaymentService) createAlipaySidecarRefund(
 		sourceTransactionID = firstTrimmed(originalTransaction.TransactionID, originalTransaction.TransactionIDRaw, internalRefundID)
 	}
 
-	envelope, err := callAlipaySidecar(ctx, strings.TrimRight(cfg.Alipay.SidecarURL, "/")+"/v1/refunds/create", map[string]interface{}{
+	envelope, err := callAlipaySidecar(ctx, strings.TrimRight(cfg.Alipay.SidecarURL, "/")+"/v1/refunds/create", cfg.Alipay.SidecarAPISecret, map[string]interface{}{
 		"outTradeNo":        outTradeNo,
 		"refundNo":          internalRefundID,
 		"amount":            amount,
@@ -160,7 +163,7 @@ func (s *WalletService) createAlipaySidecarPayout(
 	cfg paymentGatewayRuntimeConfig,
 	request *repository.WithdrawRequest,
 ) (*withdrawPayoutExecutionResult, error) {
-	envelope, err := callAlipaySidecar(ctx, strings.TrimRight(cfg.Alipay.SidecarURL, "/")+"/v1/payouts/create", map[string]interface{}{
+	envelope, err := callAlipaySidecar(ctx, strings.TrimRight(cfg.Alipay.SidecarURL, "/")+"/v1/payouts/create", cfg.Alipay.SidecarAPISecret, map[string]interface{}{
 		"requestId":         strings.TrimSpace(request.RequestID),
 		"transactionId":     strings.TrimSpace(request.TransactionID),
 		"userId":            strings.TrimSpace(request.UserID),
@@ -195,7 +198,7 @@ func (s *WalletService) queryAlipaySidecarPayout(
 	cfg paymentGatewayRuntimeConfig,
 	request *repository.WithdrawRequest,
 ) (*alipaySidecarEnvelope, error) {
-	return callAlipaySidecar(ctx, strings.TrimRight(cfg.Alipay.SidecarURL, "/")+"/v1/payouts/query", map[string]interface{}{
+	return callAlipaySidecar(ctx, strings.TrimRight(cfg.Alipay.SidecarURL, "/")+"/v1/payouts/query", cfg.Alipay.SidecarAPISecret, map[string]interface{}{
 		"requestId":         strings.TrimSpace(request.RequestID),
 		"transactionId":     strings.TrimSpace(request.TransactionID),
 		"thirdPartyOrderId": strings.TrimSpace(request.ThirdPartyOrderID),
@@ -218,5 +221,5 @@ func verifyAlipaySidecarCallback(
 	if len(req.Headers) > 0 {
 		payload["headers"] = req.Headers
 	}
-	return callAlipaySidecar(ctx, strings.TrimRight(cfg.Alipay.SidecarURL, "/")+"/v1/notify/verify", payload)
+	return callAlipaySidecar(ctx, strings.TrimRight(cfg.Alipay.SidecarURL, "/")+"/v1/notify/verify", cfg.Alipay.SidecarAPISecret, payload)
 }

@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js"
+    "test": "node --test runtime.test.mjs",
+    "check": "node --check runtime.js && node --check server.js"
   },
   "dependencies": {
     "alipay-sdk": "^4.14.0"

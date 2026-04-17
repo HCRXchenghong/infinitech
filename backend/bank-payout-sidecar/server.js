@@ -1,7 +1,14 @@
 import http from 'node:http'
 
+import {
+  createBankPayoutRuntime,
+  normalizeText,
+  verifyConfiguredAdapterSignature,
+} from './runtime.js'
+
 const port = Number(process.env.BANK_PAYOUT_SIDECAR_PORT || 10302)
 const payouts = new Map()
+const runtime = createBankPayoutRuntime(process.env)
 
 function json(res, statusCode, payload) {
   res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -32,26 +39,6 @@ function readBody(req) {
   })
 }
 
-function normalizeText(value) {
-  return String(value == null ? '' : value).trim()
-}
-
-function boolFromValue(value, fallback = false) {
-  const normalized = normalizeText(value).toLowerCase()
-  if (!normalized) return fallback
-  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) return true
-  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) return false
-  return fallback
-}
-
-function currentEnv() {
-  return normalizeText(process.env.ENV || process.env.NODE_ENV || 'development').toLowerCase()
-}
-
-function productionLikeEnv() {
-  return ['production', 'prod', 'staging'].includes(currentEnv())
-}
-
 function requireText(value, field) {
   const normalized = normalizeText(value)
   if (!normalized) {
@@ -69,39 +56,11 @@ function requireAmount(value, field) {
 }
 
 function configSummary(body = {}) {
-  return {
-    sidecarMode: currentMode(body),
-    providerUrlConfigured: Boolean(normalizeText(body.providerUrl)),
-    merchantIdConfigured: Boolean(normalizeText(body.merchantId)),
-    apiKeyConfigured: Boolean(normalizeText(body.apiKey)),
-    notifyUrlConfigured: Boolean(normalizeText(body.notifyUrl)),
-    allowStubRequested: allowStubRequested(body),
-    allowStub: allowStub(body),
-    allowStubBlocked: allowStubRequested(body) && !allowStub(body),
-  }
-}
-
-function allowStubRequested(body = {}) {
-  return boolFromValue(body.allowStub, boolFromValue(process.env.BANK_PAYOUT_ALLOW_STUB, false))
-}
-
-function allowStub(body = {}) {
-  return !productionLikeEnv() && allowStubRequested(body)
-}
-
-function isConfigured(body = {}) {
-  return Boolean(
-    normalizeText(body.providerUrl) &&
-      normalizeText(body.merchantId) &&
-      normalizeText(body.apiKey) &&
-      normalizeText(body.notifyUrl),
-  )
+  return runtime.configSummary(body)
 }
 
 function currentMode(body = {}) {
-  if (isConfigured(body)) return 'configured-adapter'
-  if (allowStub(body)) return 'stub'
-  return 'unconfigured'
+  return runtime.currentMode(body)
 }
 
 function normalizeLifecycleStatus(value) {
@@ -217,11 +176,6 @@ function resolveCallbackThirdPartyOrderId(payload = {}, record = null) {
   )
 }
 
-function verifyConfiguredAdapterSignature(signature, body = {}) {
-  const apiKey = normalizeText(body.apiKey)
-  return Boolean(apiKey) && signature === apiKey
-}
-
 function buildCreateResponse(body = {}) {
   const mode = ensureAvailable(body)
   const requestId = requireText(body.requestId, 'requestId')
@@ -274,10 +228,10 @@ function buildQueryResponse(body = {}) {
   const transactionId = normalizeText(body.transactionId || record?.transactionId)
   const thirdPartyOrderId = normalizeText(body.thirdPartyOrderId || record?.thirdPartyOrderId) || `BANKPAYOUT-${requestId}`
   const forcedStatus = normalizeLifecycleStatus(
-    body.gatewayStatus || body.mockStatus || process.env.BANK_PAYOUT_STUB_QUERY_STATUS || record?.status,
+    process.env.BANK_PAYOUT_STUB_QUERY_STATUS || record?.status,
   )
   const transferResult =
-    normalizeText(body.transferResult || record?.transferResult) ||
+    normalizeText(record?.transferResult) ||
     (forcedStatus === 'success'
       ? '银行卡提现已到账'
       : forcedStatus === 'failed'
@@ -321,7 +275,7 @@ function buildVerifyResponse(body = {}) {
   })
 
   const signature = resolveCallbackSignature(headers, payload)
-  const verified = mode === 'configured-adapter' ? verifyConfiguredAdapterSignature(signature, body) : allowStub(body)
+  const verified = mode === 'configured-adapter' ? verifyConfiguredAdapterSignature(signature, body) : runtime.allowStub
   if (!verified) {
     throw new Error('bank payout callback signature verification failed')
   }
@@ -373,6 +327,15 @@ function buildVerifyResponse(body = {}) {
 }
 
 async function handleJsonPost(req, res, builder) {
+  if (!runtime.verifySidecarRequest(req.headers)) {
+    json(res, 401, {
+      success: false,
+      error: 'sidecar request authentication failed',
+      config: runtime.configSummary(),
+    })
+    return
+  }
+
   try {
     const body = await readBody(req)
     const payload = builder(body)
@@ -383,7 +346,7 @@ async function handleJsonPost(req, res, builder) {
     json(res, message.includes('not fully configured') ? 503 : 400, {
       success: false,
       error: message,
-      config: configSummary(body),
+      config: runtime.configSummary(body),
     })
   }
 }
@@ -395,8 +358,9 @@ const server = http.createServer(async (req, res) => {
     json(res, 200, {
       status: 'ok',
       service: 'bank-payout-sidecar',
-      ready: boolFromValue(process.env.BANK_PAYOUT_ALLOW_STUB, false),
-      mode: boolFromValue(process.env.BANK_PAYOUT_ALLOW_STUB, false) ? 'stub-enabled' : 'config-required',
+      ready: runtime.sharedSecretConfigured,
+      mode: runtime.allowStub ? 'stub-enabled' : 'dynamic-config-required',
+      config: runtime.configSummary(),
       storedPayouts: payouts.size,
       timestamp: new Date().toISOString(),
     })

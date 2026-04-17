@@ -28,7 +28,7 @@ type bankPayoutSidecarEnvelope struct {
 	Error             string                 `json:"error"`
 }
 
-func callBankPayoutSidecar(ctx context.Context, rawURL string, payload map[string]interface{}) (*bankPayoutSidecarEnvelope, error) {
+func callBankPayoutSidecar(ctx context.Context, rawURL string, apiSecret string, payload map[string]interface{}) (*bankPayoutSidecarEnvelope, error) {
 	sidecarURL := strings.TrimSpace(rawURL)
 	if sidecarURL == "" {
 		return nil, fmt.Errorf("%w: bank payout sidecar url is required", ErrInvalidArgument)
@@ -44,6 +44,9 @@ func callBankPayoutSidecar(ctx context.Context, rawURL string, payload map[strin
 		return nil, err
 	}
 	request.Header.Set("Content-Type", "application/json; charset=utf-8")
+	if err := applySidecarSecretHeader(request, apiSecret, "bank payout sidecar"); err != nil {
+		return nil, err
+	}
 
 	client := &http.Client{Timeout: 8 * time.Second}
 	response, err := client.Do(request)
@@ -88,7 +91,7 @@ func (s *WalletService) createBankPayoutSidecar(
 	cfg paymentGatewayRuntimeConfig,
 	request *repository.WithdrawRequest,
 ) (*withdrawPayoutExecutionResult, error) {
-	envelope, err := callBankPayoutSidecar(ctx, strings.TrimRight(cfg.BankCard.SidecarURL, "/")+"/v1/payouts/create", map[string]interface{}{
+	envelope, err := callBankPayoutSidecar(ctx, strings.TrimRight(cfg.BankCard.SidecarURL, "/")+"/v1/payouts/create", cfg.BankCard.SidecarAPISecret, map[string]interface{}{
 		"requestId":         strings.TrimSpace(request.RequestID),
 		"transactionId":     strings.TrimSpace(request.TransactionID),
 		"userId":            strings.TrimSpace(request.UserID),
@@ -105,7 +108,6 @@ func (s *WalletService) createBankPayoutSidecar(
 		"providerUrl":       cfg.BankCard.ProviderURL,
 		"merchantId":        cfg.BankCard.MerchantID,
 		"apiKey":            cfg.BankCard.APIKey,
-		"allowStub":         cfg.BankCard.AllowStub,
 		"arrivalText":       cfg.BankCard.ArrivalText,
 		"integrationTarget": "bank-payout-sidecar",
 	})
@@ -128,7 +130,7 @@ func (s *WalletService) queryBankPayoutSidecar(
 	cfg paymentGatewayRuntimeConfig,
 	request *repository.WithdrawRequest,
 ) (*bankPayoutSidecarEnvelope, error) {
-	return callBankPayoutSidecar(ctx, strings.TrimRight(cfg.BankCard.SidecarURL, "/")+"/v1/payouts/query", map[string]interface{}{
+	return callBankPayoutSidecar(ctx, strings.TrimRight(cfg.BankCard.SidecarURL, "/")+"/v1/payouts/query", cfg.BankCard.SidecarAPISecret, map[string]interface{}{
 		"requestId":         strings.TrimSpace(request.RequestID),
 		"transactionId":     strings.TrimSpace(request.TransactionID),
 		"thirdPartyOrderId": strings.TrimSpace(request.ThirdPartyOrderID),
@@ -136,7 +138,6 @@ func (s *WalletService) queryBankPayoutSidecar(
 		"merchantId":        cfg.BankCard.MerchantID,
 		"apiKey":            cfg.BankCard.APIKey,
 		"notifyUrl":         cfg.BankCard.NotifyURL,
-		"allowStub":         cfg.BankCard.AllowStub,
 		"arrivalText":       cfg.BankCard.ArrivalText,
 		"integrationTarget": "bank-payout-sidecar",
 	})
@@ -154,12 +155,11 @@ func verifyBankPayoutSidecarCallback(
 		"merchantId":        cfg.BankCard.MerchantID,
 		"apiKey":            cfg.BankCard.APIKey,
 		"notifyUrl":         cfg.BankCard.NotifyURL,
-		"allowStub":         cfg.BankCard.AllowStub,
 		"arrivalText":       cfg.BankCard.ArrivalText,
 		"integrationTarget": "bank-payout-sidecar",
 	}
 	if len(req.Headers) > 0 {
 		payload["headers"] = req.Headers
 	}
-	return callBankPayoutSidecar(ctx, strings.TrimRight(cfg.BankCard.SidecarURL, "/")+"/v1/notify/verify", payload)
+	return callBankPayoutSidecar(ctx, strings.TrimRight(cfg.BankCard.SidecarURL, "/")+"/v1/notify/verify", cfg.BankCard.SidecarAPISecret, payload)
 }

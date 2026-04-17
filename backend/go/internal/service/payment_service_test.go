@@ -176,6 +176,7 @@ func TestRefundOrderThirdPartyCreatesPendingRefundTransaction(t *testing.T) {
 	t.Setenv("ALIPAY_PUBLIC_KEY", "public-key")
 	t.Setenv("ALIPAY_NOTIFY_URL", "https://example.com/alipay/notify")
 	t.Setenv("ALIPAY_SIDECAR_URL", server.URL)
+	t.Setenv("ALIPAY_SIDECAR_API_SECRET", "alipay-sidecar-secret")
 
 	order, _ := seedPaidOrderForRefundTest(t, db, "alipay", "ALI-ORDER-100")
 

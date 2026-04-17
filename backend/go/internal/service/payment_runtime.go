@@ -27,20 +27,22 @@ type wechatPayRuntimeConfig struct {
 }
 
 type alipayRuntimeConfig struct {
-	AppID           string `json:"appId"`
-	PrivateKey      string `json:"privateKey"`
-	AlipayPublicKey string `json:"alipayPublicKey"`
-	NotifyURL       string `json:"notifyUrl"`
-	PayoutNotifyURL string `json:"payoutNotifyUrl"`
-	Sandbox         bool   `json:"sandbox"`
-	SidecarURL      string `json:"sidecarUrl"`
-	AllowStub       bool   `json:"allowStub"`
-	StubRequested   bool   `json:"-"`
+	AppID            string `json:"appId"`
+	PrivateKey       string `json:"privateKey"`
+	AlipayPublicKey  string `json:"alipayPublicKey"`
+	NotifyURL        string `json:"notifyUrl"`
+	PayoutNotifyURL  string `json:"payoutNotifyUrl"`
+	Sandbox          bool   `json:"sandbox"`
+	SidecarURL       string `json:"sidecarUrl"`
+	SidecarAPISecret string `json:"-"`
+	AllowStub        bool   `json:"allowStub"`
+	StubRequested    bool   `json:"-"`
 }
 
 type bankCardPayoutRuntimeConfig struct {
 	ArrivalText        string `json:"arrivalText"`
 	SidecarURL         string `json:"sidecarUrl"`
+	SidecarAPISecret   string `json:"-"`
 	ProviderURL        string `json:"providerUrl"`
 	MerchantID         string `json:"merchantId"`
 	APIKey             string `json:"apiKey"`
@@ -99,7 +101,9 @@ func bankCardProviderConfigured(cfg bankCardPayoutRuntimeConfig) bool {
 }
 
 func bankCardSidecarExecutionEnabled(cfg bankCardPayoutRuntimeConfig) bool {
-	return strings.TrimSpace(cfg.SidecarURL) != "" && (bankCardProviderConfigured(cfg) || cfg.AllowStub)
+	return strings.TrimSpace(cfg.SidecarURL) != "" &&
+		strings.TrimSpace(cfg.SidecarAPISecret) != "" &&
+		(bankCardProviderConfigured(cfg) || cfg.AllowStub)
 }
 
 func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.WalletRepository) (paymentGatewayRuntimeConfig, error) {
@@ -118,23 +122,25 @@ func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.Wallet
 			PayoutSceneID:   "",
 		},
 		Alipay: alipayRuntimeConfig{
-			AppID:           "",
-			PrivateKey:      "",
-			AlipayPublicKey: "",
-			NotifyURL:       "",
-			PayoutNotifyURL: "",
-			Sandbox:         true,
-			SidecarURL:      "",
-			AllowStub:       false,
+			AppID:            "",
+			PrivateKey:       "",
+			AlipayPublicKey:  "",
+			NotifyURL:        "",
+			PayoutNotifyURL:  "",
+			Sandbox:          true,
+			SidecarURL:       "",
+			SidecarAPISecret: "",
+			AllowStub:        false,
 		},
 		BankCard: bankCardPayoutRuntimeConfig{
-			ArrivalText: defaultBankCardConfig().ArrivalText,
-			SidecarURL:  "",
-			ProviderURL: "",
-			MerchantID:  "",
-			APIKey:      "",
-			NotifyURL:   "",
-			AllowStub:   false,
+			ArrivalText:      defaultBankCardConfig().ArrivalText,
+			SidecarURL:       "",
+			SidecarAPISecret: "",
+			ProviderURL:      "",
+			MerchantID:       "",
+			APIKey:           "",
+			NotifyURL:        "",
+			AllowStub:        false,
 		},
 	}
 
@@ -171,6 +177,7 @@ func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.Wallet
 	cfg.Alipay.NotifyURL = firstTrimmed(stringConfigValue(alipay["notifyUrl"]), os.Getenv("ALIPAY_NOTIFY_URL"))
 	cfg.Alipay.PayoutNotifyURL = firstTrimmed(stringConfigValue(alipay["payoutNotifyUrl"]), os.Getenv("ALIPAY_PAYOUT_NOTIFY_URL"))
 	cfg.Alipay.SidecarURL = firstTrimmed(stringConfigValue(alipay["sidecarUrl"]), os.Getenv("ALIPAY_SIDECAR_URL"))
+	cfg.Alipay.SidecarAPISecret = firstTrimmed(os.Getenv("ALIPAY_SIDECAR_API_SECRET"))
 	if raw, ok := alipay["sandbox"].(bool); ok {
 		cfg.Alipay.Sandbox = raw
 	} else if strings.EqualFold(strings.TrimSpace(os.Getenv("ALIPAY_SANDBOX")), "false") {
@@ -190,6 +197,7 @@ func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.Wallet
 	}
 	cfg.BankCard.ArrivalText = firstTrimmed(stringConfigValue(bankCard["arrival_text"]), stringConfigValue(bankCard["arrivalText"]), os.Getenv("BANK_PAYOUT_ARRIVAL_TEXT"), defaultBankCardConfig().ArrivalText)
 	cfg.BankCard.SidecarURL = firstTrimmed(stringConfigValue(bankCard["sidecar_url"]), stringConfigValue(bankCard["sidecarUrl"]), os.Getenv("BANK_PAYOUT_SIDECAR_URL"))
+	cfg.BankCard.SidecarAPISecret = firstTrimmed(os.Getenv("BANK_PAYOUT_SIDECAR_API_SECRET"))
 	cfg.BankCard.ProviderURL = firstTrimmed(stringConfigValue(bankCard["provider_url"]), stringConfigValue(bankCard["providerUrl"]), os.Getenv("BANK_PAYOUT_PROVIDER_URL"))
 	cfg.BankCard.MerchantID = firstTrimmed(stringConfigValue(bankCard["merchant_id"]), stringConfigValue(bankCard["merchantId"]), os.Getenv("BANK_PAYOUT_MERCHANT_ID"))
 	cfg.BankCard.APIKey = firstTrimmed(stringConfigValue(bankCard["api_key"]), stringConfigValue(bankCard["apiKey"]), os.Getenv("BANK_PAYOUT_API_KEY"))
@@ -258,7 +266,8 @@ func buildPaymentGatewaySummary(cfg paymentGatewayRuntimeConfig) map[string]inte
 		cfg.Alipay.PrivateKey != "" &&
 		cfg.Alipay.AlipayPublicKey != "" &&
 		cfg.Alipay.NotifyURL != "" &&
-		cfg.Alipay.SidecarURL != ""
+		cfg.Alipay.SidecarURL != "" &&
+		cfg.Alipay.SidecarAPISecret != ""
 
 	bankCardReady := bankCardSidecarExecutionEnabled(cfg.BankCard)
 
@@ -288,6 +297,7 @@ func buildPaymentGatewaySummary(cfg paymentGatewayRuntimeConfig) map[string]inte
 			"notifyUrlConfigured":    cfg.Alipay.NotifyURL != "",
 			"payoutNotifyConfigured": cfg.Alipay.PayoutNotifyURL != "",
 			"sidecarUrlConfigured":   cfg.Alipay.SidecarURL != "",
+			"sidecarAuthConfigured":  cfg.Alipay.SidecarAPISecret != "",
 			"sandbox":                cfg.Alipay.Sandbox,
 			"allowStub":              cfg.Alipay.AllowStub,
 			"allowStubRequested":     cfg.Alipay.StubRequested,
@@ -298,6 +308,7 @@ func buildPaymentGatewaySummary(cfg paymentGatewayRuntimeConfig) map[string]inte
 			"ready":                 bankCardReady,
 			"arrivalText":           cfg.BankCard.ArrivalText,
 			"sidecarUrlConfigured":  cfg.BankCard.SidecarURL != "",
+			"sidecarAuthConfigured": cfg.BankCard.SidecarAPISecret != "",
 			"providerUrlConfigured": cfg.BankCard.ProviderURL != "",
 			"merchantIdConfigured":  cfg.BankCard.MerchantID != "",
 			"apiKeyConfigured":      cfg.BankCard.APIKey != "",

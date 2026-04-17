@@ -22,8 +22,9 @@
     "verify:go-tests": "cd backend/go && go test ./...",
     "verify:bff-tests": "npm --prefix backend/bff test",
     "verify:socket-check": "npm --prefix socket-server run check",
+    "verify:sidecar-tests": "npm --prefix backend/bank-payout-sidecar test && npm --prefix backend/alipay-sidecar test && npm --prefix backend/bank-payout-sidecar run check && npm --prefix backend/alipay-sidecar run check",
     "verify:management-tests": "node --test scripts/lib/management/management.test.mjs",
-    "verify:backend-runtime": "npm run verify:go-tests && npm run verify:bff-tests && npm run verify:socket-check",
+    "verify:backend-runtime": "npm run verify:go-tests && npm run verify:bff-tests && npm run verify:socket-check && npm run verify:sidecar-tests",
     "verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"
   },
   "workspaces": [

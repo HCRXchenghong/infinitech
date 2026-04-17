@@ -7,6 +7,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js"
+    "test": "node --test runtime.test.mjs",
+    "check": "node --check runtime.js && node --check server.js"
   }
 }

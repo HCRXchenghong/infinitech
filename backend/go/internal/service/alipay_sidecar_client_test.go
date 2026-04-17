@@ -13,6 +13,9 @@ func TestCallAlipaySidecarParsesSuccessEnvelope(t *testing.T) {
 		if r.URL.Path != "/v1/payments/create" {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
+		if got := r.Header.Get(sidecarSecretHeader); got != "alipay-sidecar-secret" {
+			t.Fatalf("expected sidecar secret header to be forwarded, got %q", got)
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success":           true,
@@ -30,7 +33,7 @@ func TestCallAlipaySidecarParsesSuccessEnvelope(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result, err := callAlipaySidecar(context.Background(), server.URL+"/v1/payments/create", map[string]interface{}{
+	result, err := callAlipaySidecar(context.Background(), server.URL+"/v1/payments/create", "alipay-sidecar-secret", map[string]interface{}{
 		"outTradeNo": "OUT123",
 	})
 	if err != nil {
@@ -55,11 +58,18 @@ func TestCallAlipaySidecarReturnsReadableError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := callAlipaySidecar(context.Background(), server.URL+"/v1/payments/create", map[string]interface{}{})
+	_, err := callAlipaySidecar(context.Background(), server.URL+"/v1/payments/create", "alipay-sidecar-secret", map[string]interface{}{})
 	if err == nil {
 		t.Fatal("expected sidecar call to fail")
 	}
 	if err.Error() == "" {
 		t.Fatal("expected sidecar error to contain message")
+	}
+}
+
+func TestCallAlipaySidecarRequiresAPISecret(t *testing.T) {
+	_, err := callAlipaySidecar(context.Background(), "http://example.com/v1/payments/create", "", map[string]interface{}{})
+	if err == nil {
+		t.Fatal("expected missing api secret to fail")
 	}
 }

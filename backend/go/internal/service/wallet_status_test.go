@@ -650,6 +650,7 @@ func TestReviewWithdrawExecuteFailedPayoutRestoresBalanceAndSchedulesRetry(t *te
 	t.Setenv("ALIPAY_NOTIFY_URL", "https://example.com/alipay/notify")
 	t.Setenv("ALIPAY_PAYOUT_NOTIFY_URL", "https://example.com/alipay/payout-notify")
 	t.Setenv("ALIPAY_SIDECAR_URL", sidecar.URL)
+	t.Setenv("ALIPAY_SIDECAR_API_SECRET", "alipay-sidecar-secret")
 
 	account := &repository.WalletAccount{
 		UnifiedIdentity: testIdentity("WA", 23),
@@ -776,6 +777,7 @@ func TestReviewWithdrawExecutePersistsGatewayReferenceOnTransaction(t *testing.T
 	t.Setenv("ALIPAY_NOTIFY_URL", "https://example.com/alipay/notify")
 	t.Setenv("ALIPAY_PAYOUT_NOTIFY_URL", "https://example.com/alipay/payout-notify")
 	t.Setenv("ALIPAY_SIDECAR_URL", sidecar.URL)
+	t.Setenv("ALIPAY_SIDECAR_API_SECRET", "alipay-sidecar-secret")
 
 	account := &repository.WalletAccount{
 		UnifiedIdentity: testIdentity("WA", 24),
@@ -1424,6 +1426,7 @@ func TestRunWithdrawGatewayReconcileCycleAutoRetriesDueFailedAlipayWithdraw(t *t
 	t.Setenv("ALIPAY_NOTIFY_URL", "https://example.com/alipay/notify")
 	t.Setenv("ALIPAY_PAYOUT_NOTIFY_URL", "https://example.com/alipay/payout-notify")
 	t.Setenv("ALIPAY_SIDECAR_URL", sidecar.URL)
+	t.Setenv("ALIPAY_SIDECAR_API_SECRET", "alipay-sidecar-secret")
 
 	account := &repository.WalletAccount{
 		UnifiedIdentity: testIdentity("WA", 801),
@@ -1558,6 +1561,7 @@ func TestRunWithdrawGatewayReconcileCycleSkipsPendingTransferBeforeGatewaySubmis
 	t.Setenv("ALIPAY_NOTIFY_URL", "https://example.com/alipay/notify")
 	t.Setenv("ALIPAY_PAYOUT_NOTIFY_URL", "https://example.com/alipay/payout-notify")
 	t.Setenv("ALIPAY_SIDECAR_URL", sidecar.URL)
+	t.Setenv("ALIPAY_SIDECAR_API_SECRET", "alipay-sidecar-secret")
 
 	now := time.Now()
 	tx := &repository.WalletTransaction{
@@ -1629,6 +1633,7 @@ func TestReviewWithdrawSyncGatewayStatusPromotesPendingTransferAndMergesGatewayM
 	t.Setenv("ALIPAY_NOTIFY_URL", "https://example.com/alipay/notify")
 	t.Setenv("ALIPAY_PAYOUT_NOTIFY_URL", "https://example.com/alipay/payout-notify")
 	t.Setenv("ALIPAY_SIDECAR_URL", sidecar.URL)
+	t.Setenv("ALIPAY_SIDECAR_API_SECRET", "alipay-sidecar-secret")
 
 	now := time.Now()
 	submittedAt := now.Add(-3 * time.Minute).Format(time.RFC3339)

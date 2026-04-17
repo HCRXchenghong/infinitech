@@ -10,6 +10,7 @@ import (
 
 func TestLoadPaymentGatewayRuntimeConfigDisablesBankStubInProduction(t *testing.T) {
 	t.Setenv("ENV", "production")
+	t.Setenv("BANK_PAYOUT_SIDECAR_API_SECRET", "bank-sidecar-secret")
 
 	svc, db := newWalletServiceForSettlementTest(t)
 	payload, err := json.Marshal(map[string]interface{}{
@@ -56,6 +57,7 @@ func TestLoadPaymentGatewayRuntimeConfigDisablesBankStubInProduction(t *testing.
 
 func TestLoadPaymentGatewayRuntimeConfigAllowsBankStubInDevelopmentWhenExplicitlyEnabled(t *testing.T) {
 	t.Setenv("ENV", "development")
+	t.Setenv("BANK_PAYOUT_SIDECAR_API_SECRET", "bank-sidecar-secret")
 
 	svc, db := newWalletServiceForSettlementTest(t)
 	payload, err := json.Marshal(map[string]interface{}{
@@ -88,6 +90,7 @@ func TestLoadPaymentGatewayRuntimeConfigAllowsBankStubInDevelopmentWhenExplicitl
 func TestLoadPaymentGatewayRuntimeConfigDisablesAlipayStubInProduction(t *testing.T) {
 	t.Setenv("ENV", "production")
 	t.Setenv("ALIPAY_SIDECAR_ALLOW_STUB", "true")
+	t.Setenv("ALIPAY_SIDECAR_API_SECRET", "alipay-sidecar-secret")
 
 	svc, _ := newWalletServiceForSettlementTest(t)
 	cfg, err := loadPaymentGatewayRuntimeConfig(context.Background(), svc.walletRepo)

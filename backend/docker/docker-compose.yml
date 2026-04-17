@@ -151,7 +151,9 @@ services:
       ALIPAY_NOTIFY_URL: ${ALIPAY_NOTIFY_URL:-}
       ALIPAY_SANDBOX: ${ALIPAY_SANDBOX:-true}
       ALIPAY_SIDECAR_URL: ${ALIPAY_SIDECAR_URL:-http://alipay-sidecar:10301}
+      ALIPAY_SIDECAR_API_SECRET: ${ALIPAY_SIDECAR_API_SECRET:?ALIPAY_SIDECAR_API_SECRET is required}
       BANK_PAYOUT_SIDECAR_URL: ${BANK_PAYOUT_SIDECAR_URL:-http://bank-payout-sidecar:10302}
+      BANK_PAYOUT_SIDECAR_API_SECRET: ${BANK_PAYOUT_SIDECAR_API_SECRET:?BANK_PAYOUT_SIDECAR_API_SECRET is required}
     ports:
       - '${GO_API_HOST_PORT:-1029}:1029'
     volumes:
@@ -170,12 +172,15 @@ services:
     container_name: yuexiang-alipay-sidecar
     restart: unless-stopped
     environment:
+      ENV: ${ENV:-development}
       ALIPAY_SIDECAR_PORT: 10301
       ALIPAY_APP_ID: ${ALIPAY_APP_ID:-}
       ALIPAY_PRIVATE_KEY: ${ALIPAY_PRIVATE_KEY:-}
       ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY:-}
       ALIPAY_NOTIFY_URL: ${ALIPAY_NOTIFY_URL:-}
       ALIPAY_SANDBOX: ${ALIPAY_SANDBOX:-true}
+      ALIPAY_SIDECAR_ALLOW_STUB: ${ALIPAY_SIDECAR_ALLOW_STUB:-false}
+      ALIPAY_SIDECAR_API_SECRET: ${ALIPAY_SIDECAR_API_SECRET:?ALIPAY_SIDECAR_API_SECRET is required}
     ports:
       - '${ALIPAY_SIDECAR_HOST_PORT:-10301}:10301'
     healthcheck:
@@ -196,9 +201,11 @@ services:
     container_name: yuexiang-bank-payout-sidecar
     restart: unless-stopped
     environment:
+      ENV: ${ENV:-development}
       BANK_PAYOUT_SIDECAR_PORT: 10302
       BANK_PAYOUT_ALLOW_STUB: ${BANK_PAYOUT_ALLOW_STUB:-false}
       BANK_PAYOUT_STUB_QUERY_STATUS: ${BANK_PAYOUT_STUB_QUERY_STATUS:-}
+      BANK_PAYOUT_SIDECAR_API_SECRET: ${BANK_PAYOUT_SIDECAR_API_SECRET:?BANK_PAYOUT_SIDECAR_API_SECRET is required}
     ports:
       - '${BANK_PAYOUT_SIDECAR_HOST_PORT:-10302}:10302'
     healthcheck:

@@ -1,11 +1,18 @@
 import http from 'node:http'
 import * as AlipaySdkModule from 'alipay-sdk'
 
+import {
+  boolFromEnv,
+  createAlipayRuntime,
+  normalizeText,
+} from './runtime.js'
+
 const port = Number(process.env.ALIPAY_SIDECAR_PORT || 10301)
 const AlipaySdkCtor =
   AlipaySdkModule?.default ||
   AlipaySdkModule?.AlipaySdk ||
   AlipaySdkModule
+const runtime = createAlipayRuntime(process.env)
 
 function json(res, statusCode, payload) {
   res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -36,56 +43,16 @@ function readBody(req) {
   })
 }
 
-function boolFromEnv(value, fallback = false) {
-  const normalized = String(value == null ? '' : value).trim().toLowerCase()
-  if (!normalized) return fallback
-  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) return true
-  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) return false
-  return fallback
-}
-
-function normalizeText(value) {
-  return String(value == null ? '' : value).trim()
-}
-
-function currentEnv() {
-  return normalizeText(process.env.ENV || process.env.NODE_ENV || 'development').toLowerCase()
-}
-
-function productionLikeEnv() {
-  return ['production', 'prod', 'staging'].includes(currentEnv())
-}
-
 function configSummary() {
-  return {
-    appIdConfigured: Boolean(normalizeText(process.env.ALIPAY_APP_ID)),
-    privateKeyConfigured: Boolean(normalizeText(process.env.ALIPAY_PRIVATE_KEY)),
-    publicKeyConfigured: Boolean(normalizeText(process.env.ALIPAY_PUBLIC_KEY)),
-    notifyUrlConfigured: Boolean(normalizeText(process.env.ALIPAY_NOTIFY_URL)),
-    sandbox: String(process.env.ALIPAY_SANDBOX || 'true').trim().toLowerCase() !== 'false',
-    allowStubRequested: allowStubModeRequested(),
-    allowStub: allowStubMode(),
-    allowStubBlocked: allowStubModeRequested() && !allowStubMode(),
-  }
+  return runtime.configSummary()
 }
 
 function isReady() {
-  const config = configSummary()
-  return config.appIdConfigured && config.privateKeyConfigured && config.publicKeyConfigured && config.notifyUrlConfigured
-}
-
-function allowStubModeRequested() {
-  return boolFromEnv(process.env.ALIPAY_SIDECAR_ALLOW_STUB, false)
-}
-
-function allowStubMode() {
-  return !productionLikeEnv() && allowStubModeRequested()
+  return runtime.isReady()
 }
 
 function currentMode() {
-  if (isReady()) return 'official-sdk'
-  if (allowStubMode()) return 'stub'
-  return 'unconfigured'
+  return runtime.currentMode()
 }
 
 function requireText(value, field) {
@@ -412,6 +379,15 @@ async function buildNotifyVerifyResponse(body) {
 }
 
 async function handleJsonPost(req, res, builder) {
+  if (!runtime.verifySidecarRequest(req.headers)) {
+    json(res, 401, {
+      success: false,
+      error: 'sidecar request authentication failed',
+      config: runtime.configSummary(),
+    })
+    return
+  }
+
   try {
     const mode = currentMode()
     if (mode === 'unconfigured') {
