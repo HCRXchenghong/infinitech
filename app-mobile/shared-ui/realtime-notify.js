@@ -1,7 +1,7 @@
 import config from './config'
 import createSocket from '../utils/socket-io'
 import { createStoredAuthIdentityResolver } from '../../packages/client-sdk/src/stored-auth-identity.js'
-import { createRealtimeNotifyBridge } from '../../shared/mobile-common/realtime-notify'
+import { createRealtimeNotifyBridge } from '../../packages/client-sdk/src/realtime-notify.js'
 
 const resolveUserIdentity = createStoredAuthIdentityResolver({
   uniApp: uni,

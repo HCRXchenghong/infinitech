@@ -5,7 +5,7 @@ import {
   ackPushMessage as ackPushMessageApi,
 } from './api'
 import { createStoredAuthIdentityResolver } from '../../packages/client-sdk/src/stored-auth-identity.js'
-import { createPushRegistrationManager } from '../../shared/mobile-common/push-registration'
+import { createPushRegistrationManager } from '../../packages/client-sdk/src/push-registration.js'
 
 declare const uni: any
 

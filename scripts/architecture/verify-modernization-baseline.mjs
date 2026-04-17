@@ -62,6 +62,15 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/client-sdk/src/notification-audio.test.mjs",
   "packages/client-sdk/src/onboarding-invite.js",
   "packages/client-sdk/src/onboarding-invite.test.mjs",
+  "packages/client-sdk/src/push-events.js",
+  "packages/client-sdk/src/push-events.d.ts",
+  "packages/client-sdk/src/push-events.test.mjs",
+  "packages/client-sdk/src/push-registration.js",
+  "packages/client-sdk/src/push-registration.d.ts",
+  "packages/client-sdk/src/push-registration.test.mjs",
+  "packages/client-sdk/src/realtime-notify.js",
+  "packages/client-sdk/src/realtime-notify.d.ts",
+  "packages/client-sdk/src/realtime-notify.test.mjs",
   "packages/client-sdk/src/realtime-token.js",
   "packages/client-sdk/src/realtime-token.test.mjs",
   "packages/client-sdk/src/socket-io.js",
@@ -2000,7 +2009,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
 );
 assertContains(
   "packages/client-sdk/src/index.js",
@@ -2015,6 +2024,18 @@ assertContains(
   'export * from "./mobile-config-helper.js";',
 );
 assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./push-events.js";',
+);
+assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./push-registration.js";',
+);
+assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./realtime-notify.js";',
+);
+assertContains(
   "packages/client-sdk/package.json",
   '"./local-db": "./src/local-db.js"',
 );
@@ -2025,6 +2046,18 @@ assertContains(
 assertContains(
   "packages/client-sdk/package.json",
   '"./mobile-config-helper": "./src/mobile-config-helper.js"',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./push-events": "./src/push-events.js"',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./push-registration": "./src/push-registration.js"',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./realtime-notify": "./src/realtime-notify.js"',
 );
 assertContains(
   "packages/client-sdk/src/local-db.js",
@@ -2067,6 +2100,26 @@ assertContains(
   "export function classifyNotificationEnvelopeKind(envelope = {}) {",
 );
 assertContains(
+  "packages/client-sdk/src/push-events.js",
+  "export function extractPushEventEnvelope(rawMessage) {",
+);
+assertContains(
+  "packages/client-sdk/src/push-events.js",
+  "export function createPushEventBridgeController(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/push-registration.js",
+  "export function createPushRegistrationManager(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/push-registration.js",
+  "export function extractPushDeviceToken(pushInfo = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/realtime-notify.js",
+  "export function createRealtimeNotifyBridge(options = {}) {",
+);
+assertContains(
   "packages/client-sdk/src/realtime-token.js",
   "export function extractSocketTokenResult(payload = {}) {",
 );
@@ -2105,6 +2158,18 @@ assertContains(
 assertContains(
   "shared/mobile-common/notification-audio.js",
   "export * from \"../../packages/client-sdk/src/notification-audio.js\";",
+);
+assertContains(
+  "shared/mobile-common/push-events.js",
+  "export * from \"../../packages/client-sdk/src/push-events.js\";",
+);
+assertContains(
+  "shared/mobile-common/push-registration.js",
+  "export * from \"../../packages/client-sdk/src/push-registration.js\";",
+);
+assertContains(
+  "shared/mobile-common/realtime-notify.js",
+  "export * from \"../../packages/client-sdk/src/realtime-notify.js\";",
 );
 assertContains(
   "shared/mobile-common/db.js",
@@ -2235,32 +2300,80 @@ assertContains(
   "createStoredAuthIdentityResolver({",
 );
 assertContains(
+  "user-vue/shared-ui/push-registration.js",
+  "from '../../packages/client-sdk/src/push-registration.js'",
+);
+assertContains(
   "app-mobile/shared-ui/push-registration.js",
   "createStoredAuthIdentityResolver({",
+);
+assertContains(
+  "app-mobile/shared-ui/push-registration.js",
+  "from '../../packages/client-sdk/src/push-registration.js'",
 );
 assertContains(
   "merchant-app/shared-ui/push-registration.ts",
   "createStoredAuthIdentityResolver({",
 );
 assertContains(
+  "merchant-app/shared-ui/push-registration.ts",
+  "from '../../packages/client-sdk/src/push-registration.js'",
+);
+assertContains(
   "rider-app/shared-ui/push-registration.ts",
   "createStoredAuthIdentityResolver({",
+);
+assertContains(
+  "rider-app/shared-ui/push-registration.ts",
+  "from '../../packages/client-sdk/src/push-registration.js'",
 );
 assertContains(
   "user-vue/shared-ui/realtime-notify.js",
   "createStoredAuthIdentityResolver({",
 );
 assertContains(
+  "user-vue/shared-ui/realtime-notify.js",
+  "from '../../packages/client-sdk/src/realtime-notify.js'",
+);
+assertContains(
   "app-mobile/shared-ui/realtime-notify.js",
   "createStoredAuthIdentityResolver({",
+);
+assertContains(
+  "app-mobile/shared-ui/realtime-notify.js",
+  "from '../../packages/client-sdk/src/realtime-notify.js'",
 );
 assertContains(
   "merchant-app/shared-ui/realtime-notify.ts",
   "createStoredAuthIdentityResolver({",
 );
 assertContains(
+  "merchant-app/shared-ui/realtime-notify.ts",
+  "from '../../packages/client-sdk/src/realtime-notify.js'",
+);
+assertContains(
   "rider-app/shared-ui/realtime-notify.ts",
   "createStoredAuthIdentityResolver({",
+);
+assertContains(
+  "rider-app/shared-ui/realtime-notify.ts",
+  "from '../../packages/client-sdk/src/realtime-notify.js'",
+);
+assertContains(
+  "user-vue/shared-ui/push-events.js",
+  "from '../../packages/client-sdk/src/push-events.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/push-events.js",
+  "from '../../packages/client-sdk/src/push-events.js'",
+);
+assertContains(
+  "merchant-app/shared-ui/push-events.ts",
+  "from '../../packages/client-sdk/src/push-events.js'",
+);
+assertContains(
+  "rider-app/shared-ui/push-events.ts",
+  "from '../../packages/client-sdk/src/push-events.js'",
 );
 assertContains(
   "admin-vue/src/utils/socket.js",
