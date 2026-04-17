@@ -27,6 +27,27 @@ function forwardError(req, res, error, fallbackMessage) {
   res.status(status).json(buildNormalizedErrorPayload(req, error, status, fallbackMessage));
 }
 
+function sendResolvedRiderResponse(req, res, response, fallbackMessage) {
+  if (Number(response?.status || 200) < 400) {
+    return res.status(response.status).json(response.data);
+  }
+
+  return res.status(response.status).json(
+    buildNormalizedErrorPayload(
+      req,
+      {
+        message:
+          response?.data?.error ||
+          response?.data?.message ||
+          fallbackMessage,
+        response,
+      },
+      response.status,
+      fallbackMessage,
+    ),
+  );
+}
+
 // 更新骑手在线状态
 exports.updateRiderStatus = async (req, res, next) => {
   const { riderId } = req.params;
@@ -173,10 +194,10 @@ exports.uploadCert = async (req, res) => {
       timeout: 20000,
       preferExtraHeaders: true
     });
-    res.status(response.status).json(response.data);
+    return sendResolvedRiderResponse(req, res, response, '上传证件失败');
   } catch (error) {
     logger.error('上传证件失败:', error.message);
-    forwardError(req, res, error, '请求失败');
+    return forwardError(req, res, error, '上传证件失败');
   } finally {
     try {
       fs.unlinkSync(tempFilePath);

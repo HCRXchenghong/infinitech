@@ -6,6 +6,10 @@ const { proxyGet, requestGoRaw, buildNormalizedErrorPayload } = require("../util
 const { logger } = require("../utils/logger");
 const { verifyCriticalCredential } = require("../utils/criticalActionVerify");
 const { buildErrorEnvelopePayload } = require("../utils/apiEnvelope");
+const DEFAULT_FINANCIAL_PROXY_OPTIONS = {
+  normalizeErrorResponse: true,
+  defaultErrorMessage: "财务中心请求失败",
+};
 
 const FINANCIAL_LOG_VERIFY_ACCOUNT = String(
   process.env.FINANCIAL_LOG_VERIFY_ACCOUNT ||
@@ -37,6 +41,34 @@ function sendNormalizedFinancialUpstreamError(req, res, error, defaultErrorMessa
   return res.status(status).json(
     buildNormalizedErrorPayload(req, error, status, defaultErrorMessage),
   );
+}
+
+function sendNormalizedFinancialResponse(req, res, response, defaultErrorMessage) {
+  if (Number(response?.status || 200) < 400) {
+    return res.status(response.status).json(response.data);
+  }
+
+  return res.status(response.status).json(
+    buildNormalizedErrorPayload(
+      req,
+      {
+        message:
+          response?.data?.error ||
+          response?.data?.message ||
+          defaultErrorMessage,
+        response,
+      },
+      response.status,
+      defaultErrorMessage,
+    ),
+  );
+}
+
+function proxyFinancialGet(req, res, next, path, defaultErrorMessage) {
+  return proxyGet(req, res, next, path, {
+    ...DEFAULT_FINANCIAL_PROXY_OPTIONS,
+    defaultErrorMessage: defaultErrorMessage || DEFAULT_FINANCIAL_PROXY_OPTIONS.defaultErrorMessage,
+  });
 }
 
 function verifyMutationCredential(req, action) {
@@ -92,23 +124,23 @@ function verifyMutationCredential(req, action) {
 }
 
 async function getOverview(req, res, next) {
-  await proxyGet(req, res, next, "/admin/financial/overview");
+  await proxyFinancialGet(req, res, next, "/admin/financial/overview", "财务概览加载失败");
 }
 
 async function getStatistics(req, res, next) {
-  await proxyGet(req, res, next, "/admin/financial/statistics");
+  await proxyFinancialGet(req, res, next, "/admin/financial/statistics", "财务统计加载失败");
 }
 
 async function getUserDetails(req, res, next) {
-  await proxyGet(req, res, next, "/admin/financial/user-details");
+  await proxyFinancialGet(req, res, next, "/admin/financial/user-details", "用户财务详情加载失败");
 }
 
 async function exportData(req, res, next) {
-  await proxyGet(req, res, next, "/admin/financial/export");
+  await proxyFinancialGet(req, res, next, "/admin/financial/export", "财务导出失败");
 }
 
 async function getTransactionLogs(req, res, next) {
-  await proxyGet(req, res, next, "/admin/financial/transaction-logs");
+  await proxyFinancialGet(req, res, next, "/admin/financial/transaction-logs", "财务日志加载失败");
 }
 
 function forwardMutationRequest(req, path, payload = {}) {
@@ -163,7 +195,7 @@ async function deleteTransactionLog(req, res, next) {
       });
     }
 
-    return res.status(response.status).json(response.data);
+    return sendNormalizedFinancialResponse(req, res, response, "删除财务日志失败");
   } catch (error) {
     if (error.response) {
       return sendNormalizedFinancialUpstreamError(req, res, error, "删除财务日志失败");
@@ -202,7 +234,7 @@ async function clearTransactionLogs(req, res, next) {
       });
     }
 
-    return res.status(response.status).json(response.data);
+    return sendNormalizedFinancialResponse(req, res, response, "清空财务日志失败");
   } catch (error) {
     if (error.response) {
       return sendNormalizedFinancialUpstreamError(req, res, error, "清空财务日志失败");

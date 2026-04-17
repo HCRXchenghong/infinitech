@@ -17,8 +17,12 @@ jest.mock("../../src/services/systemLogs/healthStatus", () => ({
 }));
 
 const { requestGoRaw } = require("../../src/utils/goProxy");
+const { proxyGet } = require("../../src/utils/goProxy");
 const { collectServiceStatus } = require("../../src/services/systemLogs/healthStatus");
-const { getPayCenterHealth } = require("../../src/controllers/adminWalletController");
+const {
+  getPayCenterHealth,
+  listOperations,
+} = require("../../src/controllers/adminWalletController");
 
 function createResponse() {
   return {
@@ -76,5 +80,34 @@ describe("adminWalletController envelopes", () => {
       }),
     );
     expect(next).not.toHaveBeenCalled();
+  });
+
+  test("listOperations opts into normalized proxy envelopes and forwarded admin headers", async () => {
+    const req = {
+      headers: {
+        "x-admin-id": "admin-9",
+        "x-admin-name": "FinanceOps",
+      },
+      query: { page: "2" },
+    };
+    const res = createResponse();
+    const next = jest.fn();
+
+    await listOperations(req, res, next);
+
+    expect(proxyGet).toHaveBeenCalledWith(
+      req,
+      res,
+      next,
+      "/admin/wallet/operations",
+      expect.objectContaining({
+        normalizeErrorResponse: true,
+        defaultErrorMessage: "钱包操作记录加载失败",
+        headers: {
+          "X-Admin-ID": "admin-9",
+          "X-Admin-Name": "FinanceOps",
+        },
+      }),
+    );
   });
 });

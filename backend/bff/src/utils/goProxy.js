@@ -22,6 +22,22 @@ function sendFallback(res, options) {
   return res.status(Number(options.fallbackStatus || 200)).json(options.fallbackPayload);
 }
 
+function buildResolvedErrorPayload(req, response, options = {}) {
+  const status = Number(response?.status || options.normalizeErrorStatus || 500);
+  return buildNormalizedErrorPayload(
+    req,
+    {
+      message:
+        response?.data?.error ||
+        response?.data?.message ||
+        options.defaultErrorMessage,
+      response,
+    },
+    status,
+    options.defaultErrorMessage,
+  );
+}
+
 function buildNormalizedErrorPayload(req, error, status, defaultErrorMessage) {
   const responseData = error.response?.data;
 
@@ -64,6 +80,16 @@ function buildNormalizedErrorPayload(req, error, status, defaultErrorMessage) {
 function sendNormalizedError(req, res, error, options, statusOverride) {
   const status = Number(statusOverride || options.normalizeErrorStatus || 500);
   return res.status(status).json(buildNormalizedErrorPayload(req, error, status, options.defaultErrorMessage));
+}
+
+function sendGoResponse(req, res, response, options = {}) {
+  applyResponseHeaders(res, response?.headers, options.responseHeaders);
+
+  if (options.normalizeErrorResponse && Number(response?.status || 200) >= 400) {
+    return res.status(response.status).json(buildResolvedErrorPayload(req, response, options));
+  }
+
+  return res.status(response.status).json(response.data);
 }
 
 function applyResponseHeaders(res, responseHeaders = {}, explicitHeaders = {}) {
@@ -138,8 +164,7 @@ async function proxyToGo(req, res, next, options) {
       return sendFallback(res, options);
     }
 
-    applyResponseHeaders(res, response.headers, options.responseHeaders);
-    return res.status(response.status).json(response.data);
+    return sendGoResponse(req, res, response, options);
   } catch (error) {
     if (error.code === 'ECONNREFUSED' && options.fallbackOnConnectionRefused && options.fallbackPayload !== undefined) {
       return sendFallback(res, options);
@@ -150,6 +175,7 @@ async function proxyToGo(req, res, next, options) {
         return sendFallback(res, options);
       }
       if (options.normalizeErrorResponse) {
+        applyResponseHeaders(res, error.response.headers, options.responseHeaders);
         return sendNormalizedError(req, res, error, options, error.response.status);
       }
       applyResponseHeaders(res, error.response.headers, options.responseHeaders);
@@ -203,6 +229,7 @@ async function proxyDelete(req, res, next, path, options = {}) {
 
 module.exports = {
   goUrl,
+  buildResolvedErrorPayload,
   buildNormalizedErrorPayload,
   requestGoRaw,
   proxyToGo,

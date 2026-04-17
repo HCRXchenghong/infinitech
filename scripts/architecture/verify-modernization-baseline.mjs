@@ -794,12 +794,24 @@ assertContains(
   "function respondFinancialError(req, res, status, message, options = {})",
 );
 assertContains(
+  "backend/bff/src/controllers/financialController.js",
+  "function sendNormalizedFinancialResponse(req, res, response, defaultErrorMessage) {",
+);
+assertContains(
   "backend/bff/src/controllers/riderController.js",
   "buildNormalizedErrorPayload(req, error, status, fallbackMessage)",
 );
 assertContains(
+  "backend/bff/src/controllers/riderController.js",
+  "function sendResolvedRiderResponse(req, res, response, fallbackMessage) {",
+);
+assertContains(
   "backend/bff/src/controllers/adminWalletController.js",
   "function sendWalletSuccess(req, res, message, payload) {",
+);
+assertContains(
+  "backend/bff/src/controllers/adminWalletController.js",
+  "function withAdminWalletProxyOptions(req, options = {}) {",
 );
 assertContains(
   "backend/bff/src/utils/multipartProxy.js",
@@ -1639,6 +1651,14 @@ assertNotContains(
 assertContains(
   "backend/bff/src/utils/goProxy.js",
   "const FORWARDED_RESPONSE_HEADERS = ['cache-control', 'pragma', 'expires', 'x-content-type-options'];",
+);
+assertContains(
+  "backend/bff/src/utils/goProxy.js",
+  "function buildResolvedErrorPayload(req, response, options = {}) {",
+);
+assertContains(
+  "backend/bff/src/utils/goProxy.js",
+  "if (options.normalizeErrorResponse && Number(response?.status || 200) >= 400) {",
 );
 assertContains(
   "backend/bff/src/utils/apiEnvelope.js",

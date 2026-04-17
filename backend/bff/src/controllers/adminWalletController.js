@@ -11,6 +11,10 @@ const {
 const { buildSuccessEnvelopePayload } = require('../utils/apiEnvelope');
 const { extractVerifiedAdminIdentity } = require('../utils/authIdentity');
 const { collectServiceStatus } = require('../services/systemLogs/healthStatus');
+const DEFAULT_ADMIN_WALLET_PROXY_OPTIONS = {
+  normalizeErrorResponse: true,
+  defaultErrorMessage: '钱包中心请求失败',
+};
 
 function resolveAdminIdentity(req) {
   const verifiedIdentity = req.adminAuth || extractVerifiedAdminIdentity(req, { normalizeType: true });
@@ -29,6 +33,43 @@ function adminHeaders(req) {
     'X-Admin-ID': identity.id,
     'X-Admin-Name': identity.name,
   };
+}
+
+function withAdminWalletProxyOptions(req, options = {}) {
+  return {
+    ...DEFAULT_ADMIN_WALLET_PROXY_OPTIONS,
+    ...options,
+    headers: {
+      ...adminHeaders(req),
+      ...(options.headers || {}),
+    },
+  };
+}
+
+function proxyAdminWalletGet(req, res, next, path, defaultErrorMessage, options = {}) {
+  return proxyGet(
+    req,
+    res,
+    next,
+    path,
+    withAdminWalletProxyOptions(req, {
+      ...options,
+      defaultErrorMessage: defaultErrorMessage || options.defaultErrorMessage,
+    }),
+  );
+}
+
+function proxyAdminWalletPost(req, res, next, path, defaultErrorMessage, options = {}) {
+  return proxyPost(
+    req,
+    res,
+    next,
+    path,
+    withAdminWalletProxyOptions(req, {
+      ...options,
+      defaultErrorMessage: defaultErrorMessage || options.defaultErrorMessage,
+    }),
+  );
 }
 
 function normalizeList(value) {
@@ -69,7 +110,7 @@ async function fetchPayCenterConfig(req) {
   return requestGoRaw(req, {
     method: 'get',
     path: '/admin/wallet/pay-center/config',
-    headers: adminHeaders(req),
+    headers: withAdminWalletProxyOptions(req).headers,
     params: req.query || {},
     validateStatus: (status) => status < 500,
   });
@@ -126,105 +167,89 @@ async function respondFromPayCenterConfig(req, res, next, selector) {
 }
 
 async function addBalance(req, res, next) {
-  await proxyPost(req, res, next, '/admin/wallet/add-balance', {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletPost(req, res, next, '/admin/wallet/add-balance', '钱包加款失败');
 }
 
 async function deductBalance(req, res, next) {
-  await proxyPost(req, res, next, '/admin/wallet/deduct-balance', {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletPost(req, res, next, '/admin/wallet/deduct-balance', '钱包扣款失败');
 }
 
 async function freezeAccount(req, res, next) {
-  await proxyPost(req, res, next, '/admin/wallet/freeze', {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletPost(req, res, next, '/admin/wallet/freeze', '钱包冻结失败');
 }
 
 async function unfreezeAccount(req, res, next) {
-  await proxyPost(req, res, next, '/admin/wallet/unfreeze', {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletPost(req, res, next, '/admin/wallet/unfreeze', '钱包解冻失败');
 }
 
 async function listOperations(req, res, next) {
-  await proxyGet(req, res, next, '/admin/wallet/operations', {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletGet(req, res, next, '/admin/wallet/operations', '钱包操作记录加载失败');
 }
 
 async function listWithdrawRequests(req, res, next) {
-  await proxyGet(req, res, next, '/admin/wallet/withdraw-requests', {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletGet(req, res, next, '/admin/wallet/withdraw-requests', '提现申请列表加载失败');
 }
 
 async function listPaymentCallbacks(req, res, next) {
-  await proxyGet(req, res, next, '/admin/wallet/payment-callbacks', {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletGet(req, res, next, '/admin/wallet/payment-callbacks', '支付回调列表加载失败');
 }
 
 async function getPaymentCallbackDetail(req, res, next) {
-  await proxyGet(req, res, next, `/admin/wallet/payment-callbacks/${encodeURIComponent(req.params.id)}`, {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletGet(
+    req,
+    res,
+    next,
+    `/admin/wallet/payment-callbacks/${encodeURIComponent(req.params.id)}`,
+    '支付回调详情加载失败',
+  );
 }
 
 async function replayPaymentCallback(req, res, next) {
-  await proxyPost(req, res, next, `/admin/wallet/payment-callbacks/${encodeURIComponent(req.params.id)}/replay`, {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletPost(
+    req,
+    res,
+    next,
+    `/admin/wallet/payment-callbacks/${encodeURIComponent(req.params.id)}/replay`,
+    '支付回调重放失败',
+  );
 }
 
 async function getPayCenterConfig(req, res, next) {
-  await proxyGet(req, res, next, '/admin/wallet/pay-center/config', {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletGet(req, res, next, '/admin/wallet/pay-center/config', '支付中心配置加载失败');
 }
 
 async function savePayCenterConfig(req, res, next) {
-  await proxyPost(req, res, next, '/admin/wallet/pay-center/config', {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletPost(req, res, next, '/admin/wallet/pay-center/config', '支付中心配置保存失败');
 }
 
 async function previewSettlement(req, res, next) {
-  await proxyPost(req, res, next, '/admin/wallet/settlement/rule-preview', {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletPost(req, res, next, '/admin/wallet/settlement/rule-preview', '结算规则预览失败');
 }
 
 async function getSettlementOrder(req, res, next) {
-  await proxyGet(req, res, next, `/admin/wallet/settlement/orders/${encodeURIComponent(req.params.id)}`, {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletGet(
+    req,
+    res,
+    next,
+    `/admin/wallet/settlement/orders/${encodeURIComponent(req.params.id)}`,
+    '结算单详情加载失败',
+  );
 }
 
 async function getRiderDepositOverview(req, res, next) {
-  await proxyGet(req, res, next, '/admin/wallet/rider-deposit/overview', {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletGet(req, res, next, '/admin/wallet/rider-deposit/overview', '骑手保证金概览加载失败');
 }
 
 async function listRiderDepositRecords(req, res, next) {
-  await proxyGet(req, res, next, '/admin/wallet/rider-deposit/records', {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletGet(req, res, next, '/admin/wallet/rider-deposit/records', '骑手保证金记录加载失败');
 }
 
 async function reviewWithdraw(req, res, next) {
-  await proxyPost(req, res, next, '/admin/wallet/withdraw-requests/review', {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletPost(req, res, next, '/admin/wallet/withdraw-requests/review', '提现审核失败');
 }
 
 async function recharge(req, res, next) {
-  await proxyPost(req, res, next, '/admin/wallet/recharge', {
-    headers: adminHeaders(req)
-  });
+  await proxyAdminWalletPost(req, res, next, '/admin/wallet/recharge', '钱包充值失败');
 }
 
 async function getChannelMatrix(req, res, next) {

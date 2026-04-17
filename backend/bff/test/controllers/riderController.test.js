@@ -94,4 +94,39 @@ describe("riderController envelopes", () => {
       }),
     );
   });
+
+  test("uploadCert normalizes resolved upstream 4xx payloads", async () => {
+    requestGoRaw.mockResolvedValue({
+      status: 409,
+      data: {
+        success: false,
+        error: "证件上传冲突",
+        field: "id_card",
+      },
+    });
+
+    const req = {
+      params: { riderId: "r-1" },
+      headers: { "x-request-id": "req-rider-409" },
+      file: {
+        path: "/tmp/rider-cert.png",
+        originalname: "rider-cert.png",
+      },
+      body: { field: "id_card" },
+    };
+    const res = createResponse();
+
+    await uploadCert(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({
+      request_id: "req-rider-409",
+      code: "CONFLICT",
+      message: "证件上传冲突",
+      data: {},
+      success: false,
+      error: "证件上传冲突",
+      field: "id_card",
+    });
+  });
 });
