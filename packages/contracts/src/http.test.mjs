@@ -94,7 +94,7 @@ test("extractPaginatedItems supports enveloped and legacy list payloads", () => 
   );
 });
 
-test("extractTemporaryCredential supports standardized and legacy password payloads", () => {
+test("extractTemporaryCredential only reads standardized temporary credential payloads", () => {
   assert.deepEqual(
     extractTemporaryCredential({
       data: {
@@ -111,14 +111,7 @@ test("extractTemporaryCredential supports standardized and legacy password paylo
     },
   );
 
-  assert.deepEqual(
-    extractTemporaryCredential({ newPassword: "LegacyPass456!" }),
-    {
-      temporaryPassword: "LegacyPass456!",
-      deliveryMode: "operator_receipt",
-      subjectHint: "",
-    },
-  );
+  assert.equal(extractTemporaryCredential({ newPassword: "LegacyPass456!" }), null);
 });
 
 test("extractUploadAsset reads standardized asset payloads", () => {

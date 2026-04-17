@@ -97,11 +97,7 @@ function resolveCredentialSource(payload = {}) {
 
 export function extractTemporaryCredential(payload = {}) {
   const source = resolveCredentialSource(payload);
-  const temporaryPassword = trimText(
-    source?.temporaryPassword ||
-      payload?.newPassword ||
-      payload?.data?.newPassword,
-  );
+  const temporaryPassword = trimText(source?.temporaryPassword);
 
   if (!temporaryPassword) {
     return null;

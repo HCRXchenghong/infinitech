@@ -35,6 +35,12 @@ func buildTemporaryCredentialPayload(password string) gin.H {
 	}
 }
 
+func buildTemporaryCredentialResponse(password string) gin.H {
+	return gin.H{
+		"temporaryCredential": buildTemporaryCredentialPayload(password),
+	}
+}
+
 func adminResponseCodeForStatus(status int) string {
 	if status >= http.StatusOK && status < http.StatusBadRequest {
 		return responseCodeOK
@@ -243,14 +249,8 @@ func (h *AdminHandler) ResetAdminPassword(c *gin.Context) {
 		respondAdminInvalidRequest(c, err.Error())
 		return
 	}
-	temporaryCredential := buildTemporaryCredentialPayload(newPassword)
-	respondSensitiveEnvelope(c, http.StatusOK, responseCodeOK, "管理员密码已重置", gin.H{
-		"newPassword":         newPassword,
-		"temporaryCredential": temporaryCredential,
-	}, gin.H{
-		"newPassword":         newPassword,
-		"temporaryCredential": temporaryCredential,
-	})
+	payload := buildTemporaryCredentialResponse(newPassword)
+	respondSensitiveEnvelope(c, http.StatusOK, responseCodeOK, "管理员密码已重置", payload, payload)
 }
 
 func (h *AdminHandler) CompleteBootstrapSetup(c *gin.Context) {
@@ -391,14 +391,8 @@ func (h *AdminHandler) ResetUserPassword(c *gin.Context) {
 		respondAdminInvalidRequest(c, err.Error())
 		return
 	}
-	temporaryCredential := buildTemporaryCredentialPayload(newPassword)
-	respondSensitiveEnvelope(c, http.StatusOK, responseCodeOK, "用户密码已重置", gin.H{
-		"newPassword":         newPassword,
-		"temporaryCredential": temporaryCredential,
-	}, gin.H{
-		"newPassword":         newPassword,
-		"temporaryCredential": temporaryCredential,
-	})
+	payload := buildTemporaryCredentialResponse(newPassword)
+	respondSensitiveEnvelope(c, http.StatusOK, responseCodeOK, "用户密码已重置", payload, payload)
 }
 
 func (h *AdminHandler) DeleteUserOrders(c *gin.Context) {
@@ -547,14 +541,8 @@ func (h *AdminHandler) ResetRiderPassword(c *gin.Context) {
 		respondAdminInvalidRequest(c, err.Error())
 		return
 	}
-	temporaryCredential := buildTemporaryCredentialPayload(newPassword)
-	respondSensitiveEnvelope(c, http.StatusOK, responseCodeOK, "骑手密码已重置", gin.H{
-		"newPassword":         newPassword,
-		"temporaryCredential": temporaryCredential,
-	}, gin.H{
-		"newPassword":         newPassword,
-		"temporaryCredential": temporaryCredential,
-	})
+	payload := buildTemporaryCredentialResponse(newPassword)
+	respondSensitiveEnvelope(c, http.StatusOK, responseCodeOK, "骑手密码已重置", payload, payload)
 }
 
 func (h *AdminHandler) DeleteRiderOrders(c *gin.Context) {
@@ -687,14 +675,8 @@ func (h *AdminHandler) ResetMerchantPassword(c *gin.Context) {
 		respondAdminInvalidRequest(c, err.Error())
 		return
 	}
-	temporaryCredential := buildTemporaryCredentialPayload(newPassword)
-	respondSensitiveEnvelope(c, http.StatusOK, responseCodeOK, "商户密码已重置", gin.H{
-		"newPassword":         newPassword,
-		"temporaryCredential": temporaryCredential,
-	}, gin.H{
-		"newPassword":         newPassword,
-		"temporaryCredential": temporaryCredential,
-	})
+	payload := buildTemporaryCredentialResponse(newPassword)
+	respondSensitiveEnvelope(c, http.StatusOK, responseCodeOK, "商户密码已重置", payload, payload)
 }
 
 func (h *AdminHandler) DeleteMerchant(c *gin.Context) {

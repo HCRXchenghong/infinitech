@@ -1258,7 +1258,7 @@ assertContains(
 );
 assertContains(
   "backend/go/internal/handler/admin_handler.go",
-  `"temporaryCredential": temporaryCredential`,
+  "buildTemporaryCredentialResponse(newPassword)",
 );
 assertNotContains(
   "backend/go/internal/handler/admin_handler.go",
@@ -1367,6 +1367,14 @@ assertContains(
 assertContains(
   "backend/go/internal/service/sidecar_auth.go",
   'const sidecarSecretHeader = "X-Sidecar-Secret"',
+);
+assertNotContains(
+  "backend/go/internal/handler/admin_handler.go",
+  '"newPassword":         newPassword',
+);
+assertNotContains(
+  "packages/contracts/src/http.js",
+  "payload?.newPassword",
 );
 assertNotContains(
   "backend/bank-payout-sidecar/server.js",
