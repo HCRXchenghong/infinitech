@@ -20,6 +20,7 @@ export * from "./consumer-notify-bridges.js";
 export * from "./consumer-request-interceptor.js";
 export * from "./consumer-rtc-contact.js";
 export * from "./home-index.js";
+export * from "./home-weather-modal.js";
 export * from "./location.js";
 export * from "./platform-runtime.js";
 export * from "./platform-schema.js";

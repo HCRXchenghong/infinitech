@@ -181,6 +181,11 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/support-runtime.test.mjs",
   "packages/mobile-core/src/home-index.js",
   "packages/mobile-core/src/home-index.test.mjs",
+  "packages/mobile-core/src/home-weather-modal.js",
+  "packages/mobile-core/src/home-weather-modal.test.mjs",
+  "packages/mobile-core/src/HomeWeatherModal.vue",
+  "user-vue/components/WeatherModal.vue",
+  "app-mobile/components/WeatherModal.vue",
   "packages/mobile-core/src/sync-service.js",
   "packages/mobile-core/src/sync-service.d.ts",
   "packages/mobile-core/src/sync-service.test.mjs",
@@ -1129,6 +1134,14 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/consumer-rtc-contact.js",
   "export function createConsumerRTCContactBindings(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/home-weather-modal.js",
+  "export function createHomeWeatherModalComponent(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/home-weather-modal.js",
+  "export function createHomeWeatherModalViewModel(weather = {}) {",
 );
 assertContains(
   "packages/mobile-core/src/sync-service.js",
@@ -2123,6 +2136,10 @@ assertContains(
 assertContains(
   "package.json",
   "packages/mobile-core/src/consumer-api.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/home-weather-modal.test.mjs",
 );
 assertContains(
   "package.json",
@@ -3653,6 +3670,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./home-weather-modal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./search-page.js";',
 );
 assertContains(
@@ -3830,6 +3851,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./medicine-home": "./src/medicine-home.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./home-weather-modal": "./src/home-weather-modal.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -4131,6 +4156,18 @@ assertContains(
 );
 assertContains("user-vue/pages/index/index.vue", "createHomeIndexPage({");
 assertContains("app-mobile/pages/index/index.vue", "createHomeIndexPage({");
+assertContains(
+  "user-vue/components/WeatherModal.vue",
+  "../../packages/mobile-core/src/HomeWeatherModal.vue",
+);
+assertContains(
+  "app-mobile/components/WeatherModal.vue",
+  "../../packages/mobile-core/src/HomeWeatherModal.vue",
+);
+assertContains(
+  "packages/mobile-core/src/HomeWeatherModal.vue",
+  'import { createHomeWeatherModalComponent } from "./home-weather-modal.js";',
+);
 assertContains(
   "user-vue/pages/order/coupon/index.vue",
   "../../../../packages/mobile-core/src/order-coupon-page.js",
