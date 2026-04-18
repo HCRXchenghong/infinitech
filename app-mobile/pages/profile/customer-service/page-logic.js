@@ -1,5 +1,5 @@
-import createSocket from '@/utils/socket-io'
-import config from '@/shared-ui/config'
+import createSocket from "@/utils/socket-io";
+import config from "@/shared-ui/config";
 import {
   fetchHistory,
   markConversationRead,
@@ -7,14 +7,14 @@ import {
   request,
   uploadCommonImage,
   upsertConversation,
-} from '@/shared-ui/api.js'
-import { playMessageNotificationSound } from '@/shared-ui/notification-sound.js'
+} from "@/shared-ui/api.js";
+import { playMessageNotificationSound } from "@/shared-ui/notification-sound.js";
 import {
   getCachedSupportRuntimeSettings,
   loadSupportRuntimeSettings,
-} from '@/shared-ui/support-runtime.js'
-import OrderDetailPopup from '@/components/OrderDetailPopup.vue'
-import { createCustomerServicePage } from '../../../../shared/mobile-common/customer-service-page.js'
+} from "@/shared-ui/support-runtime.js";
+import OrderDetailPopup from "@/components/OrderDetailPopup.vue";
+import { createCustomerServicePage } from "../../../../packages/mobile-core/src/customer-service-page.js";
 
 export default createCustomerServicePage({
   createSocket,
@@ -29,4 +29,4 @@ export default createCustomerServicePage({
   getCachedSupportRuntimeSettings,
   loadSupportRuntimeSettings,
   OrderDetailPopup,
-})
+});

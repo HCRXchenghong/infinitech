@@ -16,6 +16,8 @@ export * from "./search-page.js";
 export * from "./support-runtime.js";
 export * from "./message-center.js";
 export * from "./notification-detail.js";
+export * from "./message-chat-page.js";
+export * from "./customer-service-page.js";
 export * from "./client-payment.js";
 export * from "./push-event-route.js";
 export * from "./order-coupon.js";

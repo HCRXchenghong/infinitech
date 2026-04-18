@@ -158,6 +158,11 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/message-center.test.mjs",
   "packages/mobile-core/src/notification-detail.js",
   "packages/mobile-core/src/notification-detail.test.mjs",
+  "packages/mobile-core/src/message-chat-page.js",
+  "packages/mobile-core/src/message-chat-page.test.mjs",
+  "packages/mobile-core/src/customer-service-chat-utils.js",
+  "packages/mobile-core/src/customer-service-page.js",
+  "packages/mobile-core/src/customer-service-page.test.mjs",
   "packages/mobile-core/src/order-after-sales.js",
   "packages/mobile-core/src/order-after-sales.test.mjs",
   "packages/mobile-core/src/order-after-sales-pages.js",
@@ -208,6 +213,9 @@ function assertNotContains(relativePath, unexpectedText) {
   "shared/mobile-common/search-page.js",
   "shared/mobile-common/message-center-pages.js",
   "shared/mobile-common/notification-detail-page.js",
+  "shared/mobile-common/message-chat-page.js",
+  "shared/mobile-common/customer-service-chat-utils.js",
+  "shared/mobile-common/customer-service-page.js",
   "shared/mobile-common/order-after-sales-pages.js",
   "shared/mobile-common/order-confirm-page.js",
   "shared/mobile-common/order-coupon-page.js",
@@ -310,11 +318,11 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/message/chat/page-logic.js",
-    "../../../../shared/mobile-common/message-chat-page.js",
+    "../../../../packages/mobile-core/src/message-chat-page.js",
   ],
   [
     "app-mobile/pages/profile/customer-service/page-logic.js",
-    "../../../../shared/mobile-common/customer-service-page.js",
+    "../../../../packages/mobile-core/src/customer-service-page.js",
   ],
   [
     "app-mobile/pages/order/refund/index.vue",
@@ -354,11 +362,11 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/message/chat/page-logic.js",
-    "../../../../shared/mobile-common/message-chat-page.js",
+    "../../../../packages/mobile-core/src/message-chat-page.js",
   ],
   [
     "user-vue/pages/profile/customer-service/page-logic.js",
-    "../../../../shared/mobile-common/customer-service-page.js",
+    "../../../../packages/mobile-core/src/customer-service-page.js",
   ],
   [
     "user-vue/pages/order/refund/index.vue",
@@ -545,18 +553,9 @@ function assertNotContains(relativePath, unexpectedText) {
   ["merchant-app/pages/menu/add.vue", "@/shared-ui/productEditorPage"],
   ["merchant-app/pages/menu/edit.vue", "@/shared-ui/productEditorPage"],
   ["merchant-app/pages/messages/chat.vue", "@/shared-ui/merchantChatPage"],
-  [
-    "rider-app/pages/hall/index-logic.ts",
-    "../../shared-ui/riderOrderStore",
-  ],
-  [
-    "rider-app/pages/tasks/index-logic.ts",
-    "../../shared-ui/riderOrderStore",
-  ],
-  [
-    "rider-app/pages/profile/index-logic.ts",
-    "../../shared-ui/riderOrderStore",
-  ],
+  ["rider-app/pages/hall/index-logic.ts", "../../shared-ui/riderOrderStore"],
+  ["rider-app/pages/tasks/index-logic.ts", "../../shared-ui/riderOrderStore"],
+  ["rider-app/pages/profile/index-logic.ts", "../../shared-ui/riderOrderStore"],
   [
     "rider-app/pages/profile/wallet-bills/index-logic.ts",
     "../../../../packages/mobile-core/src/wallet-bills-page.js",
@@ -599,10 +598,7 @@ assertContains(
   "admin-vue/src/views/InviteLanding.vue",
   "createOnboardingInviteApi",
 );
-assertContains(
-  "admin-vue/src/views/Users.vue",
-  "createOnboardingInviteApi",
-);
+assertContains("admin-vue/src/views/Users.vue", "createOnboardingInviteApi");
 assertContains(
   "admin-vue/src/views/Merchants.vue",
   "createOnboardingInviteApi",
@@ -611,30 +607,12 @@ assertContains(
   "admin-vue/src/views/ridersActionHelpers.js",
   "createOnboardingInviteApi",
 );
-assertContains(
-  "merchant-app/shared-ui/api.ts",
-  "createMobilePushApi",
-);
-assertContains(
-  "merchant-app/shared-ui/api.ts",
-  "extractSMSResult",
-);
-assertContains(
-  "rider-app/shared-ui/api.ts",
-  "createMobilePushApi",
-);
-assertContains(
-  "rider-app/shared-ui/api.ts",
-  "extractSMSResult",
-);
-assertContains(
-  "rider-app/shared-ui/api.ts",
-  "createRiderPreferenceApi",
-);
-assertContains(
-  "user-vue/shared-ui/api.js",
-  "createMobilePushApi",
-);
+assertContains("merchant-app/shared-ui/api.ts", "createMobilePushApi");
+assertContains("merchant-app/shared-ui/api.ts", "extractSMSResult");
+assertContains("rider-app/shared-ui/api.ts", "createMobilePushApi");
+assertContains("rider-app/shared-ui/api.ts", "extractSMSResult");
+assertContains("rider-app/shared-ui/api.ts", "createRiderPreferenceApi");
+assertContains("user-vue/shared-ui/api.js", "createMobilePushApi");
 assertContains(
   "user-vue/pages/message/notification-detail/index.vue",
   "../../../../packages/domain-core/src/notification-content.js",
@@ -643,18 +621,9 @@ assertContains(
   "app-mobile/pages/message/notification-detail/index.vue",
   "../../../../packages/domain-core/src/notification-content.js",
 );
-assertContains(
-  "user-vue/shared-ui/api.js",
-  "extractSMSResult",
-);
-assertContains(
-  "app-mobile/shared-ui/api.js",
-  "createMobilePushApi",
-);
-assertContains(
-  "app-mobile/shared-ui/api.js",
-  "extractSMSResult",
-);
+assertContains("user-vue/shared-ui/api.js", "extractSMSResult");
+assertContains("app-mobile/shared-ui/api.js", "createMobilePushApi");
+assertContains("app-mobile/shared-ui/api.js", "extractSMSResult");
 assertContains(
   "rider-app/pages/profile/order-settings.vue",
   "extractRiderPreferenceSettings",
@@ -663,10 +632,7 @@ assertContains(
   "rider-app/components/dispatch-popup-logic.ts",
   "extractRiderPreferenceSettings",
 );
-assertContains(
-  "admin-vue/src/views/Users.vue",
-  "extractTemporaryCredential(",
-);
+assertContains("admin-vue/src/views/Users.vue", "extractTemporaryCredential(");
 assertContains(
   "admin-vue/src/views/PaymentCenter.vue",
   "normalizePaymentCenterConfig",
@@ -695,14 +661,8 @@ assertContains(
   "admin-vue/src/views/SystemLogs.vue",
   "normalizeServiceHealthStatus",
 );
-assertContains(
-  "admin-vue/src/views/SystemLogs.vue",
-  "createSystemLogFilters",
-);
-assertContains(
-  "admin-vue/src/views/SystemLogs.vue",
-  "buildSystemLogListQuery",
-);
+assertContains("admin-vue/src/views/SystemLogs.vue", "createSystemLogFilters");
+assertContains("admin-vue/src/views/SystemLogs.vue", "buildSystemLogListQuery");
 assertContains(
   "admin-vue/src/views/SystemLogs.vue",
   "getSystemLogServiceSignals",
@@ -799,10 +759,7 @@ assertContains(
   "admin-vue/src/views/OperationsCenter.vue",
   "createOperationsGoodFormState",
 );
-assertContains(
-  "admin-vue/src/views/Dashboard.vue",
-  "buildDashboardStatsCards",
-);
+assertContains("admin-vue/src/views/Dashboard.vue", "buildDashboardStatsCards");
 assertContains(
   "admin-vue/src/views/RiderRanks.vue",
   "extractDashboardRankItems",
@@ -811,26 +768,14 @@ assertContains(
   "admin-vue/src/views/dashboardHelpers.js",
   "@infinitech/admin-core",
 );
-assertContains(
-  "admin-vue/vite.config.mts",
-  '"@infinitech/domain-core"',
-);
-assertContains(
-  "admin-vue/src/utils/runtime.js",
-  "createAdminRuntimeIdentity",
-);
-assertContains(
-  "admin-vue/src/utils/runtime.js",
-  "createSocketSessionIdentity",
-);
+assertContains("admin-vue/vite.config.mts", '"@infinitech/domain-core"');
+assertContains("admin-vue/src/utils/runtime.js", "createAdminRuntimeIdentity");
+assertContains("admin-vue/src/utils/runtime.js", "createSocketSessionIdentity");
 assertContains(
   "socket-server/socketIdentity.js",
   "../packages/domain-core/src/identity.js",
 );
-assertContains(
-  "socket-server/socketIdentity.js",
-  "resolveSocketSubjectId(",
-);
+assertContains("socket-server/socketIdentity.js", "resolveSocketSubjectId(");
 assertContains(
   "packages/domain-core/src/identity.js",
   "export function createAdminRuntimeIdentity(",
@@ -861,7 +806,7 @@ assertContains(
 );
 assertContains(
   "backend/go/internal/handler/upload_handler.go",
-  "buildMirroredPublicAssetPayload(url, finalFilename, \"merchant_or_admin_image\"",
+  'buildMirroredPublicAssetPayload(url, finalFilename, "merchant_or_admin_image"',
 );
 assertContains(
   "backend/bff/src/controllers/uploadController.js",
@@ -895,10 +840,7 @@ assertContains(
   "backend/bff/src/index.js",
   'sendBffStatus(req, res, 200, "ok")',
 );
-assertContains(
-  "backend/bff/src/index.js",
-  'error: "go api not ready"',
-);
+assertContains("backend/bff/src/index.js", 'error: "go api not ready"');
 assertContains(
   "backend/bff/src/routes/admin.js",
   "buildSuccessEnvelopePayload(req, 'admin route health ok', payload, {",
@@ -991,18 +933,12 @@ assertContains(
   "packages/mobile-core/src/upload.js",
   "normalizeUploadDomain(uploadDomain)",
 );
-assertContains(
-  "packages/contracts/src/http.js",
-  'case 405:',
-);
+assertContains("packages/contracts/src/http.js", "case 405:");
 assertContains(
   "packages/contracts/src/http.js",
   'return "METHOD_NOT_ALLOWED";',
 );
-assertContains(
-  "packages/contracts/src/http.cjs",
-  'case 405:',
-);
+assertContains("packages/contracts/src/http.cjs", "case 405:");
 assertContains(
   "packages/contracts/src/http.cjs",
   'return "METHOD_NOT_ALLOWED";',
@@ -1087,22 +1023,13 @@ assertContains(
   "packages/mobile-core/src/support-runtime.js",
   "export function normalizeSupportRuntimeSettings(payload = {}, defaultSettings = {}) {",
 );
-assertContains(
-  "user-vue/shared-ui/sync.ts",
-  "createSyncService({",
-);
-assertContains(
-  "app-mobile/shared-ui/sync.ts",
-  "createSyncService({",
-);
+assertContains("user-vue/shared-ui/sync.ts", "createSyncService({");
+assertContains("app-mobile/shared-ui/sync.ts", "createSyncService({");
 assertContains(
   "merchant-app/shared-ui/sync.ts",
   "productShopMode: 'shop-menu'",
 );
-assertContains(
-  "rider-app/shared-ui/sync.ts",
-  "productShopMode: 'shop-menu'",
-);
+assertContains("rider-app/shared-ui/sync.ts", "productShopMode: 'shop-menu'");
 assertContains(
   "user-vue/shared-ui/client-payment.js",
   "export * from '../../packages/mobile-core/src/client-payment.js'",
@@ -1157,11 +1084,11 @@ assertContains(
 );
 assertContains(
   "shared/mobile-common/platform-runtime.js",
-  "export * from \"../../packages/mobile-core/src/platform-runtime.js\";",
+  'export * from "../../packages/mobile-core/src/platform-runtime.js";',
 );
 assertContains(
   "shared/mobile-common/platform-schema.js",
-  "export * from \"../../packages/mobile-core/src/platform-schema.js\";",
+  'export * from "../../packages/mobile-core/src/platform-schema.js";',
 );
 assertContains(
   "user-vue/shared-ui/platform-runtime.js",
@@ -1231,7 +1158,10 @@ assertContains(
   "admin-vue/src/views/ManagementCenter.vue",
   "extractTemporaryCredential(",
 );
-assertContains("admin-vue/src/router/index.js", "resolveProtectedView(item.name)");
+assertContains(
+  "admin-vue/src/router/index.js",
+  "resolveProtectedView(item.name)",
+);
 assertNotContains(
   "admin-vue/src/router/index.js",
   'protectedViewMap[item.name] || (() => import("@/views/BlankPage.vue"))',
@@ -1280,7 +1210,7 @@ assertContains(
 );
 assertContains(
   "backend/go/internal/handler/admin_wallet_handler.go",
-  'respondAdminWalletInvalidRequest(c)',
+  "respondAdminWalletInvalidRequest(c)",
 );
 assertContains(
   "backend/go/internal/handler/dining_buddy_admin_handler.go",
@@ -1696,11 +1626,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/api.js",
-  'const paginated = extractPaginatedItems(response, {',
+  "const paginated = extractPaginatedItems(response, {",
 );
 assertContains(
   "app-mobile/shared-ui/api.js",
-  'const paginated = extractPaginatedItems(response, {',
+  "const paginated = extractPaginatedItems(response, {",
 );
 assertContains(
   "user-vue/shared-ui/api.js",
@@ -1802,10 +1732,7 @@ assertContains(
   "backend/go/internal/handler/admin_handler.go",
   "buildTemporaryCredentialResponse(newPassword)",
 );
-assertNotContains(
-  "backend/go/internal/handler/admin_handler.go",
-  "c.JSON(",
-);
+assertNotContains("backend/go/internal/handler/admin_handler.go", "c.JSON(");
 assertContains(
   "backend/go/internal/handler/admin_handler.go",
   'respondAdminSuccess(c, "管理员账号列表加载成功", admins)',
@@ -1842,10 +1769,7 @@ assertContains(
   "backend/go/internal/handler/admin_handler.go",
   'respondAdminSuccess(c, "订单数据导出成功", data)',
 );
-assertNotContains(
-  "backend/go/internal/handler/payment_handler.go",
-  "c.JSON(",
-);
+assertNotContains("backend/go/internal/handler/payment_handler.go", "c.JSON(");
 assertContains(
   "backend/go/internal/handler/payment_handler.go",
   "writePaymentCallbackAcknowledgement(c, service.BuildPaymentCallbackAcknowledgement(channel, verified))",
@@ -1856,7 +1780,7 @@ assertNotContains(
 );
 assertNotContains(
   "backend/go/internal/repository/admin_models.go",
-  'default:super_admin',
+  "default:super_admin",
 );
 assertNotContains(
   "backend/bff/src/middleware/requireAdminAuth.js",
@@ -1868,40 +1792,34 @@ assertNotContains(
 );
 assertNotContains(
   "backend/docker/docker-compose.yml",
-  'BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-123456}',
+  "BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-123456}",
 );
 assertNotContains(
   "backend/docker/docker-compose.yml",
-  'JWT_SECRET: ${JWT_SECRET:-yuexiang-dev-secret-key-change-in-production-32chars}',
+  "JWT_SECRET: ${JWT_SECRET:-yuexiang-dev-secret-key-change-in-production-32chars}",
 );
 assertNotContains(
   "backend/docker/docker-compose.yml",
-  'TOKEN_API_SECRET: ${TOKEN_API_SECRET:-compose-token-api-secret}',
+  "TOKEN_API_SECRET: ${TOKEN_API_SECRET:-compose-token-api-secret}",
 );
 assertNotContains(
   "backend/docker/docker-compose.yml",
-  'BANK_PAYOUT_ALLOW_STUB: ${BANK_PAYOUT_ALLOW_STUB:-true}',
+  "BANK_PAYOUT_ALLOW_STUB: ${BANK_PAYOUT_ALLOW_STUB:-true}",
 );
 assertContains(
   "backend/docker/docker-compose.yml",
-  'ALIPAY_SIDECAR_API_SECRET: ${ALIPAY_SIDECAR_API_SECRET:?ALIPAY_SIDECAR_API_SECRET is required}',
+  "ALIPAY_SIDECAR_API_SECRET: ${ALIPAY_SIDECAR_API_SECRET:?ALIPAY_SIDECAR_API_SECRET is required}",
 );
 assertContains(
   "backend/docker/docker-compose.yml",
-  'BANK_PAYOUT_SIDECAR_API_SECRET: ${BANK_PAYOUT_SIDECAR_API_SECRET:?BANK_PAYOUT_SIDECAR_API_SECRET is required}',
+  "BANK_PAYOUT_SIDECAR_API_SECRET: ${BANK_PAYOUT_SIDECAR_API_SECRET:?BANK_PAYOUT_SIDECAR_API_SECRET is required}",
 );
 assertContains(
   "backend/docker/docker-compose.yml",
-  'ALIPAY_SIDECAR_ALLOW_STUB: ${ALIPAY_SIDECAR_ALLOW_STUB:-false}',
+  "ALIPAY_SIDECAR_ALLOW_STUB: ${ALIPAY_SIDECAR_ALLOW_STUB:-false}",
 );
-assertContains(
-  "package.json",
-  '"verify:sidecar-tests":',
-);
-assertContains(
-  "package.json",
-  'verify:backend-runtime',
-);
+assertContains("package.json", '"verify:sidecar-tests":');
+assertContains("package.json", "verify:backend-runtime");
 assertContains(
   "backend/go/internal/service/payment_runtime.go",
   "SidecarAPISecret",
@@ -1914,30 +1832,18 @@ assertNotContains(
   "backend/go/internal/handler/admin_handler.go",
   '"newPassword":         newPassword',
 );
-assertNotContains(
-  "packages/contracts/src/http.js",
-  "payload?.newPassword",
-);
-assertNotContains(
-  "backend/bank-payout-sidecar/server.js",
-  "body.allowStub",
-);
-assertNotContains(
-  "backend/bank-payout-sidecar/server.js",
-  "body.mockStatus",
-);
+assertNotContains("packages/contracts/src/http.js", "payload?.newPassword");
+assertNotContains("backend/bank-payout-sidecar/server.js", "body.allowStub");
+assertNotContains("backend/bank-payout-sidecar/server.js", "body.mockStatus");
 assertNotContains(
   "backend/docker/docker-compose.yml",
-  'RABBITMQ_DEFAULT_PASS: admin_password',
+  "RABBITMQ_DEFAULT_PASS: admin_password",
 );
 assertNotContains(
   "backend/go/.env.example",
   "JWT_SECRET=yuexiang-dev-secret-key-change-in-production-32chars",
 );
-assertNotContains(
-  "scripts/verify-im-e2e.mjs",
-  "DEFAULT_JWT_SECRET",
-);
+assertNotContains("scripts/verify-im-e2e.mjs", "DEFAULT_JWT_SECRET");
 assertNotContains(
   "scripts/verify-im-e2e.mjs",
   "process.env.JWT_SECRET || DEFAULT_JWT_SECRET",
@@ -1946,14 +1852,8 @@ assertNotContains(
   "socket-server/.env.example",
   "SOCKET_ENABLE_LEGACY_LOGIN=false",
 );
-assertNotContains(
-  "socket-server/.env.example",
-  "SOCKET_LEGACY_LOGIN_USERS",
-);
-assertNotContains(
-  "socket-server/package.json",
-  "routes.js",
-);
+assertNotContains("socket-server/.env.example", "SOCKET_LEGACY_LOGIN_USERS");
+assertNotContains("socket-server/package.json", "routes.js");
 if (fs.existsSync(path.join(repoRoot, "socket-server/routes.js"))) {
   throw new Error("unexpected legacy socket-server/routes.js module");
 }
@@ -1961,29 +1861,23 @@ assertNotContains(
   "admin-app/pages/work-password/work-password.vue",
   "response.newPassword ? response.newPassword : '123456'",
 );
-assertNotContains(
-  "admin-vue/src/views/Users.vue",
-  "密码重置成功！新密码为：",
-);
+assertNotContains("admin-vue/src/views/Users.vue", "密码重置成功！新密码为：");
 assertNotContains(
   "admin-vue/src/views/ridersActionHelpers.js",
   "骑手密码重置成功！新密码为：",
 );
-assertNotContains(
-  "admin-vue/src/views/Merchants.vue",
-  "新密码：<strong",
-);
+assertNotContains("admin-vue/src/views/Merchants.vue", "新密码：<strong");
 assertNotContains(
   "admin-vue/src/views/ManagementCenter.vue",
   "新密码：${newPassword}",
 );
 assertNotContains(
   "scripts/install-all.mjs",
-  'console.log(`  密码:   ${runtimeValues.BOOTSTRAP_ADMIN_PASSWORD}`)',
+  "console.log(`  密码:   ${runtimeValues.BOOTSTRAP_ADMIN_PASSWORD}`)",
 );
 assertNotContains(
   "scripts/install-all.mjs",
-  'console.log(`  密码: ${runtimeValues.SYSTEM_LOG_DELETE_PASSWORD}`)',
+  "console.log(`  密码: ${runtimeValues.SYSTEM_LOG_DELETE_PASSWORD}`)",
 );
 assertNotContains(
   "scripts/lib/management/cli.mjs",
@@ -1993,10 +1887,7 @@ assertNotContains(
   "scripts/lib/management/cli.mjs",
   "console.log(`新密码：${payload.newPassword}`)",
 );
-assertNotContains(
-  "scripts/lib/management/cli.mjs",
-  "revealSensitive: true",
-);
+assertNotContains("scripts/lib/management/cli.mjs", "revealSensitive: true");
 assertNotContains(
   "scripts/lib/management/menu.mjs",
   "输入管理员类型 admin/super_admin', 'super_admin'",
@@ -2033,10 +1924,7 @@ assertContains(
   "backend/bff/src/controllers/authController.js",
   "return sendResolvedGoResponse(req, res, response, '微信登录会话不存在或已失效');",
 );
-assertNotContains(
-  "backend/bff/src/controllers/authController.js",
-  "debug:",
-);
+assertNotContains("backend/bff/src/controllers/authController.js", "debug:");
 assertContains(
   "backend/bff/src/middleware/errorHandler.js",
   "buildErrorEnvelopePayload(req, 413, '文件大小不能超过10MB'",
@@ -2049,49 +1937,43 @@ assertContains(
   "package.json",
   '"verify:domain-core-tests": "node --test packages/domain-core/src/identity.test.mjs packages/domain-core/src/notification-content.test.mjs packages/domain-core/src/onboarding-invite-content.test.mjs packages/domain-core/src/errand-settings.test.mjs"',
 );
+assertContains("package.json", '"verify:mobile-core-tests":');
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests":',
+  "packages/mobile-core/src/sync-service.test.mjs",
 );
 assertContains(
   "package.json",
-  'packages/mobile-core/src/sync-service.test.mjs',
+  "packages/mobile-core/src/client-payment.test.mjs",
 );
 assertContains(
   "package.json",
-  'packages/mobile-core/src/client-payment.test.mjs',
+  "packages/mobile-core/src/rtc-call-page.test.mjs",
 );
 assertContains(
   "package.json",
-  'packages/mobile-core/src/rtc-call-page.test.mjs',
+  "packages/mobile-core/src/consumer-auth-runtime.test.mjs",
 );
 assertContains(
   "package.json",
-  'packages/mobile-core/src/consumer-auth-runtime.test.mjs',
+  "packages/mobile-core/src/push-event-route.test.mjs",
+);
+assertContains("package.json", "packages/mobile-core/src/location.test.mjs");
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/platform-runtime.test.mjs",
 );
 assertContains(
   "package.json",
-  'packages/mobile-core/src/push-event-route.test.mjs',
+  "packages/mobile-core/src/platform-schema.test.mjs",
 );
 assertContains(
   "package.json",
-  'packages/mobile-core/src/location.test.mjs',
+  "packages/mobile-core/src/portal-runtime.test.mjs",
 );
 assertContains(
   "package.json",
-  'packages/mobile-core/src/platform-runtime.test.mjs',
-);
-assertContains(
-  "package.json",
-  'packages/mobile-core/src/platform-schema.test.mjs',
-);
-assertContains(
-  "package.json",
-  'packages/mobile-core/src/portal-runtime.test.mjs',
-);
-assertContains(
-  "package.json",
-  'packages/mobile-core/src/support-runtime.test.mjs',
+  "packages/mobile-core/src/support-runtime.test.mjs",
 );
 assertContains(
   "package.json",
@@ -2177,10 +2059,7 @@ assertContains(
   "packages/client-sdk/package.json",
   '"./rtc-runtime": "./src/rtc-runtime.js"',
 );
-assertContains(
-  "packages/client-sdk/src/local-db.js",
-  "export class LocalDB {",
-);
+assertContains("packages/client-sdk/src/local-db.js", "export class LocalDB {");
 assertContains(
   "packages/client-sdk/src/local-db.js",
   "export function createLocalDB(options = {}) {",
@@ -2203,7 +2082,7 @@ assertContains(
 );
 assertContains(
   "packages/client-sdk/src/mobile-utils.js",
-  "export function showConfirm(content, title = \"提示\", options = {}) {",
+  'export function showConfirm(content, title = "提示", options = {}) {',
 );
 assertContains(
   "packages/client-sdk/src/mobile-utils.js",
@@ -2271,7 +2150,7 @@ assertContains(
 );
 assertContains(
   "packages/client-sdk/src/socket-io.js",
-  "export default function createSocket(url, namespace = \"\", token = \"\") {",
+  'export default function createSocket(url, namespace = "", token = "") {',
 );
 assertContains(
   "packages/client-sdk/src/support-socket.js",
@@ -2295,179 +2174,191 @@ assertContains(
 );
 assertContains(
   "packages/client-sdk/src/stored-auth-identity.js",
-  'return () => resolveStoredAuthIdentity(options);',
+  "return () => resolveStoredAuthIdentity(options);",
 );
 assertContains(
   "shared/mobile-common/notification-audio.js",
-  "export * from \"../../packages/client-sdk/src/notification-audio.js\";",
+  'export * from "../../packages/client-sdk/src/notification-audio.js";',
 );
 assertContains(
   "shared/mobile-common/push-events.js",
-  "export * from \"../../packages/client-sdk/src/push-events.js\";",
+  'export * from "../../packages/client-sdk/src/push-events.js";',
 );
 assertContains(
   "shared/mobile-common/push-registration.js",
-  "export * from \"../../packages/client-sdk/src/push-registration.js\";",
+  'export * from "../../packages/client-sdk/src/push-registration.js";',
 );
 assertContains(
   "shared/mobile-common/realtime-notify.js",
-  "export * from \"../../packages/client-sdk/src/realtime-notify.js\";",
+  'export * from "../../packages/client-sdk/src/realtime-notify.js";',
 );
 assertContains(
   "shared/mobile-common/rtc-contact.js",
-  "export * from \"../../packages/client-sdk/src/rtc-contact.js\";",
+  'export * from "../../packages/client-sdk/src/rtc-contact.js";',
 );
 assertContains(
   "shared/mobile-common/rtc-media.js",
-  "export * from \"../../packages/client-sdk/src/rtc-media.js\";",
+  'export * from "../../packages/client-sdk/src/rtc-media.js";',
 );
 assertContains(
   "shared/mobile-common/rtc-runtime.js",
-  "export * from \"../../packages/client-sdk/src/rtc-runtime.js\";",
+  'export * from "../../packages/client-sdk/src/rtc-runtime.js";',
 );
 assertContains(
   "shared/mobile-common/rtc-call-page.js",
-  "export * from \"../../packages/mobile-core/src/rtc-call-page.js\";",
+  'export * from "../../packages/mobile-core/src/rtc-call-page.js";',
 );
 assertContains(
   "shared/mobile-common/mobile-client-context.js",
-  "export * from \"../../packages/mobile-core/src/mobile-client-context.js\";",
+  'export * from "../../packages/mobile-core/src/mobile-client-context.js";',
 );
 assertContains(
   "shared/mobile-common/dining-buddy-page.js",
-  "export * from \"../../packages/mobile-core/src/dining-buddy.js\";",
+  'export * from "../../packages/mobile-core/src/dining-buddy.js";',
 );
 assertContains(
   "shared/mobile-common/medicine-order-pages.js",
-  "export * from \"../../packages/mobile-core/src/medicine-order.js\";",
+  'export * from "../../packages/mobile-core/src/medicine-order.js";',
 );
 assertContains(
   "shared/mobile-common/message-center-pages.js",
-  "export * from \"../../packages/mobile-core/src/message-center.js\";",
+  'export * from "../../packages/mobile-core/src/message-center.js";',
 );
 assertContains(
   "shared/mobile-common/notification-detail-page.js",
-  "export * from \"../../packages/mobile-core/src/notification-detail.js\";",
+  'export * from "../../packages/mobile-core/src/notification-detail.js";',
+);
+assertContains(
+  "shared/mobile-common/message-chat-page.js",
+  'export * from "../../packages/mobile-core/src/message-chat-page.js";',
+);
+assertContains(
+  "shared/mobile-common/customer-service-chat-utils.js",
+  'export * from "../../packages/mobile-core/src/customer-service-chat-utils.js";',
+);
+assertContains(
+  "shared/mobile-common/customer-service-page.js",
+  'export * from "../../packages/mobile-core/src/customer-service-page.js";',
 );
 assertContains(
   "shared/mobile-common/home-index-page.js",
-  "export * from \"../../packages/mobile-core/src/home-index.js\";",
+  'export * from "../../packages/mobile-core/src/home-index.js";',
 );
 assertContains(
   "shared/mobile-common/auth-password-pages.js",
-  "export * from \"../../packages/mobile-core/src/auth-portal.js\";",
+  'export * from "../../packages/mobile-core/src/auth-portal.js";',
 );
 assertContains(
   "shared/mobile-common/order-list-page.js",
-  "export * from \"../../packages/mobile-core/src/order-list-page.js\";",
+  'export * from "../../packages/mobile-core/src/order-list-page.js";',
 );
 assertContains(
   "shared/mobile-common/order-detail-page.js",
-  "export * from \"../../packages/mobile-core/src/order-detail-page.js\";",
+  'export * from "../../packages/mobile-core/src/order-detail-page.js";',
 );
 assertContains(
   "shared/mobile-common/order-confirm-page.js",
-  "export * from \"../../packages/mobile-core/src/order-confirm-page.js\";",
+  'export * from "../../packages/mobile-core/src/order-confirm-page.js";',
 );
 assertContains(
   "shared/mobile-common/order-after-sales-pages.js",
-  "export * from \"../../packages/mobile-core/src/order-after-sales-pages.js\";",
+  'export * from "../../packages/mobile-core/src/order-after-sales-pages.js";',
 );
 assertContains(
   "shared/mobile-common/order-coupon-page.js",
-  "export * from \"../../packages/mobile-core/src/order-coupon-page.js\";",
+  'export * from "../../packages/mobile-core/src/order-coupon-page.js";',
 );
 assertContains(
   "shared/mobile-common/order-payment-options.js",
-  "export * from \"../../packages/mobile-core/src/order-payment-options.js\";",
+  'export * from "../../packages/mobile-core/src/order-payment-options.js";',
 );
 assertContains(
   "shared/mobile-common/order-support-pages.js",
-  "export * from \"../../packages/mobile-core/src/order-support-pages.js\";",
+  'export * from "../../packages/mobile-core/src/order-support-pages.js";',
 );
 assertContains(
   "shared/mobile-common/phone-contact.js",
-  "export * from \"../../packages/mobile-core/src/phone-contact.js\";",
+  'export * from "../../packages/mobile-core/src/phone-contact.js";',
 );
 assertContains(
   "shared/mobile-common/search-page.js",
-  "export * from \"../../packages/mobile-core/src/search-page.js\";",
+  'export * from "../../packages/mobile-core/src/search-page.js";',
 );
 assertContains(
   "shared/mobile-common/profile-address-pages.js",
-  "export * from \"../../packages/mobile-core/src/profile-address.js\";",
+  'export * from "../../packages/mobile-core/src/profile-address.js";',
 );
 assertContains(
   "shared/mobile-common/profile-favorites-page.js",
-  "export * from \"../../packages/mobile-core/src/profile-favorites.js\";",
+  'export * from "../../packages/mobile-core/src/profile-favorites.js";',
 );
 assertContains(
   "shared/mobile-common/profile-my-reviews-page.js",
-  "export * from \"../../packages/mobile-core/src/profile-my-reviews.js\";",
+  'export * from "../../packages/mobile-core/src/profile-my-reviews.js";',
 );
 assertContains(
   "shared/mobile-common/profile-points-mall-page.js",
-  "export * from \"../../packages/mobile-core/src/profile-points-mall.js\";",
+  'export * from "../../packages/mobile-core/src/profile-points-mall.js";',
 );
 assertContains(
   "shared/mobile-common/profile-vip-center-page-options.js",
-  "export * from \"../../packages/mobile-core/src/vip-center.js\";",
+  'export * from "../../packages/mobile-core/src/vip-center.js";',
 );
 assertContains(
   "shared/mobile-common/profile-edit-page.js",
-  "export * from \"../../packages/mobile-core/src/profile-edit.js\";",
+  'export * from "../../packages/mobile-core/src/profile-edit.js";',
 );
 assertContains(
   "shared/mobile-common/profile-coupon-list-page.js",
-  "export * from \"../../packages/mobile-core/src/profile-coupon-list.js\";",
+  'export * from "../../packages/mobile-core/src/profile-coupon-list.js";',
 );
 assertContains(
   "shared/mobile-common/profile-home-page.js",
-  "export * from \"../../packages/mobile-core/src/profile-home.js\";",
+  'export * from "../../packages/mobile-core/src/profile-home.js";',
 );
 assertContains(
   "shared/mobile-common/profile-phone-change-page.js",
-  "export * from \"../../packages/mobile-core/src/profile-phone-change.js\";",
+  'export * from "../../packages/mobile-core/src/profile-phone-change.js";',
 );
 assertContains(
   "shared/mobile-common/profile-outreach-pages.js",
-  "export * from \"../../packages/mobile-core/src/profile-outreach.js\";",
+  'export * from "../../packages/mobile-core/src/profile-outreach.js";',
 );
 assertContains(
   "shared/mobile-common/profile-settings-pages.js",
-  "export * from \"../../packages/mobile-core/src/profile-settings.js\";",
+  'export * from "../../packages/mobile-core/src/profile-settings.js";',
 );
 assertContains(
   "shared/mobile-common/wallet-overview-page.js",
-  "export * from \"../../packages/mobile-core/src/wallet-overview-page.js\";",
+  'export * from "../../packages/mobile-core/src/wallet-overview-page.js";',
 );
 assertContains(
   "shared/mobile-common/wallet-bills-page.js",
-  "export * from \"../../packages/mobile-core/src/wallet-bills-page.js\";",
+  'export * from "../../packages/mobile-core/src/wallet-bills-page.js";',
 );
 assertContains(
   "shared/mobile-common/wallet-recharge-page.js",
-  "export * from \"../../packages/mobile-core/src/wallet-recharge-page.js\";",
+  'export * from "../../packages/mobile-core/src/wallet-recharge-page.js";',
 );
 assertContains(
   "shared/mobile-common/wallet-withdraw-page.js",
-  "export * from \"../../packages/mobile-core/src/wallet-withdraw-page.js\";",
+  'export * from "../../packages/mobile-core/src/wallet-withdraw-page.js";',
 );
 assertContains(
   "shared/mobile-common/db.js",
-  "export { default } from \"../../packages/client-sdk/src/local-db.js\";",
+  'export { default } from "../../packages/client-sdk/src/local-db.js";',
 );
 assertContains(
   "shared/mobile-common/config.ts",
-  "from \"../../packages/client-sdk/src/mobile-config.js\"",
+  'from "../../packages/client-sdk/src/mobile-config.js"',
 );
 assertContains(
   "shared/mobile-common/utils.ts",
-  "export * from \"../../packages/client-sdk/src/mobile-utils.js\";",
+  'export * from "../../packages/client-sdk/src/mobile-utils.js";',
 );
 assertContains(
   "shared/mobile-common/socket-io.ts",
-  "export { default } from \"../../packages/client-sdk/src/socket-io.js\"",
+  'export { default } from "../../packages/client-sdk/src/socket-io.js"',
 );
 assertContains(
   "shared/mobile-common/socket.ts",
@@ -2561,22 +2452,10 @@ assertContains(
   "rider-app/shared-ui/utils.ts",
   "from '../../packages/client-sdk/src/mobile-utils.js'",
 );
-assertContains(
-  "user-vue/shared-ui/api.js",
-  "createUniRequestClient({",
-);
-assertContains(
-  "app-mobile/shared-ui/api.js",
-  "createUniRequestClient({",
-);
-assertContains(
-  "merchant-app/shared-ui/api.ts",
-  "createUniRequestClient({",
-);
-assertContains(
-  "rider-app/shared-ui/api.ts",
-  "createUniRequestClient({",
-);
+assertContains("user-vue/shared-ui/api.js", "createUniRequestClient({");
+assertContains("app-mobile/shared-ui/api.js", "createUniRequestClient({");
+assertContains("merchant-app/shared-ui/api.ts", "createUniRequestClient({");
+assertContains("rider-app/shared-ui/api.ts", "createUniRequestClient({");
 assertContains(
   "user-vue/shared-ui/push-registration.js",
   "createStoredAuthIdentityResolver({",
@@ -2693,22 +2572,13 @@ assertContains(
   "rider-app/App-logic.ts",
   "const tokenResult = extractSocketTokenResult(resData)",
 );
-assertContains(
-  "admin-vue/src/views/Users.vue",
-  "extractAdminUserPage",
-);
-assertContains(
-  "admin-vue/src/views/Users.vue",
-  "createAdminUserListParams",
-);
+assertContains("admin-vue/src/views/Users.vue", "extractAdminUserPage");
+assertContains("admin-vue/src/views/Users.vue", "createAdminUserListParams");
 assertContains(
   "admin-vue/src/views/Users.template.html",
   "vipLabel(row.vip_level)",
 );
-assertContains(
-  "admin-vue/src/views/Merchants.vue",
-  "extractAdminMerchantPage",
-);
+assertContains("admin-vue/src/views/Merchants.vue", "extractAdminMerchantPage");
 assertContains(
   "admin-vue/src/views/InviteLanding.vue",
   "createOnboardingInviteApi",
@@ -2717,10 +2587,7 @@ assertContains(
   "admin-vue/src/components/OldUserInviteFlow.vue",
   "createOnboardingInviteApi",
 );
-assertContains(
-  "admin-vue/src/views/ridersHelpers.js",
-  "extractAdminRiderPage",
-);
+assertContains("admin-vue/src/views/ridersHelpers.js", "extractAdminRiderPage");
 assertContains(
   "admin-vue/src/views/ContactPhoneAudits.vue",
   "extractContactPhoneAuditPage",
@@ -2757,10 +2624,7 @@ assertContains(
   "admin-vue/src/views/AdminRTCConsole.vue",
   "createAdminRTCCallAuditSummary",
 );
-assertContains(
-  "admin-vue/src/views/Login.vue",
-  "extractEnvelopeData(data)",
-);
+assertContains("admin-vue/src/views/Login.vue", "extractEnvelopeData(data)");
 assertContains(
   "admin-vue/src/views/ShopManageDetail.vue",
   "extractShopReviewPage",
@@ -2821,10 +2685,7 @@ assertContains(
   "admin-vue/src/views/NotificationEditorPage.vue",
   "extractUploadAsset",
 );
-assertContains(
-  "admin-vue/src/views/MerchantProfile.vue",
-  "extractUploadAsset",
-);
+assertContains("admin-vue/src/views/MerchantProfile.vue", "extractUploadAsset");
 assertContains(
   "admin-vue/src/views/MerchantProfile.vue",
   "createAdminMerchantEditFormState",
@@ -2841,10 +2702,7 @@ assertNotContains(
   "admin-vue/src/views/MerchantProfile.vue",
   "const MAX_LICENSE_FILE_SIZE",
 );
-assertContains(
-  "admin-vue/src/views/settingsHelpers.js",
-  "extractUploadAsset",
-);
+assertContains("admin-vue/src/views/settingsHelpers.js", "extractUploadAsset");
 assertContains(
   "admin-vue/src/views/ridersActionHelpers.js",
   "extractEnvelopeData(data)",
@@ -2981,14 +2839,8 @@ assertContains(
   "admin-vue/src/views/RiderRanks.vue",
   "extractDashboardRankItems(data)",
 );
-assertContains(
-  "admin-vue/src/views/Orders.vue",
-  "extractAdminOrderPage(data)",
-);
-assertContains(
-  "admin-vue/src/views/Orders.vue",
-  "buildAdminOrderDetail(row)",
-);
+assertContains("admin-vue/src/views/Orders.vue", "extractAdminOrderPage(data)");
+assertContains("admin-vue/src/views/Orders.vue", "buildAdminOrderDetail(row)");
 assertContains(
   "admin-vue/src/views/Dashboard.vue",
   "extractDashboardRankItems(weekUserRes.value?.data)",
@@ -3852,7 +3704,10 @@ assertContains(
   "user-vue/pages/auth/set-password/index.vue",
   "app-mobile/pages/auth/set-password/index.vue",
 ].forEach((relativePath) => {
-  assertNotContains(relativePath, "const resetData = uni.getStorageSync('reset_password_data')");
+  assertNotContains(
+    relativePath,
+    "const resetData = uni.getStorageSync('reset_password_data')",
+  );
   assertNotContains(relativePath, "url: '/api/set-new-password'");
 });
 [
@@ -3904,14 +3759,8 @@ assertContains(
   "app-mobile/pages/index/index.vue",
   "../../../packages/mobile-core/src/home-index.js",
 );
-assertContains(
-  "user-vue/pages/index/index.vue",
-  "createHomeIndexPage({",
-);
-assertContains(
-  "app-mobile/pages/index/index.vue",
-  "createHomeIndexPage({",
-);
+assertContains("user-vue/pages/index/index.vue", "createHomeIndexPage({");
+assertContains("app-mobile/pages/index/index.vue", "createHomeIndexPage({");
 assertContains(
   "user-vue/pages/order/coupon/index.vue",
   "../../../../packages/mobile-core/src/order-coupon-page.js",
@@ -3960,14 +3809,8 @@ assertContains(
   "app-mobile/pages/rtc/call/index.vue",
   "../../../../packages/mobile-core/src/rtc-call-page.js",
 );
-assertContains(
-  "user-vue/pages/rtc/call/index.vue",
-  "createRTCCallPage({",
-);
-assertContains(
-  "app-mobile/pages/rtc/call/index.vue",
-  "createRTCCallPage({",
-);
+assertContains("user-vue/pages/rtc/call/index.vue", "createRTCCallPage({");
+assertContains("app-mobile/pages/rtc/call/index.vue", "createRTCCallPage({");
 assertContains(
   "user-vue/pages/order/tableware/index.vue",
   "../../../../packages/mobile-core/src/order-support-pages.js",
@@ -4136,10 +3979,7 @@ assertNotContains(
   "admin-vue/src/views/FinanceCenter.vue",
   "function fmtDate(d)",
 );
-assertContains(
-  "admin-vue/src/views/Login.vue",
-  "extractSMSResult(data)",
-);
+assertContains("admin-vue/src/views/Login.vue", "extractSMSResult(data)");
 assertContains(
   "admin-vue/src/views/PaymentCenter.vue",
   "paymentCallbackStatusTag",
@@ -4244,14 +4084,8 @@ assertNotContains(
   "admin-vue/src/views/ErrandSettings.vue",
   "function validateServices()",
 );
-assertNotContains(
-  "user-vue/pages/errand/home/index.vue",
-  "const routes = {",
-);
-assertNotContains(
-  "app-mobile/pages/errand/home/index.vue",
-  "const routes = {",
-);
+assertNotContains("user-vue/pages/errand/home/index.vue", "const routes = {");
+assertNotContains("app-mobile/pages/errand/home/index.vue", "const routes = {");
 assertNotContains(
   "user-vue/pages/profile/vip-center/page-options.js",
   "function mapRewardList(list = [])",
@@ -4328,10 +4162,7 @@ assertNotContains(
   "app-mobile/pages/index/index.vue",
   "function normalizeSelectedAddress(value) {",
 );
-assertNotContains(
-  "user-vue/pages/index/index.vue",
-  "const featureRoutes = {",
-);
+assertNotContains("user-vue/pages/index/index.vue", "const featureRoutes = {");
 assertNotContains(
   "app-mobile/pages/index/index.vue",
   "const featureRoutes = {",
@@ -4342,7 +4173,10 @@ assertNotContains(
 ].forEach((relativePath) => {
   assertNotContains(relativePath, "function formatDiscountLabel(amount) {");
   assertNotContains(relativePath, "extractEnvelopeData(res)");
-  assertNotContains(relativePath, "const userId = profile.phone || profile.id || profile.userId");
+  assertNotContains(
+    relativePath,
+    "const userId = profile.phone || profile.id || profile.userId",
+  );
 });
 [
   "user-vue/pages/order/refund/index.vue",
@@ -4418,7 +4252,10 @@ assertNotContains(
     relativePath,
     "title: (err && err.error) || (err && err.data && err.data.error) || '领取失败'",
   );
-  assertNotContains(relativePath, "title: (error && error.error) || '操作失败'");
+  assertNotContains(
+    relativePath,
+    "title: (error && error.error) || '操作失败'",
+  );
 });
 assertNotContains(
   "packages/mobile-core/src/order-confirm-page.js",
@@ -4446,8 +4283,14 @@ assertNotContains(
   "user-vue/pages/pay/success/index.vue",
   "app-mobile/pages/pay/success/index.vue",
 ].forEach((relativePath) => {
-  assertNotContains(relativePath, "uni.switchTab({ url: '/pages/order/list/index' })");
-  assertNotContains(relativePath, "uni.switchTab({ url: '/pages/index/index' })");
+  assertNotContains(
+    relativePath,
+    "uni.switchTab({ url: '/pages/order/list/index' })",
+  );
+  assertNotContains(
+    relativePath,
+    "uni.switchTab({ url: '/pages/index/index' })",
+  );
 });
 [
   "user-vue/pages/message/index/index.vue",
@@ -4505,10 +4348,7 @@ assertNotContains(
   assertNotContains(relativePath, "const DEFAULT_SETTINGS = {");
   assertNotContains(relativePath, "calculateCacheSize()");
 });
-assertNotContains(
-  "admin-vue/src/views/Users.vue",
-  "e.response?.data?.error",
-);
+assertNotContains("admin-vue/src/views/Users.vue", "e.response?.data?.error");
 assertNotContains(
   "admin-vue/src/views/ridersActionHelpers.js",
   "e.response?.data?.error",
@@ -4517,10 +4357,7 @@ assertNotContains(
   "admin-vue/src/views/FeaturedProducts.vue",
   "e.response?.data?.error",
 );
-assertNotContains(
-  "admin-vue/src/views/Orders.vue",
-  "e.response?.data?.error",
-);
+assertNotContains("admin-vue/src/views/Orders.vue", "e.response?.data?.error");
 assertNotContains(
   "admin-vue/src/views/MerchantDetail.vue",
   "e.response?.data?.error",
@@ -4531,27 +4368,24 @@ assertContains(
 );
 assertContains(
   "backend/go/internal/handler/auth_handler.go",
-  "respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, \"登录成功\"), result)",
+  'respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, "登录成功"), result)',
 );
 assertContains(
   "backend/go/internal/handler/auth_handler_wechat.go",
-  "respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, \"微信登录会话加载成功\"), result)",
+  'respondAuthMirroredSuccess(c, authPayloadMessage(result, nil, "微信登录会话加载成功"), result)',
 );
 assertContains(
   "backend/go/internal/handler/captcha_handler.go",
-  "respondCaptchaInvalidRequest(c, \"sessionId is required\")",
+  'respondCaptchaInvalidRequest(c, "sessionId is required")',
 );
-assertNotContains(
+assertNotContains("backend/go/internal/handler/rider_handler.go", "c.JSON(");
+assertContains(
   "backend/go/internal/handler/rider_handler.go",
-  "c.JSON(",
+  'respondRiderMirroredSuccess(c, "骑手资料加载成功", payload)',
 );
 assertContains(
   "backend/go/internal/handler/rider_handler.go",
-  "respondRiderMirroredSuccess(c, \"骑手资料加载成功\", payload)",
-);
-assertContains(
-  "backend/go/internal/handler/rider_handler.go",
-  "respondRiderMirroredSuccess(c, \"骑手在线状态更新成功\", gin.H{",
+  'respondRiderMirroredSuccess(c, "骑手在线状态更新成功", gin.H{',
 );
 assertContains(
   "backend/go/internal/service/auth_service.go",
@@ -4581,14 +4415,8 @@ assertContains(
   "socket-server/index.js",
   "Socket server public upload hosting is disabled. Use authenticated API asset routes instead.",
 );
-assertContains(
-  "socket-server/index.js",
-  "buildSuccessEnvelopePayload",
-);
-assertContains(
-  "socket-server/index.js",
-  "buildErrorEnvelopePayload",
-);
+assertContains("socket-server/index.js", "buildSuccessEnvelopePayload");
+assertContains("socket-server/index.js", "buildErrorEnvelopePayload");
 assertContains(
   "backend/bff/src/config/index.js",
   "BFF requires BFF_CORS_ORIGINS or explicit ADMIN_WEB_BASE_URL/SITE_WEB_BASE_URL in production-like environments",
