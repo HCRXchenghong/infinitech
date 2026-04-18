@@ -203,9 +203,13 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/consumer-cache.js",
   "packages/mobile-core/src/consumer-cache.test.mjs",
   "packages/mobile-core/src/consumer-errand.js",
+  "packages/mobile-core/src/consumer-errand-home.js",
+  "packages/mobile-core/src/consumer-errand-home.test.mjs",
   "packages/mobile-core/src/consumer-errand.test.mjs",
   "packages/mobile-core/src/consumer-errand-runtime.js",
   "packages/mobile-core/src/consumer-errand-runtime.test.mjs",
+  "packages/mobile-core/src/ErrandHomePage.vue",
+  "packages/mobile-core/src/errand-home-page.scss",
   "packages/mobile-core/src/consumer-home-categories.js",
   "packages/mobile-core/src/consumer-home-categories.test.mjs",
   "packages/mobile-core/src/consumer-notify-bridges.js",
@@ -616,6 +620,10 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../packages/mobile-core/src/ErrandDetailPage.vue",
   ],
   [
+    "app-mobile/pages/errand/home/index.vue",
+    "../../../../packages/mobile-core/src/ErrandHomePage.vue",
+  ],
+  [
     "app-mobile/pages/errand/index/index.vue",
     "../../../../packages/mobile-core/src/ErrandLegacyPage.vue",
   ],
@@ -742,6 +750,10 @@ function assertNotContains(relativePath, unexpectedText) {
   [
     "user-vue/pages/errand/detail/index.vue",
     "../../../../packages/mobile-core/src/ErrandDetailPage.vue",
+  ],
+  [
+    "user-vue/pages/errand/home/index.vue",
+    "../../../../packages/mobile-core/src/ErrandHomePage.vue",
   ],
   [
     "user-vue/pages/errand/index/index.vue",
@@ -2419,6 +2431,10 @@ assertContains(
 );
 assertContains(
   "package.json",
+  "packages/mobile-core/src/consumer-errand-home.test.mjs",
+);
+assertContains(
+  "package.json",
   "packages/mobile-core/src/consumer-errand-pages.test.mjs",
 );
 assertContains(
@@ -3893,12 +3909,12 @@ assertContains(
   "buildErrandSettingsPayload(form)",
 );
 assertContains(
-  "user-vue/pages/errand/home/index.vue",
-  "buildErrandHomeViewModel(runtime.errandSettings || {})",
+  "packages/mobile-core/src/consumer-errand-home.js",
+  "export function createErrandHomePage(options = {})",
 );
 assertContains(
-  "app-mobile/pages/errand/home/index.vue",
-  "buildErrandHomeViewModel(runtime.errandSettings || {})",
+  "packages/mobile-core/src/consumer-errand-home.js",
+  "export function normalizeConsumerErrandHomeOrderCollection(response)",
 );
 assertContains(
   "packages/mobile-core/src/index.js",
@@ -3939,6 +3955,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/index.js",
   'export * from "./category-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./consumer-errand-home.js";',
 );
 assertContains(
   "packages/mobile-core/src/index.js",
@@ -4127,6 +4147,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./category-pages": "./src/category-pages.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-errand-home": "./src/consumer-errand-home.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -4377,12 +4401,12 @@ assertContains(
   "../../packages/mobile-core/src/mobile-client-context.js",
 );
 assertContains(
-  "user-vue/pages/errand/home/index.vue",
-  "../../../../packages/mobile-core/src/mobile-client-context.js",
+  "packages/mobile-core/src/ErrandHomePage.vue",
+  'import { createErrandHomePage } from "./consumer-errand-home.js";',
 );
 assertContains(
-  "app-mobile/pages/errand/home/index.vue",
-  "../../../../packages/mobile-core/src/mobile-client-context.js",
+  "packages/mobile-core/src/ErrandHomePage.vue",
+  '<style scoped lang="scss" src="./errand-home-page.scss"></style>',
 );
 assertContains(
   "user-vue/pages/dining-buddy/index.vue",
@@ -5345,6 +5369,14 @@ assertNotContains(
   assertNotContains(relativePath, "buildErrandOrderPayload");
   assertNotContains(relativePath, "ensureErrandServiceOpen");
   assertNotContains(relativePath, "uni.redirectTo({ url: '/pages/errand/home/index' })");
+});
+[
+  "user-vue/pages/errand/home/index.vue",
+  "app-mobile/pages/errand/home/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "fetchOrders(");
+  assertNotContains(relativePath, "buildErrandHomeViewModel(");
+  assertNotContains(relativePath, "loadPlatformRuntimeSettings(");
 });
 assertNotContains(
   "user-vue/pages/index/index.vue",
