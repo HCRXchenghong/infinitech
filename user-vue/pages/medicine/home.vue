@@ -64,7 +64,7 @@
 <script>
 import { fetchPublicRuntimeSettings, recordPhoneContactClick } from '@/shared-ui/api.js'
 import { ensureRuntimeFeatureOpen } from '@/shared-ui/feature-runtime.js'
-import { createPhoneContactHelper } from '../../../shared/mobile-common/phone-contact.js'
+import { createPhoneContactHelper } from '../../../packages/mobile-core/src/phone-contact.js'
 import {
   buildMedicineSupportModalCopy,
   buildMedicineSupportModalTitle,

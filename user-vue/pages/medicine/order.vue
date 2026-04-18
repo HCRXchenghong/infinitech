@@ -79,7 +79,7 @@
 <script>
 import { createOrder, uploadCommonImage } from '@/shared-ui/api.js'
 import { buildErrandOrderPayload, requireCurrentUserIdentity } from '@/shared-ui/errand.js'
-import { createMedicineOrderPage } from '../../../shared/mobile-common/medicine-order-pages.js'
+import { createMedicineOrderPage } from '../../../packages/mobile-core/src/medicine-order.js'
 
 export default createMedicineOrderPage({
   createOrder,

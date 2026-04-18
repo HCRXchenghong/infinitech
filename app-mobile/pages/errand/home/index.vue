@@ -72,7 +72,7 @@ import { fetchOrders } from '@/shared-ui/api.js'
 import { getCurrentUserIdentity, isErrandOrder, mapErrandOrderSummary } from '@/shared-ui/errand.js'
 import { isRuntimeRouteEnabled, loadPlatformRuntimeSettings } from '@/shared-ui/platform-runtime.js'
 import { buildErrandHomeViewModel } from '../../../../packages/domain-core/src/errand-settings.js'
-import { getMobileClientId } from '../../../../shared/mobile-common/mobile-client-context.js'
+import { getMobileClientId } from '../../../../packages/mobile-core/src/mobile-client-context.js'
 
 export default {
   components: { PageHeader },

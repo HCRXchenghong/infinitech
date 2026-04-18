@@ -1,5 +1,5 @@
 import { isRuntimeRouteEnabled, loadPlatformRuntimeSettings } from './platform-runtime.js'
-import { getMobileClientId } from '../../shared/mobile-common/mobile-client-context.js'
+import { getMobileClientId } from '../../packages/mobile-core/src/mobile-client-context.js'
 
 export async function ensureRuntimeFeatureOpen(featureKey, clientScope = getMobileClientId()) {
   const runtime = await loadPlatformRuntimeSettings()

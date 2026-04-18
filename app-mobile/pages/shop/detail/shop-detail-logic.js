@@ -1,5 +1,5 @@
 import { request, addUserFavorite, deleteUserFavorite, fetchUserFavoriteStatus, recordPhoneContactClick } from '@/shared-ui/api.js'
-import { createPhoneContactHelper } from '../../../../shared/mobile-common/phone-contact.js'
+import { createPhoneContactHelper } from '../../../../packages/mobile-core/src/phone-contact.js'
 import { extractEnvelopeData } from '../../../../packages/contracts/src/http.js'
 
 const phoneContactHelper = createPhoneContactHelper({ recordPhoneContactClick })

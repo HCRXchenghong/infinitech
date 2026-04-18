@@ -252,7 +252,7 @@ import {
   createDiningBuddyReport
 } from '@/shared-ui/api.js'
 import { isRuntimeRouteEnabled, loadPlatformRuntimeSettings } from '@/shared-ui/platform-runtime.js'
-import { createDiningBuddyPage } from '../../../shared/mobile-common/dining-buddy-page.js'
+import { createDiningBuddyPage } from '../../../packages/mobile-core/src/dining-buddy.js'
 
 export default createDiningBuddyPage({
   PageHeader,

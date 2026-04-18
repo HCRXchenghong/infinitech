@@ -398,15 +398,15 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/dining-buddy/index.vue",
-    "../../../shared/mobile-common/dining-buddy-page.js",
+    "../../../packages/mobile-core/src/dining-buddy.js",
   ],
   [
     "app-mobile/pages/medicine/order.vue",
-    "../../../shared/mobile-common/medicine-order-pages.js",
+    "../../../packages/mobile-core/src/medicine-order.js",
   ],
   [
     "app-mobile/pages/medicine/tracking.vue",
-    "../../../shared/mobile-common/medicine-order-pages.js",
+    "../../../packages/mobile-core/src/medicine-order.js",
   ],
   [
     "app-mobile/pages/profile/cooperation/index.vue",
@@ -458,15 +458,15 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/dining-buddy/index.vue",
-    "../../../shared/mobile-common/dining-buddy-page.js",
+    "../../../packages/mobile-core/src/dining-buddy.js",
   ],
   [
     "user-vue/pages/medicine/order.vue",
-    "../../../shared/mobile-common/medicine-order-pages.js",
+    "../../../packages/mobile-core/src/medicine-order.js",
   ],
   [
     "user-vue/pages/medicine/tracking.vue",
-    "../../../shared/mobile-common/medicine-order-pages.js",
+    "../../../packages/mobile-core/src/medicine-order.js",
   ],
   [
     "user-vue/pages/profile/cooperation/index.vue",
@@ -2310,6 +2310,14 @@ assertContains(
   "export * from \"../../packages/mobile-core/src/mobile-client-context.js\";",
 );
 assertContains(
+  "shared/mobile-common/dining-buddy-page.js",
+  "export * from \"../../packages/mobile-core/src/dining-buddy.js\";",
+);
+assertContains(
+  "shared/mobile-common/medicine-order-pages.js",
+  "export * from \"../../packages/mobile-core/src/medicine-order.js\";",
+);
+assertContains(
   "shared/mobile-common/home-index-page.js",
   "export * from \"../../packages/mobile-core/src/home-index.js\";",
 );
@@ -3688,6 +3696,62 @@ assertContains(
 assertContains(
   "app-mobile/pages/profile/invite-friends/index.vue",
   "../../../../packages/mobile-core/src/profile-outreach.js",
+);
+assertContains(
+  "user-vue/shared-ui/feature-runtime.js",
+  "../../packages/mobile-core/src/mobile-client-context.js",
+);
+assertContains(
+  "app-mobile/shared-ui/feature-runtime.js",
+  "../../packages/mobile-core/src/mobile-client-context.js",
+);
+assertContains(
+  "user-vue/pages/errand/home/index.vue",
+  "../../../../packages/mobile-core/src/mobile-client-context.js",
+);
+assertContains(
+  "app-mobile/pages/errand/home/index.vue",
+  "../../../../packages/mobile-core/src/mobile-client-context.js",
+);
+assertContains(
+  "user-vue/pages/dining-buddy/index.vue",
+  "../../../packages/mobile-core/src/dining-buddy.js",
+);
+assertContains(
+  "app-mobile/pages/dining-buddy/index.vue",
+  "../../../packages/mobile-core/src/dining-buddy.js",
+);
+assertContains(
+  "user-vue/pages/medicine/order.vue",
+  "../../../packages/mobile-core/src/medicine-order.js",
+);
+assertContains(
+  "app-mobile/pages/medicine/order.vue",
+  "../../../packages/mobile-core/src/medicine-order.js",
+);
+assertContains(
+  "user-vue/pages/medicine/tracking.vue",
+  "../../../packages/mobile-core/src/medicine-order.js",
+);
+assertContains(
+  "app-mobile/pages/medicine/tracking.vue",
+  "../../../packages/mobile-core/src/medicine-order.js",
+);
+assertContains(
+  "user-vue/pages/medicine/home.vue",
+  "../../../packages/mobile-core/src/phone-contact.js",
+);
+assertContains(
+  "app-mobile/pages/medicine/home.vue",
+  "../../../packages/mobile-core/src/phone-contact.js",
+);
+assertContains(
+  "user-vue/pages/shop/detail/shop-detail-logic.js",
+  "../../../../packages/mobile-core/src/phone-contact.js",
+);
+assertContains(
+  "app-mobile/pages/shop/detail/shop-detail-logic.js",
+  "../../../../packages/mobile-core/src/phone-contact.js",
 );
 assertContains(
   "user-vue/pages/medicine/home.vue",

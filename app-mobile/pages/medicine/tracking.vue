@@ -69,7 +69,7 @@
 <script>
 import { fetchOrderDetail, recordPhoneContactClick } from '@/shared-ui/api.js'
 import { mapErrandOrderDetail } from '@/shared-ui/errand.js'
-import { createMedicineTrackingPage } from '../../../shared/mobile-common/medicine-order-pages.js'
+import { createMedicineTrackingPage } from '../../../packages/mobile-core/src/medicine-order.js'
 
 export default createMedicineTrackingPage({
   fetchOrderDetail,

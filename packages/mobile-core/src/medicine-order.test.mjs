@@ -9,6 +9,8 @@ import {
   canEstimateMedicineOrder,
   canSubmitMedicineOrder,
   countMedicineTrackingItems,
+  createMedicineOrderPage,
+  createMedicineTrackingPage,
   createDefaultMedicineOrderForm,
   createDefaultMedicineTrackingOrder,
   decodeMedicineOrderPrefill,
@@ -24,6 +26,28 @@ import {
   resolveMedicineTrackingState,
   resolveMedicineUploadedUrl,
 } from "./medicine-order.js";
+
+function createPageInstance(page) {
+  const instance = {
+    ...page.data(),
+    ...page.methods,
+  };
+
+  Object.entries(page.computed || {}).forEach(([key, getter]) => {
+    Object.defineProperty(instance, key, {
+      configurable: true,
+      enumerable: true,
+      get: getter.bind(instance),
+    });
+  });
+
+  return instance;
+}
+
+async function flushPromises() {
+  await Promise.resolve();
+  await new Promise((resolve) => setImmediate(resolve));
+}
 
 test("medicine order helpers normalize form input and payload config", () => {
   assert.deepEqual(createDefaultMedicineOrderForm(), {
@@ -201,4 +225,186 @@ test("medicine tracking helpers normalize order state and outbound call payload"
     pickMedicineTrackingErrorMessage({ error: "订单加载失败" }),
     "订单加载失败",
   );
+});
+
+test("medicine order page uploads prescription and submits through shared order flow", async () => {
+  const storage = {
+    selectedAddress: "科技园 A 座",
+  };
+  const loadingStates = [];
+  const createdOrders = [];
+  const navigateToUrls = [];
+  let chooseImagePromise = Promise.resolve();
+  const originalUni = globalThis.uni;
+
+  globalThis.uni = {
+    getStorageSync(key) {
+      return storage[key];
+    },
+    showLoading(payload) {
+      loadingStates.push(`show:${payload.title}`);
+    },
+    hideLoading() {
+      loadingStates.push("hide");
+    },
+    chooseImage({ success }) {
+      chooseImagePromise = Promise.resolve(
+        success?.({ tempFilePaths: ["/tmp/prescriptions/rx.png"] }),
+      );
+    },
+    navigateTo({ url }) {
+      navigateToUrls.push(url);
+    },
+    showToast() {},
+    navigateBack() {},
+  };
+
+  try {
+    const page = createMedicineOrderPage({
+      createOrder: async (payload) => {
+        createdOrders.push(payload);
+        return { id: "order-9" };
+      },
+      uploadCommonImage: async (filePath, options) => {
+        assert.equal(filePath, "/tmp/prescriptions/rx.png");
+        assert.equal(options.uploadDomain, "medical_document");
+        return { url: "https://cdn.example.com/rx.png" };
+      },
+      buildErrandOrderPayload: (payload, identity) => ({
+        ...payload,
+        userId: identity.userId,
+      }),
+      requireCurrentUserIdentity: () => ({ userId: "user-1" }),
+    });
+    const instance = createPageInstance(page);
+
+    page.onLoad.call(instance, {
+      prefill: encodeURIComponent("布洛芬 一盒"),
+    });
+
+    assert.equal(instance.medOrderDesc, "布洛芬 一盒");
+    assert.equal(instance.deliveryAddress, "科技园 A 座");
+
+    instance.onRxChange({ detail: { value: true } });
+    instance.uploadPrescription();
+    await chooseImagePromise;
+    await flushPromises();
+
+    assert.equal(instance.prescriptionFileName, "rx.png");
+    assert.equal(instance.prescriptionFileUrl, "https://cdn.example.com/rx.png");
+
+    instance.medPrice = "22";
+    await instance.submit();
+
+    assert.deepEqual(createdOrders, [
+      {
+        serviceType: "errand_buy",
+        serviceName: "极速买药",
+        shopName: "极速买药",
+        pickup: "就近药房",
+        dropoff: "科技园 A 座",
+        itemDescription: "布洛芬 一盒",
+        estimatedAmount: 22,
+        deliveryFee: 18,
+        totalPrice: 40,
+        requestExtra: {
+          category: "medicine",
+          hasPrescription: true,
+          prescriptionFileName: "rx.png",
+          prescriptionFileUrl: "https://cdn.example.com/rx.png",
+        },
+        requirementsExtra: {
+          deliveryAddress: "科技园 A 座",
+        },
+        userId: "user-1",
+      },
+    ]);
+    assert.deepEqual(navigateToUrls, [
+      "/pages/medicine/tracking?id=order-9",
+    ]);
+    assert.deepEqual(loadingStates, [
+      "show:上传处方中...",
+      "hide",
+      "show:提交中...",
+      "hide",
+    ]);
+  } finally {
+    globalThis.uni = originalUni;
+  }
+});
+
+test("medicine tracking page loads order and calls rider with shared contact helper", async () => {
+  const loadingStates = [];
+  const phoneCalls = [];
+  const auditPayloads = [];
+  const switchTabUrls = [];
+  let navigateBackCount = 0;
+  const originalUni = globalThis.uni;
+
+  globalThis.uni = {
+    showLoading(payload) {
+      loadingStates.push(`show:${payload.title}`);
+    },
+    hideLoading() {
+      loadingStates.push("hide");
+    },
+    showToast() {},
+    navigateBack() {
+      navigateBackCount += 1;
+    },
+    switchTab({ url }) {
+      switchTabUrls.push(url);
+    },
+    makePhoneCall({ phoneNumber, success }) {
+      phoneCalls.push(phoneNumber);
+      success?.();
+    },
+    getSystemInfoSync() {
+      return { uniPlatform: "app" };
+    },
+  };
+
+  try {
+    const page = createMedicineTrackingPage({
+      fetchOrderDetail: async (id) => ({
+        id,
+        item: "布洛芬, 感冒灵",
+        dropoff: "科技园 A 座",
+        amount: 38,
+        deliveryFee: 6,
+        totalPrice: 44,
+        status: "delivering",
+        riderName: "李师傅",
+        riderPhone: "13800138000",
+        serviceType: "errand_buy",
+      }),
+      mapErrandOrderDetail: (payload) => payload,
+      recordPhoneContactClick: async (payload) => {
+        auditPayloads.push(payload);
+      },
+    });
+    const instance = createPageInstance(page);
+
+    page.onLoad.call(instance, { id: encodeURIComponent("order-9") });
+    await flushPromises();
+
+    assert.equal(instance.order.id, "order-9");
+    assert.equal(instance.itemCountLabel, "共 2 件");
+    assert.equal(instance.riderDisplayName, "李师傅");
+    assert.equal(instance.trackingState.title, "骑手正在配送途中");
+
+    instance.callRider();
+    await flushPromises();
+    instance.finish();
+    instance.back();
+
+    assert.deepEqual(loadingStates, ["show:加载中...", "hide"]);
+    assert.deepEqual(phoneCalls, ["13800138000"]);
+    assert.equal(auditPayloads[0]?.targetRole, "rider");
+    assert.equal(auditPayloads[0]?.orderId, "order-9");
+    assert.deepEqual(switchTabUrls, ["/pages/index/index"]);
+    assert.equal(navigateBackCount, 1);
+  } finally {
+    globalThis.uni = originalUni;
+  }
 });
