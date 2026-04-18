@@ -8,6 +8,8 @@ import {
   buildConsumerNotificationPageResult,
   CONSUMER_NOTIFICATION_READ_EVENT,
   CONSUMER_REALTIME_NOTIFICATION_REFRESH_EVENT,
+  createMessageCenterPage,
+  createNotificationListPage,
   createDefaultConsumerMessageTabs,
   DEFAULT_CONSUMER_MESSAGE_CENTER_UI,
   filterConsumerMessageSessions,
@@ -19,6 +21,28 @@ import {
   parseConsumerMessageTimestamp,
   resolveConsumerMessageSessionId,
 } from "./message-center.js";
+
+function createPageInstance(page) {
+  const instance = {
+    ...page.data(),
+    ...page.methods,
+  };
+
+  Object.entries(page.computed || {}).forEach(([key, getter]) => {
+    Object.defineProperty(instance, key, {
+      configurable: true,
+      enumerable: true,
+      get: getter.bind(instance),
+    });
+  });
+
+  return instance;
+}
+
+async function flushPromises() {
+  await Promise.resolve();
+  await new Promise((resolve) => setImmediate(resolve));
+}
 
 test("message center helpers expose stable tabs, events and time formatting", () => {
   const tabs = createDefaultConsumerMessageTabs();
@@ -125,4 +149,158 @@ test("message center helpers normalize notification pages and read state", () =>
     markConsumerNotificationRecordRead(page.items, "1")[0].is_read,
     true,
   );
+});
+
+test("message center page loads sessions, unread summary and navigation flows", async () => {
+  const events = [];
+  const navigateToUrls = [];
+  const toasts = [];
+  const markConversationReads = [];
+  let clearConversationCount = 0;
+  let clearNotificationCount = 0;
+  const originalUni = globalThis.uni;
+
+  globalThis.uni = {
+    $on(eventName) {
+      events.push(`on:${eventName}`);
+    },
+    $off(eventName) {
+      events.push(`off:${eventName}`);
+    },
+    navigateTo({ url }) {
+      navigateToUrls.push(url);
+    },
+    showToast(payload) {
+      toasts.push(payload);
+    },
+  };
+
+  try {
+    const page = createMessageCenterPage({
+      fetchConversations: async () => [
+        {
+          chatId: "room-1",
+          role: "merchant",
+          name: "店长",
+          unread: 2,
+          latest_at: "2026-04-16T10:30:00Z",
+        },
+        {
+          chatId: "room-2",
+          role: "cs",
+          latest_at: "2026-04-16T08:00:00Z",
+        },
+      ],
+      fetchNotificationList: async () => ({
+        unread_count: 5,
+        latest_at: "2026-04-16 10:20",
+      }),
+      markAllConversationsRead: async () => {
+        clearConversationCount += 1;
+      },
+      markAllNotificationsRead: async () => {
+        clearNotificationCount += 1;
+      },
+      markConversationRead: async (roomId) => {
+        markConversationReads.push(roomId);
+      },
+      getCachedSupportRuntimeSettings: () => ({ title: "客服助手" }),
+      loadSupportRuntimeSettings: async () => ({ title: "专属客服" }),
+    });
+    const instance = createPageInstance(page);
+
+    page.onLoad.call(instance);
+    page.onShow.call(instance);
+    await flushPromises();
+
+    assert.equal(instance.supportTitle, "专属客服");
+    assert.equal(instance.sessions.length, 2);
+    assert.equal(instance.notificationUnread, 5);
+    assert.equal(instance.notificationTime, "10:20");
+
+    instance.switchTab("shop");
+    assert.equal(instance.filteredSessions.length, 1);
+
+    await instance.openChat(instance.sessions[0]);
+    assert.deepEqual(markConversationReads, ["room-1"]);
+    assert.equal(navigateToUrls[0]?.includes("/pages/message/chat/index"), true);
+
+    await instance.clearUnread();
+    instance.goSettings();
+    instance.goNotifications();
+    page.onUnload.call(instance);
+
+    assert.equal(clearConversationCount, 1);
+    assert.equal(clearNotificationCount, 1);
+    assert.equal(toasts.at(-1)?.title, "已清除未读");
+    assert.equal(events.includes(`on:${CONSUMER_REALTIME_NOTIFICATION_REFRESH_EVENT}`), true);
+    assert.equal(events.includes(`off:${CONSUMER_REALTIME_NOTIFICATION_REFRESH_EVENT}`), true);
+    assert.deepEqual(navigateToUrls.slice(1), [
+      "/pages/profile/settings/detail/index",
+      "/pages/message/notification-list/index",
+    ]);
+  } finally {
+    globalThis.uni = originalUni;
+  }
+});
+
+test("notification list page refreshes, marks read and opens detail routes", async () => {
+  const events = [];
+  const navigateToUrls = [];
+  let navigateBackCount = 0;
+  const originalUni = globalThis.uni;
+
+  globalThis.uni = {
+    $on(eventName) {
+      events.push(`on:${eventName}`);
+    },
+    $off(eventName) {
+      events.push(`off:${eventName}`);
+    },
+    navigateTo({ url }) {
+      navigateToUrls.push(url);
+    },
+    navigateBack() {
+      navigateBackCount += 1;
+    },
+    showToast() {},
+  };
+
+  try {
+    const page = createNotificationListPage({
+      fetchNotificationList: async ({ page }) => ({
+        data: page === 1
+          ? [
+              {
+                id: "notice-1",
+                title: "系统升级",
+                summary: "今晚维护",
+                created_at: "2026-04-16",
+                is_read: false,
+              },
+            ]
+          : [],
+      }),
+    });
+    const instance = createPageInstance(page);
+
+    page.onLoad.call(instance);
+    await flushPromises();
+
+    assert.equal(instance.notifications.length, 1);
+    assert.equal(instance.page, 2);
+    instance.handleNotificationRead({ id: "notice-1" });
+    assert.equal(instance.notifications[0].is_read, true);
+    instance.goDetail("notice-1");
+    instance.back();
+    page.onUnload.call(instance);
+
+    assert.deepEqual(navigateToUrls, [
+      "/pages/message/notification-detail/index?id=notice-1",
+    ]);
+    assert.equal(navigateBackCount, 1);
+    assert.equal(events.includes(`on:${CONSUMER_NOTIFICATION_READ_EVENT}`), true);
+  } finally {
+    globalThis.uni = originalUni;
+  }
 });

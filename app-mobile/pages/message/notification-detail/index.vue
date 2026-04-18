@@ -68,7 +68,7 @@
 <script>
 import { fetchNotificationDetail, markNotificationRead, ackPushMessage } from '@/shared-ui/api.js'
 import { parseNotificationDisplayBlocks } from '../../../../packages/domain-core/src/notification-content.js'
-import { createNotificationDetailPage } from '../../../../shared/mobile-common/notification-detail-page.js'
+import { createNotificationDetailPage } from '../../../../packages/mobile-core/src/notification-detail.js'
 
 export default createNotificationDetailPage({
   fetchNotificationDetail,

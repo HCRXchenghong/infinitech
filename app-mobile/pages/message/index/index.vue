@@ -113,7 +113,7 @@ import {
   getCachedSupportRuntimeSettings,
   loadSupportRuntimeSettings
 } from '@/shared-ui/support-runtime.js'
-import { createMessageCenterPage } from '../../../../shared/mobile-common/message-center-pages.js'
+import { createMessageCenterPage } from '../../../../packages/mobile-core/src/message-center.js'
 
 export default createMessageCenterPage({
   fetchConversations,

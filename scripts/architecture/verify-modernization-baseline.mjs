@@ -397,6 +397,18 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../packages/mobile-core/src/search-page.js",
   ],
   [
+    "app-mobile/pages/message/index/index.vue",
+    "../../../../packages/mobile-core/src/message-center.js",
+  ],
+  [
+    "app-mobile/pages/message/notification-list/index.vue",
+    "../../../../packages/mobile-core/src/message-center.js",
+  ],
+  [
+    "app-mobile/pages/message/notification-detail/index.vue",
+    "../../../../packages/mobile-core/src/notification-detail.js",
+  ],
+  [
     "app-mobile/pages/dining-buddy/index.vue",
     "../../../packages/mobile-core/src/dining-buddy.js",
   ],
@@ -455,6 +467,18 @@ function assertNotContains(relativePath, unexpectedText) {
   [
     "user-vue/pages/search/index/index.vue",
     "../../../../packages/mobile-core/src/search-page.js",
+  ],
+  [
+    "user-vue/pages/message/index/index.vue",
+    "../../../../packages/mobile-core/src/message-center.js",
+  ],
+  [
+    "user-vue/pages/message/notification-list/index.vue",
+    "../../../../packages/mobile-core/src/message-center.js",
+  ],
+  [
+    "user-vue/pages/message/notification-detail/index.vue",
+    "../../../../packages/mobile-core/src/notification-detail.js",
   ],
   [
     "user-vue/pages/dining-buddy/index.vue",
@@ -2318,6 +2342,14 @@ assertContains(
   "export * from \"../../packages/mobile-core/src/medicine-order.js\";",
 );
 assertContains(
+  "shared/mobile-common/message-center-pages.js",
+  "export * from \"../../packages/mobile-core/src/message-center.js\";",
+);
+assertContains(
+  "shared/mobile-common/notification-detail-page.js",
+  "export * from \"../../packages/mobile-core/src/notification-detail.js\";",
+);
+assertContains(
   "shared/mobile-common/home-index-page.js",
   "export * from \"../../packages/mobile-core/src/home-index.js\";",
 );
@@ -3698,6 +3730,30 @@ assertContains(
   "../../../../packages/mobile-core/src/profile-outreach.js",
 );
 assertContains(
+  "user-vue/pages/message/index/index.vue",
+  "../../../../packages/mobile-core/src/message-center.js",
+);
+assertContains(
+  "app-mobile/pages/message/index/index.vue",
+  "../../../../packages/mobile-core/src/message-center.js",
+);
+assertContains(
+  "user-vue/pages/message/notification-list/index.vue",
+  "../../../../packages/mobile-core/src/message-center.js",
+);
+assertContains(
+  "app-mobile/pages/message/notification-list/index.vue",
+  "../../../../packages/mobile-core/src/message-center.js",
+);
+assertContains(
+  "user-vue/pages/message/notification-detail/index.vue",
+  "../../../../packages/mobile-core/src/notification-detail.js",
+);
+assertContains(
+  "app-mobile/pages/message/notification-detail/index.vue",
+  "../../../../packages/mobile-core/src/notification-detail.js",
+);
+assertContains(
   "user-vue/shared-ui/feature-runtime.js",
   "../../packages/mobile-core/src/mobile-client-context.js",
 );
@@ -3946,11 +4002,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/message/index/index.vue",
-  "../../../../shared/mobile-common/message-center-pages.js",
+  "../../../../packages/mobile-core/src/message-center.js",
 );
 assertContains(
   "app-mobile/pages/message/index/index.vue",
-  "../../../../shared/mobile-common/message-center-pages.js",
+  "../../../../packages/mobile-core/src/message-center.js",
 );
 assertContains(
   "user-vue/pages/message/index/index.vue",
@@ -3962,11 +4018,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/message/notification-list/index.vue",
-  "../../../../shared/mobile-common/message-center-pages.js",
+  "../../../../packages/mobile-core/src/message-center.js",
 );
 assertContains(
   "app-mobile/pages/message/notification-list/index.vue",
-  "../../../../shared/mobile-common/message-center-pages.js",
+  "../../../../packages/mobile-core/src/message-center.js",
 );
 assertContains(
   "user-vue/pages/message/notification-list/index.vue",
@@ -3978,11 +4034,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/message/notification-detail/index.vue",
-  "../../../../shared/mobile-common/notification-detail-page.js",
+  "../../../../packages/mobile-core/src/notification-detail.js",
 );
 assertContains(
   "app-mobile/pages/message/notification-detail/index.vue",
-  "../../../../shared/mobile-common/notification-detail-page.js",
+  "../../../../packages/mobile-core/src/notification-detail.js",
 );
 assertContains(
   "user-vue/pages/message/notification-detail/index.vue",

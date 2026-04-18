@@ -55,7 +55,7 @@
 
 <script>
 import { fetchNotificationList } from '@/shared-ui/api.js'
-import { createNotificationListPage } from '../../../../shared/mobile-common/message-center-pages.js'
+import { createNotificationListPage } from '../../../../packages/mobile-core/src/message-center.js'
 
 export default createNotificationListPage({
   fetchNotificationList
