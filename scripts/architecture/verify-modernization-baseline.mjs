@@ -110,6 +110,7 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/medicine-order.test.mjs",
   "packages/mobile-core/src/mobile-client-context.js",
   "packages/mobile-core/src/mobile-client-context.test.mjs",
+  "packages/mobile-core/src/MedicineChatPage.vue",
   "packages/mobile-core/src/vip-center.js",
   "packages/mobile-core/src/vip-center.test.mjs",
   "packages/mobile-core/src/VipCenterPage.vue",
@@ -4527,6 +4528,14 @@ assertContains(
   'import { createPhoneContactHelper } from "./phone-contact.js";',
 );
 assertContains(
+  "packages/mobile-core/src/MedicineChatPage.vue",
+  "consultMedicineAssistant",
+);
+assertContains(
+  "packages/mobile-core/src/MedicineChatPage.vue",
+  "requireCurrentUserIdentity",
+);
+assertContains(
   "packages/mobile-core/src/MedicineHomePage.vue",
   '<style scoped lang="scss" src="./medicine-home-page.scss"></style>',
 );
@@ -4577,6 +4586,14 @@ assertContains(
 assertContains(
   "app-mobile/pages/medicine/home.vue",
   "../../../packages/mobile-core/src/MedicineHomePage.vue",
+);
+assertContains(
+  "user-vue/pages/medicine/chat.vue",
+  "../../../packages/mobile-core/src/MedicineChatPage.vue",
+);
+assertContains(
+  "app-mobile/pages/medicine/chat.vue",
+  "../../../packages/mobile-core/src/MedicineChatPage.vue",
 );
 assertContains(
   "packages/mobile-core/src/shop-detail-page.js",
@@ -5414,6 +5431,22 @@ assertNotContains(
 assertNotContains(
   "app-mobile/pages/medicine/home.vue",
   "function normalizeRuntimeSettings(raw)",
+);
+assertNotContains(
+  "user-vue/pages/medicine/chat.vue",
+  "consultMedicineAssistant",
+);
+assertNotContains(
+  "app-mobile/pages/medicine/chat.vue",
+  "consultMedicineAssistant",
+);
+assertNotContains(
+  "user-vue/pages/medicine/chat.vue",
+  "requireCurrentUserIdentity",
+);
+assertNotContains(
+  "app-mobile/pages/medicine/chat.vue",
+  "requireCurrentUserIdentity",
 );
 assertNotContains(
   "user-vue/pages/medicine/home.vue",
