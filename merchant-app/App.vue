@@ -4,6 +4,21 @@ import { registerCurrentPushDevice, clearPushRegistrationState } from '@/shared-
 import { startPushEventBridge } from '@/shared-ui/push-events'
 import { connectCurrentRealtimeChannel, clearRealtimeState } from '@/shared-ui/realtime-notify'
 import { bindNotificationSoundBridge } from '@/shared-ui/notification-sound'
+import { ensureRoleAuthSession } from '../packages/client-sdk/src/role-auth-session.js'
+
+const MERCHANT_AUTH_SESSION_OPTIONS = Object.freeze({
+  role: 'merchant',
+  profileStorageKey: 'merchantProfile',
+  allowLegacyAuthModeFallback: true,
+  idSources: ['profile:id', 'profile:role_id', 'profile:userId', 'profile:user_id'],
+})
+
+function readMerchantSession() {
+  return ensureRoleAuthSession({
+    uniApp: uni,
+    ...MERCHANT_AUTH_SESSION_OPTIONS,
+  })
+}
 
 export default defineComponent({
   onLaunch() {
@@ -19,10 +34,8 @@ export default defineComponent({
   },
   methods: {
     async syncPushRegistration() {
-      const token = uni.getStorageSync('token')
-      const authMode = uni.getStorageSync('authMode')
-
-      if (!token || authMode !== 'merchant') {
+      const session = readMerchantSession()
+      if (!session.isAuthenticated) {
         clearPushRegistrationState()
         return
       }
@@ -35,9 +48,8 @@ export default defineComponent({
     },
 
     async syncRealtimeNotifyBridge() {
-      const token = uni.getStorageSync('token')
-      const authMode = uni.getStorageSync('authMode')
-      if (!token || authMode !== 'merchant') {
+      const session = readMerchantSession()
+      if (!session.isAuthenticated) {
         clearRealtimeState()
         return
       }
@@ -45,8 +57,7 @@ export default defineComponent({
     },
 
     checkAuth() {
-      const token = uni.getStorageSync('token')
-      const authMode = uni.getStorageSync('authMode')
+      const session = readMerchantSession()
       const publicRoutes = new Set([
         'pages/login/index',
         'pages/reset-password/index',
@@ -58,7 +69,7 @@ export default defineComponent({
       const route = currentPage ? currentPage.route : ''
 
       if (publicRoutes.has(route)) {
-        if (!token || authMode !== 'merchant') {
+        if (!session.isAuthenticated) {
           clearPushRegistrationState()
           clearRealtimeState()
         } else {
@@ -68,7 +79,7 @@ export default defineComponent({
         return
       }
 
-      if (!token || authMode !== 'merchant') {
+      if (!session.isAuthenticated) {
         clearPushRegistrationState()
         clearRealtimeState()
         uni.reLaunch({

@@ -138,6 +138,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/client-sdk/src/realtime-notify.js",
   "packages/client-sdk/src/realtime-notify.d.ts",
   "packages/client-sdk/src/realtime-notify.test.mjs",
+  "packages/client-sdk/src/role-auth-session.js",
+  "packages/client-sdk/src/role-auth-session.test.mjs",
   "packages/client-sdk/src/role-notify-bridges.js",
   "packages/client-sdk/src/role-notify-bridges.d.ts",
   "packages/client-sdk/src/role-notify-bridges.test.mjs",
@@ -1242,6 +1244,13 @@ assertContains(
   "packages/admin-core/src/index.js",
   'export * from "./admin-auth-session.js";',
 );
+assertContains(
+  "merchant-app/shared-ui/merchantAccountPages.ts",
+  "persistRoleAuthSession",
+);
+assertContains("merchant-app/App.vue", "ensureRoleAuthSession");
+assertContains("rider-app/App-logic.ts", "ensureRoleAuthSession");
+assertContains("rider-app/pages/login/index.vue", "persistRoleAuthSession");
 assertContains(
   "socket-server/socketIdentity.js",
   "../packages/domain-core/src/identity.js",
@@ -2827,7 +2836,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/role-notify-bridges.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/support-socket-bridge.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/role-auth-session.test.mjs packages/client-sdk/src/role-notify-bridges.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/support-socket-bridge.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
 );
 assertContains(
   "packages/client-sdk/src/index.js",

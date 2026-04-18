@@ -2,6 +2,10 @@ import config, { updateConfig } from "./config";
 import { buildAuthorizationHeaders } from "../../packages/client-sdk/src/auth.js";
 import { createMobilePushApi } from "../../packages/client-sdk/src/mobile-capabilities.js";
 import {
+  clearRoleAuthSession,
+  ensureRoleAuthSession,
+} from "../../packages/client-sdk/src/role-auth-session.js";
+import {
   buildUniNetworkErrorMessage,
   createUniRequestClient,
   isRetryableUniNetworkError,
@@ -54,16 +58,20 @@ function readAuthToken(): string {
 }
 
 function forceMerchantLogout() {
-  const authMode = String(uni.getStorageSync("authMode") || "").trim();
-  if (authMode !== "merchant") return;
+  const session = ensureRoleAuthSession({
+    uniApp: uni,
+    role: "merchant",
+    profileStorageKey: "merchantProfile",
+    allowLegacyAuthModeFallback: true,
+    idSources: ["profile:id", "profile:role_id", "profile:userId", "profile:user_id"],
+  });
+  if (!session.token) return;
 
-  uni.removeStorageSync("token");
-  uni.removeStorageSync("refreshToken");
-  uni.removeStorageSync("tokenExpiresAt");
-  uni.removeStorageSync("merchantProfile");
-  uni.removeStorageSync("merchantCurrentShopId");
-  uni.removeStorageSync("authMode");
-  uni.removeStorageSync("merchant_push_registration");
+  clearRoleAuthSession({
+    uniApp: uni,
+    profileStorageKey: "merchantProfile",
+    extraStorageKeys: ["merchantCurrentShopId", "merchant_push_registration"],
+  });
   uni.reLaunch({ url: "/pages/login/index" });
 }
 

@@ -45,6 +45,7 @@
 <script lang="ts">
 import Vue from 'vue'
 import { requestSMSCode, riderLogin } from '../../shared-ui/api'
+import { persistRoleAuthSession } from '../../../packages/client-sdk/src/role-auth-session.js'
 import {
   getCachedRiderPortalRuntimeSettings,
   loadRiderPortalRuntimeSettings,
@@ -72,6 +73,20 @@ export default Vue.extend({
   methods: {
     async loadPortalRuntime() {
       this.portalRuntime = await loadRiderPortalRuntimeSettings()
+    },
+
+    saveRiderSession(payload: any, phone: string) {
+      persistRoleAuthSession({
+        uniApp: uni,
+        role: 'rider',
+        token: payload?.token,
+        profileStorageKey: 'riderProfile',
+        profile: payload?.user || { phone, nickname: '骑手' },
+        extraStorageValues: {
+          riderId: payload?.user?.id != null ? String(payload.user.id) : null,
+          riderName: payload?.user?.name || payload?.user?.nickname || '骑手',
+        },
+      })
     },
 
     connectSocketAfterLogin() {
@@ -155,11 +170,7 @@ export default Vue.extend({
         try {
           const res: any = await riderLogin({ phone, code })
           if (res.success) {
-            uni.setStorageSync('token', res.token)
-            uni.setStorageSync('riderId', res.user?.id)
-            uni.setStorageSync('riderName', res.user?.name || res.user?.nickname || '骑手')
-            uni.setStorageSync('riderProfile', res.user || { phone, nickname: '骑手' })
-            uni.setStorageSync('authMode', 'rider')
+            this.saveRiderSession(res, phone)
             this.connectSocketAfterLogin()
             uni.showToast({ title: '登录成功', icon: 'success' })
             setTimeout(() => uni.switchTab({ url: '/pages/hall/index' }), 500)
@@ -187,11 +198,7 @@ export default Vue.extend({
       try {
         const res: any = await riderLogin({ phone, password })
         if (res.success) {
-          uni.setStorageSync('token', res.token)
-          uni.setStorageSync('riderId', res.user?.id)
-          uni.setStorageSync('riderName', res.user?.name || res.user?.nickname || '骑手')
-          uni.setStorageSync('riderProfile', res.user || { phone, nickname: '骑手' })
-          uni.setStorageSync('authMode', 'rider')
+          this.saveRiderSession(res, phone)
           this.connectSocketAfterLogin()
           uni.showToast({ title: '登录成功', icon: 'success' })
           setTimeout(() => uni.switchTab({ url: '/pages/hall/index' }), 500)

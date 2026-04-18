@@ -12,6 +12,10 @@ import {
   loadMerchantPortalRuntimeSettings,
 } from '@/shared-ui/portal-runtime'
 import { getAppVersionLabel } from '@/shared-ui/app-version'
+import {
+  persistRoleAuthSession,
+  readRoleAuthSessionSnapshot,
+} from '../../packages/client-sdk/src/role-auth-session.js'
 
 export function useMerchantLoginPage() {
   const loginType = ref<'code' | 'password'>('password')
@@ -115,9 +119,13 @@ export function useMerchantLoginPage() {
         throw new Error(response?.error || '登录失败')
       }
 
-      uni.setStorageSync('token', response.token)
-      uni.setStorageSync('merchantProfile', response.user || { phone: normalizedPhone })
-      uni.setStorageSync('authMode', 'merchant')
+      persistRoleAuthSession({
+        uniApp: uni,
+        role: 'merchant',
+        token: response.token,
+        profileStorageKey: 'merchantProfile',
+        profile: response.user || { phone: normalizedPhone },
+      })
       clearMerchantContext()
 
       uni.showToast({ title: '登录成功', icon: 'success' })
@@ -433,15 +441,25 @@ export function useMerchantAppSettingsPage() {
       success: (res: any) => {
         if (!res?.confirm) return
 
-        const token = uni.getStorageSync('token')
-        const profileData = uni.getStorageSync('merchantProfile')
-        const authMode = uni.getStorageSync('authMode')
+        const session = readRoleAuthSessionSnapshot({
+          uniApp: uni,
+          role: 'merchant',
+          profileStorageKey: 'merchantProfile',
+        })
 
         uni.clearStorageSync()
 
-        if (token) uni.setStorageSync('token', token)
-        if (profileData) uni.setStorageSync('merchantProfile', profileData)
-        if (authMode) uni.setStorageSync('authMode', authMode)
+        if (session.token) {
+          persistRoleAuthSession({
+            uniApp: uni,
+            role: 'merchant',
+            token: session.token,
+            refreshToken: session.refreshToken || null,
+            tokenExpiresAt: session.tokenExpiresAt || null,
+            profileStorageKey: 'merchantProfile',
+            profile: session.profile,
+          })
+        }
 
         saveSettings()
         calcCacheSize()

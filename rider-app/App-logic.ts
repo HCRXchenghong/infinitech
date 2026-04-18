@@ -11,6 +11,7 @@ import {
   clearCachedSocketToken as clearCachedSocketTokenCache,
   resolveSocketToken,
 } from '../packages/client-sdk/src/realtime-token.js'
+import { ensureRoleAuthSession } from '../packages/client-sdk/src/role-auth-session.js'
 import MessagePopup from './components/message-popup.vue'
 import DispatchPopup from './components/dispatch-popup.vue'
 import notification from './utils/notification'
@@ -20,12 +21,25 @@ Vue.component('message-popup', MessagePopup)
 const RIDER_HEARTBEAT_INTERVAL = 20 * 1000
 const SOCKET_TOKEN_KEY = 'socket_token'
 const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key'
+const RIDER_AUTH_SESSION_OPTIONS = Object.freeze({
+  role: 'rider',
+  profileStorageKey: 'riderProfile',
+  allowLegacyAuthModeFallback: true,
+  idSources: ['storage:riderId', 'profile:id', 'profile:userId', 'profile:user_id'],
+})
 
 function clearCachedSocketToken() {
   clearCachedSocketTokenCache({
     uniApp: uni,
     tokenStorageKey: SOCKET_TOKEN_KEY,
     tokenAccountKeyStorageKey: SOCKET_TOKEN_ACCOUNT_KEY,
+  })
+}
+
+function readRiderSession() {
+  return ensureRoleAuthSession({
+    uniApp: uni,
+    ...RIDER_AUTH_SESSION_OPTIONS,
   })
 }
 
@@ -114,10 +128,8 @@ export default Vue.extend({
   },
   methods: {
     async syncPushRegistration() {
-      const token = uni.getStorageSync('token')
-      const authMode = uni.getStorageSync('authMode')
-
-      if (!token || authMode !== 'rider') {
+      const session = readRiderSession()
+      if (!session.isAuthenticated) {
         clearPushRegistrationState()
         clearRealtimeState()
         return
@@ -156,16 +168,10 @@ export default Vue.extend({
     async tryConnectSocket() {
       if (this.isConnected) return
 
-      const token = uni.getStorageSync('token')
-      let authMode = uni.getStorageSync('authMode')
-      let riderId = uni.getStorageSync('riderId')
+      const session = readRiderSession()
+      let riderId = session.accountId || uni.getStorageSync('riderId')
 
-      if (!authMode && token && riderId) {
-        authMode = 'rider'
-        uni.setStorageSync('authMode', 'rider')
-      }
-
-      if (!token || authMode !== 'rider') {
+      if (!session.isAuthenticated) {
         clearPushRegistrationState()
         return
       }
@@ -189,7 +195,7 @@ export default Vue.extend({
           userId: String(riderId),
           role: 'rider',
           socketUrl: config.SOCKET_URL,
-          authToken: String(token),
+          authToken: String(session.token),
           tokenStorageKey: SOCKET_TOKEN_KEY,
           tokenAccountKeyStorageKey: SOCKET_TOKEN_ACCOUNT_KEY,
           missingAuthorizationMessage: 'missing auth token for socket request',
