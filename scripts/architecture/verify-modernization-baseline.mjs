@@ -270,6 +270,14 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/shop-detail-page.test.mjs",
   "packages/mobile-core/src/ShopDetailPage.vue",
   "packages/mobile-core/src/shop-detail-page.scss",
+  "packages/mobile-core/src/product-pages.js",
+  "packages/mobile-core/src/product-pages.test.mjs",
+  "packages/mobile-core/src/ProductDetailPage.vue",
+  "packages/mobile-core/src/product-detail-page.scss",
+  "packages/mobile-core/src/ProductPopupDetailPage.vue",
+  "packages/mobile-core/src/product-popup-detail-page.scss",
+  "packages/mobile-core/src/ShopListPage.vue",
+  "packages/mobile-core/src/shop-list-page.scss",
   "packages/mobile-core/src/ProfileSettingsPage.vue",
   "packages/mobile-core/src/ProfileSettingsDetailPage.vue",
   "packages/mobile-core/src/consumer-shop-components.test.mjs",
@@ -2610,6 +2618,10 @@ assertContains(
 );
 assertContains(
   "package.json",
+  "packages/mobile-core/src/product-pages.test.mjs",
+);
+assertContains(
+  "package.json",
   "packages/mobile-core/src/home-weather-modal.test.mjs",
 );
 assertContains(
@@ -4177,6 +4189,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./product-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./search-page.js";',
 );
 assertContains(
@@ -4310,6 +4326,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-shop-components": "./src/consumer-shop-components.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./product-pages": "./src/product-pages.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -4758,6 +4778,70 @@ assertContains(
 assertContains(
   "app-mobile/pages/shop/detail/index.vue",
   "../../../../packages/mobile-core/src/ShopDetailPage.vue",
+);
+assertContains(
+  "packages/mobile-core/src/product-pages.js",
+  "export function createProductDetailPage(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/product-pages.js",
+  "export function createProductPopupDetailPage(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/product-pages.js",
+  "export function createShopListPage(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/product-pages.js",
+  "export function writeConsumerProductCartCount(",
+);
+assertContains(
+  "packages/mobile-core/src/ProductDetailPage.vue",
+  'import { createProductDetailPage } from "./product-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/ProductDetailPage.vue",
+  '<style scoped lang="scss" src="./product-detail-page.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/ProductPopupDetailPage.vue",
+  'import { createProductPopupDetailPage } from "./product-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/ProductPopupDetailPage.vue",
+  '<style scoped lang="scss" src="./product-popup-detail-page.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/ShopListPage.vue",
+  'import { createShopListPage } from "./product-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/ShopListPage.vue",
+  '<style scoped lang="scss" src="./shop-list-page.scss"></style>',
+);
+assertContains(
+  "user-vue/pages/product/detail/index.vue",
+  "../../../../packages/mobile-core/src/ProductDetailPage.vue",
+);
+assertContains(
+  "app-mobile/pages/product/detail/index.vue",
+  "../../../../packages/mobile-core/src/ProductDetailPage.vue",
+);
+assertContains(
+  "user-vue/pages/product/popup-detail/index.vue",
+  "../../../../packages/mobile-core/src/ProductPopupDetailPage.vue",
+);
+assertContains(
+  "app-mobile/pages/product/popup-detail/index.vue",
+  "../../../../packages/mobile-core/src/ProductPopupDetailPage.vue",
+);
+assertContains(
+  "user-vue/pages/shop/list/index.vue",
+  "../../../../packages/mobile-core/src/ShopListPage.vue",
+);
+assertContains(
+  "app-mobile/pages/shop/list/index.vue",
+  "../../../../packages/mobile-core/src/ShopListPage.vue",
 );
 assertContains(
   "user-vue/pages/charity/index.vue",
@@ -5883,6 +5967,27 @@ assertNotContains("app-mobile/App.vue", "clearAuthData()");
     relativePath,
     `:style="{ color: isCollected ? '#f59e0b' : '#fff' }"`,
   );
+});
+[
+  "user-vue/pages/product/detail/index.vue",
+  "app-mobile/pages/product/detail/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "fetchProductDetail");
+  assertNotContains(relativePath, "addToCart()");
+});
+[
+  "user-vue/pages/product/popup-detail/index.vue",
+  "app-mobile/pages/product/popup-detail/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "fetchProductDetail");
+  assertNotContains(relativePath, "handleAddCart()");
+});
+[
+  "user-vue/pages/shop/list/index.vue",
+  "app-mobile/pages/shop/list/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "fetchShops");
+  assertNotContains(relativePath, "goDetail(id)");
 });
 ["packages/mobile-core/src/shop-detail-page.js"].forEach((relativePath) => {
   assertNotContains(

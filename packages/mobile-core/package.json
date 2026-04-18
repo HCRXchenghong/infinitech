@@ -27,6 +27,7 @@
     "./charity-page": "./src/charity-page.js",
     "./consumer-modal-components": "./src/consumer-modal-components.js",
     "./consumer-shop-components": "./src/consumer-shop-components.js",
+    "./product-pages": "./src/product-pages.js",
     "./dining-buddy": "./src/dining-buddy.js",
     "./home-shell-components": "./src/home-shell-components.js",
     "./home-weather-modal": "./src/home-weather-modal.js",

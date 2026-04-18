@@ -28,6 +28,7 @@ export * from "./home-shell-components.js";
 export * from "./home-weather-modal.js";
 export * from "./consumer-modal-components.js";
 export * from "./consumer-shop-components.js";
+export * from "./product-pages.js";
 export * from "./shop-detail-page.js";
 export * from "./location.js";
 export * from "./platform-runtime.js";
