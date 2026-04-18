@@ -1,6 +1,11 @@
 import { createPushRegistrationManager } from "../../client-sdk/src/push-registration.js";
 import { createRealtimeNotifyBridge } from "../../client-sdk/src/realtime-notify.js";
+import { startPushEventBridge } from "../../client-sdk/src/push-events.js";
 import { createStoredAuthIdentityResolver } from "../../client-sdk/src/stored-auth-identity.js";
+import {
+  buildPushNotificationDetailRoute,
+  createPushClickUrlResolver,
+} from "./push-event-route.js";
 
 export const DEFAULT_CONSUMER_AUTH_ALLOWED_MODES = ["user"];
 export const DEFAULT_CONSUMER_AUTH_TOKEN_KEYS = ["token"];
@@ -75,4 +80,25 @@ export function createConsumerRealtimeNotifyBindings(options = {}) {
     getSocketURL: options.getSocketURL,
     createSocket: options.createSocket,
   });
+}
+
+export function createConsumerPushEventBridge(options = {}) {
+  const buildFallbackUrl =
+    options.buildFallbackUrl || buildPushNotificationDetailRoute;
+  const createResolver =
+    options.createPushClickUrlResolverImpl || createPushClickUrlResolver;
+  const startBridge = options.startPushEventBridgeImpl || startPushEventBridge;
+  const resolveClickUrl =
+    options.resolveClickUrl ||
+    createResolver(options.roles || ["customer", "user"], {
+      buildFallbackUrl,
+    });
+
+  return function startConsumerPushEventBridge() {
+    return startBridge({
+      loggerTag: options.loggerTag,
+      ackPushMessage: options.ackPushMessage,
+      resolveClickUrl,
+    });
+  };
 }

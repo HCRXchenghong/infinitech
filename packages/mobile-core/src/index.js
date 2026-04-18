@@ -8,6 +8,7 @@ export * from "./dining-buddy.js";
 export * from "./auth-portal.js";
 export * from "./consumer-auth-runtime.js";
 export * from "./consumer-notify-bridges.js";
+export * from "./consumer-rtc-contact.js";
 export * from "./home-index.js";
 export * from "./location.js";
 export * from "./platform-runtime.js";

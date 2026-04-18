@@ -124,6 +124,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/consumer-auth-runtime.test.mjs",
   "packages/mobile-core/src/consumer-notify-bridges.js",
   "packages/mobile-core/src/consumer-notify-bridges.test.mjs",
+  "packages/mobile-core/src/consumer-rtc-contact.js",
+  "packages/mobile-core/src/consumer-rtc-contact.test.mjs",
   "packages/mobile-core/src/location.js",
   "packages/mobile-core/src/location.d.ts",
   "packages/mobile-core/src/location.test.mjs",
@@ -1034,6 +1036,14 @@ assertContains(
   "export function createConsumerRealtimeNotifyBindings(options = {}) {",
 );
 assertContains(
+  "packages/mobile-core/src/consumer-notify-bridges.js",
+  "export function createConsumerPushEventBridge(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-rtc-contact.js",
+  "export function createConsumerRTCContactBindings(options = {}) {",
+);
+assertContains(
   "packages/mobile-core/src/sync-service.js",
   "export function createMobileSyncServiceGetter(options = {}) {",
 );
@@ -1081,11 +1091,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/push-events.js",
-  "createPushClickUrlResolver(['customer', 'user']",
+  "createConsumerPushEventBridge({",
 );
 assertContains(
   "app-mobile/shared-ui/push-events.js",
-  "createPushClickUrlResolver(['customer', 'user']",
+  "createConsumerPushEventBridge({",
 );
 assertContains(
   "merchant-app/shared-ui/push-events.ts",
@@ -2547,11 +2557,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/push-events.js",
-  "from '../../packages/client-sdk/src/push-events.js'",
+  "createConsumerPushEventBridge({",
 );
 assertContains(
   "app-mobile/shared-ui/push-events.js",
-  "from '../../packages/client-sdk/src/push-events.js'",
+  "createConsumerPushEventBridge({",
 );
 assertContains(
   "merchant-app/shared-ui/push-events.ts",
@@ -2571,11 +2581,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/rtc-contact.js",
-  "createUniRTCContactBridge({",
+  "createConsumerRTCContactBindings({",
 );
 assertContains(
   "app-mobile/shared-ui/rtc-contact.js",
-  "createUniRTCContactBridge({",
+  "createConsumerRTCContactBindings({",
 );
 assertContains(
   "user-vue/shared-ui/rtc-runtime.js",

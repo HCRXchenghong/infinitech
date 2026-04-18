@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildConsumerStoredAuthIdentityResolverOptions,
+  createConsumerPushEventBridge,
   createConsumerPushRegistrationBindings,
   createConsumerRealtimeNotifyBindings,
   createConsumerStoredAuthIdentityResolver,
@@ -112,4 +113,31 @@ test("consumer notify bridge helpers wire realtime notify bridges with shared de
   assert.equal(bridgeOptions.storageKey, "consumer_realtime_state");
   assert.equal(bridgeOptions.resolveAuthIdentity, resolver);
   assert.equal(bridgeOptions.getSocketURL(), "https://socket.example.com");
+});
+
+test("consumer notify bridge helpers build consumer push event bridges with stable defaults", () => {
+  const resolverCalls = [];
+  const bridgeCalls = [];
+  const startBridge = createConsumerPushEventBridge({
+    loggerTag: "UserPushBridge",
+    ackPushMessage: async () => {},
+    createPushClickUrlResolverImpl(roles, options) {
+      resolverCalls.push({ roles, options });
+      return (payload) => payload?.route || options.buildFallbackUrl(payload);
+    },
+    startPushEventBridgeImpl(options) {
+      bridgeCalls.push(options);
+      return Promise.resolve("started");
+    },
+  });
+
+  const result = startBridge();
+
+  assert.equal(resolverCalls.length, 1);
+  assert.deepEqual(resolverCalls[0].roles, ["customer", "user"]);
+  assert.equal(typeof resolverCalls[0].options.buildFallbackUrl, "function");
+  assert.equal(bridgeCalls.length, 1);
+  assert.equal(bridgeCalls[0].loggerTag, "UserPushBridge");
+  assert.equal(typeof bridgeCalls[0].resolveClickUrl, "function");
+  assert.equal(result instanceof Promise, true);
 });
