@@ -262,6 +262,10 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/consumer-modal-components.js",
   "packages/mobile-core/src/consumer-modal-components.test.mjs",
   "packages/mobile-core/src/consumer-shop-components.js",
+  "packages/mobile-core/src/shop-detail-page.js",
+  "packages/mobile-core/src/shop-detail-page.test.mjs",
+  "packages/mobile-core/src/ShopDetailPage.vue",
+  "packages/mobile-core/src/shop-detail-page.scss",
   "packages/mobile-core/src/ProfileSettingsPage.vue",
   "packages/mobile-core/src/ProfileSettingsDetailPage.vue",
   "packages/mobile-core/src/consumer-shop-components.test.mjs",
@@ -4575,12 +4579,40 @@ assertContains(
   "../../../packages/mobile-core/src/MedicineHomePage.vue",
 );
 assertContains(
-  "user-vue/pages/shop/detail/shop-detail-logic.js",
-  "../../../../packages/mobile-core/src/phone-contact.js",
+  "packages/mobile-core/src/shop-detail-page.js",
+  'import { createPhoneContactHelper } from "./phone-contact.js";',
 );
 assertContains(
-  "app-mobile/pages/shop/detail/shop-detail-logic.js",
-  "../../../../packages/mobile-core/src/phone-contact.js",
+  "packages/mobile-core/src/shop-detail-page.js",
+  'import { extractEnvelopeData } from "../../contracts/src/http.js";',
+);
+assertContains(
+  "packages/mobile-core/src/shop-detail-page.js",
+  "export function createShopDetailPageOptions(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/ShopDetailPage.vue",
+  'import {\n  createShopDetailPageOptions,\n} from "./shop-detail-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./shop-detail-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/ShopDetailPage.vue",
+  'import {\n  addUserFavorite,',
+);
+assertContains(
+  "packages/mobile-core/src/ShopDetailPage.vue",
+  '<style scoped lang="scss" src="./shop-detail-page.scss"></style>',
+);
+assertContains(
+  "user-vue/pages/shop/detail/index.vue",
+  "../../../../packages/mobile-core/src/ShopDetailPage.vue",
+);
+assertContains(
+  "app-mobile/pages/shop/detail/index.vue",
+  "../../../../packages/mobile-core/src/ShopDetailPage.vue",
 );
 assertContains(
   "user-vue/pages/charity/index.vue",
@@ -5630,15 +5662,14 @@ assertNotContains("app-mobile/App.vue", "clearAuthData()");
   "user-vue/pages/shop/detail/index.vue",
   "app-mobile/pages/shop/detail/index.vue",
 ].forEach((relativePath) => {
+  assertNotContains(relativePath, "shop-detail-logic.js");
+  assertNotContains(relativePath, "createShopDetailState()");
   assertNotContains(
     relativePath,
     `:style="{ color: isCollected ? '#f59e0b' : '#fff' }"`,
   );
 });
-[
-  "user-vue/pages/shop/detail/shop-detail-logic.js",
-  "app-mobile/pages/shop/detail/shop-detail-logic.js",
-].forEach((relativePath) => {
+["packages/mobile-core/src/shop-detail-page.js"].forEach((relativePath) => {
   assertNotContains(
     relativePath,
     "title: (err && err.error) || (err && err.data && err.data.error) || '领取失败'",
