@@ -21,6 +21,7 @@
     "./consumer-request-interceptor": "./src/consumer-request-interceptor.js",
     "./consumer-rtc-contact": "./src/consumer-rtc-contact.js",
     "./charity-page": "./src/charity-page.js",
+    "./consumer-modal-components": "./src/consumer-modal-components.js",
     "./dining-buddy": "./src/dining-buddy.js",
     "./home-shell-components": "./src/home-shell-components.js",
     "./home-weather-modal": "./src/home-weather-modal.js",

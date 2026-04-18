@@ -179,10 +179,16 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/support-runtime.js",
   "packages/mobile-core/src/support-runtime.d.ts",
   "packages/mobile-core/src/support-runtime.test.mjs",
+  "packages/mobile-core/src/consumer-modal-components.js",
+  "packages/mobile-core/src/consumer-modal-components.test.mjs",
   "packages/mobile-core/src/home-index.js",
   "packages/mobile-core/src/home-index.test.mjs",
   "packages/mobile-core/src/home-shell-components.js",
   "packages/mobile-core/src/home-shell-components.test.mjs",
+  "packages/mobile-core/src/ContactModal.vue",
+  "packages/mobile-core/src/PhoneWarningModal.vue",
+  "packages/mobile-core/src/CartModal.vue",
+  "packages/mobile-core/src/OrderDetailPopup.vue",
   "packages/mobile-core/src/HomeHeader.vue",
   "packages/mobile-core/src/CategoryGrid.vue",
   "packages/mobile-core/src/FeaturedSection.vue",
@@ -203,6 +209,14 @@ function assertNotContains(relativePath, unexpectedText) {
   "app-mobile/components/LocationModal.vue",
   "user-vue/components/WeatherModal.vue",
   "app-mobile/components/WeatherModal.vue",
+  "user-vue/components/ContactModal.vue",
+  "app-mobile/components/ContactModal.vue",
+  "user-vue/components/PhoneWarningModal.vue",
+  "app-mobile/components/PhoneWarningModal.vue",
+  "user-vue/components/CartModal.vue",
+  "app-mobile/components/CartModal.vue",
+  "user-vue/components/OrderDetailPopup.vue",
+  "app-mobile/components/OrderDetailPopup.vue",
   "packages/mobile-core/src/sync-service.js",
   "packages/mobile-core/src/sync-service.d.ts",
   "packages/mobile-core/src/sync-service.test.mjs",
@@ -1159,6 +1173,26 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/home-weather-modal.js",
   "export function createHomeWeatherModalViewModel(weather = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-modal-components.js",
+  "export function createContactModalComponent(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-modal-components.js",
+  "export function createPhoneWarningModalComponent(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-modal-components.js",
+  "export function createCartModalComponent(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-modal-components.js",
+  "export function createOrderDetailPopupComponent(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-modal-components.js",
+  "export function buildConsumerOrderDetailRows(order = {}) {",
 );
 assertContains(
   "packages/mobile-core/src/home-shell-components.js",
@@ -2169,6 +2203,10 @@ assertContains(
 assertContains(
   "package.json",
   "packages/mobile-core/src/consumer-api.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/consumer-modal-components.test.mjs",
 );
 assertContains(
   "package.json",
@@ -3715,6 +3753,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./consumer-modal-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./search-page.js";',
 );
 assertContains(
@@ -3824,6 +3866,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-api": "./src/consumer-api.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-modal-components": "./src/consumer-modal-components.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -4270,8 +4316,56 @@ assertContains(
   "../../packages/mobile-core/src/HomeWeatherModal.vue",
 );
 assertContains(
+  "user-vue/components/ContactModal.vue",
+  "../../packages/mobile-core/src/ContactModal.vue",
+);
+assertContains(
+  "app-mobile/components/ContactModal.vue",
+  "../../packages/mobile-core/src/ContactModal.vue",
+);
+assertContains(
+  "user-vue/components/PhoneWarningModal.vue",
+  "../../packages/mobile-core/src/PhoneWarningModal.vue",
+);
+assertContains(
+  "app-mobile/components/PhoneWarningModal.vue",
+  "../../packages/mobile-core/src/PhoneWarningModal.vue",
+);
+assertContains(
+  "user-vue/components/CartModal.vue",
+  "../../packages/mobile-core/src/CartModal.vue",
+);
+assertContains(
+  "app-mobile/components/CartModal.vue",
+  "../../packages/mobile-core/src/CartModal.vue",
+);
+assertContains(
+  "user-vue/components/OrderDetailPopup.vue",
+  "../../packages/mobile-core/src/OrderDetailPopup.vue",
+);
+assertContains(
+  "app-mobile/components/OrderDetailPopup.vue",
+  "../../packages/mobile-core/src/OrderDetailPopup.vue",
+);
+assertContains(
   "packages/mobile-core/src/HomeWeatherModal.vue",
   'import { createHomeWeatherModalComponent } from "./home-weather-modal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/ContactModal.vue",
+  'import { createContactModalComponent } from "./consumer-modal-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/PhoneWarningModal.vue",
+  'import { createPhoneWarningModalComponent } from "./consumer-modal-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/CartModal.vue",
+  'import { createCartModalComponent } from "./consumer-modal-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/OrderDetailPopup.vue",
+  'import { createOrderDetailPopupComponent } from "./consumer-modal-components.js";',
 );
 assertContains(
   "user-vue/pages/order/coupon/index.vue",
