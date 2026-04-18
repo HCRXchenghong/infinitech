@@ -260,6 +260,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/consumer-modal-components.js",
   "packages/mobile-core/src/consumer-modal-components.test.mjs",
   "packages/mobile-core/src/consumer-shop-components.js",
+  "packages/mobile-core/src/ProfileSettingsPage.vue",
+  "packages/mobile-core/src/ProfileSettingsDetailPage.vue",
   "packages/mobile-core/src/consumer-shop-components.test.mjs",
   "packages/mobile-core/src/home-index.js",
   "packages/mobile-core/src/home-index.test.mjs",
@@ -5177,36 +5179,36 @@ assertContains(
   "createProfileHomePage({",
 );
 assertContains(
+  "packages/mobile-core/src/ProfileSettingsPage.vue",
+  'import { createProfileSettingsPage } from "./profile-settings.js";',
+);
+assertContains(
+  "packages/mobile-core/src/ProfileSettingsDetailPage.vue",
+  'import { createProfileSettingsDetailPage } from "./profile-settings.js";',
+);
+assertContains(
   "user-vue/pages/profile/settings/index.vue",
-  "../../../../../packages/mobile-core/src/profile-settings.js",
+  "../../../../packages/mobile-core/src/ProfileSettingsPage.vue",
 );
 assertContains(
   "app-mobile/pages/profile/settings/index.vue",
-  "../../../../../packages/mobile-core/src/profile-settings.js",
-);
-assertContains(
-  "user-vue/pages/profile/settings/index.vue",
-  "createProfileSettingsPage({",
-);
-assertContains(
-  "app-mobile/pages/profile/settings/index.vue",
-  "createProfileSettingsPage({",
+  "../../../../packages/mobile-core/src/ProfileSettingsPage.vue",
 );
 assertContains(
   "user-vue/pages/profile/settings/detail/index.vue",
-  "../../../../../../packages/mobile-core/src/profile-settings.js",
+  "../../../../../packages/mobile-core/src/ProfileSettingsDetailPage.vue",
 );
 assertContains(
   "app-mobile/pages/profile/settings/detail/index.vue",
-  "../../../../../../packages/mobile-core/src/profile-settings.js",
+  "../../../../../packages/mobile-core/src/ProfileSettingsDetailPage.vue",
 );
 assertContains(
   "user-vue/pages/profile/settings/detail/index.vue",
-  "createProfileSettingsDetailPage({",
+  "ProfileSettingsDetailPage",
 );
 assertContains(
   "app-mobile/pages/profile/settings/detail/index.vue",
-  "createProfileSettingsDetailPage({",
+  "ProfileSettingsDetailPage",
 );
 assertContains(
   "admin-vue/src/views/settingsApiManagementHelpers.js",
@@ -5711,6 +5713,7 @@ assertNotContains(
   assertNotContains(relativePath, "const SETTINGS_STORAGE_KEY = 'appSettings'");
   assertNotContains(relativePath, "const DEFAULT_SETTINGS = {");
   assertNotContains(relativePath, "phoneMasked()");
+  assertNotContains(relativePath, "createProfileSettingsPage({");
 });
 [
   "user-vue/pages/profile/settings/detail/index.vue",
@@ -5719,6 +5722,7 @@ assertNotContains(
   assertNotContains(relativePath, "const SETTINGS_STORAGE_KEY = 'appSettings'");
   assertNotContains(relativePath, "const DEFAULT_SETTINGS = {");
   assertNotContains(relativePath, "calculateCacheSize()");
+  assertNotContains(relativePath, "createProfileSettingsDetailPage({");
 });
 assertNotContains("admin-vue/src/views/Users.vue", "e.response?.data?.error");
 assertNotContains(
