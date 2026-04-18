@@ -267,6 +267,10 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/support-runtime.js",
   "packages/mobile-core/src/support-runtime.d.ts",
   "packages/mobile-core/src/support-runtime.test.mjs",
+  "packages/mobile-core/src/cart-popup-page.js",
+  "packages/mobile-core/src/cart-popup-page.test.mjs",
+  "packages/mobile-core/src/CartPopupPage.vue",
+  "packages/mobile-core/src/cart-popup-page.scss",
   "packages/mobile-core/src/consumer-modal-components.js",
   "packages/mobile-core/src/consumer-modal-components.test.mjs",
   "packages/mobile-core/src/consumer-shop-components.js",
@@ -2618,6 +2622,10 @@ assertContains(
 );
 assertContains(
   "package.json",
+  "packages/mobile-core/src/cart-popup-page.test.mjs",
+);
+assertContains(
+  "package.json",
   "packages/mobile-core/src/consumer-modal-components.test.mjs",
 );
 assertContains(
@@ -4229,6 +4237,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./cart-popup-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./order-after-sales.js";',
 );
 assertContains(
@@ -4322,6 +4334,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./auth-portal-pages": "./src/auth-portal-pages.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./cart-popup-page": "./src/cart-popup-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -4914,6 +4930,26 @@ assertContains(
 assertContains(
   "app-mobile/pages/location/select/index.vue",
   "../../../../packages/mobile-core/src/LocationSelectPage.vue",
+);
+assertContains(
+  "packages/mobile-core/src/cart-popup-page.js",
+  "export function createCartPopupPage(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/CartPopupPage.vue",
+  'import { createCartPopupPage } from "./cart-popup-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/CartPopupPage.vue",
+  '<style scoped lang="scss" src="./cart-popup-page.scss"></style>',
+);
+assertContains(
+  "user-vue/pages/shop/cart-popup/index.vue",
+  "../../../../packages/mobile-core/src/CartPopupPage.vue",
+);
+assertContains(
+  "app-mobile/pages/shop/cart-popup/index.vue",
+  "../../../../packages/mobile-core/src/CartPopupPage.vue",
 );
 assertContains(
   "user-vue/pages/charity/index.vue",
@@ -6067,6 +6103,13 @@ assertNotContains("app-mobile/App.vue", "clearAuthData()");
 ].forEach((relativePath) => {
   assertNotContains(relativePath, "getCurrentLocation");
   assertNotContains(relativePath, "handleRelocate()");
+});
+[
+  "user-vue/pages/shop/cart-popup/index.vue",
+  "app-mobile/pages/shop/cart-popup/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "fetchMenuItems");
+  assertNotContains(relativePath, "handleClear()");
 });
 [
   "user-vue/pages/shop/list/index.vue",

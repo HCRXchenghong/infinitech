@@ -44,6 +44,7 @@ export * from "./message-chat-page.js";
 export * from "./customer-service-page.js";
 export * from "./client-payment.js";
 export * from "./push-event-route.js";
+export * from "./cart-popup-page.js";
 export * from "./order-coupon.js";
 export * from "./order-after-sales.js";
 export * from "./order-after-sales-pages.js";

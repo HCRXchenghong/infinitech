@@ -7,6 +7,7 @@
     ".": "./src/index.js",
     "./auth-portal": "./src/auth-portal.js",
     "./auth-portal-pages": "./src/auth-portal-pages.js",
+    "./cart-popup-page": "./src/cart-popup-page.js",
     "./category-pages": "./src/category-pages.js",
     "./client-payment": "./src/client-payment.js",
     "./consumer-app-bootstrap": "./src/consumer-app-bootstrap.js",
