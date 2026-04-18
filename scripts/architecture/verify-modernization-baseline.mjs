@@ -127,16 +127,44 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/AuthResetPasswordPage.vue",
   "packages/mobile-core/src/AuthSetPasswordPage.vue",
   "packages/mobile-core/src/AuthWechatCallbackPage.vue",
+  "packages/mobile-core/src/category-pages.js",
+  "packages/mobile-core/src/category-pages.test.mjs",
+  "packages/mobile-core/src/category-page.scss",
+  "packages/mobile-core/src/CategoryListPage.vue",
+  "packages/mobile-core/src/CategoryAllPage.vue",
+  "packages/mobile-core/src/CategoryBurgerPage.vue",
+  "packages/mobile-core/src/CategoryDessertPage.vue",
+  "packages/mobile-core/src/CategoryDynamicPage.vue",
+  "packages/mobile-core/src/CategoryFoodPage.vue",
+  "packages/mobile-core/src/CategoryFruitPage.vue",
+  "packages/mobile-core/src/CategoryMarketPage.vue",
+  "packages/mobile-core/src/CategoryMedicinePage.vue",
   "user-vue/pages/auth/login/index.vue",
   "user-vue/pages/auth/register/index.vue",
   "user-vue/pages/auth/reset-password/index.vue",
   "user-vue/pages/auth/set-password/index.vue",
   "user-vue/pages/auth/wechat-callback/index.vue",
+  "user-vue/pages/category/all/index.vue",
+  "user-vue/pages/category/burger/index.vue",
+  "user-vue/pages/category/dessert/index.vue",
+  "user-vue/pages/category/food/index.vue",
+  "user-vue/pages/category/fruit/index.vue",
+  "user-vue/pages/category/index/index.vue",
+  "user-vue/pages/category/market/index.vue",
+  "user-vue/pages/category/medicine/index.vue",
   "app-mobile/pages/auth/login/index.vue",
   "app-mobile/pages/auth/register/index.vue",
   "app-mobile/pages/auth/reset-password/index.vue",
   "app-mobile/pages/auth/set-password/index.vue",
   "app-mobile/pages/auth/wechat-callback/index.vue",
+  "app-mobile/pages/category/all/index.vue",
+  "app-mobile/pages/category/burger/index.vue",
+  "app-mobile/pages/category/dessert/index.vue",
+  "app-mobile/pages/category/food/index.vue",
+  "app-mobile/pages/category/fruit/index.vue",
+  "app-mobile/pages/category/index/index.vue",
+  "app-mobile/pages/category/market/index.vue",
+  "app-mobile/pages/category/medicine/index.vue",
   "packages/mobile-core/src/client-payment.js",
   "packages/mobile-core/src/client-payment.test.mjs",
   "packages/mobile-core/src/consumer-app-bootstrap.js",
@@ -515,6 +543,38 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../packages/mobile-core/src/AuthSetPasswordPage.vue",
   ],
   [
+    "app-mobile/pages/category/all/index.vue",
+    "../../../../packages/mobile-core/src/CategoryAllPage.vue",
+  ],
+  [
+    "app-mobile/pages/category/burger/index.vue",
+    "../../../../packages/mobile-core/src/CategoryBurgerPage.vue",
+  ],
+  [
+    "app-mobile/pages/category/dessert/index.vue",
+    "../../../../packages/mobile-core/src/CategoryDessertPage.vue",
+  ],
+  [
+    "app-mobile/pages/category/food/index.vue",
+    "../../../../packages/mobile-core/src/CategoryFoodPage.vue",
+  ],
+  [
+    "app-mobile/pages/category/fruit/index.vue",
+    "../../../../packages/mobile-core/src/CategoryFruitPage.vue",
+  ],
+  [
+    "app-mobile/pages/category/index/index.vue",
+    "../../../../packages/mobile-core/src/CategoryDynamicPage.vue",
+  ],
+  [
+    "app-mobile/pages/category/market/index.vue",
+    "../../../../packages/mobile-core/src/CategoryMarketPage.vue",
+  ],
+  [
+    "app-mobile/pages/category/medicine/index.vue",
+    "../../../../packages/mobile-core/src/CategoryMedicinePage.vue",
+  ],
+  [
     "app-mobile/pages/search/index/index.vue",
     "../../../../packages/mobile-core/src/search-page.js",
   ],
@@ -585,6 +645,38 @@ function assertNotContains(relativePath, unexpectedText) {
   [
     "user-vue/pages/auth/set-password/index.vue",
     "../../../../packages/mobile-core/src/AuthSetPasswordPage.vue",
+  ],
+  [
+    "user-vue/pages/category/all/index.vue",
+    "../../../../packages/mobile-core/src/CategoryAllPage.vue",
+  ],
+  [
+    "user-vue/pages/category/burger/index.vue",
+    "../../../../packages/mobile-core/src/CategoryBurgerPage.vue",
+  ],
+  [
+    "user-vue/pages/category/dessert/index.vue",
+    "../../../../packages/mobile-core/src/CategoryDessertPage.vue",
+  ],
+  [
+    "user-vue/pages/category/food/index.vue",
+    "../../../../packages/mobile-core/src/CategoryFoodPage.vue",
+  ],
+  [
+    "user-vue/pages/category/fruit/index.vue",
+    "../../../../packages/mobile-core/src/CategoryFruitPage.vue",
+  ],
+  [
+    "user-vue/pages/category/index/index.vue",
+    "../../../../packages/mobile-core/src/CategoryDynamicPage.vue",
+  ],
+  [
+    "user-vue/pages/category/market/index.vue",
+    "../../../../packages/mobile-core/src/CategoryMarketPage.vue",
+  ],
+  [
+    "user-vue/pages/category/medicine/index.vue",
+    "../../../../packages/mobile-core/src/CategoryMedicinePage.vue",
   ],
   [
     "user-vue/pages/search/index/index.vue",
@@ -2254,6 +2346,10 @@ assertContains(
 );
 assertContains(
   "package.json",
+  "packages/mobile-core/src/category-pages.test.mjs",
+);
+assertContains(
+  "package.json",
   "packages/mobile-core/src/sync-service.test.mjs",
 );
 assertContains(
@@ -3769,6 +3865,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./category-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./consumer-app-bootstrap.js";',
 );
 assertContains(
@@ -3946,6 +4046,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./auth-portal-pages": "./src/auth-portal-pages.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./category-pages": "./src/category-pages.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -4389,6 +4493,38 @@ assertContains(
   "packages/mobile-core/src/AuthRegisterPage.vue",
   '<style scoped lang="scss" src="./auth-register-page.scss"></style>',
 );
+assertContains(
+  "packages/mobile-core/src/category-pages.js",
+  "export function createCategoryPage(options = {})",
+);
+assertContains(
+  "packages/mobile-core/src/category-pages.js",
+  "export function matchesCategoryPageShop(shop = {}, categoryConfig = {})",
+);
+assertContains(
+  "packages/mobile-core/src/category-pages.js",
+  'export function sortCategoryPageShops(shops = [], activeFilter = "default")',
+);
+assertContains(
+  "packages/mobile-core/src/CategoryListPage.vue",
+  'import { createCategoryPage } from "./category-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/CategoryListPage.vue",
+  '<style scoped lang="scss" src="./category-page.scss"></style>',
+);
+[
+  "packages/mobile-core/src/CategoryAllPage.vue",
+  "packages/mobile-core/src/CategoryBurgerPage.vue",
+  "packages/mobile-core/src/CategoryDessertPage.vue",
+  "packages/mobile-core/src/CategoryDynamicPage.vue",
+  "packages/mobile-core/src/CategoryFoodPage.vue",
+  "packages/mobile-core/src/CategoryFruitPage.vue",
+  "packages/mobile-core/src/CategoryMarketPage.vue",
+  "packages/mobile-core/src/CategoryMedicinePage.vue",
+].forEach((relativePath) => {
+  assertContains(relativePath, 'extends: SharedCategoryListPage');
+});
 assertContains(
   "user-vue/pages/index/index.vue",
   "../../../packages/mobile-core/src/home-index.js",
@@ -5019,6 +5155,28 @@ assertNotContains(
   assertNotContains(relativePath, "function trimValue(value) {");
   assertNotContains(relativePath, "function encodeQuery(params = {}) {");
   assertNotContains(relativePath, "function buildPageUrl(path, params = {}) {");
+});
+[
+  "user-vue/pages/category/all/index.vue",
+  "user-vue/pages/category/burger/index.vue",
+  "user-vue/pages/category/dessert/index.vue",
+  "user-vue/pages/category/food/index.vue",
+  "user-vue/pages/category/fruit/index.vue",
+  "user-vue/pages/category/index/index.vue",
+  "user-vue/pages/category/market/index.vue",
+  "user-vue/pages/category/medicine/index.vue",
+  "app-mobile/pages/category/all/index.vue",
+  "app-mobile/pages/category/burger/index.vue",
+  "app-mobile/pages/category/dessert/index.vue",
+  "app-mobile/pages/category/food/index.vue",
+  "app-mobile/pages/category/fruit/index.vue",
+  "app-mobile/pages/category/index/index.vue",
+  "app-mobile/pages/category/market/index.vue",
+  "app-mobile/pages/category/medicine/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "import { fetchShops }");
+  assertNotContains(relativePath, "filteredShops()");
+  assertNotContains(relativePath, "matchCategory(shop");
 });
 assertNotContains(
   "user-vue/pages/index/index.vue",

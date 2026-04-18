@@ -1,0 +1,14 @@
+.category-page {
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+.shop-list {
+  margin-top: 0;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 60px);
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-bottom: 12px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
