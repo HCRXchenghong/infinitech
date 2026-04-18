@@ -1,11 +1,14 @@
 import config from './config'
 import createSocket from '../utils/socket-io'
-import { createStoredAuthIdentityResolver } from '../../packages/client-sdk/src/stored-auth-identity.js'
-import { createRealtimeNotifyBridge } from '../../packages/client-sdk/src/realtime-notify.js'
+import { createRoleRealtimeNotifyBindings } from '../../packages/client-sdk/src/role-notify-bridges.js'
 
 declare const uni: any
 
-const resolveRiderIdentity = createStoredAuthIdentityResolver({
+export const {
+  connectCurrentRealtimeChannel,
+  disconnectRealtimeChannel,
+  clearRealtimeState,
+} = createRoleRealtimeNotifyBindings({
   uniApp: uni,
   allowedAuthModes: ['rider'],
   tokenKeys: ['token', 'access_token'],
@@ -18,16 +21,8 @@ const resolveRiderIdentity = createStoredAuthIdentityResolver({
   ],
   role: 'rider',
   userType: 'rider',
-})
-
-export const {
-  connectCurrentRealtimeChannel,
-  disconnectRealtimeChannel,
-  clearRealtimeState,
-} = createRealtimeNotifyBridge({
   loggerTag: 'RiderRealtimeNotify',
   storageKey: 'rider_realtime_notify_state',
-  resolveAuthIdentity: resolveRiderIdentity,
   getSocketURL: () => config.SOCKET_URL,
   createSocket,
 })

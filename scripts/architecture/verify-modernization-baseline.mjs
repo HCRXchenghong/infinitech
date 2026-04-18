@@ -101,6 +101,9 @@ function assertNoLegacyMobileCommonImports(relativeDir) {
   "packages/client-sdk/src/realtime-notify.js",
   "packages/client-sdk/src/realtime-notify.d.ts",
   "packages/client-sdk/src/realtime-notify.test.mjs",
+  "packages/client-sdk/src/role-notify-bridges.js",
+  "packages/client-sdk/src/role-notify-bridges.d.ts",
+  "packages/client-sdk/src/role-notify-bridges.test.mjs",
   "packages/client-sdk/src/realtime-token.js",
   "packages/client-sdk/src/realtime-token.test.mjs",
   "packages/client-sdk/src/rtc-contact.js",
@@ -2757,7 +2760,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/support-socket-bridge.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/role-notify-bridges.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/support-socket-bridge.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
 );
 assertContains(
   "packages/client-sdk/src/index.js",
@@ -2782,6 +2785,10 @@ assertContains(
 assertContains(
   "packages/client-sdk/src/index.js",
   'export * from "./realtime-notify.js";',
+);
+assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./role-notify-bridges.js";',
 );
 assertContains(
   "packages/client-sdk/src/index.js",
@@ -2818,6 +2825,10 @@ assertContains(
 assertContains(
   "packages/client-sdk/package.json",
   '"./realtime-notify": "./src/realtime-notify.js"',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./role-notify-bridges": "./src/role-notify-bridges.js"',
 );
 assertContains(
   "packages/client-sdk/package.json",
@@ -3250,19 +3261,19 @@ assertContains(
 );
 assertContains(
   "merchant-app/shared-ui/push-registration.ts",
-  "createStoredAuthIdentityResolver({",
+  "createRolePushRegistrationBindings({",
 );
 assertContains(
   "merchant-app/shared-ui/push-registration.ts",
-  "from '../../packages/client-sdk/src/push-registration.js'",
+  "from '../../packages/client-sdk/src/role-notify-bridges.js'",
 );
 assertContains(
   "rider-app/shared-ui/push-registration.ts",
-  "createStoredAuthIdentityResolver({",
+  "createRolePushRegistrationBindings({",
 );
 assertContains(
   "rider-app/shared-ui/push-registration.ts",
-  "from '../../packages/client-sdk/src/push-registration.js'",
+  "from '../../packages/client-sdk/src/role-notify-bridges.js'",
 );
 assertContains(
   "user-vue/shared-ui/realtime-notify.js",
@@ -3342,19 +3353,19 @@ assertContains(
 );
 assertContains(
   "merchant-app/shared-ui/realtime-notify.ts",
-  "createStoredAuthIdentityResolver({",
+  "createRoleRealtimeNotifyBindings({",
 );
 assertContains(
   "merchant-app/shared-ui/realtime-notify.ts",
-  "from '../../packages/client-sdk/src/realtime-notify.js'",
+  "from '../../packages/client-sdk/src/role-notify-bridges.js'",
 );
 assertContains(
   "rider-app/shared-ui/realtime-notify.ts",
-  "createStoredAuthIdentityResolver({",
+  "createRoleRealtimeNotifyBindings({",
 );
 assertContains(
   "rider-app/shared-ui/realtime-notify.ts",
-  "from '../../packages/client-sdk/src/realtime-notify.js'",
+  "from '../../packages/client-sdk/src/role-notify-bridges.js'",
 );
 assertContains(
   "user-vue/shared-ui/push-events.js",

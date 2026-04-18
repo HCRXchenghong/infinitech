@@ -9,6 +9,7 @@ export * from "./onboarding-invite.js";
 export * from "./push-events.js";
 export * from "./push-registration.js";
 export * from "./realtime-notify.js";
+export * from "./role-notify-bridges.js";
 export * from "./realtime-token.js";
 export * from "./rtc-contact.js";
 export * from "./rtc-media.js";

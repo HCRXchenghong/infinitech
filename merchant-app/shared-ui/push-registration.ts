@@ -4,12 +4,17 @@ import {
   unregisterPushDevice,
   ackPushMessage as ackPushMessageApi,
 } from './api'
-import { createStoredAuthIdentityResolver } from '../../packages/client-sdk/src/stored-auth-identity.js'
-import { createPushRegistrationManager } from '../../packages/client-sdk/src/push-registration.js'
+import { createRolePushRegistrationBindings } from '../../packages/client-sdk/src/role-notify-bridges.js'
 
 declare const uni: any
 
-const resolveMerchantIdentity = createStoredAuthIdentityResolver({
+export const {
+  registerCurrentPushDevice,
+  unregisterCurrentPushDevice,
+  clearPushRegistrationState,
+  getCachedRegistrationState,
+  ackPushMessage,
+} = createRolePushRegistrationBindings({
   uniApp: uni,
   allowedAuthModes: ['merchant'],
   tokenKeys: ['token'],
@@ -24,17 +29,7 @@ const resolveMerchantIdentity = createStoredAuthIdentityResolver({
   ],
   role: 'merchant',
   userType: 'merchant',
-})
-
-export const {
-  registerCurrentPushDevice,
-  unregisterCurrentPushDevice,
-  clearPushRegistrationState,
-  getCachedRegistrationState,
-  ackPushMessage,
-} = createPushRegistrationManager({
   storageKey: 'merchant_push_registration',
-  resolveAuthIdentity: resolveMerchantIdentity,
   registerPushDevice,
   unregisterPushDevice,
   ackPushMessage: ackPushMessageApi,

@@ -1,11 +1,14 @@
 import config from './config'
 import createSocket from '../utils/socket-io'
-import { createStoredAuthIdentityResolver } from '../../packages/client-sdk/src/stored-auth-identity.js'
-import { createRealtimeNotifyBridge } from '../../packages/client-sdk/src/realtime-notify.js'
+import { createRoleRealtimeNotifyBindings } from '../../packages/client-sdk/src/role-notify-bridges.js'
 
 declare const uni: any
 
-const resolveMerchantIdentity = createStoredAuthIdentityResolver({
+export const {
+  connectCurrentRealtimeChannel,
+  disconnectRealtimeChannel,
+  clearRealtimeState,
+} = createRoleRealtimeNotifyBindings({
   uniApp: uni,
   allowedAuthModes: ['merchant'],
   tokenKeys: ['token'],
@@ -20,16 +23,8 @@ const resolveMerchantIdentity = createStoredAuthIdentityResolver({
   ],
   role: 'merchant',
   userType: 'merchant',
-})
-
-export const {
-  connectCurrentRealtimeChannel,
-  disconnectRealtimeChannel,
-  clearRealtimeState,
-} = createRealtimeNotifyBridge({
   loggerTag: 'MerchantRealtimeNotify',
   storageKey: 'merchant_realtime_notify_state',
-  resolveAuthIdentity: resolveMerchantIdentity,
   getSocketURL: () => config.SOCKET_URL,
   createSocket,
 })

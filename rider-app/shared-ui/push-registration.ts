@@ -4,12 +4,17 @@ import {
   unregisterPushDevice,
   ackPushMessage as ackPushMessageApi,
 } from './api'
-import { createStoredAuthIdentityResolver } from '../../packages/client-sdk/src/stored-auth-identity.js'
-import { createPushRegistrationManager } from '../../packages/client-sdk/src/push-registration.js'
+import { createRolePushRegistrationBindings } from '../../packages/client-sdk/src/role-notify-bridges.js'
 
 declare const uni: any
 
-const resolveRiderIdentity = createStoredAuthIdentityResolver({
+export const {
+  registerCurrentPushDevice,
+  unregisterCurrentPushDevice,
+  clearPushRegistrationState,
+  getCachedRegistrationState,
+  ackPushMessage,
+} = createRolePushRegistrationBindings({
   uniApp: uni,
   allowedAuthModes: ['rider'],
   tokenKeys: ['token', 'access_token'],
@@ -22,17 +27,7 @@ const resolveRiderIdentity = createStoredAuthIdentityResolver({
   ],
   role: 'rider',
   userType: 'rider',
-})
-
-export const {
-  registerCurrentPushDevice,
-  unregisterCurrentPushDevice,
-  clearPushRegistrationState,
-  getCachedRegistrationState,
-  ackPushMessage,
-} = createPushRegistrationManager({
   storageKey: 'rider_push_registration',
-  resolveAuthIdentity: resolveRiderIdentity,
   registerPushDevice,
   unregisterPushDevice,
   ackPushMessage: ackPushMessageApi,

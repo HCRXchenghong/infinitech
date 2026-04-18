@@ -1,7 +1,9 @@
-import { createPushRegistrationManager } from "../../client-sdk/src/push-registration.js";
-import { createRealtimeNotifyBridge } from "../../client-sdk/src/realtime-notify.js";
 import { startPushEventBridge } from "../../client-sdk/src/push-events.js";
-import { createStoredAuthIdentityResolver } from "../../client-sdk/src/stored-auth-identity.js";
+import {
+  createRolePushRegistrationBindings,
+  createRoleRealtimeNotifyBindings,
+  createRoleStoredAuthIdentityResolver,
+} from "../../client-sdk/src/role-notify-bridges.js";
 import {
   buildPushNotificationDetailRoute,
   createPushClickUrlResolver,
@@ -41,44 +43,43 @@ export function buildConsumerStoredAuthIdentityResolverOptions(options = {}) {
 }
 
 export function createConsumerStoredAuthIdentityResolver(options = {}) {
-  const createResolver =
-    options.createStoredAuthIdentityResolverImpl ||
-    createStoredAuthIdentityResolver;
-  return createResolver(
-    buildConsumerStoredAuthIdentityResolverOptions(options),
+  return createRoleStoredAuthIdentityResolver(
+    {
+      ...buildConsumerStoredAuthIdentityResolverOptions(options),
+      createStoredAuthIdentityResolverImpl:
+        options.createStoredAuthIdentityResolverImpl,
+    },
   );
 }
 
 export function createConsumerPushRegistrationBindings(options = {}) {
-  const createManager =
-    options.createPushRegistrationManagerImpl || createPushRegistrationManager;
   const resolveAuthIdentity =
     options.resolveAuthIdentity ||
     createConsumerStoredAuthIdentityResolver(options);
 
-  return createManager({
+  return createRolePushRegistrationBindings({
     storageKey: options.storageKey,
     resolveAuthIdentity,
     registerPushDevice: options.registerPushDevice,
     unregisterPushDevice: options.unregisterPushDevice,
     ackPushMessage: options.ackPushMessage,
     getAppEnv: options.getAppEnv,
+    createPushRegistrationManagerImpl: options.createPushRegistrationManagerImpl,
   });
 }
 
 export function createConsumerRealtimeNotifyBindings(options = {}) {
-  const createBridge =
-    options.createRealtimeNotifyBridgeImpl || createRealtimeNotifyBridge;
   const resolveAuthIdentity =
     options.resolveAuthIdentity ||
     createConsumerStoredAuthIdentityResolver(options);
 
-  return createBridge({
+  return createRoleRealtimeNotifyBindings({
     loggerTag: options.loggerTag,
     storageKey: options.storageKey,
     resolveAuthIdentity,
     getSocketURL: options.getSocketURL,
     createSocket: options.createSocket,
+    createRealtimeNotifyBridgeImpl: options.createRealtimeNotifyBridgeImpl,
   });
 }
 

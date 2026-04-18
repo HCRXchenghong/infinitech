@@ -16,6 +16,7 @@
     "./push-events": "./src/push-events.js",
     "./push-registration": "./src/push-registration.js",
     "./realtime-notify": "./src/realtime-notify.js",
+    "./role-notify-bridges": "./src/role-notify-bridges.js",
     "./realtime-token": "./src/realtime-token.js",
     "./rtc-contact": "./src/rtc-contact.js",
     "./rtc-media": "./src/rtc-media.js",
