@@ -1251,6 +1251,8 @@ assertContains(
 assertContains("merchant-app/App.vue", "ensureRoleAuthSession");
 assertContains("rider-app/App-logic.ts", "ensureRoleAuthSession");
 assertContains("rider-app/pages/login/index.vue", "persistRoleAuthSession");
+assertContains("rider-app/pages/profile/settings.vue", "clearRoleAuthSession");
+assertContains("rider-app/pages/profile/change-phone.vue", "persistRoleAuthSession");
 assertContains(
   "socket-server/socketIdentity.js",
   "../packages/domain-core/src/identity.js",

@@ -102,20 +102,25 @@ import { fetchRiderInfo, updateRiderStatus } from '../../shared-ui/api'
 import { getAppVersionLabel } from '../../shared-ui/app-version'
 import { unregisterCurrentPushDevice, clearPushRegistrationState } from '../../shared-ui/push-registration'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '../../shared-ui/support-runtime'
+import {
+  clearRoleAuthSession,
+  persistRoleAuthSession,
+  readRoleAuthSessionSnapshot,
+} from '../../../packages/client-sdk/src/role-auth-session.js'
 import notification from '../../utils/notification'
 
 declare const uni: any
 
-const PRESERVED_STORAGE_KEYS = [
-  'token',
+const RIDER_AUTH_SESSION_OPTIONS = Object.freeze({
+  role: 'rider',
+  profileStorageKey: 'riderProfile',
+  idSources: ['storage:riderId', 'profile:id', 'profile:userId', 'profile:user_id'],
+})
+
+const RIDER_CACHE_PRESERVED_STORAGE_KEYS = [
   'access_token',
-  'refreshToken',
   'socket_token',
   'socket_token_account_key',
-  'riderId',
-  'riderName',
-  'riderProfile',
-  'authMode',
   'notification_settings',
 ]
 
@@ -128,7 +133,7 @@ function maskPhone(phone: string): string {
 
 function readPreservedStorage() {
   const entries: Array<{ key: string; value: any }> = []
-  PRESERVED_STORAGE_KEYS.forEach((key) => {
+  RIDER_CACHE_PRESERVED_STORAGE_KEYS.forEach((key) => {
     const value = uni.getStorageSync(key)
     if (value !== '' && value !== null && value !== undefined) {
       entries.push({ key, value })
@@ -140,6 +145,13 @@ function readPreservedStorage() {
 function restorePreservedStorage(entries: Array<{ key: string; value: any }>) {
   entries.forEach(({ key, value }) => {
     uni.setStorageSync(key, value)
+  })
+}
+
+function readRiderSession() {
+  return readRoleAuthSessionSnapshot({
+    uniApp: uni,
+    ...RIDER_AUTH_SESSION_OPTIONS,
   })
 }
 
@@ -264,8 +276,24 @@ export default Vue.extend({
         success: (res: any) => {
           if (!res.confirm) return
 
+          const session = readRiderSession()
           const preservedEntries = readPreservedStorage()
           uni.clearStorageSync()
+          if (session.token) {
+            persistRoleAuthSession({
+              uniApp: uni,
+              role: 'rider',
+              token: session.token,
+              refreshToken: session.refreshToken || null,
+              tokenExpiresAt: session.tokenExpiresAt || null,
+              profileStorageKey: 'riderProfile',
+              profile: session.profile,
+              extraStorageValues: {
+                riderId: session.accountId || null,
+                riderName: session.profile?.name || session.profile?.nickname || null,
+              },
+            })
+          }
           restorePreservedStorage(preservedEntries)
           this.loadNotificationSettings()
           this.calculateCacheSize()
@@ -299,7 +327,19 @@ export default Vue.extend({
             clearPushRegistrationState()
           }
 
-          uni.clearStorageSync()
+          clearRoleAuthSession({
+            uniApp: uni,
+            profileStorageKey: 'riderProfile',
+            extraStorageKeys: [
+              'access_token',
+              'riderId',
+              'riderName',
+              'socket_token',
+              'socket_token_account_key',
+              'notification_settings',
+              'rider_push_registration',
+            ],
+          })
           clearPushRegistrationState()
           uni.showToast({
             title: '已退出登录',
