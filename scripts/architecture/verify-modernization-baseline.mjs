@@ -128,6 +128,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/consumer-app-session.test.mjs",
   "packages/mobile-core/src/consumer-app-version.js",
   "packages/mobile-core/src/consumer-app-version.test.mjs",
+  "packages/mobile-core/src/consumer-api.js",
+  "packages/mobile-core/src/consumer-api.test.mjs",
   "packages/mobile-core/src/consumer-auth-runtime.js",
   "packages/mobile-core/src/consumer-auth-runtime.test.mjs",
   "packages/mobile-core/src/consumer-cache.js",
@@ -640,7 +642,15 @@ assertContains("merchant-app/shared-ui/api.ts", "extractSMSResult");
 assertContains("rider-app/shared-ui/api.ts", "createMobilePushApi");
 assertContains("rider-app/shared-ui/api.ts", "extractSMSResult");
 assertContains("rider-app/shared-ui/api.ts", "createRiderPreferenceApi");
-assertContains("user-vue/shared-ui/api.js", "createMobilePushApi");
+assertContains(
+  "packages/mobile-core/src/consumer-api.js",
+  "createMobilePushApiImpl({",
+);
+assertContains("packages/mobile-core/src/consumer-api.js", "extractSMSResult");
+assertContains(
+  "user-vue/shared-ui/api.js",
+  'from "../../packages/mobile-core/src/consumer-api.js"',
+);
 assertContains(
   "user-vue/pages/message/notification-detail/index.vue",
   "../../../../packages/domain-core/src/notification-content.js",
@@ -649,9 +659,10 @@ assertContains(
   "app-mobile/pages/message/notification-detail/index.vue",
   "../../../../packages/domain-core/src/notification-content.js",
 );
-assertContains("user-vue/shared-ui/api.js", "extractSMSResult");
-assertContains("app-mobile/shared-ui/api.js", "createMobilePushApi");
-assertContains("app-mobile/shared-ui/api.js", "extractSMSResult");
+assertContains(
+  "app-mobile/shared-ui/api.js",
+  'from "../../packages/mobile-core/src/consumer-api.js"',
+);
 assertContains(
   "rider-app/pages/profile/order-settings.vue",
   "extractRiderPreferenceSettings",
@@ -1014,6 +1025,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/consumer-app-version.js",
   "export function getAppVersionLabel(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-api.js",
+  "export function createConsumerApi(options = {}) {",
 );
 assertContains(
   "packages/mobile-core/src/consumer-auth-runtime.js",
@@ -1796,27 +1811,15 @@ assertContains(
   "extractEnvelopeData(vouchers)",
 );
 assertContains(
-  "user-vue/shared-ui/api.js",
+  "packages/mobile-core/src/consumer-api.js",
   "extractEnvelopeData(payload) || {}",
 );
 assertContains(
-  "app-mobile/shared-ui/api.js",
-  "extractEnvelopeData(payload) || {}",
-);
-assertContains(
-  "user-vue/shared-ui/api.js",
+  "packages/mobile-core/src/consumer-api.js",
   "const paginated = extractPaginatedItems(response, {",
 );
 assertContains(
-  "app-mobile/shared-ui/api.js",
-  "const paginated = extractPaginatedItems(response, {",
-);
-assertContains(
-  "user-vue/shared-ui/api.js",
-  'listKeys: ["conversations", "items", "records", "list"]',
-);
-assertContains(
-  "app-mobile/shared-ui/api.js",
+  "packages/mobile-core/src/consumer-api.js",
   'listKeys: ["conversations", "items", "records", "list"]',
 );
 assertContains(
@@ -1832,52 +1835,32 @@ assertContains(
   'listKeys: ["categories", "items", "records", "list"]',
 );
 assertContains(
-  "user-vue/shared-ui/api.js",
+  "packages/mobile-core/src/consumer-api.js",
   'listKeys: ["categories", "items", "records", "list"]',
 );
 assertContains(
-  "user-vue/shared-ui/api.js",
+  "packages/mobile-core/src/consumer-api.js",
   'listKeys: ["parties", "items", "records", "list"]',
 );
 assertContains(
-  "user-vue/shared-ui/api.js",
+  "packages/mobile-core/src/consumer-api.js",
   "extractEnvelopeData(response) || {}",
 );
 assertContains(
-  "user-vue/shared-ui/api.js",
+  "packages/mobile-core/src/consumer-api.js",
   'listKeys: ["addresses", "items", "records", "list"]',
 );
 assertContains(
-  "user-vue/shared-ui/api.js",
+  "packages/mobile-core/src/consumer-api.js",
   'listKeys: ["orders", "items", "records", "list"]',
 );
 assertContains(
-  "user-vue/shared-ui/api.js",
+  "packages/mobile-core/src/consumer-api.js",
   'listKeys: ["messages", "items", "records", "list"]',
 );
 assertContains(
-  "app-mobile/shared-ui/api.js",
+  "packages/mobile-core/src/consumer-api.js",
   'listKeys: ["banners", "items", "records", "list"]',
-);
-assertContains(
-  "app-mobile/shared-ui/api.js",
-  'listKeys: ["parties", "items", "records", "list"]',
-);
-assertContains(
-  "app-mobile/shared-ui/api.js",
-  "extractEnvelopeData(response) || {}",
-);
-assertContains(
-  "app-mobile/shared-ui/api.js",
-  'listKeys: ["addresses", "items", "records", "list"]',
-);
-assertContains(
-  "app-mobile/shared-ui/api.js",
-  'listKeys: ["orders", "items", "records", "list"]',
-);
-assertContains(
-  "app-mobile/shared-ui/api.js",
-  'listKeys: ["messages", "items", "records", "list"]',
 );
 assertContains(
   "rider-app/shared-ui/api.ts",
@@ -2136,6 +2119,10 @@ assertContains(
 assertContains(
   "package.json",
   "packages/mobile-core/src/consumer-app-version.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/consumer-api.test.mjs",
 );
 assertContains(
   "package.json",
@@ -2667,8 +2654,12 @@ assertContains(
   "rider-app/shared-ui/utils.ts",
   "from '../../packages/client-sdk/src/mobile-utils.js'",
 );
-assertContains("user-vue/shared-ui/api.js", "createUniRequestClient({");
-assertContains("app-mobile/shared-ui/api.js", "createUniRequestClient({");
+assertContains(
+  "packages/mobile-core/src/consumer-api.js",
+  "createUniRequestClientImpl({",
+);
+assertContains("user-vue/shared-ui/api.js", "createConsumerApi({");
+assertContains("app-mobile/shared-ui/api.js", "createConsumerApi({");
 assertContains("merchant-app/shared-ui/api.ts", "createUniRequestClient({");
 assertContains("rider-app/shared-ui/api.ts", "createUniRequestClient({");
 assertContains(
@@ -3622,6 +3613,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./consumer-api.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./consumer-auth-runtime.js";',
 );
 assertContains(
@@ -3763,6 +3758,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-app-version": "./src/consumer-app-version.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-api": "./src/consumer-api.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

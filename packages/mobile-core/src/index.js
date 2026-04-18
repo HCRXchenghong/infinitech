@@ -11,6 +11,7 @@ export * from "./consumer-app-bridges.js";
 export * from "./consumer-app-session.js";
 export * from "./consumer-auth-runtime.js";
 export * from "./consumer-app-version.js";
+export * from "./consumer-api.js";
 export * from "./consumer-cache.js";
 export * from "./consumer-errand.js";
 export * from "./consumer-errand-runtime.js";
