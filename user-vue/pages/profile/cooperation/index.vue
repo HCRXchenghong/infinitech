@@ -51,7 +51,7 @@
 
 <script>
 import { submitCooperation } from '@/shared-ui/api.js'
-import { createProfileCooperationPage } from '../../../../shared/mobile-common/profile-outreach-pages.js'
+import { createProfileCooperationPage } from '../../../../packages/mobile-core/src/profile-outreach.js'
 
 export default createProfileCooperationPage({
   submitCooperation

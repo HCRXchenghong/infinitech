@@ -1,5 +1,5 @@
 import { fetchPointsBalance, fetchPointsGoods, fetchPublicVIPSettings } from '@/shared-ui/api.js'
-import { createProfileVipCenterPageOptions } from '../../../../shared/mobile-common/profile-vip-center-page-options.js'
+import { createProfileVipCenterPageOptions } from '../../../../packages/mobile-core/src/vip-center.js'
 
 export default createProfileVipCenterPageOptions({
   fetchPointsBalance,

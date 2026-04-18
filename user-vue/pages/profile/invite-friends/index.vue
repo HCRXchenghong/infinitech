@@ -70,7 +70,7 @@ import {
   fetchPublicRuntimeSettings,
   recordInviteShare
 } from '@/shared-ui/api.js'
-import { createProfileInviteFriendsPage } from '../../../../shared/mobile-common/profile-outreach-pages.js'
+import { createProfileInviteFriendsPage } from '../../../../packages/mobile-core/src/profile-outreach.js'
 
 export default createProfileInviteFriendsPage({
   fetchInviteCode,

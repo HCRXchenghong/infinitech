@@ -5,6 +5,7 @@ import {
   buildConsumerPointsMallRedeemConfirmation,
   buildConsumerPointsMallRedeemPayload,
   canConsumerPointsMallRedeem,
+  createProfilePointsMallPage,
   createDefaultConsumerPointsMallVipConfig,
   normalizeConsumerPointsMallBalance,
   normalizeConsumerPointsMallErrorMessage,
@@ -14,6 +15,11 @@ import {
   resolveConsumerPointsMallStoredBalance,
   resolveConsumerPointsMallUserId,
 } from "./profile-points-mall.js";
+
+async function flushPromises() {
+  await Promise.resolve();
+  await new Promise((resolve) => setImmediate(resolve));
+}
 
 test("profile points mall helpers normalize identity and settings", () => {
   assert.equal(
@@ -96,4 +102,101 @@ test("profile points mall helpers normalize errors", () => {
     ),
     "积分商品读取失败",
   );
+});
+
+test("profile points mall page loads shared data and completes exchange flow", async () => {
+  const storage = {
+    userProfile: {
+      id: "user-1",
+      phone: "13800000000",
+    },
+    pointsBalance: "18",
+  };
+  const toasts = [];
+  const loadingStates = [];
+  const redeemPayloads = [];
+  let navigateBackCount = 0;
+  let modalPromise = Promise.resolve();
+  const originalUni = globalThis.uni;
+
+  globalThis.uni = {
+    getStorageSync(key) {
+      return storage[key];
+    },
+    setStorageSync(key, value) {
+      storage[key] = value;
+    },
+    showToast(payload) {
+      toasts.push(payload);
+    },
+    showLoading(payload) {
+      loadingStates.push(`show:${payload.title}`);
+    },
+    hideLoading() {
+      loadingStates.push("hide");
+    },
+    showModal(options) {
+      modalPromise = Promise.resolve(options.success?.({ confirm: true }));
+    },
+    navigateBack() {
+      navigateBackCount += 1;
+    },
+  };
+
+  try {
+    const page = createProfilePointsMallPage({
+      fetchPointsBalance: async (userId) => {
+        assert.equal(userId, "user-1");
+        return { balance: 88 };
+      },
+      fetchPointsGoods: async () => ({
+        data: {
+          list: [{ id: 8, name: " 黑金月卡 ", points: 20, type: "vip" }],
+        },
+      }),
+      redeemPoints: async (payload) => {
+        redeemPayloads.push(payload);
+        return { success: true, balance: 68 };
+      },
+      fetchPublicVIPSettings: async () => ({
+        data: {
+          points_section_title: "积分豪礼",
+        },
+      }),
+    });
+    const instance = {
+      ...page.data(),
+      ...page.methods,
+    };
+
+    page.onLoad.call(instance);
+    await flushPromises();
+
+    assert.equal(instance.points, 88);
+    assert.equal(instance.goods.length, 1);
+    assert.equal(instance.goods[0].tag, "VIP");
+    assert.equal(instance.vipConfig.points_section_title, "积分豪礼");
+    assert.equal(storage.pointsBalance, 88);
+
+    instance.goBack();
+    assert.equal(navigateBackCount, 1);
+
+    instance.exchange(instance.goods[0]);
+    await modalPromise;
+    await flushPromises();
+
+    assert.deepEqual(redeemPayloads, [
+      {
+        userId: "user-1",
+        phone: "13800000000",
+        goodId: 8,
+      },
+    ]);
+    assert.equal(instance.points, 68);
+    assert.equal(storage.pointsBalance, 68);
+    assert.deepEqual(loadingStates, ["show:兑换中...", "hide"]);
+    assert.equal(toasts.at(-1)?.title, "兑换成功");
+  } finally {
+    globalThis.uni = originalUni;
+  }
 });

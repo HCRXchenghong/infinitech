@@ -410,7 +410,7 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/profile/cooperation/index.vue",
-    "../../../../shared/mobile-common/profile-outreach-pages.js",
+    "../../../../packages/mobile-core/src/profile-outreach.js",
   ],
   [
     "app-mobile/pages/profile/address-edit/index.vue",
@@ -430,7 +430,7 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/profile/points-mall/index.vue",
-    "../../../../shared/mobile-common/profile-points-mall-page.js",
+    "../../../../packages/mobile-core/src/profile-points-mall.js",
   ],
   [
     "app-mobile/pages/profile/coupon-list/index.vue",
@@ -442,7 +442,7 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/profile/invite-friends/index.vue",
-    "../../../../shared/mobile-common/profile-outreach-pages.js",
+    "../../../../packages/mobile-core/src/profile-outreach.js",
   ],
   [
     "user-vue/pages/auth/reset-password/index.vue",
@@ -470,7 +470,7 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/profile/cooperation/index.vue",
-    "../../../../shared/mobile-common/profile-outreach-pages.js",
+    "../../../../packages/mobile-core/src/profile-outreach.js",
   ],
   [
     "user-vue/pages/profile/address-edit/index.vue",
@@ -490,7 +490,7 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/profile/points-mall/index.vue",
-    "../../../../shared/mobile-common/profile-points-mall-page.js",
+    "../../../../packages/mobile-core/src/profile-points-mall.js",
   ],
   [
     "user-vue/pages/profile/coupon-list/index.vue",
@@ -502,7 +502,7 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/profile/invite-friends/index.vue",
-    "../../../../shared/mobile-common/profile-outreach-pages.js",
+    "../../../../packages/mobile-core/src/profile-outreach.js",
   ],
 ].forEach(([relativePath, sharedImport]) => {
   assertContains(relativePath, sharedImport);
@@ -2366,6 +2366,14 @@ assertContains(
   "export * from \"../../packages/mobile-core/src/profile-my-reviews.js\";",
 );
 assertContains(
+  "shared/mobile-common/profile-points-mall-page.js",
+  "export * from \"../../packages/mobile-core/src/profile-points-mall.js\";",
+);
+assertContains(
+  "shared/mobile-common/profile-vip-center-page-options.js",
+  "export * from \"../../packages/mobile-core/src/vip-center.js\";",
+);
+assertContains(
   "shared/mobile-common/profile-edit-page.js",
   "export * from \"../../packages/mobile-core/src/profile-edit.js\";",
 );
@@ -2380,6 +2388,10 @@ assertContains(
 assertContains(
   "shared/mobile-common/profile-phone-change-page.js",
   "export * from \"../../packages/mobile-core/src/profile-phone-change.js\";",
+);
+assertContains(
+  "shared/mobile-common/profile-outreach-pages.js",
+  "export * from \"../../packages/mobile-core/src/profile-outreach.js\";",
 );
 assertContains(
   "shared/mobile-common/profile-settings-pages.js",
@@ -3399,6 +3411,14 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./profile-points-mall.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./profile-outreach.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./medicine-home.js";',
 );
 assertContains(
@@ -3615,7 +3635,19 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/package.json",
+  '"./profile-outreach": "./src/profile-outreach.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./profile-points-mall": "./src/profile-points-mall.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
   '"./profile-settings": "./src/profile-settings.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./vip-center": "./src/vip-center.js"',
 );
 assertContains(
   "user-vue/pages/profile/vip-center/vip-data.js",
@@ -3627,19 +3659,35 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/profile/vip-center/page-options.js",
-  "../../../../shared/mobile-common/profile-vip-center-page-options.js",
+  "../../../../packages/mobile-core/src/vip-center.js",
 );
 assertContains(
   "app-mobile/pages/profile/vip-center/page-options.js",
-  "../../../../shared/mobile-common/profile-vip-center-page-options.js",
+  "../../../../packages/mobile-core/src/vip-center.js",
 );
 assertContains(
   "user-vue/pages/profile/points-mall/index.vue",
-  "../../../../shared/mobile-common/profile-points-mall-page.js",
+  "../../../../packages/mobile-core/src/profile-points-mall.js",
 );
 assertContains(
   "app-mobile/pages/profile/points-mall/index.vue",
-  "../../../../shared/mobile-common/profile-points-mall-page.js",
+  "../../../../packages/mobile-core/src/profile-points-mall.js",
+);
+assertContains(
+  "user-vue/pages/profile/cooperation/index.vue",
+  "../../../../packages/mobile-core/src/profile-outreach.js",
+);
+assertContains(
+  "app-mobile/pages/profile/cooperation/index.vue",
+  "../../../../packages/mobile-core/src/profile-outreach.js",
+);
+assertContains(
+  "user-vue/pages/profile/invite-friends/index.vue",
+  "../../../../packages/mobile-core/src/profile-outreach.js",
+);
+assertContains(
+  "app-mobile/pages/profile/invite-friends/index.vue",
+  "../../../../packages/mobile-core/src/profile-outreach.js",
 );
 assertContains(
   "user-vue/pages/medicine/home.vue",

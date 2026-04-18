@@ -56,7 +56,7 @@
 
 <script>
 import { fetchPointsBalance, fetchPointsGoods, redeemPoints, fetchPublicVIPSettings } from '@/shared-ui/api.js'
-import { createProfilePointsMallPage } from '../../../../shared/mobile-common/profile-points-mall-page.js'
+import { createProfilePointsMallPage } from '../../../../packages/mobile-core/src/profile-points-mall.js'
 
 export default createProfilePointsMallPage({
   fetchPointsBalance,
