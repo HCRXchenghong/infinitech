@@ -23,6 +23,7 @@
     "./socket-io": "./src/socket-io.js",
     "./stored-auth-identity": "./src/stored-auth-identity.js",
     "./support-socket": "./src/support-socket.js",
+    "./support-socket-bridge": "./src/support-socket-bridge.js",
     "./uni-request": "./src/uni-request.js"
   }
 }

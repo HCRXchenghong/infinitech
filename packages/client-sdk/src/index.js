@@ -16,4 +16,5 @@ export * from "./rtc-runtime.js";
 export * from "./socket-io.js";
 export * from "./stored-auth-identity.js";
 export * from "./support-socket.js";
+export * from "./support-socket-bridge.js";
 export * from "./uni-request.js";

@@ -1,5 +1,5 @@
 import { recordPhoneContactClick, reportOrderException } from './api'
-import { createPhoneContactHelper } from '../../shared/mobile-common/phone-contact'
+import { createPhoneContactHelper } from '../../packages/mobile-core/src/phone-contact.js'
 
 declare const uni: any
 

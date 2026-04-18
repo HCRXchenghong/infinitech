@@ -8,11 +8,11 @@ import { getCurrentAdminSocketIdentity } from './runtime';
 import {
   canUseRTCMedia,
   createRTCMediaSession,
-} from '../../../shared/mobile-common/rtc-media.js';
+} from '../../../packages/client-sdk/src/rtc-media.js';
 import {
   DEFAULT_RTC_RUNTIME_SETTINGS,
   createRTCRuntimeSettingsLoader,
-} from '../../../shared/mobile-common/rtc-runtime.js';
+} from '../../../packages/client-sdk/src/rtc-runtime.js';
 
 const DEFAULT_ENTRY_POINT = 'admin_chat_console';
 const DEFAULT_SCENE = 'admin_support';

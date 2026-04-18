@@ -34,6 +34,36 @@ function assertNotContains(relativePath, unexpectedText) {
   }
 }
 
+function assertNoLegacyMobileCommonImports(relativeDir) {
+  const absoluteDir = path.join(repoRoot, relativeDir);
+  const queue = [absoluteDir];
+  const ignoredDirectories = new Set(["node_modules", "dist", "unpackage"]);
+  const allowedExtensions = new Set([".js", ".ts", ".vue", ".mjs", ".cjs"]);
+
+  while (queue.length > 0) {
+    const currentDir = queue.pop();
+    for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (!ignoredDirectories.has(entry.name)) {
+          queue.push(path.join(currentDir, entry.name));
+        }
+        continue;
+      }
+
+      if (!allowedExtensions.has(path.extname(entry.name)) || entry.name.endsWith(".d.ts")) {
+        continue;
+      }
+
+      const absolutePath = path.join(currentDir, entry.name);
+      const source = fs.readFileSync(absolutePath, "utf8");
+      if (source.includes("shared/mobile-common")) {
+        const relativePath = path.relative(repoRoot, absolutePath);
+        throw new Error(`legacy shared/mobile-common runtime import remains in ${relativePath}`);
+      }
+    }
+  }
+}
+
 [
   "packages/contracts/src/index.js",
   "packages/contracts/src/http.cjs",
@@ -90,6 +120,9 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/client-sdk/src/support-socket.js",
   "packages/client-sdk/src/support-socket.d.ts",
   "packages/client-sdk/src/support-socket.test.mjs",
+  "packages/client-sdk/src/support-socket-bridge.js",
+  "packages/client-sdk/src/support-socket-bridge.d.ts",
+  "packages/client-sdk/src/support-socket-bridge.test.mjs",
   "packages/client-sdk/src/uni-request.js",
   "packages/client-sdk/src/uni-request.test.mjs",
   "packages/domain-core/src/index.js",
@@ -1038,6 +1071,14 @@ assertNotContains(
   "admin-vue/src/views/SystemLogs.vue",
   "function actionTagType(actionType)",
 );
+
+[
+  "user-vue",
+  "app-mobile",
+  "merchant-app",
+  "rider-app",
+  "admin-vue/src",
+].forEach(assertNoLegacyMobileCommonImports);
 assertNotContains(
   "admin-vue/src/views/SystemLogs.vue",
   "function parseServiceDetail(detail)",
@@ -2715,7 +2756,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/support-socket-bridge.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
 );
 assertContains(
   "packages/client-sdk/src/index.js",
@@ -3092,7 +3133,7 @@ assertContains(
 );
 assertContains(
   "shared/mobile-common/socket.ts",
-  "createUniSupportSocketBridge({",
+  "createConfiguredSupportSocketBridge({",
 );
 assertContains(
   "user-vue/utils/socket-io.ts",

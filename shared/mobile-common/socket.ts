@@ -1,11 +1,8 @@
-import createSocket from './socket-io'
 import config from './config'
-import { createUniSupportSocketBridge } from '../../packages/client-sdk/src/support-socket.js'
+import createSocket from './socket-io'
+import { createConfiguredSupportSocketBridge } from '../../packages/client-sdk/src/support-socket-bridge.js'
 
-const socketBridge = createUniSupportSocketBridge({
+export default createConfiguredSupportSocketBridge({
   createSocket,
-  socketUrl: config.SOCKET_URL,
-  namespace: '/support',
+  config,
 })
-
-export default socketBridge
