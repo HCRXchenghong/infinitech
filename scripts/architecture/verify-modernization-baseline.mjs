@@ -367,7 +367,9 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/order-refund-page.scss",
   "packages/mobile-core/src/OrderReviewPage.vue",
   "packages/mobile-core/src/order-review-page.scss",
+  "packages/mobile-core/src/OrderConfirmPage.vue",
   "packages/mobile-core/src/order-confirm-page.js",
+  "packages/mobile-core/src/order-confirm-page.scss",
   "packages/mobile-core/src/order-confirm-page.test.mjs",
   "packages/mobile-core/src/order-contact.js",
   "packages/mobile-core/src/order-contact.test.mjs",
@@ -401,7 +403,9 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/profile-edit.test.mjs",
   "packages/mobile-core/src/profile-coupon-list.js",
   "packages/mobile-core/src/profile-coupon-list.test.mjs",
+  "packages/mobile-core/src/ProfileHomePage.vue",
   "packages/mobile-core/src/profile-home.js",
+  "packages/mobile-core/src/profile-home-page.scss",
   "packages/mobile-core/src/profile-home.test.mjs",
   "packages/mobile-core/src/profile-phone-change.js",
   "packages/mobile-core/src/profile-phone-change.test.mjs",
@@ -520,7 +524,7 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/order/confirm/index.vue",
-    "../../../../packages/mobile-core/src/order-confirm-page.js",
+    "../../../../packages/mobile-core/src/OrderConfirmPage.vue",
   ],
   [
     "app-mobile/pages/message/chat/index.vue",
@@ -564,7 +568,7 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/order/confirm/index.vue",
-    "../../../../packages/mobile-core/src/order-confirm-page.js",
+    "../../../../packages/mobile-core/src/OrderConfirmPage.vue",
   ],
   [
     "user-vue/pages/message/chat/index.vue",
@@ -5248,6 +5252,14 @@ assertContains(
   "resolveConsumerOrderCouponUserId(profile)",
 );
 assertContains(
+  "packages/mobile-core/src/OrderConfirmPage.vue",
+  'import { createOrderConfirmPage } from "./order-confirm-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/OrderConfirmPage.vue",
+  '<style scoped lang="scss" src="./order-confirm-page.scss"></style>',
+);
+assertContains(
   "user-vue/pages/order/remark/index.vue",
   "../../../../packages/mobile-core/src/order-support-pages.js",
 );
@@ -5355,19 +5367,19 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/profile/index/index.vue",
-  "../../../../packages/mobile-core/src/profile-home.js",
+  "../../../../packages/mobile-core/src/ProfileHomePage.vue",
 );
 assertContains(
   "app-mobile/pages/profile/index/index.vue",
-  "../../../../packages/mobile-core/src/profile-home.js",
+  "../../../../packages/mobile-core/src/ProfileHomePage.vue",
 );
 assertContains(
-  "user-vue/pages/profile/index/index.vue",
-  "createProfileHomePage({",
+  "packages/mobile-core/src/ProfileHomePage.vue",
+  'import { createProfileHomePage } from "./profile-home.js";',
 );
 assertContains(
-  "app-mobile/pages/profile/index/index.vue",
-  "createProfileHomePage({",
+  "packages/mobile-core/src/ProfileHomePage.vue",
+  '<style scoped lang="scss" src="./profile-home-page.scss"></style>',
 );
 assertContains(
   "packages/mobile-core/src/ProfileSettingsPage.vue",
@@ -5821,6 +5833,12 @@ assertNotContains("app-mobile/App.vue", "clearAuthData()");
   assertNotContains(relativePath, "platform: '");
 });
 [
+  "user-vue/pages/order/confirm/index.vue",
+  "app-mobile/pages/order/confirm/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "createOrderConfirmPage({");
+});
+[
   "user-vue/pages/order/detail/index.vue",
   "app-mobile/pages/order/detail/index.vue",
 ].forEach((relativePath) => {
@@ -5964,6 +5982,7 @@ assertNotContains(
   "user-vue/pages/profile/index/index.vue",
   "app-mobile/pages/profile/index/index.vue",
 ].forEach((relativePath) => {
+  assertNotContains(relativePath, "createProfileHomePage({");
   assertNotContains(relativePath, "const DEFAULT_TOOLS = [");
   assertNotContains(relativePath, "const DEFAULT_MORE_ENTRIES = [");
   assertNotContains(relativePath, "normalizeUserPayload(payload)");
