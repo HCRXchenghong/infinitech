@@ -112,6 +112,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/mobile-client-context.test.mjs",
   "packages/mobile-core/src/vip-center.js",
   "packages/mobile-core/src/vip-center.test.mjs",
+  "packages/mobile-core/src/VipCenterPage.vue",
+  "packages/mobile-core/src/vip-center-page.scss",
   "packages/mobile-core/src/CharityPage.vue",
   "packages/mobile-core/src/charity-page.scss",
   "packages/mobile-core/src/charity-page.js",
@@ -4481,6 +4483,22 @@ assertContains(
   '<style scoped lang="scss" src="./customer-service-page.scss"></style>',
 );
 assertContains(
+  "packages/mobile-core/src/VipCenterPage.vue",
+  'import { fetchPointsBalance, fetchPointsGoods, fetchPublicVIPSettings } from "@/shared-ui/api.js";',
+);
+assertContains(
+  "packages/mobile-core/src/VipCenterPage.vue",
+  '<style scoped lang="scss" src="./vip-center-page.scss"></style>',
+);
+assertContains(
+  "user-vue/pages/profile/vip-center/index.vue",
+  "../../../../packages/mobile-core/src/VipCenterPage.vue",
+);
+assertContains(
+  "app-mobile/pages/profile/vip-center/index.vue",
+  "../../../../packages/mobile-core/src/VipCenterPage.vue",
+);
+assertContains(
   "packages/mobile-core/src/MedicineHomePage.vue",
   'import { createPhoneContactHelper } from "./phone-contact.js";',
 );
@@ -5400,6 +5418,14 @@ assertNotContains(
 assertNotContains(
   "app-mobile/pages/charity/index.vue",
   "normalizeCharityJoinUrl(url)",
+);
+assertNotContains(
+  "user-vue/pages/profile/vip-center/index.vue",
+  "import options from './page-options.js'",
+);
+assertNotContains(
+  "app-mobile/pages/profile/vip-center/index.vue",
+  "import options from './page-options.js'",
 );
 assertNotContains(
   "user-vue/pages/dining-buddy/index.vue",
