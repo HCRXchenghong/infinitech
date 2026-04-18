@@ -228,6 +228,10 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/consumer-request-interceptor.test.mjs",
   "packages/mobile-core/src/consumer-rtc-contact.js",
   "packages/mobile-core/src/consumer-rtc-contact.test.mjs",
+  "packages/mobile-core/src/featured-page.js",
+  "packages/mobile-core/src/featured-page.test.mjs",
+  "packages/mobile-core/src/FeaturedPage.vue",
+  "packages/mobile-core/src/featured-page.scss",
   "packages/mobile-core/src/location.js",
   "packages/mobile-core/src/location.d.ts",
   "packages/mobile-core/src/location.test.mjs",
@@ -278,6 +282,10 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/product-popup-detail-page.scss",
   "packages/mobile-core/src/ShopListPage.vue",
   "packages/mobile-core/src/shop-list-page.scss",
+  "packages/mobile-core/src/location-select-page.js",
+  "packages/mobile-core/src/location-select-page.test.mjs",
+  "packages/mobile-core/src/LocationSelectPage.vue",
+  "packages/mobile-core/src/location-select-page.scss",
   "packages/mobile-core/src/ProfileSettingsPage.vue",
   "packages/mobile-core/src/ProfileSettingsDetailPage.vue",
   "packages/mobile-core/src/consumer-shop-components.test.mjs",
@@ -2622,7 +2630,15 @@ assertContains(
 );
 assertContains(
   "package.json",
+  "packages/mobile-core/src/featured-page.test.mjs",
+);
+assertContains(
+  "package.json",
   "packages/mobile-core/src/home-weather-modal.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/location-select-page.test.mjs",
 );
 assertContains(
   "package.json",
@@ -4169,6 +4185,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./featured-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./home-index.js";',
 );
 assertContains(
@@ -4190,6 +4210,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/index.js",
   'export * from "./product-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./location-select-page.js";',
 );
 assertContains(
   "packages/mobile-core/src/index.js",
@@ -4365,6 +4389,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/package.json",
+  '"./featured-page": "./src/featured-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
   '"./mobile-client-context": "./src/mobile-client-context.js"',
 );
 assertContains(
@@ -4406,6 +4434,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./home-weather-modal": "./src/home-weather-modal.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./location-select-page": "./src/location-select-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -4842,6 +4874,46 @@ assertContains(
 assertContains(
   "app-mobile/pages/shop/list/index.vue",
   "../../../../packages/mobile-core/src/ShopListPage.vue",
+);
+assertContains(
+  "packages/mobile-core/src/featured-page.js",
+  "export function createFeaturedPage(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/FeaturedPage.vue",
+  'import { createFeaturedPage } from "./featured-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/FeaturedPage.vue",
+  '<style scoped lang="scss" src="./featured-page.scss"></style>',
+);
+assertContains(
+  "user-vue/pages/product/featured/index.vue",
+  "../../../../packages/mobile-core/src/FeaturedPage.vue",
+);
+assertContains(
+  "app-mobile/pages/product/featured/index.vue",
+  "../../../../packages/mobile-core/src/FeaturedPage.vue",
+);
+assertContains(
+  "packages/mobile-core/src/location-select-page.js",
+  "export function createLocationSelectPage(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/LocationSelectPage.vue",
+  'import { createLocationSelectPage } from "./location-select-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/LocationSelectPage.vue",
+  '<style scoped lang="scss" src="./location-select-page.scss"></style>',
+);
+assertContains(
+  "user-vue/pages/location/select/index.vue",
+  "../../../../packages/mobile-core/src/LocationSelectPage.vue",
+);
+assertContains(
+  "app-mobile/pages/location/select/index.vue",
+  "../../../../packages/mobile-core/src/LocationSelectPage.vue",
 );
 assertContains(
   "user-vue/pages/charity/index.vue",
@@ -5981,6 +6053,20 @@ assertNotContains("app-mobile/App.vue", "clearAuthData()");
 ].forEach((relativePath) => {
   assertNotContains(relativePath, "fetchProductDetail");
   assertNotContains(relativePath, "handleAddCart()");
+});
+[
+  "user-vue/pages/product/featured/index.vue",
+  "app-mobile/pages/product/featured/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "fetchHomeFeed");
+  assertNotContains(relativePath, "goProductDetail(item)");
+});
+[
+  "user-vue/pages/location/select/index.vue",
+  "app-mobile/pages/location/select/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "getCurrentLocation");
+  assertNotContains(relativePath, "handleRelocate()");
 });
 [
   "user-vue/pages/shop/list/index.vue",
