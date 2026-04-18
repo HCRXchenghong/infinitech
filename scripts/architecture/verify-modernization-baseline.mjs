@@ -50,7 +50,7 @@ function assertNoLegacyMobileCommonImports(relativeDir) {
         continue;
       }
 
-      if (!allowedExtensions.has(path.extname(entry.name)) || entry.name.endsWith(".d.ts")) {
+      if (!allowedExtensions.has(path.extname(entry.name))) {
         continue;
       }
 
@@ -443,6 +443,7 @@ function assertNoLegacyMobileCommonImports(relativeDir) {
   "packages/mobile-core/src/order-support-pages.js",
   "packages/mobile-core/src/order-support-pages.test.mjs",
   "packages/mobile-core/src/phone-contact.js",
+  "packages/mobile-core/src/phone-contact.d.ts",
   "packages/mobile-core/src/phone-contact.test.mjs",
   "packages/mobile-core/src/profile-address.js",
   "packages/mobile-core/src/profile-address.test.mjs",

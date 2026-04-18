@@ -23,13 +23,3 @@ declare const process: {
 declare const uni: any
 declare function require(path: string): any
 declare function getCurrentPages(): any[]
-
-declare module '../../shared/mobile-common/socket-io' {
-  const createSocket: any
-  export default createSocket
-}
-
-declare module '../../shared/mobile-common/socket' {
-  const socketBridge: any
-  export default socketBridge
-}
