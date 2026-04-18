@@ -6,6 +6,7 @@ import {
   buildHomeFeedCollections,
   buildHomeLocationDisplay,
   buildHomeLocationErrorCopy,
+  createHomeIndexPage,
   normalizeHomeSelectedAddress,
   normalizeHomeWeatherRefreshMinutes,
   shouldRefreshHomeWeather,
@@ -73,4 +74,79 @@ test("home index helpers resolve navigation and feed collections safely", () => 
       featuredProducts: [{ id: 2, featured: true }],
     },
   );
+});
+
+test("home index page loads categories, feed and weather through shared runtime", async () => {
+  const navigation = [];
+  const originalUni = globalThis.uni;
+  const originalSetInterval = globalThis.setInterval;
+  const originalClearInterval = globalThis.clearInterval;
+
+  globalThis.setInterval = () => 1;
+  globalThis.clearInterval = () => {};
+  globalThis.uni = {
+    getStorageSync(key) {
+      if (key === "selectedAddress") {
+        return "上海市黄浦区";
+      }
+      return null;
+    },
+    setStorageSync() {},
+    showToast() {},
+    navigateTo({ url }) {
+      navigation.push(url);
+    },
+    setClipboardData({ data, success }) {
+      navigation.push(`clipboard:${data}`);
+      success?.();
+    },
+    $off() {},
+    $on() {},
+  };
+
+  try {
+    const page = createHomeIndexPage({
+      clientId: "consumer",
+      fetchWeather: async () => ({
+        temp: 20,
+        condition: "晴",
+        refreshIntervalMinutes: 15,
+      }),
+      fetchHomeFeed: async () => ({
+        shops: [{ id: "shop-1" }],
+        products: [{ id: "product-1" }],
+      }),
+      getCurrentLocation: async () => ({
+        address: "上海市静安区",
+        latitude: 31.2,
+        longitude: 121.4,
+      }),
+      normalizeShopProjection: (item) => ({ ...item, normalized: true }),
+      normalizeFeaturedProductProjection: (item) => ({ ...item, featured: true }),
+      buildHomeCategories: (items = []) => items.length ? items : [{ label: "美食" }],
+      buildHomeCategoriesForClient: () => [{ label: "团购" }],
+      loadPlatformRuntimeSettings: async () => ({ enabled: true }),
+    });
+    const instance = {
+      ...page.data(),
+      ...page.methods,
+      weatherText: "",
+    };
+
+    await instance.loadCategories();
+    await instance.loadHomeFeed();
+    await instance.refreshWeather();
+    instance.goSearch();
+
+    assert.deepEqual(instance.categories, [{ label: "团购" }]);
+    assert.deepEqual(instance.shops, [{ id: "shop-1", normalized: true }]);
+    assert.deepEqual(instance.featuredProducts, [{ id: "product-1", featured: true }]);
+    assert.deepEqual(instance.weather, { temp: 20, condition: "晴", refreshIntervalMinutes: 15 });
+    assert.equal(instance.weatherRefreshMinutes, 15);
+    assert.deepEqual(navigation, ["/pages/search/index/index"]);
+  } finally {
+    globalThis.uni = originalUni;
+    globalThis.setInterval = originalSetInterval;
+    globalThis.clearInterval = originalClearInterval;
+  }
 });

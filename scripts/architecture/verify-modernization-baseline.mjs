@@ -386,15 +386,15 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/auth/reset-password/index.vue",
-    "../../../../shared/mobile-common/auth-password-pages.js",
+    "../../../../packages/mobile-core/src/auth-portal.js",
   ],
   [
     "app-mobile/pages/auth/set-password/index.vue",
-    "../../../../shared/mobile-common/auth-password-pages.js",
+    "../../../../packages/mobile-core/src/auth-portal.js",
   ],
   [
     "app-mobile/pages/search/index/index.vue",
-    "../../../../shared/mobile-common/search-page.js",
+    "../../../../packages/mobile-core/src/search-page.js",
   ],
   [
     "app-mobile/pages/dining-buddy/index.vue",
@@ -446,15 +446,15 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/auth/reset-password/index.vue",
-    "../../../../shared/mobile-common/auth-password-pages.js",
+    "../../../../packages/mobile-core/src/auth-portal.js",
   ],
   [
     "user-vue/pages/auth/set-password/index.vue",
-    "../../../../shared/mobile-common/auth-password-pages.js",
+    "../../../../packages/mobile-core/src/auth-portal.js",
   ],
   [
     "user-vue/pages/search/index/index.vue",
-    "../../../../shared/mobile-common/search-page.js",
+    "../../../../packages/mobile-core/src/search-page.js",
   ],
   [
     "user-vue/pages/dining-buddy/index.vue",
@@ -2310,6 +2310,14 @@ assertContains(
   "export * from \"../../packages/mobile-core/src/mobile-client-context.js\";",
 );
 assertContains(
+  "shared/mobile-common/home-index-page.js",
+  "export * from \"../../packages/mobile-core/src/home-index.js\";",
+);
+assertContains(
+  "shared/mobile-common/auth-password-pages.js",
+  "export * from \"../../packages/mobile-core/src/auth-portal.js\";",
+);
+assertContains(
   "shared/mobile-common/order-list-page.js",
   "export * from \"../../packages/mobile-core/src/order-list-page.js\";",
 );
@@ -2340,6 +2348,10 @@ assertContains(
 assertContains(
   "shared/mobile-common/phone-contact.js",
   "export * from \"../../packages/mobile-core/src/phone-contact.js\";",
+);
+assertContains(
+  "shared/mobile-common/search-page.js",
+  "export * from \"../../packages/mobile-core/src/search-page.js\";",
 );
 assertContains(
   "shared/mobile-common/wallet-overview-page.js",
@@ -3686,11 +3698,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/index/index.vue",
-  "../../../shared/mobile-common/home-index-page.js",
+  "../../../packages/mobile-core/src/home-index.js",
 );
 assertContains(
   "app-mobile/pages/index/index.vue",
-  "../../../shared/mobile-common/home-index-page.js",
+  "../../../packages/mobile-core/src/home-index.js",
 );
 assertContains(
   "user-vue/pages/index/index.vue",

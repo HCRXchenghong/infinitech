@@ -7,6 +7,8 @@ import {
   buildConsumerSetPasswordPageUrl,
   buildConsumerWechatReturnUrl,
   buildConsumerWechatStartUrl,
+  createResetPasswordPage,
+  createSetPasswordPage,
   DEFAULT_CONSUMER_AUTH_NICKNAME,
   normalizeConsumerAuthPhone,
   normalizeConsumerAuthExternalUrl,
@@ -120,4 +122,93 @@ test("auth portal helpers validate new password form consistently", () => {
     password: "123456",
     error: "",
   });
+});
+
+test("auth portal reset password page stores verified ticket and redirects", async () => {
+  const redirects = [];
+  const storage = {};
+  const originalUni = globalThis.uni;
+
+  globalThis.uni = {
+    showToast() {},
+    setStorageSync(key, value) {
+      storage[key] = value;
+    },
+    redirectTo({ url }) {
+      redirects.push(url);
+    },
+  };
+
+  try {
+    const page = createResetPasswordPage({
+      verifySMSCodeCheck: async () => ({ success: true }),
+    });
+    const instance = {
+      ...page.data(),
+      ...page.methods,
+      phone: "13800138000",
+      code: "123456",
+    };
+
+    await instance.submit();
+
+    assert.deepEqual(storage.reset_password_data, {
+      phone: "13800138000",
+      code: "123456",
+    });
+    assert.deepEqual(redirects, [
+      "/pages/auth/set-password/index?phone=13800138000&code=123456",
+    ]);
+  } finally {
+    globalThis.uni = originalUni;
+  }
+});
+
+test("auth portal set password page clears reset ticket after success", async () => {
+  const redirects = [];
+  const removedKeys = [];
+  const originalUni = globalThis.uni;
+  const originalSetTimeout = globalThis.setTimeout;
+
+  globalThis.setTimeout = (callback) => {
+    callback();
+    return 0;
+  };
+  globalThis.uni = {
+    getStorageSync(key) {
+      if (key === "reset_password_data") {
+        return { phone: "13800138000", code: "123456" };
+      }
+      return null;
+    },
+    showToast() {},
+    removeStorageSync(key) {
+      removedKeys.push(key);
+    },
+    redirectTo({ url }) {
+      redirects.push(url);
+    },
+    navigateBack() {},
+  };
+
+  try {
+    const page = createSetPasswordPage({
+      request: async () => ({ success: true }),
+    });
+    const instance = {
+      ...page.data(),
+      ...page.methods,
+      password: "123456",
+      confirmPassword: "123456",
+    };
+
+    page.onLoad.call(instance, {});
+    await instance.submit();
+
+    assert.deepEqual(removedKeys, ["reset_password_data"]);
+    assert.deepEqual(redirects, ["/pages/auth/login/index"]);
+  } finally {
+    globalThis.uni = originalUni;
+    globalThis.setTimeout = originalSetTimeout;
+  }
 });

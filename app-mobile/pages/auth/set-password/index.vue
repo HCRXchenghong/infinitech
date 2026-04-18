@@ -42,7 +42,7 @@ import {
   getCachedConsumerAuthRuntimeSettings,
   loadConsumerAuthRuntimeSettings
 } from '@/shared-ui/auth-runtime.js'
-import { createSetPasswordPage } from '../../../../shared/mobile-common/auth-password-pages.js'
+import { createSetPasswordPage } from '../../../../packages/mobile-core/src/auth-portal.js'
 
 export default createSetPasswordPage({
   request,

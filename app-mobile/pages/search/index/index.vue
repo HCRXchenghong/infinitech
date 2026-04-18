@@ -102,7 +102,7 @@
 
 <script>
 import { fetchShops } from '@/shared-ui/api.js'
-import { createSearchPage } from '../../../../shared/mobile-common/search-page.js'
+import { createSearchPage } from '../../../../packages/mobile-core/src/search-page.js'
 
 export default createSearchPage({
   fetchShops

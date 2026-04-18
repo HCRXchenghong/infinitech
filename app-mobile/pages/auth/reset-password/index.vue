@@ -35,7 +35,7 @@ import {
   getCachedConsumerAuthRuntimeSettings,
   loadConsumerAuthRuntimeSettings
 } from '@/shared-ui/auth-runtime.js'
-import { createResetPasswordPage } from '../../../../shared/mobile-common/auth-password-pages.js'
+import { createResetPasswordPage } from '../../../../packages/mobile-core/src/auth-portal.js'
 
 export default createResetPasswordPage({
   requestSMSCode,

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildSearchHistory,
+  createSearchPage,
   createDefaultHotSearchKeywords,
   DEFAULT_HOT_SEARCH_KEYWORDS,
   filterSearchShopsByKeyword,
@@ -80,4 +81,57 @@ test("search page helpers keep filtering and presentation stable", () => {
   assert.equal(formatSearchShopSales(-1), "暂无销量");
   assert.equal(formatSearchShopDistance(" 1.2km "), "1.2km");
   assert.equal(formatSearchShopDistance(" "), "距离未知");
+});
+
+test("search page loads shops, filters results and persists history", async () => {
+  const navigation = [];
+  const storage = {};
+  const originalUni = globalThis.uni;
+
+  globalThis.uni = {
+    getStorageSync(key) {
+      return storage[key];
+    },
+    setStorageSync(key, value) {
+      storage[key] = value;
+    },
+    removeStorageSync(key) {
+      delete storage[key];
+    },
+    navigateBack() {
+      navigation.push("back");
+    },
+    navigateTo({ url }) {
+      navigation.push(url);
+    },
+    showToast({ title }) {
+      navigation.push(`toast:${title}`);
+    },
+  };
+
+  try {
+    const page = createSearchPage({
+      fetchShops: async () => [
+        { id: "shop-1", name: "深夜奶茶屋", tags: ["甜品"] },
+        { id: "shop-2", name: "早餐铺", tags: ["早餐"] },
+      ],
+    });
+    const instance = {
+      ...page.data(),
+      ...page.methods,
+      keyword: "奶茶",
+      searchHistory: [],
+    };
+
+    await instance.loadShops();
+    instance.doSearch();
+    instance.goShopDetail("shop-1");
+    instance.clearHistory();
+
+    assert.equal(instance.searchResults.length, 1);
+    assert.deepEqual(storage[SEARCH_HISTORY_KEY], undefined);
+    assert.deepEqual(navigation, ["/pages/shop/detail/index?id=shop-1"]);
+  } finally {
+    globalThis.uni = originalUni;
+  }
 });

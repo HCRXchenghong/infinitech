@@ -52,7 +52,7 @@ import {
 } from '@/shared-ui/platform-schema.js'
 import { buildHomeCategories } from '@/shared-ui/home-categories.js'
 import { buildHomeCategoriesForClient, loadPlatformRuntimeSettings } from '@/shared-ui/platform-runtime.js'
-import { createHomeIndexPage } from '../../../shared/mobile-common/home-index-page.js'
+import { createHomeIndexPage } from '../../../packages/mobile-core/src/home-index.js'
 
 export default createHomeIndexPage({
   HomeHeader,
