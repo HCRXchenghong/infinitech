@@ -228,7 +228,7 @@ import { ElMessage } from 'element-plus'
 import QRCode from 'qrcode'
 
 import request from '@/utils/request'
-import { buildRuntimeUrl, clearAdminSessionStorage } from '@/utils/runtime'
+import { buildRuntimeUrl, clearAdminSessionStorage, getStoredAdminUser } from '@/utils/runtime'
 import {
   ADMIN_AUTH_STORAGE_KEYS,
   buildAdminAuthSession,
@@ -351,15 +351,6 @@ function startQrPolling() {
 
 function clearLoginSession() {
   clearAdminSessionStorage()
-}
-
-function readStoredAdminUser() {
-  try {
-    const raw = localStorage.getItem('admin_user') || sessionStorage.getItem('admin_user') || ''
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
 }
 
 function openBootstrapDialog(user = {}) {
@@ -730,7 +721,7 @@ function handleResize() {
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)
-  const storedUser = readStoredAdminUser()
+  const storedUser = getStoredAdminUser()
   const hasToken = Boolean(localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token'))
   if (hasToken && storedUser?.mustChangeBootstrap) {
     openBootstrapDialog(storedUser)

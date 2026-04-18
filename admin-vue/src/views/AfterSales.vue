@@ -198,6 +198,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
+import { getStoredAdminUser } from '@/utils/runtime';
 
 const loading = ref(false);
 const loadError = ref('');
@@ -413,13 +414,8 @@ function openProcess(row) {
 }
 
 function resolveAdminName() {
-  try {
-    const text = localStorage.getItem('admin_user') || sessionStorage.getItem('admin_user') || '';
-    const parsed = text ? JSON.parse(text) : null;
-    return parsed?.name || parsed?.phone || 'admin';
-  } catch (error) {
-    return 'admin';
-  }
+  const adminUser = getStoredAdminUser();
+  return adminUser?.name || adminUser?.phone || 'admin';
 }
 
 async function submitProcess() {

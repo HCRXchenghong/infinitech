@@ -1235,6 +1235,9 @@ assertContains(
   "admin-app/utils/auth.js",
   "normalizeAdminAuthSessionRecord",
 );
+assertContains("admin-vue/src/App.vue", "getStoredAdminUser");
+assertContains("admin-vue/src/views/AfterSales.vue", "getStoredAdminUser");
+assertContains("admin-vue/src/views/Login.vue", "getStoredAdminUser");
 assertContains(
   "packages/admin-core/src/index.js",
   'export * from "./admin-auth-session.js";',

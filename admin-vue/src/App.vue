@@ -84,7 +84,7 @@ import { useRoute, useRouter } from 'vue-router';
 import NetworkStatus from '@/components/NetworkStatus.vue';
 import AdminRTCCallDialog from '@/components/AdminRTCCallDialog.vue';
 import { MENU_GROUPS } from '@/config/menuGroups';
-import { clearAdminSessionStorage, getAppRuntime, getToken } from '@/utils/runtime';
+import { clearAdminSessionStorage, getAppRuntime, getStoredAdminUser, getToken } from '@/utils/runtime';
 import { disconnectAdminRTCBridge, ensureAdminRTCBridge } from '@/utils/adminRtc';
 
 const router = useRouter();
@@ -185,24 +185,14 @@ function ensureCurrentRouteTab() {
 }
 
 function loadUserInfo() {
-  const userStr = localStorage.getItem('admin_user') || sessionStorage.getItem('admin_user');
-  if (userStr) {
-    try {
-      adminUser.value = JSON.parse(userStr);
-    } catch (e) {
-      console.error('解析用户信息失败:', e);
-      adminUser.value = null;
-    }
-  } else {
-    adminUser.value = null;
-  }
+  adminUser.value = getStoredAdminUser();
 }
 
 onMounted(() => {
   loadUserInfo();
   ensureCurrentRouteTab();
   window.addEventListener('storage', (e) => {
-    if (e.key === 'admin_user') {
+    if (e.key === 'admin_user' || e.key === 'admin_session_v2') {
       loadUserInfo();
     }
   });
