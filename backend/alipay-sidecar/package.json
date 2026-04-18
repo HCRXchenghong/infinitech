@@ -1,6 +1,6 @@
 {
   "name": "alipay-sidecar",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Alipay sidecar skeleton for Infinite platform",
   "type": "module",
