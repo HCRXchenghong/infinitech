@@ -336,7 +336,9 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/MessageChatPage.vue",
   "packages/mobile-core/src/message-chat-page.scss",
   "packages/mobile-core/src/customer-service-chat-utils.js",
+  "packages/mobile-core/src/CustomerServicePage.vue",
   "packages/mobile-core/src/customer-service-page.js",
+  "packages/mobile-core/src/customer-service-page.scss",
   "packages/mobile-core/src/customer-service-page.test.mjs",
   "packages/mobile-core/src/order-after-sales.js",
   "packages/mobile-core/src/order-after-sales.test.mjs",
@@ -496,8 +498,8 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../packages/mobile-core/src/MessageChatPage.vue",
   ],
   [
-    "app-mobile/pages/profile/customer-service/page-logic.js",
-    "../../../../packages/mobile-core/src/customer-service-page.js",
+    "app-mobile/pages/profile/customer-service/index.vue",
+    "../../../../packages/mobile-core/src/CustomerServicePage.vue",
   ],
   [
     "app-mobile/pages/order/refund/index.vue",
@@ -540,8 +542,8 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../packages/mobile-core/src/MessageChatPage.vue",
   ],
   [
-    "user-vue/pages/profile/customer-service/page-logic.js",
-    "../../../../packages/mobile-core/src/customer-service-page.js",
+    "user-vue/pages/profile/customer-service/index.vue",
+    "../../../../packages/mobile-core/src/CustomerServicePage.vue",
   ],
   [
     "user-vue/pages/order/refund/index.vue",
@@ -4409,6 +4411,14 @@ assertContains(
   "../../../../packages/mobile-core/src/MessageChatPage.vue",
 );
 assertContains(
+  "user-vue/pages/profile/customer-service/index.vue",
+  "../../../../packages/mobile-core/src/CustomerServicePage.vue",
+);
+assertContains(
+  "app-mobile/pages/profile/customer-service/index.vue",
+  "../../../../packages/mobile-core/src/CustomerServicePage.vue",
+);
+assertContains(
   "user-vue/shared-ui/feature-runtime.js",
   "../../packages/mobile-core/src/mobile-client-context.js",
 );
@@ -4455,6 +4465,14 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/MessageChatPage.vue",
   '<style scoped lang="scss" src="./message-chat-page.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/CustomerServicePage.vue",
+  'import { createCustomerServicePage } from "./customer-service-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/CustomerServicePage.vue",
+  '<style scoped lang="scss" src="./customer-service-page.scss"></style>',
 );
 assertContains(
   "user-vue/pages/dining-buddy/index.vue",
@@ -5586,6 +5604,13 @@ assertNotContains(
 ].forEach((relativePath) => {
   assertNotContains(relativePath, "import pageLogic from './page-logic.js'");
   assertNotContains(relativePath, "createMessageChatPage({");
+});
+[
+  "user-vue/pages/profile/customer-service/index.vue",
+  "app-mobile/pages/profile/customer-service/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "import pageLogic from './page-logic.js'");
+  assertNotContains(relativePath, "createCustomerServicePage({");
 });
 [
   "user-vue/pages/profile/edit/index.vue",
