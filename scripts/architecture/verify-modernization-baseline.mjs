@@ -112,6 +112,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/mobile-client-context.test.mjs",
   "packages/mobile-core/src/vip-center.js",
   "packages/mobile-core/src/vip-center.test.mjs",
+  "packages/mobile-core/src/CharityPage.vue",
+  "packages/mobile-core/src/charity-page.scss",
   "packages/mobile-core/src/charity-page.js",
   "packages/mobile-core/src/charity-page.test.mjs",
   "packages/mobile-core/src/dining-buddy.js",
@@ -4485,6 +4487,14 @@ assertContains(
   '<style scoped lang="scss" src="./medicine-home-page.scss"></style>',
 );
 assertContains(
+  "packages/mobile-core/src/CharityPage.vue",
+  'import {\n  buildCharityLeaderboardToShow,',
+);
+assertContains(
+  "packages/mobile-core/src/CharityPage.vue",
+  '<style scoped lang="scss" src="./charity-page.scss"></style>',
+);
+assertContains(
   "user-vue/pages/dining-buddy/index.vue",
   "../../../packages/mobile-core/src/dining-buddy.js",
 );
@@ -4526,26 +4536,14 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/charity/index.vue",
-  "packages/mobile-core/src/charity-page.js",
+  "../../../packages/mobile-core/src/CharityPage.vue",
 );
 assertContains(
   "app-mobile/pages/charity/index.vue",
-  "packages/mobile-core/src/charity-page.js",
+  "../../../packages/mobile-core/src/CharityPage.vue",
 );
 assertContains(
-  "user-vue/pages/charity/index.vue",
-  "buildCharityLeaderboardToShow(",
-);
-assertContains(
-  "app-mobile/pages/charity/index.vue",
-  "buildCharityLeaderboardToShow(",
-);
-assertContains(
-  "user-vue/pages/charity/index.vue",
-  "normalizeCharityJoinUrl(url)",
-);
-assertContains(
-  "app-mobile/pages/charity/index.vue",
+  "packages/mobile-core/src/CharityPage.vue",
   "normalizeCharityJoinUrl(url)",
 );
 [
@@ -5376,6 +5374,22 @@ assertNotContains(
 assertNotContains(
   "app-mobile/pages/charity/index.vue",
   "function normalizeText(value, fallback = '')",
+);
+assertNotContains(
+  "user-vue/pages/charity/index.vue",
+  "buildCharityLeaderboardToShow(",
+);
+assertNotContains(
+  "app-mobile/pages/charity/index.vue",
+  "buildCharityLeaderboardToShow(",
+);
+assertNotContains(
+  "user-vue/pages/charity/index.vue",
+  "normalizeCharityJoinUrl(url)",
+);
+assertNotContains(
+  "app-mobile/pages/charity/index.vue",
+  "normalizeCharityJoinUrl(url)",
 );
 assertNotContains(
   "user-vue/pages/dining-buddy/index.vue",
