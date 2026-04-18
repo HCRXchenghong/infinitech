@@ -120,10 +120,16 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/auth-portal.test.mjs",
   "packages/mobile-core/src/client-payment.js",
   "packages/mobile-core/src/client-payment.test.mjs",
+  "packages/mobile-core/src/consumer-app-version.js",
+  "packages/mobile-core/src/consumer-app-version.test.mjs",
   "packages/mobile-core/src/consumer-auth-runtime.js",
   "packages/mobile-core/src/consumer-auth-runtime.test.mjs",
+  "packages/mobile-core/src/consumer-cache.js",
+  "packages/mobile-core/src/consumer-cache.test.mjs",
   "packages/mobile-core/src/consumer-notify-bridges.js",
   "packages/mobile-core/src/consumer-notify-bridges.test.mjs",
+  "packages/mobile-core/src/consumer-request-interceptor.js",
+  "packages/mobile-core/src/consumer-request-interceptor.test.mjs",
   "packages/mobile-core/src/consumer-rtc-contact.js",
   "packages/mobile-core/src/consumer-rtc-contact.test.mjs",
   "packages/mobile-core/src/location.js",
@@ -972,12 +978,28 @@ assertContains(
   "export function shouldLaunchClientPayment(result) {",
 );
 assertContains(
+  "packages/mobile-core/src/consumer-app-version.js",
+  "export function readAppVersion(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-app-version.js",
+  "export function getAppVersionLabel(options = {}) {",
+);
+assertContains(
   "packages/mobile-core/src/consumer-auth-runtime.js",
   "export function createConsumerAuthRuntimeStore(options = {}) {",
 );
 assertContains(
   "packages/mobile-core/src/consumer-auth-runtime.js",
   "export function normalizeConsumerAuthRuntimeSettings(payload = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-cache.js",
+  "export function clearSQLiteCache(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-cache.js",
+  "export function checkAndClearCacheIfNeeded(options = {}) {",
 );
 assertContains(
   "packages/mobile-core/src/push-event-route.js",
@@ -1040,6 +1062,10 @@ assertContains(
   "export function createConsumerPushEventBridge(options = {}) {",
 );
 assertContains(
+  "packages/mobile-core/src/consumer-request-interceptor.js",
+  "export function createConsumerRequestInterceptor(options = {}) {",
+);
+assertContains(
   "packages/mobile-core/src/consumer-rtc-contact.js",
   "export function createConsumerRTCContactBindings(options = {}) {",
 );
@@ -1088,6 +1114,30 @@ assertContains(
 assertContains(
   "app-mobile/shared-ui/auth-runtime.js",
   "createConsumerAuthRuntimeStore({",
+);
+assertContains(
+  "user-vue/shared-ui/app-version.js",
+  'export * from "../../packages/mobile-core/src/consumer-app-version.js"',
+);
+assertContains(
+  "app-mobile/shared-ui/app-version.js",
+  'export * from "../../packages/mobile-core/src/consumer-app-version.js"',
+);
+assertContains(
+  "user-vue/shared-ui/cache-cleaner.ts",
+  'export * from "../../packages/mobile-core/src/consumer-cache.js"',
+);
+assertContains(
+  "app-mobile/shared-ui/cache-cleaner.ts",
+  'export * from "../../packages/mobile-core/src/consumer-cache.js"',
+);
+assertContains(
+  "user-vue/shared-ui/request-interceptor.ts",
+  "createConsumerRequestInterceptor({",
+);
+assertContains(
+  "app-mobile/shared-ui/request-interceptor.ts",
+  "createConsumerRequestInterceptor({",
 );
 assertContains(
   "user-vue/shared-ui/push-events.js",
@@ -1991,6 +2041,18 @@ assertContains(
 );
 assertContains(
   "package.json",
+  "packages/mobile-core/src/consumer-app-version.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/consumer-cache.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/consumer-request-interceptor.test.mjs",
+);
+assertContains(
+  "package.json",
   "packages/mobile-core/src/push-event-route.test.mjs",
 );
 assertContains("package.json", "packages/mobile-core/src/location.test.mjs");
@@ -2538,6 +2600,22 @@ assertContains(
 assertContains(
   "app-mobile/shared-ui/realtime-notify.js",
   'from "../../packages/mobile-core/src/consumer-notify-bridges.js"',
+);
+assertContains(
+  "user-vue/shared-ui/request-interceptor.ts",
+  'from "../../packages/mobile-core/src/consumer-request-interceptor.js"',
+);
+assertContains(
+  "user-vue/shared-ui/request-interceptor.ts",
+  'pushRegistrationStorageKey: "user_vue_push_registration"',
+);
+assertContains(
+  "app-mobile/shared-ui/request-interceptor.ts",
+  'from "../../packages/mobile-core/src/consumer-request-interceptor.js"',
+);
+assertContains(
+  "app-mobile/shared-ui/request-interceptor.ts",
+  'pushRegistrationStorageKey: "app_mobile_push_registration"',
 );
 assertContains(
   "merchant-app/shared-ui/realtime-notify.ts",
@@ -3366,6 +3444,30 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./consumer-app-version.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./consumer-auth-runtime.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./consumer-cache.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./consumer-notify-bridges.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./consumer-request-interceptor.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./consumer-rtc-contact.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./home-index.js";',
 );
 assertContains(
@@ -3459,6 +3561,30 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/index.js",
   'export * from "./dining-buddy.js";',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-app-version": "./src/consumer-app-version.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-auth-runtime": "./src/consumer-auth-runtime.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-cache": "./src/consumer-cache.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-notify-bridges": "./src/consumer-notify-bridges.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-request-interceptor": "./src/consumer-request-interceptor.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-rtc-contact": "./src/consumer-rtc-contact.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
