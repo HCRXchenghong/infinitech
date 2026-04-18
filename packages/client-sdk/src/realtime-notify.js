@@ -1,27 +1,11 @@
 import {
   buildSocketTokenAccountKey,
-  extractSocketTokenResult,
+  clearCachedSocketToken,
+  resolveSocketToken,
 } from "./realtime-token.js";
 
 function trimValue(value) {
   return String(value || "").trim();
-}
-
-function parseJSON(value) {
-  if (typeof value !== "string") {
-    return value;
-  }
-
-  const raw = value.trim();
-  if (!raw) {
-    return value;
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch (_error) {
-    return value;
-  }
 }
 
 function resolveUniRuntime(uniApp) {
@@ -121,43 +105,6 @@ function normalizeTimer(setTimeoutFn, clearTimeoutFn) {
   };
 }
 
-function createDefaultSocketTokenRequester(uniApp) {
-  return ({ socketUrl, authToken, userId, role }) => {
-    if (!uniApp || typeof uniApp.request !== "function") {
-      throw new Error("uni.request is not available");
-    }
-
-    return new Promise((resolve, reject) => {
-      uniApp.request({
-        url: `${socketUrl}/api/generate-token`,
-        method: "POST",
-        header: {
-          "Content-Type": "application/json",
-          Authorization: /^Bearer\s+/i.test(authToken) ? authToken : `Bearer ${authToken}`,
-        },
-        data: {
-          userId: trimValue(userId),
-          role: trimValue(role),
-        },
-        success: resolve,
-        fail: reject,
-      });
-    });
-  };
-}
-
-function extractSocketTokenPayload(response) {
-  const normalizedResponse = parseJSON(response);
-  if (
-    normalizedResponse &&
-    typeof normalizedResponse === "object" &&
-    "data" in normalizedResponse
-  ) {
-    return parseJSON(normalizedResponse.data);
-  }
-  return normalizedResponse;
-}
-
 export function createRealtimeNotifyBridge(options = {}) {
   const loggerTag = trimValue(options.loggerTag) || "RealtimeNotify";
   const storageKey = trimValue(options.storageKey) || "realtime_notify_state";
@@ -171,9 +118,6 @@ export function createRealtimeNotifyBridge(options = {}) {
   const uniApp = resolveUniRuntime(options.uniApp);
   const logger = normalizeLogger(options.logger, loggerTag);
   const timer = normalizeTimer(options.setTimeoutFn, options.clearTimeoutFn);
-  const requestSocketToken = typeof options.requestSocketToken === "function"
-    ? options.requestSocketToken
-    : createDefaultSocketTokenRequester(uniApp);
 
   let socket = null;
   let isConnected = false;
@@ -210,61 +154,32 @@ export function createRealtimeNotifyBridge(options = {}) {
   }
 
   function clearTokenCache() {
-    removeStorage(uniApp, tokenStorageKey);
-    removeStorage(uniApp, tokenAccountKeyStorageKey);
+    clearCachedSocketToken({
+      uniApp,
+      tokenStorageKey,
+      tokenAccountKeyStorageKey,
+    });
   }
 
   async function fetchSocketToken(identity, forceRefresh = false) {
-    const accountKey = resolveIdentityAccountKey(identity);
-    if (!accountKey) {
-      throw new Error("missing realtime socket account key");
-    }
-
-    if (!forceRefresh) {
-      const cached = trimValue(readStorage(uniApp, tokenStorageKey));
-      const cachedAccountKey = trimValue(readStorage(uniApp, tokenAccountKeyStorageKey));
-      if (cached && cachedAccountKey === accountKey) {
-        return cached;
-      }
-      if (cached || cachedAccountKey) {
-        clearTokenCache();
-      }
-    }
-
-    const socketUrl = trimValue(
-      typeof options.getSocketURL === "function" ? options.getSocketURL() : options.socketUrl,
-    );
-    if (!socketUrl) {
-      throw new Error("socket url is not configured");
-    }
-
-    const authToken = trimValue(identity && identity.authToken);
-    if (!authToken) {
-      throw new Error("missing auth token for realtime socket");
-    }
-
-    const response = await requestSocketToken({
-      socketUrl,
-      authToken,
+    return resolveSocketToken({
+      uniApp,
       userId: trimValue(identity && identity.userId),
       role: trimValue(identity && identity.role),
       identity,
+      accountKey: resolveIdentityAccountKey(identity),
+      tokenStorageKey,
+      tokenAccountKeyStorageKey,
       forceRefresh,
+      getSocketURL: options.getSocketURL,
+      socketUrl: options.socketUrl,
+      authToken: trimValue(identity && identity.authToken),
+      requestSocketToken: options.requestSocketToken,
+      missingAccountKeyMessage: "missing realtime socket account key",
+      missingAuthorizationMessage: "missing auth token for realtime socket",
+      missingSocketUrlMessage: "socket url is not configured",
+      missingTokenMessage: "missing socket token from response",
     });
-    const tokenResult = extractSocketTokenResult(extractSocketTokenPayload(response));
-    const token = trimValue(tokenResult.token);
-    if (!token) {
-      throw new Error("missing socket token from response");
-    }
-
-    const resolvedAccountKey = buildSocketTokenAccountKey(
-      tokenResult.userId || identity.userId,
-      tokenResult.role || identity.role,
-    ) || accountKey;
-
-    writeStorage(uniApp, tokenStorageKey, token);
-    writeStorage(uniApp, tokenAccountKeyStorageKey, resolvedAccountKey);
-    return token;
   }
 
   function emitUniEvent(name, payload) {

@@ -1,6 +1,6 @@
 import {
-  buildSocketTokenAccountKey,
-  extractSocketTokenResult,
+  clearCachedSocketToken,
+  resolveSocketToken,
 } from "./realtime-token.js";
 
 function trimValue(value) {
@@ -29,45 +29,6 @@ function readStorage(uniApp, key) {
     return uniApp.getStorageSync(key);
   } catch (_error) {
     return "";
-  }
-}
-
-function writeStorage(uniApp, key, value) {
-  if (!uniApp || typeof uniApp.setStorageSync !== "function") {
-    return;
-  }
-  try {
-    uniApp.setStorageSync(key, value);
-  } catch (_error) {
-    // Ignore storage write failures in constrained runtimes.
-  }
-}
-
-function removeStorage(uniApp, key) {
-  if (!uniApp || typeof uniApp.removeStorageSync !== "function") {
-    return;
-  }
-  try {
-    uniApp.removeStorageSync(key);
-  } catch (_error) {
-    // Ignore storage cleanup failures in constrained runtimes.
-  }
-}
-
-function parseJSON(value) {
-  if (typeof value !== "string") {
-    return value;
-  }
-
-  const raw = value.trim();
-  if (!raw) {
-    return value;
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch (_error) {
-    return value;
   }
 }
 
@@ -162,13 +123,6 @@ function createNoopSession(callId) {
     signal() {},
     disconnect() {},
   };
-}
-
-function normalizeSocketTokenResponse(response) {
-  const payload = response && typeof response === "object" && "data" in response
-    ? parseJSON(response.data)
-    : response;
-  return extractSocketTokenResult(payload).token;
 }
 
 function defaultResolveIncomingTargetName(role) {
@@ -376,36 +330,6 @@ export function createUniRTCContactBridge(options = {}) {
     return canUseRTCContact({ ...options, uniApp }) && getCachedRTCRuntimeSettings().enabled !== false;
   }
 
-  async function requestSocketToken({ socketUrl, currentUserId }) {
-    if (typeof options.requestSocketToken === "function") {
-      return options.requestSocketToken({
-        socketUrl,
-        currentUserId,
-        role,
-      });
-    }
-
-    if (!uniApp || typeof uniApp.request !== "function") {
-      throw new Error("uni.request is not available");
-    }
-
-    return new Promise((resolve, reject) => {
-      uniApp.request({
-        url: `${socketUrl}/api/generate-token`,
-        method: "POST",
-        header: Object.assign(
-          { "Content-Type": "application/json" },
-          typeof options.readAuthorizationHeader === "function"
-            ? options.readAuthorizationHeader()
-            : {},
-        ),
-        data: { userId: currentUserId, role },
-        success: resolve,
-        fail: reject,
-      });
-    });
-  }
-
   async function ensureSocketToken() {
     const currentUserId = trimValue(
       typeof options.resolveCurrentUserId === "function" ? options.resolveCurrentUserId() : "",
@@ -414,32 +338,27 @@ export function createUniRTCContactBridge(options = {}) {
       throw new Error("missing current user id");
     }
 
-    const accountKey = buildSocketTokenAccountKey(currentUserId, role);
-    const cached = trimValue(readStorage(uniApp, socketTokenStorageKey));
-    const cachedAccountKey = trimValue(readStorage(uniApp, socketTokenAccountKeyStorageKey));
-    if (cached && cachedAccountKey === accountKey) {
-      return cached;
-    }
-    if (cached && cachedAccountKey !== accountKey) {
-      removeStorage(uniApp, socketTokenStorageKey);
-      removeStorage(uniApp, socketTokenAccountKeyStorageKey);
-    }
-
-    const socketUrl = trimValue(
-      typeof options.getSocketUrl === "function" ? options.getSocketUrl() : options.socketUrl,
-    );
-    if (!socketUrl) {
-      throw new Error("socket url is required");
-    }
-
-    const response = await requestSocketToken({ socketUrl, currentUserId });
-    const token = trimValue(normalizeSocketTokenResponse(response));
-    if (!token) {
-      throw new Error("failed to generate socket token");
-    }
-    writeStorage(uniApp, socketTokenStorageKey, token);
-    writeStorage(uniApp, socketTokenAccountKeyStorageKey, accountKey);
-    return token;
+    return resolveSocketToken({
+      uniApp,
+      userId: currentUserId,
+      role,
+      tokenStorageKey: socketTokenStorageKey,
+      tokenAccountKeyStorageKey: socketTokenAccountKeyStorageKey,
+      getSocketUrl: options.getSocketUrl,
+      socketUrl: options.socketUrl,
+      requestSocketToken:
+        typeof options.requestSocketToken === "function"
+          ? ({ socketUrl, userId, role }) =>
+              options.requestSocketToken({
+                socketUrl,
+                currentUserId: userId,
+                role,
+              })
+          : undefined,
+      readAuthorizationHeader: options.readAuthorizationHeader,
+      missingSocketUrlMessage: "socket url is required",
+      missingTokenMessage: "failed to generate socket token",
+    });
   }
 
   function getCurrentPageInfo() {
@@ -480,6 +399,11 @@ export function createUniRTCContactBridge(options = {}) {
     const socket = options.createSocket(socketUrl, "/rtc", socketToken).connect();
 
     socket.on("auth_error", () => {
+      clearCachedSocketToken({
+        uniApp,
+        tokenStorageKey: socketTokenStorageKey,
+        tokenAccountKeyStorageKey: socketTokenAccountKeyStorageKey,
+      });
       disconnectRTCInviteBridge();
     });
 

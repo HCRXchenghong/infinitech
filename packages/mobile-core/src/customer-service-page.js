@@ -7,6 +7,10 @@ import {
   resolveMessageTimestamp as resolveIncomingMessageTimestamp,
 } from "./customer-service-chat-utils.js";
 import { UPLOAD_DOMAINS } from "../../contracts/src/upload.js";
+import {
+  clearCachedSocketToken as clearCachedSocketTokenCache,
+  resolveSocketToken,
+} from "../../client-sdk/src/realtime-token.js";
 
 const SOCKET_TOKEN_KEY = "socket_token";
 const SOCKET_TOKEN_ACCOUNT_KEY = "socket_token_account_key";
@@ -98,13 +102,12 @@ export function createCustomerServicePage({
       this.disconnectSocket();
     },
     methods: {
-      buildSocketTokenAccountKey() {
-        const userId = String(this.userId || "").trim();
-        return userId ? `user:${userId}` : "";
-      },
       clearCachedSocketToken() {
-        uni.removeStorageSync(SOCKET_TOKEN_KEY);
-        uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY);
+        clearCachedSocketTokenCache({
+          uniApp: uni,
+          tokenStorageKey: SOCKET_TOKEN_KEY,
+          tokenAccountKeyStorageKey: SOCKET_TOKEN_ACCOUNT_KEY,
+        });
       },
       async loadSupportRuntimeConfig() {
         const supportRuntime = await loadSupportRuntimeSettings();
@@ -165,56 +168,23 @@ export function createCustomerServicePage({
 
         this.socketInitializing = true;
 
-        const socketAccountKey = this.buildSocketTokenAccountKey();
-        let socketToken = String(
-          uni.getStorageSync(SOCKET_TOKEN_KEY) || "",
-        ).trim();
-        const cachedAccountKey = String(
-          uni.getStorageSync(SOCKET_TOKEN_ACCOUNT_KEY) || "",
-        ).trim();
-        if (socketToken && cachedAccountKey !== socketAccountKey) {
-          this.clearCachedSocketToken();
-          socketToken = "";
-        }
-        if (!socketToken) {
-          try {
-            const res = await new Promise((resolve, reject) => {
-              uni.request({
-                url: config.SOCKET_URL + "/api/generate-token",
-                method: "POST",
-                header: Object.assign(
-                  { "Content-Type": "application/json" },
-                  readAuthorizationHeader(),
-                ),
-                data: { userId: this.userId, role: "user" },
-                success: resolve,
-                fail: reject,
-              });
-            });
-
-            let resData = res.data;
-            if (typeof resData === "string") {
-              try {
-                resData = JSON.parse(resData);
-              } catch (error) {}
-            }
-
-            if (resData && resData.token) {
-              socketToken = resData.token;
-              uni.setStorageSync(SOCKET_TOKEN_KEY, socketToken);
-              uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, socketAccountKey);
-            } else {
-              console.error("获取 socket token 失败: 无 token 返回");
-              uni.showToast({ title: "连接失败", icon: "none" });
-              this.socketInitializing = false;
-              return;
-            }
-          } catch (error) {
-            console.error("获取 socket token 失败:", error);
-            uni.showToast({ title: "连接失败", icon: "none" });
-            this.socketInitializing = false;
-            return;
-          }
+        let socketToken = "";
+        try {
+          socketToken = await resolveSocketToken({
+            uniApp: uni,
+            userId: this.userId,
+            role: "user",
+            socketUrl: config.SOCKET_URL,
+            readAuthorizationHeader,
+            tokenStorageKey: SOCKET_TOKEN_KEY,
+            tokenAccountKeyStorageKey: SOCKET_TOKEN_ACCOUNT_KEY,
+            missingTokenMessage: "获取 socket token 失败",
+          });
+        } catch (error) {
+          console.error("获取 socket token 失败:", error);
+          uni.showToast({ title: "连接失败", icon: "none" });
+          this.socketInitializing = false;
+          return;
         }
 
         this.socketToken = socketToken;

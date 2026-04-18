@@ -8,8 +8,8 @@ import messageManager from './utils/message-manager'
 import createSocket from './utils/socket-io'
 import config from './shared-ui/config'
 import {
-  buildSocketTokenAccountKey,
-  extractSocketTokenResult,
+  clearCachedSocketToken as clearCachedSocketTokenCache,
+  resolveSocketToken,
 } from '../packages/client-sdk/src/realtime-token.js'
 import MessagePopup from './components/message-popup.vue'
 import DispatchPopup from './components/dispatch-popup.vue'
@@ -21,15 +21,12 @@ const RIDER_HEARTBEAT_INTERVAL = 20 * 1000
 const SOCKET_TOKEN_KEY = 'socket_token'
 const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key'
 
-function normalizeBearerToken(raw: any) {
-  const token = String(raw || '').trim()
-  if (!token) return ''
-  return /^bearer\s+/i.test(token) ? token : `Bearer ${token}`
-}
-
 function clearCachedSocketToken() {
-  uni.removeStorageSync(SOCKET_TOKEN_KEY)
-  uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
+  clearCachedSocketTokenCache({
+    uniApp: uni,
+    tokenStorageKey: SOCKET_TOKEN_KEY,
+    tokenAccountKeyStorageKey: SOCKET_TOKEN_ACCOUNT_KEY,
+  })
 }
 
 function resolveRiderMessageTimestamp(rawValue: any, fallback = Date.now()) {
@@ -185,51 +182,23 @@ export default Vue.extend({
 
       this.riderId = String(riderId)
 
-      const socketAccountKey = buildSocketTokenAccountKey(riderId, 'rider')
-      let socketToken = String(uni.getStorageSync(SOCKET_TOKEN_KEY) || '').trim()
-      const cachedAccountKey = String(uni.getStorageSync(SOCKET_TOKEN_ACCOUNT_KEY) || '').trim()
-      if (socketToken && cachedAccountKey !== socketAccountKey) {
-        clearCachedSocketToken()
-        socketToken = ''
-      }
-      if (!socketToken) {
-        try {
-          const res: any = await new Promise((resolve, reject) => {
-            uni.request({
-              url: `${config.SOCKET_URL}/api/generate-token`,
-              method: 'POST',
-              header: {
-                'Content-Type': 'application/json',
-                Authorization: normalizeBearerToken(token)
-              },
-              data: { userId: riderId, role: 'rider' },
-              success: resolve,
-              fail: reject
-            })
-          })
-
-          let resData = res.data
-          if (typeof resData === 'string') {
-            try {
-              resData = JSON.parse(resData)
-            } catch (_err) {
-              // ignore
-            }
-          }
-
-          const tokenResult = extractSocketTokenResult(resData)
-          if (tokenResult.token) {
-            socketToken = tokenResult.token
-            uni.setStorageSync(SOCKET_TOKEN_KEY, socketToken)
-            uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, socketAccountKey)
-          } else {
-            console.error('[App] Missing socket token from generate-token response')
-            return
-          }
-        } catch (err) {
-          console.error('[App] Failed to fetch socket token:', err)
-          return
-        }
+      let socketToken = ''
+      try {
+        socketToken = await resolveSocketToken({
+          uniApp: uni,
+          userId: String(riderId),
+          role: 'rider',
+          socketUrl: config.SOCKET_URL,
+          authToken: String(token),
+          tokenStorageKey: SOCKET_TOKEN_KEY,
+          tokenAccountKeyStorageKey: SOCKET_TOKEN_ACCOUNT_KEY,
+          missingAuthorizationMessage: 'missing auth token for socket request',
+          missingSocketUrlMessage: 'socket url is not configured',
+          missingTokenMessage: 'failed to generate socket token'
+        })
+      } catch (err) {
+        console.error('[App] Failed to fetch socket token:', err)
+        return
       }
 
       if (!socketToken) {

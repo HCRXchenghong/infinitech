@@ -159,6 +159,8 @@ test("uni rtc contact bridge caches socket tokens and navigates incoming invites
   assert.equal(await bridge.ensureSocketToken(), "socket-token-9");
   assert.equal(await bridge.ensureSocketToken(), "socket-token-9");
   assert.equal(tokenRequests, 1);
+  assert.equal(uniApp.getStorageSync("socket_token"), "socket-token-9");
+  assert.equal(uniApp.getStorageSync("socket_token_account_key"), "user:user_1");
 
   await bridge.ensureRTCInviteBridge();
   fake.instances[0].handlers.rtc_invite({
@@ -180,4 +182,8 @@ test("uni rtc contact bridge caches socket tokens and navigates incoming invites
     uniApp.navigations[0].url,
     "/pages/rtc/call/index?mode=incoming&callId=call_9&orderId=order_7&conversationId=conv_3&targetRole=merchant&targetId=merchant_2&targetName=Merchant",
   );
+
+  fake.instances[0].handlers.auth_error({ message: "expired" });
+  assert.equal(uniApp.getStorageSync("socket_token"), undefined);
+  assert.equal(uniApp.getStorageSync("socket_token_account_key"), undefined);
 });

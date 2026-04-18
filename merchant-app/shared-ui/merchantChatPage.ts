@@ -2,8 +2,8 @@ import { computed, ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { UPLOAD_DOMAINS } from '../../packages/contracts/src/upload.js'
 import {
-  buildSocketTokenAccountKey,
-  extractSocketTokenResult,
+  clearCachedSocketToken as clearCachedSocketTokenCache,
+  resolveSocketToken,
 } from '../../packages/client-sdk/src/realtime-token.js'
 import createSocket from '@/utils/socket-io'
 import config from '@/shared-ui/config'
@@ -257,43 +257,37 @@ export function useMerchantChatPage() {
     return true
   }
 
-function clearCachedSocketToken() {
-  uni.removeStorageSync(SOCKET_TOKEN_KEY)
-  uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY)
+  function clearCachedSocketToken() {
+    clearCachedSocketTokenRuntime()
+  }
+
+  function clearCachedSocketTokenRuntime() {
+    clearCachedSocketTokenCache({
+      uniApp: uni,
+      tokenStorageKey: SOCKET_TOKEN_KEY,
+      tokenAccountKeyStorageKey: SOCKET_TOKEN_ACCOUNT_KEY,
+    })
   }
 
   async function fetchSocketToken() {
-    const accountKey = buildSocketTokenAccountKey(merchantId.value, 'merchant')
-    const cachedToken = String(uni.getStorageSync(SOCKET_TOKEN_KEY) || '').trim()
-    const cachedAccountKey = String(uni.getStorageSync(SOCKET_TOKEN_ACCOUNT_KEY) || '').trim()
-    if (cachedToken && cachedAccountKey === accountKey) return cachedToken
-    if (cachedToken && cachedAccountKey !== accountKey) {
-      clearCachedSocketToken()
-    }
-
     const authHeader = readAuthorizationHeader()
     if (!authHeader.Authorization) {
-      clearCachedSocketToken()
+      clearCachedSocketTokenRuntime()
       throw new Error('请先登录后再连接聊天')
     }
 
-    const response: any = await new Promise((resolve, reject) => {
-      uni.request({
-        url: `${config.SOCKET_URL}/api/generate-token`,
-        method: 'POST',
-        header: Object.assign({ 'Content-Type': 'application/json' }, authHeader),
-        data: { userId: merchantId.value, role: 'merchant' },
-        success: resolve,
-        fail: reject,
-      })
+    return resolveSocketToken({
+      uniApp: uni,
+      userId: merchantId.value,
+      role: 'merchant',
+      socketUrl: config.SOCKET_URL,
+      readAuthorizationHeader,
+      tokenStorageKey: SOCKET_TOKEN_KEY,
+      tokenAccountKeyStorageKey: SOCKET_TOKEN_ACCOUNT_KEY,
+      missingAuthorizationMessage: '请先登录后再连接聊天',
+      missingSocketUrlMessage: 'socket url is required',
+      missingTokenMessage: '获取 socket token 失败',
     })
-
-    const payload = typeof response?.data === 'string' ? JSON.parse(response.data) : response?.data
-    const token = extractSocketTokenResult(payload).token
-    if (!token) throw new Error('获取 socket token 失败')
-    uni.setStorageSync(SOCKET_TOKEN_KEY, token)
-    uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, accountKey)
-    return String(token)
   }
 
   function scheduleReconnect() {

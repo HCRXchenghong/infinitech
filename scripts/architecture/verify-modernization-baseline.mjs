@@ -64,6 +64,43 @@ function assertNoLegacyMobileCommonImports(relativeDir) {
   }
 }
 
+function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths = []) {
+  const absoluteDir = path.join(repoRoot, relativeDir);
+  const queue = [absoluteDir];
+  const ignoredDirectories = new Set(["node_modules", "dist", "unpackage"]);
+  const allowedExtensions = new Set([".js", ".ts", ".vue", ".mjs", ".cjs"]);
+  const allowedPaths = new Set(allowedRelativePaths);
+
+  while (queue.length > 0) {
+    const currentDir = queue.pop();
+    for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (!ignoredDirectories.has(entry.name)) {
+          queue.push(path.join(currentDir, entry.name));
+        }
+        continue;
+      }
+
+      if (!allowedExtensions.has(path.extname(entry.name))) {
+        continue;
+      }
+
+      const absolutePath = path.join(currentDir, entry.name);
+      const relativePath = path.relative(repoRoot, absolutePath);
+      if (allowedPaths.has(relativePath)) {
+        continue;
+      }
+
+      const source = fs.readFileSync(absolutePath, "utf8");
+      if (source.includes("/api/generate-token")) {
+        throw new Error(
+          `direct socket token requester remains outside shared helper in ${relativePath}`,
+        );
+      }
+    }
+  }
+}
+
 [
   "packages/contracts/src/index.js",
   "packages/contracts/src/http.cjs",
@@ -105,6 +142,7 @@ function assertNoLegacyMobileCommonImports(relativeDir) {
   "packages/client-sdk/src/role-notify-bridges.d.ts",
   "packages/client-sdk/src/role-notify-bridges.test.mjs",
   "packages/client-sdk/src/realtime-token.js",
+  "packages/client-sdk/src/realtime-token.d.ts",
   "packages/client-sdk/src/realtime-token.test.mjs",
   "packages/client-sdk/src/rtc-contact.js",
   "packages/client-sdk/src/rtc-contact.d.ts",
@@ -1083,6 +1121,14 @@ assertNotContains(
   "rider-app",
   "admin-vue/src",
 ].forEach(assertNoLegacyMobileCommonImports);
+assertNoDirectGenerateTokenRequests("user-vue");
+assertNoDirectGenerateTokenRequests("app-mobile");
+assertNoDirectGenerateTokenRequests("merchant-app");
+assertNoDirectGenerateTokenRequests("rider-app");
+assertNoDirectGenerateTokenRequests("packages/mobile-core");
+assertNoDirectGenerateTokenRequests("packages/client-sdk", [
+  "packages/client-sdk/src/realtime-token.js",
+]);
 assertNotContains(
   "admin-vue/src/views/SystemLogs.vue",
   "function parseServiceDetail(detail)",
@@ -2908,6 +2954,14 @@ assertContains(
   "export function buildSocketTokenAccountKey(userId, role) {",
 );
 assertContains(
+  "packages/client-sdk/src/realtime-token.js",
+  "export function clearCachedSocketToken(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/realtime-token.js",
+  "export async function resolveSocketToken(options = {}) {",
+);
+assertContains(
   "packages/client-sdk/src/rtc-contact.js",
   "export function createRTCContactHelper(options = {}) {",
 );
@@ -3389,7 +3443,7 @@ assertContains(
 );
 assertContains(
   "merchant-app/shared-ui/merchantChatPage.ts",
-  "extractSocketTokenResult(payload).token",
+  "resolveSocketToken({",
 );
 assertContains(
   "user-vue/shared-ui/rtc-contact.js",
@@ -3417,7 +3471,7 @@ assertContains(
 );
 assertContains(
   "rider-app/App-logic.ts",
-  "const tokenResult = extractSocketTokenResult(resData)",
+  "socketToken = await resolveSocketToken({",
 );
 assertContains("admin-vue/src/views/Users.vue", "extractAdminUserPage");
 assertContains("admin-vue/src/views/Users.vue", "createAdminUserListParams");
