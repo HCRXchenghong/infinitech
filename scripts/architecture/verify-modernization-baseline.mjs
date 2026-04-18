@@ -181,9 +181,26 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/support-runtime.test.mjs",
   "packages/mobile-core/src/home-index.js",
   "packages/mobile-core/src/home-index.test.mjs",
+  "packages/mobile-core/src/home-shell-components.js",
+  "packages/mobile-core/src/home-shell-components.test.mjs",
+  "packages/mobile-core/src/HomeHeader.vue",
+  "packages/mobile-core/src/CategoryGrid.vue",
+  "packages/mobile-core/src/FeaturedSection.vue",
+  "packages/mobile-core/src/HomeShopCard.vue",
+  "packages/mobile-core/src/HomeLocationModal.vue",
   "packages/mobile-core/src/home-weather-modal.js",
   "packages/mobile-core/src/home-weather-modal.test.mjs",
   "packages/mobile-core/src/HomeWeatherModal.vue",
+  "user-vue/components/HomeHeader.vue",
+  "user-vue/components/CategoryGrid.vue",
+  "user-vue/components/FeaturedSection.vue",
+  "user-vue/components/HomeShopCard.vue",
+  "user-vue/components/LocationModal.vue",
+  "app-mobile/components/HomeHeader.vue",
+  "app-mobile/components/CategoryGrid.vue",
+  "app-mobile/components/FeaturedSection.vue",
+  "app-mobile/components/HomeShopCard.vue",
+  "app-mobile/components/LocationModal.vue",
   "user-vue/components/WeatherModal.vue",
   "app-mobile/components/WeatherModal.vue",
   "packages/mobile-core/src/sync-service.js",
@@ -1142,6 +1159,22 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/home-weather-modal.js",
   "export function createHomeWeatherModalViewModel(weather = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/home-shell-components.js",
+  "export function createHomeLocationModalComponent(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/home-shell-components.js",
+  "export function createFeaturedSectionComponent(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/home-shell-components.js",
+  "export function createHomeShopCardComponent(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/home-shell-components.js",
+  "export async function relocateHomeLocation(options = {}) {",
 );
 assertContains(
   "packages/mobile-core/src/sync-service.js",
@@ -2140,6 +2173,10 @@ assertContains(
 assertContains(
   "package.json",
   "packages/mobile-core/src/home-weather-modal.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/home-shell-components.test.mjs",
 );
 assertContains(
   "package.json",
@@ -3670,6 +3707,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./home-shell-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./home-weather-modal.js";',
 );
 assertContains(
@@ -3851,6 +3892,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./medicine-home": "./src/medicine-home.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./home-shell-components": "./src/home-shell-components.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -4156,6 +4201,66 @@ assertContains(
 );
 assertContains("user-vue/pages/index/index.vue", "createHomeIndexPage({");
 assertContains("app-mobile/pages/index/index.vue", "createHomeIndexPage({");
+assertContains(
+  "user-vue/components/HomeHeader.vue",
+  "../../packages/mobile-core/src/HomeHeader.vue",
+);
+assertContains(
+  "app-mobile/components/HomeHeader.vue",
+  "../../packages/mobile-core/src/HomeHeader.vue",
+);
+assertContains(
+  "user-vue/components/CategoryGrid.vue",
+  "../../packages/mobile-core/src/CategoryGrid.vue",
+);
+assertContains(
+  "app-mobile/components/CategoryGrid.vue",
+  "../../packages/mobile-core/src/CategoryGrid.vue",
+);
+assertContains(
+  "user-vue/components/FeaturedSection.vue",
+  "../../packages/mobile-core/src/FeaturedSection.vue",
+);
+assertContains(
+  "app-mobile/components/FeaturedSection.vue",
+  "../../packages/mobile-core/src/FeaturedSection.vue",
+);
+assertContains(
+  "user-vue/components/HomeShopCard.vue",
+  "../../packages/mobile-core/src/HomeShopCard.vue",
+);
+assertContains(
+  "app-mobile/components/HomeShopCard.vue",
+  "../../packages/mobile-core/src/HomeShopCard.vue",
+);
+assertContains(
+  "user-vue/components/LocationModal.vue",
+  "../../packages/mobile-core/src/HomeLocationModal.vue",
+);
+assertContains(
+  "app-mobile/components/LocationModal.vue",
+  "../../packages/mobile-core/src/HomeLocationModal.vue",
+);
+assertContains(
+  "packages/mobile-core/src/HomeHeader.vue",
+  'import { createHomeHeaderComponent } from "./home-shell-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/CategoryGrid.vue",
+  'import { createCategoryGridComponent } from "./home-shell-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/FeaturedSection.vue",
+  'import { createFeaturedSectionComponent } from "./home-shell-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/HomeShopCard.vue",
+  'import { createHomeShopCardComponent } from "./home-shell-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/HomeLocationModal.vue",
+  'import { createHomeLocationModalComponent } from "./home-shell-components.js";',
+);
 assertContains(
   "user-vue/components/WeatherModal.vue",
   "../../packages/mobile-core/src/HomeWeatherModal.vue",
