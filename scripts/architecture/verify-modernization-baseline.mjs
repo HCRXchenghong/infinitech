@@ -139,6 +139,15 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/CategoryFruitPage.vue",
   "packages/mobile-core/src/CategoryMarketPage.vue",
   "packages/mobile-core/src/CategoryMedicinePage.vue",
+  "packages/mobile-core/src/consumer-errand-pages.js",
+  "packages/mobile-core/src/consumer-errand-pages.test.mjs",
+  "packages/mobile-core/src/errand-form-pages.scss",
+  "packages/mobile-core/src/ErrandBuyPage.vue",
+  "packages/mobile-core/src/ErrandDeliverPage.vue",
+  "packages/mobile-core/src/ErrandDoPage.vue",
+  "packages/mobile-core/src/ErrandPickupPage.vue",
+  "packages/mobile-core/src/ErrandDetailPage.vue",
+  "packages/mobile-core/src/ErrandLegacyPage.vue",
   "user-vue/pages/auth/login/index.vue",
   "user-vue/pages/auth/register/index.vue",
   "user-vue/pages/auth/reset-password/index.vue",
@@ -152,6 +161,12 @@ function assertNotContains(relativePath, unexpectedText) {
   "user-vue/pages/category/index/index.vue",
   "user-vue/pages/category/market/index.vue",
   "user-vue/pages/category/medicine/index.vue",
+  "user-vue/pages/errand/buy/index.vue",
+  "user-vue/pages/errand/deliver/index.vue",
+  "user-vue/pages/errand/do/index.vue",
+  "user-vue/pages/errand/pickup/index.vue",
+  "user-vue/pages/errand/detail/index.vue",
+  "user-vue/pages/errand/index/index.vue",
   "app-mobile/pages/auth/login/index.vue",
   "app-mobile/pages/auth/register/index.vue",
   "app-mobile/pages/auth/reset-password/index.vue",
@@ -165,6 +180,12 @@ function assertNotContains(relativePath, unexpectedText) {
   "app-mobile/pages/category/index/index.vue",
   "app-mobile/pages/category/market/index.vue",
   "app-mobile/pages/category/medicine/index.vue",
+  "app-mobile/pages/errand/buy/index.vue",
+  "app-mobile/pages/errand/deliver/index.vue",
+  "app-mobile/pages/errand/do/index.vue",
+  "app-mobile/pages/errand/pickup/index.vue",
+  "app-mobile/pages/errand/detail/index.vue",
+  "app-mobile/pages/errand/index/index.vue",
   "packages/mobile-core/src/client-payment.js",
   "packages/mobile-core/src/client-payment.test.mjs",
   "packages/mobile-core/src/consumer-app-bootstrap.js",
@@ -575,6 +596,30 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../packages/mobile-core/src/CategoryMedicinePage.vue",
   ],
   [
+    "app-mobile/pages/errand/buy/index.vue",
+    "../../../../packages/mobile-core/src/ErrandBuyPage.vue",
+  ],
+  [
+    "app-mobile/pages/errand/deliver/index.vue",
+    "../../../../packages/mobile-core/src/ErrandDeliverPage.vue",
+  ],
+  [
+    "app-mobile/pages/errand/do/index.vue",
+    "../../../../packages/mobile-core/src/ErrandDoPage.vue",
+  ],
+  [
+    "app-mobile/pages/errand/pickup/index.vue",
+    "../../../../packages/mobile-core/src/ErrandPickupPage.vue",
+  ],
+  [
+    "app-mobile/pages/errand/detail/index.vue",
+    "../../../../packages/mobile-core/src/ErrandDetailPage.vue",
+  ],
+  [
+    "app-mobile/pages/errand/index/index.vue",
+    "../../../../packages/mobile-core/src/ErrandLegacyPage.vue",
+  ],
+  [
     "app-mobile/pages/search/index/index.vue",
     "../../../../packages/mobile-core/src/search-page.js",
   ],
@@ -677,6 +722,30 @@ function assertNotContains(relativePath, unexpectedText) {
   [
     "user-vue/pages/category/medicine/index.vue",
     "../../../../packages/mobile-core/src/CategoryMedicinePage.vue",
+  ],
+  [
+    "user-vue/pages/errand/buy/index.vue",
+    "../../../../packages/mobile-core/src/ErrandBuyPage.vue",
+  ],
+  [
+    "user-vue/pages/errand/deliver/index.vue",
+    "../../../../packages/mobile-core/src/ErrandDeliverPage.vue",
+  ],
+  [
+    "user-vue/pages/errand/do/index.vue",
+    "../../../../packages/mobile-core/src/ErrandDoPage.vue",
+  ],
+  [
+    "user-vue/pages/errand/pickup/index.vue",
+    "../../../../packages/mobile-core/src/ErrandPickupPage.vue",
+  ],
+  [
+    "user-vue/pages/errand/detail/index.vue",
+    "../../../../packages/mobile-core/src/ErrandDetailPage.vue",
+  ],
+  [
+    "user-vue/pages/errand/index/index.vue",
+    "../../../../packages/mobile-core/src/ErrandLegacyPage.vue",
   ],
   [
     "user-vue/pages/search/index/index.vue",
@@ -2350,6 +2419,10 @@ assertContains(
 );
 assertContains(
   "package.json",
+  "packages/mobile-core/src/consumer-errand-pages.test.mjs",
+);
+assertContains(
+  "package.json",
   "packages/mobile-core/src/sync-service.test.mjs",
 );
 assertContains(
@@ -3869,6 +3942,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./consumer-errand-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./consumer-app-bootstrap.js";',
 );
 assertContains(
@@ -4050,6 +4127,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./category-pages": "./src/category-pages.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-errand-pages": "./src/consumer-errand-pages.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -4506,6 +4587,34 @@ assertContains(
   'export function sortCategoryPageShops(shops = [], activeFilter = "default")',
 );
 assertContains(
+  "packages/mobile-core/src/consumer-errand-pages.js",
+  "export function createErrandLegacyPage(options = {})",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-errand-pages.js",
+  "export function createErrandBuyPage(options = {})",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-errand-pages.js",
+  "export function createErrandDeliverPage(options = {})",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-errand-pages.js",
+  "export function createErrandDoPage(options = {})",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-errand-pages.js",
+  "export function createErrandPickupPage(options = {})",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-errand-pages.js",
+  "export function createErrandDetailPage(options = {})",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-errand-pages.js",
+  "const components = resolveConsumerErrandPageComponents(options);",
+);
+assertContains(
   "packages/mobile-core/src/CategoryListPage.vue",
   'import { createCategoryPage } from "./category-pages.js";',
 );
@@ -4525,6 +4634,46 @@ assertContains(
 ].forEach((relativePath) => {
   assertContains(relativePath, 'extends: SharedCategoryListPage');
 });
+assertContains(
+  "packages/mobile-core/src/ErrandBuyPage.vue",
+  'import { createErrandBuyPage } from "./consumer-errand-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/ErrandBuyPage.vue",
+  '<style scoped lang="scss" src="./errand-form-pages.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/ErrandDeliverPage.vue",
+  'import { createErrandDeliverPage } from "./consumer-errand-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/ErrandDeliverPage.vue",
+  '<style scoped lang="scss" src="./errand-form-pages.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/ErrandDoPage.vue",
+  'import { createErrandDoPage } from "./consumer-errand-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/ErrandDoPage.vue",
+  '<style scoped lang="scss" src="./errand-form-pages.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/ErrandPickupPage.vue",
+  'import { createErrandPickupPage } from "./consumer-errand-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/ErrandPickupPage.vue",
+  '<style scoped lang="scss" src="./errand-form-pages.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/ErrandDetailPage.vue",
+  'import { createErrandDetailPage } from "./consumer-errand-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/ErrandLegacyPage.vue",
+  'import { createErrandLegacyPage } from "./consumer-errand-pages.js";',
+);
 assertContains(
   "user-vue/pages/index/index.vue",
   "../../../packages/mobile-core/src/home-index.js",
@@ -5177,6 +5326,25 @@ assertNotContains(
   assertNotContains(relativePath, "import { fetchShops }");
   assertNotContains(relativePath, "filteredShops()");
   assertNotContains(relativePath, "matchCategory(shop");
+});
+[
+  "user-vue/pages/errand/buy/index.vue",
+  "user-vue/pages/errand/deliver/index.vue",
+  "user-vue/pages/errand/do/index.vue",
+  "user-vue/pages/errand/pickup/index.vue",
+  "user-vue/pages/errand/detail/index.vue",
+  "user-vue/pages/errand/index/index.vue",
+  "app-mobile/pages/errand/buy/index.vue",
+  "app-mobile/pages/errand/deliver/index.vue",
+  "app-mobile/pages/errand/do/index.vue",
+  "app-mobile/pages/errand/pickup/index.vue",
+  "app-mobile/pages/errand/detail/index.vue",
+  "app-mobile/pages/errand/index/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "createOrder(");
+  assertNotContains(relativePath, "buildErrandOrderPayload");
+  assertNotContains(relativePath, "ensureErrandServiceOpen");
+  assertNotContains(relativePath, "uni.redirectTo({ url: '/pages/errand/home/index' })");
 });
 assertNotContains(
   "user-vue/pages/index/index.vue",

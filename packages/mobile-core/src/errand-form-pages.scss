@@ -1,0 +1,118 @@
+.content {
+  padding: 0 12px 100px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 54px);
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.form-group {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.form-title {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.form-input {
+  width: 100%;
+  height: 40px;
+  font-size: 15px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: #f9f9f9;
+  box-sizing: border-box;
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 80px;
+  font-size: 15px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 10px;
+  background: #f9f9f9;
+  box-sizing: border-box;
+}
+
+.tip-chips {
+  display: flex;
+  gap: 8px;
+}
+
+.tip-chip {
+  flex: 1;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #666;
+}
+
+.fee-summary {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.fee-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.fee-row.total {
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+}
+
+.fee-row.total .price {
+  font-size: 18px;
+  color: #ff4d4f;
+  font-weight: 600;
+}
+
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1px solid #eee;
+}
+
+.footer-price {
+  font-size: 20px;
+  color: #ff4d4f;
+  font-weight: 600;
+  margin-right: 12px;
+}
+
+.footer-btn {
+  flex: 1;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 15px;
+  border-radius: 6px;
+}
+
+.footer-btn.disabled {
+  background: #ccc;
+}
