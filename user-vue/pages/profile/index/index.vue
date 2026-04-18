@@ -84,7 +84,7 @@
 
 <script>
 import { fetchUser } from '@/shared-ui/api.js'
-import { createProfileHomePage } from '../../../../shared/mobile-common/profile-home-page.js'
+import { createProfileHomePage } from '../../../../packages/mobile-core/src/profile-home.js'
 
 export default createProfileHomePage({
   fetchUser

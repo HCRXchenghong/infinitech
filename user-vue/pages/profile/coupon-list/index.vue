@@ -40,7 +40,7 @@
 
 <script>
 import { fetchUserCoupons } from '@/shared-ui/api'
-import { createProfileCouponListPage } from '../../../../shared/mobile-common/profile-coupon-list-page.js'
+import { createProfileCouponListPage } from '../../../../packages/mobile-core/src/profile-coupon-list.js'
 
 export default createProfileCouponListPage({
   fetchUserCoupons

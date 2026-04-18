@@ -66,7 +66,7 @@
 
 <script>
 import { fetchUser, updateUserProfile, uploadCommonImage } from '@/shared-ui/api.js'
-import { createProfileEditPage } from '../../../../shared/mobile-common/profile-edit-page.js'
+import { createProfileEditPage } from '../../../../packages/mobile-core/src/profile-edit.js'
 
 export default createProfileEditPage({
   fetchUser,

@@ -6,6 +6,7 @@ import {
   buildConsumerProfileReviewShopPath,
   countConsumerProfileReviewsWithImages,
   countConsumerProfileReviewsWithReply,
+  createProfileMyReviewsPage,
   extractConsumerProfileReviewPage,
   filterConsumerProfileReviews,
   formatConsumerProfileReviewDate,
@@ -132,4 +133,71 @@ test("profile my reviews helpers filter reviews and normalize errors", () => {
     ),
     "读取失败",
   );
+});
+
+test("profile my reviews page picks the first non-empty identity and opens preview routes", async () => {
+  const previews = [];
+  const navigation = [];
+  const originalUni = globalThis.uni;
+
+  globalThis.uni = {
+    getStorageSync(key) {
+      if (key === "userProfile") {
+        return { id: "user-1", phone: "13812345678" };
+      }
+      if (key === "userId") {
+        return "";
+      }
+      return null;
+    },
+    showToast() {},
+    previewImage(payload) {
+      previews.push(payload);
+    },
+    navigateTo({ url }) {
+      navigation.push(url);
+    },
+  };
+
+  try {
+    const page = createProfileMyReviewsPage({
+      fetchUserReviews: async (userId) => {
+        if (userId === "user-1") {
+          return { data: { list: [], total: 0, avgRating: 0 } };
+        }
+        return {
+          data: {
+            list: [
+              {
+                id: "review-1",
+                shopId: "shop-2",
+                shopName: "店铺 2",
+                images: ["https://example.com/review.png"],
+              },
+            ],
+            total: 1,
+            avgRating: 4.8,
+          },
+        };
+      },
+    });
+    const instance = {
+      ...page.data(),
+      ...page.methods,
+      userId: "user-1",
+      userIdCandidates: ["user-1", "13812345678"],
+    };
+
+    await instance.loadReviews(true);
+    instance.previewImage(["https://example.com/review.png"], 0);
+    instance.goShop("shop-2");
+
+    assert.equal(instance.userId, "13812345678");
+    assert.equal(instance.reviews.length, 1);
+    assert.equal(instance.avgRating, 4.8);
+    assert.equal(previews[0].current, "https://example.com/review.png");
+    assert.deepEqual(navigation, ["/pages/shop/detail/index?id=shop-2"]);
+  } finally {
+    globalThis.uni = originalUni;
+  }
 });

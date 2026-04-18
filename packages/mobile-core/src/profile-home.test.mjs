@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildConsumerProfileHeaderStyle,
+  createProfileHomePage,
   createDefaultProfileHomeMoreEntries,
   createDefaultProfileHomeTools,
   DEFAULT_CONSUMER_PROFILE_NAME,
@@ -74,4 +75,59 @@ test("profile home helpers normalize profile view models without forcing vip bad
       isVip: true,
     },
   );
+});
+
+test("profile home page bootstraps remote profile and syncs local cache", async () => {
+  const storage = {
+    authMode: "user",
+    userProfile: {
+      id: "user-1",
+      nickname: "本地昵称",
+    },
+  };
+  const navigation = [];
+  const originalUni = globalThis.uni;
+
+  globalThis.uni = {
+    getStorageSync(key) {
+      return storage[key];
+    },
+    setStorageSync(key, value) {
+      storage[key] = value;
+    },
+    reLaunch({ url }) {
+      navigation.push(`relaunch:${url}`);
+    },
+    navigateTo({ url }) {
+      navigation.push(url);
+    },
+  };
+
+  try {
+    const page = createProfileHomePage({
+      fetchUser: async (userId) => ({
+        user: {
+          id: userId,
+          nickname: "远端昵称",
+          phone: "13812345678",
+          savedAmount: 19.8,
+        },
+      }),
+    });
+    const instance = {
+      ...page.data(),
+      ...page.methods,
+    };
+
+    await instance.bootstrap();
+    instance.go("/pages/profile/edit/index");
+
+    assert.equal(instance.nickname, "远端昵称");
+    assert.equal(instance.phone, "13812345678");
+    assert.equal(instance.savedAmount, 19.8);
+    assert.equal(storage.userProfile.nickname, "远端昵称");
+    assert.deepEqual(navigation, ["/pages/profile/edit/index"]);
+  } finally {
+    globalThis.uni = originalUni;
+  }
 });

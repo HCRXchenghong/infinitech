@@ -78,7 +78,7 @@ import {
   updateUserAddress
 } from '@/shared-ui/api.js'
 import { chooseLocation, getCurrentLocation } from '@/shared-ui/location.js'
-import { createProfileAddressEditPage } from '../../../../shared/mobile-common/profile-address-pages.js'
+import { createProfileAddressEditPage } from '../../../../packages/mobile-core/src/profile-address.js'
 
 export default createProfileAddressEditPage({
   chooseLocation,

@@ -69,7 +69,7 @@
 
 <script>
 import { fetchUserAddresses, deleteUserAddress, setDefaultUserAddress } from '@/shared-ui/api.js'
-import { createProfileAddressListPage } from '../../../../shared/mobile-common/profile-address-pages.js'
+import { createProfileAddressListPage } from '../../../../packages/mobile-core/src/profile-address.js'
 
 export default createProfileAddressListPage({
   deleteUserAddress,

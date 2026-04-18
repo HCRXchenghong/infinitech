@@ -414,19 +414,19 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/profile/address-edit/index.vue",
-    "../../../../shared/mobile-common/profile-address-pages.js",
+    "../../../../packages/mobile-core/src/profile-address.js",
   ],
   [
     "app-mobile/pages/profile/address-list/index.vue",
-    "../../../../shared/mobile-common/profile-address-pages.js",
+    "../../../../packages/mobile-core/src/profile-address.js",
   ],
   [
     "app-mobile/pages/profile/favorites/index.vue",
-    "../../../../shared/mobile-common/profile-favorites-page.js",
+    "../../../../packages/mobile-core/src/profile-favorites.js",
   ],
   [
     "app-mobile/pages/profile/my-reviews/index.vue",
-    "../../../../shared/mobile-common/profile-my-reviews-page.js",
+    "../../../../packages/mobile-core/src/profile-my-reviews.js",
   ],
   [
     "app-mobile/pages/profile/points-mall/index.vue",
@@ -434,11 +434,11 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/profile/coupon-list/index.vue",
-    "../../../../shared/mobile-common/profile-coupon-list-page.js",
+    "../../../../packages/mobile-core/src/profile-coupon-list.js",
   ],
   [
     "app-mobile/pages/profile/phone-change/index.vue",
-    "../../../../shared/mobile-common/profile-phone-change-page.js",
+    "../../../../packages/mobile-core/src/profile-phone-change.js",
   ],
   [
     "app-mobile/pages/profile/invite-friends/index.vue",
@@ -474,19 +474,19 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/profile/address-edit/index.vue",
-    "../../../../shared/mobile-common/profile-address-pages.js",
+    "../../../../packages/mobile-core/src/profile-address.js",
   ],
   [
     "user-vue/pages/profile/address-list/index.vue",
-    "../../../../shared/mobile-common/profile-address-pages.js",
+    "../../../../packages/mobile-core/src/profile-address.js",
   ],
   [
     "user-vue/pages/profile/favorites/index.vue",
-    "../../../../shared/mobile-common/profile-favorites-page.js",
+    "../../../../packages/mobile-core/src/profile-favorites.js",
   ],
   [
     "user-vue/pages/profile/my-reviews/index.vue",
-    "../../../../shared/mobile-common/profile-my-reviews-page.js",
+    "../../../../packages/mobile-core/src/profile-my-reviews.js",
   ],
   [
     "user-vue/pages/profile/points-mall/index.vue",
@@ -494,11 +494,11 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/profile/coupon-list/index.vue",
-    "../../../../shared/mobile-common/profile-coupon-list-page.js",
+    "../../../../packages/mobile-core/src/profile-coupon-list.js",
   ],
   [
     "user-vue/pages/profile/phone-change/index.vue",
-    "../../../../shared/mobile-common/profile-phone-change-page.js",
+    "../../../../packages/mobile-core/src/profile-phone-change.js",
   ],
   [
     "user-vue/pages/profile/invite-friends/index.vue",
@@ -1640,11 +1640,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/profile/coupon-list/index.vue",
-  "../../../../shared/mobile-common/profile-coupon-list-page.js",
+  "../../../../packages/mobile-core/src/profile-coupon-list.js",
 );
 assertContains(
   "app-mobile/pages/profile/coupon-list/index.vue",
-  "../../../../shared/mobile-common/profile-coupon-list-page.js",
+  "../../../../packages/mobile-core/src/profile-coupon-list.js",
 );
 assertContains(
   "packages/mobile-core/src/order-list-page.js",
@@ -2352,6 +2352,38 @@ assertContains(
 assertContains(
   "shared/mobile-common/search-page.js",
   "export * from \"../../packages/mobile-core/src/search-page.js\";",
+);
+assertContains(
+  "shared/mobile-common/profile-address-pages.js",
+  "export * from \"../../packages/mobile-core/src/profile-address.js\";",
+);
+assertContains(
+  "shared/mobile-common/profile-favorites-page.js",
+  "export * from \"../../packages/mobile-core/src/profile-favorites.js\";",
+);
+assertContains(
+  "shared/mobile-common/profile-my-reviews-page.js",
+  "export * from \"../../packages/mobile-core/src/profile-my-reviews.js\";",
+);
+assertContains(
+  "shared/mobile-common/profile-edit-page.js",
+  "export * from \"../../packages/mobile-core/src/profile-edit.js\";",
+);
+assertContains(
+  "shared/mobile-common/profile-coupon-list-page.js",
+  "export * from \"../../packages/mobile-core/src/profile-coupon-list.js\";",
+);
+assertContains(
+  "shared/mobile-common/profile-home-page.js",
+  "export * from \"../../packages/mobile-core/src/profile-home.js\";",
+);
+assertContains(
+  "shared/mobile-common/profile-phone-change-page.js",
+  "export * from \"../../packages/mobile-core/src/profile-phone-change.js\";",
+);
+assertContains(
+  "shared/mobile-common/profile-settings-pages.js",
+  "export * from \"../../packages/mobile-core/src/profile-settings.js\";",
 );
 assertContains(
   "shared/mobile-common/wallet-overview-page.js",
@@ -3850,11 +3882,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/profile/edit/index.vue",
-  "../../../../shared/mobile-common/profile-edit-page.js",
+  "../../../../packages/mobile-core/src/profile-edit.js",
 );
 assertContains(
   "app-mobile/pages/profile/edit/index.vue",
-  "../../../../shared/mobile-common/profile-edit-page.js",
+  "../../../../packages/mobile-core/src/profile-edit.js",
 );
 assertContains(
   "user-vue/pages/profile/edit/index.vue",
@@ -3866,11 +3898,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/profile/index/index.vue",
-  "../../../../shared/mobile-common/profile-home-page.js",
+  "../../../../packages/mobile-core/src/profile-home.js",
 );
 assertContains(
   "app-mobile/pages/profile/index/index.vue",
-  "../../../../shared/mobile-common/profile-home-page.js",
+  "../../../../packages/mobile-core/src/profile-home.js",
 );
 assertContains(
   "user-vue/pages/profile/index/index.vue",
@@ -3882,11 +3914,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/profile/settings/index.vue",
-  "../../../../../shared/mobile-common/profile-settings-pages.js",
+  "../../../../../packages/mobile-core/src/profile-settings.js",
 );
 assertContains(
   "app-mobile/pages/profile/settings/index.vue",
-  "../../../../../shared/mobile-common/profile-settings-pages.js",
+  "../../../../../packages/mobile-core/src/profile-settings.js",
 );
 assertContains(
   "user-vue/pages/profile/settings/index.vue",
@@ -3898,11 +3930,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/profile/settings/detail/index.vue",
-  "../../../../../../shared/mobile-common/profile-settings-pages.js",
+  "../../../../../../packages/mobile-core/src/profile-settings.js",
 );
 assertContains(
   "app-mobile/pages/profile/settings/detail/index.vue",
-  "../../../../../../shared/mobile-common/profile-settings-pages.js",
+  "../../../../../../packages/mobile-core/src/profile-settings.js",
 );
 assertContains(
   "user-vue/pages/profile/settings/detail/index.vue",

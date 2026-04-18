@@ -5,6 +5,7 @@ import {
   buildConsumerPhoneChangePayload,
   CONSUMER_PHONE_CHANGE_NEW_SCENE,
   CONSUMER_PHONE_CHANGE_OLD_SCENE,
+  createProfilePhoneChangePage,
   DEFAULT_CONSUMER_PHONE_CHANGE_COUNTDOWN_SECONDS,
   getConsumerPhoneChangeResponseMessage,
   getNextConsumerPhoneChangeCountdownValue,
@@ -88,4 +89,69 @@ test("profile phone change helpers keep profile merge and countdown stable", () 
   );
   assert.equal(getNextConsumerPhoneChangeCountdownValue(60), 59);
   assert.equal(getNextConsumerPhoneChangeCountdownValue(1), 0);
+});
+
+test("profile phone change page updates stored identity after submit", async () => {
+  const storage = {
+    userProfile: {
+      id: "user-1",
+      phone: "13812345678",
+      nickname: "小陈",
+    },
+  };
+  const savedTokens = [];
+  let navigatedBack = 0;
+  const originalUni = globalThis.uni;
+  const originalSetTimeout = globalThis.setTimeout;
+
+  globalThis.setTimeout = (callback) => {
+    callback();
+    return 0;
+  };
+  globalThis.uni = {
+    getStorageSync(key) {
+      return storage[key];
+    },
+    setStorageSync(key, value) {
+      storage[key] = value;
+    },
+    showToast() {},
+    navigateBack() {
+      navigatedBack += 1;
+    },
+  };
+
+  try {
+    const page = createProfilePhoneChangePage({
+      changeUserPhone: async () => ({
+        success: true,
+        token: "token-1",
+        refreshToken: "refresh-1",
+        expiresIn: 3600,
+        user: { nickname: "小陈同学" },
+      }),
+      saveTokenInfo: (...args) => {
+        savedTokens.push(args);
+      },
+    });
+    const instance = {
+      ...page.data(),
+      ...page.methods,
+      oldPhone: "13812345678",
+      oldCode: "123456",
+      newPhone: "13912345678",
+      newCode: "654321",
+      newCodeValid: true,
+    };
+
+    await instance.submit();
+
+    assert.equal(storage.userProfile.phone, "13912345678");
+    assert.equal(storage.userProfile.nickname, "小陈同学");
+    assert.deepEqual(savedTokens, [["token-1", "refresh-1", 3600]]);
+    assert.equal(navigatedBack, 1);
+  } finally {
+    globalThis.uni = originalUni;
+    globalThis.setTimeout = originalSetTimeout;
+  }
 });

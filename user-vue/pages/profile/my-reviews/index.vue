@@ -105,7 +105,7 @@
 
 <script>
 import { fetchUserReviews } from '@/shared-ui/api.js'
-import { createProfileMyReviewsPage } from '../../../../shared/mobile-common/profile-my-reviews-page.js'
+import { createProfileMyReviewsPage } from '../../../../packages/mobile-core/src/profile-my-reviews.js'
 
 export default createProfileMyReviewsPage({
   fetchUserReviews

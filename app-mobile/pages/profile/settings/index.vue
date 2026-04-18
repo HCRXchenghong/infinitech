@@ -156,7 +156,7 @@ import { clearAllCache } from '@/shared-ui/cache-cleaner'
 import { forceLogout } from '@/shared-ui/request-interceptor'
 import { getCachedLegalRuntimeSettings, loadLegalRuntimeSettings } from '@/shared-ui/legal-runtime.js'
 import { getAppVersionLabel } from '@/shared-ui/app-version.js'
-import { createProfileSettingsPage } from '../../../../../shared/mobile-common/profile-settings-pages.js'
+import { createProfileSettingsPage } from '../../../../../packages/mobile-core/src/profile-settings.js'
 
 export default createProfileSettingsPage({
   clearAllCache,

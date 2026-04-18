@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   buildConsumerProfileCouponConditionText,
   buildConsumerProfileCouponQuery,
+  createProfileCouponListPage,
   createDefaultConsumerProfileCouponTabs,
   DEFAULT_CONSUMER_PROFILE_COUPON_TABS,
   formatConsumerProfileCouponAmount,
@@ -111,4 +112,48 @@ test("profile coupon list helpers normalize coupon rows and errors", () => {
     normalizeConsumerProfileCouponErrorMessage({ data: { error: "读取失败" } }),
     "读取失败",
   );
+});
+
+test("profile coupon list page loads normalized coupon cards", async () => {
+  const originalUni = globalThis.uni;
+
+  globalThis.uni = {
+    getStorageSync(key) {
+      if (key === "userProfile") {
+        return { userId: "user-2" };
+      }
+      return "";
+    },
+    showToast() {},
+  };
+
+  try {
+    const page = createProfileCouponListPage({
+      fetchUserCoupons: async () => ({
+        data: [
+          {
+            couponId: "coupon-1",
+            coupon: {
+              type: "fixed",
+              amount: 10,
+              conditionType: "no_threshold",
+            },
+          },
+        ],
+      }),
+    });
+    const instance = {
+      ...page.data(),
+      ...page.methods,
+      userId: "user-2",
+    };
+
+    await instance.loadCoupons();
+
+    assert.equal(instance.coupons.length, 1);
+    assert.equal(instance.coupons[0].id, "coupon-1_0");
+    assert.equal(instance.coupons[0].amountText, "¥10");
+  } finally {
+    globalThis.uni = originalUni;
+  }
 });

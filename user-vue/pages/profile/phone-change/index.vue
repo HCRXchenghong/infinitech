@@ -60,7 +60,7 @@
 <script>
 import { changeUserPhone, requestSMSCode, verifySMSCodeCheck } from '@/shared-ui/api.js'
 import { saveTokenInfo } from '@/shared-ui/request-interceptor'
-import { createProfilePhoneChangePage } from '../../../../shared/mobile-common/profile-phone-change-page.js'
+import { createProfilePhoneChangePage } from '../../../../packages/mobile-core/src/profile-phone-change.js'
 
 export default createProfilePhoneChangePage({
   changeUserPhone,

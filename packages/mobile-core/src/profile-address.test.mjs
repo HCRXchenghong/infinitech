@@ -13,6 +13,8 @@ import {
   CONSUMER_PROFILE_SELECTED_ADDRESS_ID_STORAGE_KEY,
   CONSUMER_PROFILE_SELECTED_ADDRESS_PAYLOAD_STORAGE_KEY,
   CONSUMER_PROFILE_SELECTED_ADDRESS_TEXT_STORAGE_KEY,
+  createProfileAddressEditPage,
+  createProfileAddressListPage,
   createDefaultConsumerProfileAddressForm,
   createDefaultConsumerProfileAddressTags,
   DEFAULT_CONSUMER_PROFILE_ADDRESS_TAG,
@@ -255,4 +257,149 @@ test("profile address helpers normalize locations and error messages", () => {
     ),
     "加载地址失败",
   );
+});
+
+test("profile address list page syncs selection into shared storage", async () => {
+  const storage = {
+    userProfile: { id: "user-1" },
+  };
+  const events = [];
+  let navigatedBack = 0;
+  const originalUni = globalThis.uni;
+  const originalSetTimeout = globalThis.setTimeout;
+
+  globalThis.setTimeout = (callback) => {
+    callback();
+    return 0;
+  };
+  globalThis.uni = {
+    getStorageSync(key) {
+      return storage[key];
+    },
+    setStorageSync(key, value) {
+      storage[key] = value;
+    },
+    removeStorageSync(key) {
+      delete storage[key];
+    },
+    showToast() {},
+    navigateBack() {
+      navigatedBack += 1;
+    },
+    navigateTo() {},
+    $emit(eventName, payload) {
+      events.push({ eventName, payload });
+    },
+  };
+
+  try {
+    const page = createProfileAddressListPage({
+      fetchUserAddresses: async () => [
+        {
+          id: "addr-1",
+          name: "小陈",
+          phone: "13812345678",
+          address: "科技园",
+          detail: "A 座",
+          isDefault: true,
+        },
+      ],
+    });
+    const instance = {
+      ...page.data(),
+      ...page.methods,
+      isSelectMode: true,
+    };
+
+    await instance.loadAddresses();
+    instance.selectAddress(instance.addresses[0]);
+
+    assert.equal(instance.selectedAddressId, "addr-1");
+    assert.equal(storage.selectedAddressId, "addr-1");
+    assert.equal(storage.selectedAddress, "科技园 A 座");
+    assert.equal(events[0]?.eventName, "addressSelected");
+    assert.equal(navigatedBack, 1);
+  } finally {
+    globalThis.uni = originalUni;
+    globalThis.setTimeout = originalSetTimeout;
+  }
+});
+
+test("profile address edit page saves address and refreshes local cache", async () => {
+  const storage = {
+    userProfile: { id: "user-1" },
+  };
+  let navigatedBack = 0;
+  const defaultCalls = [];
+  const originalUni = globalThis.uni;
+  const originalSetTimeout = globalThis.setTimeout;
+
+  globalThis.setTimeout = (callback) => {
+    callback();
+    return 0;
+  };
+  globalThis.uni = {
+    getStorageSync(key) {
+      return storage[key];
+    },
+    setStorageSync(key, value) {
+      storage[key] = value;
+    },
+    removeStorageSync(key) {
+      delete storage[key];
+    },
+    showToast() {},
+    showLoading() {},
+    hideLoading() {},
+    navigateBack() {
+      navigatedBack += 1;
+    },
+  };
+
+  try {
+    const savedAddresses = [
+      {
+        id: "addr-2",
+        name: "小陈",
+        phone: "13812345678",
+        address: "软件园",
+        detail: "2 栋 1001",
+        isDefault: true,
+      },
+    ];
+    const page = createProfileAddressEditPage({
+      createUserAddress: async () => ({
+        address: { id: "addr-2" },
+      }),
+      fetchUserAddresses: async () => savedAddresses,
+      setDefaultUserAddress: async (_userId, addressId) => {
+        defaultCalls.push(addressId);
+      },
+    });
+    const instance = {
+      ...page.data(),
+      ...page.methods,
+      form: {
+        id: "",
+        name: "小陈",
+        phone: "13812345678",
+        address: "软件园",
+        detail: "2 栋 1001",
+        tag: "家",
+        latitude: 0,
+        longitude: 0,
+        isDefault: true,
+      },
+    };
+
+    await instance.save();
+
+    assert.deepEqual(defaultCalls, ["addr-2"]);
+    assert.equal(storage.addresses[0].id, "addr-2");
+    assert.equal(storage.selectedAddressId, "addr-2");
+    assert.equal(navigatedBack, 1);
+  } finally {
+    globalThis.uni = originalUni;
+    globalThis.setTimeout = originalSetTimeout;
+  }
 });

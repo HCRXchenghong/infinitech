@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   buildConsumerProfileFavoriteShopPath,
   buildConsumerProfileFavoritesQuery,
+  createProfileFavoritesPage,
   extractConsumerProfileFavoritesPage,
   formatConsumerProfileFavoriteMoney,
   formatConsumerProfileFavoriteRating,
@@ -91,4 +92,50 @@ test("profile favorites helpers normalize errors", () => {
     ),
     "读取失败",
   );
+});
+
+test("profile favorites page loads and removes favorites through shared logic", async () => {
+  const navigation = [];
+  const deleteCalls = [];
+  const originalUni = globalThis.uni;
+
+  globalThis.uni = {
+    getStorageSync() {
+      return {};
+    },
+    showToast() {},
+    navigateTo({ url }) {
+      navigation.push(url);
+    },
+  };
+
+  try {
+    const page = createProfileFavoritesPage({
+      fetchUserFavorites: async () => ({
+        data: {
+          list: [{ id: "shop-1", name: "店铺 1", rating: 4.5 }],
+          total: 1,
+        },
+      }),
+      deleteUserFavorite: async (userId, shopId) => {
+        deleteCalls.push({ userId, shopId });
+      },
+    });
+    const instance = {
+      ...page.data(),
+      ...page.methods,
+      userId: "user-1",
+    };
+
+    await instance.loadFavorites(true);
+    instance.goShop("shop-1");
+    await instance.removeFavorite({ id: "shop-1" });
+
+    assert.equal(instance.items.length, 0);
+    assert.equal(instance.total, 0);
+    assert.deepEqual(deleteCalls, [{ userId: "user-1", shopId: "shop-1" }]);
+    assert.deepEqual(navigation, ["/pages/shop/detail/index?id=shop-1"]);
+  } finally {
+    globalThis.uni = originalUni;
+  }
 });

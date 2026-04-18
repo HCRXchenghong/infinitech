@@ -57,7 +57,7 @@
 
 <script>
 import { fetchUserFavorites, deleteUserFavorite } from '@/shared-ui/api.js'
-import { createProfileFavoritesPage } from '../../../../shared/mobile-common/profile-favorites-page.js'
+import { createProfileFavoritesPage } from '../../../../packages/mobile-core/src/profile-favorites.js'
 
 export default createProfileFavoritesPage({
   deleteUserFavorite,
