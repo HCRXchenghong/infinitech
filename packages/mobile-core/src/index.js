@@ -6,6 +6,7 @@ export * from "./vip-center.js";
 export * from "./charity-page.js";
 export * from "./dining-buddy.js";
 export * from "./auth-portal.js";
+export * from "./auth-portal-pages.js";
 export * from "./consumer-app-bootstrap.js";
 export * from "./consumer-app-bridges.js";
 export * from "./consumer-app-session.js";

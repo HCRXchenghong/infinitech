@@ -1,3 +1,52 @@
+<template>
+  <view class="page auth">
+    <view class="header">
+      <text class="title">找回密码</text>
+      <text class="subtitle">{{ portalRuntime.subtitle }}</text>
+    </view>
+
+    <view class="form">
+      <input v-model="phone" class="input" placeholder="手机号" type="number" maxlength="11" />
+      <view class="code-row">
+        <input v-model="code" class="input" placeholder="验证码" type="number" maxlength="6" />
+        <text class="code-btn" :class="{ off: codeCooldown > 0 || loading }" @tap="sendCode">
+          {{ loading ? '发送中...' : codeCooldown > 0 ? `${codeCooldown}s` : '获取验证码' }}
+        </text>
+      </view>
+      <button class="btn" @tap="submit" :disabled="loading">
+        {{ loading ? '校验中...' : '下一步' }}
+      </button>
+    </view>
+
+    <view class="footer">
+      <view class="footer-row">
+        <text class="txt">想起密码了？</text>
+        <text class="link" @tap="goLogin">返回登录</text>
+      </view>
+      <text class="portal-footer">{{ portalRuntime.loginFooter }}</text>
+    </view>
+  </view>
+</template>
+
+<script>
+import { requestSMSCode, verifySMSCodeCheck } from "@/shared-ui/api.js";
+import { normalizeErrorMessage } from "@/shared-ui/foundation/error.js";
+import {
+  getCachedConsumerAuthRuntimeSettings,
+  loadConsumerAuthRuntimeSettings,
+} from "@/shared-ui/auth-runtime.js";
+import { createResetPasswordPage } from "./auth-portal.js";
+
+export default createResetPasswordPage({
+  requestSMSCode,
+  verifySMSCodeCheck,
+  getCachedConsumerAuthRuntimeSettings,
+  loadConsumerAuthRuntimeSettings,
+  normalizeErrorMessage,
+});
+</script>
+
+<style scoped lang="scss">
 .page.auth {
   min-height: 100vh;
   background: #fff;
@@ -48,44 +97,6 @@
   color: #111;
 }
 
-.bind-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  padding: 14px 16px;
-  border: 1px solid #d9f0df;
-  border-radius: 12px;
-  background: #f4fbf6;
-}
-
-.bind-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.bind-copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.bind-title {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: #166534;
-}
-
-.bind-desc {
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #4b5563;
-}
-
 .form {
   margin-bottom: 24px;
 }
@@ -109,6 +120,7 @@
 .code-row {
   display: flex;
   align-items: center;
+  margin-bottom: 16px;
 }
 
 .code-row .input {
@@ -125,6 +137,10 @@
   border-radius: 6px;
   white-space: nowrap;
   transition: all 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+  margin-left: 12px;
 }
 
 .code-btn:active {
@@ -162,48 +178,6 @@
   opacity: 0.6;
 }
 
-.login-tabs {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #eee;
-}
-
-.tab-item {
-  padding-bottom: 12px;
-  font-size: 15px;
-  color: #999;
-  position: relative;
-  transition: color 0.3s;
-}
-
-.tab-item.active {
-  color: #009bf5;
-  font-weight: 600;
-}
-
-.tab-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: #009bf5;
-}
-
-.password-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
-  margin-bottom: 16px;
-}
-
-.forgot-password {
-  font-size: 13px;
-  color: #009bf5;
-}
-
 .footer {
   text-align: center;
 }
@@ -233,51 +207,4 @@
   line-height: 1.5;
   color: #9ca3af;
 }
-
-.wechat-login {
-  margin-top: 40px;
-}
-
-.divider {
-  display: flex;
-  align-items: center;
-  margin-bottom: 24px;
-
-  text {
-    font-size: 12px;
-    color: #ccc;
-    padding: 0 12px;
-  }
-}
-
-.line {
-  flex: 1;
-  height: 1px;
-  background: #eee;
-}
-
-.wechat-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 44px;
-  border: 1px solid #eee;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-
-  text {
-    font-size: 15px;
-    color: #333;
-  }
-}
-
-.wechat-btn:active {
-  background: #f8f8f8;
-  transform: scale(0.98);
-}
-
-.wechat-icon {
-  width: 20px;
-  height: 20px;
-}
+</style>

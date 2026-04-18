@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.js",
     "./auth-portal": "./src/auth-portal.js",
+    "./auth-portal-pages": "./src/auth-portal-pages.js",
     "./client-payment": "./src/client-payment.js",
     "./consumer-app-bootstrap": "./src/consumer-app-bootstrap.js",
     "./consumer-app-bridges": "./src/consumer-app-bridges.js",

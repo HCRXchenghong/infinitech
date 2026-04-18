@@ -118,6 +118,25 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/dining-buddy.test.mjs",
   "packages/mobile-core/src/auth-portal.js",
   "packages/mobile-core/src/auth-portal.test.mjs",
+  "packages/mobile-core/src/auth-portal-pages.js",
+  "packages/mobile-core/src/auth-portal-pages.test.mjs",
+  "packages/mobile-core/src/AuthLoginPage.vue",
+  "packages/mobile-core/src/auth-login-page.scss",
+  "packages/mobile-core/src/AuthRegisterPage.vue",
+  "packages/mobile-core/src/auth-register-page.scss",
+  "packages/mobile-core/src/AuthResetPasswordPage.vue",
+  "packages/mobile-core/src/AuthSetPasswordPage.vue",
+  "packages/mobile-core/src/AuthWechatCallbackPage.vue",
+  "user-vue/pages/auth/login/index.vue",
+  "user-vue/pages/auth/register/index.vue",
+  "user-vue/pages/auth/reset-password/index.vue",
+  "user-vue/pages/auth/set-password/index.vue",
+  "user-vue/pages/auth/wechat-callback/index.vue",
+  "app-mobile/pages/auth/login/index.vue",
+  "app-mobile/pages/auth/register/index.vue",
+  "app-mobile/pages/auth/reset-password/index.vue",
+  "app-mobile/pages/auth/set-password/index.vue",
+  "app-mobile/pages/auth/wechat-callback/index.vue",
   "packages/mobile-core/src/client-payment.js",
   "packages/mobile-core/src/client-payment.test.mjs",
   "packages/mobile-core/src/consumer-app-bootstrap.js",
@@ -489,11 +508,11 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/auth/reset-password/index.vue",
-    "../../../../packages/mobile-core/src/auth-portal.js",
+    "../../../../packages/mobile-core/src/AuthResetPasswordPage.vue",
   ],
   [
     "app-mobile/pages/auth/set-password/index.vue",
-    "../../../../packages/mobile-core/src/auth-portal.js",
+    "../../../../packages/mobile-core/src/AuthSetPasswordPage.vue",
   ],
   [
     "app-mobile/pages/search/index/index.vue",
@@ -561,11 +580,11 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/auth/reset-password/index.vue",
-    "../../../../packages/mobile-core/src/auth-portal.js",
+    "../../../../packages/mobile-core/src/AuthResetPasswordPage.vue",
   ],
   [
     "user-vue/pages/auth/set-password/index.vue",
-    "../../../../packages/mobile-core/src/auth-portal.js",
+    "../../../../packages/mobile-core/src/AuthSetPasswordPage.vue",
   ],
   [
     "user-vue/pages/search/index/index.vue",
@@ -2231,6 +2250,10 @@ assertContains(
 assertContains("package.json", '"verify:mobile-core-tests":');
 assertContains(
   "package.json",
+  "packages/mobile-core/src/auth-portal-pages.test.mjs",
+);
+assertContains(
+  "package.json",
   "packages/mobile-core/src/sync-service.test.mjs",
 );
 assertContains(
@@ -3742,6 +3765,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./auth-portal-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./consumer-app-bootstrap.js";',
 );
 assertContains(
@@ -3915,6 +3942,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-app-session": "./src/consumer-app-session.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./auth-portal-pages": "./src/auth-portal-pages.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -4269,34 +4300,94 @@ assertContains(
   "app-mobile/pages/auth/login/index.vue",
   "user-vue/pages/auth/register/index.vue",
   "app-mobile/pages/auth/register/index.vue",
+  "user-vue/pages/auth/reset-password/index.vue",
+  "app-mobile/pages/auth/reset-password/index.vue",
+  "user-vue/pages/auth/set-password/index.vue",
+  "app-mobile/pages/auth/set-password/index.vue",
   "user-vue/pages/auth/wechat-callback/index.vue",
   "app-mobile/pages/auth/wechat-callback/index.vue",
 ].forEach((relativePath) => {
-  assertContains(relativePath, "packages/mobile-core/src/auth-portal.js");
+  assertContains(relativePath, "packages/mobile-core/src/Auth");
 });
 assertContains(
   "user-vue/pages/auth/login/index.vue",
-  "buildConsumerWechatStartUrl(",
+  "../../../../packages/mobile-core/src/AuthLoginPage.vue",
 );
 assertContains(
   "app-mobile/pages/auth/login/index.vue",
-  "buildConsumerWechatStartUrl(",
+  "../../../../packages/mobile-core/src/AuthLoginPage.vue",
 );
 assertContains(
   "user-vue/pages/auth/register/index.vue",
-  "normalizeConsumerInviteCode(",
+  "../../../../packages/mobile-core/src/AuthRegisterPage.vue",
 );
 assertContains(
   "app-mobile/pages/auth/register/index.vue",
-  "normalizeConsumerInviteCode(",
+  "../../../../packages/mobile-core/src/AuthRegisterPage.vue",
+);
+assertContains(
+  "user-vue/pages/auth/reset-password/index.vue",
+  "../../../../packages/mobile-core/src/AuthResetPasswordPage.vue",
+);
+assertContains(
+  "app-mobile/pages/auth/reset-password/index.vue",
+  "../../../../packages/mobile-core/src/AuthResetPasswordPage.vue",
+);
+assertContains(
+  "user-vue/pages/auth/set-password/index.vue",
+  "../../../../packages/mobile-core/src/AuthSetPasswordPage.vue",
+);
+assertContains(
+  "app-mobile/pages/auth/set-password/index.vue",
+  "../../../../packages/mobile-core/src/AuthSetPasswordPage.vue",
 );
 assertContains(
   "user-vue/pages/auth/wechat-callback/index.vue",
-  "buildConsumerAuthUserProfile(result.user)",
+  "../../../../packages/mobile-core/src/AuthWechatCallbackPage.vue",
 );
 assertContains(
   "app-mobile/pages/auth/wechat-callback/index.vue",
-  "buildConsumerAuthUserProfile(result.user)",
+  "../../../../packages/mobile-core/src/AuthWechatCallbackPage.vue",
+);
+assertContains(
+  "packages/mobile-core/src/auth-portal-pages.js",
+  "export function createLoginPage(options = {})",
+);
+assertContains(
+  "packages/mobile-core/src/auth-portal-pages.js",
+  "export function createRegisterPage(options = {})",
+);
+assertContains(
+  "packages/mobile-core/src/auth-portal-pages.js",
+  "export function createWechatCallbackPage(options = {})",
+);
+assertContains(
+  "packages/mobile-core/src/AuthLoginPage.vue",
+  'import { createLoginPage } from "./auth-portal-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/AuthRegisterPage.vue",
+  'import { createRegisterPage } from "./auth-portal-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/AuthResetPasswordPage.vue",
+  'import { createResetPasswordPage } from "./auth-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/AuthSetPasswordPage.vue",
+  'import { createSetPasswordPage } from "./auth-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/AuthWechatCallbackPage.vue",
+  'import { createWechatCallbackPage } from "./auth-portal-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/AuthLoginPage.vue",
+  '<style scoped lang="scss" src="./auth-login-page.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/AuthRegisterPage.vue",
+  '<style scoped lang="scss" src="./auth-register-page.scss"></style>',
 );
 assertContains(
   "user-vue/pages/index/index.vue",
