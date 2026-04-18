@@ -1023,13 +1023,28 @@ assertContains(
   "packages/mobile-core/src/support-runtime.js",
   "export function normalizeSupportRuntimeSettings(payload = {}, defaultSettings = {}) {",
 );
-assertContains("user-vue/shared-ui/sync.ts", "createSyncService({");
-assertContains("app-mobile/shared-ui/sync.ts", "createSyncService({");
+assertContains(
+  "packages/mobile-core/src/sync-service.js",
+  "export function createMobileSyncServiceGetter(options = {}) {",
+);
+assertContains("user-vue/shared-ui/sync.ts", "createMobileSyncServiceGetter({");
+assertContains(
+  "app-mobile/shared-ui/sync.ts",
+  "createMobileSyncServiceGetter({",
+);
 assertContains(
   "merchant-app/shared-ui/sync.ts",
-  "productShopMode: 'shop-menu'",
+  "createMobileSyncServiceGetter({",
 );
-assertContains("rider-app/shared-ui/sync.ts", "productShopMode: 'shop-menu'");
+assertContains(
+  "merchant-app/shared-ui/sync.ts",
+  'productShopMode: "shop-menu"',
+);
+assertContains(
+  "rider-app/shared-ui/sync.ts",
+  "createMobileSyncServiceGetter({",
+);
+assertContains("rider-app/shared-ui/sync.ts", 'productShopMode: "shop-menu"');
 assertContains(
   "user-vue/shared-ui/client-payment.js",
   "export * from '../../packages/mobile-core/src/client-payment.js'",

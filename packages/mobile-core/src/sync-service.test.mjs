@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildSyncApiUrl,
+  createMobileSyncServiceGetter,
   createSyncService,
   isSyncNetworkError,
   normalizeSyncRecords,
@@ -10,23 +11,39 @@ import {
 
 test("buildSyncApiUrl supports consumer and merchant path variants", () => {
   assert.equal(
-    buildSyncApiUrl("shops", { category: "coffee & tea" }, { supportsShopCategory: true }),
+    buildSyncApiUrl(
+      "shops",
+      { category: "coffee & tea" },
+      { supportsShopCategory: true },
+    ),
     "/api/shops?category=coffee%20%26%20tea",
   );
   assert.equal(
-    buildSyncApiUrl("products", { shop_id: 9 }, { productShopMode: "products-query" }),
+    buildSyncApiUrl(
+      "products",
+      { shop_id: 9 },
+      { productShopMode: "products-query" },
+    ),
     "/api/products?shopId=9",
   );
   assert.equal(
-    buildSyncApiUrl("products", { shop_id: 9 }, { productShopMode: "shop-menu" }),
+    buildSyncApiUrl(
+      "products",
+      { shop_id: 9 },
+      { productShopMode: "shop-menu" },
+    ),
     "/api/shops/9/menu",
   );
 });
 
 test("normalizeSyncRecords keeps supported payload shapes stable", () => {
-  assert.deepEqual(normalizeSyncRecords({ data: { items: [{ id: 1 }] } }), [{ id: 1 }]);
+  assert.deepEqual(normalizeSyncRecords({ data: { items: [{ id: 1 }] } }), [
+    { id: 1 },
+  ]);
   assert.deepEqual(normalizeSyncRecords({ shops: [{ id: 2 }] }), [{ id: 2 }]);
-  assert.deepEqual(normalizeSyncRecords({ id: 3, name: "one" }), [{ id: 3, name: "one" }]);
+  assert.deepEqual(normalizeSyncRecords({ id: 3, name: "one" }), [
+    { id: 3, name: "one" },
+  ]);
   assert.deepEqual(normalizeSyncRecords({ error: "failed" }), []);
 });
 
@@ -79,10 +96,10 @@ test("createSyncService synchronizes changed datasets and emits events", async (
 
   await service.syncInBackground();
 
-  assert.deepEqual(requestCalls.map((item) => item.url), [
-    "/api/sync/state",
-    "/api/sync/products?since=3",
-  ]);
+  assert.deepEqual(
+    requestCalls.map((item) => item.url),
+    ["/api/sync/state", "/api/sync/products?since=3"],
+  );
   assert.deepEqual(saved, [
     {
       dataset: "shops",
@@ -132,4 +149,69 @@ test("createSyncService falls back to local data unless preferFresh is enabled",
     () => service.getData("shops", {}, { preferFresh: true }),
     /Network request failed/,
   );
+});
+
+test("createMobileSyncServiceGetter memoizes shared sync services and emits default sync events", async () => {
+  const emitted = [];
+  const requestCalls = [];
+  const localDB = {
+    async init() {},
+    async getLocalSyncState() {
+      return {};
+    },
+    async saveSyncData() {},
+    async getLocalData() {
+      return [];
+    },
+  };
+
+  const getSyncService = createMobileSyncServiceGetter({
+    getLocalDB: () => localDB,
+    request: async (options) => {
+      requestCalls.push(options);
+      if (options.url === "/api/sync/orders?since=1") {
+        return { changed: [], deleted: [], newVersion: 2 };
+      }
+      throw new Error(`unexpected request: ${options.url}`);
+    },
+    productShopMode: "shop-menu",
+    supportsShopCategory: false,
+    isDev: true,
+    uniApp: {
+      $emit(eventName, payload) {
+        emitted.push({ eventName, payload });
+      },
+    },
+    logger: {
+      error() {},
+      warn() {},
+    },
+  });
+
+  const first = getSyncService();
+  const second = getSyncService();
+
+  assert.equal(first, second);
+  assert.equal(
+    first.getApiUrl("products", { shop_id: 12 }),
+    "/api/shops/12/menu",
+  );
+
+  await first.syncDataset("orders", 1);
+
+  assert.deepEqual(requestCalls, [
+    {
+      url: "/api/sync/orders?since=1",
+      method: "GET",
+    },
+  ]);
+  assert.deepEqual(emitted, [
+    {
+      eventName: "data-synced",
+      payload: {
+        dataset: "orders",
+        version: 2,
+      },
+    },
+  ]);
 });

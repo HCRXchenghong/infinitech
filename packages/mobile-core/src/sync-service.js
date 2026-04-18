@@ -8,8 +8,14 @@ function normalizeLogger(logger) {
 
   if (logger && typeof logger === "object") {
     return {
-      warn: typeof logger.warn === "function" ? (...args) => logger.warn(...args) : fallbackLogger.warn,
-      error: typeof logger.error === "function" ? (...args) => logger.error(...args) : fallbackLogger.error,
+      warn:
+        typeof logger.warn === "function"
+          ? (...args) => logger.warn(...args)
+          : fallbackLogger.warn,
+      error:
+        typeof logger.error === "function"
+          ? (...args) => logger.error(...args)
+          : fallbackLogger.error,
     };
   }
 
@@ -22,18 +28,20 @@ function normalizeObject(value) {
 
 function toSyncError(error, fallbackMessage = "Sync request failed") {
   if (error instanceof Error) {
-    const nextMessage = String(error.message || fallbackMessage).trim() || fallbackMessage;
+    const nextMessage =
+      String(error.message || fallbackMessage).trim() || fallbackMessage;
     error.message = nextMessage;
     return error;
   }
 
   const safeError = normalizeObject(error);
-  const message = String(
-    safeError.message ||
-      safeError.error ||
-      safeError.errMsg ||
-      fallbackMessage,
-  ).trim() || fallbackMessage;
+  const message =
+    String(
+      safeError.message ||
+        safeError.error ||
+        safeError.errMsg ||
+        fallbackMessage,
+    ).trim() || fallbackMessage;
   const nextError = new Error(message);
   if (safeError.error !== undefined) {
     nextError.error = safeError.error;
@@ -50,9 +58,7 @@ function toSyncError(error, fallbackMessage = "Sync request failed") {
 function resolveRequestErrorMessage(payload, statusCode) {
   const source = normalizeObject(payload);
   return String(
-    source.error ||
-      source.message ||
-      `Request failed: ${statusCode}`,
+    source.error || source.message || `Request failed: ${statusCode}`,
   ).trim();
 }
 
@@ -61,7 +67,7 @@ export function createUniSyncRequest(options = {}) {
   const timeout = Number(options.timeout || 8000);
   const defaultHeader = {
     "Content-Type": "application/json",
-    ...(normalizeObject(options.defaultHeader)),
+    ...normalizeObject(options.defaultHeader),
   };
   const uniApp = options.uniApp || globalThis.uni;
 
@@ -73,7 +79,7 @@ export function createUniSyncRequest(options = {}) {
         data: requestOptions.data || {},
         header: {
           ...defaultHeader,
-          ...(normalizeObject(requestOptions.header)),
+          ...normalizeObject(requestOptions.header),
         },
         timeout,
         success(res) {
@@ -83,20 +89,29 @@ export function createUniSyncRequest(options = {}) {
             return;
           }
 
-          const requestErrorMessage = resolveRequestErrorMessage(res?.data, statusCode);
-          reject(toSyncError({
-            error: requestErrorMessage,
-            message: requestErrorMessage,
+          const requestErrorMessage = resolveRequestErrorMessage(
+            res?.data,
             statusCode,
-          }));
+          );
+          reject(
+            toSyncError({
+              error: requestErrorMessage,
+              message: requestErrorMessage,
+              statusCode,
+            }),
+          );
         },
         fail(err) {
-          const message = String(err?.errMsg || "Network request failed").trim();
-          reject(toSyncError({
-            error: message,
-            message,
-            errMsg: message,
-          }));
+          const message = String(
+            err?.errMsg || "Network request failed",
+          ).trim();
+          reject(
+            toSyncError({
+              error: message,
+              message,
+              errMsg: message,
+            }),
+          );
         },
       });
     });
@@ -105,9 +120,15 @@ export function createUniSyncRequest(options = {}) {
 
 export function isSyncNetworkError(error) {
   const safeError = normalizeObject(error);
-  const errorText = String(safeError.error || "").trim().toLowerCase();
-  const messageText = String(safeError.message || "").trim().toLowerCase();
-  const errMsgText = String(safeError.errMsg || "").trim().toLowerCase();
+  const errorText = String(safeError.error || "")
+    .trim()
+    .toLowerCase();
+  const messageText = String(safeError.message || "")
+    .trim()
+    .toLowerCase();
+  const errMsgText = String(safeError.errMsg || "")
+    .trim()
+    .toLowerCase();
   const combinedText = `${errorText} ${messageText} ${errMsgText}`;
 
   return (
@@ -122,7 +143,9 @@ export function isSyncNetworkError(error) {
 
 export function buildSyncApiUrl(dataset, conditions = {}, options = {}) {
   const safeConditions = normalizeObject(conditions);
-  const productShopMode = String(options.productShopMode || "products-query").trim().toLowerCase();
+  const productShopMode = String(options.productShopMode || "products-query")
+    .trim()
+    .toLowerCase();
   const supportsShopCategory = options.supportsShopCategory === true;
   const encodedCategory = safeConditions.category
     ? encodeURIComponent(String(safeConditions.category))
@@ -137,11 +160,9 @@ export function buildSyncApiUrl(dataset, conditions = {}, options = {}) {
   const productPath = safeConditions.featured
     ? "/api/products/featured"
     : safeConditions.shop_id
-      ? (
-          productShopMode === "shop-menu"
-            ? `/api/shops/${safeConditions.shop_id}/menu`
-            : `/api/products?shopId=${safeConditions.shop_id}`
-        )
+      ? productShopMode === "shop-menu"
+        ? `/api/shops/${safeConditions.shop_id}/menu`
+        : `/api/products?shopId=${safeConditions.shop_id}`
       : safeConditions.id
         ? `/api/products/${safeConditions.id}`
         : "/api/products";
@@ -189,6 +210,51 @@ export function normalizeSyncRecords(serverData, options = {}) {
   return [];
 }
 
+export function createMobileSyncServiceGetter(options = {}) {
+  const uniApp = options.uniApp || globalThis.uni;
+  const request =
+    typeof options.request === "function"
+      ? options.request
+      : createUniSyncRequest({
+          baseUrl: options.baseUrl,
+          timeout: options.timeout,
+          defaultHeader: options.defaultHeader,
+          uniApp,
+        });
+  const buildApiUrl = (dataset, conditions = {}) =>
+    buildSyncApiUrl(dataset, conditions, {
+      productShopMode: options.productShopMode,
+      supportsShopCategory: options.supportsShopCategory === true,
+    });
+  const syncEventName =
+    String(options.syncEventName || "data-synced").trim() || "data-synced";
+  const emitDataSynced =
+    typeof options.emitDataSynced === "function"
+      ? options.emitDataSynced
+      : (payload) => {
+          if (uniApp && typeof uniApp.$emit === "function") {
+            uniApp.$emit(syncEventName, payload);
+          }
+        };
+
+  let instance = null;
+
+  return function getSyncService() {
+    if (!instance) {
+      instance = createSyncService({
+        getLocalDB: options.getLocalDB,
+        request,
+        buildApiUrl,
+        isDev: options.isDev === true,
+        emitDataSynced,
+        logger: options.logger,
+        datasets: options.datasets,
+      });
+    }
+    return instance;
+  };
+}
+
 export function createSyncService(options = {}) {
   const logger = normalizeLogger(options.logger);
   const request = options.request;
@@ -196,9 +262,10 @@ export function createSyncService(options = {}) {
   const emitDataSynced = options.emitDataSynced;
   const buildApiUrl = options.buildApiUrl || buildSyncApiUrl;
   const isDev = options.isDev === true;
-  const datasets = Array.isArray(options.datasets) && options.datasets.length > 0
-    ? options.datasets
-    : DEFAULT_DATASETS;
+  const datasets =
+    Array.isArray(options.datasets) && options.datasets.length > 0
+      ? options.datasets
+      : DEFAULT_DATASETS;
   const localDB = getLocalDB();
 
   let syncing = false;
