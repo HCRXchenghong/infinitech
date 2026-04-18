@@ -114,6 +114,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/vip-center.test.mjs",
   "packages/mobile-core/src/VipCenterPage.vue",
   "packages/mobile-core/src/vip-center-page.scss",
+  "packages/mobile-core/src/ShopMenuPage.vue",
+  "packages/mobile-core/src/shop-menu-page.scss",
   "packages/mobile-core/src/CharityPage.vue",
   "packages/mobile-core/src/charity-page.scss",
   "packages/mobile-core/src/charity-page.js",
@@ -4493,6 +4495,22 @@ assertContains(
   '<style scoped lang="scss" src="./vip-center-page.scss"></style>',
 );
 assertContains(
+  "packages/mobile-core/src/ShopMenuPage.vue",
+  'import { fetchShopDetail, fetchCategories, fetchProducts, fetchBanners } from \'@/shared-ui/api.js\'',
+);
+assertContains(
+  "packages/mobile-core/src/ShopMenuPage.vue",
+  '<style scoped lang="scss" src="./shop-menu-page.scss"></style>',
+);
+assertContains(
+  "user-vue/pages/shop/menu/index.vue",
+  "../../../../packages/mobile-core/src/ShopMenuPage.vue",
+);
+assertContains(
+  "app-mobile/pages/shop/menu/index.vue",
+  "../../../../packages/mobile-core/src/ShopMenuPage.vue",
+);
+assertContains(
   "user-vue/pages/profile/vip-center/index.vue",
   "../../../../packages/mobile-core/src/VipCenterPage.vue",
 );
@@ -5428,6 +5446,22 @@ assertNotContains(
 assertNotContains(
   "app-mobile/pages/profile/vip-center/index.vue",
   "import options from './page-options.js'",
+);
+assertNotContains(
+  "user-vue/pages/shop/menu/index.vue",
+  "fetchShopDetail",
+);
+assertNotContains(
+  "app-mobile/pages/shop/menu/index.vue",
+  "fetchShopDetail",
+);
+assertNotContains(
+  "user-vue/pages/shop/menu/index.vue",
+  "CartModal",
+);
+assertNotContains(
+  "app-mobile/pages/shop/menu/index.vue",
+  "CartModal",
 );
 assertNotContains(
   "user-vue/pages/dining-buddy/index.vue",
