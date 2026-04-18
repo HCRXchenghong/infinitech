@@ -1,17 +1,12 @@
-import { isErrandServiceEnabled, loadPlatformRuntimeSettings } from './platform-runtime.js'
+import { createConsumerErrandRuntimeBindings } from "../../packages/mobile-core/src/consumer-errand-runtime.js";
+import {
+  isErrandServiceEnabled,
+  loadPlatformRuntimeSettings,
+} from "./platform-runtime.js";
 
-export async function ensureErrandServiceOpen(serviceKey, clientScope = 'user-vue') {
-  const runtime = await loadPlatformRuntimeSettings()
-  const enabled = isErrandServiceEnabled(runtime, serviceKey, clientScope)
-  if (!enabled) {
-    uni.showToast({ title: '当前服务暂未开放', icon: 'none' })
-    setTimeout(() => {
-      uni.navigateBack({
-        fail: () => {
-          uni.switchTab({ url: '/pages/index/index' })
-        }
-      })
-    }, 500)
-  }
-  return enabled
-}
+export const { ensureErrandServiceOpen } = createConsumerErrandRuntimeBindings({
+  uniApp: uni,
+  clientScope: "user-vue",
+  loadPlatformRuntimeSettings,
+  isErrandServiceEnabled,
+});

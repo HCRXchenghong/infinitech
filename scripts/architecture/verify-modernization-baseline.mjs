@@ -126,6 +126,12 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/consumer-auth-runtime.test.mjs",
   "packages/mobile-core/src/consumer-cache.js",
   "packages/mobile-core/src/consumer-cache.test.mjs",
+  "packages/mobile-core/src/consumer-errand.js",
+  "packages/mobile-core/src/consumer-errand.test.mjs",
+  "packages/mobile-core/src/consumer-errand-runtime.js",
+  "packages/mobile-core/src/consumer-errand-runtime.test.mjs",
+  "packages/mobile-core/src/consumer-home-categories.js",
+  "packages/mobile-core/src/consumer-home-categories.test.mjs",
   "packages/mobile-core/src/consumer-notify-bridges.js",
   "packages/mobile-core/src/consumer-notify-bridges.test.mjs",
   "packages/mobile-core/src/consumer-request-interceptor.js",
@@ -1002,6 +1008,22 @@ assertContains(
   "export function checkAndClearCacheIfNeeded(options = {}) {",
 );
 assertContains(
+  "packages/mobile-core/src/consumer-errand.js",
+  "export function buildErrandOrderPayload(config = {}, identity = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-errand.js",
+  "export function mapErrandOrderDetail(order = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-errand-runtime.js",
+  "export function createConsumerErrandRuntimeBindings(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-home-categories.js",
+  "export function buildHomeCategories(remoteCategories = []) {",
+);
+assertContains(
   "packages/mobile-core/src/push-event-route.js",
   "export function createPushClickUrlResolver(roleOrRoles, options = {}) {",
 );
@@ -1138,6 +1160,30 @@ assertContains(
 assertContains(
   "app-mobile/shared-ui/request-interceptor.ts",
   "createConsumerRequestInterceptor({",
+);
+assertContains(
+  "user-vue/shared-ui/errand.js",
+  'export * from "../../packages/mobile-core/src/consumer-errand.js"',
+);
+assertContains(
+  "app-mobile/shared-ui/errand.js",
+  'export * from "../../packages/mobile-core/src/consumer-errand.js"',
+);
+assertContains(
+  "user-vue/shared-ui/home-categories.js",
+  'export * from "../../packages/mobile-core/src/consumer-home-categories.js"',
+);
+assertContains(
+  "app-mobile/shared-ui/home-categories.js",
+  'export * from "../../packages/mobile-core/src/consumer-home-categories.js"',
+);
+assertContains(
+  "user-vue/shared-ui/errand-runtime.js",
+  "createConsumerErrandRuntimeBindings({",
+);
+assertContains(
+  "app-mobile/shared-ui/errand-runtime.js",
+  "createConsumerErrandRuntimeBindings({",
 );
 assertContains(
   "user-vue/shared-ui/push-events.js",
@@ -2049,6 +2095,18 @@ assertContains(
 );
 assertContains(
   "package.json",
+  "packages/mobile-core/src/consumer-errand.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/consumer-errand-runtime.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/consumer-home-categories.test.mjs",
+);
+assertContains(
+  "package.json",
   "packages/mobile-core/src/consumer-request-interceptor.test.mjs",
 );
 assertContains(
@@ -2616,6 +2674,22 @@ assertContains(
 assertContains(
   "app-mobile/shared-ui/request-interceptor.ts",
   'pushRegistrationStorageKey: "app_mobile_push_registration"',
+);
+assertContains(
+  "user-vue/shared-ui/errand-runtime.js",
+  'from "../../packages/mobile-core/src/consumer-errand-runtime.js"',
+);
+assertContains(
+  "user-vue/shared-ui/errand-runtime.js",
+  'clientScope: "user-vue"',
+);
+assertContains(
+  "app-mobile/shared-ui/errand-runtime.js",
+  'from "../../packages/mobile-core/src/consumer-errand-runtime.js"',
+);
+assertContains(
+  "app-mobile/shared-ui/errand-runtime.js",
+  'clientScope: "app-mobile"',
 );
 assertContains(
   "merchant-app/shared-ui/realtime-notify.ts",
@@ -3456,6 +3530,18 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./consumer-errand.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./consumer-errand-runtime.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./consumer-home-categories.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./consumer-notify-bridges.js";',
 );
 assertContains(
@@ -3573,6 +3659,18 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-cache": "./src/consumer-cache.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-errand": "./src/consumer-errand.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-errand-runtime": "./src/consumer-errand-runtime.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-home-categories": "./src/consumer-home-categories.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
