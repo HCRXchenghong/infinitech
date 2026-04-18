@@ -1,34 +1,15 @@
-import config from './config'
-import createSocket from '../utils/socket-io.js'
-import { createStoredAuthIdentityResolver } from '../../packages/client-sdk/src/stored-auth-identity.js'
-import { createRealtimeNotifyBridge } from '../../packages/client-sdk/src/realtime-notify.js'
-
-const resolveUserIdentity = createStoredAuthIdentityResolver({
-  uniApp: uni,
-  allowedAuthModes: ['user'],
-  allowEmptyAuthMode: true,
-  tokenKeys: ['token'],
-  profileKey: 'userProfile',
-  idSources: [
-    'profile:id',
-    'profile:userId',
-    'profile:user_id',
-    'storage:userId',
-    'storage:user_id',
-    'profile:phone',
-  ],
-  role: 'user',
-  userType: 'customer',
-})
+import config from "./config";
+import createSocket from "../utils/socket-io.js";
+import { createConsumerRealtimeNotifyBindings } from "../../packages/mobile-core/src/consumer-notify-bridges.js";
 
 export const {
   connectCurrentRealtimeChannel,
   disconnectRealtimeChannel,
   clearRealtimeState,
-} = createRealtimeNotifyBridge({
-  loggerTag: 'UserRealtimeNotify',
-  storageKey: 'user_realtime_notify_state',
-  resolveAuthIdentity: resolveUserIdentity,
+} = createConsumerRealtimeNotifyBindings({
+  uniApp: uni,
+  loggerTag: "UserRealtimeNotify",
+  storageKey: "user_realtime_notify_state",
   getSocketURL: () => config.SOCKET_URL,
   createSocket,
-})
+});

@@ -122,6 +122,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/client-payment.test.mjs",
   "packages/mobile-core/src/consumer-auth-runtime.js",
   "packages/mobile-core/src/consumer-auth-runtime.test.mjs",
+  "packages/mobile-core/src/consumer-notify-bridges.js",
+  "packages/mobile-core/src/consumer-notify-bridges.test.mjs",
   "packages/mobile-core/src/location.js",
   "packages/mobile-core/src/location.d.ts",
   "packages/mobile-core/src/location.test.mjs",
@@ -1022,6 +1024,14 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/support-runtime.js",
   "export function normalizeSupportRuntimeSettings(payload = {}, defaultSettings = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-notify-bridges.js",
+  "export function createConsumerPushRegistrationBindings(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-notify-bridges.js",
+  "export function createConsumerRealtimeNotifyBindings(options = {}) {",
 );
 assertContains(
   "packages/mobile-core/src/sync-service.js",
@@ -2473,19 +2483,19 @@ assertContains("merchant-app/shared-ui/api.ts", "createUniRequestClient({");
 assertContains("rider-app/shared-ui/api.ts", "createUniRequestClient({");
 assertContains(
   "user-vue/shared-ui/push-registration.js",
-  "createStoredAuthIdentityResolver({",
+  "createConsumerPushRegistrationBindings({",
 );
 assertContains(
   "user-vue/shared-ui/push-registration.js",
-  "from '../../packages/client-sdk/src/push-registration.js'",
+  'from "../../packages/mobile-core/src/consumer-notify-bridges.js"',
 );
 assertContains(
   "app-mobile/shared-ui/push-registration.js",
-  "createStoredAuthIdentityResolver({",
+  "createConsumerPushRegistrationBindings({",
 );
 assertContains(
   "app-mobile/shared-ui/push-registration.js",
-  "from '../../packages/client-sdk/src/push-registration.js'",
+  'from "../../packages/mobile-core/src/consumer-notify-bridges.js"',
 );
 assertContains(
   "merchant-app/shared-ui/push-registration.ts",
@@ -2505,19 +2515,19 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/realtime-notify.js",
-  "createStoredAuthIdentityResolver({",
+  "createConsumerRealtimeNotifyBindings({",
 );
 assertContains(
   "user-vue/shared-ui/realtime-notify.js",
-  "from '../../packages/client-sdk/src/realtime-notify.js'",
+  'from "../../packages/mobile-core/src/consumer-notify-bridges.js"',
 );
 assertContains(
   "app-mobile/shared-ui/realtime-notify.js",
-  "createStoredAuthIdentityResolver({",
+  "createConsumerRealtimeNotifyBindings({",
 );
 assertContains(
   "app-mobile/shared-ui/realtime-notify.js",
-  "from '../../packages/client-sdk/src/realtime-notify.js'",
+  'from "../../packages/mobile-core/src/consumer-notify-bridges.js"',
 );
 assertContains(
   "merchant-app/shared-ui/realtime-notify.ts",
