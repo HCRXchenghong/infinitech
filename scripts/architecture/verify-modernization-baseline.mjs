@@ -323,10 +323,18 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/sync-service.test.mjs",
   "packages/mobile-core/src/message-center.js",
   "packages/mobile-core/src/message-center.test.mjs",
+  "packages/mobile-core/src/MessageCenterPage.vue",
+  "packages/mobile-core/src/message-center-page.scss",
   "packages/mobile-core/src/notification-detail.js",
   "packages/mobile-core/src/notification-detail.test.mjs",
+  "packages/mobile-core/src/NotificationListPage.vue",
+  "packages/mobile-core/src/notification-list-page.scss",
+  "packages/mobile-core/src/NotificationDetailPage.vue",
+  "packages/mobile-core/src/notification-detail-page.scss",
   "packages/mobile-core/src/message-chat-page.js",
   "packages/mobile-core/src/message-chat-page.test.mjs",
+  "packages/mobile-core/src/MessageChatPage.vue",
+  "packages/mobile-core/src/message-chat-page.scss",
   "packages/mobile-core/src/customer-service-chat-utils.js",
   "packages/mobile-core/src/customer-service-page.js",
   "packages/mobile-core/src/customer-service-page.test.mjs",
@@ -484,8 +492,8 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../packages/mobile-core/src/order-confirm-page.js",
   ],
   [
-    "app-mobile/pages/message/chat/page-logic.js",
-    "../../../../packages/mobile-core/src/message-chat-page.js",
+    "app-mobile/pages/message/chat/index.vue",
+    "../../../../packages/mobile-core/src/MessageChatPage.vue",
   ],
   [
     "app-mobile/pages/profile/customer-service/page-logic.js",
@@ -528,8 +536,8 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../packages/mobile-core/src/order-confirm-page.js",
   ],
   [
-    "user-vue/pages/message/chat/page-logic.js",
-    "../../../../packages/mobile-core/src/message-chat-page.js",
+    "user-vue/pages/message/chat/index.vue",
+    "../../../../packages/mobile-core/src/MessageChatPage.vue",
   ],
   [
     "user-vue/pages/profile/customer-service/page-logic.js",
@@ -633,15 +641,15 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/message/index/index.vue",
-    "../../../../packages/mobile-core/src/message-center.js",
+    "../../../../packages/mobile-core/src/MessageCenterPage.vue",
   ],
   [
     "app-mobile/pages/message/notification-list/index.vue",
-    "../../../../packages/mobile-core/src/message-center.js",
+    "../../../../packages/mobile-core/src/NotificationListPage.vue",
   ],
   [
     "app-mobile/pages/message/notification-detail/index.vue",
-    "../../../../packages/mobile-core/src/notification-detail.js",
+    "../../../../packages/mobile-core/src/NotificationDetailPage.vue",
   ],
   [
     "app-mobile/pages/dining-buddy/index.vue",
@@ -765,15 +773,15 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/message/index/index.vue",
-    "../../../../packages/mobile-core/src/message-center.js",
+    "../../../../packages/mobile-core/src/MessageCenterPage.vue",
   ],
   [
     "user-vue/pages/message/notification-list/index.vue",
-    "../../../../packages/mobile-core/src/message-center.js",
+    "../../../../packages/mobile-core/src/NotificationListPage.vue",
   ],
   [
     "user-vue/pages/message/notification-detail/index.vue",
-    "../../../../packages/mobile-core/src/notification-detail.js",
+    "../../../../packages/mobile-core/src/NotificationDetailPage.vue",
   ],
   [
     "user-vue/pages/dining-buddy/index.vue",
@@ -909,12 +917,12 @@ assertContains(
   'from "../../packages/mobile-core/src/consumer-api.js"',
 );
 assertContains(
-  "user-vue/pages/message/notification-detail/index.vue",
-  "../../../../packages/domain-core/src/notification-content.js",
+  "packages/mobile-core/src/NotificationDetailPage.vue",
+  '../../domain-core/src/notification-content.js',
 );
 assertContains(
-  "app-mobile/pages/message/notification-detail/index.vue",
-  "../../../../packages/domain-core/src/notification-content.js",
+  "packages/mobile-core/src/NotificationDetailPage.vue",
+  'import { createNotificationDetailPage } from "./notification-detail.js";',
 );
 assertContains(
   "app-mobile/shared-ui/api.js",
@@ -4370,27 +4378,35 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/message/index/index.vue",
-  "../../../../packages/mobile-core/src/message-center.js",
+  "../../../../packages/mobile-core/src/MessageCenterPage.vue",
 );
 assertContains(
   "app-mobile/pages/message/index/index.vue",
-  "../../../../packages/mobile-core/src/message-center.js",
+  "../../../../packages/mobile-core/src/MessageCenterPage.vue",
 );
 assertContains(
   "user-vue/pages/message/notification-list/index.vue",
-  "../../../../packages/mobile-core/src/message-center.js",
+  "../../../../packages/mobile-core/src/NotificationListPage.vue",
 );
 assertContains(
   "app-mobile/pages/message/notification-list/index.vue",
-  "../../../../packages/mobile-core/src/message-center.js",
+  "../../../../packages/mobile-core/src/NotificationListPage.vue",
 );
 assertContains(
   "user-vue/pages/message/notification-detail/index.vue",
-  "../../../../packages/mobile-core/src/notification-detail.js",
+  "../../../../packages/mobile-core/src/NotificationDetailPage.vue",
 );
 assertContains(
   "app-mobile/pages/message/notification-detail/index.vue",
-  "../../../../packages/mobile-core/src/notification-detail.js",
+  "../../../../packages/mobile-core/src/NotificationDetailPage.vue",
+);
+assertContains(
+  "user-vue/pages/message/chat/index.vue",
+  "../../../../packages/mobile-core/src/MessageChatPage.vue",
+);
+assertContains(
+  "app-mobile/pages/message/chat/index.vue",
+  "../../../../packages/mobile-core/src/MessageChatPage.vue",
 );
 assertContains(
   "user-vue/shared-ui/feature-runtime.js",
@@ -4407,6 +4423,38 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/ErrandHomePage.vue",
   '<style scoped lang="scss" src="./errand-home-page.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/MessageCenterPage.vue",
+  'import { createMessageCenterPage } from "./message-center.js";',
+);
+assertContains(
+  "packages/mobile-core/src/MessageCenterPage.vue",
+  '<style scoped lang="scss" src="./message-center-page.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/NotificationListPage.vue",
+  'import { createNotificationListPage } from "./message-center.js";',
+);
+assertContains(
+  "packages/mobile-core/src/NotificationListPage.vue",
+  '<style scoped lang="scss" src="./notification-list-page.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/NotificationDetailPage.vue",
+  'import { createNotificationDetailPage } from "./notification-detail.js";',
+);
+assertContains(
+  "packages/mobile-core/src/NotificationDetailPage.vue",
+  '<style scoped lang="scss" src="./notification-detail-page.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/MessageChatPage.vue",
+  'import { createMessageChatPage } from "./message-chat-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/MessageChatPage.vue",
+  '<style scoped lang="scss" src="./message-chat-page.scss"></style>',
 );
 assertContains(
   "user-vue/pages/dining-buddy/index.vue",
@@ -5020,51 +5068,35 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/message/index/index.vue",
-  "../../../../packages/mobile-core/src/message-center.js",
+  "../../../../packages/mobile-core/src/MessageCenterPage.vue",
 );
 assertContains(
   "app-mobile/pages/message/index/index.vue",
-  "../../../../packages/mobile-core/src/message-center.js",
-);
-assertContains(
-  "user-vue/pages/message/index/index.vue",
-  "createMessageCenterPage({",
-);
-assertContains(
-  "app-mobile/pages/message/index/index.vue",
-  "createMessageCenterPage({",
+  "../../../../packages/mobile-core/src/MessageCenterPage.vue",
 );
 assertContains(
   "user-vue/pages/message/notification-list/index.vue",
-  "../../../../packages/mobile-core/src/message-center.js",
+  "../../../../packages/mobile-core/src/NotificationListPage.vue",
 );
 assertContains(
   "app-mobile/pages/message/notification-list/index.vue",
-  "../../../../packages/mobile-core/src/message-center.js",
-);
-assertContains(
-  "user-vue/pages/message/notification-list/index.vue",
-  "createNotificationListPage({",
-);
-assertContains(
-  "app-mobile/pages/message/notification-list/index.vue",
-  "createNotificationListPage({",
+  "../../../../packages/mobile-core/src/NotificationListPage.vue",
 );
 assertContains(
   "user-vue/pages/message/notification-detail/index.vue",
-  "../../../../packages/mobile-core/src/notification-detail.js",
+  "../../../../packages/mobile-core/src/NotificationDetailPage.vue",
 );
 assertContains(
   "app-mobile/pages/message/notification-detail/index.vue",
-  "../../../../packages/mobile-core/src/notification-detail.js",
+  "../../../../packages/mobile-core/src/NotificationDetailPage.vue",
 );
 assertContains(
-  "user-vue/pages/message/notification-detail/index.vue",
-  "createNotificationDetailPage({",
+  "user-vue/pages/message/chat/index.vue",
+  "../../../../packages/mobile-core/src/MessageChatPage.vue",
 );
 assertContains(
-  "app-mobile/pages/message/notification-detail/index.vue",
-  "createNotificationDetailPage({",
+  "app-mobile/pages/message/chat/index.vue",
+  "../../../../packages/mobile-core/src/MessageChatPage.vue",
 );
 assertContains(
   "user-vue/pages/profile/edit/index.vue",
@@ -5528,6 +5560,7 @@ assertNotContains(
   assertNotContains(relativePath, "const SESSION_VISIBLE_MAX_AGE =");
   assertNotContains(relativePath, "const UI_TEXT = {");
   assertNotContains(relativePath, "normalizeSession(item = {})");
+  assertNotContains(relativePath, "createMessageCenterPage({");
 });
 [
   "user-vue/pages/message/notification-list/index.vue",
@@ -5536,6 +5569,7 @@ assertNotContains(
   assertNotContains(relativePath, "const NOTIFICATION_READ_EVENT =");
   assertNotContains(relativePath, "async loadNotifications()");
   assertNotContains(relativePath, "handleNotificationRead(payload = {})");
+  assertNotContains(relativePath, "createNotificationListPage({");
 });
 [
   "user-vue/pages/message/notification-detail/index.vue",
@@ -5544,6 +5578,14 @@ assertNotContains(
   assertNotContains(relativePath, "const NOTIFICATION_READ_EVENT =");
   assertNotContains(relativePath, "async ackPushOpened(messageId)");
   assertNotContains(relativePath, "async markAsRead(id)");
+  assertNotContains(relativePath, "createNotificationDetailPage({");
+});
+[
+  "user-vue/pages/message/chat/index.vue",
+  "app-mobile/pages/message/chat/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "import pageLogic from './page-logic.js'");
+  assertNotContains(relativePath, "createMessageChatPage({");
 });
 [
   "user-vue/pages/profile/edit/index.vue",
