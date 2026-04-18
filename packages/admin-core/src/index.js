@@ -1,4 +1,5 @@
 export * from "./route-registry.js";
+export * from "./admin-auth-session.js";
 export * from "./module-catalog.js";
 export * from "./menu-groups.js";
 export * from "./desktop-shell.js";

@@ -180,12 +180,6 @@ async function handleLogin() {
 			return;
 		}
 
-		const userType = String(data.user.type || '').toLowerCase();
-		if (userType !== 'super_admin' && userType !== 'admin') {
-			error.value = '权限不足，仅限管理员登录';
-			return;
-		}
-
 		saveAuthSession(data.token, data.user, { source: loginType.value });
 		uni.showToast({ title: '登录成功', icon: 'success' });
 		setTimeout(() => {

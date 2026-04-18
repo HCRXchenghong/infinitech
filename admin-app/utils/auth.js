@@ -1,16 +1,18 @@
 import { API_CONFIG } from './config.js';
+import {
+	ADMIN_AUTH_STORAGE_KEYS,
+	DEFAULT_ADMIN_VERIFY_MAX_AGE_MS,
+	buildAdminAuthSession,
+	getAdminSessionAccountId,
+	isAdminAuthSessionExpired,
+	isAdminAuthSessionValid,
+	isAdminSessionUser,
+	mergeAdminVerifiedSession,
+	normalizeAdminAuthSessionRecord
+} from '../../packages/admin-core/src/admin-auth-session.js';
+import { clearCachedSocketToken as clearCachedSocketTokenCache } from '../../packages/client-sdk/src/realtime-token.js';
 
-const SESSION_VERSION = 2;
-const DEFAULT_SESSION_TTL_MS = 2 * 60 * 60 * 1000;
-const DEFAULT_VERIFY_MAX_AGE_MS = 2 * 60 * 1000;
-const TOKEN_EXPIRE_SKEW_MS = 60 * 1000;
-
-export const AUTH_STORAGE_KEYS = {
-	SESSION_KEY: 'admin_session_v2',
-	BIO_CONFIG_KEY: 'admin_bio_config_v2',
-	BIO_FAIL_STATE_KEY: 'admin_bio_fail_state_v1',
-	BIO_APP_LOCK_KEY: 'admin_bio_lock_required_v1'
-};
+export const AUTH_STORAGE_KEYS = ADMIN_AUTH_STORAGE_KEYS;
 
 function safeJsonParse(value, fallback = null) {
 	if (!value || typeof value !== 'string') {
@@ -23,148 +25,8 @@ function safeJsonParse(value, fallback = null) {
 	}
 }
 
-function normalizeBase64Url(value) {
-	const raw = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
-	const remain = raw.length % 4;
-	if (!remain) {
-		return raw;
-	}
-	return raw + '='.repeat(4 - remain);
-}
-
-function decodeBase64ToText(value) {
-	const normalized = normalizeBase64Url(value);
-	if (!normalized) {
-		return '';
-	}
-
-	try {
-		if (typeof uni !== 'undefined' && typeof uni.base64ToArrayBuffer === 'function') {
-			const arrayBuffer = uni.base64ToArrayBuffer(normalized);
-			const uint8 = new Uint8Array(arrayBuffer);
-			if (typeof TextDecoder !== 'undefined') {
-				return new TextDecoder('utf-8').decode(uint8);
-			}
-			let binary = '';
-			for (let i = 0; i < uint8.length; i += 1) {
-				binary += String.fromCharCode(uint8[i]);
-			}
-			return binary;
-		}
-	} catch (err) {
-		// ignore and fallback
-	}
-
-	try {
-		if (typeof atob === 'function') {
-			return atob(normalized);
-		}
-	} catch (err) {
-		// ignore and return empty
-	}
-
-	return '';
-}
-
-function decodeBase64UrlToJSON(value) {
-	const text = decodeBase64ToText(value);
-	return safeJsonParse(text, null);
-}
-
-function parseTokenPayload(token) {
-	const raw = String(token || '').trim();
-	if (!raw) {
-		return null;
-	}
-	const parts = raw.split('.');
-	const payloadPart = parts.length === 2 ? parts[0] : (parts.length >= 3 ? parts[1] : '');
-	if (!payloadPart) {
-		return null;
-	}
-	return decodeBase64UrlToJSON(payloadPart);
-}
-
-function getTokenExpAt(token) {
-	const payload = parseTokenPayload(token);
-	const exp = Number(payload && payload.exp ? payload.exp : 0);
-	if (!Number.isFinite(exp) || exp <= 0) {
-		return 0;
-	}
-	return exp * 1000;
-}
-
-function getTokenIssuedAt(token) {
-	const payload = parseTokenPayload(token);
-	const iat = Number(payload && payload.iat ? payload.iat : 0);
-	if (!Number.isFinite(iat) || iat <= 0) {
-		return 0;
-	}
-	return iat * 1000;
-}
-
-function normalizeAdminUser(user) {
-	if (!user || typeof user !== 'object') {
-		return null;
-	}
-	return {
-		id: String(user.id || user.userId || user.uid || ''),
-		phone: String(user.phone || ''),
-		name: String(user.name || user.username || '管理员'),
-		type: String(user.type || user.role || '').trim().toLowerCase()
-	};
-}
-
 export function isAdminUser(user) {
-	const normalized = normalizeAdminUser(user);
-	if (!normalized) {
-		return false;
-	}
-	return normalized.type === 'admin' || normalized.type === 'super_admin';
-}
-
-function getUserAccountId(user) {
-	const normalized = normalizeAdminUser(user);
-	if (!normalized) {
-		return '';
-	}
-	return normalized.id || normalized.phone || '';
-}
-
-function buildSession(token, user, source) {
-	const tokenValue = String(token || '').trim();
-	if (!tokenValue) {
-		throw new Error('登录令牌缺失');
-	}
-
-	const normalizedUser = normalizeAdminUser(user);
-	if (!normalizedUser) {
-		throw new Error('用户信息无效');
-	}
-	if (!normalizedUser.type) {
-		const payload = parseTokenPayload(tokenValue);
-		const tokenType = String(payload && (payload.type || payload.role || payload.userType) || '')
-			.trim()
-			.toLowerCase();
-		if (tokenType) {
-			normalizedUser.type = tokenType;
-		}
-	}
-	if (!isAdminUser(normalizedUser)) {
-		throw new Error('权限不足，仅支持管理员账号');
-	}
-
-	const now = Date.now();
-	const expAt = getTokenExpAt(tokenValue);
-	return {
-		version: SESSION_VERSION,
-		token: tokenValue,
-		user: normalizedUser,
-		source: String(source || 'password'),
-		issuedAt: getTokenIssuedAt(tokenValue) || now,
-		expiresAt: expAt || now + DEFAULT_SESSION_TTL_MS,
-		lastVerifiedAt: 0,
-		updatedAt: now
-	};
+	return isAdminSessionUser(user);
 }
 
 function writeSession(session) {
@@ -191,7 +53,7 @@ function readLegacySession() {
 	}
 
 	try {
-		return buildSession(token, user, 'legacy');
+		return buildAdminAuthSession(token, user, { source: 'legacy' });
 	} catch (err) {
 		return null;
 	}
@@ -212,42 +74,15 @@ export function getAuthSession() {
 		return null;
 	}
 
-	const token = String(session.token || '').trim();
-	const user = normalizeAdminUser(session.user);
-	if (!token || !user) {
-		return null;
-	}
-
-	return {
-		...session,
-		token,
-		user,
-		expiresAt: Number(session.expiresAt || 0),
-		issuedAt: Number(session.issuedAt || 0),
-		lastVerifiedAt: Number(session.lastVerifiedAt || 0),
-		updatedAt: Number(session.updatedAt || 0)
-	};
+	return normalizeAdminAuthSessionRecord(session);
 }
 
-export function isSessionExpired(session, skewMs = TOKEN_EXPIRE_SKEW_MS) {
-	if (!session || typeof session !== 'object') {
-		return true;
-	}
-	const expiresAt = Number(session.expiresAt || 0);
-	if (!Number.isFinite(expiresAt) || expiresAt <= 0) {
-		return true;
-	}
-	return Date.now() + Math.max(0, Number(skewMs || 0)) >= expiresAt;
+export function isSessionExpired(session, skewMs) {
+	return isAdminAuthSessionExpired(session, skewMs);
 }
 
 export function isAuthSessionValid(session = getAuthSession()) {
-	if (!session) {
-		return false;
-	}
-	if (!session.token || !isAdminUser(session.user)) {
-		return false;
-	}
-	return !isSessionExpired(session);
+	return isAdminAuthSessionValid(session);
 }
 
 export function getAuthToken() {
@@ -267,7 +102,7 @@ export function getAuthUser() {
 }
 
 export function saveAuthSession(token, user, options = {}) {
-	const session = buildSession(token, user, options.source || 'password');
+	const session = buildAdminAuthSession(token, user, { source: options.source || 'password' });
 	writeSession(session);
 	return session;
 }
@@ -278,13 +113,10 @@ export function markSessionVerified(user) {
 		return;
 	}
 
-	const verifiedUser = normalizeAdminUser(user);
-	const nextSession = {
-		...session,
-		user: verifiedUser && isAdminUser(verifiedUser) ? verifiedUser : session.user,
-		lastVerifiedAt: Date.now(),
-		updatedAt: Date.now()
-	};
+	const nextSession = mergeAdminVerifiedSession(session, user);
+	if (!nextSession) {
+		return;
+	}
 	writeSession(nextSession);
 }
 
@@ -294,8 +126,7 @@ export function clearAuthSession(options = {}) {
 	uni.removeStorageSync(API_CONFIG.TOKEN_KEY);
 	uni.removeStorageSync(API_CONFIG.USER_KEY);
 	uni.removeStorageSync(AUTH_STORAGE_KEYS.SESSION_KEY);
-	uni.removeStorageSync('socket_token');
-	uni.removeStorageSync('socket_token_account_key');
+	clearCachedSocketTokenCache({ uniApp: uni });
 	uni.removeStorageSync(AUTH_STORAGE_KEYS.BIO_APP_LOCK_KEY);
 
 	if (!keepBiometric) {
@@ -340,11 +171,13 @@ export async function verifySessionRemote(options = {}) {
 
 		const data = response && response.data && typeof response.data === 'object' ? response.data : {};
 		if (response.statusCode >= 200 && response.statusCode < 300 && data.valid) {
-			const verifiedUser = normalizeAdminUser(data.user);
-			markSessionVerified(verifiedUser);
+			const nextSession = mergeAdminVerifiedSession(session, data.user);
+			if (nextSession) {
+				writeSession(nextSession);
+			}
 			return {
 				valid: true,
-				user: verifiedUser && isAdminUser(verifiedUser) ? verifiedUser : session.user
+				user: nextSession ? nextSession.user : session.user
 			};
 		}
 
@@ -381,7 +214,7 @@ export async function ensureAuthenticated(options = {}) {
 	const verifyMaxAgeInput = Number(options.verifyMaxAgeMs);
 	const verifyMaxAgeMs = Number.isFinite(verifyMaxAgeInput)
 		? Math.max(0, verifyMaxAgeInput)
-		: DEFAULT_VERIFY_MAX_AGE_MS;
+		: DEFAULT_ADMIN_VERIFY_MAX_AGE_MS;
 
 	let session = getAuthSession();
 	if (!isAuthSessionValid(session)) {
@@ -412,7 +245,7 @@ export async function ensureAuthenticated(options = {}) {
 
 export function getCurrentAccountId() {
 	const user = getAuthUser();
-	return getUserAccountId(user);
+	return getAdminSessionAccountId(user);
 }
 
 export function isProtectedRoute(route) {

@@ -229,6 +229,10 @@ import QRCode from 'qrcode'
 
 import request from '@/utils/request'
 import { buildRuntimeUrl, clearAdminSessionStorage } from '@/utils/runtime'
+import {
+  ADMIN_AUTH_STORAGE_KEYS,
+  buildAdminAuthSession,
+} from '@infinitech/admin-core/admin-auth-session'
 import { extractEnvelopeData, extractErrorMessage, extractSMSResult } from '@infinitech/contracts'
 import {
   createDefaultLoginForm,
@@ -383,19 +387,39 @@ function saveLoginSession(payload, mode = credentialMode.value) {
     return
   }
 
+  let session
+  try {
+    session = buildAdminAuthSession(payload.token, payload.user || {}, {
+      source: mode,
+    })
+  } catch (error) {
+    ElMessage.error(error?.message || '登录失败，管理员会话无效')
+    return
+  }
+
   clearLoginSession()
   const storage = form.value.rememberMe ? localStorage : sessionStorage
-  storage.setItem('admin_token', payload.token)
+  const persistedUser = {
+    ...(payload.user && typeof payload.user === 'object' ? payload.user : {}),
+    ...session.user,
+    mustChangeBootstrap: Boolean(payload?.user?.mustChangeBootstrap),
+  }
+
+  storage.setItem('admin_token', session.token)
   storage.setItem(
     'admin_user',
-    JSON.stringify(payload.user || { name: '管理员', type: 'admin', mustChangeBootstrap: false }),
+    JSON.stringify(persistedUser),
+  )
+  storage.setItem(
+    ADMIN_AUTH_STORAGE_KEYS.SESSION_KEY,
+    JSON.stringify(session),
   )
   storage.setItem('admin_login_type', mode)
   storage.setItem('admin_remember_me', String(form.value.rememberMe))
   localStorage.setItem('admin_login_type', mode)
 
-  if (payload?.user?.mustChangeBootstrap) {
-    openBootstrapDialog(payload.user || {})
+  if (persistedUser.mustChangeBootstrap) {
+    openBootstrapDialog(persistedUser)
     ElMessage.warning('请先完成首次管理员初始化，再进入后台。')
     return
   }

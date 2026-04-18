@@ -166,6 +166,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/client-sdk/src/support-socket-bridge.test.mjs",
   "packages/client-sdk/src/uni-request.js",
   "packages/client-sdk/src/uni-request.test.mjs",
+  "packages/admin-core/src/admin-auth-session.js",
+  "packages/admin-core/src/admin-auth-session.test.mjs",
   "packages/domain-core/src/index.js",
   "packages/domain-core/src/errand-settings.js",
   "packages/domain-core/src/errand-settings.test.mjs",
@@ -1222,8 +1224,21 @@ assertContains(
   "@infinitech/admin-core",
 );
 assertContains("admin-vue/vite.config.mts", '"@infinitech/domain-core"');
-assertContains("admin-vue/src/utils/runtime.js", "createAdminRuntimeIdentity");
+assertContains("admin-vue/src/utils/runtime.js", "createAdminSessionIdentity");
+assertContains("admin-vue/src/utils/runtime.js", "normalizeAdminAuthSessionRecord");
 assertContains("admin-vue/src/utils/runtime.js", "createSocketSessionIdentity");
+assertContains(
+  "admin-app/utils/auth.js",
+  "buildAdminAuthSession",
+);
+assertContains(
+  "admin-app/utils/auth.js",
+  "normalizeAdminAuthSessionRecord",
+);
+assertContains(
+  "packages/admin-core/src/index.js",
+  'export * from "./admin-auth-session.js";',
+);
 assertContains(
   "socket-server/socketIdentity.js",
   "../packages/domain-core/src/identity.js",
@@ -2801,7 +2816,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:admin-core-tests": "node --test packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs packages/admin-core/src/system-settings-resources.test.mjs packages/admin-core/src/api-management-resources.test.mjs packages/admin-core/src/order-resources.test.mjs packages/admin-core/src/user-management-resources.test.mjs packages/admin-core/src/shop-management-resources.test.mjs packages/admin-core/src/merchant-profile-resources.test.mjs packages/admin-core/src/home-entry-resources.test.mjs packages/admin-core/src/communication-audit-resources.test.mjs packages/admin-core/src/home-campaign-resources.test.mjs packages/admin-core/src/admin-management-resources.test.mjs packages/admin-core/src/dining-buddy-governance-resources.test.mjs packages/admin-core/src/chat-console-resources.test.mjs packages/admin-core/src/data-management-resources.test.mjs packages/admin-core/src/coupon-resources.test.mjs packages/admin-core/src/api-documentation-resources.test.mjs"',
+  '"verify:admin-core-tests": "node --test packages/admin-core/src/admin-auth-session.test.mjs packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs packages/admin-core/src/system-settings-resources.test.mjs packages/admin-core/src/api-management-resources.test.mjs packages/admin-core/src/order-resources.test.mjs packages/admin-core/src/user-management-resources.test.mjs packages/admin-core/src/shop-management-resources.test.mjs packages/admin-core/src/merchant-profile-resources.test.mjs packages/admin-core/src/home-entry-resources.test.mjs packages/admin-core/src/communication-audit-resources.test.mjs packages/admin-core/src/home-campaign-resources.test.mjs packages/admin-core/src/admin-management-resources.test.mjs packages/admin-core/src/dining-buddy-governance-resources.test.mjs packages/admin-core/src/chat-console-resources.test.mjs packages/admin-core/src/data-management-resources.test.mjs packages/admin-core/src/coupon-resources.test.mjs packages/admin-core/src/api-documentation-resources.test.mjs"',
 );
 assertContains(
   "package.json",

@@ -1,13 +1,38 @@
 import {
+  ADMIN_AUTH_STORAGE_KEYS,
+  createAdminSessionIdentity,
+  normalizeAdminAuthSessionRecord,
+  normalizeAdminSessionUser,
+} from '@infinitech/admin-core/admin-auth-session';
+import {
   parseUnifiedTokenPayload
 } from '@infinitech/contracts/identity';
 import {
-  createAdminRuntimeIdentity,
   createSocketSessionIdentity,
 } from '@infinitech/domain-core';
 
+function getSessionStorageRecord(storage) {
+  if (!storage || typeof storage.getItem !== 'function') {
+    return null;
+  }
+
+  return normalizeAdminAuthSessionRecord(
+    safeJsonParse(storage.getItem(ADMIN_AUTH_STORAGE_KEYS.SESSION_KEY)),
+  );
+}
+
+function getStoredRawAdminUser() {
+  return safeJsonParse(localStorage.getItem('admin_user') || sessionStorage.getItem('admin_user') || '');
+}
+
 export function getToken() {
-  return localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
+  const session =
+    getSessionStorageRecord(localStorage) || getSessionStorageRecord(sessionStorage);
+  if (session?.token) {
+    return session.token;
+  }
+
+  return localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token') || '';
 }
 
 export const ADMIN_WEB_PORT = '8888';
@@ -41,19 +66,17 @@ function safeJsonParse(value) {
   }
 }
 
-function normalizeAdminType(value) {
-  return String(value || '').trim().toLowerCase();
-}
-
-function normalizeAdminUser(user) {
-  return createAdminRuntimeIdentity(user) || null;
-}
-
 export function getAdminSessionStorage() {
   if (typeof window === 'undefined') {
     return null;
   }
 
+  if (getSessionStorageRecord(localStorage)) {
+    return localStorage;
+  }
+  if (getSessionStorageRecord(sessionStorage)) {
+    return sessionStorage;
+  }
   if (localStorage.getItem('admin_token')) {
     return localStorage;
   }
@@ -64,21 +87,30 @@ export function getAdminSessionStorage() {
 }
 
 export function getStoredAdminUser() {
-  const raw = localStorage.getItem('admin_user') || sessionStorage.getItem('admin_user') || '';
-  return normalizeAdminUser(safeJsonParse(raw));
+  const rawUser = getStoredRawAdminUser();
+  const session =
+    getSessionStorageRecord(localStorage) || getSessionStorageRecord(sessionStorage);
+  const normalizedUser = normalizeAdminSessionUser([
+    rawUser,
+    session?.user,
+  ]);
+  if (!normalizedUser) {
+    return null;
+  }
+
+  return rawUser && typeof rawUser === 'object'
+    ? { ...rawUser, ...normalizedUser }
+    : normalizedUser;
 }
 
 export function getCurrentAdminIdentity() {
   const payload = parseUnifiedTokenPayload(getToken()) || {};
-  const storedUser = getStoredAdminUser();
-  const identity = createAdminRuntimeIdentity([storedUser, payload], {
+  const rawUser = getStoredRawAdminUser();
+  const session =
+    getSessionStorageRecord(localStorage) || getSessionStorageRecord(sessionStorage);
+  return createAdminSessionIdentity([rawUser, session?.user, payload], {
     defaultName: '管理员',
   });
-  const type = normalizeAdminType(identity?.type);
-  if (type !== 'admin' && type !== 'super_admin') {
-    return null;
-  }
-  return identity;
 }
 
 export function getCurrentAdminSocketIdentity() {
@@ -102,8 +134,10 @@ export function clearCachedSocketToken() {
 export function clearAdminSessionStorage() {
   localStorage.removeItem('admin_token');
   localStorage.removeItem('admin_user');
+  localStorage.removeItem(ADMIN_AUTH_STORAGE_KEYS.SESSION_KEY);
   sessionStorage.removeItem('admin_token');
   sessionStorage.removeItem('admin_user');
+  sessionStorage.removeItem(ADMIN_AUTH_STORAGE_KEYS.SESSION_KEY);
   clearCachedSocketToken();
 }
 
