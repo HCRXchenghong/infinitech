@@ -363,6 +363,10 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/order-after-sales.js",
   "packages/mobile-core/src/order-after-sales.test.mjs",
   "packages/mobile-core/src/order-after-sales-pages.js",
+  "packages/mobile-core/src/OrderRefundPage.vue",
+  "packages/mobile-core/src/order-refund-page.scss",
+  "packages/mobile-core/src/OrderReviewPage.vue",
+  "packages/mobile-core/src/order-review-page.scss",
   "packages/mobile-core/src/order-confirm-page.js",
   "packages/mobile-core/src/order-confirm-page.test.mjs",
   "packages/mobile-core/src/order-contact.js",
@@ -528,11 +532,11 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/order/refund/index.vue",
-    "../../../../packages/mobile-core/src/order-after-sales-pages.js",
+    "../../../../packages/mobile-core/src/OrderRefundPage.vue",
   ],
   [
     "app-mobile/pages/order/review/index.vue",
-    "../../../../packages/mobile-core/src/order-after-sales-pages.js",
+    "../../../../packages/mobile-core/src/OrderReviewPage.vue",
   ],
   [
     "app-mobile/pages/profile/wallet/index.vue",
@@ -572,11 +576,11 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/order/refund/index.vue",
-    "../../../../packages/mobile-core/src/order-after-sales-pages.js",
+    "../../../../packages/mobile-core/src/OrderRefundPage.vue",
   ],
   [
     "user-vue/pages/order/review/index.vue",
-    "../../../../packages/mobile-core/src/order-after-sales-pages.js",
+    "../../../../packages/mobile-core/src/OrderReviewPage.vue",
   ],
   [
     "user-vue/pages/profile/wallet/index.vue",
@@ -2189,6 +2193,38 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/order-detail-page.js",
   "extractEnvelopeData(vouchers)",
+);
+assertContains(
+  "packages/mobile-core/src/OrderRefundPage.vue",
+  'import { createOrderRefundPage } from "./order-after-sales-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/OrderRefundPage.vue",
+  '<style scoped lang="scss" src="./order-refund-page.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/OrderReviewPage.vue",
+  'import { createOrderReviewPage } from "./order-after-sales-pages.js";',
+);
+assertContains(
+  "packages/mobile-core/src/OrderReviewPage.vue",
+  '<style scoped lang="scss" src="./order-review-page.scss"></style>',
+);
+assertContains(
+  "user-vue/pages/order/refund/index.vue",
+  "../../../../packages/mobile-core/src/OrderRefundPage.vue",
+);
+assertContains(
+  "app-mobile/pages/order/refund/index.vue",
+  "../../../../packages/mobile-core/src/OrderRefundPage.vue",
+);
+assertContains(
+  "user-vue/pages/order/review/index.vue",
+  "../../../../packages/mobile-core/src/OrderReviewPage.vue",
+);
+assertContains(
+  "app-mobile/pages/order/review/index.vue",
+  "../../../../packages/mobile-core/src/OrderReviewPage.vue",
 );
 assertContains(
   "packages/mobile-core/src/WalletBillsPage.vue",
@@ -5744,6 +5780,7 @@ assertNotContains("app-mobile/App.vue", "clearAuthData()");
 ].forEach((relativePath) => {
   assertNotContains(relativePath, "normalizeBizType(bizType) {");
   assertNotContains(relativePath, "formatOrderData(data) {");
+  assertNotContains(relativePath, "createOrderRefundPage({");
 });
 [
   "user-vue/pages/order/review/index.vue",
@@ -5751,6 +5788,7 @@ assertNotContains("app-mobile/App.vue", "clearAuthData()");
 ].forEach((relativePath) => {
   assertNotContains(relativePath, "formatOrderData(data) {");
   assertNotContains(relativePath, "const shop = data.shop || {}");
+  assertNotContains(relativePath, "createOrderReviewPage({");
 });
 [
   "user-vue/pages/medicine/order.vue",
