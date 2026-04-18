@@ -116,6 +116,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/charity-page.scss",
   "packages/mobile-core/src/charity-page.js",
   "packages/mobile-core/src/charity-page.test.mjs",
+  "packages/mobile-core/src/DiningBuddyPage.vue",
+  "packages/mobile-core/src/dining-buddy-page.scss",
   "packages/mobile-core/src/dining-buddy.js",
   "packages/mobile-core/src/dining-buddy.test.mjs",
   "packages/mobile-core/src/auth-portal.js",
@@ -659,7 +661,7 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "app-mobile/pages/dining-buddy/index.vue",
-    "../../../packages/mobile-core/src/dining-buddy.js",
+    "../../../packages/mobile-core/src/DiningBuddyPage.vue",
   ],
   [
     "app-mobile/pages/medicine/order.vue",
@@ -791,7 +793,7 @@ function assertNotContains(relativePath, unexpectedText) {
   ],
   [
     "user-vue/pages/dining-buddy/index.vue",
-    "../../../packages/mobile-core/src/dining-buddy.js",
+    "../../../packages/mobile-core/src/DiningBuddyPage.vue",
   ],
   [
     "user-vue/pages/medicine/order.vue",
@@ -4495,12 +4497,20 @@ assertContains(
   '<style scoped lang="scss" src="./charity-page.scss"></style>',
 );
 assertContains(
+  "packages/mobile-core/src/DiningBuddyPage.vue",
+  'import { createDiningBuddyPage } from "./dining-buddy.js";',
+);
+assertContains(
+  "packages/mobile-core/src/DiningBuddyPage.vue",
+  '<style scoped lang="scss" src="./dining-buddy-page.scss"></style>',
+);
+assertContains(
   "user-vue/pages/dining-buddy/index.vue",
-  "../../../packages/mobile-core/src/dining-buddy.js",
+  "../../../packages/mobile-core/src/DiningBuddyPage.vue",
 );
 assertContains(
   "app-mobile/pages/dining-buddy/index.vue",
-  "../../../packages/mobile-core/src/dining-buddy.js",
+  "../../../packages/mobile-core/src/DiningBuddyPage.vue",
 );
 assertContains(
   "user-vue/pages/medicine/order.vue",
@@ -5398,6 +5408,14 @@ assertNotContains(
 assertNotContains(
   "app-mobile/pages/dining-buddy/index.vue",
   "const QUIZ_STORAGE_KEY =",
+);
+assertNotContains(
+  "user-vue/pages/dining-buddy/index.vue",
+  "createDiningBuddyPage({",
+);
+assertNotContains(
+  "app-mobile/pages/dining-buddy/index.vue",
+  "createDiningBuddyPage({",
 );
 [
   "user-vue/pages/auth/login/index.vue",
