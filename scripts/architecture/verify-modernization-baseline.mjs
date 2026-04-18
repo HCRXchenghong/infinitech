@@ -340,6 +340,8 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/customer-service-page.js",
   "packages/mobile-core/src/customer-service-page.scss",
   "packages/mobile-core/src/customer-service-page.test.mjs",
+  "packages/mobile-core/src/MedicineHomePage.vue",
+  "packages/mobile-core/src/medicine-home-page.scss",
   "packages/mobile-core/src/order-after-sales.js",
   "packages/mobile-core/src/order-after-sales.test.mjs",
   "packages/mobile-core/src/order-after-sales-pages.js",
@@ -4475,6 +4477,14 @@ assertContains(
   '<style scoped lang="scss" src="./customer-service-page.scss"></style>',
 );
 assertContains(
+  "packages/mobile-core/src/MedicineHomePage.vue",
+  'import { createPhoneContactHelper } from "./phone-contact.js";',
+);
+assertContains(
+  "packages/mobile-core/src/MedicineHomePage.vue",
+  '<style scoped lang="scss" src="./medicine-home-page.scss"></style>',
+);
+assertContains(
   "user-vue/pages/dining-buddy/index.vue",
   "../../../packages/mobile-core/src/dining-buddy.js",
 );
@@ -4500,11 +4510,11 @@ assertContains(
 );
 assertContains(
   "user-vue/pages/medicine/home.vue",
-  "../../../packages/mobile-core/src/phone-contact.js",
+  "../../../packages/mobile-core/src/MedicineHomePage.vue",
 );
 assertContains(
   "app-mobile/pages/medicine/home.vue",
-  "../../../packages/mobile-core/src/phone-contact.js",
+  "../../../packages/mobile-core/src/MedicineHomePage.vue",
 );
 assertContains(
   "user-vue/pages/shop/detail/shop-detail-logic.js",
@@ -4513,14 +4523,6 @@ assertContains(
 assertContains(
   "app-mobile/pages/shop/detail/shop-detail-logic.js",
   "../../../../packages/mobile-core/src/phone-contact.js",
-);
-assertContains(
-  "user-vue/pages/medicine/home.vue",
-  "normalizeMedicineRuntimeSettings(response)",
-);
-assertContains(
-  "app-mobile/pages/medicine/home.vue",
-  "normalizeMedicineRuntimeSettings(response)",
 );
 assertContains(
   "user-vue/pages/charity/index.vue",
@@ -5334,6 +5336,22 @@ assertNotContains(
 assertNotContains(
   "app-mobile/pages/medicine/home.vue",
   "function normalizeRuntimeSettings(raw)",
+);
+assertNotContains(
+  "user-vue/pages/medicine/home.vue",
+  "normalizeMedicineRuntimeSettings(response)",
+);
+assertNotContains(
+  "app-mobile/pages/medicine/home.vue",
+  "normalizeMedicineRuntimeSettings(response)",
+);
+assertNotContains(
+  "user-vue/pages/medicine/home.vue",
+  "createPhoneContactHelper({ recordPhoneContactClick })",
+);
+assertNotContains(
+  "app-mobile/pages/medicine/home.vue",
+  "createPhoneContactHelper({ recordPhoneContactClick })",
 );
 assertNotContains(
   "user-vue/pages/charity/index.vue",
