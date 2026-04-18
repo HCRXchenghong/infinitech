@@ -120,6 +120,12 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/auth-portal.test.mjs",
   "packages/mobile-core/src/client-payment.js",
   "packages/mobile-core/src/client-payment.test.mjs",
+  "packages/mobile-core/src/consumer-app-bootstrap.js",
+  "packages/mobile-core/src/consumer-app-bootstrap.test.mjs",
+  "packages/mobile-core/src/consumer-app-bridges.js",
+  "packages/mobile-core/src/consumer-app-bridges.test.mjs",
+  "packages/mobile-core/src/consumer-app-session.js",
+  "packages/mobile-core/src/consumer-app-session.test.mjs",
   "packages/mobile-core/src/consumer-app-version.js",
   "packages/mobile-core/src/consumer-app-version.test.mjs",
   "packages/mobile-core/src/consumer-auth-runtime.js",
@@ -150,6 +156,12 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/portal-runtime.js",
   "packages/mobile-core/src/portal-runtime.d.ts",
   "packages/mobile-core/src/portal-runtime.test.mjs",
+  "app-mobile/shared-ui/app-core/bootstrap.ts",
+  "app-mobile/shared-ui/app-core/bridges.ts",
+  "app-mobile/shared-ui/app-core/session.ts",
+  "user-vue/shared-ui/app-core/bootstrap.ts",
+  "user-vue/shared-ui/app-core/bridges.ts",
+  "user-vue/shared-ui/app-core/session.ts",
   "packages/mobile-core/src/rtc-call-page.js",
   "packages/mobile-core/src/rtc-call-page.test.mjs",
   "packages/mobile-core/src/wallet-overview-page.js",
@@ -984,6 +996,18 @@ assertContains(
   "export function shouldLaunchClientPayment(result) {",
 );
 assertContains(
+  "packages/mobile-core/src/consumer-app-bootstrap.js",
+  "export function createConsumerAppBootstrap(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-app-bridges.js",
+  "export function createConsumerAppBridgeManager(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-app-session.js",
+  "export function createConsumerAppSessionManager(options = {}) {",
+);
+assertContains(
   "packages/mobile-core/src/consumer-app-version.js",
   "export function readAppVersion(options = {}) {",
 );
@@ -1136,6 +1160,30 @@ assertContains(
 assertContains(
   "app-mobile/shared-ui/auth-runtime.js",
   "createConsumerAuthRuntimeStore({",
+);
+assertContains(
+  "user-vue/shared-ui/app-core/session.ts",
+  "createConsumerAppSessionManager({",
+);
+assertContains(
+  "user-vue/shared-ui/app-core/bridges.ts",
+  "createConsumerAppBridgeManager({",
+);
+assertContains(
+  "user-vue/shared-ui/app-core/bootstrap.ts",
+  "createConsumerAppBootstrap({",
+);
+assertContains(
+  "app-mobile/shared-ui/app-core/session.ts",
+  "createConsumerAppSessionManager({",
+);
+assertContains(
+  "app-mobile/shared-ui/app-core/bridges.ts",
+  "createConsumerAppBridgeManager({",
+);
+assertContains(
+  "app-mobile/shared-ui/app-core/bootstrap.ts",
+  "createConsumerAppBootstrap({",
 );
 assertContains(
   "user-vue/shared-ui/app-version.js",
@@ -2111,6 +2159,18 @@ assertContains(
 );
 assertContains(
   "package.json",
+  "packages/mobile-core/src/consumer-app-bootstrap.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/consumer-app-bridges.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/consumer-app-session.test.mjs",
+);
+assertContains(
+  "package.json",
   "packages/mobile-core/src/push-event-route.test.mjs",
 );
 assertContains("package.json", "packages/mobile-core/src/location.test.mjs");
@@ -2674,6 +2734,34 @@ assertContains(
 assertContains(
   "app-mobile/shared-ui/request-interceptor.ts",
   'pushRegistrationStorageKey: "app_mobile_push_registration"',
+);
+assertContains("user-vue/App.vue", "bootstrapUserApp");
+assertContains("user-vue/App.vue", "handleUserAppShow");
+assertContains("app-mobile/App.vue", "bootstrapUserApp");
+assertContains("app-mobile/App.vue", "handleUserAppShow");
+assertContains(
+  "user-vue/shared-ui/app-core/bootstrap.ts",
+  'from "../../../packages/mobile-core/src/consumer-app-bootstrap.js"',
+);
+assertContains(
+  "user-vue/shared-ui/app-core/bridges.ts",
+  'from "../../../packages/mobile-core/src/consumer-app-bridges.js"',
+);
+assertContains(
+  "user-vue/shared-ui/app-core/session.ts",
+  'from "../../../packages/mobile-core/src/consumer-app-session.js"',
+);
+assertContains(
+  "app-mobile/shared-ui/app-core/bootstrap.ts",
+  'from "../../../packages/mobile-core/src/consumer-app-bootstrap.js"',
+);
+assertContains(
+  "app-mobile/shared-ui/app-core/bridges.ts",
+  'from "../../../packages/mobile-core/src/consumer-app-bridges.js"',
+);
+assertContains(
+  "app-mobile/shared-ui/app-core/session.ts",
+  'from "../../../packages/mobile-core/src/consumer-app-session.js"',
 );
 assertContains(
   "user-vue/shared-ui/errand-runtime.js",
@@ -3518,6 +3606,18 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./consumer-app-bootstrap.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./consumer-app-bridges.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./consumer-app-session.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./consumer-app-version.js";',
 );
 assertContains(
@@ -3647,6 +3747,18 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/index.js",
   'export * from "./dining-buddy.js";',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-app-bootstrap": "./src/consumer-app-bootstrap.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-app-bridges": "./src/consumer-app-bridges.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-app-session": "./src/consumer-app-session.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -4426,6 +4538,11 @@ assertNotContains(
   "app-mobile/pages/index/index.vue",
   "const featureRoutes = {",
 );
+assertNotContains("app-mobile/App.vue", "async validateAuth()");
+assertNotContains("app-mobile/App.vue", "async syncPushRegistration()");
+assertNotContains("app-mobile/App.vue", "async syncRealtimeNotifyBridge()");
+assertNotContains("app-mobile/App.vue", "async syncRTCInviteBridge()");
+assertNotContains("app-mobile/App.vue", "clearAuthData()");
 [
   "user-vue/pages/order/coupon/index.vue",
   "app-mobile/pages/order/coupon/index.vue",
