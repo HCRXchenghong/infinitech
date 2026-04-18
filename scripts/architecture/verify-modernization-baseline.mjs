@@ -369,9 +369,14 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/order-coupon.test.mjs",
   "packages/mobile-core/src/order-coupon-page.js",
   "packages/mobile-core/src/order-detail-page.js",
+  "packages/mobile-core/src/OrderDetailPage.vue",
+  "packages/mobile-core/src/order-detail-page.scss",
   "packages/mobile-core/src/order-detail-page.test.mjs",
   "packages/mobile-core/src/order-list-page.js",
+  "packages/mobile-core/src/OrderListPage.vue",
+  "packages/mobile-core/src/order-list-page.scss",
   "packages/mobile-core/src/order-list-page.test.mjs",
+  "packages/mobile-core/src/order-list-utils.js",
   "packages/mobile-core/src/order-payment-options.js",
   "packages/mobile-core/src/order-payment-options.test.mjs",
   "packages/mobile-core/src/order-support-pages.js",
@@ -500,12 +505,12 @@ function assertNotContains(relativePath, unexpectedText) {
 
 [
   [
-    "app-mobile/pages/order/list/page-logic.js",
-    "../../../../packages/mobile-core/src/order-list-page.js",
+    "app-mobile/pages/order/list/index.vue",
+    "../../../../packages/mobile-core/src/OrderListPage.vue",
   ],
   [
-    "app-mobile/pages/order/detail/page-logic.js",
-    "../../../../packages/mobile-core/src/order-detail-page.js",
+    "app-mobile/pages/order/detail/index.vue",
+    "../../../../packages/mobile-core/src/OrderDetailPage.vue",
   ],
   [
     "app-mobile/pages/order/confirm/index.vue",
@@ -544,12 +549,12 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../../packages/mobile-core/src/wallet-withdraw-page.js",
   ],
   [
-    "user-vue/pages/order/list/page-logic.js",
-    "../../../../packages/mobile-core/src/order-list-page.js",
+    "user-vue/pages/order/list/index.vue",
+    "../../../../packages/mobile-core/src/OrderListPage.vue",
   ],
   [
-    "user-vue/pages/order/detail/page-logic.js",
-    "../../../../packages/mobile-core/src/order-detail-page.js",
+    "user-vue/pages/order/detail/index.vue",
+    "../../../../packages/mobile-core/src/OrderDetailPage.vue",
   ],
   [
     "user-vue/pages/order/confirm/index.vue",
@@ -2148,6 +2153,30 @@ assertContains(
   "extractEnvelopeData(data)",
 );
 assertContains(
+  "packages/mobile-core/src/OrderListPage.vue",
+  'import { createOrderListPage } from "./order-list-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/OrderListPage.vue",
+  'import { mapAfterSalesItem, mapOrderItem } from "./order-list-utils.js";',
+);
+assertContains(
+  "packages/mobile-core/src/OrderListPage.vue",
+  '<style scoped lang="scss" src="./order-list-page.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/order-list-utils.js",
+  'import {',
+);
+assertContains(
+  "packages/mobile-core/src/order-list-utils.js",
+  "export function mapOrderItem(order) {",
+);
+assertContains(
+  "packages/mobile-core/src/order-list-utils.js",
+  "export function mapAfterSalesItem(item) {",
+);
+assertContains(
   "merchant-app/shared-ui/merchantOrders.ts",
   "extractPaginatedItems(afterSalesRes, {",
 );
@@ -2158,6 +2187,30 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/order-detail-page.js",
   "extractEnvelopeData(vouchers)",
+);
+assertContains(
+  "packages/mobile-core/src/OrderDetailPage.vue",
+  'import { createOrderDetailPage } from "./order-detail-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/OrderDetailPage.vue",
+  '<style scoped lang="scss" src="./order-detail-page.scss"></style>',
+);
+assertContains(
+  "user-vue/pages/order/list/index.vue",
+  "../../../../packages/mobile-core/src/OrderListPage.vue",
+);
+assertContains(
+  "app-mobile/pages/order/list/index.vue",
+  "../../../../packages/mobile-core/src/OrderListPage.vue",
+);
+assertContains(
+  "user-vue/pages/order/detail/index.vue",
+  "../../../../packages/mobile-core/src/OrderDetailPage.vue",
+);
+assertContains(
+  "app-mobile/pages/order/detail/index.vue",
+  "../../../../packages/mobile-core/src/OrderDetailPage.vue",
 );
 assertContains(
   "packages/mobile-core/src/consumer-api.js",
@@ -5706,10 +5759,25 @@ assertNotContains("app-mobile/App.vue", "clearAuthData()");
 [
   "user-vue/pages/order/confirm/index.vue",
   "app-mobile/pages/order/confirm/index.vue",
-  "user-vue/pages/order/detail/page-logic.js",
-  "app-mobile/pages/order/detail/page-logic.js",
+  "user-vue/pages/order/detail/index.vue",
+  "app-mobile/pages/order/detail/index.vue",
 ].forEach((relativePath) => {
   assertNotContains(relativePath, "platform: '");
+});
+[
+  "user-vue/pages/order/detail/index.vue",
+  "app-mobile/pages/order/detail/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "page-logic.js");
+  assertNotContains(relativePath, "export default pageLogic");
+});
+[
+  "user-vue/pages/order/list/index.vue",
+  "app-mobile/pages/order/list/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "page-logic.js");
+  assertNotContains(relativePath, "order-list-utils");
+  assertNotContains(relativePath, "export default pageLogic");
 });
 [
   "user-vue/pages/profile/wallet/recharge/index.vue",

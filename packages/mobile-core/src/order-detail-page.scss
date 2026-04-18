@@ -5,7 +5,6 @@
   flex-direction: column;
 }
 
-// 顶部导航栏
 .page-header {
   position: fixed;
   top: 0;
@@ -57,7 +56,6 @@
   box-sizing: border-box;
 }
 
-// 订单状态卡片
 .status-card {
   background: linear-gradient(135deg, #0095ff 0%, #0066cc 100%);
   border-radius: 20px;
@@ -85,7 +83,7 @@
   font-size: 36px;
   backdrop-filter: blur(8px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  
+
   &.icon-completed {
     background: rgba(16, 185, 129, 0.3);
   }
@@ -112,7 +110,6 @@
   font-weight: 500;
 }
 
-// 信息卡片
 .info-card {
   background: #fff;
   border-radius: 20px;
@@ -146,13 +143,12 @@
   letter-spacing: 0.3px;
 }
 
-// 商家信息
 .shop-info {
   display: flex;
   align-items: center;
   cursor: pointer;
   transition: opacity 0.2s;
-  
+
   &:active {
     opacity: 0.7;
   }
@@ -195,7 +191,7 @@
   border-radius: 50%;
   background: #f0f7ff;
   transition: all 0.2s;
-  
+
   &:active {
     background: #e0efff;
     transform: scale(0.95);
@@ -207,14 +203,12 @@
   height: 24px;
 }
 
-// 配送信息
 .delivery-info {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-// 卡片内按钮
 .action-btn-inline {
   padding: 0 20px;
   height: 36px;
@@ -232,12 +226,12 @@
   &::after {
     border: none;
   }
-  
+
   &:active {
     transform: scale(0.96);
     opacity: 0.85;
   }
-  
+
   &.primary {
     background: #0095ff;
     color: #fff;
@@ -252,7 +246,7 @@
   align-items: flex-start;
   padding: 10px 0;
   border-bottom: 1px solid #f8f9fa;
-  
+
   &:last-child {
     border-bottom: none;
   }
@@ -279,7 +273,6 @@
   font-weight: 700;
 }
 
-// 商品列表
 .product-list {
   display: flex;
   flex-direction: column;
@@ -292,7 +285,7 @@
   gap: 14px;
   padding: 12px 0;
   border-bottom: 1px solid #f8f9fa;
-  
+
   &:last-child {
     border-bottom: none;
   }
@@ -346,7 +339,6 @@
   margin-top: 4px;
 }
 
-// 价格汇总
 .card-footer {
   margin-top: 20px;
   padding-top: 20px;
@@ -385,7 +377,6 @@
   color: #1f1f1f;
 }
 
-// 订单信息
 .order-info {
   display: flex;
   flex-direction: column;
@@ -393,7 +384,6 @@
   margin-bottom: 20px;
 }
 
-// 操作按钮
 .action-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -422,7 +412,7 @@
   &::after {
     border: none;
   }
-  
+
   &:active {
     transform: scale(0.96);
     opacity: 0.85;
