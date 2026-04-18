@@ -1125,9 +1125,12 @@ assertNoDirectGenerateTokenRequests("user-vue");
 assertNoDirectGenerateTokenRequests("app-mobile");
 assertNoDirectGenerateTokenRequests("merchant-app");
 assertNoDirectGenerateTokenRequests("rider-app");
+assertNoDirectGenerateTokenRequests("admin-vue");
+assertNoDirectGenerateTokenRequests("admin-app");
 assertNoDirectGenerateTokenRequests("packages/mobile-core");
 assertNoDirectGenerateTokenRequests("packages/client-sdk", [
   "packages/client-sdk/src/realtime-token.js",
+  "packages/client-sdk/src/realtime-token.test.mjs",
 ]);
 assertNotContains(
   "admin-vue/src/views/SystemLogs.vue",
@@ -3439,7 +3442,7 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/utils/socket.js",
-  "extractSocketTokenResult(data).token",
+  "resolveSocketToken({",
 );
 assertContains(
   "merchant-app/shared-ui/merchantChatPage.ts",
@@ -3472,6 +3475,10 @@ assertContains(
 assertContains(
   "rider-app/App-logic.ts",
   "socketToken = await resolveSocketToken({",
+);
+assertContains(
+  "admin-app/utils/socketService.js",
+  "return await resolveSocketToken({",
 );
 assertContains("admin-vue/src/views/Users.vue", "extractAdminUserPage");
 assertContains("admin-vue/src/views/Users.vue", "createAdminUserListParams");

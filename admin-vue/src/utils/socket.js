@@ -1,11 +1,11 @@
 import { io } from 'socket.io-client';
 import { ElMessage } from 'element-plus';
-import { extractSocketTokenResult } from '@infinitech/client-sdk';
+import { resolveSocketToken } from '@infinitech/client-sdk';
 import {
   clearCachedSocketToken,
   getAdminSessionStorage,
   getCurrentAdminSocketIdentity,
-  getToken as getAdminToken
+  getToken as getAdminToken,
 } from './runtime';
 
 const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
@@ -20,35 +20,30 @@ const resolvedSocketBase = envSocketUrl || buildDefaultSocketOrigin();
 const SOCKET_BASE_URL = isDev ? '' : resolvedSocketBase;
 const SOCKET_HTTP_BASE = isDev ? '/socket-api' : resolvedSocketBase;
 
-function buildSocketAuthHeader() {
-  const token = String(getAdminToken() || '').trim();
-  if (!token) return '';
-  return /^bearer\s+/i.test(token) ? token : `Bearer ${token}`;
-}
-
-function readCachedSocketToken() {
+function readSocketStorage(key) {
   const storage = getAdminSessionStorage();
-  return {
-    token: String(
-      storage?.getItem('socket_token')
-        || localStorage.getItem('socket_token')
-        || sessionStorage.getItem('socket_token')
-        || ''
-    ).trim(),
-    accountKey: String(
-      storage?.getItem('socket_token_account_key')
-        || localStorage.getItem('socket_token_account_key')
-        || sessionStorage.getItem('socket_token_account_key')
-        || ''
-    ).trim()
-  };
+  return String(
+    storage?.getItem(key)
+      || localStorage.getItem(key)
+      || sessionStorage.getItem(key)
+      || ''
+  ).trim();
 }
 
-function writeCachedSocketToken(token, accountKey) {
+function writeSocketStorage(key, value) {
   const storage = getAdminSessionStorage() || localStorage;
-  clearCachedSocketToken();
-  storage.setItem('socket_token', token);
-  storage.setItem('socket_token_account_key', accountKey);
+  storage.setItem(key, value);
+  if (storage !== localStorage) {
+    localStorage.removeItem(key);
+  }
+  if (storage !== sessionStorage) {
+    sessionStorage.removeItem(key);
+  }
+}
+
+function removeSocketStorage(key) {
+  localStorage.removeItem(key);
+  sessionStorage.removeItem(key);
 }
 
 async function getSocketToken() {
@@ -58,39 +53,20 @@ async function getSocketToken() {
     return null;
   }
 
-  let { token, accountKey } = readCachedSocketToken();
-  if (token && accountKey === identity.cacheKey) return token;
-  if (token && accountKey !== identity.cacheKey) {
-    clearCachedSocketToken();
-    token = '';
-  }
-
-  const authHeader = buildSocketAuthHeader();
-  if (!authHeader) {
-    clearCachedSocketToken();
-    return null;
-  }
-
   try {
-    const res = await fetch(`${SOCKET_HTTP_BASE}/api/generate-token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: authHeader
-      },
-      body: JSON.stringify({ userId: identity.userId, role: identity.role })
+    return await resolveSocketToken({
+      userId: identity.userId,
+      role: identity.role,
+      accountKey: identity.cacheKey,
+      socketUrl: SOCKET_HTTP_BASE,
+      authToken: getAdminToken(),
+      readStorage: readSocketStorage,
+      writeStorage: writeSocketStorage,
+      removeStorage: removeSocketStorage,
+      missingAuthorizationMessage: 'missing auth token for socket request',
+      missingSocketUrlMessage: 'socket url is not configured',
+      missingTokenMessage: 'missing socket token from response',
     });
-
-    if (!res.ok) {
-      throw new Error(`generate socket token failed: ${res.status}`);
-    }
-
-    const data = await res.json();
-    token = extractSocketTokenResult(data).token;
-    if (token) {
-      writeCachedSocketToken(token, identity.cacheKey);
-    }
-    return token || null;
   } catch (_err) {
     return null;
   }

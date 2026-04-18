@@ -9,6 +9,14 @@ export interface SocketTokenResult {
 
 export interface ResolveSocketTokenOptions {
   uniApp?: any
+  storage?: {
+    getItem?: (key: string) => any
+    setItem?: (key: string, value: any) => any
+    removeItem?: (key: string) => any
+  }
+  readStorage?: (key: string) => any
+  writeStorage?: (key: string, value: any) => any
+  removeStorage?: (key: string) => any
   userId?: string
   role?: string
   accountKey?: string
@@ -21,6 +29,7 @@ export interface ResolveSocketTokenOptions {
   getSocketURL?: () => string
   authHeader?: Record<string, any>
   authToken?: string
+  fetchImpl?: (input: any, init?: Record<string, any>) => Promise<any> | any
   readAuthorizationHeader?: () => Record<string, any>
   requestSocketToken?: (options: {
     socketUrl: string
@@ -44,6 +53,14 @@ export function buildSocketTokenAccountKey(userId?: string, role?: string): stri
 export function extractSocketTokenResult(payload?: Record<string, any>): SocketTokenResult
 export function clearCachedSocketToken(options?: {
   uniApp?: any
+  storage?: {
+    getItem?: (key: string) => any
+    setItem?: (key: string, value: any) => any
+    removeItem?: (key: string) => any
+  }
+  readStorage?: (key: string) => any
+  writeStorage?: (key: string, value: any) => any
+  removeStorage?: (key: string) => any
   tokenStorageKey?: string
   tokenAccountKeyStorageKey?: string
 }): void

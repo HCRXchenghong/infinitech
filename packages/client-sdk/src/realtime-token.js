@@ -29,7 +29,7 @@ function resolveUniRuntime(uniApp) {
   return uniApp || globalThis.uni || null;
 }
 
-function readStorage(uniApp, key) {
+function readUniStorage(uniApp, key) {
   if (!uniApp || typeof uniApp.getStorageSync !== "function") {
     return "";
   }
@@ -41,7 +41,7 @@ function readStorage(uniApp, key) {
   }
 }
 
-function writeStorage(uniApp, key, value) {
+function writeUniStorage(uniApp, key, value) {
   if (!uniApp || typeof uniApp.setStorageSync !== "function") {
     return;
   }
@@ -53,7 +53,7 @@ function writeStorage(uniApp, key, value) {
   }
 }
 
-function removeStorage(uniApp, key) {
+function removeUniStorage(uniApp, key) {
   if (!uniApp || typeof uniApp.removeStorageSync !== "function") {
     return;
   }
@@ -63,6 +63,73 @@ function removeStorage(uniApp, key) {
   } catch (_error) {
     // Ignore storage cleanup failures in constrained runtimes.
   }
+}
+
+function readStorage(options, key) {
+  if (typeof options.readStorage === "function") {
+    try {
+      return options.readStorage(key);
+    } catch (_error) {
+      return "";
+    }
+  }
+
+  const storage = options.storage;
+  if (storage && typeof storage.getItem === "function") {
+    try {
+      return storage.getItem(key);
+    } catch (_error) {
+      return "";
+    }
+  }
+
+  return readUniStorage(resolveUniRuntime(options.uniApp), key);
+}
+
+function writeStorage(options, key, value) {
+  if (typeof options.writeStorage === "function") {
+    try {
+      options.writeStorage(key, value);
+    } catch (_error) {
+      // Ignore custom storage write failures.
+    }
+    return;
+  }
+
+  const storage = options.storage;
+  if (storage && typeof storage.setItem === "function") {
+    try {
+      storage.setItem(key, value);
+    } catch (_error) {
+      // Ignore custom storage write failures.
+    }
+    return;
+  }
+
+  writeUniStorage(resolveUniRuntime(options.uniApp), key, value);
+}
+
+function removeStorage(options, key) {
+  if (typeof options.removeStorage === "function") {
+    try {
+      options.removeStorage(key);
+    } catch (_error) {
+      // Ignore custom storage cleanup failures.
+    }
+    return;
+  }
+
+  const storage = options.storage;
+  if (storage && typeof storage.removeItem === "function") {
+    try {
+      storage.removeItem(key);
+    } catch (_error) {
+      // Ignore custom storage cleanup failures.
+    }
+    return;
+  }
+
+  removeUniStorage(resolveUniRuntime(options.uniApp), key);
 }
 
 export function buildSocketTokenAccountKey(userId, role) {
@@ -92,7 +159,7 @@ export function extractSocketTokenResult(payload = {}) {
         source.userId ||
         source.user_id,
     ),
-      role: trimValue(normalizedData.role || source.role).toLowerCase(),
+    role: trimValue(normalizedData.role || source.role).toLowerCase(),
   };
 }
 
@@ -152,8 +219,14 @@ function normalizeAuthorizationHeader({
 
 function createDefaultSocketTokenRequester(options = {}) {
   const uniApp = resolveUniRuntime(options.uniApp);
+  const fetchImpl =
+    typeof options.fetchImpl === "function"
+      ? options.fetchImpl
+      : typeof globalThis.fetch === "function"
+        ? globalThis.fetch.bind(globalThis)
+        : null;
 
-  return ({
+  return async ({
     socketUrl,
     userId,
     role,
@@ -161,10 +234,6 @@ function createDefaultSocketTokenRequester(options = {}) {
     authToken,
     readAuthorizationHeader,
   }) => {
-    if (!uniApp || typeof uniApp.request !== "function") {
-      throw new Error("uni.request is not available");
-    }
-
     const header = normalizeAuthorizationHeader({
       authHeader: authHeader || options.authHeader,
       authToken: trimValue(authToken) || trimValue(options.authToken),
@@ -180,39 +249,67 @@ function createDefaultSocketTokenRequester(options = {}) {
       );
     }
 
-    return new Promise((resolve, reject) => {
-      uniApp.request({
-        url: `${socketUrl}/api/generate-token`,
-        method: "POST",
-        header: {
-          "Content-Type": "application/json",
-          ...header,
-        },
-        data: {
-          userId: trimValue(userId),
-          role: trimValue(role),
-        },
-        success: resolve,
-        fail: reject,
+    if (uniApp && typeof uniApp.request === "function") {
+      return new Promise((resolve, reject) => {
+        uniApp.request({
+          url: `${socketUrl}/api/generate-token`,
+          method: "POST",
+          header: {
+            "Content-Type": "application/json",
+            ...header,
+          },
+          data: {
+            userId: trimValue(userId),
+            role: trimValue(role),
+          },
+          success: resolve,
+          fail: reject,
+        });
       });
+    }
+
+    if (!fetchImpl) {
+      throw new Error("socket token transport is not available");
+    }
+
+    const response = await fetchImpl(`${socketUrl}/api/generate-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...header,
+      },
+      body: JSON.stringify({
+        userId: trimValue(userId),
+        role: trimValue(role),
+      }),
     });
+
+    if (response && "ok" in response && !response.ok) {
+      throw new Error(`generate socket token failed: ${response.status}`);
+    }
+
+    if (response && typeof response.text === "function") {
+      return parseJSON(await response.text());
+    }
+    if (response && typeof response.json === "function") {
+      return response.json();
+    }
+    return response;
   };
 }
 
 export function clearCachedSocketToken(options = {}) {
-  const uniApp = resolveUniRuntime(options.uniApp);
   const tokenStorageKey =
     trimValue(options.tokenStorageKey) || DEFAULT_SOCKET_TOKEN_STORAGE_KEY;
   const tokenAccountKeyStorageKey =
     trimValue(options.tokenAccountKeyStorageKey) ||
     DEFAULT_SOCKET_TOKEN_ACCOUNT_KEY_STORAGE_KEY;
 
-  removeStorage(uniApp, tokenStorageKey);
-  removeStorage(uniApp, tokenAccountKeyStorageKey);
+  removeStorage(options, tokenStorageKey);
+  removeStorage(options, tokenAccountKeyStorageKey);
 }
 
 export async function resolveSocketToken(options = {}) {
-  const uniApp = resolveUniRuntime(options.uniApp);
   const tokenStorageKey =
     trimValue(options.tokenStorageKey) || DEFAULT_SOCKET_TOKEN_STORAGE_KEY;
   const tokenAccountKeyStorageKey =
@@ -232,16 +329,16 @@ export async function resolveSocketToken(options = {}) {
   }
 
   if (!forceRefresh) {
-    const cachedToken = trimValue(readStorage(uniApp, tokenStorageKey));
+    const cachedToken = trimValue(readStorage(options, tokenStorageKey));
     const cachedAccountKey = trimValue(
-      readStorage(uniApp, tokenAccountKeyStorageKey),
+      readStorage(options, tokenAccountKeyStorageKey),
     );
     if (cachedToken && cachedAccountKey === accountKey) {
       return cachedToken;
     }
     if (cachedToken || cachedAccountKey) {
       clearCachedSocketToken({
-        uniApp,
+        ...options,
         tokenStorageKey,
         tokenAccountKeyStorageKey,
       });
@@ -276,7 +373,7 @@ export async function resolveSocketToken(options = {}) {
     authHeader: options.authHeader,
     authToken: options.authToken,
     forceRefresh,
-    uniApp,
+    uniApp: resolveUniRuntime(options.uniApp),
     readAuthorizationHeader: options.readAuthorizationHeader,
   });
   const tokenResult = extractSocketTokenResult(
@@ -295,7 +392,7 @@ export async function resolveSocketToken(options = {}) {
       tokenResult.userId || userId,
       tokenResult.role || role,
     ) || accountKey;
-  writeStorage(uniApp, tokenStorageKey, token);
-  writeStorage(uniApp, tokenAccountKeyStorageKey, resolvedAccountKey);
+  writeStorage(options, tokenStorageKey, token);
+  writeStorage(options, tokenAccountKeyStorageKey, resolvedAccountKey);
   return token;
 }

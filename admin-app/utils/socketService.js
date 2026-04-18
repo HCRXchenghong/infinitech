@@ -2,6 +2,10 @@ import io from 'socket.io-client';
 import { db } from './database.js';
 import { getAuthUser } from './auth.js';
 import { API_CONFIG } from './config.js';
+import {
+  clearCachedSocketToken as clearCachedSocketTokenCache,
+  resolveSocketToken,
+} from '../../packages/client-sdk/src/realtime-token.js';
 
 const SOCKET_TOKEN_KEY = 'socket_token';
 const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key';
@@ -10,16 +14,6 @@ function getSocketUrl() {
   const bffUrl = API_CONFIG.BFF_BASE_URL || process.env.VUE_APP_SOCKET_URL || '';
   if (!bffUrl) return '';
   return bffUrl.replace(':25500', ':9898');
-}
-
-function buildSocketAuthHeader() {
-  try {
-    const token = String(uni.getStorageSync(API_CONFIG.TOKEN_KEY) || '').trim();
-    if (!token) return '';
-    return /^bearer\s+/i.test(token) ? token : `Bearer ${token}`;
-  } catch (_err) {
-    return '';
-  }
 }
 
 function getSocketIdentity() {
@@ -37,8 +31,11 @@ function getSocketIdentity() {
 }
 
 function clearCachedSocketToken() {
-  uni.removeStorageSync(SOCKET_TOKEN_KEY);
-  uni.removeStorageSync(SOCKET_TOKEN_ACCOUNT_KEY);
+  clearCachedSocketTokenCache({
+    uniApp: uni,
+    tokenStorageKey: SOCKET_TOKEN_KEY,
+    tokenAccountKeyStorageKey: SOCKET_TOKEN_ACCOUNT_KEY,
+  });
 }
 
 async function getSocketToken() {
@@ -49,47 +46,19 @@ async function getSocketToken() {
       return null;
     }
 
-    const cached = String(uni.getStorageSync(SOCKET_TOKEN_KEY) || '').trim();
-    const cachedAccountKey = String(uni.getStorageSync(SOCKET_TOKEN_ACCOUNT_KEY) || '').trim();
-    if (cached && cachedAccountKey === identity.cacheKey) {
-      return cached;
-    }
-    if (cached && cachedAccountKey !== identity.cacheKey) {
-      clearCachedSocketToken();
-    }
-
-    const authHeader = buildSocketAuthHeader();
-    if (!authHeader) {
-      clearCachedSocketToken();
-      return null;
-    }
-
-    const response = await new Promise((resolve, reject) => {
-      uni.request({
-        url: `${getSocketUrl()}/api/generate-token`,
-        method: 'POST',
-        header: {
-          'Content-Type': 'application/json',
-          Authorization: authHeader
-        },
-        data: {
-          userId: identity.userId,
-          role: identity.role
-        },
-        success: resolve,
-        fail: reject
-      });
+    return await resolveSocketToken({
+      uniApp: uni,
+      userId: identity.userId,
+      role: identity.role,
+      accountKey: identity.cacheKey,
+      socketUrl: getSocketUrl(),
+      authToken: String(uni.getStorageSync(API_CONFIG.TOKEN_KEY) || ''),
+      tokenStorageKey: SOCKET_TOKEN_KEY,
+      tokenAccountKeyStorageKey: SOCKET_TOKEN_ACCOUNT_KEY,
+      missingAuthorizationMessage: 'missing auth token for socket request',
+      missingSocketUrlMessage: 'socket url is not configured',
+      missingTokenMessage: 'missing socket token from response',
     });
-
-    const payload = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-    const token = payload?.token ? String(payload.token) : '';
-    if (!token) {
-      return null;
-    }
-
-    uni.setStorageSync(SOCKET_TOKEN_KEY, token);
-    uni.setStorageSync(SOCKET_TOKEN_ACCOUNT_KEY, identity.cacheKey);
-    return token;
   } catch (_err) {
     return null;
   }

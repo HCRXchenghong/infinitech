@@ -194,3 +194,56 @@ test("resolveSocketToken throws a custom authorization error when request header
     /请先登录后再连接聊天/,
   );
 });
+
+test("resolveSocketToken supports custom storage callbacks and fetch-based transport", async () => {
+  const storage = new Map([
+    ["socket_token", "stale-token"],
+    ["socket_token_account_key", "admin:legacy"],
+  ]);
+  const fetchCalls = [];
+
+  const token = await resolveSocketToken({
+    userId: "admin_2",
+    role: "admin",
+    accountKey: "admin:admin_2",
+    socketUrl: "https://admin.example.com/socket-api",
+    authToken: "admin-auth-token",
+    readStorage(key) {
+      return storage.get(key);
+    },
+    writeStorage(key, value) {
+      storage.set(key, value);
+    },
+    removeStorage(key) {
+      storage.delete(key);
+    },
+    async fetchImpl(url, init) {
+      fetchCalls.push({ url, init });
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({
+            data: {
+              token: "browser-socket-token",
+              userId: "admin_2",
+              role: "admin",
+            },
+          });
+        },
+      };
+    },
+  });
+
+  assert.equal(token, "browser-socket-token");
+  assert.equal(storage.get("socket_token"), "browser-socket-token");
+  assert.equal(storage.get("socket_token_account_key"), "admin:admin_2");
+  assert.equal(
+    fetchCalls[0].url,
+    "https://admin.example.com/socket-api/api/generate-token",
+  );
+  assert.deepEqual(fetchCalls[0].init.headers, {
+    "Content-Type": "application/json",
+    Authorization: "Bearer admin-auth-token",
+  });
+});
