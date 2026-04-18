@@ -23,6 +23,7 @@ export * from "./home-index.js";
 export * from "./home-shell-components.js";
 export * from "./home-weather-modal.js";
 export * from "./consumer-modal-components.js";
+export * from "./consumer-shop-components.js";
 export * from "./location.js";
 export * from "./platform-runtime.js";
 export * from "./platform-schema.js";

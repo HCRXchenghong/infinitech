@@ -181,10 +181,21 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/support-runtime.test.mjs",
   "packages/mobile-core/src/consumer-modal-components.js",
   "packages/mobile-core/src/consumer-modal-components.test.mjs",
+  "packages/mobile-core/src/consumer-shop-components.js",
+  "packages/mobile-core/src/consumer-shop-components.test.mjs",
   "packages/mobile-core/src/home-index.js",
   "packages/mobile-core/src/home-index.test.mjs",
   "packages/mobile-core/src/home-shell-components.js",
   "packages/mobile-core/src/home-shell-components.test.mjs",
+  "packages/mobile-core/src/CartBar.vue",
+  "packages/mobile-core/src/CategorySidebar.vue",
+  "packages/mobile-core/src/EmptyState.vue",
+  "packages/mobile-core/src/FilterBar.vue",
+  "packages/mobile-core/src/MenuItem.vue",
+  "packages/mobile-core/src/MenuNav.vue",
+  "packages/mobile-core/src/PageHeader.vue",
+  "packages/mobile-core/src/ShopCard.vue",
+  "packages/mobile-core/src/SuccessModal.vue",
   "packages/mobile-core/src/ContactModal.vue",
   "packages/mobile-core/src/PhoneWarningModal.vue",
   "packages/mobile-core/src/CartModal.vue",
@@ -217,6 +228,24 @@ function assertNotContains(relativePath, unexpectedText) {
   "app-mobile/components/CartModal.vue",
   "user-vue/components/OrderDetailPopup.vue",
   "app-mobile/components/OrderDetailPopup.vue",
+  "user-vue/components/CartBar.vue",
+  "app-mobile/components/CartBar.vue",
+  "user-vue/components/CategorySidebar.vue",
+  "app-mobile/components/CategorySidebar.vue",
+  "user-vue/components/EmptyState.vue",
+  "app-mobile/components/EmptyState.vue",
+  "user-vue/components/FilterBar.vue",
+  "app-mobile/components/FilterBar.vue",
+  "user-vue/components/MenuItem.vue",
+  "app-mobile/components/MenuItem.vue",
+  "user-vue/components/MenuNav.vue",
+  "app-mobile/components/MenuNav.vue",
+  "user-vue/components/PageHeader.vue",
+  "app-mobile/components/PageHeader.vue",
+  "user-vue/components/ShopCard.vue",
+  "app-mobile/components/ShopCard.vue",
+  "user-vue/components/SuccessModal.vue",
+  "app-mobile/components/SuccessModal.vue",
   "packages/mobile-core/src/sync-service.js",
   "packages/mobile-core/src/sync-service.d.ts",
   "packages/mobile-core/src/sync-service.test.mjs",
@@ -1193,6 +1222,26 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/consumer-modal-components.js",
   "export function buildConsumerOrderDetailRows(order = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-shop-components.js",
+  "export function createCartBarComponent(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-shop-components.js",
+  "export function createCategorySidebarComponent(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-shop-components.js",
+  "export function createPageHeaderComponent(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-shop-components.js",
+  "export function createSuccessModalComponent(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-shop-components.js",
+  "export function getConsumerCategoryCount(cartItems = [], categoryId) {",
 );
 assertContains(
   "packages/mobile-core/src/home-shell-components.js",
@@ -2207,6 +2256,10 @@ assertContains(
 assertContains(
   "package.json",
   "packages/mobile-core/src/consumer-modal-components.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/consumer-shop-components.test.mjs",
 );
 assertContains(
   "package.json",
@@ -3757,6 +3810,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./consumer-shop-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./search-page.js";',
 );
 assertContains(
@@ -3870,6 +3927,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-modal-components": "./src/consumer-modal-components.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-shop-components": "./src/consumer-shop-components.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -4348,6 +4409,78 @@ assertContains(
   "../../packages/mobile-core/src/OrderDetailPopup.vue",
 );
 assertContains(
+  "user-vue/components/CartBar.vue",
+  "../../packages/mobile-core/src/CartBar.vue",
+);
+assertContains(
+  "app-mobile/components/CartBar.vue",
+  "../../packages/mobile-core/src/CartBar.vue",
+);
+assertContains(
+  "user-vue/components/CategorySidebar.vue",
+  "../../packages/mobile-core/src/CategorySidebar.vue",
+);
+assertContains(
+  "app-mobile/components/CategorySidebar.vue",
+  "../../packages/mobile-core/src/CategorySidebar.vue",
+);
+assertContains(
+  "user-vue/components/EmptyState.vue",
+  "../../packages/mobile-core/src/EmptyState.vue",
+);
+assertContains(
+  "app-mobile/components/EmptyState.vue",
+  "../../packages/mobile-core/src/EmptyState.vue",
+);
+assertContains(
+  "user-vue/components/FilterBar.vue",
+  "../../packages/mobile-core/src/FilterBar.vue",
+);
+assertContains(
+  "app-mobile/components/FilterBar.vue",
+  "../../packages/mobile-core/src/FilterBar.vue",
+);
+assertContains(
+  "user-vue/components/MenuItem.vue",
+  "../../packages/mobile-core/src/MenuItem.vue",
+);
+assertContains(
+  "app-mobile/components/MenuItem.vue",
+  "../../packages/mobile-core/src/MenuItem.vue",
+);
+assertContains(
+  "user-vue/components/MenuNav.vue",
+  "../../packages/mobile-core/src/MenuNav.vue",
+);
+assertContains(
+  "app-mobile/components/MenuNav.vue",
+  "../../packages/mobile-core/src/MenuNav.vue",
+);
+assertContains(
+  "user-vue/components/PageHeader.vue",
+  "../../packages/mobile-core/src/PageHeader.vue",
+);
+assertContains(
+  "app-mobile/components/PageHeader.vue",
+  "../../packages/mobile-core/src/PageHeader.vue",
+);
+assertContains(
+  "user-vue/components/ShopCard.vue",
+  "../../packages/mobile-core/src/ShopCard.vue",
+);
+assertContains(
+  "app-mobile/components/ShopCard.vue",
+  "../../packages/mobile-core/src/ShopCard.vue",
+);
+assertContains(
+  "user-vue/components/SuccessModal.vue",
+  "../../packages/mobile-core/src/SuccessModal.vue",
+);
+assertContains(
+  "app-mobile/components/SuccessModal.vue",
+  "../../packages/mobile-core/src/SuccessModal.vue",
+);
+assertContains(
   "packages/mobile-core/src/HomeWeatherModal.vue",
   'import { createHomeWeatherModalComponent } from "./home-weather-modal.js";',
 );
@@ -4366,6 +4499,42 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/OrderDetailPopup.vue",
   'import { createOrderDetailPopupComponent } from "./consumer-modal-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/CartBar.vue",
+  'import { createCartBarComponent } from "./consumer-shop-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/CategorySidebar.vue",
+  'import { createCategorySidebarComponent } from "./consumer-shop-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/EmptyState.vue",
+  'import { createEmptyStateComponent } from "./consumer-shop-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/FilterBar.vue",
+  'import { createFilterBarComponent } from "./consumer-shop-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/MenuItem.vue",
+  'import { createMenuItemComponent } from "./consumer-shop-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/MenuNav.vue",
+  'import { createMenuNavComponent } from "./consumer-shop-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/PageHeader.vue",
+  'import { createPageHeaderComponent } from "./consumer-shop-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/ShopCard.vue",
+  'import { createShopCardComponent } from "./consumer-shop-components.js";',
+);
+assertContains(
+  "packages/mobile-core/src/SuccessModal.vue",
+  'import { createSuccessModalComponent } from "./consumer-shop-components.js";',
 );
 assertContains(
   "user-vue/pages/order/coupon/index.vue",
