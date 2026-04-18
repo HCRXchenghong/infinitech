@@ -250,7 +250,9 @@ function assertNotContains(relativePath, unexpectedText) {
   "packages/mobile-core/src/rtc-call-page.test.mjs",
   "packages/mobile-core/src/wallet-overview-page.js",
   "packages/mobile-core/src/wallet-overview-page.test.mjs",
+  "packages/mobile-core/src/WalletBillsPage.vue",
   "packages/mobile-core/src/wallet-bills-page.js",
+  "packages/mobile-core/src/wallet-bills-page.scss",
   "packages/mobile-core/src/wallet-bills-page.test.mjs",
   "packages/mobile-core/src/wallet-recharge-page.js",
   "packages/mobile-core/src/wallet-recharge-page.test.mjs",
@@ -537,8 +539,8 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../packages/mobile-core/src/wallet-overview-page.js",
   ],
   [
-    "app-mobile/pages/profile/wallet/bills/page-logic.js",
-    "../../../../../packages/mobile-core/src/wallet-bills-page.js",
+    "app-mobile/pages/profile/wallet/bills/index.vue",
+    "../../../../../packages/mobile-core/src/WalletBillsPage.vue",
   ],
   [
     "app-mobile/pages/profile/wallet/recharge/index.vue",
@@ -581,8 +583,8 @@ function assertNotContains(relativePath, unexpectedText) {
     "../../../../packages/mobile-core/src/wallet-overview-page.js",
   ],
   [
-    "user-vue/pages/profile/wallet/bills/page-logic.js",
-    "../../../../../packages/mobile-core/src/wallet-bills-page.js",
+    "user-vue/pages/profile/wallet/bills/index.vue",
+    "../../../../../packages/mobile-core/src/WalletBillsPage.vue",
   ],
   [
     "user-vue/pages/profile/wallet/recharge/index.vue",
@@ -2187,6 +2189,22 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/order-detail-page.js",
   "extractEnvelopeData(vouchers)",
+);
+assertContains(
+  "packages/mobile-core/src/WalletBillsPage.vue",
+  'import { createWalletBillsPageLogic } from "./wallet-bills-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/WalletBillsPage.vue",
+  '<style scoped lang="scss" src="./wallet-bills-page.scss"></style>',
+);
+assertContains(
+  "user-vue/pages/profile/wallet/bills/index.vue",
+  "../../../../../packages/mobile-core/src/WalletBillsPage.vue",
+);
+assertContains(
+  "app-mobile/pages/profile/wallet/bills/index.vue",
+  "../../../../../packages/mobile-core/src/WalletBillsPage.vue",
 );
 assertContains(
   "packages/mobile-core/src/OrderDetailPage.vue",
@@ -5777,6 +5795,13 @@ assertNotContains("app-mobile/App.vue", "clearAuthData()");
 ].forEach((relativePath) => {
   assertNotContains(relativePath, "page-logic.js");
   assertNotContains(relativePath, "order-list-utils");
+  assertNotContains(relativePath, "export default pageLogic");
+});
+[
+  "user-vue/pages/profile/wallet/bills/index.vue",
+  "app-mobile/pages/profile/wallet/bills/index.vue",
+].forEach((relativePath) => {
+  assertNotContains(relativePath, "page-logic.js");
   assertNotContains(relativePath, "export default pageLogic");
 });
 [
