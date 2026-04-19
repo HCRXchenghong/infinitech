@@ -16,7 +16,7 @@ import {
   disconnectUserRTCInviteBridge,
   ensureUserRTCInviteBridge,
 } from "../rtc-contact.js";
-import { createConsumerAppRuntime } from "../../../packages/mobile-core/src/consumer-app-runtime.js";
+import { createDefaultConsumerUserAppRuntime } from "../../../packages/mobile-core/src/consumer-app-shell.js";
 
 export interface UserSessionSnapshot {
   token: string;
@@ -24,10 +24,10 @@ export interface UserSessionSnapshot {
   authMode: string;
 }
 
-const appRuntime = createConsumerAppRuntime({
+const appRuntime = createDefaultConsumerUserAppRuntime({
+  config,
   uniApp: uni,
-  baseUrl: config.API_BASE_URL,
-  requiredAuthMode: "user",
+  plusRuntime: (globalThis as any).plus,
   manualRefreshToken,
   forceLogout,
   checkAndClearCacheIfNeeded,
@@ -43,7 +43,6 @@ const appRuntime = createConsumerAppRuntime({
   clearRealtimeState,
   ensureUserRTCInviteBridge,
   disconnectUserRTCInviteBridge,
-  loggerTag: "App",
 });
 
 export const {

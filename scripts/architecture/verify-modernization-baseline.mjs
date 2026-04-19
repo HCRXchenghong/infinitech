@@ -285,6 +285,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/consumer-app-bridges.js",
   "packages/mobile-core/src/consumer-app-bridges.test.mjs",
   "packages/mobile-core/src/consumer-app-runtime.js",
+  "packages/mobile-core/src/consumer-app-shell.js",
+  "packages/mobile-core/src/consumer-app-shell.test.mjs",
   "packages/mobile-core/src/consumer-app-runtime.test.mjs",
   "packages/mobile-core/src/consumer-app-session.js",
   "packages/mobile-core/src/consumer-app-session.test.mjs",
@@ -295,6 +297,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/consumer-legal-runtime.js",
   "packages/mobile-core/src/consumer-legal-runtime.test.mjs",
   "packages/mobile-core/src/consumer-service-runtime.js",
+  "packages/mobile-core/src/consumer-service-shell.js",
+  "packages/mobile-core/src/consumer-service-shell.test.mjs",
   "packages/mobile-core/src/consumer-service-runtime.test.mjs",
   "packages/mobile-core/src/consumer-auth-runtime.js",
   "packages/mobile-core/src/consumer-auth-runtime.test.mjs",
@@ -1735,11 +1739,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/service-runtime.js",
-  "createConsumerServiceRuntime({",
+  "createDefaultConsumerServiceRuntime({",
 );
 assertContains(
   "app-mobile/shared-ui/service-runtime.js",
-  "createConsumerServiceRuntime({",
+  "createDefaultConsumerServiceRuntime({",
 );
 assertContains(
   "user-vue/shared-ui/app-core/session.ts",
@@ -1747,7 +1751,7 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/app-core/runtime.ts",
-  "createConsumerAppRuntime({",
+  "createDefaultConsumerUserAppRuntime({",
 );
 assertContains(
   "user-vue/shared-ui/app-core/bridges.ts",
@@ -1763,7 +1767,7 @@ assertContains(
 );
 assertContains(
   "app-mobile/shared-ui/app-core/runtime.ts",
-  "createConsumerAppRuntime({",
+  "createDefaultConsumerUserAppRuntime({",
 );
 assertContains(
   "app-mobile/shared-ui/app-core/bridges.ts",
@@ -2807,6 +2811,10 @@ assertContains(
 assertContains("package.json", '"verify:mobile-core-tests":');
 assertContains(
   "package.json",
+  "packages/mobile-core/src/consumer-app-shell.test.mjs",
+);
+assertContains(
+  "package.json",
   "packages/mobile-core/src/auth-portal-pages.test.mjs",
 );
 assertContains(
@@ -2836,6 +2844,10 @@ assertContains(
 assertContains(
   "package.json",
   "packages/mobile-core/src/consumer-auth-runtime.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/consumer-service-shell.test.mjs",
 );
 assertContains(
   "package.json",
@@ -3447,11 +3459,11 @@ assertContains("user-vue/shared-ui/api.js", 'from "./service-runtime.js"');
 assertContains("app-mobile/shared-ui/api.js", 'from "./service-runtime.js"');
 assertContains(
   "user-vue/shared-ui/service-runtime.js",
-  'from "../../packages/mobile-core/src/consumer-service-runtime.js"',
+  'from "../../packages/mobile-core/src/consumer-service-shell.js"',
 );
 assertContains(
   "app-mobile/shared-ui/service-runtime.js",
-  'from "../../packages/mobile-core/src/consumer-service-runtime.js"',
+  'from "../../packages/mobile-core/src/consumer-service-shell.js"',
 );
 assertContains("merchant-app/shared-ui/api.ts", "createUniRequestClient({");
 assertContains("rider-app/shared-ui/api.ts", "createUniRequestClient({");
@@ -3537,7 +3549,7 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/app-core/runtime.ts",
-  'from "../../../packages/mobile-core/src/consumer-app-runtime.js"',
+  'from "../../../packages/mobile-core/src/consumer-app-shell.js"',
 );
 assertContains(
   "app-mobile/shared-ui/app-core/bootstrap.ts",
@@ -3553,7 +3565,7 @@ assertContains(
 );
 assertContains(
   "app-mobile/shared-ui/app-core/runtime.ts",
-  'from "../../../packages/mobile-core/src/consumer-app-runtime.js"',
+  'from "../../../packages/mobile-core/src/consumer-app-shell.js"',
 );
 assertContains(
   "user-vue/shared-ui/errand-runtime.js",
@@ -4470,11 +4482,19 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./consumer-app-shell.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./consumer-app-session.js";',
 );
 assertContains(
   "packages/mobile-core/src/index.js",
   'export * from "./consumer-service-runtime.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./consumer-service-shell.js";',
 );
 assertContains(
   "packages/mobile-core/src/index.js",
@@ -4674,11 +4694,19 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/package.json",
+  '"./consumer-app-shell": "./src/consumer-app-shell.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
   '"./consumer-app-session": "./src/consumer-app-session.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-service-runtime": "./src/consumer-service-runtime.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-service-shell": "./src/consumer-service-shell.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

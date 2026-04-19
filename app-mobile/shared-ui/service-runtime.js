@@ -1,15 +1,13 @@
 import config from "./config";
 import getLocalDB from "./db";
-import { createConsumerServiceRuntime } from "../../packages/mobile-core/src/consumer-service-runtime.js";
+import {
+  DEFAULT_CONSUMER_AUTH_RUNTIME_SETTINGS,
+  createDefaultConsumerServiceRuntime,
+} from "../../packages/mobile-core/src/consumer-service-shell.js";
 
-const serviceRuntime = createConsumerServiceRuntime({
+const serviceRuntime = createDefaultConsumerServiceRuntime({
   config,
   getLocalDB,
-  baseUrl: config.API_BASE_URL,
-  timeout: config.TIMEOUT,
-  productShopMode: "products-query",
-  supportsShopCategory: true,
-  isDev: Boolean(config.isDev),
   logger: console,
   uniApp: uni,
 });
@@ -104,6 +102,4 @@ export const {
   resetConsumerAuthRuntimeSettings,
 } = serviceRuntime;
 
-export {
-  DEFAULT_CONSUMER_AUTH_RUNTIME_SETTINGS,
-} from "../../packages/mobile-core/src/consumer-service-runtime.js";
+export { DEFAULT_CONSUMER_AUTH_RUNTIME_SETTINGS };
