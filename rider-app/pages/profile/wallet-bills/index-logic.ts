@@ -1,4 +1,5 @@
 import { buildAuthorizationHeader, request } from '../../../shared-ui/api'
+import { readRiderAuthIdentity } from '../../../shared-ui/auth-session.js'
 import { createWalletBillsPageLogic } from '../../../../packages/mobile-core/src/wallet-bills-page.js'
 
 const createRiderWalletBillsPageLogic: any = createWalletBillsPageLogic
@@ -37,15 +38,9 @@ const riderTxTypeIcons = {
 }
 
 function getRiderWalletAuth() {
-  const profile = uni.getStorageSync('riderProfile') || {}
-  const userId = this.normalizeText(
-    profile.id ||
-    profile.userId ||
-    profile.riderId ||
-    uni.getStorageSync('riderId') ||
-    ''
-  )
-  const token = this.normalizeText(uni.getStorageSync('token') || uni.getStorageSync('access_token') || '')
+  const auth = readRiderAuthIdentity({ uniApp: uni })
+  const userId = this.normalizeText(auth.userId)
+  const token = this.normalizeText(auth.token)
   return { userId, token }
 }
 

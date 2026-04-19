@@ -103,19 +103,13 @@ import { getAppVersionLabel } from '../../shared-ui/app-version'
 import { unregisterCurrentPushDevice, clearPushRegistrationState } from '../../shared-ui/push-registration'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '../../shared-ui/support-runtime'
 import {
-  clearRoleAuthSession,
-  persistRoleAuthSession,
-  readRoleAuthSessionSnapshot,
-} from '../../../packages/client-sdk/src/role-auth-session.js'
+  clearRiderAuthSession,
+  persistRiderAuthSession,
+  readRiderAuthSession,
+} from '../../shared-ui/auth-session.js'
 import notification from '../../utils/notification'
 
 declare const uni: any
-
-const RIDER_AUTH_SESSION_OPTIONS = Object.freeze({
-  role: 'rider',
-  profileStorageKey: 'riderProfile',
-  idSources: ['storage:riderId', 'profile:id', 'profile:userId', 'profile:user_id'],
-})
 
 const RIDER_CACHE_PRESERVED_STORAGE_KEYS = [
   'access_token',
@@ -149,10 +143,7 @@ function restorePreservedStorage(entries: Array<{ key: string; value: any }>) {
 }
 
 function readRiderSession() {
-  return readRoleAuthSessionSnapshot({
-    uniApp: uni,
-    ...RIDER_AUTH_SESSION_OPTIONS,
-  })
+  return readRiderAuthSession({ uniApp: uni })
 }
 
 export default Vue.extend({
@@ -280,13 +271,11 @@ export default Vue.extend({
           const preservedEntries = readPreservedStorage()
           uni.clearStorageSync()
           if (session.token) {
-            persistRoleAuthSession({
+            persistRiderAuthSession({
               uniApp: uni,
-              role: 'rider',
               token: session.token,
               refreshToken: session.refreshToken || null,
               tokenExpiresAt: session.tokenExpiresAt || null,
-              profileStorageKey: 'riderProfile',
               profile: session.profile,
               extraStorageValues: {
                 riderId: session.accountId || null,
@@ -327,13 +316,9 @@ export default Vue.extend({
             clearPushRegistrationState()
           }
 
-          clearRoleAuthSession({
+          clearRiderAuthSession({
             uniApp: uni,
-            profileStorageKey: 'riderProfile',
             extraStorageKeys: [
-              'access_token',
-              'riderId',
-              'riderName',
               'socket_token',
               'socket_token_account_key',
               'notification_settings',

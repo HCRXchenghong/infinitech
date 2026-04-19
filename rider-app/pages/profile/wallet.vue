@@ -92,6 +92,7 @@
 
 <script>
 import { buildAuthorizationHeader, request } from '../../shared-ui/api'
+import { readRiderAuthIdentity } from '../../shared-ui/auth-session.js'
 import {
   getClientPaymentErrorMessage,
   invokeClientPayment,
@@ -178,17 +179,12 @@ export default {
       return String(value == null ? '' : value).trim()
     },
     getAuth() {
-      const profile = uni.getStorageSync('riderProfile') || {}
-      const riderId = this.normalizeText(
-        profile.id ||
-        profile.userId ||
-        profile.riderId ||
-        uni.getStorageSync('riderId') ||
-        ''
-      )
-      const riderName = this.normalizeText(profile.name || profile.realName || profile.nickname || '骑手')
-      const token = this.normalizeText(uni.getStorageSync('token') || uni.getStorageSync('access_token') || '')
-      return { riderId, riderName, token }
+      const auth = readRiderAuthIdentity({ uniApp: uni })
+      return {
+        riderId: this.normalizeText(auth.riderId),
+        riderName: this.normalizeText(auth.riderName || '骑手'),
+        token: this.normalizeText(auth.token),
+      }
     },
     getAuthHeader(token) {
       return buildAuthorizationHeader(token)

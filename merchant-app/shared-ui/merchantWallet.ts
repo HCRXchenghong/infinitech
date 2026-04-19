@@ -17,18 +17,18 @@ import {
   isClientPaymentCancelled,
   shouldLaunchClientPayment,
 } from '@/shared-ui/client-payment'
+import { readMerchantAuthIdentity } from '@/shared-ui/auth-session.js'
 
 function toText(value: any) {
   return String(value ?? '').trim()
 }
 
 export function getMerchantWalletIdentity() {
-  const profile: any = uni.getStorageSync('merchantProfile') || {}
-  const merchantId = toText(profile.id || profile.role_id || profile.userId)
-  const merchantPhone = toText(profile.phone)
+  const auth = readMerchantAuthIdentity({ uniApp: uni })
+  const merchantPhone = toText(auth.merchantPhone)
   return {
-    userId: merchantId || merchantPhone,
-    merchantName: toText(profile.name || profile.shopName || '商户') || '商户',
+    userId: toText(auth.userId),
+    merchantName: toText(auth.merchantName || '商户') || '商户',
     merchantPhone,
   }
 }

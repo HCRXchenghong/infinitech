@@ -1,4 +1,5 @@
 import { getMerchantId } from './merchantContext'
+import { readMerchantAuthIdentity } from './auth-session.js'
 
 function encode(value: unknown) {
   return encodeURIComponent(String(value || ''))
@@ -71,9 +72,9 @@ export function openMerchantRiderChat(order: any) {
 }
 
 export function openMerchantSupportChat(fallbackMerchantId?: string) {
-  const profile = uni.getStorageSync('merchantProfile') || {}
+  const auth = readMerchantAuthIdentity({ uniApp: uni })
   const merchantId =
-    getMerchantId() || String(fallbackMerchantId || profile.phone || '')
+    getMerchantId() || String(fallbackMerchantId || auth.merchantPhone || '')
   if (!merchantId) {
     uni.showToast({ title: '商户身份异常', icon: 'none' })
     return

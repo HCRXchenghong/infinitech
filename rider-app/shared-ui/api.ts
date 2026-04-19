@@ -23,6 +23,7 @@ import {
   readStoredBearerToken,
   uploadAuthenticatedAsset,
 } from '../../packages/mobile-core/src/upload.js'
+import { readRiderAuthIdentity } from './auth-session.js'
 
 declare const uni: any
 
@@ -175,16 +176,20 @@ export const fetchHistory = (roomId: string) => request({
   listKeys: ['messages', 'items', 'records', 'list'],
 }).items)
 
+function readRiderPrincipalId(): string {
+  return String(readRiderAuthIdentity({ uniApp: uni }).riderId || '')
+}
+
 // 获取骑手信息
 export const fetchRiderInfo = () => {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderPrincipalId()
   if (!riderId) return Promise.resolve(null)
   return request({ url: `/api/riders/${riderId}` })
 }
 
 // 获取订单列表
 export const fetchRiderOrders = (status?: string) => {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderPrincipalId()
   if (!riderId) return Promise.resolve([])
   return request({
     url: status === 'available' ? '/api/riders/orders/available' : `/api/riders/${riderId}/orders`,
@@ -196,7 +201,7 @@ export const fetchRiderOrders = (status?: string) => {
 export const { fetchRiderPreferences, saveRiderPreferences } = riderPreferenceApi
 
 const riderPayload = () => {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderPrincipalId()
   if (!riderId) return {}
   return { rider_id: String(riderId) }
 }
@@ -230,7 +235,7 @@ export const reportOrderException = (orderId: string, data: any) => request({
 
 // 获取收入明细
 export const fetchEarnings = (params?: any) => {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderPrincipalId()
   if (!riderId) {
     return Promise.resolve({
       success: true,
@@ -243,14 +248,14 @@ export const fetchEarnings = (params?: any) => {
 
 // 获取数据统计
 export const fetchRiderStats = () => {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderPrincipalId()
   if (!riderId) return Promise.resolve({ todayEarnings: '0', completedCount: 0 })
   return request({ url: `/api/riders/${riderId}/stats` })
 }
 
 // 更新骑手在线状态
 export const updateRiderStatus = (isOnline: boolean) => {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderPrincipalId()
   if (!riderId) {
     return Promise.resolve(null)
   }
@@ -263,7 +268,7 @@ export const updateRiderStatus = (isOnline: boolean) => {
 
 // 骑手在线心跳
 export const heartbeatRiderStatus = () => {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderPrincipalId()
   if (!riderId) return Promise.resolve(null)
   return request({
     url: `/api/riders/${riderId}/heartbeat`,
@@ -273,7 +278,7 @@ export const heartbeatRiderStatus = () => {
 
 // 更新头像
 export const updateAvatar = (avatar: string) => {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderPrincipalId()
   if (!riderId) return Promise.resolve(null)
   return request({
     url: `/api/riders/${riderId}/avatar`,
@@ -284,14 +289,14 @@ export const updateAvatar = (avatar: string) => {
 
 // 获取骑手资料
 export const getRiderProfile = () => {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderPrincipalId()
   if (!riderId) return Promise.resolve(null)
   return request({ url: `/api/riders/${riderId}/profile` })
 }
 
 // 更新骑手资料
 export const updateRiderProfile = (data: any) => {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderPrincipalId()
   if (!riderId) return Promise.resolve(null)
   return request({
     url: `/api/riders/${riderId}/profile`,
@@ -302,7 +307,7 @@ export const updateRiderProfile = (data: any) => {
 
 // 修改手机号
 export const changePhone = (data: any) => {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderPrincipalId()
   if (!riderId) return Promise.resolve(null)
   return request({
     url: `/api/riders/${riderId}/change-phone`,
@@ -313,7 +318,7 @@ export const changePhone = (data: any) => {
 
 // 修改密码
 export const changePassword = (data: any) => {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderPrincipalId()
   if (!riderId) return Promise.resolve(null)
   return request({
     url: `/api/riders/${riderId}/change-password`,
@@ -324,7 +329,7 @@ export const changePassword = (data: any) => {
 
 // 获取骑手段位信息
 export const getRiderRank = () => {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderPrincipalId()
   if (!riderId) return Promise.resolve(null)
   return request({
     url: `/api/riders/${riderId}/rank`,
@@ -334,7 +339,7 @@ export const getRiderRank = () => {
 
 // 获取骑手评分摘要
 export const getRiderRating = () => {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderPrincipalId()
   if (!riderId) return Promise.resolve(null)
   return request({
     url: `/api/riders/${riderId}/rating`,

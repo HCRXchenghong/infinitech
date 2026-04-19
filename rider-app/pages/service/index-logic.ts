@@ -6,6 +6,7 @@ import {
   upsertConversation,
   uploadImage,
 } from "@/shared-ui/api";
+import { readRiderAuthIdentity } from "@/shared-ui/auth-session.js";
 import { loadSupportRuntimeSettings } from "@/shared-ui/support-runtime";
 import { serviceDataMethods } from "./service-data-methods";
 import { db } from "@/utils/database";
@@ -55,9 +56,9 @@ export default Vue.extend({
     const systemInfo = uni.getSystemInfoSync();
     this.statusBarHeight = systemInfo.statusBarHeight || 44;
 
-    const riderId = uni.getStorageSync("riderId");
-    if (riderId !== undefined && riderId !== null && riderId !== "") {
-      this.riderId = String(riderId);
+    const riderAuth = readRiderAuthIdentity({ uniApp: uni });
+    if (riderAuth.riderId) {
+      this.riderId = riderAuth.riderId;
       this.chatId = this.riderId;
     }
 
@@ -101,16 +102,14 @@ export default Vue.extend({
       ? this.safeDecode(options.avatar)
       : this.defaultAvatarByRole(this.chatRole);
 
-    const riderName = uni.getStorageSync("riderName");
-    if (riderName) {
-      this.riderName = String(riderName);
+    if (riderAuth.riderName) {
+      this.riderName = riderAuth.riderName;
     }
 
-    const profile = uni.getStorageSync("riderProfile");
-    if (profile) {
-      if (profile.avatar) this.avatarUrl = profile.avatar;
-      if (!riderName && (profile.name || profile.nickname)) {
-        this.riderName = profile.name || profile.nickname;
+    if (riderAuth.profile) {
+      if (riderAuth.profile.avatar) this.avatarUrl = riderAuth.profile.avatar;
+      if (!riderAuth.riderName && (riderAuth.profile.name || riderAuth.profile.nickname)) {
+        this.riderName = riderAuth.profile.name || riderAuth.profile.nickname;
       }
     }
 

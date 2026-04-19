@@ -1,6 +1,7 @@
 // 骑手订单状态管理
 import Vue from 'vue'
 import { fetchRiderOrders, fetchRiderStats, acceptOrder as apiAcceptOrder, pickupOrder, deliverOrder, updateRiderStatus } from './api'
+import { readRiderAuthIdentity } from './auth-session.js'
 
 declare const uni: any
 type RawOrder = Record<string, any>
@@ -538,7 +539,7 @@ export async function acceptDispatch(orderData: any) {
 }
 
 export async function loadRiderData() {
-  const riderId = uni.getStorageSync('riderId')
+  const riderId = readRiderAuthIdentity({ uniApp: uni }).riderId
   if (!riderId) return
 
   const [ordersResult, statsResult] = await Promise.all([

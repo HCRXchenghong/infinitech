@@ -79,13 +79,14 @@
 
 <script>
 import { buildAuthorizationHeader, request } from '../../../shared-ui/api'
+import { readRiderAuthIdentity } from '../../../shared-ui/auth-session.js'
 import { createWalletWithdrawPageLogic } from '../../../../packages/mobile-core/src/wallet-withdraw-page.js'
 
 function getRiderWalletAuth() {
-  const profile = uni.getStorageSync('riderProfile') || {}
-  const userId = this.normalizeText(profile.id || profile.userId || profile.riderId || uni.getStorageSync('riderId') || '')
-  const riderName = this.normalizeText(profile.name || profile.realName || profile.nickname || '骑手')
-  const token = this.normalizeText(uni.getStorageSync('token') || uni.getStorageSync('access_token') || '')
+  const auth = readRiderAuthIdentity({ uniApp: uni })
+  const userId = this.normalizeText(auth.userId)
+  const riderName = this.normalizeText(auth.riderName || '骑手')
+  const token = this.normalizeText(auth.token)
   return { userId, riderName, token }
 }
 

@@ -42,6 +42,7 @@
 <script lang="ts">
 import Vue from 'vue'
 import { fetchRiderOrders } from '../../shared-ui/api'
+import { readRiderAuthIdentity } from '../../shared-ui/auth-session.js'
 import OrderDetailPopup from '../../components/OrderDetailPopup.vue'
 
 export default Vue.extend({
@@ -142,7 +143,7 @@ export default Vue.extend({
     },
 
     async loadHistoryOrders(fromPullDown = false) {
-      const riderId = uni.getStorageSync('riderId')
+      const riderId = readRiderAuthIdentity({ uniApp: uni }).riderId
       if (!riderId) {
         this.orders = []
         if (fromPullDown) uni.stopPullDownRefresh()

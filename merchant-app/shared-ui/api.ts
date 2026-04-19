@@ -2,9 +2,9 @@ import config, { updateConfig } from "./config";
 import { buildAuthorizationHeaders } from "../../packages/client-sdk/src/auth.js";
 import { createMobilePushApi } from "../../packages/client-sdk/src/mobile-capabilities.js";
 import {
-  clearRoleAuthSession,
-  ensureRoleAuthSession,
-} from "../../packages/client-sdk/src/role-auth-session.js";
+  clearMerchantAuthSession,
+  ensureMerchantAuthSession,
+} from "./auth-session.js";
 import {
   buildUniNetworkErrorMessage,
   createUniRequestClient,
@@ -58,19 +58,12 @@ function readAuthToken(): string {
 }
 
 function forceMerchantLogout() {
-  const session = ensureRoleAuthSession({
-    uniApp: uni,
-    role: "merchant",
-    profileStorageKey: "merchantProfile",
-    allowLegacyAuthModeFallback: true,
-    idSources: ["profile:id", "profile:role_id", "profile:userId", "profile:user_id"],
-  });
+  const session = ensureMerchantAuthSession({ uniApp: uni });
   if (!session.token) return;
 
-  clearRoleAuthSession({
+  clearMerchantAuthSession({
     uniApp: uni,
-    profileStorageKey: "merchantProfile",
-    extraStorageKeys: ["merchantCurrentShopId", "merchant_push_registration"],
+    extraStorageKeys: ["merchant_push_registration"],
   });
   uni.reLaunch({ url: "/pages/login/index" });
 }

@@ -13,9 +13,10 @@ import {
 } from '@/shared-ui/portal-runtime'
 import { getAppVersionLabel } from '@/shared-ui/app-version'
 import {
-  persistRoleAuthSession,
-  readRoleAuthSessionSnapshot,
-} from '../../packages/client-sdk/src/role-auth-session.js'
+  persistMerchantAuthSession,
+  readMerchantAuthIdentity,
+  readMerchantAuthSession,
+} from '@/shared-ui/auth-session.js'
 
 export function useMerchantLoginPage() {
   const loginType = ref<'code' | 'password'>('password')
@@ -119,11 +120,9 @@ export function useMerchantLoginPage() {
         throw new Error(response?.error || '登录失败')
       }
 
-      persistRoleAuthSession({
+      persistMerchantAuthSession({
         uniApp: uni,
-        role: 'merchant',
         token: response.token,
-        profileStorageKey: 'merchantProfile',
         profile: response.user || { phone: normalizedPhone },
       })
       clearMerchantContext()
@@ -370,8 +369,8 @@ export function useMerchantAppSettingsPage() {
   const appVersionLabel = ref(getAppVersionLabel())
   const cacheSize = ref('0 MB')
 
-  const profile: any = uni.getStorageSync('merchantProfile') || {}
-  const phone = String(profile.phone || '')
+  const merchantAuth = readMerchantAuthIdentity({ uniApp: uni })
+  const phone = String(merchantAuth.merchantPhone || '')
 
   const phoneMasked = computed(() => {
     if (/^1\d{10}$/.test(phone)) {
@@ -441,22 +440,16 @@ export function useMerchantAppSettingsPage() {
       success: (res: any) => {
         if (!res?.confirm) return
 
-        const session = readRoleAuthSessionSnapshot({
-          uniApp: uni,
-          role: 'merchant',
-          profileStorageKey: 'merchantProfile',
-        })
+        const session = readMerchantAuthSession({ uniApp: uni })
 
         uni.clearStorageSync()
 
         if (session.token) {
-          persistRoleAuthSession({
+          persistMerchantAuthSession({
             uniApp: uni,
-            role: 'merchant',
             token: session.token,
             refreshToken: session.refreshToken || null,
             tokenExpiresAt: session.tokenExpiresAt || null,
-            profileStorageKey: 'merchantProfile',
             profile: session.profile,
           })
         }

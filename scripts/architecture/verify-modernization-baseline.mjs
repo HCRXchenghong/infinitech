@@ -1246,13 +1246,15 @@ assertContains(
 );
 assertContains(
   "merchant-app/shared-ui/merchantAccountPages.ts",
-  "persistRoleAuthSession",
+  "persistMerchantAuthSession",
 );
-assertContains("merchant-app/App.vue", "ensureRoleAuthSession");
-assertContains("rider-app/App-logic.ts", "ensureRoleAuthSession");
-assertContains("rider-app/pages/login/index.vue", "persistRoleAuthSession");
-assertContains("rider-app/pages/profile/settings.vue", "clearRoleAuthSession");
-assertContains("rider-app/pages/profile/change-phone.vue", "persistRoleAuthSession");
+assertContains("merchant-app/App.vue", "ensureMerchantAuthSession");
+assertContains("merchant-app/shared-ui/auth-session.js", "readMerchantAuthIdentity");
+assertContains("rider-app/App-logic.ts", "ensureRiderAuthSession");
+assertContains("rider-app/pages/login/index.vue", "persistRiderAuthSession");
+assertContains("rider-app/pages/profile/settings.vue", "clearRiderAuthSession");
+assertContains("rider-app/pages/profile/change-phone.vue", "persistRiderAuthSession");
+assertContains("rider-app/shared-ui/auth-session.js", "readRiderAuthIdentity");
 assertContains(
   "socket-server/socketIdentity.js",
   "../packages/domain-core/src/identity.js",

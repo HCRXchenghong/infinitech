@@ -116,6 +116,30 @@ test("role auth session helpers backfill legacy authMode when rider token and id
   assert.equal(uniApp.storage.authMode, "rider");
 });
 
+test("role auth session helpers support legacy fallback token storage keys", () => {
+  const uniApp = createUniApp({
+    access_token: "legacy-rider-token",
+    riderId: "rider-21",
+    riderProfile: {
+      nickname: "骑手二十一",
+    },
+  });
+
+  const session = ensureRoleAuthSession({
+    uniApp,
+    role: "rider",
+    profileStorageKey: "riderProfile",
+    allowLegacyAuthModeFallback: true,
+    tokenStorageKeys: ["token", "access_token"],
+    idSources: ["storage:riderId", "profile:id"],
+  });
+
+  assert.equal(session.token, "legacy-rider-token");
+  assert.equal(session.accountId, "rider-21");
+  assert.equal(session.isAuthenticated, true);
+  assert.equal(uniApp.storage.authMode, "rider");
+});
+
 test("role auth session helpers clear standard and extra storage keys together", () => {
   const uniApp = createUniApp({
     token: "merchant-token",

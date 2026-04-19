@@ -18,6 +18,11 @@
 import Vue from "vue";
 import { UPLOAD_DOMAINS } from "../../../packages/contracts/src/upload.js";
 import { updateAvatar, uploadImage } from "../../shared-ui/api";
+import {
+  persistRiderAuthSession,
+  readRiderAuthIdentity,
+  readRiderAuthSession,
+} from "../../shared-ui/auth-session.js";
 
 export default Vue.extend({
   data() {
@@ -26,9 +31,9 @@ export default Vue.extend({
     };
   },
   onLoad() {
-    const profile = uni.getStorageSync("riderProfile");
-    if (profile && profile.avatar) {
-      this.avatarUrl = profile.avatar;
+    const riderAuth = readRiderAuthIdentity({ uniApp: uni });
+    if (riderAuth.profile?.avatar) {
+      this.avatarUrl = riderAuth.profile.avatar;
     }
   },
   methods: {
@@ -54,7 +59,6 @@ export default Vue.extend({
       uni.showLoading({ title: "上传中..." });
 
       try {
-        const riderId = uni.getStorageSync("riderId");
         const uploadRes: any = await uploadImage(filePath, {
           uploadDomain: UPLOAD_DOMAINS.PROFILE_IMAGE,
         });
@@ -68,10 +72,27 @@ export default Vue.extend({
 
         this.avatarUrl = imageUrl;
 
-        // 更新本地存储
-        const profile = uni.getStorageSync("riderProfile") || {};
-        profile.avatar = imageUrl;
-        uni.setStorageSync("riderProfile", profile);
+        const riderSession = readRiderAuthSession({ uniApp: uni });
+        if (riderSession.token) {
+          persistRiderAuthSession({
+            uniApp: uni,
+            token: riderSession.token,
+            refreshToken: riderSession.refreshToken || null,
+            tokenExpiresAt: riderSession.tokenExpiresAt || null,
+            profile: {
+              ...(riderSession.profile || {}),
+              avatar: imageUrl,
+            },
+            extraStorageValues: {
+              riderId: riderSession.accountId || null,
+              riderName:
+                riderSession.profile?.name
+                || riderSession.profile?.nickname
+                || uni.getStorageSync("riderName")
+                || "骑手",
+            },
+          });
+        }
 
         uni.hideLoading();
         uni.showToast({ title: "头像更新成功", icon: "success" });

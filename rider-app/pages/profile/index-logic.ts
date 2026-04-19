@@ -7,6 +7,7 @@ import {
   getCachedPlatformRuntimeSettings,
   loadPlatformRuntimeSettings
 } from '../../shared-ui/platform-runtime'
+import { readRiderAuthIdentity } from '../../shared-ui/auth-session.js'
 import { formatRoleId } from '../../shared-ui/utils'
 
 const RANK_NAME_MAP: Record<number, string> = {
@@ -53,32 +54,31 @@ export default Vue.extend({
     const systemInfo = uni.getSystemInfoSync()
     this.statusBarHeight = systemInfo.statusBarHeight || 44
 
-    const profile = uni.getStorageSync('riderProfile')
-    if (profile && profile.avatar) {
-      this.avatarUrl = profile.avatar
+    const riderAuth = readRiderAuthIdentity({ uniApp: uni })
+    if (riderAuth.profile?.avatar) {
+      this.avatarUrl = riderAuth.profile.avatar
     }
 
-    const riderId = uni.getStorageSync('riderId')
+    const riderId = riderAuth.riderId
     if (riderId) {
       this.riderId = formatRoleId(riderId, 'rider')
       this.loadRiderData()
     }
 
-    const riderName = uni.getStorageSync('riderName')
-    if (riderName) {
-      this.riderName = riderName
+    if (riderAuth.riderName) {
+      this.riderName = riderAuth.riderName
     }
 
     this.loadSupportRuntimeConfig()
     this.loadPlatformRuntimeConfig()
   },
   onShow() {
-    const profile = uni.getStorageSync('riderProfile')
-    if (profile && profile.avatar) {
-      this.avatarUrl = profile.avatar
+    const riderAuth = readRiderAuthIdentity({ uniApp: uni })
+    if (riderAuth.profile?.avatar) {
+      this.avatarUrl = riderAuth.profile.avatar
     }
 
-    const riderId = uni.getStorageSync('riderId')
+    const riderId = riderAuth.riderId
     if (riderId) {
       this.loadRiderData()
     }

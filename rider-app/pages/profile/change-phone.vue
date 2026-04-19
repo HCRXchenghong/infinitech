@@ -40,18 +40,13 @@
 import Vue from 'vue'
 import { changePhone, requestSMSCode, verifySMSCodeCheck } from '../../shared-ui/api'
 import {
-  clearRoleAuthSession,
-  persistRoleAuthSession,
-  readRoleAuthSessionSnapshot,
-} from '../../../packages/client-sdk/src/role-auth-session.js'
+  clearRiderAuthSession,
+  persistRiderAuthSession,
+  readRiderAuthSession,
+} from '../../shared-ui/auth-session.js'
 
 const OLD_SCENE = 'change_phone_verify'
 const NEW_SCENE = 'change_phone_new'
-const RIDER_AUTH_SESSION_OPTIONS = Object.freeze({
-  role: 'rider',
-  profileStorageKey: 'riderProfile',
-  idSources: ['storage:riderId', 'profile:id', 'profile:userId', 'profile:user_id'],
-})
 
 export default Vue.extend({
   data() {
@@ -69,9 +64,9 @@ export default Vue.extend({
     }
   },
   onLoad() {
-    const profile = uni.getStorageSync('riderProfile')
-    if (profile && profile.phone) {
-      this.oldPhone = String(profile.phone).trim()
+    const riderAuth = readRiderAuthIdentity({ uniApp: uni })
+    if (riderAuth.riderPhone) {
+      this.oldPhone = String(riderAuth.riderPhone).trim()
     }
   },
   onUnload() {
@@ -200,22 +195,17 @@ export default Vue.extend({
           throw res
         }
 
-        const currentSession = readRoleAuthSessionSnapshot({
-          uniApp: uni,
-          ...RIDER_AUTH_SESSION_OPTIONS,
-        })
+        const currentSession = readRiderAuthSession({ uniApp: uni })
         const nextProfile = Object.assign({}, currentSession.profile, res.user || {}, {
           phone: String(this.newPhone || '').trim()
         })
 
         if (res.token) {
-          persistRoleAuthSession({
+          persistRiderAuthSession({
             uniApp: uni,
-            role: 'rider',
             token: res.token,
             refreshToken: currentSession.refreshToken || null,
             tokenExpiresAt: currentSession.tokenExpiresAt || null,
-            profileStorageKey: 'riderProfile',
             profile: nextProfile,
             extraStorageValues: {
               riderId: res.user?.id != null
@@ -230,13 +220,9 @@ export default Vue.extend({
             },
           })
         } else {
-          clearRoleAuthSession({
+          clearRiderAuthSession({
             uniApp: uni,
-            profileStorageKey: 'riderProfile',
             extraStorageKeys: [
-              'access_token',
-              'riderId',
-              'riderName',
               'socket_token',
               'socket_token_account_key',
               'rider_push_registration',

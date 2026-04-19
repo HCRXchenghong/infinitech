@@ -45,7 +45,7 @@
 <script lang="ts">
 import Vue from 'vue'
 import { requestSMSCode, riderLogin } from '../../shared-ui/api'
-import { persistRoleAuthSession } from '../../../packages/client-sdk/src/role-auth-session.js'
+import { persistRiderAuthSession } from '../../shared-ui/auth-session.js'
 import {
   getCachedRiderPortalRuntimeSettings,
   loadRiderPortalRuntimeSettings,
@@ -76,11 +76,9 @@ export default Vue.extend({
     },
 
     saveRiderSession(payload: any, phone: string) {
-      persistRoleAuthSession({
+      persistRiderAuthSession({
         uniApp: uni,
-        role: 'rider',
         token: payload?.token,
-        profileStorageKey: 'riderProfile',
         profile: payload?.user || { phone, nickname: '骑手' },
         extraStorageValues: {
           riderId: payload?.user?.id != null ? String(payload.user.id) : null,

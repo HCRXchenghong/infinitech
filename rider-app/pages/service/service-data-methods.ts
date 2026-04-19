@@ -1,4 +1,5 @@
 import { fetchRiderOrders, request as apiRequest } from '@/shared-ui/api'
+import { readRiderAuthIdentity } from '@/shared-ui/auth-session.js'
 
 export const serviceDataMethods = {
   resolveMessageTimestamp(rawValue: any, fallback = Date.now()) {
@@ -187,8 +188,8 @@ export const serviceDataMethods = {
         })
 
       if (availableOrders.length === 0 && acceptedOrders.length === 0) {
-        const riderProfile = uni.getStorageSync('riderProfile') || {}
-        const riderPhone = String(riderProfile.phone || uni.getStorageSync('riderPhone') || '')
+        const riderAuth = readRiderAuthIdentity({ uniApp: uni })
+        const riderPhone = String(riderAuth.riderPhone || '')
         const [pendingRes, acceptedRes] = await Promise.all([
           apiRequest({ url: '/api/orders', method: 'GET', data: { status: 'pending', page: 1, limit: 200 } }),
           apiRequest({ url: '/api/orders', method: 'GET', data: { status: 'accepted', page: 1, limit: 200 } })

@@ -18,6 +18,7 @@ import {
   getCachedSupportRuntimeSettings,
   loadSupportRuntimeSettings,
 } from '@/shared-ui/support-runtime'
+import { readMerchantAuthIdentity } from '@/shared-ui/auth-session.js'
 import { getMerchantId, getMerchantProfile } from '@/shared-ui/merchantContext'
 import { playMerchantMessageNotificationSound } from '@/shared-ui/notification-sound'
 
@@ -478,9 +479,10 @@ export function useMerchantChatPage() {
   }
 
   onLoad((options: any = {}) => {
-    const profile = getMerchantProfile() || {}
-    merchantId.value = getMerchantId() || String(profile.phone || uni.getStorageSync('merchantId') || '')
-    merchantName.value = String(profile.name || profile.nickname || profile.shopName || '商户')
+    const merchantAuth = readMerchantAuthIdentity({ uniApp: uni })
+    const profile = getMerchantProfile() || merchantAuth.profile || {}
+    merchantId.value = getMerchantId() || String(merchantAuth.merchantPhone || '')
+    merchantName.value = String(merchantAuth.merchantName || '商户')
     merchantAvatar.value = String(profile.avatar || profile.logo || '')
 
     chatId.value = safeDecode(options.chatId || options.id || '')

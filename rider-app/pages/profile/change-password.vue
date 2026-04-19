@@ -35,6 +35,7 @@
 <script lang="ts">
 import Vue from 'vue'
 import { requestSMSCode, changePassword } from '../../shared-ui/api'
+import { readRiderAuthIdentity } from '../../shared-ui/auth-session.js'
 
 export default Vue.extend({
   data() {
@@ -49,9 +50,9 @@ export default Vue.extend({
     }
   },
   onLoad() {
-    const profile = uni.getStorageSync('riderProfile')
-    if (profile && profile.phone) {
-      this.phone = profile.phone
+    const riderAuth = readRiderAuthIdentity({ uniApp: uni })
+    if (riderAuth.riderPhone) {
+      this.phone = riderAuth.riderPhone
     }
   },
   methods: {

@@ -4,20 +4,10 @@ import { registerCurrentPushDevice, clearPushRegistrationState } from '@/shared-
 import { startPushEventBridge } from '@/shared-ui/push-events'
 import { connectCurrentRealtimeChannel, clearRealtimeState } from '@/shared-ui/realtime-notify'
 import { bindNotificationSoundBridge } from '@/shared-ui/notification-sound'
-import { ensureRoleAuthSession } from '../packages/client-sdk/src/role-auth-session.js'
-
-const MERCHANT_AUTH_SESSION_OPTIONS = Object.freeze({
-  role: 'merchant',
-  profileStorageKey: 'merchantProfile',
-  allowLegacyAuthModeFallback: true,
-  idSources: ['profile:id', 'profile:role_id', 'profile:userId', 'profile:user_id'],
-})
+import { ensureMerchantAuthSession } from '@/shared-ui/auth-session.js'
 
 function readMerchantSession() {
-  return ensureRoleAuthSession({
-    uniApp: uni,
-    ...MERCHANT_AUTH_SESSION_OPTIONS,
-  })
+  return ensureMerchantAuthSession({ uniApp: uni })
 }
 
 export default defineComponent({

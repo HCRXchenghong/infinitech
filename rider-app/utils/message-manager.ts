@@ -5,6 +5,7 @@
 
 import notification from './notification'
 import { getCachedSupportRuntimeSettings, loadSupportRuntimeSettings } from '@/shared-ui/support-runtime'
+import { readRiderAuthIdentity } from '@/shared-ui/auth-session.js'
 
 declare const uni: any
 
@@ -88,7 +89,7 @@ class MessageManager {
 
   handleNewMessage(message: MessageData) {
     const incomingChatId = this.normalizeChatId(message.chatId)
-    const riderId = String(uni.getStorageSync('riderId') || '')
+    const riderId = String(readRiderAuthIdentity({ uniApp: uni }).riderId || '')
     if (String(message.senderId) === riderId) {
       return
     }

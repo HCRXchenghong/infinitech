@@ -11,7 +11,7 @@ import {
   clearCachedSocketToken as clearCachedSocketTokenCache,
   resolveSocketToken,
 } from '../packages/client-sdk/src/realtime-token.js'
-import { ensureRoleAuthSession } from '../packages/client-sdk/src/role-auth-session.js'
+import { ensureRiderAuthSession, readRiderAuthIdentity } from './shared-ui/auth-session.js'
 import MessagePopup from './components/message-popup.vue'
 import DispatchPopup from './components/dispatch-popup.vue'
 import notification from './utils/notification'
@@ -21,12 +21,6 @@ Vue.component('message-popup', MessagePopup)
 const RIDER_HEARTBEAT_INTERVAL = 20 * 1000
 const SOCKET_TOKEN_KEY = 'socket_token'
 const SOCKET_TOKEN_ACCOUNT_KEY = 'socket_token_account_key'
-const RIDER_AUTH_SESSION_OPTIONS = Object.freeze({
-  role: 'rider',
-  profileStorageKey: 'riderProfile',
-  allowLegacyAuthModeFallback: true,
-  idSources: ['storage:riderId', 'profile:id', 'profile:userId', 'profile:user_id'],
-})
 
 function clearCachedSocketToken() {
   clearCachedSocketTokenCache({
@@ -37,10 +31,7 @@ function clearCachedSocketToken() {
 }
 
 function readRiderSession() {
-  return ensureRoleAuthSession({
-    uniApp: uni,
-    ...RIDER_AUTH_SESSION_OPTIONS,
-  })
+  return ensureRiderAuthSession({ uniApp: uni })
 }
 
 function resolveRiderMessageTimestamp(rawValue: any, fallback = Date.now()) {
@@ -169,7 +160,7 @@ export default Vue.extend({
       if (this.isConnected) return
 
       const session = readRiderSession()
-      let riderId = session.accountId || uni.getStorageSync('riderId')
+      let riderId = readRiderAuthIdentity({ uniApp: uni }).riderId
 
       if (!session.isAuthenticated) {
         clearPushRegistrationState()
@@ -179,7 +170,7 @@ export default Vue.extend({
       if (!riderId) {
         try {
           await loadRiderData()
-          riderId = uni.getStorageSync('riderId')
+          riderId = readRiderAuthIdentity({ uniApp: uni }).riderId
         } catch (_err) {
           // ignore
         }

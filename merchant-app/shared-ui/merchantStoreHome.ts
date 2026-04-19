@@ -8,7 +8,7 @@ import {
   ensureMerchantShops,
   getCurrentShopId,
 } from '@/shared-ui/merchantContext'
-import { clearRoleAuthSession } from '../../packages/client-sdk/src/role-auth-session.js'
+import { clearMerchantAuthSession } from '@/shared-ui/auth-session.js'
 
 export function useMerchantStoreHomePage() {
   const refreshing = ref(false)
@@ -125,9 +125,8 @@ export function useMerchantStoreHomePage() {
         } catch (_error) {
           clearPushRegistrationState()
         }
-        clearRoleAuthSession({
+        clearMerchantAuthSession({
           uniApp: uni,
-          profileStorageKey: 'merchantProfile',
         })
         clearPushRegistrationState()
         clearMerchantContext()

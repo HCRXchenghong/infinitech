@@ -1,14 +1,14 @@
 import { fetchMerchantShops } from './api'
+import { readMerchantAuthIdentity, readMerchantAuthSession } from './auth-session.js'
 
 declare const uni: any
 
-const STORAGE_MERCHANT_PROFILE = 'merchantProfile'
 const STORAGE_CURRENT_SHOP_ID = 'merchantCurrentShopId'
 
 let cachedShops: any[] | null = null
 
 export function getMerchantProfile() {
-  const profile = uni.getStorageSync(STORAGE_MERCHANT_PROFILE)
+  const profile = readMerchantAuthSession({ uniApp: uni }).profile
   if (profile && typeof profile === 'object') {
     return profile
   }
@@ -16,10 +16,7 @@ export function getMerchantProfile() {
 }
 
 export function getMerchantId(): string {
-  const profile = getMerchantProfile()
-  if (!profile) return ''
-  const id = profile.id ?? profile.role_id ?? ''
-  return String(id || '')
+  return String(readMerchantAuthIdentity({ uniApp: uni }).merchantId || '')
 }
 
 export function getCurrentShopId(): string {

@@ -95,11 +95,32 @@ function uniqueKeys(keys) {
   return deduped;
 }
 
+function normalizeStorageKeys(primaryKey, storageKeys) {
+  return uniqueKeys([
+    primaryKey,
+    ...(Array.isArray(storageKeys) ? storageKeys : []),
+  ]);
+}
+
+function readFirstStorageValue(uniApp, storageKeys) {
+  for (const key of storageKeys) {
+    const value = trimValue(readStorage(uniApp, key));
+    if (value) {
+      return value;
+    }
+  }
+  return "";
+}
+
 export function readRoleAuthSessionSnapshot(options = {}) {
   const uniApp = options.uniApp || globalThis.uni;
   const role = trimValue(options.role);
   const tokenStorageKey =
     trimValue(options.tokenStorageKey) || DEFAULT_ROLE_AUTH_TOKEN_STORAGE_KEY;
+  const tokenStorageKeys = normalizeStorageKeys(
+    tokenStorageKey,
+    options.tokenStorageKeys,
+  );
   const refreshTokenStorageKey =
     trimValue(options.refreshTokenStorageKey)
     || DEFAULT_ROLE_AUTH_REFRESH_TOKEN_STORAGE_KEY;
@@ -111,7 +132,7 @@ export function readRoleAuthSessionSnapshot(options = {}) {
   const profileStorageKey = trimValue(options.profileStorageKey);
   const profile = profileStorageKey ? readProfile(uniApp, profileStorageKey) : {};
   const authMode = trimValue(readStorage(uniApp, authModeStorageKey));
-  const token = trimValue(readStorage(uniApp, tokenStorageKey));
+  const token = readFirstStorageValue(uniApp, tokenStorageKeys);
   const refreshToken = trimValue(readStorage(uniApp, refreshTokenStorageKey));
   const tokenExpiresAt = normalizeNumber(readStorage(uniApp, tokenExpiresAtStorageKey));
   const accountId = pickFirstValue(
