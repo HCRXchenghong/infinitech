@@ -332,11 +332,15 @@ func main() {
 		log.Printf("⚠️  私有文档迁移失败: %v", privateDocumentErr)
 	} else {
 		log.Printf(
-			"✅ 私有文档迁移完成: merchants=%d merchant_fields=%d shops=%d shop_fields=%d orders=%d order_payloads=%d errors=%d",
+			"✅ 私有文档迁移完成: merchants=%d merchant_fields=%d riders=%d rider_fields=%d shops=%d shop_fields=%d onboarding_submissions=%d onboarding_submission_fields=%d orders=%d order_payloads=%d errors=%d",
 			privateDocumentStats.MerchantsUpdated,
 			privateDocumentStats.MerchantFieldsMoved,
+			privateDocumentStats.RidersUpdated,
+			privateDocumentStats.RiderFieldsMoved,
 			privateDocumentStats.ShopsUpdated,
 			privateDocumentStats.ShopFieldsMoved,
+			privateDocumentStats.OnboardingSubmissionsUpdated,
+			privateDocumentStats.OnboardingSubmissionFieldsMoved,
 			privateDocumentStats.OrdersUpdated,
 			privateDocumentStats.OrderPayloadsUpdated,
 			privateDocumentStats.Errors,

@@ -13,13 +13,17 @@ import (
 )
 
 type PrivateDocumentMigrationStats struct {
-	MerchantsUpdated     int
-	MerchantFieldsMoved  int
-	ShopsUpdated         int
-	ShopFieldsMoved      int
-	OrdersUpdated        int
-	OrderPayloadsUpdated int
-	Errors               int
+	MerchantsUpdated                int
+	MerchantFieldsMoved             int
+	RidersUpdated                   int
+	RiderFieldsMoved                int
+	ShopsUpdated                    int
+	ShopFieldsMoved                 int
+	OnboardingSubmissionsUpdated    int
+	OnboardingSubmissionFieldsMoved int
+	OrdersUpdated                   int
+	OrderPayloadsUpdated            int
+	Errors                          int
 }
 
 func MigrateLegacyPrivateDocuments(ctx context.Context, db *gorm.DB) (PrivateDocumentMigrationStats, error) {
@@ -32,7 +36,13 @@ func MigrateLegacyPrivateDocuments(ctx context.Context, db *gorm.DB) (PrivateDoc
 	if err := migrateLegacyMerchantDocuments(ctx, db, &stats); err != nil {
 		return stats, err
 	}
+	if err := migrateLegacyRiderDocuments(ctx, db, &stats); err != nil {
+		return stats, err
+	}
 	if err := migrateLegacyShopDocuments(ctx, db, &stats); err != nil {
+		return stats, err
+	}
+	if err := migrateLegacyOnboardingSubmissionDocuments(ctx, db, &stats); err != nil {
 		return stats, err
 	}
 	if err := migrateLegacyMedicalOrderDocuments(ctx, db, &stats); err != nil {
@@ -56,7 +66,7 @@ func migrateLegacyMerchantDocuments(ctx context.Context, db *gorm.DB, stats *Pri
 
 	for _, merchant := range merchants {
 		current := strings.TrimSpace(merchant.BusinessLicenseImage)
-		next, changed, err := migrateStoredDocumentReference(current, uploadasset.DomainMerchantDocument, "merchant", strconv.FormatUint(uint64(merchant.ID), 10))
+		next, changed, err := migrateStoredMerchantDocumentReference(current, strconv.FormatUint(uint64(merchant.ID), 10))
 		if err != nil {
 			stats.Errors++
 			continue
@@ -73,6 +83,42 @@ func migrateLegacyMerchantDocuments(ctx context.Context, db *gorm.DB, stats *Pri
 		}
 		stats.MerchantsUpdated++
 		stats.MerchantFieldsMoved++
+	}
+
+	return nil
+}
+
+func migrateLegacyRiderDocuments(ctx context.Context, db *gorm.DB, stats *PrivateDocumentMigrationStats) error {
+	if !db.Migrator().HasTable(&repository.Rider{}) {
+		return nil
+	}
+
+	var riders []repository.Rider
+	if err := db.WithContext(ctx).
+		Select("id", "id_card_front").
+		Find(&riders).Error; err != nil {
+		return fmt.Errorf("load riders for private document migration failed: %w", err)
+	}
+
+	for _, rider := range riders {
+		current := strings.TrimSpace(rider.IDCardFront)
+		next, changed, err := migrateStoredRiderOnboardingDocumentReference(current, strconv.FormatUint(uint64(rider.ID), 10))
+		if err != nil {
+			stats.Errors++
+			continue
+		}
+		if !changed || next == current {
+			continue
+		}
+		if err := db.WithContext(ctx).
+			Model(&repository.Rider{}).
+			Where("id = ?", rider.ID).
+			Update("id_card_front", next).Error; err != nil {
+			stats.Errors++
+			continue
+		}
+		stats.RidersUpdated++
+		stats.RiderFieldsMoved++
 	}
 
 	return nil
@@ -175,6 +221,87 @@ func migrateLegacyMedicalOrderDocuments(ctx context.Context, db *gorm.DB, stats 
 	return nil
 }
 
+func migrateLegacyOnboardingSubmissionDocuments(ctx context.Context, db *gorm.DB, stats *PrivateDocumentMigrationStats) error {
+	if !db.Migrator().HasTable(&repository.OnboardingInviteSubmission{}) {
+		return nil
+	}
+
+	var submissions []repository.OnboardingInviteSubmission
+	if err := db.WithContext(ctx).
+		Select("id", "entity_type", "entity_id", "business_license_image", "id_card_image").
+		Find(&submissions).Error; err != nil {
+		return fmt.Errorf("load onboarding submissions for private document migration failed: %w", err)
+	}
+
+	for _, submission := range submissions {
+		updates := map[string]interface{}{}
+		entityType := strings.TrimSpace(submission.EntityType)
+		entityID := strconv.FormatUint(uint64(submission.EntityID), 10)
+
+		switch entityType {
+		case "merchant":
+			next := strings.TrimSpace(submission.BusinessLicenseImage)
+			if submission.EntityID > 0 && db.Migrator().HasTable(&repository.Merchant{}) {
+				var merchant repository.Merchant
+				if err := db.WithContext(ctx).Select("id", "business_license_image").Where("id = ?", submission.EntityID).First(&merchant).Error; err == nil {
+					next = strings.TrimSpace(merchant.BusinessLicenseImage)
+				}
+			}
+			if strings.TrimSpace(next) == "" {
+				var err error
+				var changed bool
+				next, changed, err = migrateStoredMerchantDocumentReference(submission.BusinessLicenseImage, entityID)
+				if err != nil {
+					stats.Errors++
+					continue
+				}
+				if !changed && strings.TrimSpace(next) == strings.TrimSpace(submission.BusinessLicenseImage) {
+					continue
+				}
+			}
+			if strings.TrimSpace(next) != "" && strings.TrimSpace(next) != strings.TrimSpace(submission.BusinessLicenseImage) {
+				updates["business_license_image"] = next
+				stats.OnboardingSubmissionFieldsMoved++
+			}
+		case "rider":
+			next := strings.TrimSpace(submission.IDCardImage)
+			if submission.EntityID > 0 && db.Migrator().HasTable(&repository.Rider{}) {
+				var rider repository.Rider
+				if err := db.WithContext(ctx).Select("id", "id_card_front").Where("id = ?", submission.EntityID).First(&rider).Error; err == nil {
+					next = strings.TrimSpace(rider.IDCardFront)
+				}
+			}
+			if strings.TrimSpace(next) == "" {
+				var err error
+				var changed bool
+				next, changed, err = migrateStoredRiderOnboardingDocumentReference(submission.IDCardImage, entityID)
+				if err != nil {
+					stats.Errors++
+					continue
+				}
+				if !changed && strings.TrimSpace(next) == strings.TrimSpace(submission.IDCardImage) {
+					continue
+				}
+			}
+			if strings.TrimSpace(next) != "" && strings.TrimSpace(next) != strings.TrimSpace(submission.IDCardImage) {
+				updates["id_card_image"] = next
+				stats.OnboardingSubmissionFieldsMoved++
+			}
+		}
+
+		if len(updates) == 0 {
+			continue
+		}
+		if err := db.WithContext(ctx).Model(&repository.OnboardingInviteSubmission{}).Where("id = ?", submission.ID).Updates(updates).Error; err != nil {
+			stats.Errors++
+			continue
+		}
+		stats.OnboardingSubmissionsUpdated++
+	}
+
+	return nil
+}
+
 func migrateStoredDocumentReference(raw, domain, ownerRole, ownerID string) (string, bool, error) {
 	value := strings.TrimSpace(raw)
 	if value == "" {
@@ -210,6 +337,157 @@ func migrateStoredDocumentReference(raw, domain, ownerRole, ownerID string) (str
 		domain,
 		ownerRole,
 		ownerID,
+		documentPublicUploadsRootPath,
+		documentPrivateUploadsRootPath,
+	)
+	if err != nil {
+		return "", false, err
+	}
+	return nextRef, moved || nextRef != value, nil
+}
+
+func migrateStoredMerchantDocumentReference(raw, ownerID string) (string, bool, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return "", false, nil
+	}
+
+	ref := uploadasset.ExtractReference(value)
+	if ref == "" {
+		return value, false, nil
+	}
+
+	normalizedOwnerID := strings.TrimSpace(ownerID)
+	if uploadasset.IsPrivateReference(ref) {
+		parsed, ok := uploadasset.ParseReference(ref)
+		if !ok {
+			return "", false, fmt.Errorf("private document reference is invalid")
+		}
+		switch parsed.Domain {
+		case uploadasset.DomainMerchantDocument:
+			return ref, ref != value, nil
+		case uploadasset.DomainOnboardingDocument:
+			nextRef, moved, err := uploadasset.TransferPrivateAsset(
+				ref,
+				uploadasset.DomainOnboardingDocument,
+				"",
+				"",
+				uploadasset.DomainMerchantDocument,
+				"merchant",
+				normalizedOwnerID,
+				documentPrivateUploadsRootPath,
+			)
+			if err != nil {
+				return "", false, err
+			}
+			return nextRef, moved || nextRef != value, nil
+		default:
+			return "", false, fmt.Errorf("private document domain mismatch")
+		}
+	}
+
+	normalizedLegacyPath, normalizedDomain, ok := uploadasset.NormalizeProtectedLegacyPath(ref)
+	if !ok {
+		return value, false, nil
+	}
+
+	switch normalizedDomain {
+	case uploadasset.DomainMerchantDocument:
+		nextRef, moved, err := uploadasset.PromoteLegacyProtectedAsset(
+			normalizedLegacyPath,
+			uploadasset.DomainMerchantDocument,
+			"merchant",
+			normalizedOwnerID,
+			documentPublicUploadsRootPath,
+			documentPrivateUploadsRootPath,
+		)
+		if err != nil {
+			return "", false, err
+		}
+		return nextRef, moved || nextRef != value, nil
+	case uploadasset.DomainOnboardingDocument:
+		onboardingRef, _, err := uploadasset.PromoteLegacyProtectedAsset(
+			normalizedLegacyPath,
+			uploadasset.DomainOnboardingDocument,
+			"merchant",
+			normalizedOwnerID,
+			documentPublicUploadsRootPath,
+			documentPrivateUploadsRootPath,
+		)
+		if err != nil {
+			return "", false, err
+		}
+		nextRef, _, err := uploadasset.TransferPrivateAsset(
+			onboardingRef,
+			uploadasset.DomainOnboardingDocument,
+			"merchant",
+			normalizedOwnerID,
+			uploadasset.DomainMerchantDocument,
+			"merchant",
+			normalizedOwnerID,
+			documentPrivateUploadsRootPath,
+		)
+		if err != nil {
+			return "", false, err
+		}
+		return nextRef, true, nil
+	default:
+		return "", false, fmt.Errorf("private document domain mismatch")
+	}
+}
+
+func migrateStoredRiderOnboardingDocumentReference(raw, ownerID string) (string, bool, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return "", false, nil
+	}
+	if strings.HasPrefix(value, "private://rider-cert/") {
+		return value, false, nil
+	}
+
+	ref := uploadasset.ExtractReference(value)
+	if ref == "" {
+		return value, false, nil
+	}
+
+	normalizedOwnerID := strings.TrimSpace(ownerID)
+	if uploadasset.IsPrivateReference(ref) {
+		parsed, ok := uploadasset.ParseReference(ref)
+		if !ok {
+			return "", false, fmt.Errorf("private document reference is invalid")
+		}
+		if parsed.Domain != uploadasset.DomainOnboardingDocument {
+			return "", false, fmt.Errorf("private document domain mismatch")
+		}
+		nextRef, moved, err := uploadasset.TransferPrivateAsset(
+			ref,
+			uploadasset.DomainOnboardingDocument,
+			"",
+			"",
+			uploadasset.DomainOnboardingDocument,
+			"rider",
+			normalizedOwnerID,
+			documentPrivateUploadsRootPath,
+		)
+		if err != nil {
+			return "", false, err
+		}
+		return nextRef, moved || nextRef != value, nil
+	}
+
+	normalizedLegacyPath, normalizedDomain, ok := uploadasset.NormalizeProtectedLegacyPath(ref)
+	if !ok {
+		return value, false, nil
+	}
+	if normalizedDomain != uploadasset.DomainOnboardingDocument {
+		return value, false, nil
+	}
+
+	nextRef, moved, err := uploadasset.PromoteLegacyProtectedAsset(
+		normalizedLegacyPath,
+		uploadasset.DomainOnboardingDocument,
+		"rider",
+		normalizedOwnerID,
 		documentPublicUploadsRootPath,
 		documentPrivateUploadsRootPath,
 	)
