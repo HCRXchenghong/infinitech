@@ -9,6 +9,7 @@
     "./error-utils": "./src/error-utils.js",
     "./local-db": "./src/local-db.js",
     "./mobile-config": "./src/mobile-config.js",
+    "./mobile-config-shell": "./src/mobile-config-shell.js",
     "./mobile-config-helper": "./src/mobile-config-helper.js",
     "./mobile-capabilities": "./src/mobile-capabilities.js",
     "./mobile-utils": "./src/mobile-utils.js",
@@ -31,6 +32,7 @@
     "./stored-auth-identity": "./src/stored-auth-identity.js",
     "./support-socket": "./src/support-socket.js",
     "./support-socket-bridge": "./src/support-socket-bridge.js",
+    "./support-socket-shell": "./src/support-socket-shell.js",
     "./uni-request": "./src/uni-request.js"
   }
 }

@@ -1,4 +1,9 @@
 import manifest from '../manifest.json'
-import { setManifest } from '../../packages/client-sdk/src/mobile-config.js'
-setManifest(manifest)
-export { default, updateConfig, getConfig } from '../../packages/client-sdk/src/mobile-config.js'
+import { createManifestBoundMobileConfig } from '../../packages/client-sdk/src/mobile-config-shell.js'
+
+const { config, updateConfig, getConfig } = createManifestBoundMobileConfig({
+  manifest,
+})
+
+export { updateConfig, getConfig }
+export default config

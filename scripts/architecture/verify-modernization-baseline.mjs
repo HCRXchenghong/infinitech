@@ -118,6 +118,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/client-sdk/src/mobile-config.js",
   "packages/client-sdk/src/mobile-config.d.ts",
   "packages/client-sdk/src/mobile-config.test.mjs",
+  "packages/client-sdk/src/mobile-config-shell.js",
+  "packages/client-sdk/src/mobile-config-shell.test.mjs",
   "packages/client-sdk/src/mobile-config-helper.js",
   "packages/client-sdk/src/mobile-config-helper.d.ts",
   "packages/client-sdk/src/mobile-config-helper.test.mjs",
@@ -176,6 +178,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/client-sdk/src/support-socket-bridge.js",
   "packages/client-sdk/src/support-socket-bridge.d.ts",
   "packages/client-sdk/src/support-socket-bridge.test.mjs",
+  "packages/client-sdk/src/support-socket-shell.js",
+  "packages/client-sdk/src/support-socket-shell.test.mjs",
   "packages/client-sdk/src/uni-request.js",
   "packages/client-sdk/src/uni-request.test.mjs",
   "packages/admin-core/src/admin-auth-session.js",
@@ -1973,6 +1977,14 @@ assertContains(
   "const merchantApiRuntime = createRoleApiRuntimeBindings({",
 );
 assertContains(
+  "merchant-app/shared-ui/config.ts",
+  "mobile-config-shell.js",
+);
+assertContains(
+  "merchant-app/shared-ui/socket.ts",
+  "support-socket-shell.js",
+);
+assertContains(
   "rider-app/shared-ui/portal-runtime.ts",
   "createDefaultRolePortalRuntimeBindings({",
 );
@@ -1987,6 +1999,34 @@ assertContains(
 assertContains(
   "rider-app/shared-ui/api.ts",
   "const riderApiRuntime = createRoleApiRuntimeBindings({",
+);
+assertContains(
+  "rider-app/shared-ui/config.ts",
+  "mobile-config-shell.js",
+);
+assertContains(
+  "rider-app/shared-ui/socket.ts",
+  "support-socket-shell.js",
+);
+assertContains(
+  "user-vue/shared-ui/config.ts",
+  "mobile-config-shell.js",
+);
+assertContains(
+  "user-vue/shared-ui/socket.ts",
+  "support-socket-shell.js",
+);
+assertContains(
+  "user-vue/shared-ui/socket.js",
+  "support-socket-shell.js",
+);
+assertContains(
+  "app-mobile/shared-ui/config.ts",
+  "mobile-config-shell.js",
+);
+assertContains(
+  "app-mobile/shared-ui/socket.ts",
+  "support-socket-shell.js",
 );
 assertContains(
   "user-vue/shared-ui/support-runtime.js",
@@ -3055,6 +3095,14 @@ assertContains(
 );
 assertContains(
   "package.json",
+  "packages/client-sdk/src/mobile-config-shell.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/client-sdk/src/support-socket-shell.test.mjs",
+);
+assertContains(
+  "package.json",
   '"verify:admin-core-tests": "node --test packages/admin-core/src/admin-auth-session.test.mjs packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs packages/admin-core/src/system-settings-resources.test.mjs packages/admin-core/src/api-management-resources.test.mjs packages/admin-core/src/order-resources.test.mjs packages/admin-core/src/user-management-resources.test.mjs packages/admin-core/src/shop-management-resources.test.mjs packages/admin-core/src/merchant-profile-resources.test.mjs packages/admin-core/src/home-entry-resources.test.mjs packages/admin-core/src/communication-audit-resources.test.mjs packages/admin-core/src/home-campaign-resources.test.mjs packages/admin-core/src/admin-management-resources.test.mjs packages/admin-core/src/dining-buddy-governance-resources.test.mjs packages/admin-core/src/chat-console-resources.test.mjs packages/admin-core/src/data-management-resources.test.mjs packages/admin-core/src/coupon-resources.test.mjs packages/admin-core/src/api-documentation-resources.test.mjs"',
 );
 assertContains(
@@ -3063,7 +3111,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/error-utils.test.mjs packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/role-auth-session.test.mjs packages/client-sdk/src/role-auth-shell.test.mjs packages/client-sdk/src/role-notify-bridges.test.mjs packages/client-sdk/src/role-notify-shell.test.mjs packages/client-sdk/src/role-push-event-shell.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/safe-access.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/support-socket-bridge.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/error-utils.test.mjs packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-shell.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/role-auth-session.test.mjs packages/client-sdk/src/role-auth-shell.test.mjs packages/client-sdk/src/role-notify-bridges.test.mjs packages/client-sdk/src/role-notify-shell.test.mjs packages/client-sdk/src/role-push-event-shell.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/safe-access.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/support-socket-bridge.test.mjs packages/client-sdk/src/support-socket-shell.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
 );
 assertContains(
   "packages/client-sdk/src/role-auth-shell.js",
@@ -3088,6 +3136,10 @@ assertContains(
 assertContains(
   "packages/client-sdk/src/index.js",
   'export * from "./mobile-config.js";',
+);
+assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./mobile-config-shell.js";',
 );
 assertContains(
   "packages/client-sdk/src/index.js",
@@ -3138,6 +3190,10 @@ assertContains(
   'export * from "./safe-access.js";',
 );
 assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./support-socket-shell.js";',
+);
+assertContains(
   "packages/client-sdk/package.json",
   '"./error-utils": "./src/error-utils.js"',
 );
@@ -3148,6 +3204,10 @@ assertContains(
 assertContains(
   "packages/client-sdk/package.json",
   '"./mobile-config": "./src/mobile-config.js"',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./mobile-config-shell": "./src/mobile-config-shell.js"',
 );
 assertContains(
   "packages/client-sdk/package.json",
@@ -3197,6 +3257,10 @@ assertContains(
   "packages/client-sdk/package.json",
   '"./safe-access": "./src/safe-access.js"',
 );
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./support-socket-shell": "./src/support-socket-shell.js"',
+);
 assertContains("packages/client-sdk/src/local-db.js", "export class LocalDB {");
 assertContains(
   "packages/client-sdk/src/local-db.js",
@@ -3211,6 +3275,10 @@ assertContains(
   "export function createMobileConfigRuntime(options = {}) {",
 );
 assertContains(
+  "packages/client-sdk/src/mobile-config-shell.js",
+  "export function createManifestBoundMobileConfig(options = {}) {",
+);
+assertContains(
   "packages/client-sdk/src/mobile-config-helper.js",
   "export function createMobileConfigHelper(options = {}) {",
 );
@@ -3221,6 +3289,10 @@ assertContains(
 assertContains(
   "packages/client-sdk/src/mobile-utils.js",
   'export function showConfirm(content, title = "提示", options = {}) {',
+);
+assertContains(
+  "packages/client-sdk/src/support-socket-shell.js",
+  "export function createDefaultSupportSocketBridge(options = {}) {",
 );
 assertContains(
   "packages/client-sdk/src/mobile-utils.js",
@@ -3560,19 +3632,19 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/config.ts",
-  "from '../../packages/client-sdk/src/mobile-config.js'",
+  "mobile-config-shell.js",
 );
 assertContains(
   "app-mobile/shared-ui/config.ts",
-  "from '../../packages/client-sdk/src/mobile-config.js'",
+  "mobile-config-shell.js",
 );
 assertContains(
   "merchant-app/shared-ui/config.ts",
-  "from '../../packages/client-sdk/src/mobile-config.js'",
+  "mobile-config-shell.js",
 );
 assertContains(
   "rider-app/shared-ui/config.ts",
-  "from '../../packages/client-sdk/src/mobile-config.js'",
+  "mobile-config-shell.js",
 );
 assertContains(
   "user-vue/shared-ui/config-helper.ts",
