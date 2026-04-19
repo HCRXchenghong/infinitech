@@ -4,6 +4,7 @@ import {
   unregisterPushDevice,
   ackPushMessage as ackPushMessageApi,
 } from './api'
+import { RIDER_STORED_AUTH_RESOLVER_OPTIONS } from './auth-session.js'
 import { createRolePushRegistrationBindings } from '../../packages/client-sdk/src/role-notify-bridges.js'
 
 declare const uni: any
@@ -16,17 +17,7 @@ export const {
   ackPushMessage,
 } = createRolePushRegistrationBindings({
   uniApp: uni,
-  allowedAuthModes: ['rider'],
-  tokenKeys: ['token', 'access_token'],
-  profileKey: 'riderProfile',
-  idSources: [
-    'storage:riderId',
-    'profile:id',
-    'profile:userId',
-    'profile:user_id',
-  ],
-  role: 'rider',
-  userType: 'rider',
+  ...RIDER_STORED_AUTH_RESOLVER_OPTIONS,
   storageKey: 'rider_push_registration',
   registerPushDevice,
   unregisterPushDevice,

@@ -29,6 +29,15 @@ export const RIDER_AUTH_SESSION_OPTIONS = Object.freeze({
   ],
 });
 
+export const RIDER_STORED_AUTH_RESOLVER_OPTIONS = Object.freeze({
+  allowedAuthModes: [DEFAULT_RIDER_ROLE],
+  tokenKeys: [...RIDER_AUTH_SESSION_OPTIONS.tokenStorageKeys],
+  profileKey: DEFAULT_RIDER_PROFILE_STORAGE_KEY,
+  idSources: [...RIDER_AUTH_SESSION_OPTIONS.idSources],
+  role: DEFAULT_RIDER_ROLE,
+  userType: DEFAULT_RIDER_ROLE,
+});
+
 function trimValue(value) {
   return String(value == null ? "" : value).trim();
 }

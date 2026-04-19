@@ -1250,11 +1250,15 @@ assertContains(
 );
 assertContains("merchant-app/App.vue", "ensureMerchantAuthSession");
 assertContains("merchant-app/shared-ui/auth-session.js", "readMerchantAuthIdentity");
+assertContains("merchant-app/shared-ui/push-registration.ts", "MERCHANT_STORED_AUTH_RESOLVER_OPTIONS");
+assertContains("merchant-app/shared-ui/realtime-notify.ts", "MERCHANT_STORED_AUTH_RESOLVER_OPTIONS");
 assertContains("rider-app/App-logic.ts", "ensureRiderAuthSession");
 assertContains("rider-app/pages/login/index.vue", "persistRiderAuthSession");
 assertContains("rider-app/pages/profile/settings.vue", "clearRiderAuthSession");
 assertContains("rider-app/pages/profile/change-phone.vue", "persistRiderAuthSession");
 assertContains("rider-app/shared-ui/auth-session.js", "readRiderAuthIdentity");
+assertContains("rider-app/shared-ui/push-registration.ts", "RIDER_STORED_AUTH_RESOLVER_OPTIONS");
+assertContains("rider-app/shared-ui/realtime-notify.ts", "RIDER_STORED_AUTH_RESOLVER_OPTIONS");
 assertContains(
   "socket-server/socketIdentity.js",
   "../packages/domain-core/src/identity.js",

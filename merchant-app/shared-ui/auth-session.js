@@ -23,6 +23,15 @@ export const MERCHANT_AUTH_SESSION_OPTIONS = Object.freeze({
   idSources: ["profile:id", "profile:role_id", "profile:userId", "profile:user_id"],
 });
 
+export const MERCHANT_STORED_AUTH_RESOLVER_OPTIONS = Object.freeze({
+  allowedAuthModes: [DEFAULT_MERCHANT_ROLE],
+  tokenKeys: [...MERCHANT_AUTH_SESSION_OPTIONS.tokenStorageKeys],
+  profileKey: DEFAULT_MERCHANT_PROFILE_STORAGE_KEY,
+  idSources: [...MERCHANT_AUTH_SESSION_OPTIONS.idSources],
+  role: DEFAULT_MERCHANT_ROLE,
+  userType: DEFAULT_MERCHANT_ROLE,
+});
+
 function trimValue(value) {
   return String(value == null ? "" : value).trim();
 }

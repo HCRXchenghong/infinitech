@@ -1,5 +1,6 @@
 import config from './config'
 import createSocket from '../utils/socket-io'
+import { RIDER_STORED_AUTH_RESOLVER_OPTIONS } from './auth-session.js'
 import { createRoleRealtimeNotifyBindings } from '../../packages/client-sdk/src/role-notify-bridges.js'
 
 declare const uni: any
@@ -10,17 +11,7 @@ export const {
   clearRealtimeState,
 } = createRoleRealtimeNotifyBindings({
   uniApp: uni,
-  allowedAuthModes: ['rider'],
-  tokenKeys: ['token', 'access_token'],
-  profileKey: 'riderProfile',
-  idSources: [
-    'storage:riderId',
-    'profile:id',
-    'profile:userId',
-    'profile:user_id',
-  ],
-  role: 'rider',
-  userType: 'rider',
+  ...RIDER_STORED_AUTH_RESOLVER_OPTIONS,
   loggerTag: 'RiderRealtimeNotify',
   storageKey: 'rider_realtime_notify_state',
   getSocketURL: () => config.SOCKET_URL,
