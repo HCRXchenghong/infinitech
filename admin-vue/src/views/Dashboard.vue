@@ -261,7 +261,7 @@ import {
   normalizeRefreshMinutes,
 } from '@infinitech/admin-core'
 import request from '@/utils/request'
-import socketService, { SOCKET_HTTP_BASE } from '@/utils/socket'
+import socketService from '@/utils/socket'
 import { getCurrentAdminSocketIdentity } from '@/utils/runtime'
 import { getCachedRiderRankSettings, loadRiderRankSettings } from '@/utils/platform-settings'
 import PageStateAlert from '@/components/PageStateAlert.vue'
@@ -416,9 +416,8 @@ async function connectImStats() {
     monitorSocket.emit('join_monitor', { userId: getCurrentAdminSocketIdentity()?.userId || '' })
     socketService.on('server_stats', handleServerStats, '/monitor')
 
-    const response = await fetch(`${SOCKET_HTTP_BASE}/api/stats`)
-    const data = await response.json()
-    applyImStatsPatch(data)
+    const { data } = await request.get('/api/realtime/stats')
+    applyImStatsPatch(extractEnvelopeData(data) || {})
   } catch (_error) {
     imStats.value.online = false
   }

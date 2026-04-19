@@ -5,7 +5,7 @@
 {$PUBLIC_DOMAIN} {
   encode zstd gzip
 
-  @socket path /socket.io* /token* /api/generate-token /api/stats*
+  @socket path /socket.io* /token* /api/generate-token
   handle @socket {
     reverse_proxy socket-server:9898
   }
@@ -23,7 +23,7 @@
 {$ADMIN_DOMAIN} {
   encode zstd gzip
 
-  @socket path /socket.io* /token* /api/generate-token /api/stats*
+  @socket path /socket.io* /token* /api/generate-token
   handle @socket {
     reverse_proxy socket-server:9898
   }

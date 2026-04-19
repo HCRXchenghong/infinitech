@@ -5,6 +5,7 @@ import {
   isTrustedSocketApiRequest,
   resolveTrustedSocketApiSecret,
   validateTrustedSocketApiConfig,
+  validateTrustedSocketStatsRequest,
   validateTrustedSocketTokenRequest,
 } from "./trustedApi.js";
 
@@ -106,5 +107,34 @@ test("validateTrustedSocketTokenRequest only allows site visitor trusted issuanc
         role: "admin",
       }),
     /trusted socket token role is not allowed: admin/,
+  );
+});
+
+test("validateTrustedSocketStatsRequest requires a trusted service secret", () => {
+  assert.deepEqual(
+    validateTrustedSocketStatsRequest(
+      {
+        headers: {
+          "x-socket-server-secret": "socket-secret",
+        },
+      },
+      "socket-secret",
+    ),
+    {
+      verifiedBy: "socket-service-secret",
+    },
+  );
+
+  assert.throws(
+    () =>
+      validateTrustedSocketStatsRequest(
+        {
+          headers: {
+            authorization: "Bearer wrong-secret",
+          },
+        },
+        "socket-secret",
+      ),
+    /Socket server stats endpoint requires trusted service credentials/,
   );
 });

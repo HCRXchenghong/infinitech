@@ -3908,6 +3908,14 @@ assertContains(
   "resolveSocketToken({",
 );
 assertContains(
+  "admin-vue/src/views/Dashboard.vue",
+  "request.get('/api/realtime/stats')",
+);
+assertNotContains(
+  "admin-vue/src/views/Dashboard.vue",
+  "fetch(`${SOCKET_HTTP_BASE}/api/stats`)",
+);
+assertContains(
   "merchant-app/shared-ui/merchantChatPage.ts",
   "resolveSocketToken({",
 );
@@ -6981,13 +6989,22 @@ assertContains(
   "SOCKET_SERVER_API_SECRET is required for socket-server in production-like environments",
 );
 assertContains("socket-server/trustedApi.js", "x-socket-server-secret");
+assertContains(
+  "socket-server/trustedApi.js",
+  "Socket server stats endpoint requires trusted service credentials",
+);
 assertContains("socket-server/index.js", "validateTrustedSocketTokenRequest");
+assertContains("socket-server/index.js", "validateTrustedSocketStatsRequest");
 assertContains(
   "socket-server/index.js",
   "Socket server public upload hosting is disabled. Use authenticated API asset routes instead.",
 );
 assertContains("socket-server/index.js", "buildSuccessEnvelopePayload");
 assertContains("socket-server/index.js", "buildErrorEnvelopePayload");
+assertContains("backend/bff/src/controllers/adminDataController.js", "getRealtimeStats");
+assertContains("backend/bff/src/routes/admin.js", "router.get('/realtime/stats', adminDataController.getRealtimeStats);");
+assertNotContains("backend/docker/Caddyfile", "/api/stats*");
+assertNotContains("backend/docker/nginx.admin.conf", "location = /api/stats");
 assertContains(
   "backend/bff/src/config/index.js",
   "BFF requires BFF_CORS_ORIGINS or explicit ADMIN_WEB_BASE_URL/SITE_WEB_BASE_URL in production-like environments",

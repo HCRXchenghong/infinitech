@@ -99,3 +99,16 @@ export function validateTrustedSocketTokenRequest(body) {
     role,
   };
 }
+
+export function validateTrustedSocketStatsRequest(req, secret) {
+  if (!isTrustedSocketApiRequest(req, secret)) {
+    throw createTrustedApiError(
+      403,
+      "Socket server stats endpoint requires trusted service credentials",
+    );
+  }
+
+  return {
+    verifiedBy: "socket-service-secret",
+  };
+}

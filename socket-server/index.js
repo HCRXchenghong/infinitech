@@ -24,6 +24,7 @@ import {
 import {
   isTrustedSocketApiRequest,
   validateTrustedSocketApiConfig,
+  validateTrustedSocketStatsRequest,
   validateTrustedSocketTokenRequest,
 } from './trustedApi.js';
 
@@ -339,14 +340,25 @@ const httpServer = createServer(async (req, res) => {
   }
 
   if (pathname === '/api/stats' && req.method === 'GET') {
-    const stats = getServerStats();
-    stats.onlineUsers = await getOnlineCount();
-    stats.onlinePresenceSample = await getOnlineUsers(20);
-    stats.redis = getRedisHealthSnapshot();
-    stats.supportHistoryFallback = getSupportHistoryFallbackConfig();
-    writeSuccessEnvelope(req, res, 200, 'Socket server stats loaded successfully', stats, {
-      legacy: stats,
-    });
+    try {
+      validateTrustedSocketStatsRequest(req, TRUSTED_SOCKET_API_SECRET);
+
+      const stats = getServerStats();
+      stats.onlineUsers = await getOnlineCount();
+      stats.onlinePresenceSample = await getOnlineUsers(20);
+      stats.redis = getRedisHealthSnapshot();
+      stats.supportHistoryFallback = getSupportHistoryFallbackConfig();
+      writeSuccessEnvelope(req, res, 200, 'Socket server stats loaded successfully', stats, {
+        legacy: stats,
+      });
+    } catch (err) {
+      writeErrorEnvelope(
+        req,
+        res,
+        Number(err?.statusCode || 500),
+        err?.message || 'Failed to load socket server stats',
+      );
+    }
     return;
   }
 

@@ -2,9 +2,29 @@
  * Admin Data Controller - 管理后台数据控制器
  */
 
+const axios = require("axios");
+
+const config = require("../config");
 const { proxyGet, proxyPost, proxyPut, proxyDelete } = require('../utils/goProxy');
+const { REQUEST_ID_HEADER } = require("../middleware/requestId");
+const {
+  buildErrorEnvelopePayload,
+} = require("../utils/apiEnvelope");
+const {
+  sendRejectedProxyError,
+  sendResolvedProxyResponse,
+} = require("../utils/goProxy");
 
 const DATA_RESOURCES = new Set(['users', 'riders', 'orders', 'merchants']);
+const SOCKET_SERVER_SECRET_HEADER = "X-Socket-Server-Secret";
+
+function buildSocketServerUrl(pathname = "/") {
+  const baseUrl = String(config.socketServerUrl || "").trim().replace(/\/+$/, "");
+  const normalizedPath = String(pathname || "").startsWith("/")
+    ? String(pathname || "")
+    : `/${pathname}`;
+  return `${baseUrl}${normalizedPath}`;
+}
 
 function resolveDataActionPath(req, action) {
   const plainPath = String(req?.path || req?.originalUrl || '').split('?')[0];
@@ -81,6 +101,49 @@ async function getStats(req, res, next) {
   await proxyGet(req, res, next, '/stats');
 }
 
+async function getRealtimeStats(req, res, next) {
+  const apiSecret = String(config.socketServerApiSecret || "").trim();
+  const requestId = String(
+    req.requestId ||
+    req.get?.(REQUEST_ID_HEADER) ||
+    req.headers?.[REQUEST_ID_HEADER.toLowerCase()] ||
+    "",
+  ).trim();
+  if (!apiSecret) {
+    return res.status(503).json(
+      buildErrorEnvelopePayload(req, 503, "socket realtime stats proxy is not configured"),
+    );
+  }
+
+  try {
+    const response = await axios.get(buildSocketServerUrl("/api/stats"), {
+      timeout: Number(process.env.BFF_REQUEST_TIMEOUT_MS || 8000),
+      validateStatus: (status) => status < 500,
+      headers: {
+        [SOCKET_SERVER_SECRET_HEADER]: apiSecret,
+        ...(requestId ? { [REQUEST_ID_HEADER]: requestId } : {}),
+      },
+    });
+
+    return sendResolvedProxyResponse(
+      req,
+      res,
+      response,
+      "failed to load socket realtime stats",
+    );
+  } catch (error) {
+    if (error.response) {
+      return sendRejectedProxyError(
+        req,
+        res,
+        error,
+        error.message || "failed to load socket realtime stats",
+      );
+    }
+    return next(error);
+  }
+}
+
 async function getUserRanks(req, res, next) {
   await proxyGet(req, res, next, '/user-ranks');
 }
@@ -115,6 +178,7 @@ module.exports = {
   updateMerchant,
   deleteMerchant,
   getStats,
+  getRealtimeStats,
   getUserRanks,
   getRiderRanks,
   exportData,

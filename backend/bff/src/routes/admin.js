@@ -175,6 +175,7 @@ router.get('/admin/onboarding/invites/submissions', onboardingInviteController.a
 router.post('/reorganize-role-ids/:type', adminOperationsController.reorganizeRoleIds);
 
 router.get('/stats', adminDataController.getStats);
+router.get('/realtime/stats', adminDataController.getRealtimeStats);
 router.get('/user-ranks', adminDataController.getUserRanks);
 router.get('/rider-ranks', adminDataController.getRiderRanks);
 router.get('/dining-buddy/parties', diningBuddyController.adminListParties);
