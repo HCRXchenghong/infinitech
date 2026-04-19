@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/yuexiang/go-api/internal/repository"
+	"github.com/yuexiang/go-api/internal/uploadasset"
 )
 
 type ShopService struct {
@@ -360,26 +361,66 @@ func (s *ShopService) CreateShop(ctx context.Context, data map[string]interface{
 		shop.Logo = toString(v)
 	}
 	if v, ok := data["merchantQualification"]; ok {
-		shop.MerchantQualification = toString(v)
+		normalized, err := normalizePrivateDocumentReference(ctx, toString(v), uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return nil, err
+		}
+		shop.MerchantQualification = normalized
 	} else if v, ok := data["merchantQualificationImage"]; ok {
-		shop.MerchantQualification = toString(v)
+		normalized, err := normalizePrivateDocumentReference(ctx, toString(v), uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return nil, err
+		}
+		shop.MerchantQualification = normalized
 	} else if v, ok := data["businessLicense"]; ok {
-		shop.MerchantQualification = toString(v)
+		normalized, err := normalizePrivateDocumentReference(ctx, toString(v), uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return nil, err
+		}
+		shop.MerchantQualification = normalized
 	} else if v, ok := data["businessLicenseImage"]; ok {
-		shop.MerchantQualification = toString(v)
+		normalized, err := normalizePrivateDocumentReference(ctx, toString(v), uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return nil, err
+		}
+		shop.MerchantQualification = normalized
 	} else if v, ok := data["merchant_qualification"]; ok {
-		shop.MerchantQualification = toString(v)
+		normalized, err := normalizePrivateDocumentReference(ctx, toString(v), uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return nil, err
+		}
+		shop.MerchantQualification = normalized
 	}
 	if v, ok := data["foodBusinessLicense"]; ok {
-		shop.FoodBusinessLicense = toString(v)
+		normalized, err := normalizePrivateDocumentReference(ctx, toString(v), uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return nil, err
+		}
+		shop.FoodBusinessLicense = normalized
 	} else if v, ok := data["foodBusinessLicenseImage"]; ok {
-		shop.FoodBusinessLicense = toString(v)
+		normalized, err := normalizePrivateDocumentReference(ctx, toString(v), uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return nil, err
+		}
+		shop.FoodBusinessLicense = normalized
 	} else if v, ok := data["foodLicense"]; ok {
-		shop.FoodBusinessLicense = toString(v)
+		normalized, err := normalizePrivateDocumentReference(ctx, toString(v), uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return nil, err
+		}
+		shop.FoodBusinessLicense = normalized
 	} else if v, ok := data["foodLicenseImage"]; ok {
-		shop.FoodBusinessLicense = toString(v)
+		normalized, err := normalizePrivateDocumentReference(ctx, toString(v), uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return nil, err
+		}
+		shop.FoodBusinessLicense = normalized
 	} else if v, ok := data["food_business_license"]; ok {
-		shop.FoodBusinessLicense = toString(v)
+		normalized, err := normalizePrivateDocumentReference(ctx, toString(v), uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return nil, err
+		}
+		shop.FoodBusinessLicense = normalized
 	}
 	if v, ok := data["rating"]; ok {
 		shop.Rating = toFloat(v)
@@ -428,10 +469,18 @@ func (s *ShopService) CreateShop(ctx context.Context, data map[string]interface{
 		shop.EmployeePosition = toString(v)
 	}
 	if v := pickFirst(data, "idCardFrontImage", "id_card_front_image", "idCardFront", "id_card_front"); v != nil {
-		shop.IDCardFrontImage = toString(v)
+		normalized, err := normalizePrivateDocumentReference(ctx, toString(v), uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return nil, err
+		}
+		shop.IDCardFrontImage = normalized
 	}
 	if v := pickFirst(data, "idCardBackImage", "id_card_back_image", "idCardBack", "id_card_back"); v != nil {
-		shop.IDCardBackImage = toString(v)
+		normalized, err := normalizePrivateDocumentReference(ctx, toString(v), uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return nil, err
+		}
+		shop.IDCardBackImage = normalized
 	}
 	if v := pickFirst(data, "idCardExpireAt", "id_card_expire_at", "idCardExpireDate", "id_card_expire_date"); v != nil {
 		parsed, err := parseDateTimePtr(v)
@@ -441,10 +490,18 @@ func (s *ShopService) CreateShop(ctx context.Context, data map[string]interface{
 		shop.IDCardExpireAt = parsed
 	}
 	if v := pickFirst(data, "healthCertFrontImage", "health_cert_front_image", "healthCertFront", "health_cert_front"); v != nil {
-		shop.HealthCertFrontImage = toString(v)
+		normalized, err := normalizePrivateDocumentReference(ctx, toString(v), uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return nil, err
+		}
+		shop.HealthCertFrontImage = normalized
 	}
 	if v := pickFirst(data, "healthCertBackImage", "health_cert_back_image", "healthCertBack", "health_cert_back"); v != nil {
-		shop.HealthCertBackImage = toString(v)
+		normalized, err := normalizePrivateDocumentReference(ctx, toString(v), uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return nil, err
+		}
+		shop.HealthCertBackImage = normalized
 	}
 	if v := pickFirst(data, "healthCertExpireAt", "health_cert_expire_at", "healthCertExpireDate", "health_cert_expire_date"); v != nil {
 		parsed, err := parseDateTimePtr(v)
@@ -600,9 +657,17 @@ func (s *ShopService) UpdateShop(ctx context.Context, shopID string, data map[st
 		case "logo":
 			updates["logo"] = toString(value)
 		case "merchantQualification", "merchantQualificationImage", "businessLicense", "businessLicenseImage", "merchant_qualification":
-			updates["merchant_qualification"] = toString(value)
+			normalized, err := normalizePrivateDocumentReference(ctx, toString(value), uploadasset.DomainMerchantDocument)
+			if err != nil {
+				return err
+			}
+			updates["merchant_qualification"] = normalized
 		case "foodBusinessLicense", "foodBusinessLicenseImage", "foodLicense", "foodLicenseImage", "food_business_license":
-			updates["food_business_license"] = toString(value)
+			normalized, err := normalizePrivateDocumentReference(ctx, toString(value), uploadasset.DomainMerchantDocument)
+			if err != nil {
+				return err
+			}
+			updates["food_business_license"] = normalized
 		case "rating":
 			updates["rating"] = toFloat(value)
 		case "monthlySales":
@@ -636,9 +701,17 @@ func (s *ShopService) UpdateShop(ctx context.Context, shopID string, data map[st
 		case "employeePosition", "employee_position", "position", "jobTitle", "job_title":
 			updates["employee_position"] = toString(value)
 		case "idCardFrontImage", "id_card_front_image", "idCardFront", "id_card_front":
-			updates["id_card_front_image"] = toString(value)
+			normalized, err := normalizePrivateDocumentReference(ctx, toString(value), uploadasset.DomainMerchantDocument)
+			if err != nil {
+				return err
+			}
+			updates["id_card_front_image"] = normalized
 		case "idCardBackImage", "id_card_back_image", "idCardBack", "id_card_back":
-			updates["id_card_back_image"] = toString(value)
+			normalized, err := normalizePrivateDocumentReference(ctx, toString(value), uploadasset.DomainMerchantDocument)
+			if err != nil {
+				return err
+			}
+			updates["id_card_back_image"] = normalized
 		case "idCardExpireAt", "id_card_expire_at", "idCardExpireDate", "id_card_expire_date":
 			parsed, err := parseDateTimePtr(value)
 			if err != nil {
@@ -646,9 +719,17 @@ func (s *ShopService) UpdateShop(ctx context.Context, shopID string, data map[st
 			}
 			updates["id_card_expire_at"] = parsed
 		case "healthCertFrontImage", "health_cert_front_image", "healthCertFront", "health_cert_front":
-			updates["health_cert_front_image"] = toString(value)
+			normalized, err := normalizePrivateDocumentReference(ctx, toString(value), uploadasset.DomainMerchantDocument)
+			if err != nil {
+				return err
+			}
+			updates["health_cert_front_image"] = normalized
 		case "healthCertBackImage", "health_cert_back_image", "healthCertBack", "health_cert_back":
-			updates["health_cert_back_image"] = toString(value)
+			normalized, err := normalizePrivateDocumentReference(ctx, toString(value), uploadasset.DomainMerchantDocument)
+			if err != nil {
+				return err
+			}
+			updates["health_cert_back_image"] = normalized
 		case "healthCertExpireAt", "health_cert_expire_at", "healthCertExpireDate", "health_cert_expire_date":
 			parsed, err := parseDateTimePtr(value)
 			if err != nil {

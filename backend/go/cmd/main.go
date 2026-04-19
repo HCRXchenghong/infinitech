@@ -25,6 +25,7 @@ import (
 	"github.com/yuexiang/go-api/internal/middleware"
 	"github.com/yuexiang/go-api/internal/repository"
 	"github.com/yuexiang/go-api/internal/service"
+	"github.com/yuexiang/go-api/internal/uploadasset"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -394,12 +395,13 @@ func main() {
 
 	// 初始化处理器
 	handlers := handler.NewHandlers(services)
+	uploadasset.ConfigurePreviewSigningSecret(cfg.JWT.Secret)
 
 	// 初始化骑手Handler
 	handlers.Rider = handler.NewRiderHandler(db, rdb, services.Auth)
 
 	// 初始化文件上传Handler
-	handlers.FileUpload = handler.NewFileUploadHandler()
+	handlers.FileUpload = handler.NewFileUploadHandler(cfg.JWT.Secret)
 
 	// 初始化优惠券Handler
 	couponRepo := repository.NewCouponRepository(db)
@@ -1523,6 +1525,8 @@ func main() {
 		api.GET("/onboarding/invites/:token", handlers.OnboardingInvite.PublicGetInvite)
 		api.POST("/onboarding/invites/:token/upload", handlers.OnboardingInvite.PublicUploadAsset)
 		api.POST("/onboarding/invites/:token/submit", handlers.OnboardingInvite.PublicSubmitInvite)
+		api.GET("/private-assets/preview", handlers.FileUpload.PreviewPrivateAsset)
+		api.HEAD("/private-assets/preview", handlers.FileUpload.PreviewPrivateAsset)
 		api.POST("/upload", handlers.FileUpload.Upload)
 
 		// 入驻邀请链接（管理端）

@@ -449,6 +449,10 @@ func (s *OrderService) CreateOrder(ctx context.Context, data interface{}) (inter
 		}
 	}
 
+	if err := normalizeRequestExtraMedicalDocument(ctx, req); err != nil {
+		return nil, err
+	}
+
 	rawPayload, _ := json.Marshal(req)
 
 	shop, err := s.resolveShopForCreate(ctx, shopID)

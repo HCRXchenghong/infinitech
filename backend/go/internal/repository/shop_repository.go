@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yuexiang/go-api/internal/uploadasset"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -668,14 +669,14 @@ func (r *shopRepository) shopToMap(shop Shop) map[string]interface{} {
 		"coverImage":                 shop.CoverImage,
 		"backgroundImage":            shop.BackgroundImage,
 		"logo":                       shop.Logo,
-		"merchantQualification":      shop.MerchantQualification,
-		"merchantQualificationImage": shop.MerchantQualification,
-		"businessLicense":            shop.MerchantQualification,
-		"businessLicenseImage":       shop.MerchantQualification,
-		"foodBusinessLicense":        shop.FoodBusinessLicense,
-		"foodBusinessLicenseImage":   shop.FoodBusinessLicense,
-		"foodLicense":                shop.FoodBusinessLicense,
-		"foodLicenseImage":           shop.FoodBusinessLicense,
+		"merchantQualification":      uploadasset.BuildConfiguredPreviewURL(shop.MerchantQualification),
+		"merchantQualificationImage": uploadasset.BuildConfiguredPreviewURL(shop.MerchantQualification),
+		"businessLicense":            uploadasset.BuildConfiguredPreviewURL(shop.MerchantQualification),
+		"businessLicenseImage":       uploadasset.BuildConfiguredPreviewURL(shop.MerchantQualification),
+		"foodBusinessLicense":        uploadasset.BuildConfiguredPreviewURL(shop.FoodBusinessLicense),
+		"foodBusinessLicenseImage":   uploadasset.BuildConfiguredPreviewURL(shop.FoodBusinessLicense),
+		"foodLicense":                uploadasset.BuildConfiguredPreviewURL(shop.FoodBusinessLicense),
+		"foodLicenseImage":           uploadasset.BuildConfiguredPreviewURL(shop.FoodBusinessLicense),
 		"rating":                     shop.Rating,
 		"monthlySales":               shop.MonthlySales,
 		"perCapita":                  shop.PerCapita,
@@ -692,11 +693,11 @@ func (r *shopRepository) shopToMap(shop Shop) map[string]interface{} {
 		"employeeName":               shop.EmployeeName,
 		"employeeAge":                shop.EmployeeAge,
 		"employeePosition":           shop.EmployeePosition,
-		"idCardFrontImage":           shop.IDCardFrontImage,
-		"idCardBackImage":            shop.IDCardBackImage,
+		"idCardFrontImage":           uploadasset.BuildConfiguredPreviewURL(shop.IDCardFrontImage),
+		"idCardBackImage":            uploadasset.BuildConfiguredPreviewURL(shop.IDCardBackImage),
 		"idCardExpireAt":             formatNullableDate(shop.IDCardExpireAt),
-		"healthCertFrontImage":       shop.HealthCertFrontImage,
-		"healthCertBackImage":        shop.HealthCertBackImage,
+		"healthCertFrontImage":       uploadasset.BuildConfiguredPreviewURL(shop.HealthCertFrontImage),
+		"healthCertBackImage":        uploadasset.BuildConfiguredPreviewURL(shop.HealthCertBackImage),
 		"healthCertExpireAt":         formatNullableDate(shop.HealthCertExpireAt),
 		"employmentStartAt":          formatNullableDate(shop.EmploymentStartAt),
 		"employmentEndAt":            formatNullableDate(shop.EmploymentEndAt),

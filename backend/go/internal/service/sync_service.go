@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/yuexiang/go-api/internal/repository"
+	"github.com/yuexiang/go-api/internal/uploadasset"
 	"gorm.io/gorm"
 )
 
@@ -164,14 +165,14 @@ func (s *SyncService) getShopChanges(ctx context.Context, sinceVersion int64) ([
 			"coverImage":                 shop.CoverImage,
 			"backgroundImage":            shop.BackgroundImage,
 			"logo":                       shop.Logo,
-			"merchantQualification":      shop.MerchantQualification,
-			"merchantQualificationImage": shop.MerchantQualification,
-			"businessLicense":            shop.MerchantQualification,
-			"businessLicenseImage":       shop.MerchantQualification,
-			"foodBusinessLicense":        shop.FoodBusinessLicense,
-			"foodBusinessLicenseImage":   shop.FoodBusinessLicense,
-			"foodLicense":                shop.FoodBusinessLicense,
-			"foodLicenseImage":           shop.FoodBusinessLicense,
+			"merchantQualification":      uploadasset.BuildConfiguredPreviewURL(shop.MerchantQualification),
+			"merchantQualificationImage": uploadasset.BuildConfiguredPreviewURL(shop.MerchantQualification),
+			"businessLicense":            uploadasset.BuildConfiguredPreviewURL(shop.MerchantQualification),
+			"businessLicenseImage":       uploadasset.BuildConfiguredPreviewURL(shop.MerchantQualification),
+			"foodBusinessLicense":        uploadasset.BuildConfiguredPreviewURL(shop.FoodBusinessLicense),
+			"foodBusinessLicenseImage":   uploadasset.BuildConfiguredPreviewURL(shop.FoodBusinessLicense),
+			"foodLicense":                uploadasset.BuildConfiguredPreviewURL(shop.FoodBusinessLicense),
+			"foodLicenseImage":           uploadasset.BuildConfiguredPreviewURL(shop.FoodBusinessLicense),
 			"rating":                     shop.Rating,
 			"monthlySales":               shop.MonthlySales,
 			"perCapita":                  shop.PerCapita,
