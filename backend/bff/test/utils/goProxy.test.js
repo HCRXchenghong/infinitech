@@ -4,7 +4,11 @@ jest.mock('../../src/utils/forwardAuth', () => ({
 }));
 
 const axios = require('axios');
-const { proxyPost } = require('../../src/utils/goProxy');
+const {
+  buildRejectedProxyErrorPayload,
+  buildResolvedProxyPayload,
+  proxyPost,
+} = require('../../src/utils/goProxy');
 
 function createResponse() {
   const res = {
@@ -129,5 +133,55 @@ describe('goProxy response headers', () => {
       error: 'socket upstream timeout',
     });
     expect(next).not.toHaveBeenCalled();
+  });
+});
+
+describe('goProxy normalized proxy payload helpers', () => {
+  test('buildResolvedProxyPayload preserves successful upstream payloads', () => {
+    const req = { headers: { 'x-request-id': 'req-success-1' } };
+
+    expect(
+      buildResolvedProxyPayload(
+        req,
+        {
+          status: 200,
+          data: { ok: true, nested: { count: 1 } },
+        },
+        'fallback',
+      ),
+    ).toEqual({ ok: true, nested: { count: 1 } });
+  });
+
+  test('buildRejectedProxyErrorPayload supports controller-specific error resolvers', () => {
+    const req = { headers: { 'x-request-id': 'req-custom-1' } };
+    const error = {
+      message: 'custom failure',
+      response: {
+        status: 404,
+        data: '<!DOCTYPE html><html></html>',
+      },
+    };
+
+    expect(
+      buildRejectedProxyErrorPayload(req, error, 'fallback', {
+        resolveErrorPayload(currentReq, status, payload) {
+          return {
+            request_id: currentReq.headers['x-request-id'],
+            code: status === 404 ? 'NOT_FOUND' : 'UNKNOWN',
+            message: typeof payload === 'string' ? 'html not found' : 'fallback',
+            data: {},
+            success: false,
+            error: 'html not found',
+          };
+        },
+      }),
+    ).toEqual({
+      request_id: 'req-custom-1',
+      code: 'NOT_FOUND',
+      message: 'html not found',
+      data: {},
+      success: false,
+      error: 'html not found',
+    });
   });
 });

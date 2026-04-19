@@ -6,7 +6,8 @@ const {
   proxyPut,
   proxyDelete,
   requestGoRaw,
-  buildNormalizedErrorPayload,
+  sendRejectedProxyError,
+  sendResolvedProxyResponse,
 } = require('../utils/goProxy');
 const { buildErrorEnvelopePayload } = require('../utils/apiEnvelope');
 const { logger } = require('../utils/logger');
@@ -20,32 +21,6 @@ function withRiderProxyOptions(options = {}) {
     ...DEFAULT_PROXY_OPTIONS,
     ...options
   };
-}
-
-function forwardError(req, res, error, fallbackMessage) {
-  const status = error.response?.status || 500;
-  res.status(status).json(buildNormalizedErrorPayload(req, error, status, fallbackMessage));
-}
-
-function sendResolvedRiderResponse(req, res, response, fallbackMessage) {
-  if (Number(response?.status || 200) < 400) {
-    return res.status(response.status).json(response.data);
-  }
-
-  return res.status(response.status).json(
-    buildNormalizedErrorPayload(
-      req,
-      {
-        message:
-          response?.data?.error ||
-          response?.data?.message ||
-          fallbackMessage,
-        response,
-      },
-      response.status,
-      fallbackMessage,
-    ),
-  );
 }
 
 // 更新骑手在线状态
@@ -194,10 +169,10 @@ exports.uploadCert = async (req, res) => {
       timeout: 20000,
       preferExtraHeaders: true
     });
-    return sendResolvedRiderResponse(req, res, response, '上传证件失败');
+    return sendResolvedProxyResponse(req, res, response, '上传证件失败');
   } catch (error) {
     logger.error('上传证件失败:', error.message);
-    return forwardError(req, res, error, '上传证件失败');
+    return sendRejectedProxyError(req, res, error, '上传证件失败');
   } finally {
     try {
       fs.unlinkSync(tempFilePath);

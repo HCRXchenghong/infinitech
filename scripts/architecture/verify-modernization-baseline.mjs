@@ -1395,15 +1395,15 @@ assertContains(
 );
 assertContains(
   "backend/bff/src/controllers/financialController.js",
-  "function sendNormalizedFinancialResponse(req, res, response, defaultErrorMessage) {",
+  'sendResolvedProxyResponse(req, res, response, "删除财务日志失败")',
 );
 assertContains(
   "backend/bff/src/controllers/riderController.js",
-  "buildNormalizedErrorPayload(req, error, status, fallbackMessage)",
+  "sendRejectedProxyError(req, res, error, '上传证件失败')",
 );
 assertContains(
   "backend/bff/src/controllers/riderController.js",
-  "function sendResolvedRiderResponse(req, res, response, fallbackMessage) {",
+  "sendResolvedProxyResponse(req, res, response, '上传证件失败')",
 );
 assertContains(
   "backend/bff/src/controllers/adminWalletController.js",
@@ -2709,6 +2709,22 @@ assertContains(
 );
 assertContains(
   "backend/bff/src/utils/goProxy.js",
+  "function buildResolvedProxyPayload(req, response, defaultErrorMessage, options = {}) {",
+);
+assertContains(
+  "backend/bff/src/utils/goProxy.js",
+  "function buildRejectedProxyErrorPayload(req, error, defaultErrorMessage, options = {}) {",
+);
+assertContains(
+  "backend/bff/src/utils/goProxy.js",
+  "function sendResolvedProxyResponse(req, res, response, defaultErrorMessage, options = {}) {",
+);
+assertContains(
+  "backend/bff/src/utils/goProxy.js",
+  "function sendRejectedProxyError(req, res, error, defaultErrorMessage, options = {}) {",
+);
+assertContains(
+  "backend/bff/src/utils/goProxy.js",
   "if (options.normalizeErrorResponse && Number(response?.status || 200) >= 400) {",
 );
 assertContains(
@@ -2721,15 +2737,15 @@ assertContains(
 );
 assertContains(
   "backend/bff/src/controllers/authController.js",
-  "legacy: { statusCode: status }",
-);
-assertContains(
-  "backend/bff/src/controllers/authController.js",
   "function buildResolvedGoErrorPayload(req, status, payload, fallbackMessage, options = {}) {",
 );
 assertContains(
   "backend/bff/src/controllers/authController.js",
-  "return sendResolvedGoResponse(req, res, response, '微信登录会话不存在或已失效');",
+  "return sendResolvedProxyResponse(req, res, response, '微信登录会话不存在或已失效', {",
+);
+assertContains(
+  "backend/bff/src/controllers/authController.js",
+  "legacy: { statusCode: status }",
 );
 assertNotContains("backend/bff/src/controllers/authController.js", "debug:");
 assertContains(

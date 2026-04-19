@@ -6,7 +6,8 @@ const {
   proxyGet,
   proxyPost,
   requestGoRaw,
-  buildNormalizedErrorPayload,
+  sendRejectedProxyError,
+  sendResolvedProxyResponse,
 } = require('../utils/goProxy');
 const { buildSuccessEnvelopePayload } = require('../utils/apiEnvelope');
 const { extractVerifiedAdminIdentity } = require('../utils/authIdentity');
@@ -116,26 +117,6 @@ async function fetchPayCenterConfig(req) {
   });
 }
 
-function sendUpstreamResponse(req, res, response, defaultErrorMessage = '钱包中心请求失败') {
-  if (Number(response.status) >= 400) {
-    return res.status(response.status).json(
-      buildNormalizedErrorPayload(
-        req,
-        {
-          message:
-            response.data?.error ||
-            response.data?.message ||
-            defaultErrorMessage,
-          response,
-        },
-        response.status,
-        defaultErrorMessage,
-      ),
-    );
-  }
-  return res.status(response.status).json(response.data);
-}
-
 function sendWalletSuccess(req, res, message, payload) {
   return res.status(200).json(
     buildSuccessEnvelopePayload(req, message, payload, {
@@ -144,23 +125,16 @@ function sendWalletSuccess(req, res, message, payload) {
   );
 }
 
-function sendWalletUpstreamError(req, res, error, defaultErrorMessage) {
-  const status = Number(error.response?.status || 500);
-  return res.status(status).json(
-    buildNormalizedErrorPayload(req, error, status, defaultErrorMessage),
-  );
-}
-
 async function respondFromPayCenterConfig(req, res, next, selector) {
   try {
     const response = await fetchPayCenterConfig(req);
     if (response.status >= 400) {
-      return sendUpstreamResponse(req, res, response, '支付中心配置加载失败');
+      return sendResolvedProxyResponse(req, res, response, '支付中心配置加载失败');
     }
     return sendWalletSuccess(req, res, '支付中心配置加载成功', selector(response.data || {}));
   } catch (error) {
     if (error.response) {
-      return sendWalletUpstreamError(req, res, error, '支付中心配置加载失败');
+      return sendRejectedProxyError(req, res, error, '支付中心配置加载失败');
     }
     return next(error);
   }
@@ -274,7 +248,7 @@ async function getPayCenterHealth(req, res, next) {
     ]);
 
     if (configResponse.status >= 400) {
-      return sendUpstreamResponse(req, res, configResponse, '支付中心健康状态加载失败');
+      return sendResolvedProxyResponse(req, res, configResponse, '支付中心健康状态加载失败');
     }
 
     return sendWalletSuccess(req, res, '支付中心健康状态加载成功', {
@@ -285,7 +259,7 @@ async function getPayCenterHealth(req, res, next) {
     });
   } catch (error) {
     if (error.response) {
-      return sendWalletUpstreamError(req, res, error, '支付中心健康状态加载失败');
+      return sendRejectedProxyError(req, res, error, '支付中心健康状态加载失败');
     }
     return next(error);
   }

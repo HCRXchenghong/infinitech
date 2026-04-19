@@ -2,7 +2,12 @@
  * Financial center controller (admin)
  */
 
-const { proxyGet, requestGoRaw, buildNormalizedErrorPayload } = require("../utils/goProxy");
+const {
+  proxyGet,
+  requestGoRaw,
+  sendRejectedProxyError,
+  sendResolvedProxyResponse,
+} = require("../utils/goProxy");
 const { logger } = require("../utils/logger");
 const { verifyCriticalCredential } = require("../utils/criticalActionVerify");
 const { buildErrorEnvelopePayload } = require("../utils/apiEnvelope");
@@ -33,34 +38,6 @@ function respondFinancialError(req, res, status, message, options = {}) {
       data: options.data,
       legacy: options.legacy,
     }),
-  );
-}
-
-function sendNormalizedFinancialUpstreamError(req, res, error, defaultErrorMessage) {
-  const status = Number(error.response?.status || 500);
-  return res.status(status).json(
-    buildNormalizedErrorPayload(req, error, status, defaultErrorMessage),
-  );
-}
-
-function sendNormalizedFinancialResponse(req, res, response, defaultErrorMessage) {
-  if (Number(response?.status || 200) < 400) {
-    return res.status(response.status).json(response.data);
-  }
-
-  return res.status(response.status).json(
-    buildNormalizedErrorPayload(
-      req,
-      {
-        message:
-          response?.data?.error ||
-          response?.data?.message ||
-          defaultErrorMessage,
-        response,
-      },
-      response.status,
-      defaultErrorMessage,
-    ),
   );
 }
 
@@ -195,10 +172,10 @@ async function deleteTransactionLog(req, res, next) {
       });
     }
 
-    return sendNormalizedFinancialResponse(req, res, response, "删除财务日志失败");
+    return sendResolvedProxyResponse(req, res, response, "删除财务日志失败");
   } catch (error) {
     if (error.response) {
-      return sendNormalizedFinancialUpstreamError(req, res, error, "删除财务日志失败");
+      return sendRejectedProxyError(req, res, error, "删除财务日志失败");
     }
     return next(error);
   }
@@ -234,10 +211,10 @@ async function clearTransactionLogs(req, res, next) {
       });
     }
 
-    return sendNormalizedFinancialResponse(req, res, response, "清空财务日志失败");
+    return sendResolvedProxyResponse(req, res, response, "清空财务日志失败");
   } catch (error) {
     if (error.response) {
-      return sendNormalizedFinancialUpstreamError(req, res, error, "清空财务日志失败");
+      return sendRejectedProxyError(req, res, error, "清空财务日志失败");
     }
     return next(error);
   }

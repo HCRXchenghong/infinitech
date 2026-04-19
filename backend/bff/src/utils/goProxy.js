@@ -77,6 +77,81 @@ function buildNormalizedErrorPayload(req, error, status, defaultErrorMessage) {
   );
 }
 
+function maybeTransformPayload(payload, options = {}, context = {}) {
+  if (typeof options.transformPayload === 'function') {
+    return options.transformPayload(payload, context);
+  }
+  return payload;
+}
+
+function buildResolvedProxyPayload(req, response, defaultErrorMessage, options = {}) {
+  const status = Number(response?.status || 200);
+
+  if (status < 400) {
+    return maybeTransformPayload(response?.data, options, {
+      req,
+      response,
+      status,
+      isError: false,
+    });
+  }
+
+  const resolvedPayload = typeof options.resolveErrorPayload === 'function'
+    ? options.resolveErrorPayload(req, status, response?.data, defaultErrorMessage, {
+      response,
+    })
+    : buildNormalizedErrorPayload(
+      req,
+      {
+        message:
+          response?.data?.error ||
+          response?.data?.message ||
+          defaultErrorMessage,
+        response,
+      },
+      status,
+      defaultErrorMessage,
+    );
+
+  return maybeTransformPayload(resolvedPayload, options, {
+    req,
+    response,
+    status,
+    isError: true,
+  });
+}
+
+function buildRejectedProxyErrorPayload(req, error, defaultErrorMessage, options = {}) {
+  const status = Number(error.response?.status || options.normalizeErrorStatus || 500);
+  const resolvedPayload = typeof options.resolveErrorPayload === 'function'
+    ? options.resolveErrorPayload(req, status, error.response?.data, error.message || defaultErrorMessage, {
+      error,
+      response: error.response,
+    })
+    : buildNormalizedErrorPayload(req, error, status, defaultErrorMessage);
+
+  return maybeTransformPayload(resolvedPayload, options, {
+    req,
+    error,
+    response: error.response,
+    status,
+    isError: true,
+  });
+}
+
+function sendResolvedProxyResponse(req, res, response, defaultErrorMessage, options = {}) {
+  return res
+    .status(Number(response?.status || 200))
+    .json(buildResolvedProxyPayload(req, response, defaultErrorMessage, options));
+}
+
+function sendRejectedProxyError(req, res, error, defaultErrorMessage, options = {}) {
+  const status = Number(error.response?.status || options.normalizeErrorStatus || 500);
+  return res
+    .status(status)
+    .json(buildRejectedProxyErrorPayload(req, error, defaultErrorMessage, options));
+}
+
 function sendNormalizedError(req, res, error, options, statusOverride) {
   const status = Number(statusOverride || options.normalizeErrorStatus || 500);
   return res.status(status).json(buildNormalizedErrorPayload(req, error, status, options.defaultErrorMessage));
@@ -228,6 +303,8 @@ async function proxyDelete(req, res, next, path, options = {}) {
 }
 
 module.exports = {
+  buildRejectedProxyErrorPayload,
+  buildResolvedProxyPayload,
   goUrl,
   buildResolvedErrorPayload,
   buildNormalizedErrorPayload,
@@ -236,5 +313,7 @@ module.exports = {
   proxyGet,
   proxyPost,
   proxyPut,
-  proxyDelete
+  proxyDelete,
+  sendRejectedProxyError,
+  sendResolvedProxyResponse
 };

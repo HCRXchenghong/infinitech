@@ -2,7 +2,14 @@
  * 认证控制器
  */
 
-const { goUrl, proxyPost, requestGoRaw, buildNormalizedErrorPayload } = require('../utils/goProxy');
+const {
+  goUrl,
+  proxyPost,
+  requestGoRaw,
+  buildNormalizedErrorPayload,
+  sendRejectedProxyError,
+  sendResolvedProxyResponse,
+} = require('../utils/goProxy');
 const { logger } = require('../utils/logger');
 const { buildErrorEnvelopePayload } = require('../utils/apiEnvelope');
 
@@ -61,22 +68,6 @@ function buildResolvedGoErrorPayload(req, status, payload, fallbackMessage, opti
   );
 }
 
-function sendResolvedGoResponse(req, res, response, fallbackMessage, options = {}) {
-  if (Number(response?.status || 200) < 400) {
-    return res.status(response.status).json(response.data);
-  }
-
-  return res.status(response.status).json(
-    buildResolvedGoErrorPayload(
-      req,
-      response.status,
-      response.data,
-      fallbackMessage,
-      options,
-    ),
-  );
-}
-
 /**
  * 用户登录
  */
@@ -124,17 +115,16 @@ async function consumeWechatSession(req, res, next) {
         return status < 500;
       }
     });
-    return sendResolvedGoResponse(req, res, response, '微信登录会话不存在或已失效');
+    return sendResolvedProxyResponse(req, res, response, '微信登录会话不存在或已失效', {
+      resolveErrorPayload: (currentReq, status, payload, fallbackMessage) =>
+        buildResolvedGoErrorPayload(currentReq, status, payload, fallbackMessage),
+    });
   } catch (error) {
     if (error.response) {
-      return res.status(error.response.status).json(
-        buildResolvedGoErrorPayload(
-          req,
-          error.response.status,
-          error.response.data,
-          '微信登录会话不存在或已失效',
-        ),
-      );
+      return sendRejectedProxyError(req, res, error, '微信登录会话不存在或已失效', {
+        resolveErrorPayload: (currentReq, status, payload, fallbackMessage) =>
+          buildResolvedGoErrorPayload(currentReq, status, payload, fallbackMessage),
+      });
     }
     return next(error);
   }
@@ -168,22 +158,20 @@ async function requestSMSCode(req, res, next) {
         return status < 500;
       }
     });
-    return sendResolvedGoResponse(req, res, response, `Go 后端错误: ${response.status}`, {
-      legacy: { statusCode: response.status },
+    return sendResolvedProxyResponse(req, res, response, `Go 后端错误: ${response.status}`, {
+      resolveErrorPayload: (currentReq, status, payload, fallbackMessage) =>
+        buildResolvedGoErrorPayload(currentReq, status, payload, fallbackMessage, {
+          legacy: { statusCode: status },
+        }),
     });
   } catch (error) {
     if (error.response) {
-      return res.status(error.response.status).json(
-        buildResolvedGoErrorPayload(
-          req,
-          error.response.status,
-          error.response.data,
-          `Go 后端错误: ${error.response.status}`,
-          {
-            legacy: { statusCode: error.response.status },
-          },
-        ),
-      );
+      return sendRejectedProxyError(req, res, error, `Go 后端错误: ${error.response.status}`, {
+        resolveErrorPayload: (currentReq, status, payload, fallbackMessage) =>
+          buildResolvedGoErrorPayload(currentReq, status, payload, fallbackMessage, {
+            legacy: { statusCode: status },
+          }),
+      });
     }
 
     if (error.code === 'ECONNREFUSED') {
