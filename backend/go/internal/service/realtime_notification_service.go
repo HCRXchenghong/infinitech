@@ -489,7 +489,7 @@ func (s *RealtimeNotificationService) publishSocketNamedEvent(ctx context.Contex
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.Header.Set("Authorization", "Bearer "+s.socketSecret)
+	req.Header.Set("X-Socket-Server-Secret", s.socketSecret)
 
 	resp, err := s.requestClient.Do(req)
 	if err != nil {

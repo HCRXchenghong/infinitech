@@ -26,7 +26,7 @@ const COMMON_ENV_METADATA = {
   JWT_EXPIRES_IN: { label: 'JWT 有效期', group: '管理端与登录', type: 'string', description: '登录令牌过期时间。', common: true },
   ADMIN_TOKEN_SECRET: { label: '管理端 Token 密钥', group: '管理端与登录', type: 'secret', description: 'BFF 管理端令牌密钥。', common: true },
   ADMIN_QR_LOGIN_SECRET: { label: '管理端二维码登录密钥', group: '管理端与登录', type: 'secret', description: '管理员二维码登录签名密钥。', common: true },
-  TOKEN_API_SECRET: { label: 'Socket Token API 密钥', group: '管理端与登录', type: 'secret', description: 'Socket token API 服务间密钥。', common: true },
+  SOCKET_SERVER_API_SECRET: { label: 'Socket Server API 密钥', group: '管理端与登录', type: 'secret', description: 'Socket 服务间鉴权密钥。', common: true },
   BOOTSTRAP_ADMIN_PHONE: { label: '初始化管理员手机号', group: '初始化与安全', type: 'phone', description: '空库首次登录用管理员手机号。', common: true },
   BOOTSTRAP_ADMIN_NAME: { label: '初始化管理员名称', group: '初始化与安全', type: 'string', description: '空库首次登录用管理员名称。', common: true },
   BOOTSTRAP_ADMIN_PASSWORD: { label: '初始化管理员密码', group: '初始化与安全', type: 'secret', description: '空库首次登录用管理员密码。', common: true },

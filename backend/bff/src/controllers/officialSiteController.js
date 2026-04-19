@@ -223,7 +223,7 @@ async function getSupportSocketToken(req, res, next) {
         timeout: Number(process.env.BFF_REQUEST_TIMEOUT_MS || 8000),
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiSecret}`,
+          "X-Socket-Server-Secret": apiSecret,
         },
       },
     );

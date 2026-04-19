@@ -76,7 +76,7 @@ function checkEnvCompleteness(repoRoot, envValues = {}) {
     'JWT_SECRET',
     'ADMIN_TOKEN_SECRET',
     'ADMIN_QR_LOGIN_SECRET',
-    'TOKEN_API_SECRET',
+    'SOCKET_SERVER_API_SECRET',
   ]
 
   const blockers = []

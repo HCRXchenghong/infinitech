@@ -21,13 +21,21 @@ import {
   buildErrorEnvelopePayload,
   buildSuccessEnvelopePayload,
 } from '../packages/contracts/src/http.js';
+import {
+  isTrustedSocketApiRequest,
+  validateTrustedSocketApiConfig,
+  validateTrustedSocketTokenRequest,
+} from './trustedApi.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PORT = process.env.SOCKET_PORT || 9898;
-const TRUSTED_TOKEN_API_SECRET = String(process.env.TOKEN_API_SECRET || '').trim();
-const ENV = String(process.env.ENV || process.env.NODE_ENV || 'development').trim().toLowerCase();
-const PRODUCTION_LIKE = ['production', 'prod', 'staging'].includes(ENV);
+const {
+  env: ENV,
+  productionLike: PRODUCTION_LIKE,
+  trustedSocketApiSecret: TRUSTED_SOCKET_API_SECRET,
+  trustedSocketApiSecretSource,
+} = validateTrustedSocketApiConfig(process.env);
 
 function toPositiveInt(value, fallback) {
   const parsed = Number.parseInt(value, 10);
@@ -211,21 +219,6 @@ async function enforceHttpRateLimit(req, res, pathname) {
   return false;
 }
 
-function isTrustedSocketApiRequest(req) {
-  if (!TRUSTED_TOKEN_API_SECRET) return false;
-
-  const candidateValues = [
-    req.headers['x-token-api-secret'],
-    req.headers['x-api-secret'],
-    req.headers.authorization
-  ];
-
-  return candidateValues.some((value) => {
-    const normalized = String(value || '').trim();
-    return normalized === TRUSTED_TOKEN_API_SECRET || normalized === `Bearer ${TRUSTED_TOKEN_API_SECRET}`;
-  });
-}
-
 function buildRequestUrl(req) {
   return new URL(req.url || '/', `http://${req.headers.host || `127.0.0.1:${PORT}`}`);
 }
@@ -278,7 +271,10 @@ const httpServer = createServer(async (req, res) => {
     res.setHeader('Vary', 'Origin');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Token-Api-Secret, X-Api-Secret');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, X-Socket-Server-Secret, X-Token-Api-Secret, X-Api-Secret',
+  );
 
   if (origin && !corsOrigin) {
     writeErrorEnvelope(req, res, 403, 'Origin not allowed');
@@ -359,25 +355,15 @@ const httpServer = createServer(async (req, res) => {
       const body = await readJsonBody(req, SOCKET_JSON_BODY_LIMIT_BYTES);
       let identity;
 
-      if (isTrustedSocketApiRequest(req)) {
-        const userId = String(body?.userId || '').trim();
-        const role = String(body?.role || '').trim().toLowerCase();
-        if (!userId || !role) {
-          writeErrorEnvelope(
-            req,
-            res,
-            400,
-            'userId and role are required for trusted socket token issuance',
-          );
-          return;
-        }
+      if (isTrustedSocketApiRequest(req, TRUSTED_SOCKET_API_SECRET)) {
+        const trustedRequest = validateTrustedSocketTokenRequest(body);
 
         identity = {
-          role,
-          socketUserId: userId,
+          role: trustedRequest.role,
+          socketUserId: trustedRequest.userId,
           authToken: '',
           payload: null,
-          verifiedBy: 'trusted-secret'
+          verifiedBy: 'socket-service-secret'
         };
       } else {
         identity = await validateSocketIdentity({
@@ -416,7 +402,7 @@ const httpServer = createServer(async (req, res) => {
   }
 
   if (pathname === '/api/realtime/publish' && req.method === 'POST') {
-    if (!isTrustedSocketApiRequest(req)) {
+    if (!isTrustedSocketApiRequest(req, TRUSTED_SOCKET_API_SECRET)) {
       writeErrorEnvelope(req, res, 403, '未授权访问');
       return;
     }
@@ -509,7 +495,10 @@ setInterval(async () => {
 
 httpServer.listen(PORT, () => {
   logger.info(`Socket.IO 服务运行在端口 ${PORT}`);
-  logger.info('Socket auth now requires validated business auth or TOKEN_API_SECRET');
+  logger.info('Socket auth now requires validated business auth or SOCKET_SERVER_API_SECRET');
+  if (trustedSocketApiSecretSource === 'TOKEN_API_SECRET') {
+    logger.warn('socket-server TOKEN_API_SECRET is deprecated; use SOCKET_SERVER_API_SECRET');
+  }
   logger.info('监控端点: /api/stats');
   logger.info('生成 token: POST /api/generate-token');
   logger.info('实时广播: POST /api/realtime/publish');

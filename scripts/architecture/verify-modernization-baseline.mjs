@@ -2798,9 +2798,14 @@ assertContains(
 );
 assertContains(
   "backend/docker/docker-compose.yml",
+  "SOCKET_SERVER_API_SECRET: ${SOCKET_SERVER_API_SECRET:?SOCKET_SERVER_API_SECRET is required}",
+);
+assertContains(
+  "backend/docker/docker-compose.yml",
   "ALIPAY_SIDECAR_ALLOW_STUB: ${ALIPAY_SIDECAR_ALLOW_STUB:-false}",
 );
 assertContains("package.json", '"verify:sidecar-tests":');
+assertContains("package.json", '"verify:socket-tests":');
 assertContains("package.json", "verify:backend-runtime");
 assertContains(
   "backend/go/internal/service/payment_runtime.go",
@@ -6970,6 +6975,13 @@ assertContains(
   "socket-server/index.js",
   "ALLOWED_ORIGINS is required for socket-server in production-like environments",
 );
+assertContains("socket-server/.env.example", "SOCKET_SERVER_API_SECRET=");
+assertContains(
+  "socket-server/trustedApi.js",
+  "SOCKET_SERVER_API_SECRET is required for socket-server in production-like environments",
+);
+assertContains("socket-server/trustedApi.js", "x-socket-server-secret");
+assertContains("socket-server/index.js", "validateTrustedSocketTokenRequest");
 assertContains(
   "socket-server/index.js",
   "Socket server public upload hosting is disabled. Use authenticated API asset routes instead.",
