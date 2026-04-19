@@ -34,6 +34,7 @@ const (
 	uploadDomainAppDownloadQR      = "app_download_qr"
 	uploadDomainMerchantDocument   = "merchant_document"
 	uploadDomainMedicalDocument    = "medical_document"
+	uploadDomainOnboardingDocument = "onboarding_document"
 	uploadDomainAdminAsset         = "admin_asset"
 )
 
@@ -176,8 +177,9 @@ var generalUploadPolicies = map[string]generalUploadPolicy{
 }
 
 var privateGeneralUploadDomains = map[string]bool{
-	uploadasset.DomainMerchantDocument: true,
-	uploadasset.DomainMedicalDocument:  true,
+	uploadasset.DomainMerchantDocument:   true,
+	uploadasset.DomainMedicalDocument:    true,
+	uploadasset.DomainOnboardingDocument: true,
 }
 
 func NewFileUploadHandler(privateAssetSecret string) *FileUploadHandler {

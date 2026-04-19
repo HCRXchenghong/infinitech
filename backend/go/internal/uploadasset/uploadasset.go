@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	DomainMerchantDocument = "merchant_document"
-	DomainMedicalDocument  = "medical_document"
+	DomainMerchantDocument   = "merchant_document"
+	DomainMedicalDocument    = "medical_document"
+	DomainOnboardingDocument = "onboarding_document"
 
 	PrivateRefScheme  = "private://document/"
 	PreviewPath       = "/api/private-assets/preview"
@@ -150,6 +151,8 @@ func NormalizeProtectedLegacyPath(raw string) (string, string, bool) {
 		return cleanPath, DomainMerchantDocument, true
 	case strings.HasPrefix(cleanPath, "/uploads/"+DomainMedicalDocument+"/"):
 		return cleanPath, DomainMedicalDocument, true
+	case strings.HasPrefix(cleanPath, "/uploads/onboarding-invite/"):
+		return cleanPath, DomainOnboardingDocument, true
 	default:
 		return "", "", false
 	}
@@ -227,6 +230,80 @@ func PromoteLegacyProtectedAsset(raw, domain, ownerRole, ownerID, publicRoot, pr
 	}
 
 	return BuildReference(domain, ownerRole, ownerID, destFilename), true, nil
+}
+
+func TransferPrivateAsset(raw, expectedDomain, expectedOwnerRole, expectedOwnerID, targetDomain, targetOwnerRole, targetOwnerID, privateRoot string) (string, bool, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return "", false, nil
+	}
+
+	refValue := ExtractReference(value)
+	if refValue == "" || !IsPrivateReference(refValue) {
+		return "", false, fmt.Errorf("private asset reference is invalid")
+	}
+
+	parsed, ok := ParseReference(refValue)
+	if !ok {
+		return "", false, fmt.Errorf("private asset reference is invalid")
+	}
+
+	normalizedExpectedDomain := strings.ToLower(strings.TrimSpace(expectedDomain))
+	normalizedExpectedOwnerRole := strings.ToLower(strings.TrimSpace(expectedOwnerRole))
+	normalizedExpectedOwnerID := strings.TrimSpace(expectedOwnerID)
+	if normalizedExpectedDomain != "" && parsed.Domain != normalizedExpectedDomain {
+		return "", false, fmt.Errorf("private asset domain mismatch")
+	}
+	if normalizedExpectedOwnerRole != "" && parsed.OwnerRole != normalizedExpectedOwnerRole {
+		return "", false, fmt.Errorf("private asset owner mismatch")
+	}
+	if normalizedExpectedOwnerID != "" && parsed.OwnerID != normalizedExpectedOwnerID {
+		return "", false, fmt.Errorf("private asset owner mismatch")
+	}
+
+	normalizedTargetDomain := strings.ToLower(strings.TrimSpace(targetDomain))
+	normalizedTargetOwnerRole := strings.ToLower(strings.TrimSpace(targetOwnerRole))
+	normalizedTargetOwnerID := strings.TrimSpace(targetOwnerID)
+	if normalizedTargetDomain == "" || normalizedTargetOwnerRole == "" || normalizedTargetOwnerID == "" {
+		return "", false, fmt.Errorf("private asset target is invalid")
+	}
+
+	targetRef := BuildReference(normalizedTargetDomain, normalizedTargetOwnerRole, normalizedTargetOwnerID, parsed.Filename)
+	if targetRef == "" {
+		return "", false, fmt.Errorf("private asset target is invalid")
+	}
+	if parsed.Domain == normalizedTargetDomain &&
+		parsed.OwnerRole == normalizedTargetOwnerRole &&
+		parsed.OwnerID == normalizedTargetOwnerID {
+		return targetRef, targetRef != value, nil
+	}
+
+	_, srcPath, err := ResolveAbsolutePath(privateRoot, refValue)
+	if err != nil {
+		return "", false, err
+	}
+	if _, statErr := os.Stat(srcPath); statErr != nil {
+		if os.IsNotExist(statErr) {
+			return "", false, fmt.Errorf("private asset is missing")
+		}
+		return "", false, fmt.Errorf("private asset read failed")
+	}
+
+	normalizedExt := strings.ToLower(filepath.Ext(parsed.Filename))
+	destFilename := fmt.Sprintf(
+		"%d_%s_%s%s",
+		time.Now().UnixNano(),
+		normalizedTargetOwnerID,
+		normalizedTargetDomain,
+		normalizedExt,
+	)
+	destDir := BuildStorageDir(privateRoot, normalizedTargetDomain, normalizedTargetOwnerRole, normalizedTargetOwnerID)
+	destPath := filepath.Join(destDir, destFilename)
+	if err := moveFileReplace(srcPath, destPath); err != nil {
+		return "", false, fmt.Errorf("private asset transfer failed")
+	}
+
+	return BuildReference(normalizedTargetDomain, normalizedTargetOwnerRole, normalizedTargetOwnerID, destFilename), true, nil
 }
 
 func BuildPreviewURL(raw, secret string, now time.Time, ttl time.Duration) string {

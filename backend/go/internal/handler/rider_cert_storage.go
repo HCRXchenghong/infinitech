@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yuexiang/go-api/internal/repository"
+	"github.com/yuexiang/go-api/internal/uploadasset"
 	"github.com/yuexiang/go-api/internal/utils"
 	"gorm.io/gorm"
 )
@@ -35,8 +36,12 @@ func normalizeRiderCertField(raw string) (string, bool) {
 }
 
 func buildRiderCertPreviewURL(riderID uint, field, raw string) string {
-	if strings.TrimSpace(raw) == "" {
+	value := strings.TrimSpace(raw)
+	if value == "" {
 		return ""
+	}
+	if uploadasset.IsPrivateReference(value) {
+		return uploadasset.BuildConfiguredPreviewURL(value)
 	}
 	normalizedField, ok := normalizeRiderCertField(field)
 	if !ok {
@@ -172,6 +177,19 @@ func promoteLegacyRiderCertReference(riderID uint, field, raw string) (string, b
 		}
 		return value, false, nil
 	}
+	if uploadasset.IsPrivateReference(value) {
+		parsed, ok := uploadasset.ParseReference(value)
+		if !ok {
+			return "", false, fmt.Errorf("证件资源引用无效")
+		}
+		expectedOwnerID := strconv.FormatUint(uint64(riderID), 10)
+		if parsed.Domain != uploadasset.DomainOnboardingDocument ||
+			parsed.OwnerRole != "rider" ||
+			parsed.OwnerID != expectedOwnerID {
+			return "", false, fmt.Errorf("证件资源引用无效")
+		}
+		return value, false, nil
+	}
 
 	srcPath, filename, err := resolveLegacyUploadAbsPath(value)
 	if err != nil {
@@ -254,6 +272,25 @@ func resolveStoredRiderCertFile(riderID uint, field, raw string) (string, string
 	value := strings.TrimSpace(raw)
 	if value == "" {
 		return "", "", "", false, fmt.Errorf("证件资源不存在")
+	}
+	if uploadasset.IsPrivateReference(value) {
+		parsed, absPath, err := uploadasset.ResolveAbsolutePath(generalPrivateUploadsRootPath, value)
+		if err != nil {
+			return "", "", "", false, fmt.Errorf("证件资源引用无效")
+		}
+		expectedOwnerID := strconv.FormatUint(uint64(riderID), 10)
+		if parsed.Domain != uploadasset.DomainOnboardingDocument ||
+			parsed.OwnerRole != "rider" ||
+			parsed.OwnerID != expectedOwnerID {
+			return "", "", "", false, fmt.Errorf("证件资源引用无效")
+		}
+		if _, statErr := os.Stat(absPath); statErr != nil {
+			if os.IsNotExist(statErr) {
+				return "", "", "", false, fmt.Errorf("证件资源不存在")
+			}
+			return "", "", "", false, fmt.Errorf("证件资源读取失败")
+		}
+		return value, absPath, contentTypeByFilename(parsed.Filename), false, nil
 	}
 
 	ref := value

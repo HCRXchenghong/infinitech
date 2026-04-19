@@ -481,6 +481,8 @@ func main() {
 	r.HEAD("/uploads/merchant_document/*filepath", blockLegacyPrivateDocument)
 	r.GET("/uploads/medical_document/*filepath", blockLegacyPrivateDocument)
 	r.HEAD("/uploads/medical_document/*filepath", blockLegacyPrivateDocument)
+	r.GET("/uploads/onboarding-invite/*filepath", blockLegacyPrivateDocument)
+	r.HEAD("/uploads/onboarding-invite/*filepath", blockLegacyPrivateDocument)
 
 	// 静态资源
 	r.Static("/uploads", "./data/uploads")

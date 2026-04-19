@@ -79,6 +79,22 @@ func TestBuildPreviewURLSignsProtectedLegacyPath(t *testing.T) {
 	}
 }
 
+func TestBuildPreviewURLSignsLegacyOnboardingInvitePath(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	previewURL := BuildPreviewURL("/uploads/onboarding-invite/token/2026-04-20/license.png", "preview-secret", now, 10*time.Minute)
+	if !strings.Contains(previewURL, PreviewPath) {
+		t.Fatalf("expected preview url to use controlled preview path, got %q", previewURL)
+	}
+
+	values, err := parsePreviewQuery(previewURL)
+	if err != nil {
+		t.Fatalf("failed to parse preview query: %v", err)
+	}
+	if values["asset_id"] != "/uploads/onboarding-invite/token/2026-04-20/license.png" {
+		t.Fatalf("expected onboarding asset_id to preserve legacy path, got %q", values["asset_id"])
+	}
+}
+
 func TestPromoteLegacyProtectedAssetMovesFile(t *testing.T) {
 	publicRoot := t.TempDir()
 	privateRoot := t.TempDir()
@@ -103,6 +119,53 @@ func TestPromoteLegacyProtectedAssetMovesFile(t *testing.T) {
 	}
 	if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
 		t.Fatalf("expected legacy file to be moved away, stat err=%v", err)
+	}
+}
+
+func TestTransferPrivateAssetMovesFileBetweenOwners(t *testing.T) {
+	privateRoot := t.TempDir()
+
+	initialRef := BuildReference(DomainOnboardingDocument, "invite", "invite-uid", "license.png")
+	_, initialPath, err := ResolveAbsolutePath(privateRoot, initialRef)
+	if err != nil {
+		t.Fatalf("resolve initial path failed: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(initialPath), 0755); err != nil {
+		t.Fatalf("create private dir failed: %v", err)
+	}
+	if err := os.WriteFile(initialPath, []byte("license"), 0644); err != nil {
+		t.Fatalf("seed private asset failed: %v", err)
+	}
+
+	nextRef, changed, err := TransferPrivateAsset(
+		initialRef,
+		DomainOnboardingDocument,
+		"invite",
+		"invite-uid",
+		DomainMerchantDocument,
+		"merchant",
+		"18",
+		privateRoot,
+	)
+	if err != nil {
+		t.Fatalf("transfer private asset failed: %v", err)
+	}
+	if !changed {
+		t.Fatal("expected transfer to report changed")
+	}
+	if !strings.HasPrefix(nextRef, PrivateRefScheme+DomainMerchantDocument+"/merchant/18/") {
+		t.Fatalf("unexpected transferred ref %q", nextRef)
+	}
+	if _, err := os.Stat(initialPath); !os.IsNotExist(err) {
+		t.Fatalf("expected source file to move away, stat err=%v", err)
+	}
+
+	_, nextPath, err := ResolveAbsolutePath(privateRoot, nextRef)
+	if err != nil {
+		t.Fatalf("resolve transferred path failed: %v", err)
+	}
+	if _, err := os.Stat(nextPath); err != nil {
+		t.Fatalf("expected transferred file to exist, got %v", err)
 	}
 }
 

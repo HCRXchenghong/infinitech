@@ -8,10 +8,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/yuexiang/go-api/internal/repository"
+	"github.com/yuexiang/go-api/internal/uploadasset"
 	"gorm.io/gorm"
 )
 
@@ -24,6 +26,8 @@ const (
 	onboardingInviteStatusUsed    = "used"
 	onboardingInviteStatusExpired = "expired"
 	onboardingInviteStatusRevoked = "revoked"
+
+	onboardingInviteAssetOwnerRole = "invite"
 )
 
 var (
@@ -340,6 +344,10 @@ func (s *OnboardingInviteService) SubmitByInviteToken(ctx context.Context, token
 		if req.BusinessLicenseImage == "" {
 			return nil, fmt.Errorf("请上传营业执照照片")
 		}
+		req.BusinessLicenseImage, err = normalizeOnboardingInviteDocumentReference(req.BusinessLicenseImage, &link)
+		if err != nil {
+			return nil, err
+		}
 
 		var merchantCount int64
 		if err := tx.Model(&repository.Merchant{}).Where("phone = ?", req.Phone).Count(&merchantCount).Error; err != nil {
@@ -350,12 +358,11 @@ func (s *OnboardingInviteService) SubmitByInviteToken(ctx context.Context, token
 		}
 
 		merchant := repository.Merchant{
-			Phone:                req.Phone,
-			Name:                 req.MerchantName,
-			OwnerName:            req.OwnerName,
-			BusinessLicenseImage: req.BusinessLicenseImage,
-			PasswordHash:         hash,
-			IsOnline:             false,
+			Phone:        req.Phone,
+			Name:         req.MerchantName,
+			OwnerName:    req.OwnerName,
+			PasswordHash: hash,
+			IsOnline:     false,
 		}
 		if err := tx.Create(&merchant).Error; err != nil {
 			return nil, err
@@ -365,10 +372,26 @@ func (s *OnboardingInviteService) SubmitByInviteToken(ctx context.Context, token
 				return nil, err
 			}
 		}
+		finalBusinessLicenseRef, _, err := uploadasset.TransferPrivateAsset(
+			req.BusinessLicenseImage,
+			uploadasset.DomainOnboardingDocument,
+			onboardingInviteAssetOwnerRole,
+			onboardingInviteAssetOwnerID(&link),
+			uploadasset.DomainMerchantDocument,
+			"merchant",
+			strconv.FormatUint(uint64(merchant.ID), 10),
+			documentPrivateUploadsRootPath,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("营业执照迁移失败")
+		}
+		if err := tx.Model(&repository.Merchant{}).Where("id = ?", merchant.ID).Update("business_license_image", finalBusinessLicenseRef).Error; err != nil {
+			return nil, err
+		}
 
 		submission.MerchantName = req.MerchantName
 		submission.OwnerName = req.OwnerName
-		submission.BusinessLicenseImage = req.BusinessLicenseImage
+		submission.BusinessLicenseImage = finalBusinessLicenseRef
 		submission.EntityID = merchant.ID
 	} else if link.InviteType == onboardingInviteTypeRider {
 		req.Name = strings.TrimSpace(req.Name)
@@ -381,6 +404,10 @@ func (s *OnboardingInviteService) SubmitByInviteToken(ctx context.Context, token
 		}
 		if req.IDCardImage == "" {
 			return nil, fmt.Errorf("请上传身份证照片")
+		}
+		req.IDCardImage, err = normalizeOnboardingInviteDocumentReference(req.IDCardImage, &link)
+		if err != nil {
+			return nil, err
 		}
 		if req.EmergencyContactName == "" {
 			return nil, fmt.Errorf("紧急联系人不能为空")
@@ -402,7 +429,6 @@ func (s *OnboardingInviteService) SubmitByInviteToken(ctx context.Context, token
 			Name:                  req.Name,
 			PasswordHash:          hash,
 			IsOnline:              false,
-			IDCardFront:           req.IDCardImage,
 			EmergencyContactName:  req.EmergencyContactName,
 			EmergencyContactPhone: req.EmergencyContactPhone,
 		}
@@ -414,9 +440,25 @@ func (s *OnboardingInviteService) SubmitByInviteToken(ctx context.Context, token
 				return nil, err
 			}
 		}
+		finalIDCardRef, _, err := uploadasset.TransferPrivateAsset(
+			req.IDCardImage,
+			uploadasset.DomainOnboardingDocument,
+			onboardingInviteAssetOwnerRole,
+			onboardingInviteAssetOwnerID(&link),
+			uploadasset.DomainOnboardingDocument,
+			"rider",
+			strconv.FormatUint(uint64(rider.ID), 10),
+			documentPrivateUploadsRootPath,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("身份证资料迁移失败")
+		}
+		if err := tx.Model(&repository.Rider{}).Where("id = ?", rider.ID).Update("id_card_front", finalIDCardRef).Error; err != nil {
+			return nil, err
+		}
 
 		submission.RiderName = req.Name
-		submission.IDCardImage = req.IDCardImage
+		submission.IDCardImage = finalIDCardRef
 		submission.EmergencyContactName = req.EmergencyContactName
 		submission.EmergencyContactPhone = req.EmergencyContactPhone
 		submission.EntityID = rider.ID
@@ -489,6 +531,46 @@ func (s *OnboardingInviteService) SubmitByInviteToken(ctx context.Context, token
 	}
 
 	return &submission, nil
+}
+
+func onboardingInviteAssetOwnerID(link *repository.OnboardingInviteLink) string {
+	if link == nil {
+		return ""
+	}
+	if uid := strings.TrimSpace(link.UID); uid != "" {
+		return uid
+	}
+	return strings.TrimSpace(link.TokenPrefix)
+}
+
+func normalizeOnboardingInviteDocumentReference(raw string, link *repository.OnboardingInviteLink) (string, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return "", nil
+	}
+
+	ownerID := onboardingInviteAssetOwnerID(link)
+	if ownerID == "" {
+		return "", fmt.Errorf("邀请资料上传标识缺失")
+	}
+
+	ref := uploadasset.ExtractReference(value)
+	if ref == "" || !uploadasset.IsPrivateReference(ref) {
+		return "", fmt.Errorf("邀请资料必须通过受控上传接口生成")
+	}
+
+	parsed, ok := uploadasset.ParseReference(ref)
+	if !ok {
+		return "", fmt.Errorf("邀请资料引用无效")
+	}
+	if parsed.Domain != uploadasset.DomainOnboardingDocument {
+		return "", fmt.Errorf("邀请资料业务域不匹配")
+	}
+	if parsed.OwnerRole != onboardingInviteAssetOwnerRole || parsed.OwnerID != ownerID {
+		return "", fmt.Errorf("不能使用其他邀请链接上传的资料")
+	}
+
+	return ref, nil
 }
 
 func (s *OnboardingInviteService) ListSubmissions(ctx context.Context, inviteType string, limit, offset int) ([]repository.OnboardingInviteSubmission, int64, error) {

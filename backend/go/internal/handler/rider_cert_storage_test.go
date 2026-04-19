@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/yuexiang/go-api/internal/uploadasset"
 )
 
 func TestPromoteLegacyRiderCertReferenceMovesFileIntoPrivateStorage(t *testing.T) {
@@ -52,5 +54,20 @@ func TestPromoteLegacyRiderCertReferenceMovesFileIntoPrivateStorage(t *testing.T
 func TestResolveLegacyUploadAbsPathRejectsTraversal(t *testing.T) {
 	if _, _, err := resolveLegacyUploadAbsPath("/uploads/../../etc/passwd"); err == nil {
 		t.Fatal("expected traversal path to be rejected")
+	}
+}
+
+func TestPromoteLegacyRiderCertReferenceAllowsOwnedOnboardingPrivateRef(t *testing.T) {
+	ref := uploadasset.BuildReference(uploadasset.DomainOnboardingDocument, "rider", "12", "id-front.png")
+
+	next, changed, err := promoteLegacyRiderCertReference(12, "id_card_front", ref)
+	if err != nil {
+		t.Fatalf("expected private onboarding ref to be accepted, got %v", err)
+	}
+	if changed {
+		t.Fatal("expected owned private onboarding ref to remain in place")
+	}
+	if next != ref {
+		t.Fatalf("expected ref %q, got %q", ref, next)
 	}
 }

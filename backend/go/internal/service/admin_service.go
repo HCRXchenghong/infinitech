@@ -36,6 +36,17 @@ func riderOnlineActive(rider repository.Rider, now time.Time) bool {
 	return rider.IsOnline && rider.UpdatedAt.After(riderOnlineCutoff(now))
 }
 
+func adminRiderCertPreviewURL(riderID uint, field, raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return ""
+	}
+	if strings.HasPrefix(value, "private://rider-cert/") {
+		return fmt.Sprintf("/api/riders/%d/cert?field=%s", riderID, strings.TrimSpace(field))
+	}
+	return uploadasset.BuildConfiguredPreviewURL(value)
+}
+
 func NewAdminService(db *gorm.DB, redis *redis.Client, tokenSecret string) *AdminService {
 	return &AdminService{
 		db:          db,
@@ -681,20 +692,21 @@ func (s *AdminService) GetRider(ctx context.Context, id string) (map[string]inte
 
 	onboardingInfo, _ := s.GetLatestOnboardingInfo(ctx, "rider", rider.ID)
 	return map[string]interface{}{
-		"id":                      rider.UID,
-		"role_id":                 rider.RoleID,
-		"name":                    rider.Name,
-		"phone":                   rider.Phone,
-		"is_online":               rider.IsOnline,
-		"rating":                  rider.Rating,
-		"rating_count":            rider.RatingCount,
-		"id_card_front":           rider.IDCardFront,
-		"id_card_image":           rider.IDCardFront,
-		"emergency_contact_name":  rider.EmergencyContactName,
-		"emergency_contact_phone": rider.EmergencyContactPhone,
-		"created_at":              formatTime(rider.CreatedAt),
-		"updated_at":              formatTime(rider.UpdatedAt),
-		"onboarding_info":         onboardingInfo,
+		"id":                        rider.UID,
+		"role_id":                   rider.RoleID,
+		"name":                      rider.Name,
+		"phone":                     rider.Phone,
+		"is_online":                 rider.IsOnline,
+		"rating":                    rider.Rating,
+		"rating_count":              rider.RatingCount,
+		"id_card_front":             rider.IDCardFront,
+		"id_card_image":             rider.IDCardFront,
+		"id_card_front_preview_url": adminRiderCertPreviewURL(rider.ID, "id_card_front", rider.IDCardFront),
+		"emergency_contact_name":    rider.EmergencyContactName,
+		"emergency_contact_phone":   rider.EmergencyContactPhone,
+		"created_at":                formatTime(rider.CreatedAt),
+		"updated_at":                formatTime(rider.UpdatedAt),
+		"onboarding_info":           onboardingInfo,
 	}, nil
 }
 
@@ -969,9 +981,56 @@ func (s *AdminService) UpdateMerchant(ctx context.Context, id string, phone, nam
 	}
 	normalizedBusinessLicenseImage := strings.TrimSpace(businessLicenseImage)
 	if extracted := uploadasset.ExtractReference(normalizedBusinessLicenseImage); extracted != "" {
-		normalizedBusinessLicenseImage, err = normalizePrivateDocumentReference(ctx, normalizedBusinessLicenseImage, uploadasset.DomainMerchantDocument)
-		if err != nil {
-			return err
+		merchantOwnerID := strconv.FormatUint(uint64(resolvedID), 10)
+		currentStoredRef := uploadasset.ExtractReference(merchant.BusinessLicenseImage)
+		if legacyPath, legacyDomain, ok := uploadasset.NormalizeProtectedLegacyPath(extracted); ok &&
+			legacyDomain == uploadasset.DomainOnboardingDocument &&
+			extracted == currentStoredRef {
+			onboardingRef, _, promoteErr := uploadasset.PromoteLegacyProtectedAsset(
+				legacyPath,
+				uploadasset.DomainOnboardingDocument,
+				"merchant",
+				merchantOwnerID,
+				documentPublicUploadsRootPath,
+				documentPrivateUploadsRootPath,
+			)
+			if promoteErr != nil {
+				return promoteErr
+			}
+			normalizedBusinessLicenseImage, _, err = uploadasset.TransferPrivateAsset(
+				onboardingRef,
+				uploadasset.DomainOnboardingDocument,
+				"merchant",
+				merchantOwnerID,
+				uploadasset.DomainMerchantDocument,
+				"merchant",
+				merchantOwnerID,
+				documentPrivateUploadsRootPath,
+			)
+			if err != nil {
+				return err
+			}
+		} else if parsed, ok := uploadasset.ParseReference(extracted); ok &&
+			parsed.Domain == uploadasset.DomainOnboardingDocument &&
+			extracted == currentStoredRef {
+			normalizedBusinessLicenseImage, _, err = uploadasset.TransferPrivateAsset(
+				extracted,
+				uploadasset.DomainOnboardingDocument,
+				"",
+				"",
+				uploadasset.DomainMerchantDocument,
+				"merchant",
+				merchantOwnerID,
+				documentPrivateUploadsRootPath,
+			)
+			if err != nil {
+				return err
+			}
+		} else {
+			normalizedBusinessLicenseImage, err = normalizePrivateDocumentReference(ctx, normalizedBusinessLicenseImage, uploadasset.DomainMerchantDocument)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

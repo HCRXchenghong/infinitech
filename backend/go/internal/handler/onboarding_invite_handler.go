@@ -3,18 +3,19 @@ package handler
 import (
 	"errors"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yuexiang/go-api/internal/service"
+	"github.com/yuexiang/go-api/internal/uploadasset"
 )
 
 type OnboardingInviteHandler struct {
 	service *service.OnboardingInviteService
 }
+
+const onboardingInviteAssetOwnerRole = "invite"
 
 func NewOnboardingInviteHandler(svc *service.OnboardingInviteService) *OnboardingInviteHandler {
 	return &OnboardingInviteHandler{service: svc}
@@ -231,12 +232,24 @@ func (h *OnboardingInviteHandler) PublicUploadAsset(c *gin.Context) {
 		return
 	}
 
-	tokenPrefix := strings.Trim(strings.TrimSpace(link.TokenPrefix), "/.")
-	if tokenPrefix == "" {
-		tokenPrefix = "invite"
+	ownerID := strings.TrimSpace(link.UID)
+	if ownerID == "" {
+		ownerID = strings.TrimSpace(link.TokenPrefix)
 	}
-	dateDir := time.Now().Format("2006-01-02")
-	finalFilename, url, err := saveUploadFile(c, file, 5*1024*1024, publicImageUploadAllowedExts, "onboarding-invite", tokenPrefix, filepath.Clean(dateDir))
+	if ownerID == "" {
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "邀请链接标识缺失", nil)
+		return
+	}
+
+	finalFilename, assetRef, err := savePrivateUploadFile(
+		c,
+		file,
+		5*1024*1024,
+		publicImageUploadAllowedExts,
+		uploadasset.DomainOnboardingDocument,
+		onboardingInviteAssetOwnerRole,
+		ownerID,
+	)
 	if err != nil {
 		status := http.StatusBadRequest
 		if isUploadInternalError(err) {
@@ -250,12 +263,19 @@ func (h *OnboardingInviteHandler) PublicUploadAsset(c *gin.Context) {
 		return
 	}
 
-	respondEnvelope(c, http.StatusOK, "ONBOARDING_ASSET_UPLOADED", "邀请资料上传成功", gin.H{
-		"url":          url,
-		"filename":     finalFilename,
-		"invite_type":  link.InviteType,
-		"token_prefix": link.TokenPrefix,
-	}, nil)
+	previewURL := uploadasset.BuildConfiguredPreviewURL(assetRef)
+	if previewURL == "" || previewURL == assetRef {
+		respondErrorEnvelope(c, http.StatusInternalServerError, responseCodeInternalError, "邀请资料预览地址生成失败", nil)
+		return
+	}
+
+	respondEnvelope(c, http.StatusOK, "ONBOARDING_ASSET_UPLOADED", "邀请资料上传成功", buildPrivateAssetPayload(
+		assetRef,
+		previewURL,
+		finalFilename,
+		"onboarding_invite:"+strings.TrimSpace(link.InviteType),
+		file.Size,
+	), nil)
 }
 
 func maxInt(a, b int) int {
