@@ -1,13 +1,9 @@
 import { ackPushMessage } from './api'
 import { createPushClickUrlResolver } from '../../packages/mobile-core/src/push-event-route.js'
-import { startPushEventBridge as startBridge } from '../../packages/client-sdk/src/push-events.js'
+import { createDefaultRolePushEventBridgeStarter } from '../../packages/client-sdk/src/role-push-event-shell.js'
 
-const resolveClickUrl = createPushClickUrlResolver('merchant')
-
-export function startPushEventBridge() {
-  return startBridge({
-    loggerTag: 'MerchantPushBridge',
-    ackPushMessage,
-    resolveClickUrl,
-  })
-}
+export const startPushEventBridge = createDefaultRolePushEventBridgeStarter({
+  role: 'merchant',
+  ackPushMessage,
+  createPushClickUrlResolverImpl: createPushClickUrlResolver,
+})

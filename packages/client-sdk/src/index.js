@@ -14,6 +14,7 @@ export * from "./role-auth-shell.js";
 export * from "./role-auth-session.js";
 export * from "./role-notify-bridges.js";
 export * from "./role-notify-shell.js";
+export * from "./role-push-event-shell.js";
 export * from "./realtime-token.js";
 export * from "./rtc-contact.js";
 export * from "./rtc-media.js";

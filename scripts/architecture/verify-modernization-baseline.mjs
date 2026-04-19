@@ -149,6 +149,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/client-sdk/src/role-notify-bridges.test.mjs",
   "packages/client-sdk/src/role-notify-shell.js",
   "packages/client-sdk/src/role-notify-shell.test.mjs",
+  "packages/client-sdk/src/role-push-event-shell.js",
+  "packages/client-sdk/src/role-push-event-shell.test.mjs",
   "packages/client-sdk/src/realtime-token.js",
   "packages/client-sdk/src/realtime-token.d.ts",
   "packages/client-sdk/src/realtime-token.test.mjs",
@@ -1864,11 +1866,11 @@ assertContains(
 );
 assertContains(
   "merchant-app/shared-ui/push-events.ts",
-  "createPushClickUrlResolver('merchant')",
+  "createDefaultRolePushEventBridgeStarter({",
 );
 assertContains(
   "rider-app/shared-ui/push-events.ts",
-  "createPushClickUrlResolver('rider')",
+  "createDefaultRolePushEventBridgeStarter({",
 );
 assertContains(
   "user-vue/shared-ui/location.js",
@@ -2985,11 +2987,15 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/error-utils.test.mjs packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/role-auth-session.test.mjs packages/client-sdk/src/role-auth-shell.test.mjs packages/client-sdk/src/role-notify-bridges.test.mjs packages/client-sdk/src/role-notify-shell.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/safe-access.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/support-socket-bridge.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/error-utils.test.mjs packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/role-auth-session.test.mjs packages/client-sdk/src/role-auth-shell.test.mjs packages/client-sdk/src/role-notify-bridges.test.mjs packages/client-sdk/src/role-notify-shell.test.mjs packages/client-sdk/src/role-push-event-shell.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/safe-access.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/support-socket-bridge.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
 );
 assertContains(
   "packages/client-sdk/src/role-auth-shell.js",
   "export function createRoleAuthSessionBindings(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/role-push-event-shell.js",
+  "export function createDefaultRolePushEventBridgeStarter(options = {}) {",
 );
 assertContains(
   "package.json",
@@ -3034,6 +3040,10 @@ assertContains(
 assertContains(
   "packages/client-sdk/src/index.js",
   'export * from "./role-notify-shell.js";',
+);
+assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./role-push-event-shell.js";',
 );
 assertContains(
   "packages/client-sdk/src/index.js",
@@ -3090,6 +3100,10 @@ assertContains(
 assertContains(
   "packages/client-sdk/package.json",
   '"./role-notify-shell": "./src/role-notify-shell.js"',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./role-push-event-shell": "./src/role-push-event-shell.js"',
 );
 assertContains(
   "packages/client-sdk/package.json",
@@ -3714,11 +3728,19 @@ assertContains(
 );
 assertContains(
   "merchant-app/shared-ui/push-events.ts",
-  "from '../../packages/client-sdk/src/push-events.js'",
+  "from '../../packages/client-sdk/src/role-push-event-shell.js'",
+);
+assertContains(
+  "merchant-app/shared-ui/push-events.ts",
+  "createDefaultRolePushEventBridgeStarter({",
 );
 assertContains(
   "rider-app/shared-ui/push-events.ts",
-  "from '../../packages/client-sdk/src/push-events.js'",
+  "from '../../packages/client-sdk/src/role-push-event-shell.js'",
+);
+assertContains(
+  "rider-app/shared-ui/push-events.ts",
+  "createDefaultRolePushEventBridgeStarter({",
 );
 assertContains(
   "admin-vue/src/utils/socket.js",
