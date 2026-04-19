@@ -1,6 +1,10 @@
 const fs = require("fs");
 const FormData = require("form-data");
-const { requestGoRaw, buildNormalizedErrorPayload } = require("./goProxy");
+const {
+  buildRejectedProxyErrorPayload,
+  buildResolvedProxyPayload,
+  requestGoRaw,
+} = require("./goProxy");
 const { buildErrorEnvelopePayload } = require("./apiEnvelope");
 const { logger } = require("./logger");
 
@@ -115,6 +119,14 @@ function appendBodyFields(form, body, fieldNames = []) {
   }
 }
 
+function buildMultipartProxyResponseOptions() {
+  return {
+    transformPayload(payload, context) {
+      return normalizeUploadPayload(payload, context.req);
+    },
+  };
+}
+
 async function proxyMultipartUpload(req, res, next, options = {}) {
   if (!req.file) {
     res
@@ -124,6 +136,7 @@ async function proxyMultipartUpload(req, res, next, options = {}) {
   }
 
   try {
+    const defaultErrorMessage = options.defaultErrorMessage || "上传请求失败";
     const form = new FormData();
     form.append(
       options.targetFieldName || "file",
@@ -142,27 +155,26 @@ async function proxyMultipartUpload(req, res, next, options = {}) {
       preferExtraHeaders: true,
     });
 
-    const payload =
-      options.normalizePayload === false
-        ? response.data
-        : normalizeUploadPayload(response.data, req);
+    const payload = options.normalizePayload === false
+      ? response.data
+      : buildResolvedProxyPayload(
+        req,
+        response,
+        defaultErrorMessage,
+        buildMultipartProxyResponseOptions(),
+      );
 
     res.status(response.status).json(payload);
   } catch (error) {
     if (error.response) {
       res
         .status(error.response.status)
-        .json(
-          normalizeUploadPayload(
-            buildNormalizedErrorPayload(
-              req,
-              error,
-              error.response.status,
-              options.defaultErrorMessage || "上传请求失败",
-            ),
-            req,
-          ),
-        );
+        .json(buildRejectedProxyErrorPayload(
+          req,
+          error,
+          options.defaultErrorMessage || "上传请求失败",
+          buildMultipartProxyResponseOptions(),
+        ));
       return;
     }
     logger.error("Multipart upload proxy error:", {

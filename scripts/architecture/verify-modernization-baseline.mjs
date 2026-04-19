@@ -1422,6 +1422,18 @@ assertContains(
   'buildErrorEnvelopePayload(req, 400, options.missingFileMessage || "没有上传文件")',
 );
 assertContains(
+  "backend/bff/src/utils/multipartProxy.js",
+  "function buildMultipartProxyResponseOptions() {",
+);
+assertContains(
+  "backend/bff/src/utils/multipartProxy.js",
+  "buildResolvedProxyPayload(",
+);
+assertContains(
+  "backend/bff/src/utils/multipartProxy.js",
+  "buildRejectedProxyErrorPayload(",
+);
+assertContains(
   "backend/bff/src/middleware/uploadsProxy.js",
   'buildErrorEnvelopePayload(req, 405, "Method not allowed")',
 );
