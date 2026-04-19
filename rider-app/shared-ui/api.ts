@@ -3,59 +3,24 @@
  */
 
 import config from './config'
-import { buildAuthorizationHeaders } from '../../packages/client-sdk/src/auth.js'
-import {
-  createMobilePushApi,
-  createRiderPreferenceApi,
-} from '../../packages/client-sdk/src/mobile-capabilities.js'
-import {
-  buildUniNetworkErrorMessage,
-  createUniRequestClient,
-  isRetryableUniNetworkError,
-} from '../../packages/client-sdk/src/uni-request.js'
+import { buildUniNetworkErrorMessage } from '../../packages/client-sdk/src/uni-request.js'
+import { createRiderPreferenceApi } from '../../packages/client-sdk/src/mobile-capabilities.js'
 import {
   extractEnvelopeData,
   extractPaginatedItems,
   extractSMSResult,
 } from '../../packages/contracts/src/http.js'
 import { UPLOAD_DOMAINS } from '../../packages/contracts/src/upload.js'
-import {
-  readStoredBearerToken,
-  uploadAuthenticatedAsset,
-} from '../../packages/mobile-core/src/upload.js'
+import { createRoleApiRuntimeBindings } from '../../packages/mobile-core/src/role-api-shell.js'
 import { readRiderAuthIdentity } from './auth-session.js'
 
 declare const uni: any
 
-export const getBaseUrl = () => config.API_BASE_URL
-
-export const fetchPublicRuntimeSettings = () => request({
-  url: '/api/public/runtime-settings',
-  method: 'GET'
-})
-
-export const recordPhoneContactClick = (payload: Record<string, any>) => request({
-  url: '/api/contact/phone-clicks',
-  method: 'POST',
-  data: payload
-})
-
-function readAuthToken(): string {
-  return readStoredBearerToken(uni, ['token', 'access_token'])
-}
-
-const requestClient = createUniRequestClient({
+const riderApiRuntime = createRoleApiRuntimeBindings({
+  role: 'rider',
+  config,
   uniApp: uni,
-  getBaseUrl,
-  getTimeout: () => config.TIMEOUT,
-  getAuthToken: readAuthToken,
-  createHttpError(payload: any, statusCode: number) {
-    return {
-      data: payload,
-      error: payload?.error || `请求失败: ${statusCode}`,
-      statusCode,
-    }
-  },
+  defaultUploadDomain: UPLOAD_DOMAINS.PROFILE_IMAGE,
   createNetworkError(error: any, { baseUrl }: { baseUrl: string }) {
     const message = buildUniNetworkErrorMessage(
       error,
@@ -71,47 +36,39 @@ const requestClient = createUniRequestClient({
       message,
     }
   },
-  shouldLogNetworkError(error: any) {
-    return !isRetryableUniNetworkError(error) || config.isDev
-  },
-  logger: console,
+})
+
+export const getBaseUrl = riderApiRuntime.getBaseUrl
+
+export const fetchPublicRuntimeSettings = () => request({
+  url: '/api/public/runtime-settings',
+  method: 'GET'
+})
+
+export const recordPhoneContactClick = (payload: Record<string, any>) => request({
+  url: '/api/contact/phone-clicks',
+  method: 'POST',
+  data: payload
 })
 
 export function request(options: any) {
-  return requestClient(options)
+  return riderApiRuntime.request(options)
 }
 
 export function uploadImage(
   filePath: string,
   options: { uploadDomain?: string } = {},
 ) {
-  return uploadAuthenticatedAsset({
-    uniApp: uni,
-    baseUrl: getBaseUrl(),
-    filePath,
-    token: readAuthToken(),
-    uploadDomain: options.uploadDomain || UPLOAD_DOMAINS.PROFILE_IMAGE,
-  })
+  return riderApiRuntime.uploadImage(filePath, options)
 }
 
 export function buildAuthorizationHeader(token: string): Record<string, string> {
-  return buildAuthorizationHeaders(token)
+  return riderApiRuntime.buildAuthorizationHeader(token) as Record<string, string>
 }
 
 export function readAuthorizationHeader(): Record<string, string> {
-  const token = readAuthToken()
-  return buildAuthorizationHeader(token)
+  return riderApiRuntime.readAuthorizationHeader() as Record<string, string>
 }
-
-const mobilePushApi = createMobilePushApi({
-  post(url: string, data?: Record<string, any>) {
-    return request({
-      url,
-      method: 'POST',
-      data,
-    })
-  },
-})
 
 const riderPreferenceApi = createRiderPreferenceApi({
   get(url: string) {
@@ -129,7 +86,7 @@ const riderPreferenceApi = createRiderPreferenceApi({
   },
 })
 
-export const { registerPushDevice, unregisterPushDevice, ackPushMessage } = mobilePushApi
+export const { registerPushDevice, unregisterPushDevice, ackPushMessage } = riderApiRuntime
 
 // 骑手登录
 export const riderLogin = (credentials: any) => request({

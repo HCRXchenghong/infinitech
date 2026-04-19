@@ -1,25 +1,16 @@
 import config, { updateConfig } from "./config";
-import { buildAuthorizationHeaders } from "../../packages/client-sdk/src/auth.js";
-import { createMobilePushApi } from "../../packages/client-sdk/src/mobile-capabilities.js";
-import {
-  clearMerchantAuthSession,
-  ensureMerchantAuthSession,
-} from "./auth-session.js";
-import {
-  buildUniNetworkErrorMessage,
-  createUniRequestClient,
-  isRetryableUniNetworkError,
-} from "../../packages/client-sdk/src/uni-request.js";
+import { buildUniNetworkErrorMessage } from "../../packages/client-sdk/src/uni-request.js";
 import {
   extractEnvelopeData,
   extractPaginatedItems,
   extractSMSResult,
 } from "../../packages/contracts/src/http.js";
 import { UPLOAD_DOMAINS } from "../../packages/contracts/src/upload.js";
+import { createRoleApiRuntimeBindings } from "../../packages/mobile-core/src/role-api-shell.js";
 import {
-  readStoredBearerToken,
-  uploadAuthenticatedAsset,
-} from "../../packages/mobile-core/src/upload.js";
+  clearMerchantAuthSession,
+  ensureMerchantAuthSession,
+} from "./auth-session.js";
 
 declare const uni: any;
 
@@ -47,16 +38,6 @@ export interface UploadResult {
   [key: string]: any;
 }
 
-export const getBaseUrl = () => config.API_BASE_URL;
-const HEALTH_PATHS = ["/health", "/api/health"];
-const BFF_PORT = "25500";
-
-let resolvingBaseUrlPromise: Promise<string | null> | null = null;
-
-function readAuthToken(): string {
-  return readStoredBearerToken(uni, ["token", "access_token"]);
-}
-
 function forceMerchantLogout() {
   const session = ensureMerchantAuthSession({ uniApp: uni });
   if (!session.token) return;
@@ -77,178 +58,24 @@ function buildError(message: string, extra?: Partial<ApiError>): ApiError {
   return err;
 }
 
-function normalizeBaseUrl(url: string): string {
-  return String(url || "").replace(/\/+$/, "");
-}
-
-function parseBaseUrl(
-  url: string,
-): { protocol: string; host: string; port: string } | null {
-  const normalized = normalizeBaseUrl(url);
-  const match = normalized.match(/^(https?:\/\/)([^/:]+)(?::(\d+))?$/i);
-  if (!match) return null;
-  return {
-    protocol: match[1],
-    host: match[2],
-    port: match[3] || "",
-  };
-}
-
-function uniqueList(list: string[]) {
-  const out: string[] = [];
-  const set = new Set<string>();
-  for (const item of list) {
-    const value = normalizeBaseUrl(item);
-    if (!value || set.has(value)) continue;
-    set.add(value);
-    out.push(value);
-  }
-  return out;
-}
-
-function buildCandidateBaseUrls(currentBaseUrl: string): string[] {
-  const result: string[] = [];
-  const parsed = parseBaseUrl(currentBaseUrl);
-  if (parsed) {
-    result.push(
-      `${parsed.protocol}${parsed.host}${parsed.port ? `:${parsed.port}` : ""}`,
-    );
-    result.push(`${parsed.protocol}${parsed.host}:${BFF_PORT}`);
-  } else {
-    result.push(currentBaseUrl);
-  }
-
-  const savedIp = String(uni.getStorageSync("dev_local_ip") || "").trim();
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(savedIp)) {
-    result.push(`http://${savedIp}:${BFF_PORT}`);
-  }
-
-  // Fallback to loopback in local development unless an explicit override is provided.
-  const defaultIp = process.env.DEFAULT_BFF_IP || "127.0.0.1";
-  result.push(`http://${defaultIp}:${BFF_PORT}`);
-
-  return uniqueList(result);
-}
-
-function probeBaseUrl(baseUrl: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const paths = [...HEALTH_PATHS];
-    const tryNext = () => {
-      const path = paths.shift();
-      if (!path) {
-        resolve(false);
-        return;
-      }
-      uni.request({
-        url: `${baseUrl}${path}`,
-        method: "GET",
-        timeout: 1200,
-        success(res: any) {
-          if (res.statusCode >= 200 && res.statusCode < 500) {
-            resolve(true);
-            return;
-          }
-          tryNext();
-        },
-        fail() {
-          tryNext();
-        },
-      });
-    };
-    tryNext();
-  });
-}
-
-async function resolveReachableBaseUrl(
-  currentBaseUrl: string,
-): Promise<string | null> {
-  if (resolvingBaseUrlPromise) return resolvingBaseUrlPromise;
-
-  resolvingBaseUrlPromise = (async () => {
-    const candidates = buildCandidateBaseUrls(currentBaseUrl);
-    for (const candidate of candidates) {
-      const ok = await probeBaseUrl(candidate);
-      if (ok) return candidate;
-    }
-    return null;
-  })();
-
-  try {
-    return await resolvingBaseUrlPromise;
-  } finally {
-    resolvingBaseUrlPromise = null;
-  }
-}
-
-function shouldTryFallback(errMsg: string) {
-  return isRetryableUniNetworkError(errMsg);
-}
-
-function uploadFileByBaseUrl(
-  filePath: string,
-  baseUrl: string,
-  uploadDomain: string,
-): Promise<UploadResult> {
-  const token = readAuthToken();
-  return uploadAuthenticatedAsset({
-    uniApp: uni,
-    baseUrl,
-    filePath,
-    token,
-    uploadDomain,
-    onUnauthorized: token ? () => forceMerchantLogout() : undefined,
-  }) as Promise<UploadResult>;
-}
-
-export async function uploadImage(
-  filePath: string,
-  options: { uploadDomain?: string } = {},
-): Promise<UploadResult> {
-  const normalizedPath = String(filePath || "").trim();
-  if (!normalizedPath) {
-    throw buildError("缺少上传文件路径");
-  }
-
-  const baseUrl = normalizeBaseUrl(getBaseUrl());
-  const uploadDomain = String(
-    options.uploadDomain || UPLOAD_DOMAINS.SHOP_MEDIA,
-  ).trim();
-  try {
-    return await uploadFileByBaseUrl(normalizedPath, baseUrl, uploadDomain);
-  } catch (err: any) {
-    const errMsg = String(
-      err?.error || err?.message || err?.data?.errMsg || "",
-    );
-    if (shouldTryFallback(errMsg)) {
-      try {
-        const resolved = await resolveReachableBaseUrl(baseUrl);
-        if (resolved && resolved !== baseUrl) {
-          updateConfig({
-            API_BASE_URL: resolved,
-            SOCKET_URL: resolved,
-          });
-          return await uploadFileByBaseUrl(normalizedPath, resolved, uploadDomain);
-        }
-      } catch (_fallbackErr) {
-        // ignore fallback errors and return original upload error
-      }
-    }
-    throw err;
-  }
-}
-
-export function readAuthorizationHeader(): Record<string, string> {
-  const token = readAuthToken();
-  return buildAuthorizationHeaders(token);
-}
-
-const requestClient = createUniRequestClient({
+const merchantApiRuntime = createRoleApiRuntimeBindings({
+  role: "merchant",
+  config,
   uniApp: uni,
-  getBaseUrl,
-  getTimeout: () => config.TIMEOUT,
-  getAuthToken: readAuthToken,
+  defaultUploadDomain: UPLOAD_DOMAINS.SHOP_MEDIA,
+  enableBaseUrlFallback: true,
+  fallbackPort: "25500",
+  fallbackHealthPaths: ["/health", "/api/health"],
+  savedIpStorageKey: "dev_local_ip",
+  defaultFallbackIp: process.env.DEFAULT_BFF_IP || "127.0.0.1",
+  updateRuntimeConfig(patch: Record<string, string>) {
+    updateConfig(patch);
+  },
   onUnauthorized() {
     forceMerchantLogout();
+  },
+  buildUploadValidationError(message: string) {
+    return buildError(message);
   },
   createHttpError(payload: any, statusCode: number) {
     return buildError(payload?.error || `请求失败: ${statusCode}`, {
@@ -263,45 +90,32 @@ const requestClient = createUniRequestClient({
       {
         defaultMessage: "网络请求失败",
         timeoutMessage: "请求超时，请检查后端服务",
-        unreachableMessage: () => `无法连接服务器：${baseUrl}（请确认 BFF 已启动，端口通常为 25500）`,
+        unreachableMessage: () =>
+          `无法连接服务器：${baseUrl}（请确认 BFF 已启动，端口通常为 25500）`,
       },
     );
     return buildError(message, { data: error });
   },
-  retryOnNetworkError: async ({
-    baseUrl,
-    error,
-    retryRequest,
-  }: {
-    baseUrl: string;
-    error: any;
-    retryRequest: (overrideOptions?: Partial<RequestOptions>) => Promise<any>;
-  }) => {
-    if (!shouldTryFallback(error)) {
-      return null;
-    }
-
-    const resolved = await resolveReachableBaseUrl(baseUrl);
-    if (!resolved || resolved === baseUrl) {
-      return null;
-    }
-
-    updateConfig({
-      API_BASE_URL: resolved,
-      SOCKET_URL: resolved,
-    });
-
-    return {
-      retried: true,
-      value: await retryRequest({
-        _skipFallback: true,
-      }),
-    };
+  shouldLogNetworkError() {
+    return false;
   },
-})
+});
+
+export const getBaseUrl = merchantApiRuntime.getBaseUrl;
+
+export async function uploadImage(
+  filePath: string,
+  options: { uploadDomain?: string } = {},
+): Promise<UploadResult> {
+  return merchantApiRuntime.uploadImage(filePath, options) as Promise<UploadResult>;
+}
+
+export function readAuthorizationHeader(): Record<string, string> {
+  return merchantApiRuntime.readAuthorizationHeader() as Record<string, string>;
+}
 
 export function request<T = any>(options: RequestOptions): Promise<T> {
-  return requestClient(options) as Promise<T>;
+  return merchantApiRuntime.request(options) as Promise<T>;
 }
 
 function apiGet<T = any>(url: string, data?: Record<string, any>, auth = true) {
@@ -315,12 +129,6 @@ function apiPost<T = any>(
 ) {
   return request<T>({ url, method: "POST", data, auth });
 }
-
-const mobilePushApi = createMobilePushApi({
-  post(url: string, data?: Record<string, any>) {
-    return apiPost(url, data);
-  },
-});
 
 function apiPut<T = any>(url: string, data?: Record<string, any>, auth = true) {
   return request<T>({ url, method: "PUT", data, auth });
@@ -638,4 +446,4 @@ export const markConversationRead = (chatId: string) =>
 export const fetchPublicRuntimeSettings = () =>
   apiGet("/api/public/runtime-settings");
 
-export const { registerPushDevice, unregisterPushDevice, ackPushMessage } = mobilePushApi;
+export const { registerPushDevice, unregisterPushDevice, ackPushMessage } = merchantApiRuntime;
