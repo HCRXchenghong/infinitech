@@ -1,6 +1,9 @@
 const axios = require("axios");
 const { logger } = require("../../utils/logger");
-const { buildNormalizedErrorPayload } = require("../../utils/goProxy");
+const {
+  buildRejectedProxyErrorPayload,
+  buildResolvedProxyPayload,
+} = require("../../utils/goProxy");
 const { buildForwardHeaders } = require("../../utils/forwardAuth");
 const { BACKEND_URL } = require("./constants");
 
@@ -34,22 +37,7 @@ function resolveFallbackProxyErrorMessage(fallbackPayload, error) {
 }
 
 function normalizeSettingsProxyPayload(req, response, defaultErrorMessage = "请求后端服务失败，请稍后重试") {
-  if (Number(response?.status || 200) < 400) {
-    return response?.data;
-  }
-
-  return buildNormalizedErrorPayload(
-    req,
-    {
-      message:
-        response?.data?.error ||
-        response?.data?.message ||
-        defaultErrorMessage,
-      response,
-    },
-    response.status,
-    defaultErrorMessage,
-  );
+  return buildResolvedProxyPayload(req, response, defaultErrorMessage);
 }
 
 function handleProxyError(req, res, error, context, fallbackPayload = null) {
@@ -59,23 +47,15 @@ function handleProxyError(req, res, error, context, fallbackPayload = null) {
     status: error.response?.status || null,
   });
 
-  if (error.response) {
-    return res.status(error.response.status).json(
-      buildNormalizedErrorPayload(
-        req,
-        error,
-        error.response.status,
-        resolveFallbackProxyErrorMessage(fallbackPayload, error),
-      ),
-    );
-  }
-
-  return res.status(502).json(
-    buildNormalizedErrorPayload(
+  const status = Number(error.response?.status || 502);
+  return res.status(status).json(
+    buildRejectedProxyErrorPayload(
       req,
       error,
-      502,
       resolveFallbackProxyErrorMessage(fallbackPayload, error),
+      {
+        normalizeErrorStatus: 502,
+      },
     ),
   );
 }

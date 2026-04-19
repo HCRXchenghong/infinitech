@@ -1371,11 +1371,15 @@ assertContains(
 );
 assertContains(
   "backend/bff/src/services/adminSettings/proxyClient.js",
-  "buildNormalizedErrorPayload(",
+  "buildResolvedProxyPayload(req, response, defaultErrorMessage)",
 );
 assertContains(
   "backend/bff/src/services/adminSettings/proxyClient.js",
   'function normalizeSettingsProxyPayload(req, response, defaultErrorMessage = "请求后端服务失败，请稍后重试") {',
+);
+assertContains(
+  "backend/bff/src/services/adminSettings/proxyClient.js",
+  "buildRejectedProxyErrorPayload(",
 );
 assertContains(
   "backend/bff/src/services/adminSettingsService.js",
@@ -2297,11 +2301,15 @@ assertContains(
 );
 assertContains(
   "backend/bff/src/controllers/officialSiteController.js",
-  "function buildOfficialSiteUpstreamPayload(req, status, payload, defaultErrorMessage) {",
+  "function buildOfficialSiteProxyResponseOptions() {",
 );
 assertContains(
   "backend/bff/src/controllers/officialSiteController.js",
-  'return sendOfficialSiteResponse(req, res, sessionResponse, "support session not found");',
+  'return sendResolvedProxyResponse(',
+);
+assertContains(
+  "backend/bff/src/controllers/officialSiteController.js",
+  "return sendRejectedProxyError(req, res, error, defaultErrorMessage, responseOptions);",
 );
 assertContains(
   "backend/go/internal/handler/admin_settings_handler.go",
