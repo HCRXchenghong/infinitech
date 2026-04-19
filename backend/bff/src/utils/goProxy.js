@@ -3,6 +3,16 @@ const config = require('../config');
 const { buildErrorEnvelopePayload } = require('./apiEnvelope');
 const { withForwardAuth } = require('./forwardAuth');
 const FORWARDED_RESPONSE_HEADERS = ['cache-control', 'pragma', 'expires', 'x-content-type-options'];
+const HOP_BY_HOP_RESPONSE_HEADERS = new Set([
+  'connection',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+]);
 
 function goUrl(path) {
   return `${config.goApiUrl}/api${path}`;
@@ -182,6 +192,49 @@ function applyResponseHeaders(res, responseHeaders = {}, explicitHeaders = {}) {
   }
 }
 
+function applyPassthroughResponseHeaders(res, responseHeaders = {}, explicitHeaders = {}) {
+  for (const [headerName, headerValue] of Object.entries(responseHeaders || {})) {
+    if (!headerValue || HOP_BY_HOP_RESPONSE_HEADERS.has(String(headerName).toLowerCase())) {
+      continue;
+    }
+    res.setHeader(headerName, headerValue);
+  }
+
+  for (const [headerName, headerValue] of Object.entries(explicitHeaders || {})) {
+    if (headerValue !== undefined && headerValue !== null && headerValue !== '') {
+      res.setHeader(headerName, headerValue);
+    }
+  }
+}
+
+function sendBufferProxyResponse(res, response, options = {}) {
+  applyPassthroughResponseHeaders(res, response?.headers, options.responseHeaders);
+  return res
+    .status(Number(response?.status || 200))
+    .send(options.body !== undefined ? options.body : response?.data);
+}
+
+function sendStreamProxyResponse(req, res, response, options = {}) {
+  applyPassthroughResponseHeaders(res, response?.headers, options.responseHeaders);
+  res.status(Number(response?.status || 200));
+
+  const body = options.body !== undefined ? options.body : response?.data;
+  if (req?.method === 'HEAD' || options.skipBody) {
+    if (body && typeof body.destroy === 'function') {
+      body.destroy();
+    }
+    res.end();
+    return res;
+  }
+
+  if (!body || typeof body.pipe !== 'function') {
+    throw new TypeError('Stream proxy response requires a pipeable body');
+  }
+
+  body.pipe(res);
+  return res;
+}
+
 function pickDeleteBody(options, req) {
   if (options.data !== undefined) {
     return options.data;
@@ -303,6 +356,7 @@ async function proxyDelete(req, res, next, path, options = {}) {
 }
 
 module.exports = {
+  applyPassthroughResponseHeaders,
   buildRejectedProxyErrorPayload,
   buildResolvedProxyPayload,
   goUrl,
@@ -314,6 +368,8 @@ module.exports = {
   proxyPost,
   proxyPut,
   proxyDelete,
+  sendBufferProxyResponse,
   sendRejectedProxyError,
-  sendResolvedProxyResponse
+  sendResolvedProxyResponse,
+  sendStreamProxyResponse,
 };

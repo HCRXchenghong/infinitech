@@ -1,5 +1,6 @@
 const axios = require("axios");
 const { buildErrorEnvelopePayload } = require("../utils/apiEnvelope");
+const { sendStreamProxyResponse } = require("../utils/goProxy");
 
 function joinUrl(base, path) {
   const normalizedBase = String(base || "").replace(/\/+$/, "");
@@ -31,33 +32,7 @@ function createUploadsProxy({ goApiUrl, logger }) {
           range: req.headers.range
         }
       });
-
-      res.status(upstream.status);
-      const hopByHopHeaders = new Set([
-        "connection",
-        "keep-alive",
-        "proxy-authenticate",
-        "proxy-authorization",
-        "te",
-        "trailer",
-        "transfer-encoding",
-        "upgrade"
-      ]);
-
-      Object.entries(upstream.headers || {}).forEach(([key, value]) => {
-        if (!value || hopByHopHeaders.has(String(key).toLowerCase())) {
-          return;
-        }
-        res.setHeader(key, value);
-      });
-
-      if (req.method === "HEAD") {
-        upstream.data.destroy();
-        res.end();
-        return;
-      }
-
-      upstream.data.pipe(res);
+      return sendStreamProxyResponse(req, res, upstream);
     } catch (error) {
       logger.error("Proxy uploads error", { targetUrl, message: error.message });
       next(error);

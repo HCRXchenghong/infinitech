@@ -1410,6 +1410,10 @@ assertContains(
   "sendResolvedProxyResponse(req, res, response, '上传证件失败')",
 );
 assertContains(
+  "backend/bff/src/controllers/riderController.js",
+  "return sendStreamProxyResponse(req, res, response);",
+);
+assertContains(
   "backend/bff/src/controllers/adminWalletController.js",
   "function sendWalletSuccess(req, res, message, payload) {",
 );
@@ -1436,6 +1440,10 @@ assertContains(
 assertContains(
   "backend/bff/src/middleware/uploadsProxy.js",
   'buildErrorEnvelopePayload(req, 405, "Method not allowed")',
+);
+assertContains(
+  "backend/bff/src/middleware/uploadsProxy.js",
+  "return sendStreamProxyResponse(req, res, upstream);",
 );
 assertContains(
   "backend/bff/src/utils/authIdentity.js",
@@ -2745,6 +2753,18 @@ assertContains(
 );
 assertContains(
   "backend/bff/src/utils/goProxy.js",
+  "function applyPassthroughResponseHeaders(res, responseHeaders = {}, explicitHeaders = {}) {",
+);
+assertContains(
+  "backend/bff/src/utils/goProxy.js",
+  "function sendBufferProxyResponse(res, response, options = {}) {",
+);
+assertContains(
+  "backend/bff/src/utils/goProxy.js",
+  "function sendStreamProxyResponse(req, res, response, options = {}) {",
+);
+assertContains(
+  "backend/bff/src/utils/goProxy.js",
   "if (options.normalizeErrorResponse && Number(response?.status || 200) >= 400) {",
 );
 assertContains(
@@ -2766,6 +2786,10 @@ assertContains(
 assertContains(
   "backend/bff/src/controllers/authController.js",
   "legacy: { statusCode: status }",
+);
+assertContains(
+  "backend/bff/src/controllers/authController.js",
+  "return sendBufferProxyResponse(res, response);",
 );
 assertNotContains("backend/bff/src/controllers/authController.js", "debug:");
 assertContains(

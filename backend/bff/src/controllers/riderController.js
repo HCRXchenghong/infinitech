@@ -8,6 +8,7 @@ const {
   requestGoRaw,
   sendRejectedProxyError,
   sendResolvedProxyResponse,
+  sendStreamProxyResponse,
 } = require('../utils/goProxy');
 const { buildErrorEnvelopePayload } = require('../utils/apiEnvelope');
 const { logger } = require('../utils/logger');
@@ -115,29 +116,9 @@ exports.getRiderCert = async (req, res, next) => {
       validateStatus: () => true,
       preferExtraHeaders: true,
     });
-
-    res.status(response.status);
-    const hopByHopHeaders = new Set([
-      "connection",
-      "keep-alive",
-      "proxy-authenticate",
-      "proxy-authorization",
-      "te",
-      "trailer",
-      "transfer-encoding",
-      "upgrade",
-    ]);
-
-    Object.entries(response.headers || {}).forEach(([key, value]) => {
-      if (!value || hopByHopHeaders.has(String(key).toLowerCase())) {
-        return;
-      }
-      res.setHeader(key, value);
-    });
-
-    response.data.pipe(res);
+    return sendStreamProxyResponse(req, res, response);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 

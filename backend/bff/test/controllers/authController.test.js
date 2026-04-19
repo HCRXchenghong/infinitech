@@ -14,14 +14,16 @@ jest.mock('../../src/utils/logger', () => ({
   },
 }));
 
-const { requestSMSCode, consumeWechatSession } = require('../../src/controllers/authController');
+const { requestSMSCode, consumeWechatSession, getCaptcha } = require('../../src/controllers/authController');
 const { goUrl, requestGoRaw } = require('../../src/utils/goProxy');
 const { logger } = require('../../src/utils/logger');
 
 function createResponse() {
   const res = {
+    setHeader: jest.fn(),
     status: jest.fn(),
     json: jest.fn(),
+    send: jest.fn(),
   };
   res.status.mockReturnValue(res);
   return res;
@@ -156,6 +158,40 @@ describe('authController consumeWechatSession', () => {
       success: false,
       error: 'session missing',
     });
+    expect(next).not.toHaveBeenCalled();
+  });
+});
+
+describe('authController getCaptcha', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('forwards buffer responses with passthrough headers', async () => {
+    const payload = Buffer.from('png');
+    requestGoRaw.mockResolvedValue({
+      status: 200,
+      data: payload,
+      headers: {
+        'content-type': 'image/png',
+        'cache-control': 'no-store',
+        'x-captcha-id': 'captcha-1',
+        connection: 'keep-alive',
+      },
+    });
+
+    const req = { query: { width: '120' }, headers: {} };
+    const res = createResponse();
+    const next = jest.fn();
+
+    await getCaptcha(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.setHeader).toHaveBeenCalledWith('content-type', 'image/png');
+    expect(res.setHeader).toHaveBeenCalledWith('cache-control', 'no-store');
+    expect(res.setHeader).toHaveBeenCalledWith('x-captcha-id', 'captcha-1');
+    expect(res.setHeader).not.toHaveBeenCalledWith('connection', 'keep-alive');
+    expect(res.send).toHaveBeenCalledWith(payload);
     expect(next).not.toHaveBeenCalled();
   });
 });

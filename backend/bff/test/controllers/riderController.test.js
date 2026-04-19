@@ -30,12 +30,14 @@ jest.mock("../../src/utils/logger", () => ({
 }));
 
 const { requestGoRaw } = require("../../src/utils/goProxy");
-const { uploadCert } = require("../../src/controllers/riderController");
+const { getRiderCert, uploadCert } = require("../../src/controllers/riderController");
 
 function createResponse() {
   return {
+    setHeader: jest.fn(),
     status: jest.fn().mockReturnThis(),
     json: jest.fn(),
+    end: jest.fn(),
   };
 }
 
@@ -128,5 +130,38 @@ describe("riderController envelopes", () => {
       error: "证件上传冲突",
       field: "id_card",
     });
+  });
+
+  test("getRiderCert forwards stream responses with passthrough headers", async () => {
+    const stream = {
+      pipe: jest.fn(),
+      destroy: jest.fn(),
+    };
+    requestGoRaw.mockResolvedValue({
+      status: 200,
+      data: stream,
+      headers: {
+        "content-type": "image/jpeg",
+        "content-disposition": 'inline; filename="cert.jpg"',
+        "transfer-encoding": "chunked",
+      },
+    });
+
+    const req = {
+      method: "GET",
+      params: { riderId: "r-1" },
+      query: {},
+    };
+    const res = createResponse();
+    const next = jest.fn();
+
+    await getRiderCert(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.setHeader).toHaveBeenCalledWith("content-type", "image/jpeg");
+    expect(res.setHeader).toHaveBeenCalledWith("content-disposition", 'inline; filename="cert.jpg"');
+    expect(res.setHeader).not.toHaveBeenCalledWith("transfer-encoding", "chunked");
+    expect(stream.pipe).toHaveBeenCalledWith(res);
+    expect(next).not.toHaveBeenCalled();
   });
 });

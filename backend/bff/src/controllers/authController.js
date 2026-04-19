@@ -7,6 +7,7 @@ const {
   proxyPost,
   requestGoRaw,
   buildNormalizedErrorPayload,
+  sendBufferProxyResponse,
   sendRejectedProxyError,
   sendResolvedProxyResponse,
 } = require('../utils/goProxy');
@@ -201,25 +202,11 @@ async function getCaptcha(req, res, next) {
       params: req.query || {},
       responseType: 'arraybuffer',
       timeout: 5000,
-      validateStatus(status) {
-        return status < 500;
-      }
+      validateStatus() {
+        return true;
+      },
     });
-
-    const contentType = response.headers && response.headers['content-type'];
-    if (contentType) {
-      res.setHeader('Content-Type', contentType);
-    }
-    const cacheControl = response.headers && response.headers['cache-control'];
-    if (cacheControl) {
-      res.setHeader('Cache-Control', cacheControl);
-    }
-    const pragma = response.headers && response.headers.pragma;
-    if (pragma) {
-      res.setHeader('Pragma', pragma);
-    }
-
-    return res.status(response.status).send(response.data);
+    return sendBufferProxyResponse(res, response);
   } catch (error) {
     return next(error);
   }

@@ -5,9 +5,12 @@ jest.mock('../../src/utils/forwardAuth', () => ({
 
 const axios = require('axios');
 const {
+  applyPassthroughResponseHeaders,
   buildRejectedProxyErrorPayload,
   buildResolvedProxyPayload,
   proxyPost,
+  sendBufferProxyResponse,
+  sendStreamProxyResponse,
 } = require('../../src/utils/goProxy');
 
 function createResponse() {
@@ -15,6 +18,8 @@ function createResponse() {
     setHeader: jest.fn(),
     status: jest.fn(),
     json: jest.fn(),
+    send: jest.fn(),
+    end: jest.fn(),
   };
   res.status.mockReturnValue(res);
   return res;
@@ -183,5 +188,72 @@ describe('goProxy normalized proxy payload helpers', () => {
       success: false,
       error: 'html not found',
     });
+  });
+});
+
+describe('goProxy passthrough helpers', () => {
+  test('applyPassthroughResponseHeaders excludes hop-by-hop headers', () => {
+    const res = createResponse();
+
+    applyPassthroughResponseHeaders(res, {
+      'content-type': 'image/png',
+      'cache-control': 'no-store',
+      connection: 'keep-alive',
+    });
+
+    expect(res.setHeader).toHaveBeenCalledWith('content-type', 'image/png');
+    expect(res.setHeader).toHaveBeenCalledWith('cache-control', 'no-store');
+    expect(res.setHeader).not.toHaveBeenCalledWith('connection', 'keep-alive');
+  });
+
+  test('sendBufferProxyResponse forwards passthrough headers and body', () => {
+    const res = createResponse();
+    const body = Buffer.from('captcha');
+
+    sendBufferProxyResponse(res, {
+      status: 200,
+      data: body,
+      headers: {
+        'content-type': 'image/png',
+        pragma: 'no-cache',
+        connection: 'keep-alive',
+      },
+    });
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.setHeader).toHaveBeenCalledWith('content-type', 'image/png');
+    expect(res.setHeader).toHaveBeenCalledWith('pragma', 'no-cache');
+    expect(res.setHeader).not.toHaveBeenCalledWith('connection', 'keep-alive');
+    expect(res.send).toHaveBeenCalledWith(body);
+  });
+
+  test('sendStreamProxyResponse drains head requests without piping', () => {
+    const res = createResponse();
+    const stream = {
+      pipe: jest.fn(),
+      destroy: jest.fn(),
+    };
+
+    sendStreamProxyResponse(
+      { method: 'HEAD' },
+      res,
+      {
+        status: 206,
+        data: stream,
+        headers: {
+          'content-type': 'image/jpeg',
+          'content-length': '10',
+          'transfer-encoding': 'chunked',
+        },
+      },
+    );
+
+    expect(res.status).toHaveBeenCalledWith(206);
+    expect(res.setHeader).toHaveBeenCalledWith('content-type', 'image/jpeg');
+    expect(res.setHeader).toHaveBeenCalledWith('content-length', '10');
+    expect(res.setHeader).not.toHaveBeenCalledWith('transfer-encoding', 'chunked');
+    expect(stream.destroy).toHaveBeenCalledTimes(1);
+    expect(stream.pipe).not.toHaveBeenCalled();
+    expect(res.end).toHaveBeenCalledTimes(1);
   });
 });
