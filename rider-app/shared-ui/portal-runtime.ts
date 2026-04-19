@@ -1,5 +1,9 @@
 import { fetchPublicRuntimeSettings } from './api'
-import { createPortalRuntimeStore, type PortalRuntimeSettings } from '../../packages/mobile-core/src/portal-runtime.js'
+import { type PortalRuntimeSettings } from '../../packages/mobile-core/src/portal-runtime.js'
+import {
+  createDefaultRolePortalRuntimeBindings,
+  DEFAULT_RIDER_PORTAL_RUNTIME_SETTINGS as SHARED_DEFAULT_RIDER_PORTAL_RUNTIME_SETTINGS,
+} from '../../packages/mobile-core/src/role-portal-runtime-shell.js'
 
 export interface RiderPortalRuntimeSettings extends PortalRuntimeSettings {
   title: string
@@ -7,20 +11,13 @@ export interface RiderPortalRuntimeSettings extends PortalRuntimeSettings {
   loginFooter: string
 }
 
-export const DEFAULT_RIDER_PORTAL_RUNTIME_SETTINGS: RiderPortalRuntimeSettings = {
-  title: '骑手登录',
-  subtitle: '悦享e食 · 骑手端',
-  loginFooter: '骑手账号由平台邀约开通',
-}
+export const DEFAULT_RIDER_PORTAL_RUNTIME_SETTINGS: RiderPortalRuntimeSettings =
+  SHARED_DEFAULT_RIDER_PORTAL_RUNTIME_SETTINGS
 
-const riderPortalRuntimeStore = createPortalRuntimeStore<RiderPortalRuntimeSettings>({
+const riderPortalRuntimeStore = createDefaultRolePortalRuntimeBindings({
+  role: 'rider',
   fetchRuntimeSettings: fetchPublicRuntimeSettings,
   defaultSettings: DEFAULT_RIDER_PORTAL_RUNTIME_SETTINGS,
-  fieldMap: {
-    title: 'rider_portal_title',
-    subtitle: 'rider_portal_subtitle',
-    loginFooter: 'rider_portal_login_footer',
-  },
 })
 
 export const {

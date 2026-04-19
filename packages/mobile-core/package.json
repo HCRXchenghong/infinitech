@@ -47,6 +47,7 @@
     "./mobile-client-context": "./src/mobile-client-context.js",
     "./medicine-order": "./src/medicine-order.js",
     "./portal-runtime": "./src/portal-runtime.js",
+    "./role-portal-runtime-shell": "./src/role-portal-runtime-shell.js",
     "./platform-runtime": "./src/platform-runtime.js",
     "./platform-schema": "./src/platform-schema.js",
     "./role-runtime-support": "./src/role-runtime-support.js",
