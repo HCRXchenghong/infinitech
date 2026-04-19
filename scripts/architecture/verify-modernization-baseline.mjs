@@ -1845,6 +1845,14 @@ assertContains(
   'export * from "../../packages/mobile-core/src/consumer-app-version.js"',
 );
 assertContains(
+  "merchant-app/shared-ui/app-version.ts",
+  "consumer-app-version.js",
+);
+assertContains(
+  "rider-app/shared-ui/app-version.ts",
+  "consumer-app-version.js",
+);
+assertContains(
   "user-vue/shared-ui/cache-cleaner.ts",
   'export * from "../../packages/mobile-core/src/consumer-cache.js"',
 );
