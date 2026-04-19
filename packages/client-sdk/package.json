@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.js",
     "./auth": "./src/auth.js",
+    "./error-utils": "./src/error-utils.js",
     "./local-db": "./src/local-db.js",
     "./mobile-config": "./src/mobile-config.js",
     "./mobile-config-helper": "./src/mobile-config-helper.js",
@@ -22,6 +23,7 @@
     "./rtc-contact": "./src/rtc-contact.js",
     "./rtc-media": "./src/rtc-media.js",
     "./rtc-runtime": "./src/rtc-runtime.js",
+    "./safe-access": "./src/safe-access.js",
     "./socket-io": "./src/socket-io.js",
     "./stored-auth-identity": "./src/stored-auth-identity.js",
     "./support-socket": "./src/support-socket.js",

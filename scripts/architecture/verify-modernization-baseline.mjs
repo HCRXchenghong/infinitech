@@ -110,6 +110,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/contracts/src/upload.js",
   "packages/contracts/src/upload.test.mjs",
   "packages/client-sdk/src/index.js",
+  "packages/client-sdk/src/error-utils.js",
+  "packages/client-sdk/src/error-utils.test.mjs",
   "packages/client-sdk/src/local-db.js",
   "packages/client-sdk/src/local-db.d.ts",
   "packages/client-sdk/src/local-db.test.mjs",
@@ -155,6 +157,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/client-sdk/src/rtc-runtime.js",
   "packages/client-sdk/src/rtc-runtime.d.ts",
   "packages/client-sdk/src/rtc-runtime.test.mjs",
+  "packages/client-sdk/src/safe-access.js",
+  "packages/client-sdk/src/safe-access.test.mjs",
   "packages/client-sdk/src/socket-io.js",
   "packages/client-sdk/src/socket-io.d.ts",
   "packages/client-sdk/src/socket-io.test.mjs",
@@ -288,6 +292,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/consumer-app-version.test.mjs",
   "packages/mobile-core/src/consumer-api.js",
   "packages/mobile-core/src/consumer-api.test.mjs",
+  "packages/mobile-core/src/consumer-legal-runtime.js",
+  "packages/mobile-core/src/consumer-legal-runtime.test.mjs",
   "packages/mobile-core/src/consumer-service-runtime.js",
   "packages/mobile-core/src/consumer-service-runtime.test.mjs",
   "packages/mobile-core/src/consumer-auth-runtime.js",
@@ -304,8 +310,12 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/errand-home-page.scss",
   "packages/mobile-core/src/consumer-home-categories.js",
   "packages/mobile-core/src/consumer-home-categories.test.mjs",
+  "packages/mobile-core/src/consumer-notification-sound.js",
+  "packages/mobile-core/src/consumer-notification-sound.test.mjs",
   "packages/mobile-core/src/consumer-notify-bridges.js",
   "packages/mobile-core/src/consumer-notify-bridges.test.mjs",
+  "packages/mobile-core/src/consumer-order-store.js",
+  "packages/mobile-core/src/consumer-order-store.test.mjs",
   "packages/mobile-core/src/consumer-request-interceptor.js",
   "packages/mobile-core/src/consumer-request-interceptor.test.mjs",
   "packages/mobile-core/src/consumer-rtc-contact.js",
@@ -2868,7 +2878,11 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/role-auth-session.test.mjs packages/client-sdk/src/role-notify-bridges.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/support-socket-bridge.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/error-utils.test.mjs packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/role-auth-session.test.mjs packages/client-sdk/src/role-notify-bridges.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/safe-access.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/support-socket-bridge.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+);
+assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./error-utils.js";',
 );
 assertContains(
   "packages/client-sdk/src/index.js",
@@ -2911,6 +2925,14 @@ assertContains(
   'export * from "./rtc-runtime.js";',
 );
 assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./safe-access.js";',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./error-utils": "./src/error-utils.js"',
+);
+assertContains(
   "packages/client-sdk/package.json",
   '"./local-db": "./src/local-db.js"',
 );
@@ -2949,6 +2971,10 @@ assertContains(
 assertContains(
   "packages/client-sdk/package.json",
   '"./rtc-runtime": "./src/rtc-runtime.js"',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./safe-access": "./src/safe-access.js"',
 );
 assertContains("packages/client-sdk/src/local-db.js", "export class LocalDB {");
 assertContains(
@@ -3281,11 +3307,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/notification-sound.js",
-  "from '../../packages/client-sdk/src/notification-audio.js'",
+  "from '../../packages/mobile-core/src/consumer-notification-sound.js'",
 );
 assertContains(
   "app-mobile/shared-ui/notification-sound.js",
-  "from '../../packages/client-sdk/src/notification-audio.js'",
+  "from '../../packages/mobile-core/src/consumer-notification-sound.js'",
 );
 assertContains(
   "merchant-app/shared-ui/notification-sound.ts",
@@ -3482,6 +3508,46 @@ assertContains(
 assertContains(
   "app-mobile/shared-ui/errand-runtime.js",
   'clientScope: "app-mobile"',
+);
+assertContains(
+  "user-vue/shared-ui/legal-runtime.js",
+  "from '../../packages/mobile-core/src/consumer-legal-runtime.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/legal-runtime.js",
+  "from '../../packages/mobile-core/src/consumer-legal-runtime.js'",
+);
+assertContains(
+  "user-vue/shared-ui/userOrderStore.js",
+  "from '../../packages/mobile-core/src/consumer-order-store.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/userOrderStore.js",
+  "from '../../packages/mobile-core/src/consumer-order-store.js'",
+);
+assertContains(
+  "user-vue/shared-ui/notification-sound.js",
+  "from '../../packages/mobile-core/src/consumer-notification-sound.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/notification-sound.js",
+  "from '../../packages/mobile-core/src/consumer-notification-sound.js'",
+);
+assertContains(
+  "user-vue/shared-ui/foundation/safe.js",
+  "from '../../../packages/client-sdk/src/safe-access.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/foundation/safe.js",
+  "from '../../../packages/client-sdk/src/safe-access.js'",
+);
+assertContains(
+  "user-vue/shared-ui/foundation/error.js",
+  "from '../../../packages/client-sdk/src/error-utils.js'",
+);
+assertContains(
+  "app-mobile/shared-ui/foundation/error.js",
+  "from '../../../packages/client-sdk/src/error-utils.js'",
 );
 assertContains(
   "merchant-app/shared-ui/realtime-notify.ts",
@@ -4358,6 +4424,18 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./consumer-legal-runtime.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./consumer-notification-sound.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./consumer-order-store.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./consumer-auth-runtime.js";',
 );
 assertContains(
@@ -4563,6 +4641,18 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-api": "./src/consumer-api.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-legal-runtime": "./src/consumer-legal-runtime.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-notification-sound": "./src/consumer-notification-sound.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-order-store": "./src/consumer-order-store.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

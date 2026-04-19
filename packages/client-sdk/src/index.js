@@ -1,4 +1,5 @@
 export * from "./auth.js";
+export * from "./error-utils.js";
 export * from "./local-db.js";
 export * from "./mobile-config-helper.js";
 export * from "./mobile-config.js";
@@ -15,6 +16,7 @@ export * from "./realtime-token.js";
 export * from "./rtc-contact.js";
 export * from "./rtc-media.js";
 export * from "./rtc-runtime.js";
+export * from "./safe-access.js";
 export * from "./socket-io.js";
 export * from "./stored-auth-identity.js";
 export * from "./support-socket.js";

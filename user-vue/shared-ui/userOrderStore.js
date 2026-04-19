@@ -1,21 +1,11 @@
-const state = {
-  remark: '',
-  tableware: null
-}
+import { createConsumerOrderStore } from '../../packages/mobile-core/src/consumer-order-store.js'
 
-export function useUserOrderStore() {
-  const setRemark = (text) => {
-    state.remark = text || ''
-  }
+const consumerOrderStore = createConsumerOrderStore()
 
-  const setTableware = (value) => {
-    state.tableware = value
-  }
-
-  return {
-    state,
-    setRemark,
-    setTableware
-  }
-}
-
+export const {
+  state,
+  setRemark,
+  setTableware,
+  reset,
+  useUserOrderStore,
+} = consumerOrderStore
