@@ -1,9 +1,7 @@
 import { fetchPublicRuntimeSettings } from './api.js'
-import { createConsumerLegalRuntimeStore } from '../../packages/mobile-core/src/consumer-legal-runtime.js'
+import { createConsumerLegalRuntimeBindings } from '../../packages/mobile-core/src/consumer-runtime-support.js'
 
-const legalRuntimeStore = createConsumerLegalRuntimeStore({
-  fetchRuntimeSettings: fetchPublicRuntimeSettings,
-})
+const legalRuntimeStore = createConsumerLegalRuntimeBindings(fetchPublicRuntimeSettings)
 
 export const {
   getCachedLegalRuntimeSettings,

@@ -1,15 +1,15 @@
 import { fetchPublicRuntimeSettings } from './api.js'
 import {
   buildHomeCategoriesForClient,
-  createPlatformRuntimeLoader,
+  createConsumerPlatformRuntimeBindings,
   isErrandServiceEnabled,
   isRuntimeRouteEnabled
-} from '../../packages/mobile-core/src/platform-runtime.js'
+} from '../../packages/mobile-core/src/consumer-runtime-support.js'
 
 export const {
   getCachedPlatformRuntimeSettings,
   loadPlatformRuntimeSettings
-} = createPlatformRuntimeLoader(fetchPublicRuntimeSettings)
+} = createConsumerPlatformRuntimeBindings(fetchPublicRuntimeSettings)
 
 export {
   buildHomeCategoriesForClient,

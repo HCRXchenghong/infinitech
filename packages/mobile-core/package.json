@@ -19,6 +19,7 @@
     "./consumer-legal-runtime": "./src/consumer-legal-runtime.js",
     "./consumer-notification-sound": "./src/consumer-notification-sound.js",
     "./consumer-order-store": "./src/consumer-order-store.js",
+    "./consumer-runtime-support": "./src/consumer-runtime-support.js",
     "./consumer-service-runtime": "./src/consumer-service-runtime.js",
     "./consumer-auth-runtime": "./src/consumer-auth-runtime.js",
     "./consumer-errand-home": "./src/consumer-errand-home.js",

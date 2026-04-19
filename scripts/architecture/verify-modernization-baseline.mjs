@@ -316,6 +316,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/consumer-notify-bridges.test.mjs",
   "packages/mobile-core/src/consumer-order-store.js",
   "packages/mobile-core/src/consumer-order-store.test.mjs",
+  "packages/mobile-core/src/consumer-runtime-support.js",
+  "packages/mobile-core/src/consumer-runtime-support.test.mjs",
   "packages/mobile-core/src/consumer-request-interceptor.js",
   "packages/mobile-core/src/consumer-request-interceptor.test.mjs",
   "packages/mobile-core/src/consumer-rtc-contact.js",
@@ -1833,11 +1835,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/platform-runtime.js",
-  "from '../../packages/mobile-core/src/platform-runtime.js'",
+  "from '../../packages/mobile-core/src/consumer-runtime-support.js'",
 );
 assertContains(
   "app-mobile/shared-ui/platform-runtime.js",
-  "from '../../packages/mobile-core/src/platform-runtime.js'",
+  "from '../../packages/mobile-core/src/consumer-runtime-support.js'",
 );
 assertContains(
   "merchant-app/shared-ui/platform-runtime.ts",
@@ -1873,11 +1875,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/support-runtime.js",
-  "createSupportRuntimeStore({",
+  "createConsumerSupportRuntimeBindings(",
 );
 assertContains(
   "app-mobile/shared-ui/support-runtime.js",
-  "createSupportRuntimeStore({",
+  "createConsumerSupportRuntimeBindings(",
 );
 assertContains(
   "merchant-app/shared-ui/support-runtime.ts",
@@ -3511,11 +3513,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/legal-runtime.js",
-  "from '../../packages/mobile-core/src/consumer-legal-runtime.js'",
+  "from '../../packages/mobile-core/src/consumer-runtime-support.js'",
 );
 assertContains(
   "app-mobile/shared-ui/legal-runtime.js",
-  "from '../../packages/mobile-core/src/consumer-legal-runtime.js'",
+  "from '../../packages/mobile-core/src/consumer-runtime-support.js'",
 );
 assertContains(
   "user-vue/shared-ui/userOrderStore.js",
@@ -3599,11 +3601,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/rtc-runtime.js",
-  "from '../../packages/client-sdk/src/rtc-runtime.js'",
+  "from '../../packages/mobile-core/src/consumer-runtime-support.js'",
 );
 assertContains(
   "app-mobile/shared-ui/rtc-runtime.js",
-  "from '../../packages/client-sdk/src/rtc-runtime.js'",
+  "from '../../packages/mobile-core/src/consumer-runtime-support.js'",
 );
 assertContains(
   "user-vue/shared-ui/rtc-media.js",
@@ -4436,6 +4438,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./consumer-runtime-support.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./consumer-auth-runtime.js";',
 );
 assertContains(
@@ -4653,6 +4659,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-order-store": "./src/consumer-order-store.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-runtime-support": "./src/consumer-runtime-support.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -4912,11 +4922,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/feature-runtime.js",
-  "../../packages/mobile-core/src/mobile-client-context.js",
+  "../../packages/mobile-core/src/consumer-runtime-support.js",
 );
 assertContains(
   "app-mobile/shared-ui/feature-runtime.js",
-  "../../packages/mobile-core/src/mobile-client-context.js",
+  "../../packages/mobile-core/src/consumer-runtime-support.js",
 );
 assertContains(
   "packages/mobile-core/src/ErrandHomePage.vue",

@@ -1,12 +1,10 @@
 import { fetchPublicRuntimeSettings } from './api.js'
 import {
-  createSupportRuntimeStore,
+  createConsumerSupportRuntimeBindings,
   DEFAULT_SUPPORT_RUNTIME_SETTINGS,
-} from '../../packages/mobile-core/src/support-runtime.js'
+} from '../../packages/mobile-core/src/consumer-runtime-support.js'
 
-const supportRuntimeStore = createSupportRuntimeStore({
-  fetchRuntimeSettings: fetchPublicRuntimeSettings,
-})
+const supportRuntimeStore = createConsumerSupportRuntimeBindings(fetchPublicRuntimeSettings)
 
 export const {
   getCachedSupportRuntimeSettings,

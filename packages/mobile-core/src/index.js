@@ -18,6 +18,7 @@ export * from "./consumer-api.js";
 export * from "./consumer-legal-runtime.js";
 export * from "./consumer-notification-sound.js";
 export * from "./consumer-order-store.js";
+export * from "./consumer-runtime-support.js";
 export * from "./consumer-service-runtime.js";
 export * from "./consumer-errand-home.js";
 export * from "./consumer-errand-pages.js";
