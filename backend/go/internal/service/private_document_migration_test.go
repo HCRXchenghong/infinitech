@@ -11,6 +11,7 @@ import (
 	"github.com/glebarez/sqlite"
 	"github.com/yuexiang/go-api/internal/idkit"
 	"github.com/yuexiang/go-api/internal/repository"
+	"github.com/yuexiang/go-api/internal/ridercert"
 	"github.com/yuexiang/go-api/internal/uploadasset"
 	"gorm.io/gorm"
 )
@@ -176,6 +177,175 @@ func TestMigrateStoredRiderOnboardingDocumentReferenceTransfersInviteRef(t *test
 	}
 	if parsed.Domain != uploadasset.DomainOnboardingDocument || parsed.OwnerRole != "rider" || parsed.OwnerID != "12" {
 		t.Fatalf("unexpected migrated rider ref %+v", parsed)
+	}
+}
+
+func TestMigrateStoredRiderDocumentReferencePromotesAllControlledSources(t *testing.T) {
+	publicRoot := t.TempDir()
+	documentPrivateRoot := t.TempDir()
+	riderPrivateRoot := t.TempDir()
+
+	previousPublicRoot := documentPublicUploadsRootPath
+	previousDocumentPrivateRoot := documentPrivateUploadsRootPath
+	previousRiderPrivateRoot := riderPrivateUploadsRootPath
+	documentPublicUploadsRootPath = publicRoot
+	documentPrivateUploadsRootPath = documentPrivateRoot
+	riderPrivateUploadsRootPath = riderPrivateRoot
+	defer func() {
+		documentPublicUploadsRootPath = previousPublicRoot
+		documentPrivateUploadsRootPath = previousDocumentPrivateRoot
+		riderPrivateUploadsRootPath = previousRiderPrivateRoot
+	}()
+
+	onboardingLegacyPath := filepath.Join(publicRoot, "onboarding-invite", "invite123", "2026-04-20", "id-front.png")
+	if err := os.MkdirAll(filepath.Dir(onboardingLegacyPath), 0755); err != nil {
+		t.Fatalf("failed to create onboarding legacy dir: %v", err)
+	}
+	if err := os.WriteFile(onboardingLegacyPath, []byte("front"), 0644); err != nil {
+		t.Fatalf("failed to seed onboarding legacy file: %v", err)
+	}
+
+	riderLegacyPath := filepath.Join(publicRoot, "certs", "health-cert.png")
+	if err := os.MkdirAll(filepath.Dir(riderLegacyPath), 0755); err != nil {
+		t.Fatalf("failed to create rider legacy dir: %v", err)
+	}
+	if err := os.WriteFile(riderLegacyPath, []byte("health"), 0644); err != nil {
+		t.Fatalf("failed to seed rider legacy file: %v", err)
+	}
+
+	inviteRef := uploadasset.BuildReference(uploadasset.DomainOnboardingDocument, "invite", "invite123", "id-back.png")
+	_, invitePath, err := uploadasset.ResolveAbsolutePath(documentPrivateRoot, inviteRef)
+	if err != nil {
+		t.Fatalf("resolve invite ref failed: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(invitePath), 0755); err != nil {
+		t.Fatalf("failed to create invite private dir: %v", err)
+	}
+	if err := os.WriteFile(invitePath, []byte("back"), 0644); err != nil {
+		t.Fatalf("failed to seed invite private file: %v", err)
+	}
+
+	onboardingNext, changed, err := migrateStoredRiderDocumentReference("/uploads/onboarding-invite/invite123/2026-04-20/id-front.png", 12, "id_card_front")
+	if err != nil {
+		t.Fatalf("expected onboarding legacy path to migrate, got %v", err)
+	}
+	if !changed {
+		t.Fatal("expected onboarding legacy path to change")
+	}
+	onboardingParsed, ok := uploadasset.ParseReference(onboardingNext)
+	if !ok || onboardingParsed.Domain != uploadasset.DomainOnboardingDocument || onboardingParsed.OwnerRole != "rider" || onboardingParsed.OwnerID != "12" {
+		t.Fatalf("unexpected onboarding rider ref %+v", onboardingParsed)
+	}
+
+	privateNext, changed, err := migrateStoredRiderDocumentReference(inviteRef, 12, "id_card_back")
+	if err != nil {
+		t.Fatalf("expected onboarding private ref to transfer, got %v", err)
+	}
+	if !changed {
+		t.Fatal("expected onboarding private ref to change")
+	}
+	privateParsed, ok := uploadasset.ParseReference(privateNext)
+	if !ok || privateParsed.Domain != uploadasset.DomainOnboardingDocument || privateParsed.OwnerRole != "rider" || privateParsed.OwnerID != "12" {
+		t.Fatalf("unexpected transferred rider ref %+v", privateParsed)
+	}
+
+	riderNext, changed, err := migrateStoredRiderDocumentReference("/uploads/certs/health-cert.png", 12, "health_cert")
+	if err != nil {
+		t.Fatalf("expected rider legacy cert path to migrate, got %v", err)
+	}
+	if !changed {
+		t.Fatal("expected rider legacy cert path to change")
+	}
+	ownerID, parsedField, _, ok := ridercert.ParsePrivateReference(riderNext)
+	if !ok || ownerID != "12" || parsedField != "health_cert" {
+		t.Fatalf("unexpected rider private ref %q", riderNext)
+	}
+}
+
+func TestMigrateLegacyPrivateDocumentsMigratesAllRiderDocumentFields(t *testing.T) {
+	db := newPrivateDocumentMigrationTestDB(t)
+	publicRoot := t.TempDir()
+	documentPrivateRoot := t.TempDir()
+	riderPrivateRoot := t.TempDir()
+
+	previousPublicRoot := documentPublicUploadsRootPath
+	previousDocumentPrivateRoot := documentPrivateUploadsRootPath
+	previousRiderPrivateRoot := riderPrivateUploadsRootPath
+	documentPublicUploadsRootPath = publicRoot
+	documentPrivateUploadsRootPath = documentPrivateRoot
+	riderPrivateUploadsRootPath = riderPrivateRoot
+	defer func() {
+		documentPublicUploadsRootPath = previousPublicRoot
+		documentPrivateUploadsRootPath = previousDocumentPrivateRoot
+		riderPrivateUploadsRootPath = previousRiderPrivateRoot
+	}()
+
+	frontLegacyPath := filepath.Join(publicRoot, "onboarding-invite", "invite123", "2026-04-20", "id-front.png")
+	if err := os.MkdirAll(filepath.Dir(frontLegacyPath), 0755); err != nil {
+		t.Fatalf("failed to create front legacy dir: %v", err)
+	}
+	if err := os.WriteFile(frontLegacyPath, []byte("front"), 0644); err != nil {
+		t.Fatalf("failed to seed front legacy file: %v", err)
+	}
+
+	healthLegacyPath := filepath.Join(publicRoot, "certs", "health.png")
+	if err := os.MkdirAll(filepath.Dir(healthLegacyPath), 0755); err != nil {
+		t.Fatalf("failed to create health legacy dir: %v", err)
+	}
+	if err := os.WriteFile(healthLegacyPath, []byte("health"), 0644); err != nil {
+		t.Fatalf("failed to seed health legacy file: %v", err)
+	}
+
+	backInviteRef := uploadasset.BuildReference(uploadasset.DomainOnboardingDocument, "invite", "invite123", "id-back.png")
+	_, backInvitePath, err := uploadasset.ResolveAbsolutePath(documentPrivateRoot, backInviteRef)
+	if err != nil {
+		t.Fatalf("resolve back invite ref failed: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(backInvitePath), 0755); err != nil {
+		t.Fatalf("failed to create back invite dir: %v", err)
+	}
+	if err := os.WriteFile(backInvitePath, []byte("back"), 0644); err != nil {
+		t.Fatalf("failed to seed back invite file: %v", err)
+	}
+
+	rider := repository.Rider{
+		Phone:        "13800138013",
+		Name:         "Migrating Rider",
+		PasswordHash: "hash",
+		IDCardFront:  "/uploads/onboarding-invite/invite123/2026-04-20/id-front.png",
+		IDCardBack:   backInviteRef,
+		HealthCert:   "/uploads/certs/health.png",
+	}
+	if err := db.Create(&rider).Error; err != nil {
+		t.Fatalf("seed rider failed: %v", err)
+	}
+
+	stats, err := MigrateLegacyPrivateDocuments(context.Background(), db)
+	if err != nil {
+		t.Fatalf("MigrateLegacyPrivateDocuments failed: %v", err)
+	}
+	if stats.RidersUpdated != 1 || stats.RiderFieldsMoved != 3 {
+		t.Fatalf("unexpected rider migration stats: %+v", stats)
+	}
+
+	var updated repository.Rider
+	if err := db.First(&updated, rider.ID).Error; err != nil {
+		t.Fatalf("load migrated rider failed: %v", err)
+	}
+
+	frontParsed, ok := uploadasset.ParseReference(updated.IDCardFront)
+	if !ok || frontParsed.Domain != uploadasset.DomainOnboardingDocument || frontParsed.OwnerRole != "rider" || frontParsed.OwnerID != strconv.FormatUint(uint64(rider.ID), 10) {
+		t.Fatalf("unexpected migrated front ref %+v", frontParsed)
+	}
+
+	backParsed, ok := uploadasset.ParseReference(updated.IDCardBack)
+	if !ok || backParsed.Domain != uploadasset.DomainOnboardingDocument || backParsed.OwnerRole != "rider" || backParsed.OwnerID != strconv.FormatUint(uint64(rider.ID), 10) {
+		t.Fatalf("unexpected migrated back ref %+v", backParsed)
+	}
+
+	ownerID, field, _, ok := ridercert.ParsePrivateReference(updated.HealthCert)
+	if !ok || ownerID != strconv.FormatUint(uint64(rider.ID), 10) || field != "health_cert" {
+		t.Fatalf("unexpected migrated health cert ref %q", updated.HealthCert)
 	}
 }
 

@@ -4,13 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/yuexiang/go-api/internal/repository"
+	"github.com/yuexiang/go-api/internal/ridercert"
 	"github.com/yuexiang/go-api/internal/uploadasset"
 	"gorm.io/gorm"
 )
+
+var riderPrivateUploadsRootPath = filepath.Join(".", "data", "private", "rider-certs")
 
 type PrivateDocumentMigrationStats struct {
 	MerchantsUpdated                int
@@ -95,30 +99,51 @@ func migrateLegacyRiderDocuments(ctx context.Context, db *gorm.DB, stats *Privat
 
 	var riders []repository.Rider
 	if err := db.WithContext(ctx).
-		Select("id", "id_card_front").
+		Select("id", "id_card_front", "id_card_back", "health_cert").
 		Find(&riders).Error; err != nil {
 		return fmt.Errorf("load riders for private document migration failed: %w", err)
 	}
 
 	for _, rider := range riders {
-		current := strings.TrimSpace(rider.IDCardFront)
-		next, changed, err := migrateStoredRiderOnboardingDocumentReference(current, strconv.FormatUint(uint64(rider.ID), 10))
-		if err != nil {
-			stats.Errors++
-			continue
+		type riderFieldState struct {
+			name    string
+			current string
 		}
-		if !changed || next == current {
+
+		fields := []riderFieldState{
+			{name: "id_card_front", current: rider.IDCardFront},
+			{name: "id_card_back", current: rider.IDCardBack},
+			{name: "health_cert", current: rider.HealthCert},
+		}
+
+		updates := map[string]interface{}{}
+		movedFields := 0
+		for _, field := range fields {
+			current := strings.TrimSpace(field.current)
+			next, changed, err := migrateStoredRiderDocumentReference(current, rider.ID, field.name)
+			if err != nil {
+				stats.Errors++
+				continue
+			}
+			if !changed || next == current {
+				continue
+			}
+			updates[field.name] = next
+			movedFields++
+		}
+
+		if len(updates) == 0 {
 			continue
 		}
 		if err := db.WithContext(ctx).
 			Model(&repository.Rider{}).
 			Where("id = ?", rider.ID).
-			Update("id_card_front", next).Error; err != nil {
+			Updates(updates).Error; err != nil {
 			stats.Errors++
 			continue
 		}
 		stats.RidersUpdated++
-		stats.RiderFieldsMoved++
+		stats.RiderFieldsMoved += movedFields
 	}
 
 	return nil
@@ -441,7 +466,7 @@ func migrateStoredRiderOnboardingDocumentReference(raw, ownerID string) (string,
 	if value == "" {
 		return "", false, nil
 	}
-	if strings.HasPrefix(value, "private://rider-cert/") {
+	if ridercert.IsPrivateReference(value) {
 		return value, false, nil
 	}
 
@@ -495,6 +520,45 @@ func migrateStoredRiderOnboardingDocumentReference(raw, ownerID string) (string,
 		return "", false, err
 	}
 	return nextRef, moved || nextRef != value, nil
+}
+
+func migrateStoredRiderDocumentReference(raw string, riderID uint, field string) (string, bool, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return "", false, nil
+	}
+
+	normalizedField, ok := ridercert.NormalizeField(field)
+	if !ok {
+		return "", false, fmt.Errorf("unsupported rider document field")
+	}
+
+	expectedOwnerID := strconv.FormatUint(uint64(riderID), 10)
+	if ridercert.IsPrivateReference(value) {
+		ownerID, parsedField, _, privateOK := ridercert.ParsePrivateReference(value)
+		if !privateOK || ownerID != expectedOwnerID || parsedField != normalizedField {
+			return "", false, fmt.Errorf("private rider cert reference is invalid")
+		}
+		return value, false, nil
+	}
+
+	if next, changed, err := migrateStoredRiderOnboardingDocumentReference(value, expectedOwnerID); err != nil {
+		return "", false, err
+	} else if changed {
+		return next, true, nil
+	}
+
+	if !strings.HasPrefix(value, "/uploads/") {
+		return value, false, nil
+	}
+
+	return ridercert.PromoteLegacyReference(
+		riderID,
+		normalizedField,
+		value,
+		documentPublicUploadsRootPath,
+		riderPrivateUploadsRootPath,
+	)
 }
 
 func migrateOrderRawPayloadMedicalDocument(rawPayload, userID string) (string, bool, error) {

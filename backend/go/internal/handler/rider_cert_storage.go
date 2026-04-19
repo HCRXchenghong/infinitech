@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"io"
 	"mime"
 	"mime/multipart"
 	"os"
@@ -33,7 +32,7 @@ func buildRiderCertPreviewURL(riderID uint, field, raw string) string {
 }
 
 func buildRiderCertStorageDir(riderID uint, field string) string {
-	return filepath.Join(riderCertPrivateRootPath, strconv.FormatUint(uint64(riderID), 10), field)
+	return ridercert.BuildStorageDir(riderCertPrivateRootPath, riderID, field)
 }
 
 func buildRiderCertPrivateRef(riderID uint, field, filename string) string {
@@ -41,47 +40,11 @@ func buildRiderCertPrivateRef(riderID uint, field, filename string) string {
 }
 
 func resolveLegacyUploadAbsPath(raw string) (string, string, error) {
-	value := strings.TrimSpace(raw)
-	if !strings.HasPrefix(value, "/uploads/") {
-		return "", "", fmt.Errorf("证件资源必须通过受控上传接口生成")
-	}
-	relative := strings.TrimPrefix(value, "/uploads/")
-	relative = filepath.Clean(filepath.FromSlash(relative))
-	if relative == "." || relative == "" {
-		return "", "", fmt.Errorf("证件资源路径无效")
-	}
-	if strings.HasPrefix(relative, "..") {
-		return "", "", fmt.Errorf("证件资源路径无效")
-	}
-	absPath := filepath.Join(riderPublicUploadsRootPath, relative)
-	root := filepath.Clean(riderPublicUploadsRootPath)
-	cleanAbs := filepath.Clean(absPath)
-	if cleanAbs != root && !strings.HasPrefix(cleanAbs, root+string(filepath.Separator)) {
-		return "", "", fmt.Errorf("证件资源路径无效")
-	}
-	return cleanAbs, filepath.Base(cleanAbs), nil
+	return ridercert.ResolveLegacyUploadAbsPath(riderPublicUploadsRootPath, raw)
 }
 
 func resolveRiderCertPrivateAbsPath(riderID uint, field, raw string) (string, string, error) {
-	value := strings.TrimSpace(raw)
-	if !ridercert.IsPrivateReference(value) {
-		return "", "", fmt.Errorf("证件资源引用无效")
-	}
-	ownerID, parsedField, filename, ok := ridercert.ParsePrivateReference(value)
-	if !ok {
-		return "", "", fmt.Errorf("证件资源引用无效")
-	}
-	expectedID := strconv.FormatUint(uint64(riderID), 10)
-	if ownerID != expectedID || parsedField != field {
-		return "", "", fmt.Errorf("证件资源引用无效")
-	}
-	absPath := filepath.Join(buildRiderCertStorageDir(riderID, field), filename)
-	root := filepath.Clean(buildRiderCertStorageDir(riderID, field))
-	cleanAbs := filepath.Clean(absPath)
-	if cleanAbs != root && !strings.HasPrefix(cleanAbs, root+string(filepath.Separator)) {
-		return "", "", fmt.Errorf("证件资源引用无效")
-	}
-	return cleanAbs, filename, nil
+	return ridercert.ResolvePrivateAbsPath(riderCertPrivateRootPath, riderID, field, raw)
 }
 
 func contentTypeByFilename(filename string) string {
@@ -109,41 +72,13 @@ func contentTypeByFilename(filename string) string {
 	}
 }
 
-func moveFileReplace(srcPath, destPath string) error {
-	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-		return err
-	}
-	if err := os.Rename(srcPath, destPath); err == nil {
-		return nil
-	}
-
-	srcFile, err := os.Open(srcPath)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
-
-	destFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(destFile, srcFile); err != nil {
-		destFile.Close()
-		return err
-	}
-	if err := destFile.Close(); err != nil {
-		return err
-	}
-	return os.Remove(srcPath)
-}
-
 func promoteLegacyRiderCertReference(riderID uint, field, raw string) (string, bool, error) {
 	value := strings.TrimSpace(raw)
 	if value == "" {
 		return "", false, nil
 	}
 	if ridercert.IsPrivateReference(value) {
-		if _, _, err := resolveRiderCertPrivateAbsPath(riderID, field, value); err != nil {
+		if _, _, err := ridercert.ResolvePrivateAbsPath(riderCertPrivateRootPath, riderID, field, value); err != nil {
 			return "", false, err
 		}
 		return value, false, nil
@@ -162,28 +97,7 @@ func promoteLegacyRiderCertReference(riderID uint, field, raw string) (string, b
 		return value, false, nil
 	}
 
-	srcPath, filename, err := resolveLegacyUploadAbsPath(value)
-	if err != nil {
-		return "", false, err
-	}
-	if _, ok := publicImageUploadAllowedExts[strings.ToLower(filepath.Ext(filename))]; !ok {
-		return "", false, fmt.Errorf("证件资源格式无效")
-	}
-	if _, statErr := os.Stat(srcPath); statErr != nil {
-		if os.IsNotExist(statErr) {
-			return "", false, fmt.Errorf("证件资源不存在，请重新上传")
-		}
-		return "", false, fmt.Errorf("证件资源读取失败")
-	}
-
-	destFilename := fmt.Sprintf("%d_%d_%s%s", time.Now().UnixNano(), riderID, field, strings.ToLower(filepath.Ext(filename)))
-	destDir := buildRiderCertStorageDir(riderID, field)
-	destPath := filepath.Join(destDir, destFilename)
-	if err := moveFileReplace(srcPath, destPath); err != nil {
-		return "", false, fmt.Errorf("迁移证件资源失败")
-	}
-
-	return buildRiderCertPrivateRef(riderID, field, destFilename), true, nil
+	return ridercert.PromoteLegacyReference(riderID, field, value, riderPublicUploadsRootPath, riderCertPrivateRootPath)
 }
 
 func saveUploadedRiderCert(c *gin.Context, file *multipart.FileHeader, riderID uint, field string) (string, string, string, error) {
