@@ -1,7 +1,9 @@
 import { fetchPublicRuntimeSettings } from './api'
-import { createPlatformRuntimeLoader } from '../../packages/mobile-core/src/platform-runtime.js'
+import { createDefaultRolePlatformRuntimeBindings } from '../../packages/mobile-core/src/role-runtime-support.js'
 
 export const {
   getCachedPlatformRuntimeSettings,
   loadPlatformRuntimeSettings
-} = createPlatformRuntimeLoader(fetchPublicRuntimeSettings)
+} = createDefaultRolePlatformRuntimeBindings({
+  fetchRuntimeSettings: fetchPublicRuntimeSettings,
+})

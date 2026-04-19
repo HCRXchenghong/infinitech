@@ -1,9 +1,14 @@
 import { fetchPublicRuntimeSettings } from './api'
-import { createPlatformRuntimeLoader, findRiderRankLevel } from '../../packages/mobile-core/src/platform-runtime.js'
+import {
+  createDefaultRolePlatformRuntimeBindings,
+  findRiderRankLevel,
+} from '../../packages/mobile-core/src/role-runtime-support.js'
 
 export const {
   getCachedPlatformRuntimeSettings,
   loadPlatformRuntimeSettings
-} = createPlatformRuntimeLoader(fetchPublicRuntimeSettings)
+} = createDefaultRolePlatformRuntimeBindings({
+  fetchRuntimeSettings: fetchPublicRuntimeSettings,
+})
 
 export { findRiderRankLevel }

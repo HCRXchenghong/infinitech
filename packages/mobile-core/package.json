@@ -49,6 +49,7 @@
     "./portal-runtime": "./src/portal-runtime.js",
     "./platform-runtime": "./src/platform-runtime.js",
     "./platform-schema": "./src/platform-schema.js",
+    "./role-runtime-support": "./src/role-runtime-support.js",
     "./rtc-call-page": "./src/rtc-call-page.js",
     "./search-page": "./src/search-page.js",
     "./support-runtime": "./src/support-runtime.js",

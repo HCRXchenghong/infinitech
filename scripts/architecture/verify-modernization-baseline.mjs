@@ -348,6 +348,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/portal-runtime.js",
   "packages/mobile-core/src/portal-runtime.d.ts",
   "packages/mobile-core/src/portal-runtime.test.mjs",
+  "packages/mobile-core/src/role-runtime-support.js",
+  "packages/mobile-core/src/role-runtime-support.test.mjs",
   "app-mobile/shared-ui/app-core/bootstrap.ts",
   "app-mobile/shared-ui/app-core/bridges.ts",
   "app-mobile/shared-ui/app-core/runtime.ts",
@@ -464,6 +466,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "app-mobile/components/ShopCard.vue",
   "user-vue/components/SuccessModal.vue",
   "app-mobile/components/SuccessModal.vue",
+  "packages/mobile-core/src/role-runtime-support.js",
+  "packages/mobile-core/src/role-runtime-support.test.mjs",
   "packages/mobile-core/src/role-sync-shell.js",
   "packages/mobile-core/src/role-sync-shell.test.mjs",
   "packages/mobile-core/src/sync-service.js",
@@ -1608,6 +1612,14 @@ assertContains(
   "export function createPlatformRuntimeLoader(fetcher) {",
 );
 assertContains(
+  "packages/mobile-core/src/role-runtime-support.js",
+  "export function createDefaultRolePlatformRuntimeBindings(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/role-runtime-support.js",
+  "export function createDefaultRoleSupportRuntimeBindings(options = {}) {",
+);
+assertContains(
   "packages/mobile-core/src/platform-schema.js",
   "export function buildMerchantTypeOptions(taxonomySettings = null) {",
 );
@@ -1902,11 +1914,19 @@ assertContains(
 );
 assertContains(
   "merchant-app/shared-ui/platform-runtime.ts",
-  "from '../../packages/mobile-core/src/platform-runtime.js'",
+  "from '../../packages/mobile-core/src/role-runtime-support.js'",
+);
+assertContains(
+  "merchant-app/shared-ui/platform-runtime.ts",
+  "createDefaultRolePlatformRuntimeBindings({",
 );
 assertContains(
   "rider-app/shared-ui/platform-runtime.ts",
-  "from '../../packages/mobile-core/src/platform-runtime.js'",
+  "from '../../packages/mobile-core/src/role-runtime-support.js'",
+);
+assertContains(
+  "rider-app/shared-ui/platform-runtime.ts",
+  "createDefaultRolePlatformRuntimeBindings({",
 );
 assertContains(
   "user-vue/shared-ui/platform-schema.js",
@@ -1942,11 +1962,19 @@ assertContains(
 );
 assertContains(
   "merchant-app/shared-ui/support-runtime.ts",
-  "createSupportRuntimeStore({",
+  "createDefaultRoleSupportRuntimeBindings({",
 );
 assertContains(
   "rider-app/shared-ui/support-runtime.ts",
-  "createSupportRuntimeStore({",
+  "createDefaultRoleSupportRuntimeBindings({",
+);
+assertContains(
+  "merchant-app/shared-ui/support-runtime.ts",
+  "from '../../packages/mobile-core/src/role-runtime-support.js'",
+);
+assertContains(
+  "rider-app/shared-ui/support-runtime.ts",
+  "from '../../packages/mobile-core/src/role-runtime-support.js'",
 );
 assertContains(
   "admin-vue/src/views/Merchants.vue",
@@ -2975,6 +3003,10 @@ assertContains(
 );
 assertContains(
   "package.json",
+  "packages/mobile-core/src/role-runtime-support.test.mjs",
+);
+assertContains(
+  "package.json",
   "packages/mobile-core/src/support-runtime.test.mjs",
 );
 assertContains(
@@ -2999,7 +3031,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/upload.test.mjs packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/medicine-order.test.mjs packages/mobile-core/src/mobile-client-context.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/dining-buddy.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/auth-portal-pages.test.mjs packages/mobile-core/src/cart-popup-page.test.mjs packages/mobile-core/src/category-pages.test.mjs packages/mobile-core/src/consumer-app-bootstrap.test.mjs packages/mobile-core/src/consumer-app-bridges.test.mjs packages/mobile-core/src/consumer-app-runtime.test.mjs packages/mobile-core/src/consumer-app-shell.test.mjs packages/mobile-core/src/consumer-app-session.test.mjs packages/mobile-core/src/consumer-app-version.test.mjs packages/mobile-core/src/consumer-api.test.mjs packages/mobile-core/src/consumer-auth-runtime.test.mjs packages/mobile-core/src/consumer-cache.test.mjs packages/mobile-core/src/consumer-errand.test.mjs packages/mobile-core/src/consumer-errand-home.test.mjs packages/mobile-core/src/consumer-errand-pages.test.mjs packages/mobile-core/src/consumer-errand-runtime.test.mjs packages/mobile-core/src/consumer-home-categories.test.mjs packages/mobile-core/src/consumer-legal-runtime.test.mjs packages/mobile-core/src/consumer-modal-components.test.mjs packages/mobile-core/src/consumer-notification-sound.test.mjs packages/mobile-core/src/consumer-order-store.test.mjs packages/mobile-core/src/consumer-runtime-support.test.mjs packages/mobile-core/src/consumer-service-runtime.test.mjs packages/mobile-core/src/consumer-service-shell.test.mjs packages/mobile-core/src/consumer-shop-components.test.mjs packages/mobile-core/src/shop-detail-page.test.mjs packages/mobile-core/src/product-pages.test.mjs packages/mobile-core/src/featured-page.test.mjs packages/mobile-core/src/consumer-notify-bridges.test.mjs packages/mobile-core/src/consumer-request-interceptor.test.mjs packages/mobile-core/src/consumer-rtc-contact.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/home-shell-components.test.mjs packages/mobile-core/src/home-weather-modal.test.mjs packages/mobile-core/src/location.test.mjs packages/mobile-core/src/location-select-page.test.mjs packages/mobile-core/src/platform-runtime.test.mjs packages/mobile-core/src/platform-schema.test.mjs packages/mobile-core/src/portal-runtime.test.mjs packages/mobile-core/src/rtc-call-page.test.mjs packages/mobile-core/src/search-page.test.mjs packages/mobile-core/src/support-runtime.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-my-reviews.test.mjs packages/mobile-core/src/profile-points-mall.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/message-chat-page.test.mjs packages/mobile-core/src/customer-service-page.test.mjs packages/mobile-core/src/client-payment.test.mjs packages/mobile-core/src/push-event-route.test.mjs packages/mobile-core/src/order-after-sales.test.mjs packages/mobile-core/src/order-confirm-page.test.mjs packages/mobile-core/src/order-contact.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-detail-page.test.mjs packages/mobile-core/src/order-list-page.test.mjs packages/mobile-core/src/order-payment-options.test.mjs packages/mobile-core/src/order-support-pages.test.mjs packages/mobile-core/src/phone-contact.test.mjs packages/mobile-core/src/role-sync-shell.test.mjs packages/mobile-core/src/sync-service.test.mjs packages/mobile-core/src/wallet-overview-page.test.mjs packages/mobile-core/src/wallet-bills-page.test.mjs packages/mobile-core/src/wallet-recharge-page.test.mjs packages/mobile-core/src/wallet-withdraw-page.test.mjs"',
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/upload.test.mjs packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/medicine-order.test.mjs packages/mobile-core/src/mobile-client-context.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/dining-buddy.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/auth-portal-pages.test.mjs packages/mobile-core/src/cart-popup-page.test.mjs packages/mobile-core/src/category-pages.test.mjs packages/mobile-core/src/consumer-app-bootstrap.test.mjs packages/mobile-core/src/consumer-app-bridges.test.mjs packages/mobile-core/src/consumer-app-runtime.test.mjs packages/mobile-core/src/consumer-app-shell.test.mjs packages/mobile-core/src/consumer-app-session.test.mjs packages/mobile-core/src/consumer-app-version.test.mjs packages/mobile-core/src/consumer-api.test.mjs packages/mobile-core/src/consumer-auth-runtime.test.mjs packages/mobile-core/src/consumer-cache.test.mjs packages/mobile-core/src/consumer-errand.test.mjs packages/mobile-core/src/consumer-errand-home.test.mjs packages/mobile-core/src/consumer-errand-pages.test.mjs packages/mobile-core/src/consumer-errand-runtime.test.mjs packages/mobile-core/src/consumer-home-categories.test.mjs packages/mobile-core/src/consumer-legal-runtime.test.mjs packages/mobile-core/src/consumer-modal-components.test.mjs packages/mobile-core/src/consumer-notification-sound.test.mjs packages/mobile-core/src/consumer-order-store.test.mjs packages/mobile-core/src/consumer-runtime-support.test.mjs packages/mobile-core/src/consumer-service-runtime.test.mjs packages/mobile-core/src/consumer-service-shell.test.mjs packages/mobile-core/src/consumer-shop-components.test.mjs packages/mobile-core/src/shop-detail-page.test.mjs packages/mobile-core/src/product-pages.test.mjs packages/mobile-core/src/featured-page.test.mjs packages/mobile-core/src/consumer-notify-bridges.test.mjs packages/mobile-core/src/consumer-request-interceptor.test.mjs packages/mobile-core/src/consumer-rtc-contact.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/home-shell-components.test.mjs packages/mobile-core/src/home-weather-modal.test.mjs packages/mobile-core/src/location.test.mjs packages/mobile-core/src/location-select-page.test.mjs packages/mobile-core/src/platform-runtime.test.mjs packages/mobile-core/src/platform-schema.test.mjs packages/mobile-core/src/portal-runtime.test.mjs packages/mobile-core/src/role-runtime-support.test.mjs packages/mobile-core/src/rtc-call-page.test.mjs packages/mobile-core/src/search-page.test.mjs packages/mobile-core/src/support-runtime.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-my-reviews.test.mjs packages/mobile-core/src/profile-points-mall.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/message-chat-page.test.mjs packages/mobile-core/src/customer-service-page.test.mjs packages/mobile-core/src/client-payment.test.mjs packages/mobile-core/src/push-event-route.test.mjs packages/mobile-core/src/order-after-sales.test.mjs packages/mobile-core/src/order-confirm-page.test.mjs packages/mobile-core/src/order-contact.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-detail-page.test.mjs packages/mobile-core/src/order-list-page.test.mjs packages/mobile-core/src/order-payment-options.test.mjs packages/mobile-core/src/order-support-pages.test.mjs packages/mobile-core/src/phone-contact.test.mjs packages/mobile-core/src/role-sync-shell.test.mjs packages/mobile-core/src/sync-service.test.mjs packages/mobile-core/src/wallet-overview-page.test.mjs packages/mobile-core/src/wallet-bills-page.test.mjs packages/mobile-core/src/wallet-recharge-page.test.mjs packages/mobile-core/src/wallet-withdraw-page.test.mjs"',
 );
 assertContains(
   "packages/client-sdk/src/index.js",
@@ -4585,6 +4617,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./role-runtime-support.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./role-sync-shell.js";',
 );
 assertContains(
@@ -4798,6 +4834,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-service-shell": "./src/consumer-service-shell.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./role-runtime-support": "./src/role-runtime-support.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

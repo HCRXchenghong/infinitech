@@ -1,10 +1,11 @@
 import { fetchPublicRuntimeSettings } from './api'
 import {
-  createSupportRuntimeStore,
+  createDefaultRoleSupportRuntimeBindings,
   DEFAULT_SUPPORT_RUNTIME_SETTINGS,
-} from '../../packages/mobile-core/src/support-runtime.js'
+} from '../../packages/mobile-core/src/role-runtime-support.js'
 
-const supportRuntimeStore = createSupportRuntimeStore({
+const supportRuntimeStore = createDefaultRoleSupportRuntimeBindings({
+  role: 'merchant',
   fetchRuntimeSettings: fetchPublicRuntimeSettings,
 })
 
