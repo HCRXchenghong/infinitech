@@ -1,4 +1,21 @@
-export {
+import config from "./config";
+import getLocalDB from "./db";
+import { createConsumerServiceRuntime } from "../../packages/mobile-core/src/consumer-service-runtime.js";
+
+const serviceRuntime = createConsumerServiceRuntime({
+  config,
+  getLocalDB,
+  baseUrl: config.API_BASE_URL,
+  timeout: config.TIMEOUT,
+  productShopMode: "products-query",
+  supportsShopCategory: true,
+  isDev: Boolean(config.isDev),
+  logger: console,
+  uniApp: uni,
+});
+
+export const {
+  getSyncService,
   request,
   getBaseUrl,
   BASE_URL,
@@ -82,4 +99,11 @@ export {
   registerPushDevice,
   unregisterPushDevice,
   ackPushMessage,
-} from "./service-runtime.js";
+  getCachedConsumerAuthRuntimeSettings,
+  loadConsumerAuthRuntimeSettings,
+  resetConsumerAuthRuntimeSettings,
+} = serviceRuntime;
+
+export {
+  DEFAULT_CONSUMER_AUTH_RUNTIME_SETTINGS,
+} from "../../packages/mobile-core/src/consumer-service-runtime.js";

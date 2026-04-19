@@ -1,8 +1,4 @@
-import config from "./config";
-import getSyncService from "./sync";
-import { createConsumerApi } from "../../packages/mobile-core/src/consumer-api.js";
-
-export const {
+export {
   request,
   getBaseUrl,
   BASE_URL,
@@ -86,9 +82,4 @@ export const {
   registerPushDevice,
   unregisterPushDevice,
   ackPushMessage,
-} = createConsumerApi({
-  config,
-  getSyncService,
-  logger: console,
-  uniApp: uni,
-});
+} from "./service-runtime.js";

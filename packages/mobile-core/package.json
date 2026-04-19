@@ -16,6 +16,7 @@
     "./consumer-app-session": "./src/consumer-app-session.js",
     "./consumer-app-version": "./src/consumer-app-version.js",
     "./consumer-api": "./src/consumer-api.js",
+    "./consumer-service-runtime": "./src/consumer-service-runtime.js",
     "./consumer-auth-runtime": "./src/consumer-auth-runtime.js",
     "./consumer-errand-home": "./src/consumer-errand-home.js",
     "./consumer-errand-pages": "./src/consumer-errand-pages.js",

@@ -288,6 +288,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/consumer-app-version.test.mjs",
   "packages/mobile-core/src/consumer-api.js",
   "packages/mobile-core/src/consumer-api.test.mjs",
+  "packages/mobile-core/src/consumer-service-runtime.js",
+  "packages/mobile-core/src/consumer-service-runtime.test.mjs",
   "packages/mobile-core/src/consumer-auth-runtime.js",
   "packages/mobile-core/src/consumer-auth-runtime.test.mjs",
   "packages/mobile-core/src/consumer-cache.js",
@@ -328,10 +330,12 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "app-mobile/shared-ui/app-core/bridges.ts",
   "app-mobile/shared-ui/app-core/runtime.ts",
   "app-mobile/shared-ui/app-core/session.ts",
+  "app-mobile/shared-ui/service-runtime.js",
   "user-vue/shared-ui/app-core/bootstrap.ts",
   "user-vue/shared-ui/app-core/bridges.ts",
   "user-vue/shared-ui/app-core/runtime.ts",
   "user-vue/shared-ui/app-core/session.ts",
+  "user-vue/shared-ui/service-runtime.js",
   "packages/mobile-core/src/rtc-call-page.js",
   "packages/mobile-core/src/rtc-call-page.test.mjs",
   "packages/mobile-core/src/wallet-overview-page.js",
@@ -1052,7 +1056,7 @@ assertContains(
 assertContains("packages/mobile-core/src/consumer-api.js", "extractSMSResult");
 assertContains(
   "user-vue/shared-ui/api.js",
-  'from "../../packages/mobile-core/src/consumer-api.js"',
+  'from "./service-runtime.js"',
 );
 assertContains(
   "packages/mobile-core/src/NotificationDetailPage.vue",
@@ -1064,7 +1068,7 @@ assertContains(
 );
 assertContains(
   "app-mobile/shared-ui/api.js",
-  'from "../../packages/mobile-core/src/consumer-api.js"',
+  'from "./service-runtime.js"',
 );
 assertContains(
   "rider-app/pages/profile/order-settings.vue",
@@ -1651,10 +1655,10 @@ assertContains(
   "packages/mobile-core/src/sync-service.js",
   "export function createMobileSyncServiceGetter(options = {}) {",
 );
-assertContains("user-vue/shared-ui/sync.ts", "createMobileSyncServiceGetter({");
+assertContains("user-vue/shared-ui/sync.ts", 'from "./service-runtime.js"');
 assertContains(
   "app-mobile/shared-ui/sync.ts",
-  "createMobileSyncServiceGetter({",
+  'from "./service-runtime.js"',
 );
 assertContains(
   "merchant-app/shared-ui/sync.ts",
@@ -1687,11 +1691,19 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/auth-runtime.js",
-  "createConsumerAuthRuntimeStore({",
+  'from "./service-runtime.js"',
 );
 assertContains(
   "app-mobile/shared-ui/auth-runtime.js",
-  "createConsumerAuthRuntimeStore({",
+  'from "./service-runtime.js"',
+);
+assertContains(
+  "user-vue/shared-ui/service-runtime.js",
+  "createConsumerServiceRuntime({",
+);
+assertContains(
+  "app-mobile/shared-ui/service-runtime.js",
+  "createConsumerServiceRuntime({",
 );
 assertContains(
   "user-vue/shared-ui/app-core/session.ts",
@@ -3343,8 +3355,16 @@ assertContains(
   "packages/mobile-core/src/consumer-api.js",
   "createUniRequestClientImpl({",
 );
-assertContains("user-vue/shared-ui/api.js", "createConsumerApi({");
-assertContains("app-mobile/shared-ui/api.js", "createConsumerApi({");
+assertContains("user-vue/shared-ui/api.js", 'from "./service-runtime.js"');
+assertContains("app-mobile/shared-ui/api.js", 'from "./service-runtime.js"');
+assertContains(
+  "user-vue/shared-ui/service-runtime.js",
+  'from "../../packages/mobile-core/src/consumer-service-runtime.js"',
+);
+assertContains(
+  "app-mobile/shared-ui/service-runtime.js",
+  'from "../../packages/mobile-core/src/consumer-service-runtime.js"',
+);
 assertContains("merchant-app/shared-ui/api.ts", "createUniRequestClient({");
 assertContains("rider-app/shared-ui/api.ts", "createUniRequestClient({");
 assertContains(
@@ -4326,6 +4346,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./consumer-service-runtime.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./consumer-app-version.js";',
 );
 assertContains(
@@ -4507,6 +4531,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-app-session": "./src/consumer-app-session.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-service-runtime": "./src/consumer-service-runtime.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
