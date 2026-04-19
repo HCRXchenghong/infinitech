@@ -12,6 +12,7 @@
     "./client-payment": "./src/client-payment.js",
     "./consumer-app-bootstrap": "./src/consumer-app-bootstrap.js",
     "./consumer-app-bridges": "./src/consumer-app-bridges.js",
+    "./consumer-app-runtime": "./src/consumer-app-runtime.js",
     "./consumer-app-session": "./src/consumer-app-session.js",
     "./consumer-app-version": "./src/consumer-app-version.js",
     "./consumer-api": "./src/consumer-api.js",

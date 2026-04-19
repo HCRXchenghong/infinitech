@@ -10,6 +10,7 @@ export * from "./auth-portal-pages.js";
 export * from "./category-pages.js";
 export * from "./consumer-app-bootstrap.js";
 export * from "./consumer-app-bridges.js";
+export * from "./consumer-app-runtime.js";
 export * from "./consumer-app-session.js";
 export * from "./consumer-auth-runtime.js";
 export * from "./consumer-app-version.js";

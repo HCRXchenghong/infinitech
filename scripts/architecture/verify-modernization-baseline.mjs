@@ -280,6 +280,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/consumer-app-bootstrap.test.mjs",
   "packages/mobile-core/src/consumer-app-bridges.js",
   "packages/mobile-core/src/consumer-app-bridges.test.mjs",
+  "packages/mobile-core/src/consumer-app-runtime.js",
+  "packages/mobile-core/src/consumer-app-runtime.test.mjs",
   "packages/mobile-core/src/consumer-app-session.js",
   "packages/mobile-core/src/consumer-app-session.test.mjs",
   "packages/mobile-core/src/consumer-app-version.js",
@@ -324,9 +326,11 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/portal-runtime.test.mjs",
   "app-mobile/shared-ui/app-core/bootstrap.ts",
   "app-mobile/shared-ui/app-core/bridges.ts",
+  "app-mobile/shared-ui/app-core/runtime.ts",
   "app-mobile/shared-ui/app-core/session.ts",
   "user-vue/shared-ui/app-core/bootstrap.ts",
   "user-vue/shared-ui/app-core/bridges.ts",
+  "user-vue/shared-ui/app-core/runtime.ts",
   "user-vue/shared-ui/app-core/session.ts",
   "packages/mobile-core/src/rtc-call-page.js",
   "packages/mobile-core/src/rtc-call-page.test.mjs",
@@ -1691,27 +1695,35 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/app-core/session.ts",
-  "createConsumerAppSessionManager({",
+  'from "./runtime"',
+);
+assertContains(
+  "user-vue/shared-ui/app-core/runtime.ts",
+  "createConsumerAppRuntime({",
 );
 assertContains(
   "user-vue/shared-ui/app-core/bridges.ts",
-  "createConsumerAppBridgeManager({",
+  'from "./runtime"',
 );
 assertContains(
   "user-vue/shared-ui/app-core/bootstrap.ts",
-  "createConsumerAppBootstrap({",
+  'from "./runtime"',
 );
 assertContains(
   "app-mobile/shared-ui/app-core/session.ts",
-  "createConsumerAppSessionManager({",
+  'from "./runtime"',
+);
+assertContains(
+  "app-mobile/shared-ui/app-core/runtime.ts",
+  "createConsumerAppRuntime({",
 );
 assertContains(
   "app-mobile/shared-ui/app-core/bridges.ts",
-  "createConsumerAppBridgeManager({",
+  'from "./runtime"',
 );
 assertContains(
   "app-mobile/shared-ui/app-core/bootstrap.ts",
-  "createConsumerAppBootstrap({",
+  'from "./runtime"',
 );
 assertContains(
   "user-vue/shared-ui/app-version.js",
@@ -3405,27 +3417,35 @@ assertContains("app-mobile/App.vue", "bootstrapUserApp");
 assertContains("app-mobile/App.vue", "handleUserAppShow");
 assertContains(
   "user-vue/shared-ui/app-core/bootstrap.ts",
-  'from "../../../packages/mobile-core/src/consumer-app-bootstrap.js"',
+  'from "./runtime"',
 );
 assertContains(
   "user-vue/shared-ui/app-core/bridges.ts",
-  'from "../../../packages/mobile-core/src/consumer-app-bridges.js"',
+  'from "./runtime"',
 );
 assertContains(
   "user-vue/shared-ui/app-core/session.ts",
-  'from "../../../packages/mobile-core/src/consumer-app-session.js"',
+  'from "./runtime"',
+);
+assertContains(
+  "user-vue/shared-ui/app-core/runtime.ts",
+  'from "../../../packages/mobile-core/src/consumer-app-runtime.js"',
 );
 assertContains(
   "app-mobile/shared-ui/app-core/bootstrap.ts",
-  'from "../../../packages/mobile-core/src/consumer-app-bootstrap.js"',
+  'from "./runtime"',
 );
 assertContains(
   "app-mobile/shared-ui/app-core/bridges.ts",
-  'from "../../../packages/mobile-core/src/consumer-app-bridges.js"',
+  'from "./runtime"',
 );
 assertContains(
   "app-mobile/shared-ui/app-core/session.ts",
-  'from "../../../packages/mobile-core/src/consumer-app-session.js"',
+  'from "./runtime"',
+);
+assertContains(
+  "app-mobile/shared-ui/app-core/runtime.ts",
+  'from "../../../packages/mobile-core/src/consumer-app-runtime.js"',
 );
 assertContains(
   "user-vue/shared-ui/errand-runtime.js",
@@ -4298,6 +4318,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./consumer-app-runtime.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./consumer-app-session.js";',
 );
 assertContains(
@@ -4475,6 +4499,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-app-bridges": "./src/consumer-app-bridges.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-app-runtime": "./src/consumer-app-runtime.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
