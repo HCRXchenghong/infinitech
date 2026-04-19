@@ -13,6 +13,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/yuexiang/go-api/internal/admincli"
 	"github.com/yuexiang/go-api/internal/repository"
+	"github.com/yuexiang/go-api/internal/uploadasset"
 	"gorm.io/gorm"
 )
 
@@ -892,7 +893,7 @@ func (s *AdminService) GetMerchant(ctx context.Context, id string) (map[string]i
 		"name":                   merchant.Name,
 		"owner_name":             merchant.OwnerName,
 		"phone":                  merchant.Phone,
-		"business_license_image": merchant.BusinessLicenseImage,
+		"business_license_image": uploadasset.BuildConfiguredPreviewURL(merchant.BusinessLicenseImage),
 		"is_online":              merchant.IsOnline,
 		"created_at":             formatTime(merchant.CreatedAt),
 		"updated_at":             formatTime(merchant.UpdatedAt),
@@ -966,12 +967,19 @@ func (s *AdminService) UpdateMerchant(ctx context.Context, id string, phone, nam
 	if strings.TrimSpace(businessLicenseImage) == "" {
 		businessLicenseImage = merchant.BusinessLicenseImage
 	}
+	normalizedBusinessLicenseImage := strings.TrimSpace(businessLicenseImage)
+	if extracted := uploadasset.ExtractReference(normalizedBusinessLicenseImage); extracted != "" {
+		normalizedBusinessLicenseImage, err = normalizePrivateDocumentReference(ctx, normalizedBusinessLicenseImage, uploadasset.DomainMerchantDocument)
+		if err != nil {
+			return err
+		}
+	}
 
 	updates := map[string]interface{}{
 		"phone":                  phone,
 		"name":                   name,
 		"owner_name":             ownerName,
-		"business_license_image": strings.TrimSpace(businessLicenseImage),
+		"business_license_image": normalizedBusinessLicenseImage,
 	}
 	return s.db.WithContext(ctx).Model(&repository.Merchant{}).Where("id = ?", resolvedID).Updates(updates).Error
 }

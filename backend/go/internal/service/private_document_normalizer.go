@@ -3,10 +3,14 @@ package service
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/yuexiang/go-api/internal/uploadasset"
 )
+
+var documentPublicUploadsRootPath = filepath.Join(".", "data", "uploads")
+var documentPrivateUploadsRootPath = filepath.Join(".", "data", "private", "uploads")
 
 func resolveDocumentActorID(ctx context.Context, role string) string {
 	switch strings.ToLower(strings.TrimSpace(role)) {
@@ -22,6 +26,16 @@ func resolveDocumentActorID(ctx context.Context, role string) string {
 }
 
 func normalizePrivateDocumentReference(ctx context.Context, raw, domain string) (string, error) {
+	operatorRole := authContextRole(ctx)
+	operatorID := resolveDocumentActorID(ctx, operatorRole)
+	if operatorRole == "" || operatorID == "" {
+		return "", fmt.Errorf("鉴权失败")
+	}
+
+	return normalizePrivateDocumentReferenceForOwner(raw, domain, operatorRole, operatorID)
+}
+
+func normalizePrivateDocumentReferenceForOwner(raw, domain, ownerRole, ownerID string) (string, error) {
 	value := strings.TrimSpace(raw)
 	if value == "" {
 		return "", nil
@@ -29,7 +43,24 @@ func normalizePrivateDocumentReference(ctx context.Context, raw, domain string) 
 
 	ref := uploadasset.ExtractReference(value)
 	if ref == "" {
-		return value, nil
+		return "", fmt.Errorf("敏感文档必须通过受控上传接口生成")
+	}
+	if normalizedLegacyPath, normalizedDomain, ok := uploadasset.NormalizeProtectedLegacyPath(ref); ok {
+		if normalizedDomain != strings.ToLower(strings.TrimSpace(domain)) {
+			return "", fmt.Errorf("私有文档业务域不匹配")
+		}
+		nextRef, _, err := uploadasset.PromoteLegacyProtectedAsset(
+			normalizedLegacyPath,
+			domain,
+			ownerRole,
+			ownerID,
+			documentPublicUploadsRootPath,
+			documentPrivateUploadsRootPath,
+		)
+		if err != nil {
+			return "", err
+		}
+		return nextRef, nil
 	}
 
 	parsed, ok := uploadasset.ParseReference(ref)
@@ -40,16 +71,13 @@ func normalizePrivateDocumentReference(ctx context.Context, raw, domain string) 
 		return "", fmt.Errorf("私有文档业务域不匹配")
 	}
 
-	operatorRole := authContextRole(ctx)
-	if operatorRole == "admin" {
+	normalizedOwnerRole := strings.ToLower(strings.TrimSpace(ownerRole))
+	normalizedOwnerID := strings.TrimSpace(ownerID)
+	if normalizedOwnerRole == "admin" {
 		return ref, nil
 	}
 
-	operatorID := resolveDocumentActorID(ctx, operatorRole)
-	if operatorRole == "" || operatorID == "" {
-		return "", fmt.Errorf("鉴权失败")
-	}
-	if parsed.OwnerRole != operatorRole || parsed.OwnerID != operatorID {
+	if parsed.OwnerRole != normalizedOwnerRole || parsed.OwnerID != normalizedOwnerID {
 		return "", fmt.Errorf("不能使用其他账号上传的私有文档")
 	}
 	return ref, nil

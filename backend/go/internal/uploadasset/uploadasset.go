@@ -5,7 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/url"
+	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -127,13 +130,121 @@ func ResolveAbsolutePath(root, raw string) (Reference, string, error) {
 	return ref, cleanAbsPath, nil
 }
 
+func NormalizeProtectedLegacyPath(raw string) (string, string, bool) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return "", "", false
+	}
+
+	if parsed, err := url.Parse(value); err == nil && strings.TrimSpace(parsed.Path) != "" {
+		value = strings.TrimSpace(parsed.Path)
+	}
+
+	if !strings.HasPrefix(value, "/uploads/") {
+		return "", "", false
+	}
+
+	cleanPath := path.Clean(value)
+	switch {
+	case strings.HasPrefix(cleanPath, "/uploads/"+DomainMerchantDocument+"/"):
+		return cleanPath, DomainMerchantDocument, true
+	case strings.HasPrefix(cleanPath, "/uploads/"+DomainMedicalDocument+"/"):
+		return cleanPath, DomainMedicalDocument, true
+	default:
+		return "", "", false
+	}
+}
+
+func ResolveLegacyProtectedAbsolutePath(publicRoot, raw string) (string, string, string, error) {
+	normalizedPath, domain, ok := NormalizeProtectedLegacyPath(raw)
+	if !ok {
+		return "", "", "", fmt.Errorf("legacy protected asset path is invalid")
+	}
+
+	relative := strings.TrimPrefix(normalizedPath, "/uploads/")
+	relative = filepath.Clean(filepath.FromSlash(relative))
+	if relative == "." || relative == "" || strings.HasPrefix(relative, "..") {
+		return "", "", "", fmt.Errorf("legacy protected asset path is invalid")
+	}
+
+	cleanRoot := filepath.Clean(strings.TrimSpace(publicRoot))
+	if cleanRoot == "" || cleanRoot == "." {
+		return "", "", "", fmt.Errorf("legacy protected asset root is invalid")
+	}
+
+	absPath := filepath.Join(cleanRoot, relative)
+	cleanAbsPath := filepath.Clean(absPath)
+	if cleanAbsPath != cleanRoot && !strings.HasPrefix(cleanAbsPath, cleanRoot+string(filepath.Separator)) {
+		return "", "", "", fmt.Errorf("legacy protected asset path is invalid")
+	}
+
+	filename := filepath.Base(cleanAbsPath)
+	if filename == "." || filename == "" {
+		return "", "", "", fmt.Errorf("legacy protected asset path is invalid")
+	}
+
+	return domain, cleanAbsPath, filename, nil
+}
+
+func PromoteLegacyProtectedAsset(raw, domain, ownerRole, ownerID, publicRoot, privateRoot string) (string, bool, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return "", false, nil
+	}
+
+	if extracted := ExtractReference(value); extracted != "" {
+		value = extracted
+	}
+	if IsPrivateReference(value) {
+		return value, false, nil
+	}
+
+	resolvedPath, resolvedDomain, ok := NormalizeProtectedLegacyPath(value)
+	if !ok {
+		return value, false, nil
+	}
+	if strings.ToLower(strings.TrimSpace(domain)) != resolvedDomain {
+		return "", false, fmt.Errorf("legacy protected asset domain mismatch")
+	}
+
+	_, srcPath, filename, err := ResolveLegacyProtectedAbsolutePath(publicRoot, resolvedPath)
+	if err != nil {
+		return "", false, err
+	}
+	if _, statErr := os.Stat(srcPath); statErr != nil {
+		if os.IsNotExist(statErr) {
+			return "", false, fmt.Errorf("legacy protected asset is missing")
+		}
+		return "", false, fmt.Errorf("legacy protected asset read failed")
+	}
+
+	normalizedExt := strings.ToLower(filepath.Ext(filename))
+	destFilename := fmt.Sprintf("%d_%s_%s%s", time.Now().UnixNano(), strings.TrimSpace(ownerID), strings.ToLower(strings.TrimSpace(domain)), normalizedExt)
+	destDir := BuildStorageDir(privateRoot, domain, ownerRole, ownerID)
+	destPath := filepath.Join(destDir, destFilename)
+	if err := moveFileReplace(srcPath, destPath); err != nil {
+		return "", false, fmt.Errorf("legacy protected asset migration failed")
+	}
+
+	return BuildReference(domain, ownerRole, ownerID, destFilename), true, nil
+}
+
 func BuildPreviewURL(raw, secret string, now time.Time, ttl time.Duration) string {
 	value := strings.TrimSpace(raw)
 	if value == "" {
 		return ""
 	}
+
+	if extracted := ExtractReference(value); extracted != "" {
+		value = extracted
+	}
+
 	if !IsPrivateReference(value) {
-		return value
+		if normalizedLegacyPath, _, ok := NormalizeProtectedLegacyPath(value); ok {
+			value = normalizedLegacyPath
+		} else {
+			return value
+		}
 	}
 
 	normalizedSecret := strings.TrimSpace(secret)
@@ -186,6 +297,9 @@ func ExtractReference(raw string) string {
 	if IsPrivateReference(value) {
 		return value
 	}
+	if normalizedLegacyPath, _, ok := NormalizeProtectedLegacyPath(value); ok {
+		return normalizedLegacyPath
+	}
 
 	parsed, err := url.Parse(value)
 	if err != nil {
@@ -203,4 +317,32 @@ func signPreviewToken(ref string, expiresAt int64, secret string) string {
 	_, _ = mac.Write([]byte("\n"))
 	_, _ = mac.Write([]byte(strconv.FormatInt(expiresAt, 10)))
 	return hex.EncodeToString(mac.Sum(nil))
+}
+
+func moveFileReplace(srcPath, destPath string) error {
+	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+		return err
+	}
+	if err := os.Rename(srcPath, destPath); err == nil {
+		return nil
+	}
+
+	srcFile, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	destFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(destFile, srcFile); err != nil {
+		destFile.Close()
+		return err
+	}
+	if err := destFile.Close(); err != nil {
+		return err
+	}
+	return os.Remove(srcPath)
 }

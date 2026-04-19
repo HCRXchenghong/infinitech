@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -58,6 +60,40 @@ func TestNormalizeRequestExtraMedicalDocumentCanonicalizesPreviewURL(t *testing.
 	}
 	if requestExtra["prescriptionFileRef"] != ref {
 		t.Fatalf("expected prescriptionFileRef to be set, got %v", requestExtra["prescriptionFileRef"])
+	}
+}
+
+func TestNormalizePrivateDocumentReferencePromotesLegacyPublicPath(t *testing.T) {
+	publicRoot := t.TempDir()
+	privateRoot := t.TempDir()
+
+	previousPublicRoot := documentPublicUploadsRootPath
+	previousPrivateRoot := documentPrivateUploadsRootPath
+	documentPublicUploadsRootPath = publicRoot
+	documentPrivateUploadsRootPath = privateRoot
+	defer func() {
+		documentPublicUploadsRootPath = previousPublicRoot
+		documentPrivateUploadsRootPath = previousPrivateRoot
+	}()
+
+	legacyPath := filepath.Join(publicRoot, uploadasset.DomainMerchantDocument, "license.png")
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0755); err != nil {
+		t.Fatalf("failed to create legacy dir: %v", err)
+	}
+	if err := os.WriteFile(legacyPath, []byte("merchant"), 0644); err != nil {
+		t.Fatalf("failed to seed legacy file: %v", err)
+	}
+
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, "operator_role", "merchant")
+	ctx = context.WithValue(ctx, "merchant_id", "18")
+
+	normalized, err := normalizePrivateDocumentReference(ctx, "/uploads/merchant_document/license.png", uploadasset.DomainMerchantDocument)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !uploadasset.IsPrivateReference(normalized) {
+		t.Fatalf("expected migrated private ref, got %q", normalized)
 	}
 }
 

@@ -3,6 +3,8 @@ package uploadasset
 import (
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -58,6 +60,49 @@ func TestBuildPreviewURLAndVerify(t *testing.T) {
 	}
 	if VerifyPreviewQuery(ref, values["expires"], values["signature"], "preview-secret", now.Add(11*time.Minute)) {
 		t.Fatal("expected expired preview query to fail")
+	}
+}
+
+func TestBuildPreviewURLSignsProtectedLegacyPath(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	previewURL := BuildPreviewURL("/uploads/merchant_document/license.png", "preview-secret", now, 10*time.Minute)
+	if !strings.Contains(previewURL, PreviewPath) {
+		t.Fatalf("expected preview url to use controlled preview path, got %q", previewURL)
+	}
+
+	values, err := parsePreviewQuery(previewURL)
+	if err != nil {
+		t.Fatalf("failed to parse preview query: %v", err)
+	}
+	if values["asset_id"] != "/uploads/merchant_document/license.png" {
+		t.Fatalf("expected asset_id to preserve legacy path, got %q", values["asset_id"])
+	}
+}
+
+func TestPromoteLegacyProtectedAssetMovesFile(t *testing.T) {
+	publicRoot := t.TempDir()
+	privateRoot := t.TempDir()
+
+	legacyPath := filepath.Join(publicRoot, DomainMedicalDocument, "rx.png")
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0755); err != nil {
+		t.Fatalf("failed to create legacy dir: %v", err)
+	}
+	if err := os.WriteFile(legacyPath, []byte("rx"), 0644); err != nil {
+		t.Fatalf("failed to seed legacy file: %v", err)
+	}
+
+	ref, changed, err := PromoteLegacyProtectedAsset("/uploads/medical_document/rx.png", DomainMedicalDocument, "user", "42", publicRoot, privateRoot)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !changed {
+		t.Fatal("expected asset to be moved")
+	}
+	if !IsPrivateReference(ref) {
+		t.Fatalf("expected private ref, got %q", ref)
+	}
+	if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
+		t.Fatalf("expected legacy file to be moved away, stat err=%v", err)
 	}
 }
 

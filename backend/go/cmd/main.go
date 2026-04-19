@@ -328,6 +328,21 @@ func main() {
 		}
 	}
 
+	if privateDocumentStats, privateDocumentErr := service.MigrateLegacyPrivateDocuments(context.Background(), db); privateDocumentErr != nil {
+		log.Printf("⚠️  私有文档迁移失败: %v", privateDocumentErr)
+	} else {
+		log.Printf(
+			"✅ 私有文档迁移完成: merchants=%d merchant_fields=%d shops=%d shop_fields=%d orders=%d order_payloads=%d errors=%d",
+			privateDocumentStats.MerchantsUpdated,
+			privateDocumentStats.MerchantFieldsMoved,
+			privateDocumentStats.ShopsUpdated,
+			privateDocumentStats.ShopFieldsMoved,
+			privateDocumentStats.OrdersUpdated,
+			privateDocumentStats.OrderPayloadsUpdated,
+			privateDocumentStats.Errors,
+		)
+	}
+
 	// 兜底自愈：确保 shops 表的今日推荐字段已存在（兼容历史库迁移不完整场景）
 	if err := ensureShopTodayRecommendColumns(db); err != nil {
 		log.Printf("⚠️  今日推荐字段检查失败: %v", err)
@@ -453,7 +468,7 @@ func main() {
 	}
 	r.Use(middleware.UnifiedIDResolver(db))
 
-	// 骑手证件已切换为私有资源，禁止继续经公开 uploads 直出
+	// 敏感文档已切换为受控访问，禁止继续经公开 uploads 直出
 	blockLegacyPrivateDocument := func(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
 			"success": false,
@@ -462,6 +477,10 @@ func main() {
 	}
 	r.GET("/uploads/certs/*filepath", blockLegacyPrivateDocument)
 	r.HEAD("/uploads/certs/*filepath", blockLegacyPrivateDocument)
+	r.GET("/uploads/merchant_document/*filepath", blockLegacyPrivateDocument)
+	r.HEAD("/uploads/merchant_document/*filepath", blockLegacyPrivateDocument)
+	r.GET("/uploads/medical_document/*filepath", blockLegacyPrivateDocument)
+	r.HEAD("/uploads/medical_document/*filepath", blockLegacyPrivateDocument)
 
 	// 静态资源
 	r.Static("/uploads", "./data/uploads")

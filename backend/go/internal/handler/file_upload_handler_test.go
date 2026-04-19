@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yuexiang/go-api/internal/uploadasset"
@@ -276,5 +277,44 @@ func TestFileUploadHandlerPreviewPrivateAssetStreamsFile(t *testing.T) {
 	}
 	if body := previewRecorder.Body.String(); body != "upload-payload" {
 		t.Fatalf("expected preview body upload-payload, got %q", body)
+	}
+}
+
+func TestFileUploadHandlerPreviewPrivateAssetStreamsLegacyProtectedFile(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get current dir: %v", err)
+	}
+	tempDir := t.TempDir()
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("failed to chdir to temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(originalDir)
+	}()
+
+	legacyPath := filepath.Join(tempDir, "data", "uploads", uploadDomainMerchantDocument, "license.png")
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0755); err != nil {
+		t.Fatalf("failed to create legacy uploads dir: %v", err)
+	}
+	if err := os.WriteFile(legacyPath, []byte("legacy-upload"), 0644); err != nil {
+		t.Fatalf("failed to seed legacy upload: %v", err)
+	}
+
+	previewURL := uploadasset.BuildPreviewURL("/uploads/merchant_document/license.png", "preview-secret", time.Now(), uploadasset.DefaultPreviewTTL)
+	request := httptest.NewRequest(http.MethodGet, previewURL, nil)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = request
+
+	NewFileUploadHandler("preview-secret").PreviewPrivateAsset(ctx)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected preview status 200, got %d", recorder.Code)
+	}
+	if body := recorder.Body.String(); body != "legacy-upload" {
+		t.Fatalf("expected legacy preview body, got %q", body)
 	}
 }

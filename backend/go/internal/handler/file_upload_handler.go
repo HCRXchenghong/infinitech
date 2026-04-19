@@ -22,6 +22,7 @@ type FileUploadHandler struct {
 const generalUploadMaxBytes int64 = 10 * 1024 * 1024
 
 var generalPrivateUploadsRootPath = filepath.Join(".", "data", "private", "uploads")
+var generalPublicUploadsRootPath = filepath.Join(".", "data", "uploads")
 
 const (
 	uploadDomainAfterSalesEvidence = "after_sales_evidence"
@@ -494,12 +495,33 @@ func (h *FileUploadHandler) PreviewPrivateAsset(c *gin.Context) {
 		return
 	}
 
-	ref, absPath, err := uploadasset.ResolveAbsolutePath(generalPrivateUploadsRootPath, assetID)
+	if ref, absPath, err := uploadasset.ResolveAbsolutePath(generalPrivateUploadsRootPath, assetID); err == nil {
+		if !privateGeneralUploadDomains[ref.Domain] {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+		if _, statErr := os.Stat(absPath); statErr != nil {
+			if os.IsNotExist(statErr) {
+				c.AbortWithStatus(http.StatusNotFound)
+				return
+			}
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		c.Header("Cache-Control", "private, max-age=300")
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("Content-Type", contentTypeByFilename(ref.Filename))
+		c.File(absPath)
+		return
+	}
+
+	domain, absPath, filename, err := uploadasset.ResolveLegacyProtectedAbsolutePath(generalPublicUploadsRootPath, assetID)
 	if err != nil {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-	if !privateGeneralUploadDomains[ref.Domain] {
+	if !privateGeneralUploadDomains[domain] {
 		c.AbortWithStatus(http.StatusForbidden)
 		return
 	}
@@ -514,6 +536,6 @@ func (h *FileUploadHandler) PreviewPrivateAsset(c *gin.Context) {
 
 	c.Header("Cache-Control", "private, max-age=300")
 	c.Header("X-Content-Type-Options", "nosniff")
-	c.Header("Content-Type", contentTypeByFilename(ref.Filename))
+	c.Header("Content-Type", contentTypeByFilename(filename))
 	c.File(absPath)
 }
