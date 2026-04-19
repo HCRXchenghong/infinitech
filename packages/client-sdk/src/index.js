@@ -10,6 +10,7 @@ export * from "./onboarding-invite.js";
 export * from "./push-events.js";
 export * from "./push-registration.js";
 export * from "./realtime-notify.js";
+export * from "./role-auth-shell.js";
 export * from "./role-auth-session.js";
 export * from "./role-notify-bridges.js";
 export * from "./role-notify-shell.js";

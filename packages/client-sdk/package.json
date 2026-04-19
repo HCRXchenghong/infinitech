@@ -17,6 +17,7 @@
     "./push-events": "./src/push-events.js",
     "./push-registration": "./src/push-registration.js",
     "./realtime-notify": "./src/realtime-notify.js",
+    "./role-auth-shell": "./src/role-auth-shell.js",
     "./role-auth-session": "./src/role-auth-session.js",
     "./role-notify-bridges": "./src/role-notify-bridges.js",
     "./role-notify-shell": "./src/role-notify-shell.js",
