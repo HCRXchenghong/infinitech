@@ -2094,9 +2094,9 @@ assertContains(
   "backend/go/internal/service/payment_runtime.go",
   `"allowStubBlocked"`,
 );
-assertContains(
+assertMatches(
   "backend/go/internal/handler/rider_cert_storage.go",
-  "private://rider-cert/",
+  /private:\/\/rider-cert\/|ridercert\.PrivateScheme/,
 );
 assertContains(
   "backend/go/cmd/main.go",

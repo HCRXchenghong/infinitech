@@ -13,41 +13,23 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yuexiang/go-api/internal/repository"
+	"github.com/yuexiang/go-api/internal/ridercert"
 	"github.com/yuexiang/go-api/internal/uploadasset"
 	"github.com/yuexiang/go-api/internal/utils"
 	"gorm.io/gorm"
 )
 
-const riderCertPrivateScheme = "private://rider-cert/"
+const riderCertPrivateScheme = ridercert.PrivateScheme
 
 var riderCertPrivateRootPath = filepath.Join(".", "data", "private", "rider-certs")
 var riderPublicUploadsRootPath = filepath.Join(".", "data", "uploads")
 
-var riderCertAllowedFields = map[string]struct{}{
-	"id_card_front": {},
-	"id_card_back":  {},
-	"health_cert":   {},
-}
-
 func normalizeRiderCertField(raw string) (string, bool) {
-	field := strings.TrimSpace(raw)
-	_, ok := riderCertAllowedFields[field]
-	return field, ok
+	return ridercert.NormalizeField(raw)
 }
 
 func buildRiderCertPreviewURL(riderID uint, field, raw string) string {
-	value := strings.TrimSpace(raw)
-	if value == "" {
-		return ""
-	}
-	if uploadasset.IsPrivateReference(value) {
-		return uploadasset.BuildConfiguredPreviewURL(value)
-	}
-	normalizedField, ok := normalizeRiderCertField(field)
-	if !ok {
-		return ""
-	}
-	return fmt.Sprintf("/api/riders/%d/cert?field=%s", riderID, normalizedField)
+	return ridercert.BuildPreviewURL(riderID, field, raw)
 }
 
 func buildRiderCertStorageDir(riderID uint, field string) string {
@@ -55,13 +37,7 @@ func buildRiderCertStorageDir(riderID uint, field string) string {
 }
 
 func buildRiderCertPrivateRef(riderID uint, field, filename string) string {
-	return fmt.Sprintf(
-		"%s%d/%s/%s",
-		riderCertPrivateScheme,
-		riderID,
-		field,
-		filepath.Base(strings.TrimSpace(filename)),
-	)
+	return ridercert.BuildPrivateReference(riderID, field, filename)
 }
 
 func resolveLegacyUploadAbsPath(raw string) (string, string, error) {
@@ -88,20 +64,15 @@ func resolveLegacyUploadAbsPath(raw string) (string, string, error) {
 
 func resolveRiderCertPrivateAbsPath(riderID uint, field, raw string) (string, string, error) {
 	value := strings.TrimSpace(raw)
-	if !strings.HasPrefix(value, riderCertPrivateScheme) {
+	if !ridercert.IsPrivateReference(value) {
 		return "", "", fmt.Errorf("证件资源引用无效")
 	}
-	relative := strings.TrimPrefix(value, riderCertPrivateScheme)
-	parts := strings.Split(relative, "/")
-	if len(parts) != 3 {
+	ownerID, parsedField, filename, ok := ridercert.ParsePrivateReference(value)
+	if !ok {
 		return "", "", fmt.Errorf("证件资源引用无效")
 	}
 	expectedID := strconv.FormatUint(uint64(riderID), 10)
-	if parts[0] != expectedID || parts[1] != field {
-		return "", "", fmt.Errorf("证件资源引用无效")
-	}
-	filename := filepath.Base(strings.TrimSpace(parts[2]))
-	if filename == "." || filename == "" {
+	if ownerID != expectedID || parsedField != field {
 		return "", "", fmt.Errorf("证件资源引用无效")
 	}
 	absPath := filepath.Join(buildRiderCertStorageDir(riderID, field), filename)
@@ -171,7 +142,7 @@ func promoteLegacyRiderCertReference(riderID uint, field, raw string) (string, b
 	if value == "" {
 		return "", false, nil
 	}
-	if strings.HasPrefix(value, riderCertPrivateScheme) {
+	if ridercert.IsPrivateReference(value) {
 		if _, _, err := resolveRiderCertPrivateAbsPath(riderID, field, value); err != nil {
 			return "", false, err
 		}

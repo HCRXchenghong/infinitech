@@ -12,6 +12,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/yuexiang/go-api/internal/idkit"
 	"github.com/yuexiang/go-api/internal/repository"
+	"github.com/yuexiang/go-api/internal/ridercert"
 	svc "github.com/yuexiang/go-api/internal/service"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -214,13 +215,13 @@ func (h *RiderHandler) UpdateProfile(c *gin.Context) {
 	updates := make(map[string]interface{})
 	for _, field := range allowedFields {
 		if val, ok := req[field]; ok {
-			if _, certField := riderCertAllowedFields[field]; certField {
+			if _, certField := ridercert.NormalizeField(field); certField {
 				normalized := strings.TrimSpace(fmt.Sprint(val))
 				if normalized == "" {
 					updates[field] = ""
 					continue
 				}
-				nextRef, _, normalizeErr := promoteLegacyRiderCertReference(riderID, field, normalized)
+				nextRef, normalizeErr := ridercert.NormalizeOwnedUpdateReference(riderID, field, normalized, riderVerificationFieldValue(updates, field, currentRiderValueByField(currentRider, field)))
 				if normalizeErr != nil {
 					respondRiderInvalidRequest(c, normalizeErr.Error())
 					return
@@ -263,6 +264,22 @@ func (h *RiderHandler) UpdateProfile(c *gin.Context) {
 		"updated": true,
 		"fields":  updates,
 	})
+}
+
+func currentRiderValueByField(rider *repository.Rider, field string) string {
+	if rider == nil {
+		return ""
+	}
+	switch field {
+	case "id_card_front":
+		return rider.IDCardFront
+	case "id_card_back":
+		return rider.IDCardBack
+	case "health_cert":
+		return rider.HealthCert
+	default:
+		return ""
+	}
 }
 
 // DownloadCert 鉴权下载骑手私有证件

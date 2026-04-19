@@ -8,6 +8,8 @@ import (
 	"github.com/glebarez/sqlite"
 	"github.com/yuexiang/go-api/internal/admincli"
 	"github.com/yuexiang/go-api/internal/repository"
+	"github.com/yuexiang/go-api/internal/ridercert"
+	"github.com/yuexiang/go-api/internal/uploadasset"
 	"gorm.io/gorm"
 )
 
@@ -181,5 +183,53 @@ func TestEnsureBootstrapAdminRequiresExplicitPassword(t *testing.T) {
 	}
 	if admin != nil {
 		t.Fatalf("expected no bootstrap admin result, got %#v", admin)
+	}
+}
+
+func TestUpdateRiderRejectsArbitraryPublicCertPath(t *testing.T) {
+	svc, db := newAdminServiceForSecurityTest(t)
+
+	rider := repository.Rider{
+		Phone:        "13800138011",
+		Name:         "Rider",
+		PasswordHash: "hash",
+	}
+	if err := db.Create(&rider).Error; err != nil {
+		t.Fatalf("create rider failed: %v", err)
+	}
+
+	if err := svc.UpdateRider(context.Background(), "1", rider.Phone, "Updated Rider", "/uploads/images/other.png", "", ""); err == nil {
+		t.Fatal("expected arbitrary public cert path to be rejected")
+	}
+}
+
+func TestUpdateRiderAcceptsOwnedControlledCertRefs(t *testing.T) {
+	svc, db := newAdminServiceForSecurityTest(t)
+
+	rider := repository.Rider{
+		Phone:        "13800138012",
+		Name:         "Rider",
+		PasswordHash: "hash",
+	}
+	if err := db.Create(&rider).Error; err != nil {
+		t.Fatalf("create rider failed: %v", err)
+	}
+
+	onboardingRef := uploadasset.BuildReference(uploadasset.DomainOnboardingDocument, "rider", "1", "id-front.png")
+	if err := svc.UpdateRider(context.Background(), "1", rider.Phone, "Updated Rider", onboardingRef, "", ""); err != nil {
+		t.Fatalf("expected owned onboarding ref to be accepted, got %v", err)
+	}
+
+	var updated repository.Rider
+	if err := db.First(&updated, rider.ID).Error; err != nil {
+		t.Fatalf("load updated rider failed: %v", err)
+	}
+	if updated.IDCardFront != onboardingRef {
+		t.Fatalf("expected onboarding ref %q, got %q", onboardingRef, updated.IDCardFront)
+	}
+
+	privateRef := ridercert.BuildPrivateReference(rider.ID, "id_card_front", "id-front.png")
+	if err := svc.UpdateRider(context.Background(), "1", rider.Phone, "Updated Rider Again", privateRef, "", ""); err != nil {
+		t.Fatalf("expected rider private ref to be accepted, got %v", err)
 	}
 }

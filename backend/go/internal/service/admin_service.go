@@ -13,6 +13,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/yuexiang/go-api/internal/admincli"
 	"github.com/yuexiang/go-api/internal/repository"
+	"github.com/yuexiang/go-api/internal/ridercert"
 	"github.com/yuexiang/go-api/internal/uploadasset"
 	"gorm.io/gorm"
 )
@@ -37,14 +38,7 @@ func riderOnlineActive(rider repository.Rider, now time.Time) bool {
 }
 
 func adminRiderCertPreviewURL(riderID uint, field, raw string) string {
-	value := strings.TrimSpace(raw)
-	if value == "" {
-		return ""
-	}
-	if strings.HasPrefix(value, "private://rider-cert/") {
-		return fmt.Sprintf("/api/riders/%d/cert?field=%s", riderID, strings.TrimSpace(field))
-	}
-	return uploadasset.BuildConfiguredPreviewURL(value)
+	return ridercert.BuildPreviewURL(riderID, field, raw)
 }
 
 func NewAdminService(db *gorm.DB, redis *redis.Client, tokenSecret string) *AdminService {
@@ -772,6 +766,13 @@ func (s *AdminService) UpdateRider(ctx context.Context, id string, phone, name, 
 	if strings.TrimSpace(idCardFront) == "" {
 		idCardFront = rider.IDCardFront
 	}
+	normalizedIDCardFront := strings.TrimSpace(idCardFront)
+	if normalizedIDCardFront != "" {
+		normalizedIDCardFront, err = ridercert.NormalizeOwnedUpdateReference(rider.ID, "id_card_front", normalizedIDCardFront, rider.IDCardFront)
+		if err != nil {
+			return err
+		}
+	}
 	if strings.TrimSpace(emergencyContactName) == "" {
 		emergencyContactName = rider.EmergencyContactName
 	}
@@ -782,7 +783,7 @@ func (s *AdminService) UpdateRider(ctx context.Context, id string, phone, name, 
 	updates := map[string]interface{}{
 		"phone":                   strings.TrimSpace(phone),
 		"name":                    strings.TrimSpace(name),
-		"id_card_front":           strings.TrimSpace(idCardFront),
+		"id_card_front":           normalizedIDCardFront,
 		"emergency_contact_name":  strings.TrimSpace(emergencyContactName),
 		"emergency_contact_phone": strings.TrimSpace(emergencyContactPhone),
 	}
