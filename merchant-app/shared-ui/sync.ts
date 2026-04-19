@@ -5,15 +5,11 @@
 
 import config from "./config";
 import getLocalDB from "./db";
-import { createMobileSyncServiceGetter } from "../../packages/mobile-core/src/sync-service.js";
+import { createDefaultRoleSyncServiceGetter } from "../../packages/mobile-core/src/role-sync-shell.js";
 
-const getSyncService = createMobileSyncServiceGetter({
+const getSyncService = createDefaultRoleSyncServiceGetter({
+  config,
   getLocalDB,
-  baseUrl: config.API_BASE_URL,
-  timeout: config.TIMEOUT,
-  productShopMode: "shop-menu",
-  supportsShopCategory: false,
-  isDev: Boolean(config.isDev),
   logger: console,
 });
 

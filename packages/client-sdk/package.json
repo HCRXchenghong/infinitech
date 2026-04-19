@@ -19,6 +19,7 @@
     "./realtime-notify": "./src/realtime-notify.js",
     "./role-auth-session": "./src/role-auth-session.js",
     "./role-notify-bridges": "./src/role-notify-bridges.js",
+    "./role-notify-shell": "./src/role-notify-shell.js",
     "./realtime-token": "./src/realtime-token.js",
     "./rtc-contact": "./src/rtc-contact.js",
     "./rtc-media": "./src/rtc-media.js",

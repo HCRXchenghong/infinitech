@@ -145,6 +145,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/client-sdk/src/role-notify-bridges.js",
   "packages/client-sdk/src/role-notify-bridges.d.ts",
   "packages/client-sdk/src/role-notify-bridges.test.mjs",
+  "packages/client-sdk/src/role-notify-shell.js",
+  "packages/client-sdk/src/role-notify-shell.test.mjs",
   "packages/client-sdk/src/realtime-token.js",
   "packages/client-sdk/src/realtime-token.d.ts",
   "packages/client-sdk/src/realtime-token.test.mjs",
@@ -458,6 +460,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "app-mobile/components/ShopCard.vue",
   "user-vue/components/SuccessModal.vue",
   "app-mobile/components/SuccessModal.vue",
+  "packages/mobile-core/src/role-sync-shell.js",
+  "packages/mobile-core/src/role-sync-shell.test.mjs",
   "packages/mobile-core/src/sync-service.js",
   "packages/mobile-core/src/sync-service.d.ts",
   "packages/mobile-core/src/sync-service.test.mjs",
@@ -1695,6 +1699,10 @@ assertContains(
   "packages/mobile-core/src/sync-service.js",
   "export function createMobileSyncServiceGetter(options = {}) {",
 );
+assertContains(
+  "packages/mobile-core/src/role-sync-shell.js",
+  "export function createDefaultRoleSyncServiceGetter(options = {}) {",
+);
 assertContains("user-vue/shared-ui/sync.ts", 'from "./service-runtime.js"');
 assertContains(
   "app-mobile/shared-ui/sync.ts",
@@ -1702,17 +1710,20 @@ assertContains(
 );
 assertContains(
   "merchant-app/shared-ui/sync.ts",
-  "createMobileSyncServiceGetter({",
+  "createDefaultRoleSyncServiceGetter({",
 );
 assertContains(
   "merchant-app/shared-ui/sync.ts",
-  'productShopMode: "shop-menu"',
+  'from "../../packages/mobile-core/src/role-sync-shell.js"',
 );
 assertContains(
   "rider-app/shared-ui/sync.ts",
-  "createMobileSyncServiceGetter({",
+  "createDefaultRoleSyncServiceGetter({",
 );
-assertContains("rider-app/shared-ui/sync.ts", 'productShopMode: "shop-menu"');
+assertContains(
+  "rider-app/shared-ui/sync.ts",
+  'from "../../packages/mobile-core/src/role-sync-shell.js"',
+);
 assertContains(
   "user-vue/shared-ui/client-payment.js",
   "export * from '../../packages/mobile-core/src/client-payment.js'",
@@ -2835,6 +2846,10 @@ assertContains(
 );
 assertContains(
   "package.json",
+  "packages/mobile-core/src/role-sync-shell.test.mjs",
+);
+assertContains(
+  "package.json",
   "packages/mobile-core/src/client-payment.test.mjs",
 );
 assertContains(
@@ -2952,7 +2967,11 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/error-utils.test.mjs packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/role-auth-session.test.mjs packages/client-sdk/src/role-notify-bridges.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/safe-access.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/support-socket-bridge.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+  '"verify:client-sdk-tests": "node --test packages/client-sdk/src/error-utils.test.mjs packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/role-auth-session.test.mjs packages/client-sdk/src/role-notify-bridges.test.mjs packages/client-sdk/src/role-notify-shell.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/safe-access.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/support-socket-bridge.test.mjs packages/client-sdk/src/uni-request.test.mjs"',
+);
+assertContains(
+  "package.json",
+  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/upload.test.mjs packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/medicine-order.test.mjs packages/mobile-core/src/mobile-client-context.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/dining-buddy.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/auth-portal-pages.test.mjs packages/mobile-core/src/cart-popup-page.test.mjs packages/mobile-core/src/category-pages.test.mjs packages/mobile-core/src/consumer-app-bootstrap.test.mjs packages/mobile-core/src/consumer-app-bridges.test.mjs packages/mobile-core/src/consumer-app-runtime.test.mjs packages/mobile-core/src/consumer-app-shell.test.mjs packages/mobile-core/src/consumer-app-session.test.mjs packages/mobile-core/src/consumer-app-version.test.mjs packages/mobile-core/src/consumer-api.test.mjs packages/mobile-core/src/consumer-auth-runtime.test.mjs packages/mobile-core/src/consumer-cache.test.mjs packages/mobile-core/src/consumer-errand.test.mjs packages/mobile-core/src/consumer-errand-home.test.mjs packages/mobile-core/src/consumer-errand-pages.test.mjs packages/mobile-core/src/consumer-errand-runtime.test.mjs packages/mobile-core/src/consumer-home-categories.test.mjs packages/mobile-core/src/consumer-legal-runtime.test.mjs packages/mobile-core/src/consumer-modal-components.test.mjs packages/mobile-core/src/consumer-notification-sound.test.mjs packages/mobile-core/src/consumer-order-store.test.mjs packages/mobile-core/src/consumer-runtime-support.test.mjs packages/mobile-core/src/consumer-service-runtime.test.mjs packages/mobile-core/src/consumer-service-shell.test.mjs packages/mobile-core/src/consumer-shop-components.test.mjs packages/mobile-core/src/shop-detail-page.test.mjs packages/mobile-core/src/product-pages.test.mjs packages/mobile-core/src/featured-page.test.mjs packages/mobile-core/src/consumer-notify-bridges.test.mjs packages/mobile-core/src/consumer-request-interceptor.test.mjs packages/mobile-core/src/consumer-rtc-contact.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/home-shell-components.test.mjs packages/mobile-core/src/home-weather-modal.test.mjs packages/mobile-core/src/location.test.mjs packages/mobile-core/src/location-select-page.test.mjs packages/mobile-core/src/platform-runtime.test.mjs packages/mobile-core/src/platform-schema.test.mjs packages/mobile-core/src/portal-runtime.test.mjs packages/mobile-core/src/rtc-call-page.test.mjs packages/mobile-core/src/search-page.test.mjs packages/mobile-core/src/support-runtime.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-my-reviews.test.mjs packages/mobile-core/src/profile-points-mall.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/message-chat-page.test.mjs packages/mobile-core/src/customer-service-page.test.mjs packages/mobile-core/src/client-payment.test.mjs packages/mobile-core/src/push-event-route.test.mjs packages/mobile-core/src/order-after-sales.test.mjs packages/mobile-core/src/order-confirm-page.test.mjs packages/mobile-core/src/order-contact.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-detail-page.test.mjs packages/mobile-core/src/order-list-page.test.mjs packages/mobile-core/src/order-payment-options.test.mjs packages/mobile-core/src/order-support-pages.test.mjs packages/mobile-core/src/phone-contact.test.mjs packages/mobile-core/src/role-sync-shell.test.mjs packages/mobile-core/src/sync-service.test.mjs packages/mobile-core/src/wallet-overview-page.test.mjs packages/mobile-core/src/wallet-bills-page.test.mjs packages/mobile-core/src/wallet-recharge-page.test.mjs packages/mobile-core/src/wallet-withdraw-page.test.mjs"',
 );
 assertContains(
   "packages/client-sdk/src/index.js",
@@ -2985,6 +3004,10 @@ assertContains(
 assertContains(
   "packages/client-sdk/src/index.js",
   'export * from "./role-notify-bridges.js";',
+);
+assertContains(
+  "packages/client-sdk/src/index.js",
+  'export * from "./role-notify-shell.js";',
 );
 assertContains(
   "packages/client-sdk/src/index.js",
@@ -3033,6 +3056,10 @@ assertContains(
 assertContains(
   "packages/client-sdk/package.json",
   '"./role-notify-bridges": "./src/role-notify-bridges.js"',
+);
+assertContains(
+  "packages/client-sdk/package.json",
+  '"./role-notify-shell": "./src/role-notify-shell.js"',
 );
 assertContains(
   "packages/client-sdk/package.json",
@@ -3484,20 +3511,28 @@ assertContains(
   'from "../../packages/mobile-core/src/consumer-notify-bridges.js"',
 );
 assertContains(
-  "merchant-app/shared-ui/push-registration.ts",
-  "createRolePushRegistrationBindings({",
+  "packages/client-sdk/src/role-notify-shell.js",
+  "export function createDefaultRolePushRegistrationBindings(options = {}) {",
+);
+assertContains(
+  "packages/client-sdk/src/role-notify-shell.js",
+  "export function createDefaultRoleRealtimeNotifyBindings(options = {}) {",
 );
 assertContains(
   "merchant-app/shared-ui/push-registration.ts",
-  "from '../../packages/client-sdk/src/role-notify-bridges.js'",
+  "createDefaultRolePushRegistrationBindings({",
+);
+assertContains(
+  "merchant-app/shared-ui/push-registration.ts",
+  "from '../../packages/client-sdk/src/role-notify-shell.js'",
 );
 assertContains(
   "rider-app/shared-ui/push-registration.ts",
-  "createRolePushRegistrationBindings({",
+  "createDefaultRolePushRegistrationBindings({",
 );
 assertContains(
   "rider-app/shared-ui/push-registration.ts",
-  "from '../../packages/client-sdk/src/role-notify-bridges.js'",
+  "from '../../packages/client-sdk/src/role-notify-shell.js'",
 );
 assertContains(
   "user-vue/shared-ui/realtime-notify.js",
@@ -3625,19 +3660,19 @@ assertContains(
 );
 assertContains(
   "merchant-app/shared-ui/realtime-notify.ts",
-  "createRoleRealtimeNotifyBindings({",
+  "createDefaultRoleRealtimeNotifyBindings({",
 );
 assertContains(
   "merchant-app/shared-ui/realtime-notify.ts",
-  "from '../../packages/client-sdk/src/role-notify-bridges.js'",
+  "from '../../packages/client-sdk/src/role-notify-shell.js'",
 );
 assertContains(
   "rider-app/shared-ui/realtime-notify.ts",
-  "createRoleRealtimeNotifyBindings({",
+  "createDefaultRoleRealtimeNotifyBindings({",
 );
 assertContains(
   "rider-app/shared-ui/realtime-notify.ts",
-  "from '../../packages/client-sdk/src/role-notify-bridges.js'",
+  "from '../../packages/client-sdk/src/role-notify-shell.js'",
 );
 assertContains(
   "user-vue/shared-ui/push-events.js",
@@ -4498,6 +4533,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./role-sync-shell.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./consumer-app-version.js";',
 );
 assertContains(
@@ -4707,6 +4746,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-service-shell": "./src/consumer-service-shell.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./role-sync-shell": "./src/role-sync-shell.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

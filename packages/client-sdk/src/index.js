@@ -12,6 +12,7 @@ export * from "./push-registration.js";
 export * from "./realtime-notify.js";
 export * from "./role-auth-session.js";
 export * from "./role-notify-bridges.js";
+export * from "./role-notify-shell.js";
 export * from "./realtime-token.js";
 export * from "./rtc-contact.js";
 export * from "./rtc-media.js";

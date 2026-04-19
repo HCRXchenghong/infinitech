@@ -75,6 +75,7 @@ export * from "./profile-outreach.js";
 export * from "./profile-phone-change.js";
 export * from "./profile-settings.js";
 export * from "./rtc-call-page.js";
+export * from "./role-sync-shell.js";
 export * from "./sync-service.js";
 export * from "./wallet-bills-page.js";
 export * from "./wallet-overview-page.js";

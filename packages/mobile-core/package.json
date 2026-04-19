@@ -77,6 +77,7 @@
     "./profile-phone-change": "./src/profile-phone-change.js",
     "./profile-outreach": "./src/profile-outreach.js",
     "./profile-settings": "./src/profile-settings.js",
+    "./role-sync-shell": "./src/role-sync-shell.js",
     "./sync-service": "./src/sync-service.js",
     "./wallet-bills-page": "./src/wallet-bills-page.js",
     "./wallet-overview-page": "./src/wallet-overview-page.js",
