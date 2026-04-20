@@ -16,13 +16,16 @@ function resolveLogMethod(logger, statusCode, slowRequest) {
   return "info";
 }
 
-function createRequestAuditMiddleware({ logger, parseOperatorFromAuthHeader, slowRequestWarnMs = 1500 }) {
+function createRequestAuditMiddleware({ logger, extractVerifiedOperatorFromRequest, slowRequestWarnMs = 1500 }) {
   return function requestAudit(req, res, next) {
     const startAt = Date.now();
     const logTsid = nextLogTsid();
-    const operator = parseOperatorFromAuthHeader(req.headers.authorization);
     const clientIp = extractClientIp(req);
     const actorType = inferActorTypeByPath(req.path);
+    const operator = extractVerifiedOperatorFromRequest(req, {
+      actorType,
+      normalizeType: true,
+    });
     const actionScene = inferActionScene(req.method, req.path);
     const actionSubject = extractSubject(req, actionScene);
     const requestId = String(req.requestId || req.get?.("X-Request-ID") || "").trim();

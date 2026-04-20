@@ -16,7 +16,7 @@ const config = require("./config");
 const routes = require("./routes");
 const { errorHandler } = require("./middleware/errorHandler");
 const { logger } = require("./utils/logger");
-const { parseOperatorFromAuthHeader } = require("./utils/authIdentity");
+const { extractVerifiedOperatorFromRequest } = require("./utils/authIdentity");
 const { createRequestAuditMiddleware } = require("./middleware/requestAudit");
 const { createRequestIdMiddleware } = require("./middleware/requestId");
 const { createInviteRuntimeGuard } = require("./middleware/inviteRuntimeGuard");
@@ -325,7 +325,7 @@ app.use(express.urlencoded({ extended: true, limit: config.bodyLimits.urlencoded
 app.use(createRequestIdMiddleware());
 app.use(createRequestAuditMiddleware({
   logger,
-  parseOperatorFromAuthHeader,
+  extractVerifiedOperatorFromRequest,
   slowRequestWarnMs: config.http.slowRequestWarnMs
 }));
 app.use(createInviteRuntimeGuard({ logger }));

@@ -2882,6 +2882,14 @@ assertNotContains(
   "backend/bff/src/controllers/financialController.js",
   "process.env.FINANCIAL_LOG_VERIFY_PASSWORD ||\n  process.env.SYSTEM_LOG_DELETE_PASSWORD",
 );
+assertContains(
+  "backend/bff/src/middleware/requestAudit.js",
+  "extractVerifiedOperatorFromRequest(req, {",
+);
+assertNotContains(
+  "backend/bff/src/middleware/requestAudit.js",
+  "parseOperatorFromAuthHeader(req.headers.authorization)",
+);
 assertNotContains("scripts/verify-im-e2e.mjs", "DEFAULT_JWT_SECRET");
 assertNotContains(
   "scripts/verify-im-e2e.mjs",

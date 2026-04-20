@@ -98,6 +98,17 @@ function parseOperatorFromAuthHeader(authorization) {
   };
 }
 
+function toOperatorIdentity(identity) {
+  if (!identity || !identity.verification?.valid) {
+    return { operatorId: "", operatorName: "" };
+  }
+
+  return {
+    operatorId: String(identity.id || identity.legacyId || ""),
+    operatorName: String(identity.name || "")
+  };
+}
+
 function verifySignedTokenSignature(token, secret = config.jwt.secret) {
   const rawToken = normalizeBearerToken(token);
   const resolvedSecret = String(secret || "").trim();
@@ -187,6 +198,20 @@ function extractVerifiedAdminIdentity(req, options = {}) {
   });
 }
 
+function extractVerifiedOperatorFromRequest(req, options = {}) {
+  const actorType = String(options.actorType || "").trim().toLowerCase();
+  if (actorType === "admin") {
+    return toOperatorIdentity(extractVerifiedAdminIdentity(req, options));
+  }
+
+  const requestIdentity = extractVerifiedAuthIdentity(req, options);
+  if (requestIdentity?.verification?.valid) {
+    return toOperatorIdentity(requestIdentity);
+  }
+
+  return toOperatorIdentity(extractVerifiedAdminIdentity(req, options));
+}
+
 module.exports = {
   normalizeBearerToken,
   decodeBase64UrlToJSON,
@@ -196,5 +221,6 @@ module.exports = {
   verifySignedTokenSignature,
   verifyAdminTokenSignature,
   extractVerifiedAuthIdentity,
-  extractVerifiedAdminIdentity
+  extractVerifiedAdminIdentity,
+  extractVerifiedOperatorFromRequest
 };
