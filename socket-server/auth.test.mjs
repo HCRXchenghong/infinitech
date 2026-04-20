@@ -23,11 +23,12 @@ test("generateToken issues standardized socket session claims", async () => {
   assert.equal(payload.principal_id, "18");
   assert.equal(payload.principal_legacy_id, 18);
   assert.equal(payload.role, "admin");
-  assert.equal(payload.userId, "18");
   assert.equal(payload.token_kind, "socket_access");
-  assert.equal(payload.type, "socket_access");
   assert.equal(typeof payload.session_id, "string");
-  assert.equal(payload.sessionId, payload.session_id);
+  assert.equal("userId" in payload, false);
+  assert.equal("sessionId" in payload, false);
+  assert.equal("type" in payload, false);
+  assert.equal("timestamp" in payload, false);
   assert.deepEqual(payload.scope, [
     "socket",
     "principal:admin",

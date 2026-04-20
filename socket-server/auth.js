@@ -141,10 +141,6 @@ export function buildSocketTokenPayload(userId, role, sessionId, expiresAt, opti
     token_kind: SOCKET_ACCESS_TOKEN_KIND,
     exp: Math.floor(expiresAtMs / 1000),
     iat: Math.floor(nowMs / 1000),
-    userId: normalizedUserId,
-    sessionId: normalizedSessionId,
-    type: SOCKET_ACCESS_TOKEN_KIND,
-    timestamp: nowMs,
   };
 
   const principalLegacyID = parseNumericLegacyId(normalizedUserId);
@@ -198,9 +194,20 @@ export function verifyUnifiedSocketToken(token, secret = JWT_SECRET) {
       decoded.role || decoded.principal_type || decoded.principalType,
     );
     const sessionId = trimText(decoded.session_id || decoded.sessionId);
+    const tokenKind = trimText(
+      decoded.token_kind || decoded.tokenKind || decoded.type,
+    ).toLowerCase();
     const exp = Number(decoded.exp || 0);
 
-    if (!userId || !role || !sessionId || !Number.isFinite(exp) || exp <= 0 || Math.floor(Date.now() / 1000) > exp) {
+    if (
+      !userId
+      || !role
+      || !sessionId
+      || tokenKind !== SOCKET_ACCESS_TOKEN_KIND
+      || !Number.isFinite(exp)
+      || exp <= 0
+      || Math.floor(Date.now() / 1000) > exp
+    ) {
       return null;
     }
 
@@ -211,11 +218,8 @@ export function verifyUnifiedSocketToken(token, secret = JWT_SECRET) {
       principal_id: userId,
       role,
       session_id: sessionId,
-      sessionId,
-      userId,
       scope: normalizeSocketScope(decoded.scope, role),
-      token_kind: trimText(decoded.token_kind || decoded.tokenKind || decoded.type || SOCKET_ACCESS_TOKEN_KIND),
-      type: trimText(decoded.type || SOCKET_ACCESS_TOKEN_KIND),
+      token_kind: SOCKET_ACCESS_TOKEN_KIND,
       exp,
       iat: Number(decoded.iat || 0) || undefined,
     };
@@ -276,18 +280,18 @@ export async function authMiddleware(socket, next) {
     }
 
     const decoded = verifyToken(token);
-    if (!decoded || !decoded.sessionId) {
+    if (!decoded || !decoded.session_id) {
       return next(new Error('\u8ba4\u8bc1\u5931\u8d25\uff1atoken \u65e0\u6548\u6216\u5df2\u8fc7\u671f'));
     }
 
-    const session = await getSocketSessionRecord(decoded.sessionId);
+    const session = await getSocketSessionRecord(decoded.session_id);
     if (!session) {
       return next(new Error('\u8ba4\u8bc1\u5931\u8d25\uff1asocket \u4f1a\u8bdd\u4e0d\u5b58\u5728\u6216\u5df2\u8fc7\u671f'));
     }
 
     socket.userId = session.userId;
     socket.userRole = session.role;
-    socket.sessionId = decoded.sessionId;
+    socket.sessionId = decoded.session_id;
     socket.authToken = session.authToken;
     socket.authPayload = session.authPayload;
     socket.socketAuthMetadata = session.metadata || {};
