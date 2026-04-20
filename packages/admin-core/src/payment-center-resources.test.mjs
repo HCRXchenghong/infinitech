@@ -66,8 +66,8 @@ test("normalizePaymentCenterConfig fills payment-center defaults", () => {
     },
     pay_mode: { isProd: true },
     bank_card_config: {
-      allow_stub: "false",
       merchant_id: null,
+      allow_stub: "true",
     },
     settlement_rules: [{ uid: "rule-1" }],
   });
@@ -75,7 +75,7 @@ test("normalizePaymentCenterConfig fills payment-center defaults", () => {
   assert.equal(result.gatewaySummary.wechat.ready, true);
   assert.equal(result.pay_mode.isProd, true);
   assert.equal(result.alipay_config.sandbox, true);
-  assert.equal(result.bank_card_config.allow_stub, false);
+  assert.equal("allow_stub" in result.bank_card_config, false);
   assert.equal(result.bank_card_config.merchant_id, "");
   assert.deepEqual(result.settlement_rules, [{ uid: "rule-1" }]);
   assert.deepEqual(result.rider_deposit_policy.allowed_methods, ["wechat", "alipay"]);

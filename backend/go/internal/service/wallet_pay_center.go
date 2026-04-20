@@ -80,7 +80,6 @@ type BankCardConfig struct {
 	MerchantID  string `json:"merchant_id"`
 	APIKey      string `json:"api_key"`
 	NotifyURL   string `json:"notify_url"`
-	AllowStub   bool   `json:"allow_stub"`
 }
 
 type PaymentCenterConfigPayload struct {
@@ -145,7 +144,6 @@ func defaultBankCardConfig() BankCardConfig {
 		MerchantID:  "",
 		APIKey:      "",
 		NotifyURL:   "",
-		AllowStub:   false,
 	}
 }
 
@@ -956,13 +954,6 @@ func normalizeBankCardConfig(cfg BankCardConfig) BankCardConfig {
 
 func normalizeAndValidateBankCardConfig(cfg BankCardConfig) (BankCardConfig, error) {
 	normalized := normalizeBankCardConfig(cfg)
-	if normalized.AllowStub && runtimeEnvProductionLike() {
-		return BankCardConfig{}, fmt.Errorf("%w: bank card payout stub is not allowed in %s environment", ErrInvalidArgument, runtimeEnvName())
-	}
-	if normalized.AllowStub && normalized.SidecarURL == "" {
-		return BankCardConfig{}, fmt.Errorf("%w: bank card payout stub requires sidecar_url", ErrInvalidArgument)
-	}
-
 	providerFieldsConfigured := normalized.ProviderURL != "" || normalized.MerchantID != "" || normalized.APIKey != "" || normalized.NotifyURL != ""
 	if providerFieldsConfigured {
 		if normalized.SidecarURL == "" {

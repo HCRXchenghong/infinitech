@@ -202,18 +202,10 @@ func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.Wallet
 	cfg.BankCard.MerchantID = firstTrimmed(stringConfigValue(bankCard["merchant_id"]), stringConfigValue(bankCard["merchantId"]), os.Getenv("BANK_PAYOUT_MERCHANT_ID"))
 	cfg.BankCard.APIKey = firstTrimmed(stringConfigValue(bankCard["api_key"]), stringConfigValue(bankCard["apiKey"]), os.Getenv("BANK_PAYOUT_API_KEY"))
 	cfg.BankCard.NotifyURL = firstTrimmed(stringConfigValue(bankCard["notify_url"]), stringConfigValue(bankCard["notifyUrl"]), os.Getenv("BANK_PAYOUT_NOTIFY_URL"))
-	stubRequested := false
-	if raw, ok := boolConfigValue(bankCard["allow_stub"]); ok {
-		cfg.BankCard.AllowStub = raw
-		stubRequested = true
-	} else if raw, ok := boolConfigValue(bankCard["allowStub"]); ok {
-		cfg.BankCard.AllowStub = raw
-		stubRequested = true
-	} else if envValue, ok := boolStringValue(os.Getenv("BANK_PAYOUT_ALLOW_STUB")); ok {
+	if envValue, ok := boolStringValue(os.Getenv("BANK_PAYOUT_ALLOW_STUB")); ok {
 		cfg.BankCard.AllowStub = envValue
-		stubRequested = true
+		cfg.BankCard.AllowStubRequested = envValue
 	}
-	cfg.BankCard.AllowStubRequested = stubRequested && cfg.BankCard.AllowStub
 	if runtimeEnvProductionLike() {
 		cfg.BankCard.AllowStub = false
 	}

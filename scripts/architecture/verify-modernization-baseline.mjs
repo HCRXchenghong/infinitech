@@ -2094,6 +2094,18 @@ assertContains(
   "backend/go/internal/service/payment_runtime.go",
   `"allowStubBlocked"`,
 );
+assertContains(
+  "backend/go/internal/service/payment_runtime.go",
+  `BANK_PAYOUT_ALLOW_STUB`,
+);
+assertNotContains(
+  "backend/go/internal/service/payment_runtime.go",
+  `bankCard["allow_stub"]`,
+);
+assertNotContains(
+  "backend/go/internal/service/payment_runtime.go",
+  `bankCard["allowStub"]`,
+);
 assertMatches(
   "backend/go/internal/handler/rider_cert_storage.go",
   /private:\/\/rider-cert\/|ridercert\.PrivateScheme/,
@@ -2814,6 +2826,18 @@ assertContains(
 assertContains(
   "backend/go/internal/service/sidecar_auth.go",
   'const sidecarSecretHeader = "X-Sidecar-Secret"',
+);
+assertNotContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "state.bank_card_config.allow_stub",
+);
+assertContains(
+  "packages/admin-core/src/payment-center-resources.js",
+  "delete bankCardConfig.allow_stub;",
+);
+assertNotContains(
+  "packages/admin-core/src/payment-center-resources.js",
+  "allow_stub: false",
 );
 assertNotContains(
   "backend/go/internal/handler/admin_handler.go",

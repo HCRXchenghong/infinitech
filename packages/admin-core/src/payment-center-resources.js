@@ -47,7 +47,6 @@ const DEFAULT_BANK_CARD_CONFIG = {
   merchant_id: "",
   api_key: "",
   notify_url: "",
-  allow_stub: false,
 };
 
 const DEFAULT_PAYMENT_CALLBACK_FILTER = {
@@ -253,7 +252,8 @@ export function normalizePaymentCenterConfig(payload = {}) {
     ...cloneValue(DEFAULT_BANK_CARD_CONFIG, DEFAULT_BANK_CARD_CONFIG),
     ...cloneValue(source.bank_card_config, {}),
   };
-  bankCardConfig.allow_stub = normalizeBoolean(bankCardConfig.allow_stub, false);
+  delete bankCardConfig.allow_stub;
+  delete bankCardConfig.allowStub;
   bankCardConfig.sidecar_url = normalizeText(bankCardConfig.sidecar_url);
   bankCardConfig.provider_url = normalizeText(bankCardConfig.provider_url);
   bankCardConfig.merchant_id = normalizeText(bankCardConfig.merchant_id);
