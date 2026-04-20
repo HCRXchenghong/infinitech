@@ -266,6 +266,9 @@ function buildQueryResponse(body = {}) {
 
 function buildVerifyResponse(body = {}) {
   const mode = ensureAvailable(body)
+  if (mode !== 'configured-adapter') {
+    throw new Error('bank payout callback verification requires configured adapter')
+  }
   const payload = mergeCallbackPayload(body)
   const headers = lowerCaseHeaders(body.headers)
   const record = getStoredPayout({
@@ -275,7 +278,7 @@ function buildVerifyResponse(body = {}) {
   })
 
   const signature = resolveCallbackSignature(headers, payload)
-  const verified = mode === 'configured-adapter' ? verifyConfiguredAdapterSignature(signature, body) : runtime.allowStub
+  const verified = verifyConfiguredAdapterSignature(signature, body)
   if (!verified) {
     throw new Error('bank payout callback signature verification failed')
   }
@@ -320,9 +323,7 @@ function buildVerifyResponse(body = {}) {
       record: record || null,
     },
     message:
-      mode === 'configured-adapter'
-        ? 'Bank payout sidecar verified provider callback.'
-        : 'Bank payout sidecar accepted callback in stub mode.',
+      'Bank payout sidecar verified provider callback.',
   })
 }
 
