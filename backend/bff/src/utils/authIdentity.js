@@ -3,6 +3,7 @@ const config = require("../config");
 const {
   decodeBase64UrlToJSON,
   extractUnifiedPrincipalIdentity,
+  isUnifiedSessionClaimsShape,
   normalizeBearerToken,
   parseUnifiedTokenPayload,
 } = require("../../../../packages/contracts/src/identity.cjs");
@@ -27,7 +28,10 @@ function parseTokenPayload(token) {
 
 function extractPayloadIdentity(payload, options = {}) {
   const session = createSessionDescriptor(payload || {});
-  const contractIdentity = extractUnifiedPrincipalIdentity(payload, options) || {};
+  const contractIdentity = extractUnifiedPrincipalIdentity(payload, {
+    ...options,
+    allowLegacyFallback: !isUnifiedSessionClaimsShape(payload),
+  }) || {};
   const runtimeIdentity = buildRuntimePrincipalIdentity(payload, {
     defaultRole: session.role || contractIdentity.role,
     defaultName: contractIdentity.name || "",

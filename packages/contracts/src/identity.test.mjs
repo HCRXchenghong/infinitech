@@ -49,6 +49,37 @@ test("identity contracts normalize unified token helpers deterministically", () 
   });
 });
 
+test("identity contracts can require standardized claims without legacy aliases", () => {
+  const payload = {
+    sub: "merchant_uid_9",
+    principal_type: "merchant",
+    principal_id: "merchant_uid_9",
+    role: "merchant",
+    session_id: "merchant_session_9",
+    token_kind: "access",
+    id: "legacy-merchant-id",
+    userId: 9,
+    type: "refresh",
+  };
+
+  assert.deepEqual(
+    extractUnifiedPrincipalIdentity(payload, {
+      normalizeType: true,
+      allowLegacyFallback: false,
+    }),
+    {
+      principalType: "merchant",
+      principalId: "merchant_uid_9",
+      legacyId: "",
+      role: "merchant",
+      sessionId: "merchant_session_9",
+      tokenKind: "access",
+      phone: "",
+      name: "",
+    },
+  );
+});
+
 test("identity contracts keep CommonJS bridge aligned with ESM exports", () => {
   const payload = {
     phone: "13800138000",

@@ -3,6 +3,7 @@
 const {
   PrincipalTypes,
   extractUnifiedPrincipalIdentity,
+  isUnifiedSessionClaimsShape,
   normalizePrincipalType,
 } = require("../../contracts/src/identity.cjs");
 
@@ -29,6 +30,7 @@ function normalizeRuntimeNumericId(value) {
 function createSessionDescriptor(claims = {}) {
   const identity = extractUnifiedPrincipalIdentity(claims, {
     normalizeType: true,
+    allowLegacyFallback: false,
   }) || {
     principalType: "",
     principalId: "",
@@ -65,8 +67,11 @@ function buildRuntimePrincipalIdentity(source = {}, options = {}) {
     return null;
   }
 
+  const treatAsTokenPayload =
+    options.assumeTokenPayload === true || isUnifiedSessionClaimsShape(source);
   const identity = extractUnifiedPrincipalIdentity(source, {
     normalizeType: true,
+    allowLegacyFallback: !treatAsTokenPayload,
   }) || {
     principalType: "",
     principalId: "",
@@ -94,14 +99,14 @@ function buildRuntimePrincipalIdentity(source = {}, options = {}) {
   const numericId = normalizeRuntimeNumericId(
     source.numericId
       || source.legacyId
-      || source.userId
-      || source.adminId
-      || source.admin_id
+      || (!treatAsTokenPayload
+        ? source.userId || source.adminId || source.admin_id
+        : "")
       || identity.legacyId,
   );
   const phone = trimText(source.phone || identity.phone);
   const principalId = trimText(identity.principalId);
-  const directId = trimText(source.id);
+  const directId = trimText(treatAsTokenPayload ? "" : source.id);
   let uid = trimText(source.uid);
   if (!uid && directId && directId !== numericId && directId !== phone) {
     uid = directId;
@@ -111,7 +116,7 @@ function buildRuntimePrincipalIdentity(source = {}, options = {}) {
   }
 
   const role = normalizeRole(
-    source.type
+    (treatAsTokenPayload ? "" : source.type)
       || source.role
       || identity.role
       || (principalType === PrincipalTypes.ADMIN ? "admin" : principalType)

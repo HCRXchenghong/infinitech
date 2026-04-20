@@ -3,6 +3,7 @@ import {
   normalizeBearerToken,
   parseUnifiedTokenPayload,
   extractUnifiedPrincipalIdentity,
+  isUnifiedSessionClaimsShape,
 } from "../../contracts/src/identity.js";
 import { normalizeRuntimeNumericId } from "../../domain-core/src/identity.js";
 
@@ -30,8 +31,10 @@ function normalizeAdminType(value) {
 }
 
 function normalizeClaimsAdminType(source) {
+  const treatAsTokenPayload = isUnifiedSessionClaimsShape(source);
   const claims = extractUnifiedPrincipalIdentity(source, {
     normalizeType: true,
+    allowLegacyFallback: !treatAsTokenPayload,
   });
   if (!claims) {
     return "";
@@ -48,6 +51,10 @@ function normalizeClaimsAdminType(source) {
 function resolveExplicitAdminType(source) {
   if (!source || typeof source !== "object") {
     return "";
+  }
+
+  if (isUnifiedSessionClaimsShape(source)) {
+    return normalizeAdminType(source.role) || normalizeClaimsAdminType(source);
   }
 
   return (
@@ -86,15 +93,19 @@ function collectAdminIdentityEntry(source) {
     return null;
   }
 
+  const treatAsTokenPayload = isUnifiedSessionClaimsShape(source);
   const claims = extractUnifiedPrincipalIdentity(source, {
     normalizeType: true,
+    allowLegacyFallback: !treatAsTokenPayload,
   });
   const directId = trimText(
-    source.id
-      || source.adminId
-      || source.admin_id
-      || source.userId
-      || source.user_id,
+    !treatAsTokenPayload
+      ? source.id
+        || source.adminId
+        || source.admin_id
+        || source.userId
+        || source.user_id
+      : "",
   );
   const phone = trimText(source.phone || claims?.phone);
   const principalId = normalizeAdminPrincipalId(source, claims, directId, phone);
@@ -105,8 +116,8 @@ function collectAdminIdentityEntry(source) {
     numericId: normalizeRuntimeNumericId(
       source.numericId
         || source.legacyId
+        || (!treatAsTokenPayload ? directId : "")
         || claims?.legacyId
-        || directId
         || principalId,
     ),
     principalId,

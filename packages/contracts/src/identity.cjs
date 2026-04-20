@@ -106,25 +106,31 @@ function extractUnifiedPrincipalIdentity(payload, options = {}) {
   }
 
   const normalizeType = options.normalizeType !== false;
+  const allowLegacyFallback = options.allowLegacyFallback !== false;
   const principalTypeRaw = claimString(payload, ["principal_type", "principalType"]);
-  const roleRaw = claimString(payload, ["role", "type", "userType"]);
+  const roleRaw = claimString(
+    payload,
+    allowLegacyFallback ? ["role", "type", "userType"] : ["role"],
+  );
   const tokenKindRaw = claimString(payload, ["token_kind", "tokenKind"]);
   const normalizedRole = normalizeType ? roleRaw.toLowerCase() : roleRaw;
   let normalizedPrincipalType = normalizeType ? principalTypeRaw.toLowerCase() : principalTypeRaw;
   if (!normalizedPrincipalType) {
-    if (normalizedRole === "admin" || normalizedRole === "super_admin") {
-      normalizedPrincipalType = PrincipalTypes.ADMIN;
-    } else if (
-      normalizedRole === PrincipalTypes.USER
-      || normalizedRole === PrincipalTypes.MERCHANT
-      || normalizedRole === PrincipalTypes.RIDER
-    ) {
-      normalizedPrincipalType = normalizedRole;
+    if (allowLegacyFallback) {
+      if (normalizedRole === "admin" || normalizedRole === "super_admin") {
+        normalizedPrincipalType = PrincipalTypes.ADMIN;
+      } else if (
+        normalizedRole === PrincipalTypes.USER
+        || normalizedRole === PrincipalTypes.MERCHANT
+        || normalizedRole === PrincipalTypes.RIDER
+      ) {
+        normalizedPrincipalType = normalizedRole;
+      }
     }
   }
 
   let tokenKind = normalizeType ? tokenKindRaw.toLowerCase() : tokenKindRaw;
-  if (!tokenKind) {
+  if (!tokenKind && allowLegacyFallback) {
     const legacyType = normalizeType
       ? claimString(payload, ["type"]).toLowerCase()
       : claimString(payload, ["type"]);
@@ -138,24 +144,24 @@ function extractUnifiedPrincipalIdentity(payload, options = {}) {
     principalId: claimString(payload, [
       "principal_id",
       "principalId",
-      "id",
       "sub",
-      "adminId",
-      "admin_id",
-      "userId",
-      "phone",
+      ...(allowLegacyFallback
+        ? ["id", "adminId", "admin_id", "userId", "phone"]
+        : []),
     ]),
     legacyId: claimNumericString(payload, [
-      "principal_legacy_id",
-      "userId",
-      "numericId",
-      "legacyId",
+      ...(allowLegacyFallback
+        ? ["principal_legacy_id", "userId", "numericId", "legacyId"]
+        : ["principal_legacy_id", "legacyId"]),
     ]),
     role: normalizedRole,
     sessionId: claimString(payload, ["session_id", "sessionId"]),
     tokenKind,
     phone: claimString(payload, ["phone"]),
-    name: claimString(payload, ["name", "adminName", "username", "phone"]),
+    name: claimString(
+      payload,
+      allowLegacyFallback ? ["name", "adminName", "username", "phone"] : ["name"],
+    ),
   };
 }
 
