@@ -41,6 +41,10 @@ func respondProductPaginated(c *gin.Context, message, listKey string, items inte
 }
 
 func writeProductServiceError(c *gin.Context, err error, fallbackStatus int) {
+	if errors.Is(err, service.ErrInvalidArgument) {
+		respondProductError(c, http.StatusBadRequest, err.Error())
+		return
+	}
 	if errors.Is(err, service.ErrUnauthorized) {
 		respondProductError(c, http.StatusUnauthorized, err.Error())
 		return

@@ -203,7 +203,11 @@ func (s *ProductService) CreateCategory(ctx context.Context, category *repositor
 	if category == nil {
 		return fmt.Errorf("invalid category payload")
 	}
+	category.Name = strings.TrimSpace(category.Name)
 	if err := s.ensureMerchantCanAccessShop(ctx, category.ShopID); err != nil {
+		return err
+	}
+	if err := s.ensureCategoryNameUnique(ctx, category.ShopID, category.Name, 0); err != nil {
 		return err
 	}
 
@@ -241,6 +245,19 @@ func (s *ProductService) UpdateCategory(ctx context.Context, id string, shopID s
 	if authContextRole(ctx) == "merchant" {
 		if targetShopID, ok := parseUintField(updates, "shopId", "shop_id"); ok && targetShopID != 0 && targetShopID != current.ShopID {
 			return fmt.Errorf("%w: merchant cannot move category to another shop", ErrForbidden)
+		}
+	}
+	targetShopID := current.ShopID
+	if resolvedShopID > 0 {
+		targetShopID = resolvedShopID
+	}
+	if targetName, ok := extractTrimmedStringUpdate(updates, "name"); ok {
+		if err := s.ensureCategoryNameUnique(ctx, targetShopID, targetName, resolvedID); err != nil {
+			return err
+		}
+	} else if targetShopID != current.ShopID {
+		if err := s.ensureCategoryNameUnique(ctx, targetShopID, current.Name, resolvedID); err != nil {
+			return err
 		}
 	}
 
@@ -460,7 +477,11 @@ func (s *ProductService) CreateBanner(ctx context.Context, banner *repository.Ba
 	if banner == nil {
 		return fmt.Errorf("invalid banner payload")
 	}
+	banner.Title = strings.TrimSpace(banner.Title)
 	if err := s.ensureMerchantCanAccessShop(ctx, banner.ShopID); err != nil {
+		return err
+	}
+	if err := s.ensureBannerTitleUnique(ctx, banner.ShopID, banner.Title, 0); err != nil {
 		return err
 	}
 
@@ -498,6 +519,19 @@ func (s *ProductService) UpdateBanner(ctx context.Context, id string, shopID str
 	if authContextRole(ctx) == "merchant" {
 		if targetShopID, ok := parseUintField(updates, "shopId", "shop_id"); ok && targetShopID != 0 && targetShopID != current.ShopID {
 			return fmt.Errorf("%w: merchant cannot move banner to another shop", ErrForbidden)
+		}
+	}
+	targetShopID := current.ShopID
+	if resolvedShopID > 0 {
+		targetShopID = resolvedShopID
+	}
+	if targetTitle, ok := extractTrimmedStringUpdate(updates, "title"); ok {
+		if err := s.ensureBannerTitleUnique(ctx, targetShopID, targetTitle, resolvedID); err != nil {
+			return err
+		}
+	} else if targetShopID != current.ShopID {
+		if err := s.ensureBannerTitleUnique(ctx, targetShopID, current.Title, resolvedID); err != nil {
+			return err
 		}
 	}
 
@@ -587,6 +621,28 @@ func parseUintField(data map[string]interface{}, keys ...string) (uint, bool) {
 		return uint(parsed), true
 	}
 	return 0, false
+}
+
+func (s *ProductService) ensureCategoryNameUnique(ctx context.Context, shopID uint, name string, excludeID uint) error {
+	return ensureScopedNameUnique(ctx, s.repo.DB(), scopedNameUniquenessSpec{
+		TableName:     "categories",
+		ColumnName:    "name",
+		RawValue:      name,
+		ExcludeID:     excludeID,
+		Scope:         map[string]interface{}{"shop_id": shopID},
+		ConflictLabel: "分类名称",
+	})
+}
+
+func (s *ProductService) ensureBannerTitleUnique(ctx context.Context, shopID uint, title string, excludeID uint) error {
+	return ensureScopedNameUnique(ctx, s.repo.DB(), scopedNameUniquenessSpec{
+		TableName:     "banners",
+		ColumnName:    "title",
+		RawValue:      title,
+		ExcludeID:     excludeID,
+		Scope:         map[string]interface{}{"shop_id": shopID},
+		ConflictLabel: "轮播图标题",
+	})
 }
 
 func normalizeLookupStringID(raw string, resolved uint) string {

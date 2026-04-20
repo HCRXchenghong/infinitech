@@ -2043,6 +2043,13 @@ func (s *AdminService) ListCarousel(ctx context.Context) ([]repository.Carousel,
 }
 
 func (s *AdminService) CreateCarousel(ctx context.Context, item *repository.Carousel) error {
+	if item == nil {
+		return fmt.Errorf("%w: carousel payload is required", ErrInvalidArgument)
+	}
+	item.Title = strings.TrimSpace(item.Title)
+	if err := s.ensureCarouselTitleUnique(ctx, item.Title, 0); err != nil {
+		return err
+	}
 	return s.db.WithContext(ctx).Create(item).Error
 }
 
@@ -2050,6 +2057,11 @@ func (s *AdminService) UpdateCarousel(ctx context.Context, id string, updates ma
 	resolvedID, err := resolveEntityID(ctx, s.db, "carousels", id)
 	if err != nil {
 		return err
+	}
+	if title, ok := extractTrimmedStringUpdate(updates, "title"); ok {
+		if err := s.ensureCarouselTitleUnique(ctx, title, resolvedID); err != nil {
+			return err
+		}
 	}
 	return s.db.WithContext(ctx).Model(&repository.Carousel{}).Where("id = ?", resolvedID).Updates(updates).Error
 }
@@ -2071,6 +2083,13 @@ func (s *AdminService) ListPushMessages(ctx context.Context) ([]repository.PushM
 }
 
 func (s *AdminService) CreatePushMessage(ctx context.Context, item *repository.PushMessage) error {
+	if item == nil {
+		return fmt.Errorf("%w: push message payload is required", ErrInvalidArgument)
+	}
+	item.Title = strings.TrimSpace(item.Title)
+	if err := s.ensurePushMessageTitleUnique(ctx, item.Title, 0); err != nil {
+		return err
+	}
 	if err := s.db.WithContext(ctx).Create(item).Error; err != nil {
 		return err
 	}
@@ -2081,6 +2100,11 @@ func (s *AdminService) UpdatePushMessage(ctx context.Context, id string, updates
 	resolvedID, err := resolveEntityID(ctx, s.db, "push_messages", id)
 	if err != nil {
 		return err
+	}
+	if title, ok := extractTrimmedStringUpdate(updates, "title"); ok {
+		if err := s.ensurePushMessageTitleUnique(ctx, title, resolvedID); err != nil {
+			return err
+		}
 	}
 	if err := s.db.WithContext(ctx).Model(&repository.PushMessage{}).Where("id = ?", resolvedID).Updates(updates).Error; err != nil {
 		return err
@@ -2594,6 +2618,11 @@ func (s *AdminService) ListPublicAPIs(ctx context.Context) ([]map[string]interfa
 }
 
 func (s *AdminService) CreatePublicAPI(ctx context.Context, name, path string, permissions []string, apiKey, desc string, isActive bool) error {
+	name = strings.TrimSpace(name)
+	path = strings.TrimSpace(path)
+	if err := s.ensurePublicAPINameUnique(ctx, name, 0); err != nil {
+		return err
+	}
 	payload, _ := json.Marshal(permissions)
 	item := repository.PublicAPI{
 		Name:        name,
@@ -2611,6 +2640,14 @@ func (s *AdminService) UpdatePublicAPI(ctx context.Context, id string, updates m
 	if err != nil {
 		return err
 	}
+	if name, ok := extractTrimmedStringUpdate(updates, "name"); ok {
+		if err := s.ensurePublicAPINameUnique(ctx, name, resolvedID); err != nil {
+			return err
+		}
+	}
+	if path, ok := extractTrimmedStringUpdate(updates, "path"); ok {
+		updates["path"] = path
+	}
 	if perms, ok := updates["permissions"].([]string); ok {
 		payload, _ := json.Marshal(perms)
 		updates["permissions"] = string(payload)
@@ -2624,6 +2661,36 @@ func (s *AdminService) DeletePublicAPI(ctx context.Context, id string) error {
 		return err
 	}
 	return s.db.WithContext(ctx).Delete(&repository.PublicAPI{}, resolvedID).Error
+}
+
+func (s *AdminService) ensureCarouselTitleUnique(ctx context.Context, title string, excludeID uint) error {
+	return ensureScopedNameUnique(ctx, s.db, scopedNameUniquenessSpec{
+		TableName:     "carousels",
+		ColumnName:    "title",
+		RawValue:      title,
+		ExcludeID:     excludeID,
+		ConflictLabel: "轮播图标题",
+	})
+}
+
+func (s *AdminService) ensurePushMessageTitleUnique(ctx context.Context, title string, excludeID uint) error {
+	return ensureScopedNameUnique(ctx, s.db, scopedNameUniquenessSpec{
+		TableName:     "push_messages",
+		ColumnName:    "title",
+		RawValue:      title,
+		ExcludeID:     excludeID,
+		ConflictLabel: "推送消息标题",
+	})
+}
+
+func (s *AdminService) ensurePublicAPINameUnique(ctx context.Context, name string, excludeID uint) error {
+	return ensureScopedNameUnique(ctx, s.db, scopedNameUniquenessSpec{
+		TableName:     "public_apis",
+		ColumnName:    "name",
+		RawValue:      name,
+		ExcludeID:     excludeID,
+		ConflictLabel: "开放 API 名称",
+	})
 }
 
 // helpers
