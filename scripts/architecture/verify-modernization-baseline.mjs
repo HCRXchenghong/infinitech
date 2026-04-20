@@ -7022,6 +7022,11 @@ assertContains(
 );
 assertContains("socket-server/index.js", "validateTrustedSocketTokenRequest");
 assertContains("socket-server/index.js", "validateTrustedSocketStatsRequest");
+assertContains("socket-server/auth.js", "verifyUnifiedSocketToken");
+assertContains("socket-server/auth.js", "principal_type: normalizedRole");
+assertContains("socket-server/auth.js", "SOCKET_ACCESS_TOKEN_KIND = 'socket_access'");
+assertNotContains("socket-server/auth.js", "return jwt.sign(");
+assertContains("socket-server/package.json", "auth.test.mjs");
 assertContains(
   "socket-server/index.js",
   "Socket server public upload hosting is disabled. Use authenticated API asset routes instead.",

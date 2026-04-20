@@ -39,27 +39,245 @@ if (!JWT_SECRET) {
 }
 
 const AES_KEY = crypto.scryptSync(JWT_SECRET, 'salt', 32);
+const SOCKET_ACCESS_TOKEN_KIND = 'socket_access';
+const SUPPORTED_SOCKET_ROLES = new Set(['user', 'merchant', 'rider', 'admin', 'site_visitor']);
+
+function trimText(value) {
+  return String(value ?? '').trim();
+}
+
+function normalizeSocketRole(value) {
+  const normalized = trimText(value).toLowerCase();
+  return SUPPORTED_SOCKET_ROLES.has(normalized) ? normalized : '';
+}
+
+function toBase64Url(value) {
+  return Buffer.from(String(value || ''), 'utf8')
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+}
+
+function fromBase64Url(value) {
+  const normalized = trimText(value)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+  if (!normalized) return '';
+  const remainder = normalized.length % 4;
+  const padded = remainder ? normalized + '='.repeat(4 - remainder) : normalized;
+  return Buffer.from(padded, 'base64').toString('utf8');
+}
+
+function buildSocketScope(role) {
+  const normalizedRole = normalizeSocketRole(role);
+  if (!normalizedRole) {
+    return ['socket', `token:${SOCKET_ACCESS_TOKEN_KIND}`];
+  }
+  return [
+    'socket',
+    `principal:${normalizedRole}`,
+    `token:${SOCKET_ACCESS_TOKEN_KIND}`,
+    `role:${normalizedRole}`,
+  ];
+}
+
+function normalizeSocketScope(scope, role) {
+  if (Array.isArray(scope)) {
+    const normalized = scope
+      .map((item) => trimText(item))
+      .filter(Boolean);
+    if (normalized.length > 0) {
+      return normalized;
+    }
+  }
+  return buildSocketScope(role);
+}
+
+function buildSocketPayloadSignature(payloadBase64, secret = JWT_SECRET) {
+  return crypto
+    .createHmac('sha256', String(secret || '').trim())
+    .update(payloadBase64)
+    .digest('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+}
+
+function isTimingSafeMatch(left, right) {
+  const leftBuffer = Buffer.from(trimText(left));
+  const rightBuffer = Buffer.from(trimText(right));
+  if (leftBuffer.length === 0 || leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function parseNumericLegacyId(userId) {
+  if (!/^\d+$/.test(trimText(userId))) {
+    return undefined;
+  }
+  const parsed = Number.parseInt(trimText(userId), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+export function buildSocketTokenPayload(userId, role, sessionId, expiresAt, options = {}) {
+  const normalizedUserId = trimText(userId);
+  const normalizedRole = normalizeSocketRole(role);
+  const normalizedSessionId = trimText(sessionId);
+  const expiresAtMs = Number(expiresAt || 0);
+  const nowMs = Math.max(1, Number(options.nowMs || Date.now()));
+
+  if (!normalizedUserId || !normalizedRole || !normalizedSessionId || !Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs) {
+    throw new Error('invalid socket token payload');
+  }
+
+  const payload = {
+    sub: normalizedUserId,
+    principal_type: normalizedRole,
+    principal_id: normalizedUserId,
+    role: normalizedRole,
+    session_id: normalizedSessionId,
+    scope: buildSocketScope(normalizedRole),
+    token_kind: SOCKET_ACCESS_TOKEN_KIND,
+    exp: Math.floor(expiresAtMs / 1000),
+    iat: Math.floor(nowMs / 1000),
+    userId: normalizedUserId,
+    sessionId: normalizedSessionId,
+    type: SOCKET_ACCESS_TOKEN_KIND,
+    timestamp: nowMs,
+  };
+
+  const principalLegacyID = parseNumericLegacyId(normalizedUserId);
+  if (principalLegacyID !== undefined) {
+    payload.principal_legacy_id = principalLegacyID;
+  }
+
+  return payload;
+}
+
+export function signSocketTokenPayload(payload, secret = JWT_SECRET) {
+  const resolvedSecret = trimText(secret);
+  if (!resolvedSecret) {
+    throw new Error('JWT_SECRET is required for socket-server');
+  }
+
+  const payloadBase64 = toBase64Url(JSON.stringify(payload));
+  const signature = buildSocketPayloadSignature(payloadBase64, resolvedSecret);
+  return `${payloadBase64}.${signature}`;
+}
+
+export function verifyUnifiedSocketToken(token, secret = JWT_SECRET) {
+  try {
+    const resolvedSecret = trimText(secret);
+    const rawToken = trimText(token);
+    if (!resolvedSecret || !rawToken) {
+      return null;
+    }
+
+    const parts = rawToken.split('.');
+    if (parts.length !== 2) {
+      return null;
+    }
+
+    const payloadBase64 = trimText(parts[0]);
+    const providedSignature = trimText(parts[1]);
+    const expectedSignature = buildSocketPayloadSignature(payloadBase64, resolvedSecret);
+    if (!isTimingSafeMatch(providedSignature, expectedSignature)) {
+      return null;
+    }
+
+    const decoded = JSON.parse(fromBase64Url(payloadBase64));
+    if (!decoded || typeof decoded !== 'object') {
+      return null;
+    }
+
+    const userId = trimText(
+      decoded.principal_id || decoded.principalId || decoded.sub || decoded.userId,
+    );
+    const role = normalizeSocketRole(
+      decoded.role || decoded.principal_type || decoded.principalType,
+    );
+    const sessionId = trimText(decoded.session_id || decoded.sessionId);
+    const exp = Number(decoded.exp || 0);
+
+    if (!userId || !role || !sessionId || !Number.isFinite(exp) || exp <= 0 || Math.floor(Date.now() / 1000) > exp) {
+      return null;
+    }
+
+    return {
+      ...decoded,
+      sub: userId,
+      principal_type: trimText(decoded.principal_type || role),
+      principal_id: userId,
+      role,
+      session_id: sessionId,
+      sessionId,
+      userId,
+      scope: normalizeSocketScope(decoded.scope, role),
+      token_kind: trimText(decoded.token_kind || decoded.tokenKind || decoded.type || SOCKET_ACCESS_TOKEN_KIND),
+      type: trimText(decoded.type || SOCKET_ACCESS_TOKEN_KIND),
+      exp,
+      iat: Number(decoded.iat || 0) || undefined,
+    };
+  } catch (_err) {
+    return null;
+  }
+}
+
+function verifyLegacySocketToken(token) {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded || typeof decoded !== 'object') {
+      return null;
+    }
+
+    const userId = trimText(decoded.userId || decoded.principal_id || decoded.sub);
+    const role = normalizeSocketRole(decoded.role || decoded.principal_type);
+    const sessionId = trimText(decoded.sessionId || decoded.session_id);
+    if (!userId || !role || !sessionId) {
+      return null;
+    }
+
+    return {
+      ...decoded,
+      sub: trimText(decoded.sub || userId),
+      principal_type: trimText(decoded.principal_type || role),
+      principal_id: trimText(decoded.principal_id || userId),
+      role,
+      session_id: sessionId,
+      sessionId,
+      userId,
+      scope: normalizeSocketScope(decoded.scope, role),
+      token_kind: trimText(decoded.token_kind || decoded.tokenKind || decoded.type || SOCKET_ACCESS_TOKEN_KIND),
+      type: trimText(decoded.type || SOCKET_ACCESS_TOKEN_KIND),
+    };
+  } catch (_err) {
+    return null;
+  }
+}
 
 export async function generateToken(userId, role, options = {}) {
-  const session = await createSocketSessionRecord(userId, role, options);
-  return jwt.sign(
-    {
-      userId: String(userId || ''),
-      role: String(role || ''),
-      sessionId: session.sessionId,
-      timestamp: Date.now()
-    },
-    JWT_SECRET,
-    { expiresIn: Math.max(1, Math.floor((session.expiresAt - Date.now()) / 1000)) }
+  const normalizedUserId = trimText(userId);
+  const normalizedRole = normalizeSocketRole(role);
+  if (!normalizedUserId || !normalizedRole) {
+    throw new Error('socket token userId and role are required');
+  }
+
+  const session = await createSocketSessionRecord(normalizedUserId, normalizedRole, options);
+  return signSocketTokenPayload(
+    buildSocketTokenPayload(
+      normalizedUserId,
+      normalizedRole,
+      session.sessionId,
+      session.expiresAt,
+      { nowMs: options.nowMs },
+    ),
   );
 }
 
 export function verifyToken(token) {
-  try {
-    return jwt.verify(token, JWT_SECRET);
-  } catch (_err) {
-    return null;
-  }
+  return verifyUnifiedSocketToken(token) || verifyLegacySocketToken(token);
 }
 
 export function encryptMessage(content) {
