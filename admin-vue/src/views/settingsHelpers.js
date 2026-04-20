@@ -3,25 +3,14 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import {
-  appendVIPBenefit as buildNextVIPBenefits,
-  appendVIPLevel as buildNextVIPLevels,
-  appendVIPPointRule as buildNextVIPPointRules,
-  appendVIPTask as buildNextVIPTasks,
-  buildVIPSettingsPayload,
   createDefaultAlipayConfig,
   createDefaultDebugMode,
   createDefaultPayMode,
-  createDefaultVIPSettings,
   createDefaultWxpayConfig,
   normalizeAlipayConfig,
   normalizeDebugModeConfig,
   normalizePayModeConfig,
-  normalizeVIPSettings,
   normalizeWxpayConfig,
-  removeVIPBenefit as buildNextVIPBenefitsAfterRemove,
-  removeVIPLevel as buildNextVIPLevelsAfterRemove,
-  removeVIPPointRule as buildNextVIPPointRulesAfterRemove,
-  removeVIPTask as buildNextVIPTasksAfterRemove,
   SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES,
 } from '@infinitech/admin-core';
 import request from '@/utils/request';
@@ -33,6 +22,7 @@ import { useAppDownloadSettings } from './settingsHelpers/appDownload';
 import { useServiceSettings } from './settingsHelpers/serviceSettings';
 import { useSmsSettings } from './settingsHelpers/sms';
 import { useWechatLoginSettings } from './settingsHelpers/wechatLogin';
+import { useVipSettings } from './settingsHelpers/vipSettings';
 import { useWeatherSettings } from './settingsHelpers/weather';
 
 export function useSettingsPage() {
@@ -75,9 +65,13 @@ export function useSettingsPage() {
   const DEFAULT_CHARITY_SETTINGS = charitySettingsController.DEFAULT_CHARITY_SETTINGS;
   const charitySettings = charitySettingsController.charitySettings;
   const savingCharitySettings = charitySettingsController.savingCharitySettings;
-  const DEFAULT_VIP_SETTINGS = createDefaultVIPSettings();
-  const vipSettings = ref(createDefaultVIPSettings());
-  const savingVipSettings = ref(false);
+  const vipSettingsController = useVipSettings({
+    request,
+    ElMessage,
+  });
+  const DEFAULT_VIP_SETTINGS = vipSettingsController.DEFAULT_VIP_SETTINGS;
+  const vipSettings = vipSettingsController.vipSettings;
+  const savingVipSettings = vipSettingsController.savingVipSettings;
   const wechatLoginSettings = useWechatLoginSettings({
     request,
     ElMessage,
@@ -129,10 +123,16 @@ export function useSettingsPage() {
   const removeCharityNewsItem = charitySettingsController.removeCharityNewsItem;
   const loadWechatLoginConfig = wechatLoginSettings.loadWechatLoginConfig;
   const saveWechatLoginConfig = wechatLoginSettings.saveWechatLoginConfig;
-
-  function mergeVIPSettings(payload = {}) {
-    vipSettings.value = normalizeVIPSettings(payload);
-  }
+  const loadVipSettings = vipSettingsController.loadVipSettings;
+  const saveVIPSettings = vipSettingsController.saveVIPSettings;
+  const addVIPLevel = vipSettingsController.addVIPLevel;
+  const removeVIPLevel = vipSettingsController.removeVIPLevel;
+  const addVIPBenefit = vipSettingsController.addVIPBenefit;
+  const removeVIPBenefit = vipSettingsController.removeVIPBenefit;
+  const addVIPTask = vipSettingsController.addVIPTask;
+  const removeVIPTask = vipSettingsController.removeVIPTask;
+  const addVIPPointRule = vipSettingsController.addVIPPointRule;
+  const removeVIPPointRule = vipSettingsController.removeVIPPointRule;
 
   const dataManagement = useDataManagementPage();
   const {
@@ -247,20 +247,17 @@ export function useSettingsPage() {
         loadWechatLoginConfig({ clearError: false, throwOnError: true }),
         loadServiceSettings({ clearError: false, throwOnError: true }),
         loadCharitySettings({ clearError: false, throwOnError: true }),
-        request.get('/api/vip-settings'),
+        loadVipSettings({ clearError: false, throwOnError: true }),
         appDownloadSettings.loadAppDownloadConfig({ clearError: false, throwOnError: true }),
         request.get('/api/pay-config/mode'),
         request.get('/api/pay-config/wxpay'),
         request.get('/api/pay-config/alipay'),
       ]);
 
-      const [, debugResp, , , , , vipResp, , payModeResp, wxResp, aliResp] = results;
+      const [, debugResp, , , , , , , payModeResp, wxResp, aliResp] = results;
 
       if (debugResp.status === 'fulfilled' && debugResp.value?.data) {
         debugMode.value = normalizeDebugModeConfig(extractEnvelopeData(debugResp.value.data) || {});
-      }
-      if (vipResp.status === 'fulfilled' && vipResp.value?.data) {
-        mergeVIPSettings(extractEnvelopeData(vipResp.value.data) || {});
       }
       if (payModeResp.status === 'fulfilled' && payModeResp.value?.data) {
         payMode.value = normalizePayModeConfig(extractEnvelopeData(payModeResp.value.data) || {});
@@ -311,85 +308,6 @@ export function useSettingsPage() {
 
   async function saveWeather() {
     await weatherSettings.saveWeatherConfig();
-  }
-
-  function addVIPLevel() {
-    const result = buildNextVIPLevels(vipSettings.value.levels);
-    if (!result.added) {
-      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.vipLevels);
-      return;
-    }
-    vipSettings.value.levels = result.items;
-  }
-
-  function removeVIPLevel(index) {
-    vipSettings.value.levels = buildNextVIPLevelsAfterRemove(
-      vipSettings.value.levels,
-      index,
-    );
-  }
-
-  function addVIPBenefit(levelIndex) {
-    const result = buildNextVIPBenefits(vipSettings.value.levels, levelIndex);
-    if (!result.added) {
-      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.vipBenefitsPerLevel);
-      return;
-    }
-    vipSettings.value.levels = result.levels;
-  }
-
-  function removeVIPBenefit(levelIndex, benefitIndex) {
-    vipSettings.value.levels = buildNextVIPBenefitsAfterRemove(
-      vipSettings.value.levels,
-      levelIndex,
-      benefitIndex,
-    );
-  }
-
-  function addVIPTask() {
-    const result = buildNextVIPTasks(vipSettings.value.growth_tasks);
-    if (!result.added) {
-      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.vipTasks);
-      return;
-    }
-    vipSettings.value.growth_tasks = result.items;
-  }
-
-  function removeVIPTask(index) {
-    vipSettings.value.growth_tasks = buildNextVIPTasksAfterRemove(
-      vipSettings.value.growth_tasks,
-      index,
-    );
-  }
-
-  function addVIPPointRule() {
-    const result = buildNextVIPPointRules(vipSettings.value.point_rules);
-    if (!result.added) {
-      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.vipPointRules);
-      return;
-    }
-    vipSettings.value.point_rules = result.items;
-  }
-
-  function removeVIPPointRule(index) {
-    vipSettings.value.point_rules = buildNextVIPPointRulesAfterRemove(
-      vipSettings.value.point_rules,
-      index,
-    );
-  }
-
-  async function saveVIPSettings() {
-    savingVipSettings.value = true;
-    try {
-      const payload = buildVIPSettingsPayload(vipSettings.value);
-      await request.post('/api/vip-settings', payload);
-      mergeVIPSettings(payload);
-      ElMessage.success('会员配置保存成功');
-    } catch (error) {
-      ElMessage.error(extractErrorMessage(error, '保存会员配置失败'));
-    } finally {
-      savingVipSettings.value = false;
-    }
   }
 
   async function saveAppDownload() {
