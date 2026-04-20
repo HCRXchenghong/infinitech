@@ -2,7 +2,16 @@ const express = require('express')
 const router = express.Router()
 const riderController = require('../controllers/riderController')
 const multer = require('multer')
-const upload = multer({ dest: 'uploads/' })
+const config = require('../config')
+const { requireRequestAuth } = require('../middleware/requireRequestAuth')
+const upload = multer({
+  dest: 'uploads/',
+  limits: {
+    fileSize: config.uploads.fileSizeBytes,
+    fieldSize: config.uploads.fieldSizeBytes,
+    files: config.uploads.files,
+  },
+})
 
 router.put('/:riderId/online-status', riderController.updateRiderStatus)
 router.post('/:riderId/heartbeat', riderController.heartbeatRiderStatus)
@@ -18,7 +27,7 @@ router.put('/:riderId/avatar', riderController.updateAvatar)
 router.get('/:riderId/profile', riderController.getRiderProfile)
 router.get('/:riderId/cert', riderController.getRiderCert)
 router.put('/:riderId/profile', riderController.updateRiderProfile)
-router.post('/:riderId/cert', upload.single('image'), riderController.uploadCert)
+router.post('/:riderId/cert', requireRequestAuth, upload.single('image'), riderController.uploadCert)
 router.post('/:riderId/change-phone', riderController.changePhone)
 router.post('/:riderId/change-password', riderController.changePassword)
 router.get('/:riderId/rank', riderController.getRiderRank)
