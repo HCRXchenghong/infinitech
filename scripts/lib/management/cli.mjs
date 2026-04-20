@@ -41,6 +41,10 @@ import {
 import { runAdminMaintenance } from './admin-maintenance.mjs'
 import { formatKeyValues, maskSecret, openFileInEditor, promptConfirm, promptExact, promptText } from './utils.mjs'
 
+function getTemporaryCredentialPassword(payload) {
+  return String(payload?.temporaryCredential?.temporaryPassword || '').trim()
+}
+
 function parseArgv(argv) {
   const options = {}
   const positionals = []
@@ -432,11 +436,12 @@ function createAdmin(repoRoot, options) {
     generate: options.generate,
   })
   console.log(`管理员已创建：${payload.admin?.phone} / ${payload.admin?.name}`)
-  if (payload.newPassword) {
+  const temporaryPassword = getTemporaryCredentialPassword(payload)
+  if (temporaryPassword) {
     printSensitiveReceipt(repoRoot, 'admin-create-password', '初始密码已生成。', [
       { label: '对象', value: `管理员 ${payload.admin?.name || payload.admin?.phone || '-'}` },
       { label: '账号', value: String(payload.admin?.phone || '-') },
-      { label: '一次性临时口令', value: payload.newPassword },
+      { label: '一次性临时口令', value: temporaryPassword },
       { label: '要求', value: '请通过受控渠道交付，并提醒首次登录后立即修改密码。' },
     ])
   }
@@ -464,11 +469,12 @@ function resetAdminPassword(repoRoot, options) {
     generate: options.generate,
   })
   console.log(`管理员密码已重置：${payload.admin?.phone}`)
-  if (payload.newPassword) {
+  const temporaryPassword = getTemporaryCredentialPassword(payload)
+  if (temporaryPassword) {
     printSensitiveReceipt(repoRoot, 'admin-reset-password', '管理员口令已重置。', [
       { label: '对象', value: `管理员 ${payload.admin?.name || payload.admin?.phone || '-'}` },
       { label: '账号', value: String(payload.admin?.phone || '-') },
-      { label: '一次性临时口令', value: payload.newPassword },
+      { label: '一次性临时口令', value: temporaryPassword },
       { label: '要求', value: '请通过受控渠道交付，并提醒首次登录后立即修改密码。' },
     ])
   }

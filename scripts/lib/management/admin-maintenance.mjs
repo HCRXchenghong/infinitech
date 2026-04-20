@@ -4,6 +4,38 @@ import { getManagementPaths, repoRootFallback } from './paths.mjs'
 import { getProcessEnv } from './orchestrator.mjs'
 import { runCommand, runCommandOrThrow } from './utils.mjs'
 
+function trimText(value) {
+  return String(value == null ? '' : value).trim()
+}
+
+export function normalizeAdminMaintenancePayload(payload = {}) {
+  if (!payload || typeof payload !== 'object') {
+    return payload
+  }
+
+  const normalized = { ...payload }
+  const credentialSource =
+    normalized.temporaryCredential && typeof normalized.temporaryCredential === 'object'
+      ? normalized.temporaryCredential
+      : null
+  const fallbackPassword = trimText(normalized.newPassword)
+  const temporaryPassword = trimText(
+    credentialSource?.temporaryPassword || fallbackPassword,
+  )
+
+  if (temporaryPassword) {
+    normalized.temporaryCredential = {
+      temporaryPassword,
+      deliveryMode: trimText(credentialSource?.deliveryMode || 'operator_receipt') || 'operator_receipt',
+    }
+  } else {
+    delete normalized.temporaryCredential
+  }
+
+  delete normalized.newPassword
+  return normalized
+}
+
 function getAdminToolPath(repoRoot = repoRootFallback) {
   const paths = getManagementPaths(repoRoot)
   return path.join(paths.binDir, process.platform === 'win32' ? 'infinitech-admin.exe' : 'infinitech-admin')
@@ -124,5 +156,5 @@ export function runAdminMaintenance(repoRoot = repoRootFallback, options = {}) {
   if (!payload?.success) {
     throw new Error(payload?.error || '管理员维护命令执行失败')
   }
-  return payload
+  return normalizeAdminMaintenancePayload(payload)
 }

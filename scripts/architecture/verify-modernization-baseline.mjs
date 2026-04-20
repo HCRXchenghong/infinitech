@@ -2898,6 +2898,9 @@ assertNotContains(
   "scripts/lib/management/cli.mjs",
   "console.log(`新密码：${payload.newPassword}`)",
 );
+assertNotContains("scripts/lib/management/cli.mjs", "payload.newPassword");
+assertNotContains("backend/go/scripts/admin-maintenance.go", "NewPassword string");
+assertContains("backend/go/scripts/admin-maintenance.go", "temporaryCredential");
 assertNotContains("scripts/lib/management/cli.mjs", "revealSensitive: true");
 assertNotContains(
   "scripts/lib/management/menu.mjs",

@@ -18,13 +18,24 @@ import (
 )
 
 type response struct {
-	Success     bool             `json:"success"`
-	Action      string           `json:"action,omitempty"`
-	Error       string           `json:"error,omitempty"`
-	NewPassword string           `json:"newPassword,omitempty"`
-	Admin       map[string]any   `json:"admin,omitempty"`
-	Admins      []map[string]any `json:"admins,omitempty"`
-	Data        map[string]any   `json:"data,omitempty"`
+	Success             bool             `json:"success"`
+	Action              string           `json:"action,omitempty"`
+	Error               string           `json:"error,omitempty"`
+	TemporaryCredential map[string]any   `json:"temporaryCredential,omitempty"`
+	Admin               map[string]any   `json:"admin,omitempty"`
+	Admins              []map[string]any `json:"admins,omitempty"`
+	Data                map[string]any   `json:"data,omitempty"`
+}
+
+func buildTemporaryCredential(password string) map[string]any {
+	password = strings.TrimSpace(password)
+	if password == "" {
+		return nil
+	}
+	return map[string]any{
+		"temporaryPassword": password,
+		"deliveryMode":      "operator_receipt",
+	}
 }
 
 func main() {
@@ -92,10 +103,10 @@ func main() {
 			fail(*jsonOutput, *action, createErr)
 		}
 		payload := response{
-			Success:     true,
-			Action:      *action,
-			Admin:       serializeAdmin(admin),
-			NewPassword: resolvedPassword,
+			Success:             true,
+			Action:              *action,
+			Admin:               serializeAdmin(admin),
+			TemporaryCredential: buildTemporaryCredential(resolvedPassword),
 		}
 		if createdByGenerator {
 			payload.Data = map[string]any{"generatedPassword": true}
@@ -131,10 +142,10 @@ func main() {
 			fail(*jsonOutput, *action, resetErr)
 		}
 		respond(*jsonOutput, response{
-			Success:     true,
-			Action:      *action,
-			Admin:       serializeAdmin(admin),
-			NewPassword: resolvedPassword,
+			Success:             true,
+			Action:              *action,
+			Admin:               serializeAdmin(admin),
+			TemporaryCredential: buildTemporaryCredential(resolvedPassword),
 		})
 	case "delete":
 		if strings.TrimSpace(*confirm) == "" {
@@ -258,8 +269,8 @@ func respond(jsonOutput bool, payload response) {
 			fmt.Printf("- %+v\n", admin)
 		}
 	}
-	if payload.NewPassword != "" {
-		fmt.Printf("新密码: %s\n", payload.NewPassword)
+	if payload.TemporaryCredential != nil {
+		fmt.Println("已生成一次性临时口令，请通过受控回执链路交付。")
 	}
 }
 

@@ -8,6 +8,7 @@ import { getConfigMeta, validateConfigValue } from './config-schema.mjs'
 import { checkEnvConsistency, checkProxyConsistency, isContainerHealthyEnough } from './doctor.mjs'
 import { resolveRepoContext } from './install-manifest.mjs'
 import { pickPosixBinDir } from './launcher-install.mjs'
+import { normalizeAdminMaintenancePayload } from './admin-maintenance.mjs'
 import { getManagementPaths, repoRootFallback } from './paths.mjs'
 import { buildRestoreChanges, restoreEnvBackup } from './runtime-env.mjs'
 
@@ -183,6 +184,20 @@ test('restoreEnvBackup accepts backup basename from management backup directory'
 
     restoreEnvBackup(repoRootFallback, 'sample.env', targetFile)
     assert.equal(fs.readFileSync(targetFile, 'utf8'), 'HELLO=world\n')
+  })
+})
+
+test('normalizeAdminMaintenancePayload upgrades legacy newPassword to temporaryCredential', () => {
+  const payload = normalizeAdminMaintenancePayload({
+    success: true,
+    action: 'reset-password',
+    newPassword: 'TempPass123!',
+  })
+
+  assert.equal(payload.newPassword, undefined)
+  assert.deepEqual(payload.temporaryCredential, {
+    temporaryPassword: 'TempPass123!',
+    deliveryMode: 'operator_receipt',
   })
 })
 
