@@ -35,7 +35,6 @@ const {
   env: ENV,
   productionLike: PRODUCTION_LIKE,
   trustedSocketApiSecret: TRUSTED_SOCKET_API_SECRET,
-  trustedSocketApiSecretSource,
 } = validateTrustedSocketApiConfig(process.env);
 
 function toPositiveInt(value, fallback) {
@@ -274,7 +273,7 @@ const httpServer = createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, X-Socket-Server-Secret, X-Token-Api-Secret, X-Api-Secret',
+    'Content-Type, Authorization, X-Socket-Server-Secret',
   );
 
   if (origin && !corsOrigin) {
@@ -508,9 +507,6 @@ setInterval(async () => {
 httpServer.listen(PORT, () => {
   logger.info(`Socket.IO 服务运行在端口 ${PORT}`);
   logger.info('Socket auth now requires validated business auth or SOCKET_SERVER_API_SECRET');
-  if (trustedSocketApiSecretSource === 'TOKEN_API_SECRET') {
-    logger.warn('socket-server TOKEN_API_SECRET is deprecated; use SOCKET_SERVER_API_SECRET');
-  }
   logger.info('监控端点: /api/stats');
   logger.info('生成 token: POST /api/generate-token');
   logger.info('实时广播: POST /api/realtime/publish');

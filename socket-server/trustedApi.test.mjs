@@ -9,7 +9,7 @@ import {
   validateTrustedSocketTokenRequest,
 } from "./trustedApi.js";
 
-test("resolveTrustedSocketApiSecret prefers SOCKET_SERVER_API_SECRET", () => {
+test("resolveTrustedSocketApiSecret only accepts SOCKET_SERVER_API_SECRET", () => {
   assert.deepEqual(
     resolveTrustedSocketApiSecret({
       SOCKET_SERVER_API_SECRET: "socket-secret",
@@ -26,8 +26,8 @@ test("resolveTrustedSocketApiSecret prefers SOCKET_SERVER_API_SECRET", () => {
       TOKEN_API_SECRET: "legacy-secret",
     }),
     {
-      secret: "legacy-secret",
-      source: "TOKEN_API_SECRET",
+      secret: "",
+      source: "",
     },
   );
 });
@@ -55,7 +55,7 @@ test("validateTrustedSocketApiConfig requires secret in production-like environm
   );
 });
 
-test("isTrustedSocketApiRequest accepts dedicated and legacy trusted headers", () => {
+test("isTrustedSocketApiRequest accepts only dedicated trusted headers", () => {
   const secret = "socket-secret";
 
   assert.equal(
@@ -74,14 +74,14 @@ test("isTrustedSocketApiRequest accepts dedicated and legacy trusted headers", (
   );
   assert.equal(
     isTrustedSocketApiRequest(
-      { headers: { "x-token-api-secret": secret } },
+      { headers: { "x-api-secret": "other-secret" } },
       secret,
     ),
-    true,
+    false,
   );
   assert.equal(
     isTrustedSocketApiRequest(
-      { headers: { "x-api-secret": "other-secret" } },
+      { headers: { "x-token-api-secret": secret } },
       secret,
     ),
     false,

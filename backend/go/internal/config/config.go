@@ -193,7 +193,7 @@ func Load() *Config {
 		},
 		Socket: SocketConfig{
 			ServerURL:      strings.TrimSpace(getEnv("SOCKET_SERVER_URL", "http://127.0.0.1:9898")),
-			APISecret:      strings.TrimSpace(getEnv("SOCKET_SERVER_API_SECRET", getEnv("TOKEN_API_SECRET", ""))),
+			APISecret:      strings.TrimSpace(getEnv("SOCKET_SERVER_API_SECRET", "")),
 			RequestTimeout: time.Duration(getEnvInt("SOCKET_SERVER_REQUEST_TIMEOUT_SECONDS", 5)) * time.Second,
 		},
 		RTC: RTCConfig{

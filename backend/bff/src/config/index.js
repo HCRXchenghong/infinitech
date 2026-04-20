@@ -79,10 +79,10 @@ const adminTokenSecret = requireSharedSecret();
 const env = process.env.NODE_ENV || process.env.ENV || "development";
 const productionLike = ["production", "prod", "staging"].includes(String(env).trim().toLowerCase());
 const corsOrigins = buildCorsOrigins(productionLike);
-const socketServerApiSecret = String(process.env.SOCKET_SERVER_API_SECRET || process.env.TOKEN_API_SECRET || "").trim();
+const socketServerApiSecret = String(process.env.SOCKET_SERVER_API_SECRET || "").trim();
 
 if (productionLike && !socketServerApiSecret) {
-  throw new Error("BFF requires SOCKET_SERVER_API_SECRET or TOKEN_API_SECRET in production-like environments");
+  throw new Error("BFF requires SOCKET_SERVER_API_SECRET in production-like environments");
 }
 if (productionLike && corsOrigins.length === 0) {
   throw new Error("BFF requires BFF_CORS_ORIGINS or explicit ADMIN_WEB_BASE_URL/SITE_WEB_BASE_URL in production-like environments");

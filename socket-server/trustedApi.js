@@ -21,14 +21,6 @@ export function resolveTrustedSocketApiSecret(env = process.env) {
     };
   }
 
-  const legacy = String(env?.TOKEN_API_SECRET || "").trim();
-  if (legacy) {
-    return {
-      secret: legacy,
-      source: "TOKEN_API_SECRET",
-    };
-  }
-
   return {
     secret: "",
     source: "",
@@ -63,8 +55,6 @@ export function isTrustedSocketApiRequest(req, secret) {
   const headers = req?.headers || {};
   const candidateValues = [
     headers["x-socket-server-secret"],
-    headers["x-token-api-secret"],
-    headers["x-api-secret"],
     headers.authorization,
   ];
 

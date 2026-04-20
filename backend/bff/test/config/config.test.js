@@ -13,7 +13,6 @@ describe("bff config hardening", () => {
     delete process.env.ADMIN_WEB_BASE_URL;
     delete process.env.SITE_WEB_BASE_URL;
     delete process.env.SOCKET_SERVER_API_SECRET;
-    delete process.env.TOKEN_API_SECRET;
     process.env.JWT_SECRET = "test-secret-key-for-jest-1234567890";
   });
 
@@ -33,7 +32,7 @@ describe("bff config hardening", () => {
     process.env.NODE_ENV = "production";
     process.env.BFF_CORS_ORIGINS = "https://admin.example.com";
 
-    expect(() => loadConfig()).toThrow(/SOCKET_SERVER_API_SECRET|TOKEN_API_SECRET/);
+    expect(() => loadConfig()).toThrow(/SOCKET_SERVER_API_SECRET/);
   });
 
   test("production requires explicit cors origins", () => {

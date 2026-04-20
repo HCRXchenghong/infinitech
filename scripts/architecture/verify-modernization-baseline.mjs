@@ -7016,10 +7016,15 @@ assertContains(
   "SOCKET_SERVER_API_SECRET is required for socket-server in production-like environments",
 );
 assertContains("socket-server/trustedApi.js", "x-socket-server-secret");
+assertNotContains("socket-server/trustedApi.js", "TOKEN_API_SECRET");
+assertNotContains("socket-server/trustedApi.js", "x-token-api-secret");
+assertNotContains("socket-server/trustedApi.js", "x-api-secret");
 assertContains(
   "socket-server/trustedApi.js",
   "Socket server stats endpoint requires trusted service credentials",
 );
+assertNotContains("socket-server/index.js", "X-Token-Api-Secret");
+assertNotContains("socket-server/index.js", "X-Api-Secret");
 assertContains("socket-server/index.js", "validateTrustedSocketTokenRequest");
 assertContains("socket-server/index.js", "validateTrustedSocketStatsRequest");
 assertContains("socket-server/auth.js", "verifyUnifiedSocketToken");
@@ -7035,6 +7040,9 @@ assertContains("socket-server/index.js", "buildSuccessEnvelopePayload");
 assertContains("socket-server/index.js", "buildErrorEnvelopePayload");
 assertContains("backend/bff/src/controllers/adminDataController.js", "getRealtimeStats");
 assertContains("backend/bff/src/routes/admin.js", "router.get('/realtime/stats', adminDataController.getRealtimeStats);");
+assertNotContains("backend/bff/src/config/index.js", "TOKEN_API_SECRET");
+assertContains("backend/bff/src/config/index.js", "BFF requires SOCKET_SERVER_API_SECRET in production-like environments");
+assertNotContains("backend/go/internal/config/config.go", 'getEnv("TOKEN_API_SECRET"');
 assertNotContains("backend/docker/Caddyfile", "/api/stats*");
 assertNotContains("backend/docker/nginx.admin.conf", "location = /api/stats");
 assertContains("backend/go/internal/handler/rider_handler.go", "骑手不能自行修改认证状态");
