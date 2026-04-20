@@ -3,28 +3,21 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import {
-  appendCharityLeaderboardItem as buildNextCharityLeaderboardItems,
-  appendCharityNewsItem as buildNextCharityNewsItems,
   appendVIPBenefit as buildNextVIPBenefits,
   appendVIPLevel as buildNextVIPLevels,
   appendVIPPointRule as buildNextVIPPointRules,
   appendVIPTask as buildNextVIPTasks,
-  buildCharitySettingsPayload,
   buildVIPSettingsPayload,
   createDefaultAlipayConfig,
-  createDefaultCharitySettings,
   createDefaultDebugMode,
   createDefaultPayMode,
   createDefaultVIPSettings,
   createDefaultWxpayConfig,
   normalizeAlipayConfig,
-  normalizeCharitySettings,
   normalizeDebugModeConfig,
   normalizePayModeConfig,
   normalizeVIPSettings,
   normalizeWxpayConfig,
-  removeCharityLeaderboardItem as buildNextCharityLeaderboardAfterRemove,
-  removeCharityNewsItem as buildNextCharityNewsAfterRemove,
   removeVIPBenefit as buildNextVIPBenefitsAfterRemove,
   removeVIPLevel as buildNextVIPLevelsAfterRemove,
   removeVIPPointRule as buildNextVIPPointRulesAfterRemove,
@@ -32,6 +25,7 @@ import {
   SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES,
 } from '@infinitech/admin-core';
 import request from '@/utils/request';
+import { useCharitySettings } from './settingsHelpers/charitySettings';
 import { useDataManagementPage } from './dataManagementHelpers';
 import { useSettingsApiManagement } from './settingsApiManagementHelpers';
 import { useSettingsActionHelpers } from './settingsActionHelpers';
@@ -74,9 +68,13 @@ export function useSettingsPage() {
   const serviceSettings = serviceSettingsController.serviceSettings;
   const savingServiceSettings = serviceSettingsController.savingServiceSettings;
   const uploadingServiceSounds = serviceSettingsController.uploadingServiceSounds;
-  const DEFAULT_CHARITY_SETTINGS = createDefaultCharitySettings();
-  const charitySettings = ref(createDefaultCharitySettings());
-  const savingCharitySettings = ref(false);
+  const charitySettingsController = useCharitySettings({
+    request,
+    ElMessage,
+  });
+  const DEFAULT_CHARITY_SETTINGS = charitySettingsController.DEFAULT_CHARITY_SETTINGS;
+  const charitySettings = charitySettingsController.charitySettings;
+  const savingCharitySettings = charitySettingsController.savingCharitySettings;
   const DEFAULT_VIP_SETTINGS = createDefaultVIPSettings();
   const vipSettings = ref(createDefaultVIPSettings());
   const savingVipSettings = ref(false);
@@ -123,12 +121,14 @@ export function useSettingsPage() {
   const removeRiderInsuranceClaimStep = serviceSettingsController.removeRiderInsuranceClaimStep;
   const addRTCIceServer = serviceSettingsController.addRTCIceServer;
   const removeRTCIceServer = serviceSettingsController.removeRTCIceServer;
+  const loadCharitySettings = charitySettingsController.loadCharitySettings;
+  const saveCharitySettings = charitySettingsController.saveCharitySettings;
+  const addCharityLeaderboardItem = charitySettingsController.addCharityLeaderboardItem;
+  const removeCharityLeaderboardItem = charitySettingsController.removeCharityLeaderboardItem;
+  const addCharityNewsItem = charitySettingsController.addCharityNewsItem;
+  const removeCharityNewsItem = charitySettingsController.removeCharityNewsItem;
   const loadWechatLoginConfig = wechatLoginSettings.loadWechatLoginConfig;
   const saveWechatLoginConfig = wechatLoginSettings.saveWechatLoginConfig;
-
-  function mergeCharitySettings(payload = {}) {
-    charitySettings.value = normalizeCharitySettings(payload);
-  }
 
   function mergeVIPSettings(payload = {}) {
     vipSettings.value = normalizeVIPSettings(payload);
@@ -246,7 +246,7 @@ export function useSettingsPage() {
         weatherSettings.loadWeatherConfig({ clearError: false, throwOnError: true }),
         loadWechatLoginConfig({ clearError: false, throwOnError: true }),
         loadServiceSettings({ clearError: false, throwOnError: true }),
-        request.get('/api/charity-settings'),
+        loadCharitySettings({ clearError: false, throwOnError: true }),
         request.get('/api/vip-settings'),
         appDownloadSettings.loadAppDownloadConfig({ clearError: false, throwOnError: true }),
         request.get('/api/pay-config/mode'),
@@ -254,13 +254,10 @@ export function useSettingsPage() {
         request.get('/api/pay-config/alipay'),
       ]);
 
-      const [, debugResp, , , , charityResp, vipResp, , payModeResp, wxResp, aliResp] = results;
+      const [, debugResp, , , , , vipResp, , payModeResp, wxResp, aliResp] = results;
 
       if (debugResp.status === 'fulfilled' && debugResp.value?.data) {
         debugMode.value = normalizeDebugModeConfig(extractEnvelopeData(debugResp.value.data) || {});
-      }
-      if (charityResp.status === 'fulfilled' && charityResp.value?.data) {
-        mergeCharitySettings(extractEnvelopeData(charityResp.value.data) || {});
       }
       if (vipResp.status === 'fulfilled' && vipResp.value?.data) {
         mergeVIPSettings(extractEnvelopeData(vipResp.value.data) || {});
@@ -314,38 +311,6 @@ export function useSettingsPage() {
 
   async function saveWeather() {
     await weatherSettings.saveWeatherConfig();
-  }
-
-  function addCharityLeaderboardItem() {
-    const result = buildNextCharityLeaderboardItems(charitySettings.value.leaderboard);
-    if (!result.added) {
-      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.charityLeaderboard);
-      return;
-    }
-    charitySettings.value.leaderboard = result.items;
-  }
-
-  function removeCharityLeaderboardItem(index) {
-    charitySettings.value.leaderboard = buildNextCharityLeaderboardAfterRemove(
-      charitySettings.value.leaderboard,
-      index,
-    );
-  }
-
-  function addCharityNewsItem() {
-    const result = buildNextCharityNewsItems(charitySettings.value.news_list);
-    if (!result.added) {
-      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.charityNews);
-      return;
-    }
-    charitySettings.value.news_list = result.items;
-  }
-
-  function removeCharityNewsItem(index) {
-    charitySettings.value.news_list = buildNextCharityNewsAfterRemove(
-      charitySettings.value.news_list,
-      index,
-    );
   }
 
   function addVIPLevel() {
@@ -411,20 +376,6 @@ export function useSettingsPage() {
       vipSettings.value.point_rules,
       index,
     );
-  }
-
-  async function saveCharitySettings() {
-    savingCharitySettings.value = true;
-    try {
-      const payload = buildCharitySettingsPayload(charitySettings.value);
-      await request.post('/api/charity-settings', payload);
-      mergeCharitySettings(payload);
-      ElMessage.success('公益配置保存成功');
-    } catch (error) {
-      ElMessage.error(extractErrorMessage(error, '保存公益配置失败'));
-    } finally {
-      savingCharitySettings.value = false;
-    }
   }
 
   async function saveVIPSettings() {
