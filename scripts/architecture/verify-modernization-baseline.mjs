@@ -4157,9 +4157,9 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/NotificationEditorPage.vue",
-  "extractUploadAsset",
+  "resolveUploadAssetUrl",
 );
-assertContains("admin-vue/src/views/MerchantProfile.vue", "extractUploadAsset");
+assertContains("admin-vue/src/views/MerchantProfile.vue", "resolveUploadAssetUrl");
 assertContains(
   "admin-vue/src/views/MerchantProfile.vue",
   "createAdminMerchantEditFormState",
@@ -4176,7 +4176,6 @@ assertNotContains(
   "admin-vue/src/views/MerchantProfile.vue",
   "const MAX_LICENSE_FILE_SIZE",
 );
-assertContains("admin-vue/src/views/settingsHelpers.js", "extractUploadAsset");
 assertContains(
   "admin-vue/src/views/ridersActionHelpers.js",
   "extractEnvelopeData(data)",
@@ -4333,7 +4332,7 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/settingsActionHelpers.js",
-  "extractErrorMessage(error, '未知错误')",
+  "clearAdminSessionStorage();",
 );
 assertContains(
   "admin-vue/src/views/TransactionLogs.vue",
@@ -4345,7 +4344,7 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/useChatConsole.js",
-  "extractUploadAsset(data)",
+  "resolveUploadAssetUrl(data)",
 );
 assertContains(
   "admin-vue/src/views/useChatConsole.js",
@@ -4409,18 +4408,22 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/settingsApiManagementHelpers.js",
+  "usePublicApiManagement({",
+);
+assertContains(
+  "admin-vue/src/views/publicApiManagementCore.js",
   "extractEnvelopeData(data)",
 );
 assertContains(
-  "admin-vue/src/views/settingsApiManagementHelpers.js",
+  "admin-vue/src/views/publicApiManagementCore.js",
   "buildPublicApiPayload(apiForm)",
 );
 assertContains(
-  "admin-vue/src/views/settingsApiManagementHelpers.js",
+  "admin-vue/src/views/publicApiManagementCore.js",
   "resolvePublicApiPermissionSelection(",
 );
 assertContains(
-  "admin-vue/src/views/settingsApiManagementHelpers.js",
+  "admin-vue/src/views/publicApiManagementCore.js",
   "normalizePublicApiList(payload)",
 );
 assertNotContains(
@@ -4433,42 +4436,42 @@ assertNotContains(
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers.js",
-  "buildSharedServiceSettingsPayload",
+  "useAppDownloadSettings({",
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers.js",
-  "@infinitech/admin-core",
+  "useServiceSettings({",
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers.js",
-  "mergeWechatLoginConfig(extractEnvelopeData(wechatLoginResp.value.data) || {})",
+  "useWechatLoginSettings({",
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers.js",
-  "mergeServiceSettings(extractEnvelopeData(serviceResp.value.data) || {})",
+  "useSmsSettings({",
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers.js",
-  "sms.value = normalizeSMSConfig(extractEnvelopeData(smsResp.value.data) || {})",
+  "useVipSettings({",
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers.js",
-  "mergeVIPSettings(extractEnvelopeData(vipResp.value.data) || {})",
+  "useCharitySettings({",
 );
 assertContains(
-  "admin-vue/src/views/settingsHelpers.js",
+  "admin-vue/src/views/settingsHelpers/serviceSettings.js",
   "SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES",
 );
 assertContains(
-  "admin-vue/src/views/settingsHelpers.js",
+  "admin-vue/src/views/settingsHelpers/serviceSettings.js",
   "buildNextRiderReportReasons(",
 );
 assertContains(
-  "admin-vue/src/views/settingsHelpers.js",
+  "admin-vue/src/views/settingsHelpers/vipSettings.js",
   "buildNextVIPBenefits(",
 );
 assertContains(
-  "admin-vue/src/views/settingsHelpers.js",
+  "admin-vue/src/views/settingsHelpers/charitySettings.js",
   "buildNextCharityLeaderboardItems(",
 );
 assertNotContains(
@@ -4509,7 +4512,7 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers/sms.js",
-  "normalizeSMSConfig(extractEnvelopeData(res.data) || {})",
+  "applySmsConfig(extractEnvelopeData(response.data) || {})",
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers/weather.js",
@@ -4517,7 +4520,7 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers/weather.js",
-  "mergeWeatherConfig(extractEnvelopeData(res.data) || {})",
+  "applyWeatherConfig(extractEnvelopeData(response.data) || {})",
 );
 assertContains(
   "admin-vue/src/utils/notificationSound.js",
@@ -4537,22 +4540,22 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/apiManagementHelpers.js",
-  "extractEnvelopeData(data)",
+  "usePublicApiManagement({",
 );
 assertContains(
   "admin-vue/src/views/apiManagementHelpers.js",
-  "buildWeatherConfigPayload(weather.value)",
+  "useSmsSettings({",
 );
 assertContains(
   "admin-vue/src/views/apiManagementHelpers.js",
-  "createPublicApiFormState()",
+  "useWeatherSettings({",
 );
 assertContains(
-  "admin-vue/src/views/apiManagementHelpers.js",
+  "admin-vue/src/views/publicApiManagementCore.js",
   "resolvePublicApiPermissionSelection(",
 );
 assertContains(
-  "admin-vue/src/views/apiManagementHelpers.js",
+  "admin-vue/src/views/publicApiManagementCore.js",
   "normalizePublicApiList(payload)",
 );
 assertContains(
