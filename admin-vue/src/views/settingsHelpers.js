@@ -4,10 +4,10 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 import { useCharitySettings } from './settingsHelpers/charitySettings';
-import { useDataManagementPage } from './dataManagementHelpers';
 import { useSettingsApiManagement } from './settingsApiManagementHelpers';
 import { useSettingsActionHelpers } from './settingsActionHelpers';
 import { useAppDownloadSettings } from './settingsHelpers/appDownload';
+import { useSettingsDataManagement } from './settingsHelpers/dataManagement';
 import { usePaymentAndDebugSettings } from './settingsHelpers/paymentAndDebug';
 import { useServiceSettings } from './settingsHelpers/serviceSettings';
 import { useSmsSettings } from './settingsHelpers/sms';
@@ -126,7 +126,6 @@ export function useSettingsPage() {
   const addVIPPointRule = vipSettingsController.addVIPPointRule;
   const removeVIPPointRule = vipSettingsController.removeVIPPointRule;
 
-  const dataManagement = useDataManagementPage();
   const {
     exporting,
     importing,
@@ -140,42 +139,18 @@ export function useSettingsPage() {
     importingAll,
     exportUsers,
     beforeImport,
-    handleImport: handleImportByType,
+    handleImport,
     exportRiders,
+    handleImportRiders,
     exportOrders,
+    handleImportOrders,
     exportMerchants,
+    handleImportMerchants,
     exportAllData,
-    handleImportAll,
+    handleImportAllData,
     validateDataType,
-  } = dataManagement;
-
-  async function handleImport(options) {
-    return handleImportByType(options, 'users');
-  }
-
-  async function handleImportRiders(options) {
-    return handleImportByType(options, 'riders');
-  }
-
-  async function handleImportOrders(options) {
-    return handleImportByType(options, 'orders');
-  }
-
-  async function handleImportMerchants(options) {
-    return handleImportByType(options, 'merchants');
-  }
-
-  async function handleImportAllData(options) {
-    return handleImportAll(options);
-  }
-
-  const dataMgmtItems = computed(() => [
-    { label: '用户数据', exporting: exporting.value, importing: importing.value, onExport: exportUsers, onImport: handleImport },
-    { label: '骑手数据', exporting: exportingRiders.value, importing: importingRiders.value, onExport: exportRiders, onImport: handleImportRiders },
-    { label: '订单数据', exporting: exportingOrders.value, importing: importingOrders.value, onExport: exportOrders, onImport: handleImportOrders },
-    { label: '商户数据', exporting: exportingMerchants.value, importing: importingMerchants.value, onExport: exportMerchants, onImport: handleImportMerchants },
-    { label: '平台备份', exporting: exportingAll.value, importing: importingAll.value, onExport: exportAllData, onImport: handleImportAllData },
-  ]);
+    dataMgmtItems,
+  } = useSettingsDataManagement();
 
   const apiManagement = useSettingsApiManagement({
     request,
