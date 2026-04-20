@@ -2,11 +2,17 @@ const path = require("path");
 const config = require("../../config");
 
 const BACKEND_URL = config.goApiUrl;
-const CLEAR_ALL_VERIFY_ACCOUNT = String(process.env.SYSTEM_LOG_DELETE_ACCOUNT || "").trim();
-const CLEAR_ALL_VERIFY_PASSWORD = String(process.env.SYSTEM_LOG_DELETE_PASSWORD || "");
+
+function resolveClearAllVerifyCredential() {
+  return {
+    account: String(process.env.CLEAR_ALL_DATA_VERIFY_ACCOUNT || "").trim(),
+    password: String(process.env.CLEAR_ALL_DATA_VERIFY_PASSWORD || ""),
+  };
+}
 
 function isClearAllVerifyConfigured() {
-  return Boolean(CLEAR_ALL_VERIFY_ACCOUNT && CLEAR_ALL_VERIFY_PASSWORD);
+  const credential = resolveClearAllVerifyCredential();
+  return Boolean(credential.account && credential.password);
 }
 
 const BFF_COMBINED_LOG_PATH = path.resolve(__dirname, "../../../logs/combined.log");
@@ -16,8 +22,7 @@ const GO_ERROR_LOG_PATH = path.resolve(__dirname, "../../../../go/logs/error.log
 
 module.exports = {
   BACKEND_URL,
-  CLEAR_ALL_VERIFY_ACCOUNT,
-  CLEAR_ALL_VERIFY_PASSWORD,
+  resolveClearAllVerifyCredential,
   isClearAllVerifyConfigured,
   BFF_COMBINED_LOG_PATH,
   BFF_ERROR_LOG_PATH,

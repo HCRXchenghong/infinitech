@@ -1057,6 +1057,14 @@ assertNotContains(
   "backend/bff/src/utils/requestMeta.js",
   '{ method: "POST", pattern: /^\\/api\\/upload$/ }',
 );
+assertContains(
+  "backend/bff/src/utils/requestMeta.js",
+  'path.startsWith("/api/admin")',
+);
+assertContains(
+  "backend/bff/src/utils/requestMeta.js",
+  'const hasAdminSegment = segments.includes("admin") || segments.includes("admins");',
+);
 
 assertContains(
   "admin-vue/src/utils/request.js",
@@ -2859,6 +2867,14 @@ assertContains(
   "ADMIN_TOKEN_SECRET=replace-with-a-long-random-admin-token-secret",
 );
 assertContains(
+  "backend/bff/.env.example",
+  "# CLEAR_ALL_DATA_VERIFY_ACCOUNT=replace-with-dedicated-clear-all-operator-account",
+);
+assertContains(
+  "backend/bff/.env.example",
+  "# CLEAR_ALL_DATA_VERIFY_PASSWORD=replace-with-dedicated-clear-all-secondary-secret",
+);
+assertContains(
   "backend/bff/src/config/index.js",
   'const requestTokenSecret = requireSecret("JWT_SECRET");',
 );
@@ -2881,6 +2897,22 @@ assertNotContains(
 assertNotContains(
   "backend/bff/src/controllers/financialController.js",
   "process.env.FINANCIAL_LOG_VERIFY_PASSWORD ||\n  process.env.SYSTEM_LOG_DELETE_PASSWORD",
+);
+assertContains(
+  "backend/bff/src/services/adminSettings/constants.js",
+  "process.env.CLEAR_ALL_DATA_VERIFY_ACCOUNT",
+);
+assertContains(
+  "backend/bff/src/services/adminSettings/constants.js",
+  "process.env.CLEAR_ALL_DATA_VERIFY_PASSWORD",
+);
+assertNotContains(
+  "backend/bff/src/services/adminSettings/constants.js",
+  "process.env.SYSTEM_LOG_DELETE_ACCOUNT",
+);
+assertNotContains(
+  "backend/bff/src/services/adminSettings/constants.js",
+  "process.env.SYSTEM_LOG_DELETE_PASSWORD",
 );
 assertContains(
   "backend/bff/src/middleware/requestAudit.js",

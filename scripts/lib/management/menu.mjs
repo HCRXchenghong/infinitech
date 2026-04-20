@@ -109,8 +109,10 @@ async function showSecurityMenu(actions, repoRoot) {
       case 3:
         if (await promptConfirm('确认重新生成敏感二次验证信息吗？', false)) {
           const result = await actions.rotateVerifyCredentials(repoRoot)
-          console.log(`新验证账号：${result.generated.systemLogDeleteAccount}`)
-          console.log(`新验证密码：${result.generated.systemLogDeletePassword}`)
+          console.log(`新系统日志验证账号：${result.generated.systemLogDeleteAccount}`)
+          console.log(`新系统日志验证密码：${result.generated.systemLogDeletePassword}`)
+          console.log(`新全量清空验证账号：${result.generated.clearAllDataVerifyAccount}`)
+          console.log(`新全量清空验证密码：${result.generated.clearAllDataVerifyPassword}`)
         }
         break
       case 4:

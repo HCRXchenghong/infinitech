@@ -221,7 +221,9 @@ function buildNextRuntimeValues(currentValues, mirrorProfile, deployMode, resetM
     !currentValues.BOOTSTRAP_ADMIN_PHONE ||
     !currentValues.BOOTSTRAP_ADMIN_PASSWORD ||
     !currentValues.SYSTEM_LOG_DELETE_ACCOUNT ||
-    !currentValues.SYSTEM_LOG_DELETE_PASSWORD
+    !currentValues.SYSTEM_LOG_DELETE_PASSWORD ||
+    !currentValues.CLEAR_ALL_DATA_VERIFY_ACCOUNT ||
+    !currentValues.CLEAR_ALL_DATA_VERIFY_PASSWORD
 
   if (shouldRotateCredentials) {
     const generated = generateDeploymentCredentials({ existingPhones })
@@ -230,6 +232,8 @@ function buildNextRuntimeValues(currentValues, mirrorProfile, deployMode, resetM
     nextValues.BOOTSTRAP_ADMIN_PASSWORD = generated.bootstrapAdminPassword
     nextValues.SYSTEM_LOG_DELETE_ACCOUNT = generated.systemLogDeleteAccount
     nextValues.SYSTEM_LOG_DELETE_PASSWORD = generated.systemLogDeletePassword
+    nextValues.CLEAR_ALL_DATA_VERIFY_ACCOUNT = generated.clearAllDataVerifyAccount
+    nextValues.CLEAR_ALL_DATA_VERIFY_PASSWORD = generated.clearAllDataVerifyPassword
   }
 
   return nextValues
@@ -240,8 +244,10 @@ function printSummary(envFile, runtimeValues, launcherInfo) {
     { label: 'Bootstrap 手机号', value: runtimeValues.BOOTSTRAP_ADMIN_PHONE },
     { label: 'Bootstrap 名称', value: runtimeValues.BOOTSTRAP_ADMIN_NAME },
     { label: 'Bootstrap 一次性口令', value: runtimeValues.BOOTSTRAP_ADMIN_PASSWORD },
-    { label: '二次验证账号', value: runtimeValues.SYSTEM_LOG_DELETE_ACCOUNT },
-    { label: '二次验证口令', value: runtimeValues.SYSTEM_LOG_DELETE_PASSWORD },
+    { label: '系统日志验证账号', value: runtimeValues.SYSTEM_LOG_DELETE_ACCOUNT },
+    { label: '系统日志验证口令', value: runtimeValues.SYSTEM_LOG_DELETE_PASSWORD },
+    { label: '全量清空验证账号', value: runtimeValues.CLEAR_ALL_DATA_VERIFY_ACCOUNT },
+    { label: '全量清空验证口令', value: runtimeValues.CLEAR_ALL_DATA_VERIFY_PASSWORD },
   ])
   console.log('\n运行时环境文件已写入：')
   console.log(`  ${envFile}`)
@@ -251,8 +257,11 @@ function printSummary(envFile, runtimeValues, launcherInfo) {
   console.log(`  手机号: ${maskSecret(runtimeValues.BOOTSTRAP_ADMIN_PHONE)}`)
   console.log(`  名称:   ${runtimeValues.BOOTSTRAP_ADMIN_NAME}`)
   console.log('  口令:   已写入安全回执')
-  console.log('\n敏感操作二次验证信息：')
+  console.log('\n系统日志二次验证信息：')
   console.log(`  账号: ${maskSecret(runtimeValues.SYSTEM_LOG_DELETE_ACCOUNT)}`)
+  console.log('  口令: 已写入安全回执')
+  console.log('\n全量清空二次验证信息：')
+  console.log(`  账号: ${maskSecret(runtimeValues.CLEAR_ALL_DATA_VERIFY_ACCOUNT)}`)
   console.log('  口令: 已写入安全回执')
   console.log('\n敏感凭据回执：')
   console.log(`  ${receiptPath}`)

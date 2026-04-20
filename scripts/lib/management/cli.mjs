@@ -160,7 +160,13 @@ async function showOverview(repoRoot) {
       },
       {
         label: '敏感二次验证',
-        value: state.envValues.SYSTEM_LOG_DELETE_ACCOUNT && state.envValues.SYSTEM_LOG_DELETE_PASSWORD ? '已配置' : '未配置',
+        value:
+          state.envValues.SYSTEM_LOG_DELETE_ACCOUNT &&
+          state.envValues.SYSTEM_LOG_DELETE_PASSWORD &&
+          state.envValues.CLEAR_ALL_DATA_VERIFY_ACCOUNT &&
+          state.envValues.CLEAR_ALL_DATA_VERIFY_PASSWORD
+            ? '已配置'
+            : '未配置',
       },
     ]),
   )
@@ -195,6 +201,8 @@ async function rotateVerifyCredentials(repoRoot, options = {}) {
     changes: {
       SYSTEM_LOG_DELETE_ACCOUNT: generated.systemLogDeleteAccount,
       SYSTEM_LOG_DELETE_PASSWORD: generated.systemLogDeletePassword,
+      CLEAR_ALL_DATA_VERIFY_ACCOUNT: generated.clearAllDataVerifyAccount,
+      CLEAR_ALL_DATA_VERIFY_PASSWORD: generated.clearAllDataVerifyPassword,
     },
     apply: options.apply !== false,
   })
@@ -211,6 +219,8 @@ async function resetInit(repoRoot) {
       BOOTSTRAP_ADMIN_PASSWORD: generated.bootstrapAdminPassword,
       SYSTEM_LOG_DELETE_ACCOUNT: generated.systemLogDeleteAccount,
       SYSTEM_LOG_DELETE_PASSWORD: generated.systemLogDeletePassword,
+      CLEAR_ALL_DATA_VERIFY_ACCOUNT: generated.clearAllDataVerifyAccount,
+      CLEAR_ALL_DATA_VERIFY_PASSWORD: generated.clearAllDataVerifyPassword,
     },
     apply: true,
   })
@@ -226,6 +236,8 @@ async function resetFactory(repoRoot) {
     BOOTSTRAP_ADMIN_PASSWORD: generated.bootstrapAdminPassword,
     SYSTEM_LOG_DELETE_ACCOUNT: generated.systemLogDeleteAccount,
     SYSTEM_LOG_DELETE_PASSWORD: generated.systemLogDeletePassword,
+    CLEAR_ALL_DATA_VERIFY_ACCOUNT: generated.clearAllDataVerifyAccount,
+    CLEAR_ALL_DATA_VERIFY_PASSWORD: generated.clearAllDataVerifyPassword,
   }
 
   const backupPath = backupEnvFile(repoRoot, state.runtimeEnvPath)
@@ -741,8 +753,10 @@ export async function runCli(argv, repoRoot) {
         case 'show-verify': {
           const state = getRuntimeState(context.repoRoot)
           console.log(formatKeyValues([
-            { label: '账号', value: describeEnvValue(context.repoRoot, 'SYSTEM_LOG_DELETE_ACCOUNT', state.envValues.SYSTEM_LOG_DELETE_ACCOUNT) },
-            { label: '密码', value: describeEnvValue(context.repoRoot, 'SYSTEM_LOG_DELETE_PASSWORD', state.envValues.SYSTEM_LOG_DELETE_PASSWORD) },
+            { label: '系统日志账号', value: describeEnvValue(context.repoRoot, 'SYSTEM_LOG_DELETE_ACCOUNT', state.envValues.SYSTEM_LOG_DELETE_ACCOUNT) },
+            { label: '系统日志密码', value: describeEnvValue(context.repoRoot, 'SYSTEM_LOG_DELETE_PASSWORD', state.envValues.SYSTEM_LOG_DELETE_PASSWORD) },
+            { label: '全量清空账号', value: describeEnvValue(context.repoRoot, 'CLEAR_ALL_DATA_VERIFY_ACCOUNT', state.envValues.CLEAR_ALL_DATA_VERIFY_ACCOUNT) },
+            { label: '全量清空密码', value: describeEnvValue(context.repoRoot, 'CLEAR_ALL_DATA_VERIFY_PASSWORD', state.envValues.CLEAR_ALL_DATA_VERIFY_PASSWORD) },
           ]))
           return
         }
@@ -750,10 +764,13 @@ export async function runCli(argv, repoRoot) {
           const result = await rotateVerifyCredentials(context.repoRoot)
           printDiff(result.diff)
           printSensitiveReceipt(context.repoRoot, 'verify-credentials', '敏感二次验证凭据已轮换。', [
-            { label: '账号', value: result.generated.systemLogDeleteAccount },
-            { label: '一次性验证口令', value: result.generated.systemLogDeletePassword },
+            { label: '系统日志账号', value: result.generated.systemLogDeleteAccount },
+            { label: '系统日志一次性验证口令', value: result.generated.systemLogDeletePassword },
+            { label: '全量清空账号', value: result.generated.clearAllDataVerifyAccount },
+            { label: '全量清空一次性验证口令', value: result.generated.clearAllDataVerifyPassword },
           ])
-          console.log(`新验证账号：${maskSecret(result.generated.systemLogDeleteAccount)}`)
+          console.log(`新系统日志验证账号：${maskSecret(result.generated.systemLogDeleteAccount)}`)
+          console.log(`新全量清空验证账号：${maskSecret(result.generated.clearAllDataVerifyAccount)}`)
           return
         }
         default:
@@ -765,8 +782,10 @@ export async function runCli(argv, repoRoot) {
         printDiff(result.diff)
         console.log(`bootstrap 新账号：${result.generated.bootstrapAdminPhone}`)
         console.log(`bootstrap 新密码：${result.generated.bootstrapAdminPassword}`)
-        console.log(`验证新账号：${result.generated.systemLogDeleteAccount}`)
-        console.log(`验证新密码：${result.generated.systemLogDeletePassword}`)
+        console.log(`系统日志验证新账号：${result.generated.systemLogDeleteAccount}`)
+        console.log(`系统日志验证新密码：${result.generated.systemLogDeletePassword}`)
+        console.log(`全量清空验证新账号：${result.generated.clearAllDataVerifyAccount}`)
+        console.log(`全量清空验证新密码：${result.generated.clearAllDataVerifyPassword}`)
         return
       }
       if (action === 'factory') {

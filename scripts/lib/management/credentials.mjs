@@ -76,6 +76,7 @@ export function generateDeploymentCredentials(options = {}) {
     bootstrapAdminPassword: generateSecurePassword(20),
     systemLogDeleteAccount: generateVerifyAccount(),
     systemLogDeletePassword: generateSecurePassword(24),
+    clearAllDataVerifyAccount: generateVerifyAccount(),
+    clearAllDataVerifyPassword: generateSecurePassword(24),
   }
 }
-

@@ -8,8 +8,7 @@ const fs = require("fs");
 const { logger } = require("../utils/logger");
 const { verifyCriticalCredential } = require("../utils/criticalActionVerify");
 const {
-  CLEAR_ALL_VERIFY_ACCOUNT,
-  CLEAR_ALL_VERIFY_PASSWORD,
+  resolveClearAllVerifyCredential,
   isClearAllVerifyConfigured,
   BFF_COMBINED_LOG_PATH,
   BFF_ERROR_LOG_PATH,
@@ -273,6 +272,7 @@ async function uploadPackage(req, res) {
 }
 
 async function clearAllData(req, res) {
+  const verifyCredential = resolveClearAllVerifyCredential();
   if (!isClearAllVerifyConfigured()) {
     logger.error("POST /api/settings/clear-all-data", {
       action: "clear_all_data_verify_unconfigured"
@@ -289,8 +289,8 @@ async function clearAllData(req, res) {
     req,
     verifyAccount,
     verifyPassword,
-    expectedAccount: CLEAR_ALL_VERIFY_ACCOUNT,
-    expectedPassword: CLEAR_ALL_VERIFY_PASSWORD,
+    expectedAccount: verifyCredential.account,
+    expectedPassword: verifyCredential.password,
   });
 
   if (!verified.ok) {

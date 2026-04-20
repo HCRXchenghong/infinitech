@@ -48,16 +48,23 @@ test('generateDeploymentCredentials avoids existing bootstrap phone collisions',
   assert.notEqual(second.bootstrapAdminPhone, first.bootstrapAdminPhone)
   assert.match(first.bootstrapAdminPhone, /^1\d{10}$/)
   assert.match(second.systemLogDeleteAccount, /^(verify|sec|ops|audit)_[a-f0-9]+$/)
+  assert.match(second.clearAllDataVerifyAccount, /^(verify|sec|ops|audit)_[a-f0-9]+$/)
 })
 
 test('config schema exposes initialization and security metadata', () => {
-  const meta = getConfigMeta('BOOTSTRAP_ADMIN_PASSWORD', repoRootFallback)
-  assert.ok(meta)
-  assert.equal(meta.group, '初始化与安全')
-  assert.equal(meta.type, 'secret')
-  assert.equal(meta.sensitive, true)
-  assert.equal(meta.required, true)
-  assert.match(meta.requiredHint, /required/i)
+  const bootstrapMeta = getConfigMeta('BOOTSTRAP_ADMIN_PASSWORD', repoRootFallback)
+  assert.ok(bootstrapMeta)
+  assert.equal(bootstrapMeta.group, '初始化与安全')
+  assert.equal(bootstrapMeta.type, 'secret')
+  assert.equal(bootstrapMeta.sensitive, true)
+  assert.equal(bootstrapMeta.required, true)
+  assert.match(bootstrapMeta.requiredHint, /required/i)
+
+  const clearAllMeta = getConfigMeta('CLEAR_ALL_DATA_VERIFY_PASSWORD', repoRootFallback)
+  assert.ok(clearAllMeta)
+  assert.equal(clearAllMeta.group, '初始化与安全')
+  assert.equal(clearAllMeta.type, 'secret')
+  assert.equal(clearAllMeta.sensitive, true)
 })
 
 test('validateConfigValue rejects conflicting host ports', () => {
