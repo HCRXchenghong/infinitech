@@ -1,28 +1,21 @@
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { extractEnvelopeData, extractErrorMessage, extractUploadAsset, UPLOAD_DOMAINS } from '@infinitech/contracts';
+import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import {
   appendCharityLeaderboardItem as buildNextCharityLeaderboardItems,
   appendCharityNewsItem as buildNextCharityNewsItems,
-  appendRiderInsuranceClaimStep as buildNextRiderInsuranceClaimSteps,
-  appendRiderInsuranceCoverage as buildNextRiderInsuranceCoverages,
-  appendRiderReportReason as buildNextRiderReportReasons,
-  appendRTCIceServer as buildNextRTCIceServers,
   appendVIPBenefit as buildNextVIPBenefits,
   appendVIPLevel as buildNextVIPLevels,
   appendVIPPointRule as buildNextVIPPointRules,
   appendVIPTask as buildNextVIPTasks,
-  appendAdminUploadDomain,
   buildCharitySettingsPayload,
-  buildServiceSettingsPayload as buildSharedServiceSettingsPayload,
   buildVIPSettingsPayload,
   buildWechatLoginConfigPayload,
   createDefaultAlipayConfig,
   createDefaultCharitySettings,
   createDefaultDebugMode,
   createDefaultPayMode,
-  createDefaultServiceSettings,
   createDefaultVIPSettings,
   createDefaultWechatLoginConfig,
   createDefaultWxpayConfig,
@@ -30,29 +23,23 @@ import {
   normalizeCharitySettings,
   normalizeDebugModeConfig,
   normalizePayModeConfig,
-  normalizeServiceSettings,
   normalizeVIPSettings,
   normalizeWechatLoginConfig,
   normalizeWxpayConfig,
   removeCharityLeaderboardItem as buildNextCharityLeaderboardAfterRemove,
   removeCharityNewsItem as buildNextCharityNewsAfterRemove,
-  removeRiderInsuranceClaimStep as buildNextRiderInsuranceClaimStepsAfterRemove,
-  removeRiderInsuranceCoverage as buildNextRiderInsuranceCoveragesAfterRemove,
-  removeRiderReportReason as buildNextRiderReportReasonsAfterRemove,
-  removeRTCIceServer as buildNextRTCIceServersAfterRemove,
   removeVIPBenefit as buildNextVIPBenefitsAfterRemove,
   removeVIPLevel as buildNextVIPLevelsAfterRemove,
   removeVIPPointRule as buildNextVIPPointRulesAfterRemove,
   removeVIPTask as buildNextVIPTasksAfterRemove,
-  resolveAdminServiceSoundPreviewUrl,
   SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES,
-  validateAdminAudioFile,
 } from '@infinitech/admin-core';
 import request from '@/utils/request';
 import { useDataManagementPage } from './dataManagementHelpers';
 import { useSettingsApiManagement } from './settingsApiManagementHelpers';
 import { useSettingsActionHelpers } from './settingsActionHelpers';
 import { useAppDownloadSettings } from './settingsHelpers/appDownload';
+import { useServiceSettings } from './settingsHelpers/serviceSettings';
 import { useSmsSettings } from './settingsHelpers/sms';
 import { useWeatherSettings } from './settingsHelpers/weather';
 
@@ -81,13 +68,14 @@ export function useSettingsPage() {
     request,
     ElMessage,
   });
-  const DEFAULT_SERVICE_SETTINGS = createDefaultServiceSettings();
-  const serviceSettings = ref(createDefaultServiceSettings());
-  const savingServiceSettings = ref(false);
-  const uploadingServiceSounds = reactive({
-    message: false,
-    order: false,
+  const serviceSettingsController = useServiceSettings({
+    request,
+    ElMessage,
   });
+  const DEFAULT_SERVICE_SETTINGS = serviceSettingsController.DEFAULT_SERVICE_SETTINGS;
+  const serviceSettings = serviceSettingsController.serviceSettings;
+  const savingServiceSettings = serviceSettingsController.savingServiceSettings;
+  const uploadingServiceSounds = serviceSettingsController.uploadingServiceSounds;
   const DEFAULT_CHARITY_SETTINGS = createDefaultCharitySettings();
   const charitySettings = ref(createDefaultCharitySettings());
   const savingCharitySettings = ref(false);
@@ -120,74 +108,19 @@ export function useSettingsPage() {
   });
 
   const mergeWeatherConfig = weatherSettings.applyWeatherConfig;
-
-  function mergeServiceSettings(payload = {}) {
-    serviceSettings.value = normalizeServiceSettings(payload);
-  }
-
-  function addRiderReportReason() {
-    const result = buildNextRiderReportReasons(serviceSettings.value.rider_exception_report_reasons);
-    if (!result.added) {
-      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.riderReportReasons);
-      return;
-    }
-    serviceSettings.value.rider_exception_report_reasons = result.items;
-  }
-
-  function removeRiderReportReason(index) {
-    serviceSettings.value.rider_exception_report_reasons = buildNextRiderReportReasonsAfterRemove(
-      serviceSettings.value.rider_exception_report_reasons,
-      index,
-    );
-  }
-
-  function addRiderInsuranceCoverage() {
-    const result = buildNextRiderInsuranceCoverages(serviceSettings.value.rider_insurance_coverages);
-    if (!result.added) {
-      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.riderInsuranceCoverages);
-      return;
-    }
-    serviceSettings.value.rider_insurance_coverages = result.items;
-  }
-
-  function removeRiderInsuranceCoverage(index) {
-    serviceSettings.value.rider_insurance_coverages = buildNextRiderInsuranceCoveragesAfterRemove(
-      serviceSettings.value.rider_insurance_coverages,
-      index,
-    );
-  }
-
-  function addRiderInsuranceClaimStep() {
-    const result = buildNextRiderInsuranceClaimSteps(serviceSettings.value.rider_insurance_claim_steps);
-    if (!result.added) {
-      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.riderInsuranceClaimSteps);
-      return;
-    }
-    serviceSettings.value.rider_insurance_claim_steps = result.items;
-  }
-
-  function removeRiderInsuranceClaimStep(index) {
-    serviceSettings.value.rider_insurance_claim_steps = buildNextRiderInsuranceClaimStepsAfterRemove(
-      serviceSettings.value.rider_insurance_claim_steps,
-      index,
-    );
-  }
-
-  function addRTCIceServer() {
-    const result = buildNextRTCIceServers(serviceSettings.value.rtc_ice_servers);
-    if (!result.added) {
-      ElMessage.warning(SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES.rtcIceServers);
-      return;
-    }
-    serviceSettings.value.rtc_ice_servers = result.items;
-  }
-
-  function removeRTCIceServer(index) {
-    serviceSettings.value.rtc_ice_servers = buildNextRTCIceServersAfterRemove(
-      serviceSettings.value.rtc_ice_servers,
-      index,
-    );
-  }
+  const loadServiceSettings = serviceSettingsController.loadServiceSettings;
+  const saveServiceSettings = serviceSettingsController.saveServiceSettings;
+  const previewServiceSound = serviceSettingsController.previewServiceSound;
+  const handleServiceSoundUpload = serviceSettingsController.handleServiceSoundUpload;
+  const clearServiceSound = serviceSettingsController.clearServiceSound;
+  const addRiderReportReason = serviceSettingsController.addRiderReportReason;
+  const removeRiderReportReason = serviceSettingsController.removeRiderReportReason;
+  const addRiderInsuranceCoverage = serviceSettingsController.addRiderInsuranceCoverage;
+  const removeRiderInsuranceCoverage = serviceSettingsController.removeRiderInsuranceCoverage;
+  const addRiderInsuranceClaimStep = serviceSettingsController.addRiderInsuranceClaimStep;
+  const removeRiderInsuranceClaimStep = serviceSettingsController.removeRiderInsuranceClaimStep;
+  const addRTCIceServer = serviceSettingsController.addRTCIceServer;
+  const removeRTCIceServer = serviceSettingsController.removeRTCIceServer;
 
   function mergeCharitySettings(payload = {}) {
     charitySettings.value = normalizeCharitySettings(payload);
@@ -312,7 +245,7 @@ export function useSettingsPage() {
         request.get('/api/debug-mode'),
         weatherSettings.loadWeatherConfig({ clearError: false, throwOnError: true }),
         request.get('/api/wechat-login-config'),
-        request.get('/api/service-settings'),
+        loadServiceSettings({ clearError: false, throwOnError: true }),
         request.get('/api/charity-settings'),
         request.get('/api/vip-settings'),
         appDownloadSettings.loadAppDownloadConfig({ clearError: false, throwOnError: true }),
@@ -321,16 +254,13 @@ export function useSettingsPage() {
         request.get('/api/pay-config/alipay'),
       ]);
 
-      const [smsResp, debugResp, weaResp, wechatLoginResp, serviceResp, charityResp, vipResp, downloadResp, payModeResp, wxResp, aliResp] = results;
+      const [smsResp, debugResp, weaResp, wechatLoginResp, , charityResp, vipResp, downloadResp, payModeResp, wxResp, aliResp] = results;
 
       if (debugResp.status === 'fulfilled' && debugResp.value?.data) {
         debugMode.value = normalizeDebugModeConfig(extractEnvelopeData(debugResp.value.data) || {});
       }
       if (wechatLoginResp.status === 'fulfilled' && wechatLoginResp.value?.data) {
         mergeWechatLoginConfig(extractEnvelopeData(wechatLoginResp.value.data) || {});
-      }
-      if (serviceResp.status === 'fulfilled' && serviceResp.value?.data) {
-        mergeServiceSettings(extractEnvelopeData(serviceResp.value.data) || {});
       }
       if (charityResp.status === 'fulfilled' && charityResp.value?.data) {
         mergeCharitySettings(extractEnvelopeData(charityResp.value.data) || {});
@@ -387,123 +317,6 @@ export function useSettingsPage() {
 
   async function saveWeather() {
     await weatherSettings.saveWeatherConfig();
-  }
-
-  function buildServiceSettingsPayload() {
-    return buildSharedServiceSettingsPayload(serviceSettings.value);
-  }
-
-  async function saveServiceSettings(options = {}) {
-    const successMessage = options?.successMessage || '服务配置保存成功';
-    savingServiceSettings.value = true;
-    try {
-      const payload = buildServiceSettingsPayload();
-      await request.post('/api/service-settings', payload);
-      mergeServiceSettings(payload);
-      ElMessage.success(successMessage);
-      return true;
-    } catch (error) {
-      ElMessage.error(extractErrorMessage(error, '保存服务配置失败'));
-      return false;
-    } finally {
-      savingServiceSettings.value = false;
-    }
-  }
-
-  function validateSoundFile(file) {
-    const result = validateAdminAudioFile(file, 10);
-    if (!result.valid) {
-      ElMessage.warning(result.message);
-      return false;
-    }
-    return true;
-  }
-
-  function resolveDefaultSoundPreviewUrl(kind) {
-    return resolveAdminServiceSoundPreviewUrl(kind);
-  }
-
-  function resolveConfiguredSoundUrl(kind) {
-    if (kind === 'order') {
-      return String(serviceSettings.value.order_notification_sound_url || '').trim();
-    }
-    return String(serviceSettings.value.message_notification_sound_url || '').trim();
-  }
-
-  function previewServiceSound(kind) {
-    const url = resolveConfiguredSoundUrl(kind) || resolveDefaultSoundPreviewUrl(kind);
-    if (!url) {
-      ElMessage.warning('当前没有可试听的提示音');
-      return;
-    }
-    const player = new Audio();
-    player.src = url;
-    const playPromise = player.play();
-    if (playPromise && typeof playPromise.catch === 'function') {
-      playPromise.catch(() => {
-        ElMessage.warning('浏览器拦截了自动播放，请与页面交互后重试');
-      });
-    }
-  }
-
-  async function handleServiceSoundUpload(field, options) {
-    const file = options?.file;
-    if (!file || !validateSoundFile(file)) {
-      return;
-    }
-
-    const kind = field === 'order_notification_sound_url' ? 'order' : 'message';
-    const loadingKey = kind === 'order' ? 'order' : 'message';
-    const previousValue = String(serviceSettings.value[field] || '').trim();
-
-    uploadingServiceSounds[loadingKey] = true;
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      appendAdminUploadDomain(formData, UPLOAD_DOMAINS.SERVICE_SOUND);
-      const { data } = await request.post('/api/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      if (typeof options?.onSuccess === 'function') {
-        options.onSuccess(data);
-      }
-
-      const asset = extractUploadAsset(data);
-      const nextUrl = String(asset?.url || '').trim();
-      if (!nextUrl) {
-        throw new Error('上传成功但未返回文件地址');
-      }
-
-      serviceSettings.value[field] = nextUrl;
-      const saved = await saveServiceSettings({
-        successMessage: kind === 'order' ? '来单提示音已更新' : '消息提示音已更新'
-      });
-      if (!saved) {
-        serviceSettings.value[field] = previousValue;
-      }
-    } catch (error) {
-      if (typeof options?.onError === 'function') {
-        options.onError(error);
-      }
-      serviceSettings.value[field] = previousValue;
-      ElMessage.error(extractErrorMessage(error, '提示音上传失败'));
-    } finally {
-      uploadingServiceSounds[loadingKey] = false;
-    }
-  }
-
-  async function clearServiceSound(field) {
-    const kind = field === 'order_notification_sound_url' ? 'order' : 'message';
-    const previousValue = String(serviceSettings.value[field] || '').trim();
-    serviceSettings.value[field] = '';
-    const saved = await saveServiceSettings({
-      successMessage: kind === 'order'
-        ? '来单提示音配置已删除，已回退到默认 come.mp3'
-        : '消息提示音配置已删除，已回退到默认 chat.mp3'
-    });
-    if (!saved) {
-      serviceSettings.value[field] = previousValue;
-    }
   }
 
   function addCharityLeaderboardItem() {
