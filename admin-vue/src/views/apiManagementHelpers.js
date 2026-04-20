@@ -1,21 +1,16 @@
-import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
 import {
-  buildPublicApiPayload,
+  buildApiKeyMarkdownText,
   buildWeatherConfigPayload,
   createDefaultWeatherConfig,
-  createPublicApiFormState,
-  generatePublicApiKey,
-  getPublicApiPermissionLabel,
-  normalizePublicApiList,
-  normalizePublicApiRecord,
   normalizeWeatherConfig,
-  resolvePublicApiPermissionSelection,
 } from '@infinitech/admin-core';
 import request from '@/utils/request';
 import { DEFAULT_SMS_CONFIG, normalizeSMSConfig, buildSMSConfigPayload } from './smsConfigHelpers';
+import { usePublicApiManagement } from './publicApiManagementCore';
 
 const DEFAULT_WEATHER_CONFIG = createDefaultWeatherConfig();
 
@@ -31,24 +26,20 @@ export function useApiManagementPage(options = {}) {
   const loading = ref(false);
   const saving = ref(false);
   const settingsError = ref('');
-  const apiListError = ref('');
-  const pageError = computed(() => settingsError.value || apiListError.value || '');
+  const publicApiManagement = usePublicApiManagement({
+    request,
+    ElMessage,
+    ElMessageBox,
+    cache: true,
+  });
+  const pageError = computed(() => settingsError.value || publicApiManagement.apiListError.value || '');
   const sms = ref({ ...DEFAULT_SMS_CONFIG });
   const weather = ref(createDefaultWeatherConfig());
-
-  const apiList = ref([]);
-  const apiListLoading = ref(false);
-  const apiDialogVisible = ref(false);
-  const apiListCache = ref(null);
-  const editingApi = ref(null);
-  const apiForm = reactive(createPublicApiFormState());
-  const savingApi = ref(false);
 
   const downloadDialogVisible = ref(false);
   const downloadLanguage = ref('java');
   const downloadingApi = ref(false);
   const currentDownloadApi = ref(null);
-  let lastPermissionSelection = [];
 
   function mergeWeatherConfig(payload = {}) {
     weather.value = normalizeWeatherConfig(payload);
@@ -95,7 +86,7 @@ export function useApiManagementPage(options = {}) {
     }
 
     if (includeExternalApiManagement) {
-      loadApiList(forceRefresh);
+      publicApiManagement.loadApiList(forceRefresh);
     }
   }
 
@@ -125,132 +116,6 @@ export function useApiManagementPage(options = {}) {
     }
   }
 
-  async function loadApiList(forceRefresh = false) {
-    if (!forceRefresh && apiListCache.value) {
-      apiListError.value = '';
-      apiList.value = apiListCache.value;
-      return;
-    }
-
-    apiListError.value = '';
-    apiListLoading.value = true;
-    try {
-      const { data } = await request.get('/api/public-apis');
-      const payload = extractEnvelopeData(data);
-      apiList.value = normalizePublicApiList(payload);
-      apiListCache.value = [...apiList.value];
-    } catch (error) {
-      apiList.value = [];
-      apiListError.value = extractErrorMessage(error, '加载API接口列表失败，请稍后重试');
-    } finally {
-      apiListLoading.value = false;
-    }
-  }
-
-  function showAddApiDialog() {
-    editingApi.value = null;
-    resetApiForm();
-    generateApiKey();
-    apiDialogVisible.value = true;
-  }
-
-  function editApi(row) {
-    editingApi.value = normalizePublicApiRecord(row);
-    Object.assign(apiForm, createPublicApiFormState(editingApi.value));
-    lastPermissionSelection = [...apiForm.permissions];
-    apiDialogVisible.value = true;
-  }
-
-  async function deleteApi(row) {
-    const target = normalizePublicApiRecord(row);
-    try {
-      await ElMessageBox.confirm(
-        `确定要删除API接口"${target.name}"吗？此操作不可恢复。`,
-        '确认删除',
-        {
-          confirmButtonText: '确定删除',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }
-      );
-
-      await request.delete(`/api/public-apis/${target.id}`);
-      ElMessage.success('API接口删除成功');
-      apiListCache.value = null;
-      loadApiList(true);
-    } catch (error) {
-      if (error !== 'cancel') {
-        ElMessage.error(extractErrorMessage(error, '删除API接口失败'));
-      }
-    }
-  }
-
-  async function saveApi() {
-    const apiData = buildPublicApiPayload(apiForm);
-
-    if (!apiData.name) {
-      ElMessage.warning('请填写接口名称');
-      return;
-    }
-
-    if (apiData.permissions.length === 0) {
-      ElMessage.warning('请至少选择一种访问权限');
-      return;
-    }
-
-    if (!apiData.api_key) {
-      ElMessage.warning('请生成API Key');
-      return;
-    }
-
-    savingApi.value = true;
-    try {
-      if (editingApi.value) {
-        await request.put(`/api/public-apis/${editingApi.value.id}`, apiData);
-        ElMessage.success('API接口更新成功');
-      } else {
-        await request.post('/api/public-apis', apiData);
-        ElMessage.success('API接口添加成功');
-      }
-
-      apiDialogVisible.value = false;
-      apiListCache.value = null;
-      loadApiList(true);
-    } catch (error) {
-      ElMessage.error(extractErrorMessage(error, '保存API接口失败'));
-    } finally {
-      savingApi.value = false;
-    }
-  }
-
-  function resetApiForm() {
-    Object.assign(apiForm, createPublicApiFormState());
-    lastPermissionSelection = [];
-  }
-
-  function generateApiKey() {
-    apiForm.api_key = generatePublicApiKey();
-  }
-
-  function copyApiKey(key) {
-    navigator.clipboard.writeText(key).then(() => {
-      ElMessage.success('API Key已复制到剪贴板');
-    }).catch(() => {
-      ElMessage.error('复制失败');
-    });
-  }
-
-  const getPermissionLabel = getPublicApiPermissionLabel;
-
-  function handleApiPermissionChange(value) {
-    const nextSelection = resolvePublicApiPermissionSelection(
-      value,
-      lastPermissionSelection,
-    );
-    lastPermissionSelection = [...nextSelection];
-    apiForm.permissions = [...nextSelection];
-  }
-
   function goToApiPermissions() {
     router.push('/api-permissions');
   }
@@ -261,65 +126,8 @@ export function useApiManagementPage(options = {}) {
     downloadDialogVisible.value = true;
   }
 
-  function generateRpcSignature(params, apiKey, timestamp) {
-    const sortedKeys = Object.keys(params).sort();
-    const signStr = sortedKeys.map((key) => `${key}=${params[key]}`).join('&');
-    const fullStr = `${signStr}&api_key=${apiKey}&timestamp=${timestamp}`;
-
-    let hash = 0;
-    for (let i = 0; i < fullStr.length; i++) {
-      const char = fullStr.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash &= hash;
-    }
-    return Math.abs(hash).toString(16);
-  }
-
   function generateMarkdownDoc(api) {
-    const timestamp = Date.now();
-    const signature = generateRpcSignature({}, api.api_key, timestamp);
-
-    return `# ${api.name} - API 接口文档
-
-## 接口信息
-- **接口名称**: ${api.name}
-- **接口路径**: ${api.path}
-- **请求方式**: POST
-- **协议**: HTTPS
-- **数据格式**: JSON
-- **认证方式**: RPC签名
-
-## 接口描述
-${api.description || '无描述'}
-
-## 访问权限
-${api.permissions.map((p) => `- ${getPermissionLabel(p)}`).join('\n')}
-
-## 请求说明
-
-### 请求头
-\`\`\`
-Content-Type: application/json
-X-API-Key: ${api.api_key}
-X-Timestamp: [时间戳]
-X-Signature: [签名]
-\`\`\`
-
-## RPC签名说明
-
-### 签名算法
-1. 将所有请求参数（不包括sign）按key进行字典序排序
-2. 将排序后的参数拼接成字符串：key1=value1&key2=value2&api_key=YOUR_API_KEY&timestamp=TIMESTAMP
-3. 对拼接后的字符串进行MD5加密
-4. 将加密后的字符串作为sign参数
-
-## 状态
-${api.is_active ? '✅ 已启用' : '❌ 已禁用'}
-
-## 示例签名
-- timestamp: ${timestamp}
-- signature: ${signature}
-`;
+    return buildApiKeyMarkdownText(api, publicApiManagement.getPermissionLabel);
   }
 
   async function downloadApiDoc() {
@@ -359,27 +167,27 @@ ${api.is_active ? '✅ 已启用' : '❌ 已禁用'}
     pageError,
     sms,
     weather,
-    apiList,
-    apiListLoading,
-    apiDialogVisible,
-    editingApi,
-    apiForm,
-    savingApi,
+    apiList: publicApiManagement.apiList,
+    apiListLoading: publicApiManagement.apiListLoading,
+    apiDialogVisible: publicApiManagement.apiDialogVisible,
+    editingApi: publicApiManagement.editingApi,
+    apiForm: publicApiManagement.apiForm,
+    savingApi: publicApiManagement.savingApi,
     downloadDialogVisible,
     downloadLanguage,
     downloadingApi,
     loadAll,
     saveSms,
     saveWeather,
-    loadApiList,
-    showAddApiDialog,
-    editApi,
-    deleteApi,
-    saveApi,
-    generateApiKey,
-    copyApiKey,
-    getPermissionLabel,
-    handleApiPermissionChange,
+    loadApiList: publicApiManagement.loadApiList,
+    showAddApiDialog: publicApiManagement.showAddApiDialog,
+    editApi: publicApiManagement.editApi,
+    deleteApi: publicApiManagement.deleteApi,
+    saveApi: publicApiManagement.saveApi,
+    generateApiKey: publicApiManagement.generateApiKey,
+    copyApiKey: publicApiManagement.copyApiKey,
+    getPermissionLabel: publicApiManagement.getPermissionLabel,
+    handleApiPermissionChange: publicApiManagement.handleApiPermissionChange,
     goToApiPermissions,
     showDownloadDialog,
     downloadApiDoc

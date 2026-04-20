@@ -1,181 +1,36 @@
-import { ref, reactive } from 'vue';
-import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
+import { ref } from 'vue';
+import { extractErrorMessage } from '@infinitech/contracts';
 import {
   buildApiDocumentationText,
   buildApiKeyMarkdownText,
-  buildPublicApiPayload,
-  createPublicApiFormState,
-  generatePublicApiKey,
-  getPublicApiPermissionLabel,
-  normalizePublicApiList,
-  normalizePublicApiPermissionList,
-  normalizePublicApiRecord,
-  resolvePublicApiPermissionSelection,
 } from '@infinitech/admin-core';
-
-async function copyTextToClipboard(text) {
-  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  if (typeof document === 'undefined') {
-    throw new Error('clipboard_unavailable');
-  }
-
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.setAttribute('readonly', 'readonly');
-  textarea.style.position = 'fixed';
-  textarea.style.top = '-9999px';
-  document.body.appendChild(textarea);
-  textarea.select();
-  const copied = document.execCommand('copy');
-  document.body.removeChild(textarea);
-
-  if (!copied) {
-    throw new Error('clipboard_unavailable');
-  }
-}
+import { usePublicApiManagement } from './publicApiManagementCore';
 
 export function useSettingsApiManagement({ request, router, ElMessage, ElMessageBox }) {
-  const apiListError = ref('');
-  const apiList = ref([]);
-  const apiListLoading = ref(false);
-  const apiDialogVisible = ref(false);
-  const editingApi = ref(null);
-  const apiForm = reactive(createPublicApiFormState());
-  const savingApi = ref(false);
+  const apiManagement = usePublicApiManagement({
+    request,
+    ElMessage,
+    ElMessageBox,
+    messages: {
+      loadError: '加载API配置失败，请稍后重试',
+      missingName: '请填写调用方名称',
+      createSuccess: 'API Key 添加成功',
+      updateSuccess: 'API Key 更新成功',
+      saveError: '保存API Key失败',
+      deleteSuccess: 'API Key 删除成功',
+      deleteError: '删除API Key失败',
+      copySuccess: 'API Key 已复制到剪贴板',
+      copyError: '复制失败，请手动复制',
+      deleteConfirmMessage(target) {
+        return `确定要删除 API Key "${target.name}" 吗？此操作不可恢复。`;
+      },
+    },
+  });
 
   const downloadDialogVisible = ref(false);
   const downloadLanguage = ref('java');
   const downloadingApi = ref(false);
   const currentDownloadApi = ref(null);
-  let lastPermissionSelection = [];
-
-  function syncPermissionSelection(value = apiForm.permissions) {
-    const normalized = normalizePublicApiPermissionList(value);
-    lastPermissionSelection = [...normalized];
-    apiForm.permissions = [...normalized];
-  }
-
-  async function loadApiList() {
-    apiListError.value = '';
-    apiListLoading.value = true;
-    try {
-      const { data } = await request.get('/api/public-apis');
-      const payload = extractEnvelopeData(data);
-      apiList.value = normalizePublicApiList(payload);
-    } catch (error) {
-      apiList.value = [];
-      apiListError.value = extractErrorMessage(error, '加载API配置失败，请稍后重试');
-    } finally {
-      apiListLoading.value = false;
-    }
-  }
-
-  function resetApiForm() {
-    Object.assign(apiForm, createPublicApiFormState());
-    lastPermissionSelection = [];
-  }
-
-  function generateApiKey() {
-    apiForm.api_key = generatePublicApiKey();
-  }
-
-  function showAddApiDialog() {
-    editingApi.value = null;
-    resetApiForm();
-    generateApiKey();
-    apiDialogVisible.value = true;
-  }
-
-  function editApi(row) {
-    const normalizedRow = normalizePublicApiRecord(row);
-    editingApi.value = normalizedRow;
-    Object.assign(apiForm, createPublicApiFormState(normalizedRow));
-    syncPermissionSelection(apiForm.permissions);
-    apiDialogVisible.value = true;
-  }
-
-  async function deleteApi(row) {
-    const target = normalizePublicApiRecord(row);
-    try {
-      await ElMessageBox.confirm(
-        `确定要删除 API Key "${target.name}" 吗？此操作不可恢复。`,
-        '确认删除',
-        {
-          confirmButtonText: '确定删除',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }
-      );
-
-      await request.delete(`/api/public-apis/${target.id}`);
-      ElMessage.success('API Key 删除成功');
-      await loadApiList();
-    } catch (error) {
-      if (error !== 'cancel') {
-        ElMessage.error(extractErrorMessage(error, '删除API Key失败'));
-      }
-    }
-  }
-
-  async function saveApi() {
-    const apiData = buildPublicApiPayload(apiForm);
-
-    if (!apiData.name) {
-      ElMessage.warning('请填写调用方名称');
-      return;
-    }
-
-    if (apiData.permissions.length === 0) {
-      ElMessage.warning('请至少选择一种访问权限');
-      return;
-    }
-
-    if (!apiData.api_key) {
-      ElMessage.warning('请生成API Key');
-      return;
-    }
-
-    savingApi.value = true;
-    try {
-      if (editingApi.value) {
-        await request.put(`/api/public-apis/${editingApi.value.id}`, apiData);
-        ElMessage.success('API Key 更新成功');
-      } else {
-        await request.post('/api/public-apis', apiData);
-        ElMessage.success('API Key 添加成功');
-      }
-
-      apiDialogVisible.value = false;
-      await loadApiList();
-    } catch (error) {
-      ElMessage.error(extractErrorMessage(error, '保存API Key失败'));
-    } finally {
-      savingApi.value = false;
-    }
-  }
-
-  function copyApiKey(key) {
-    copyTextToClipboard(String(key || '').trim()).then(() => {
-      ElMessage.success('API Key 已复制到剪贴板');
-    }).catch(() => {
-      ElMessage.error('复制失败，请手动复制');
-    });
-  }
-
-  const getPermissionLabel = getPublicApiPermissionLabel;
-
-  function handleApiPermissionChange(value) {
-    const nextSelection = resolvePublicApiPermissionSelection(
-      value,
-      lastPermissionSelection,
-    );
-    lastPermissionSelection = [...nextSelection];
-    apiForm.permissions = [...nextSelection];
-  }
 
   function showApiDocumentation() {
     router.push('/api-documentation');
@@ -192,7 +47,7 @@ export function useSettingsApiManagement({ request, router, ElMessage, ElMessage
   }
 
   function generateMarkdownDoc(api) {
-    return buildApiKeyMarkdownText(api, getPublicApiPermissionLabel);
+    return buildApiKeyMarkdownText(api, apiManagement.getPermissionLabel);
   }
 
   async function downloadApiDoc() {
@@ -226,27 +81,11 @@ export function useSettingsApiManagement({ request, router, ElMessage, ElMessage
   }
 
   return {
-    apiListError,
-    apiList,
-    apiListLoading,
-    apiDialogVisible,
-    editingApi,
-    apiForm,
-    savingApi,
+    ...apiManagement,
     downloadDialogVisible,
     downloadLanguage,
     downloadingApi,
     currentDownloadApi,
-    loadApiList,
-    showAddApiDialog,
-    editApi,
-    deleteApi,
-    saveApi,
-    resetApiForm,
-    generateApiKey,
-    copyApiKey,
-    getPermissionLabel,
-    handleApiPermissionChange,
     showApiDocumentation,
     generateApiDocumentation,
     showDownloadDialog,
