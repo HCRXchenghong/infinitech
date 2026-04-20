@@ -1,6 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import jwt from "jsonwebtoken";
 
 process.env.JWT_SECRET = "socket-auth-test-secret";
 process.env.SOCKET_REDIS_ENABLED = "false";
@@ -74,31 +73,21 @@ test("authMiddleware authenticates standardized socket tokens against stored ses
   assert.equal(socket.authenticated, true);
 });
 
-test("verifyToken accepts legacy jwt socket tokens during migration", () => {
-  const legacyToken = jwt.sign(
-    {
+test("verifyToken rejects legacy jwt-shaped socket tokens after migration cutover", () => {
+  const legacyHeader = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" }))
+    .toString("base64url");
+  const legacyPayload = Buffer.from(
+    JSON.stringify({
       userId: "support-session-token",
       role: "site_visitor",
       sessionId: "legacy-session-1",
-      timestamp: Date.now(),
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: 60 },
-  );
+      exp: Math.floor(Date.now() / 1000) + 60,
+    }),
+  ).toString("base64url");
+  const legacySignature = Buffer.from("legacy-signature").toString("base64url");
+  const legacyToken = `${legacyHeader}.${legacyPayload}.${legacySignature}`;
 
-  const payload = verifyToken(legacyToken);
-  assert.ok(payload);
-  assert.equal(payload.userId, "support-session-token");
-  assert.equal(payload.principal_type, "site_visitor");
-  assert.equal(payload.principal_id, "support-session-token");
-  assert.equal(payload.role, "site_visitor");
-  assert.equal(payload.session_id, "legacy-session-1");
-  assert.deepEqual(payload.scope, [
-    "socket",
-    "principal:site_visitor",
-    "token:socket_access",
-    "role:site_visitor",
-  ]);
+  assert.equal(verifyToken(legacyToken), null);
 });
 
 test("verifyUnifiedSocketToken rejects expired standardized tokens", () => {

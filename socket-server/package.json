@@ -14,7 +14,6 @@
     "busboy": "^1.6.0",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
-    "jsonwebtoken": "^9.0.3",
     "redis": "^4.6.10",
     "socket.io": "^4.8.3"
   }

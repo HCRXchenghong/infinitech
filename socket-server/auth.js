@@ -1,4 +1,3 @@
-import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
@@ -225,38 +224,6 @@ export function verifyUnifiedSocketToken(token, secret = JWT_SECRET) {
   }
 }
 
-function verifyLegacySocketToken(token) {
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    if (!decoded || typeof decoded !== 'object') {
-      return null;
-    }
-
-    const userId = trimText(decoded.userId || decoded.principal_id || decoded.sub);
-    const role = normalizeSocketRole(decoded.role || decoded.principal_type);
-    const sessionId = trimText(decoded.sessionId || decoded.session_id);
-    if (!userId || !role || !sessionId) {
-      return null;
-    }
-
-    return {
-      ...decoded,
-      sub: trimText(decoded.sub || userId),
-      principal_type: trimText(decoded.principal_type || role),
-      principal_id: trimText(decoded.principal_id || userId),
-      role,
-      session_id: sessionId,
-      sessionId,
-      userId,
-      scope: normalizeSocketScope(decoded.scope, role),
-      token_kind: trimText(decoded.token_kind || decoded.tokenKind || decoded.type || SOCKET_ACCESS_TOKEN_KIND),
-      type: trimText(decoded.type || SOCKET_ACCESS_TOKEN_KIND),
-    };
-  } catch (_err) {
-    return null;
-  }
-}
-
 export async function generateToken(userId, role, options = {}) {
   const normalizedUserId = trimText(userId);
   const normalizedRole = normalizeSocketRole(role);
@@ -277,7 +244,7 @@ export async function generateToken(userId, role, options = {}) {
 }
 
 export function verifyToken(token) {
-  return verifyUnifiedSocketToken(token) || verifyLegacySocketToken(token);
+  return verifyUnifiedSocketToken(token);
 }
 
 export function encryptMessage(content) {

@@ -7067,7 +7067,14 @@ assertContains("socket-server/auth.js", "verifyUnifiedSocketToken");
 assertContains("socket-server/auth.js", "principal_type: normalizedRole");
 assertContains("socket-server/auth.js", "SOCKET_ACCESS_TOKEN_KIND = 'socket_access'");
 assertNotContains("socket-server/auth.js", "return jwt.sign(");
+assertNotContains("socket-server/auth.js", "verifyLegacySocketToken");
+assertNotContains("socket-server/auth.js", "jwt.verify(");
+assertNotContains(
+  "socket-server/auth.js",
+  "return verifyUnifiedSocketToken(token) || verifyLegacySocketToken(token);",
+);
 assertContains("socket-server/package.json", "auth.test.mjs");
+assertNotContains("socket-server/package.json", '"jsonwebtoken"');
 assertContains(
   "socket-server/index.js",
   "Socket server public upload hosting is disabled. Use authenticated API asset routes instead.",
