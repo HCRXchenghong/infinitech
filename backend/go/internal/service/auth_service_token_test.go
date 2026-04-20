@@ -77,11 +77,19 @@ func TestUserTokensCarryUnifiedClaimsAndRejectRefreshAsAccess(t *testing.T) {
 	if got := normalizeUnifiedPrincipalID(payload); got != user.UID {
 		t.Fatalf("expected principal id %q, got %q", user.UID, got)
 	}
+	if got := normalizeUnifiedPrincipalLegacyID(payload); got != int64(user.ID) {
+		t.Fatalf("expected legacy id %d, got %d", user.ID, got)
+	}
 	if got := claimString(payload, "role"); got != "customer" {
 		t.Fatalf("expected role customer, got %q", got)
 	}
 	if got := normalizeUnifiedTokenKind(payload); got != tokenKindAccess {
 		t.Fatalf("expected access token kind, got %q", got)
+	}
+	for _, legacyKey := range []string{"id", "userId", "type"} {
+		if _, ok := payload[legacyKey]; ok {
+			t.Fatalf("did not expect legacy access-claim alias %q in payload", legacyKey)
+		}
 	}
 
 	identity, err := svc.VerifyTokenIdentity(accessToken)
@@ -158,6 +166,9 @@ func TestPrincipalAccessTokensCarryUnifiedClaimsForRiderAndMerchant(t *testing.T
 	if got := normalizeUnifiedPrincipalID(riderPayload); got != rider.UID {
 		t.Fatalf("expected rider principal id %q, got %q", rider.UID, got)
 	}
+	if got := normalizeUnifiedPrincipalLegacyID(riderPayload); got != int64(rider.ID) {
+		t.Fatalf("expected rider legacy id %d, got %d", rider.ID, got)
+	}
 	if got := claimString(riderPayload, "role"); got != principalTypeRider {
 		t.Fatalf("expected rider role %q, got %q", principalTypeRider, got)
 	}
@@ -178,6 +189,9 @@ func TestPrincipalAccessTokensCarryUnifiedClaimsForRiderAndMerchant(t *testing.T
 	}
 	if got := normalizeUnifiedPrincipalID(merchantPayload); got != merchant.UID {
 		t.Fatalf("expected merchant principal id %q, got %q", merchant.UID, got)
+	}
+	if got := normalizeUnifiedPrincipalLegacyID(merchantPayload); got != int64(merchant.ID) {
+		t.Fatalf("expected merchant legacy id %d, got %d", merchant.ID, got)
 	}
 	if got := claimString(merchantPayload, "role"); got != principalTypeMerchant {
 		t.Fatalf("expected merchant role %q, got %q", principalTypeMerchant, got)

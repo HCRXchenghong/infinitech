@@ -151,11 +151,19 @@ func TestAdminTokenCarriesUnifiedClaimsAndVerifies(t *testing.T) {
 	if got := normalizeUnifiedPrincipalID(payload); got != admin.UID {
 		t.Fatalf("expected admin principal id %q, got %q", admin.UID, got)
 	}
+	if got := normalizeUnifiedPrincipalLegacyID(payload); got != int64(admin.ID) {
+		t.Fatalf("expected admin legacy id %d, got %d", admin.ID, got)
+	}
 	if got := claimString(payload, "role"); got != admin.Type {
 		t.Fatalf("expected admin role %q, got %q", admin.Type, got)
 	}
 	if got := normalizeUnifiedTokenKind(payload); got != tokenKindAccess {
 		t.Fatalf("expected admin access token kind, got %q", got)
+	}
+	for _, legacyKey := range []string{"id", "adminId", "userId", "type"} {
+		if _, ok := payload[legacyKey]; ok {
+			t.Fatalf("did not expect legacy admin-claim alias %q in payload", legacyKey)
+		}
 	}
 
 	verifiedAdmin, err := svc.VerifyToken(context.Background(), "Bearer "+token)
@@ -167,6 +175,78 @@ func TestAdminTokenCarriesUnifiedClaimsAndVerifies(t *testing.T) {
 	}
 	if verifiedAdmin.UID != admin.UID {
 		t.Fatalf("expected verified admin uid %q, got %q", admin.UID, verifiedAdmin.UID)
+	}
+}
+
+func TestAdminTokenVerificationFallsBackToPrincipalIdentityWhenPhoneClaimMissing(t *testing.T) {
+	svc, db := newAdminServiceForSecurityTest(t)
+
+	hash, err := hashPassword("StrongPass123!")
+	if err != nil {
+		t.Fatalf("hash admin password failed: %v", err)
+	}
+
+	admin := repository.Admin{
+		UnifiedIdentity: repository.UnifiedIdentity{UID: "25072401000042"},
+		Phone:           "13800138008",
+		Name:            "Principal Admin",
+		PasswordHash:    hash,
+		Type:            "super_admin",
+	}
+	if err := db.Create(&admin).Error; err != nil {
+		t.Fatalf("create admin failed: %v", err)
+	}
+
+	payload := buildAdminTokenPayload(admin)
+	delete(payload, "phone")
+
+	token, err := signUnifiedTokenPayload("test-secret", payload)
+	if err != nil {
+		t.Fatalf("sign admin token failed: %v", err)
+	}
+
+	verifiedAdmin, err := svc.VerifyToken(context.Background(), token)
+	if err != nil {
+		t.Fatalf("verify admin token without phone claim failed: %v", err)
+	}
+	if verifiedAdmin.ID != admin.ID {
+		t.Fatalf("expected verified admin id %d, got %d", admin.ID, verifiedAdmin.ID)
+	}
+	if verifiedAdmin.Type != admin.Type {
+		t.Fatalf("expected verified admin type %q, got %q", admin.Type, verifiedAdmin.Type)
+	}
+}
+
+func TestAdminTokenVerificationRejectsMismatchedPrincipalAfterLegacyIDLookup(t *testing.T) {
+	svc, db := newAdminServiceForSecurityTest(t)
+
+	hash, err := hashPassword("StrongPass123!")
+	if err != nil {
+		t.Fatalf("hash admin password failed: %v", err)
+	}
+
+	admin := repository.Admin{
+		UnifiedIdentity: repository.UnifiedIdentity{UID: "25072401000043"},
+		Phone:           "13800138009",
+		Name:            "Mismatch Admin",
+		PasswordHash:    hash,
+		Type:            "admin",
+	}
+	if err := db.Create(&admin).Error; err != nil {
+		t.Fatalf("create admin failed: %v", err)
+	}
+
+	payload := buildAdminTokenPayload(admin)
+	payload["principal_id"] = "25072401009999"
+	payload["sub"] = "25072401009999"
+
+	token, err := signUnifiedTokenPayload("test-secret", payload)
+	if err != nil {
+		t.Fatalf("sign admin token failed: %v", err)
+	}
+
+	if _, err := svc.VerifyToken(context.Background(), token); err == nil {
+		t.Fatal("expected mismatched principal id to be rejected")
 	}
 }
 

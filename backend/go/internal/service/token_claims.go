@@ -25,6 +25,17 @@ const (
 	principalTypeAdmin    = "admin"
 )
 
+var unifiedSessionClaimKeys = []string{
+	"sub",
+	"principal_type",
+	"principal_id",
+	"role",
+	"session_id",
+	"scope",
+	"exp",
+	"iat",
+}
+
 func normalizeBearerTokenString(token string) string {
 	value := strings.TrimSpace(token)
 	if strings.HasPrefix(strings.ToLower(value), "bearer ") {
@@ -143,25 +154,48 @@ func claimStringSlice(payload map[string]interface{}, keys ...string) []string {
 	return nil
 }
 
+func hasUnifiedSessionClaimsShape(payload map[string]interface{}) bool {
+	if payload == nil {
+		return false
+	}
+	for _, key := range unifiedSessionClaimKeys {
+		if _, ok := payload[key]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func allowLegacyUnifiedClaimFallback(payload map[string]interface{}) bool {
+	return !hasUnifiedSessionClaimsShape(payload)
+}
+
 func normalizeUnifiedTokenKind(payload map[string]interface{}) string {
 	kind := strings.ToLower(strings.TrimSpace(claimString(payload, "token_kind", "tokenKind")))
 	if kind == tokenKindAccess || kind == tokenKindRefresh {
 		return kind
 	}
+	if !allowLegacyUnifiedClaimFallback(payload) {
+		return ""
+	}
 	legacyType := strings.ToLower(strings.TrimSpace(claimString(payload, "type")))
 	if legacyType == tokenKindAccess || legacyType == tokenKindRefresh {
 		return legacyType
 	}
-	return tokenKindAccess
+	return ""
 }
 
-func normalizeUnifiedPrincipalType(payload map[string]interface{}, fallback string) string {
+func normalizeUnifiedPrincipalType(payload map[string]interface{}, _ string) string {
 	candidate := strings.ToLower(strings.TrimSpace(claimString(payload, "principal_type", "principalType")))
-	if candidate != "" {
-		if candidate == "super_admin" {
-			return principalTypeAdmin
-		}
+	switch candidate {
+	case principalTypeUser, principalTypeMerchant, principalTypeRider, principalTypeAdmin:
 		return candidate
+	case "super_admin":
+		return principalTypeAdmin
+	}
+
+	if !allowLegacyUnifiedClaimFallback(payload) {
+		return ""
 	}
 
 	roleCandidate := strings.ToLower(strings.TrimSpace(claimString(payload, "role", "userType")))
@@ -180,22 +214,48 @@ func normalizeUnifiedPrincipalType(payload map[string]interface{}, fallback stri
 		return principalTypeAdmin
 	}
 
-	return strings.ToLower(strings.TrimSpace(fallback))
+	return ""
 }
 
 func normalizeUnifiedPrincipalID(payload map[string]interface{}) string {
-	return claimString(
-		payload,
+	keys := []string{
 		"principal_id",
 		"principalId",
-		"id",
 		"sub",
-		"adminId",
-		"admin_id",
-		"userId",
+	}
+	if allowLegacyUnifiedClaimFallback(payload) {
+		keys = append(keys,
+			"id",
+			"adminId",
+			"admin_id",
+			"userId",
+			"principal_legacy_id",
+			"phone",
+		)
+	}
+	return claimString(payload, keys...)
+}
+
+func normalizeUnifiedPrincipalLegacyID(payload map[string]interface{}) int64 {
+	keys := []string{
 		"principal_legacy_id",
-		"phone",
-	)
+		"legacyId",
+	}
+	if allowLegacyUnifiedClaimFallback(payload) {
+		keys = append(keys, "userId", "numericId")
+	}
+	return claimInt64(payload, keys...)
+}
+
+func normalizeUnifiedRole(payload map[string]interface{}) string {
+	role := strings.ToLower(strings.TrimSpace(claimString(payload, "role")))
+	if role != "" {
+		return role
+	}
+	if !allowLegacyUnifiedClaimFallback(payload) {
+		return ""
+	}
+	return strings.ToLower(strings.TrimSpace(claimString(payload, "type", "userType")))
 }
 
 func buildUnifiedScope(principalType, role, tokenKind string) []string {
@@ -246,9 +306,6 @@ func buildBusinessTokenPayload(principalType string, numericID int64, uid, phone
 		"scope":               buildUnifiedScope(normalizedPrincipalType, normalizedRole, tokenKind),
 		"token_kind":          tokenKind,
 		"phone":               strings.TrimSpace(phone),
-		"userId":              numericID,
-		"id":                  principalID,
-		"type":                tokenKind,
 		"exp":                 now.Add(expiry).Unix(),
 		"iat":                 now.Unix(),
 	}
@@ -267,12 +324,8 @@ func buildAdminTokenPayload(admin repository.Admin) map[string]interface{} {
 	principalID := principalIDForUnifiedToken(admin.UID, int64(admin.ID))
 	payload := map[string]interface{}{
 		"phone":               strings.TrimSpace(admin.Phone),
-		"userId":              admin.ID,
-		"id":                  principalID,
 		"sub":                 principalID,
-		"adminId":             principalID,
 		"name":                strings.TrimSpace(admin.Name),
-		"type":                role,
 		"principal_type":      principalTypeAdmin,
 		"principal_id":        principalID,
 		"principal_legacy_id": admin.ID,

@@ -192,18 +192,18 @@ func (s *AdminService) VerifyToken(ctx context.Context, authHeader string) (*rep
 		return nil, fmt.Errorf("invalid admin token kind")
 	}
 
-	if principalType := normalizeUnifiedPrincipalType(payload, principalTypeAdmin); principalType != principalTypeAdmin {
+	if principalType := normalizeUnifiedPrincipalType(payload, ""); principalType != principalTypeAdmin {
 		return nil, fmt.Errorf("invalid admin principal type")
 	}
 
-	adminType := strings.ToLower(strings.TrimSpace(claimString(payload, "role", "type", "userType")))
+	adminType := normalizeUnifiedRole(payload)
 	if adminType != "" && adminType != "admin" && adminType != "super_admin" {
 		return nil, fmt.Errorf("invalid admin type")
 	}
 
 	phone := claimString(payload, "phone")
 	principalID := normalizeUnifiedPrincipalID(payload)
-	userID := claimInt64(payload, "principal_legacy_id", "userId")
+	userID := normalizeUnifiedPrincipalLegacyID(payload)
 
 	var admin repository.Admin
 	if userID > 0 {
@@ -212,10 +212,9 @@ func (s *AdminService) VerifyToken(ctx context.Context, authHeader string) (*rep
 			return nil, findByID.Error
 		}
 		if findByID.RowsAffected > 0 {
-			if phone == "" || admin.Phone == phone {
-				return &admin, nil
+			if phone != "" && admin.Phone != phone {
+				return nil, fmt.Errorf("token user mismatch")
 			}
-			return nil, fmt.Errorf("token user mismatch")
 		}
 	}
 
@@ -236,11 +235,7 @@ func (s *AdminService) VerifyToken(ctx context.Context, authHeader string) (*rep
 		}
 	}
 
-	if phone == "" {
-		return nil, fmt.Errorf("invalid token subject")
-	}
-
-	if admin.ID == 0 {
+	if admin.ID == 0 && phone != "" {
 		findByPhone := s.db.WithContext(ctx).Where("phone = ?", phone).Limit(1).Find(&admin)
 		if findByPhone.Error != nil {
 			return nil, findByPhone.Error
@@ -248,6 +243,9 @@ func (s *AdminService) VerifyToken(ctx context.Context, authHeader string) (*rep
 		if findByPhone.RowsAffected == 0 {
 			return nil, fmt.Errorf("admin not found")
 		}
+	}
+	if admin.ID == 0 {
+		return nil, fmt.Errorf("invalid token subject")
 	}
 
 	if !unifiedPrincipalMatchesEntity(principalID, admin.UID, admin.ID, admin.Phone) {

@@ -667,12 +667,12 @@ func (s *AuthService) verifyAccessTokenPayload(tokenString, expectedPrincipalTyp
 		return nil, "", 0, "", fmt.Errorf("invalid token kind")
 	}
 
-	if principalType := normalizeUnifiedPrincipalType(payload, expectedPrincipalType); principalType != expectedPrincipalType {
+	if principalType := normalizeUnifiedPrincipalType(payload, ""); principalType != expectedPrincipalType {
 		return nil, "", 0, "", fmt.Errorf("invalid principal type")
 	}
 
 	phone := claimString(payload, "phone")
-	numericID := claimInt64(payload, "principal_legacy_id", "userId")
+	numericID := normalizeUnifiedPrincipalLegacyID(payload)
 	principalID := normalizeUnifiedPrincipalID(payload)
 	if numericID <= 0 && strings.TrimSpace(principalID) == "" {
 		return nil, "", 0, "", fmt.Errorf("invalid token subject")
@@ -736,7 +736,7 @@ func (s *AuthService) VerifyTokenIdentity(tokenString string) (*VerifiedTokenIde
 	return &VerifiedTokenIdentity{
 		Phone:         user.Phone,
 		UserID:        int64(user.ID),
-		PrincipalType: normalizeUnifiedPrincipalType(payload, principalTypeUser),
+		PrincipalType: principalTypeUser,
 		PrincipalID:   principalIDForUnifiedToken(user.UID, int64(user.ID)),
 		Role:          claimString(payload, "role"),
 		SessionID:     claimString(payload, "session_id", "sessionId"),
@@ -821,7 +821,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*L
 		}, fmt.Errorf("invalid token type")
 	}
 
-	if principalType := normalizeUnifiedPrincipalType(payload, principalTypeUser); principalType != principalTypeUser {
+	if principalType := normalizeUnifiedPrincipalType(payload, ""); principalType != principalTypeUser {
 		return &LoginResponse{
 			Success: false,
 			Error:   "invalid refresh principal",
@@ -829,7 +829,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*L
 	}
 
 	phone := claimString(payload, "phone")
-	userID := claimInt64(payload, "principal_legacy_id", "userId")
+	userID := normalizeUnifiedPrincipalLegacyID(payload)
 	principalID := normalizeUnifiedPrincipalID(payload)
 	if userID <= 0 && strings.TrimSpace(principalID) != "" {
 		resolvedID, resolveErr := resolveEntityID(ctx, s.db, "users", principalID)
