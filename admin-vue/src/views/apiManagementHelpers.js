@@ -1,18 +1,14 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
+import { extractErrorMessage } from '@infinitech/contracts';
 import {
   buildApiKeyMarkdownText,
-  buildWeatherConfigPayload,
-  createDefaultWeatherConfig,
-  normalizeWeatherConfig,
 } from '@infinitech/admin-core';
 import request from '@/utils/request';
-import { DEFAULT_SMS_CONFIG, normalizeSMSConfig, buildSMSConfigPayload } from './smsConfigHelpers';
 import { usePublicApiManagement } from './publicApiManagementCore';
-
-const DEFAULT_WEATHER_CONFIG = createDefaultWeatherConfig();
+import { useSmsSettings } from './settingsHelpers/sms';
+import { useWeatherSettings } from './settingsHelpers/weather';
 
 export function useApiManagementPage(options = {}) {
   const router = useRouter();
@@ -26,6 +22,16 @@ export function useApiManagementPage(options = {}) {
   const loading = ref(false);
   const saving = ref(false);
   const settingsError = ref('');
+  const smsSettings = useSmsSettings({
+    request,
+    ElMessage,
+    savingRef: saving,
+  });
+  const weatherSettings = useWeatherSettings({
+    request,
+    ElMessage,
+    savingRef: saving,
+  });
   const publicApiManagement = usePublicApiManagement({
     request,
     ElMessage,
@@ -33,17 +39,13 @@ export function useApiManagementPage(options = {}) {
     cache: true,
   });
   const pageError = computed(() => settingsError.value || publicApiManagement.apiListError.value || '');
-  const sms = ref({ ...DEFAULT_SMS_CONFIG });
-  const weather = ref(createDefaultWeatherConfig());
+  const sms = smsSettings.sms;
+  const weather = weatherSettings.weather;
 
   const downloadDialogVisible = ref(false);
   const downloadLanguage = ref('java');
   const downloadingApi = ref(false);
   const currentDownloadApi = ref(null);
-
-  function mergeWeatherConfig(payload = {}) {
-    weather.value = normalizeWeatherConfig(payload);
-  }
 
   onMounted(() => {
     loadAll();
@@ -59,20 +61,16 @@ export function useApiManagementPage(options = {}) {
     loading.value = true;
     try {
       const [smsResp, weaResp] = await Promise.allSettled([
-        request.get('/api/sms-config'),
-        request.get('/api/weather-config')
+        smsSettings.loadSmsConfig({ clearError: false, throwOnError: true }),
+        weatherSettings.loadWeatherConfig({ clearError: false, throwOnError: true }),
       ]);
       let firstError = '';
 
-      if (smsResp.status === 'fulfilled' && smsResp.value?.data) {
-        sms.value = normalizeSMSConfig(extractEnvelopeData(smsResp.value.data) || {});
-      } else if (smsResp.status === 'rejected') {
+      if (smsResp.status === 'rejected') {
         firstError = extractErrorMessage(smsResp.reason, '加载短信配置失败，请稍后重试');
       }
 
-      if (weaResp.status === 'fulfilled' && weaResp.value?.data) {
-        mergeWeatherConfig(extractEnvelopeData(weaResp.value.data) || {});
-      } else if (weaResp.status === 'rejected' && !firstError) {
+      if (weaResp.status === 'rejected' && !firstError) {
         firstError = extractErrorMessage(weaResp.reason, '加载天气配置失败，请稍后重试');
       }
 
@@ -91,29 +89,11 @@ export function useApiManagementPage(options = {}) {
   }
 
   async function saveSms() {
-    saving.value = true;
-    try {
-      await request.post('/api/sms-config', buildSMSConfigPayload(sms.value));
-      ElMessage.success('短信配置保存成功');
-    } catch (error) {
-      ElMessage.error(extractErrorMessage(error, '保存短信配置失败'));
-    } finally {
-      saving.value = false;
-    }
+    await smsSettings.saveSmsConfig();
   }
 
   async function saveWeather() {
-    saving.value = true;
-    try {
-      const payload = buildWeatherConfigPayload(weather.value);
-      await request.post('/api/weather-config', payload);
-      weather.value = normalizeWeatherConfig(payload);
-      ElMessage.success('天气配置保存成功');
-    } catch (error) {
-      ElMessage.error(extractErrorMessage(error, '保存天气配置失败'));
-    } finally {
-      saving.value = false;
-    }
+    await weatherSettings.saveWeatherConfig();
   }
 
   function goToApiPermissions() {

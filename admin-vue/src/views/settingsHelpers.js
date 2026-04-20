@@ -16,10 +16,8 @@ import {
   appendAdminUploadDomain,
   buildAppDownloadConfigPayload,
   buildCharitySettingsPayload,
-  buildSMSConfigPayload,
   buildServiceSettingsPayload as buildSharedServiceSettingsPayload,
   buildVIPSettingsPayload,
-  buildWeatherConfigPayload,
   buildWechatLoginConfigPayload,
   createDefaultAlipayConfig,
   createDefaultAppDownloadConfig,
@@ -27,9 +25,7 @@ import {
   createDefaultDebugMode,
   createDefaultPayMode,
   createDefaultServiceSettings,
-  createDefaultSMSConfig,
   createDefaultVIPSettings,
-  createDefaultWeatherConfig,
   createDefaultWechatLoginConfig,
   createDefaultWxpayConfig,
   normalizeAlipayConfig,
@@ -37,10 +33,8 @@ import {
   normalizeCharitySettings,
   normalizeDebugModeConfig,
   normalizePayModeConfig,
-  normalizeSMSConfig,
   normalizeServiceSettings,
   normalizeVIPSettings,
-  normalizeWeatherConfig,
   normalizeWechatLoginConfig,
   normalizeWxpayConfig,
   removeCharityLeaderboardItem as buildNextCharityLeaderboardAfterRemove,
@@ -63,6 +57,8 @@ import request from '@/utils/request';
 import { useDataManagementPage } from './dataManagementHelpers';
 import { useSettingsApiManagement } from './settingsApiManagementHelpers';
 import { useSettingsActionHelpers } from './settingsActionHelpers';
+import { useSmsSettings } from './settingsHelpers/sms';
+import { useWeatherSettings } from './settingsHelpers/weather';
 
 export function useSettingsPage() {
   const router = useRouter();
@@ -72,10 +68,19 @@ export function useSettingsPage() {
   const loading = ref(false);
   const saving = ref(false);
   const loadError = ref('');
-
-  const sms = ref(createDefaultSMSConfig());
-  const DEFAULT_WEATHER_CONFIG = createDefaultWeatherConfig();
-  const weather = ref(createDefaultWeatherConfig());
+  const smsSettings = useSmsSettings({
+    request,
+    ElMessage,
+    savingRef: saving,
+  });
+  const weatherSettings = useWeatherSettings({
+    request,
+    ElMessage,
+    savingRef: saving,
+  });
+  const sms = smsSettings.sms;
+  const DEFAULT_WEATHER_CONFIG = weatherSettings.DEFAULT_WEATHER_CONFIG;
+  const weather = weatherSettings.weather;
   const DEFAULT_SERVICE_SETTINGS = createDefaultServiceSettings();
   const serviceSettings = ref(createDefaultServiceSettings());
   const savingServiceSettings = ref(false);
@@ -117,9 +122,7 @@ export function useSettingsPage() {
     verifyPassword: ''
   });
 
-  function mergeWeatherConfig(payload = {}) {
-    weather.value = normalizeWeatherConfig(payload);
-  }
+  const mergeWeatherConfig = weatherSettings.applyWeatherConfig;
 
   function mergeServiceSettings(payload = {}) {
     serviceSettings.value = normalizeServiceSettings(payload);
@@ -308,9 +311,9 @@ export function useSettingsPage() {
     loading.value = true;
     try {
       const results = await Promise.allSettled([
-        request.get('/api/sms-config'),
+        smsSettings.loadSmsConfig({ clearError: false, throwOnError: true }),
         request.get('/api/debug-mode'),
-        request.get('/api/weather-config'),
+        weatherSettings.loadWeatherConfig({ clearError: false, throwOnError: true }),
         request.get('/api/wechat-login-config'),
         request.get('/api/service-settings'),
         request.get('/api/charity-settings'),
@@ -323,14 +326,8 @@ export function useSettingsPage() {
 
       const [smsResp, debugResp, weaResp, wechatLoginResp, serviceResp, charityResp, vipResp, downloadResp, payModeResp, wxResp, aliResp] = results;
 
-      if (smsResp.status === 'fulfilled' && smsResp.value?.data) {
-        sms.value = normalizeSMSConfig(extractEnvelopeData(smsResp.value.data) || {});
-      }
       if (debugResp.status === 'fulfilled' && debugResp.value?.data) {
         debugMode.value = normalizeDebugModeConfig(extractEnvelopeData(debugResp.value.data) || {});
-      }
-      if (weaResp.status === 'fulfilled' && weaResp.value?.data) {
-        mergeWeatherConfig(extractEnvelopeData(weaResp.value.data) || {});
       }
       if (wechatLoginResp.status === 'fulfilled' && wechatLoginResp.value?.data) {
         mergeWechatLoginConfig(extractEnvelopeData(wechatLoginResp.value.data) || {});
@@ -391,32 +388,11 @@ export function useSettingsPage() {
   });
 
   async function saveSms() {
-    saving.value = true;
-    try {
-      await request.post('/api/sms-config', buildSMSConfigPayload(sms.value));
-      ElMessage.success('短信配置保存成功');
-      setTimeout(() => {
-        loadAll();
-      }, 100);
-    } catch (error) {
-      ElMessage.error(extractErrorMessage(error, '保存短信配置失败'));
-    } finally {
-      saving.value = false;
-    }
+    await smsSettings.saveSmsConfig({ reloadAfterSave: true });
   }
 
   async function saveWeather() {
-    saving.value = true;
-    try {
-      const payload = buildWeatherConfigPayload(weather.value);
-      await request.post('/api/weather-config', payload);
-      weather.value = normalizeWeatherConfig(payload);
-      ElMessage.success('天气配置保存成功');
-    } catch (error) {
-      ElMessage.error(extractErrorMessage(error, '保存天气配置失败'));
-    } finally {
-      saving.value = false;
-    }
+    await weatherSettings.saveWeatherConfig();
   }
 
   function buildServiceSettingsPayload() {

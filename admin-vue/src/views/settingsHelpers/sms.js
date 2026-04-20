@@ -1,52 +1,70 @@
 import { ref } from 'vue';
-import { ElMessage } from 'element-plus';
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
-import request from '@/utils/request';
 import { DEFAULT_SMS_CONFIG, normalizeSMSConfig, buildSMSConfigPayload } from '../smsConfigHelpers';
 
-/**
- * SMS 短信配置模块
- */
-export function useSmsSettings() {
-  const sms = ref({ ...DEFAULT_SMS_CONFIG });
-  const saving = ref(false);
+export function useSmsSettings({ request, ElMessage, model = null, savingRef = null } = {}) {
+  if (!request) {
+    throw new Error('request is required');
+  }
+
+  const sms = model || ref({ ...DEFAULT_SMS_CONFIG });
+  const saving = savingRef || ref(false);
   const loading = ref(false);
   const error = ref('');
 
-  /**
-   * 加载短信配置
-   */
-  async function loadSmsConfig() {
+  function applySmsConfig(payload = {}) {
+    sms.value = normalizeSMSConfig(payload);
+    return sms.value;
+  }
+
+  async function loadSmsConfig(options = {}) {
+    const { clearError = true, throwOnError = false } = options;
     loading.value = true;
-    error.value = '';
+    if (clearError) {
+      error.value = '';
+    }
+
     try {
-      const res = await request.get('/api/sms-config');
-      if (res?.data) {
-        sms.value = normalizeSMSConfig(extractEnvelopeData(res.data) || {});
+      const response = await request.get('/api/sms-config');
+      if (response?.data) {
+        applySmsConfig(extractEnvelopeData(response.data) || {});
       }
+      return sms.value;
     } catch (err) {
       error.value = extractErrorMessage(err, '加载短信配置失败');
+      if (throwOnError) {
+        throw err;
+      }
+      return null;
     } finally {
       loading.value = false;
     }
   }
 
-  /**
-   * 保存短信配置
-   */
-  async function saveSmsConfig() {
+  async function saveSmsConfig(options = {}) {
+    const {
+      successMessage = '短信配置保存成功',
+      errorMessage = '保存短信配置失败',
+      reloadAfterSave = false,
+      throwOnError = false,
+    } = options;
+
     saving.value = true;
     try {
       await request.post('/api/sms-config', buildSMSConfigPayload(sms.value));
-      ElMessage.success('短信配置保存成功');
-      // 重新加载配置
-      setTimeout(() => {
-        loadSmsConfig();
-      }, 100);
+      if (reloadAfterSave) {
+        await loadSmsConfig({ clearError: false, throwOnError });
+      } else {
+        applySmsConfig(sms.value);
+      }
+      ElMessage?.success?.(successMessage);
+      return true;
     } catch (err) {
-      const errorMsg = extractErrorMessage(err, '保存失败');
-      ElMessage.error('保存失败: ' + errorMsg);
-      throw err;
+      ElMessage?.error?.(extractErrorMessage(err, errorMessage));
+      if (throwOnError) {
+        throw err;
+      }
+      return false;
     } finally {
       saving.value = false;
     }
@@ -57,7 +75,8 @@ export function useSmsSettings() {
     saving,
     loading,
     error,
+    applySmsConfig,
     loadSmsConfig,
-    saveSmsConfig
+    saveSmsConfig,
   };
 }
