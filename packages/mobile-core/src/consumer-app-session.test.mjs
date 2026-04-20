@@ -95,7 +95,20 @@ test("consumer app session manager verifies session responses and tolerates netw
       assert.equal(url, "https://api.example.com/api/auth/verify");
       return {
         statusCode: 200,
-        data: { valid: true },
+        data: {
+          request_id: "req-auth-verify-1",
+          code: "OK",
+          message: "令牌校验成功",
+          success: true,
+          data: {
+            valid: true,
+            identity: {
+              principalType: "user",
+              principalId: "25072402000011",
+              legacyId: "11",
+            },
+          },
+        },
       };
     },
     baseUrl: "https://api.example.com",
@@ -120,7 +133,13 @@ test("consumer app session manager verifies session responses and tolerates netw
     manualRefreshToken: async () => true,
     request: async () => ({
       statusCode: 200,
-      data: { valid: false },
+      data: {
+        request_id: "req-auth-verify-2",
+        code: "UNAUTHORIZED",
+        message: "invalid or expired token",
+        success: false,
+        data: { valid: false },
+      },
     }),
     forceLogout() {
       logoutCalls += 1;

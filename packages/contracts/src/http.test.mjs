@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
 import {
+  extractAuthVerifyResult,
   buildErrorEnvelopePayload,
   buildSuccessEnvelopePayload,
   extractEnvelopeCode,
@@ -273,6 +274,76 @@ test("extractSMSResult preserves sms debug code from enveloped payloads", () => 
   );
 });
 
+test("extractAuthVerifyResult prefers standardized identity envelopes and falls back safely", () => {
+  assert.deepEqual(
+    extractAuthVerifyResult({
+      request_id: "req_auth_1",
+      code: "OK",
+      message: "令牌校验成功",
+      success: true,
+      data: {
+        valid: true,
+        identity: {
+          principalType: "user",
+          principalId: "25072402000011",
+          legacyId: "18",
+          role: "customer",
+          sessionId: "user_session_1",
+          phone: "13800001001",
+          scope: ["api", "principal:user"],
+        },
+      },
+    }),
+    {
+      request_id: "req_auth_1",
+      code: "OK",
+      message: "令牌校验成功",
+      valid: true,
+      identity: {
+        id: "25072402000011",
+        principalId: "25072402000011",
+        principalType: "user",
+        legacyId: "18",
+        userId: "18",
+        phone: "13800001001",
+        role: "customer",
+        sessionId: "user_session_1",
+        scope: ["api", "principal:user"],
+        name: "",
+      },
+    },
+  );
+
+  assert.deepEqual(
+    extractAuthVerifyResult({
+      valid: true,
+      userId: 21,
+      id: "25072402000021",
+      principalType: "user",
+      role: "customer",
+      sessionId: "legacy_verify_21",
+    }),
+    {
+      request_id: "",
+      code: "OK",
+      message: "",
+      valid: true,
+      identity: {
+        id: "25072402000021",
+        principalId: "25072402000021",
+        principalType: "user",
+        legacyId: "21",
+        userId: "21",
+        phone: "",
+        role: "customer",
+        sessionId: "legacy_verify_21",
+        scope: [],
+        name: "",
+      },
+    },
+  );
+});
+
 test("http contracts keep CommonJS bridge aligned with ESM helpers", () => {
   const source = { requestId: "req-http-2" };
   assert.deepEqual(
@@ -282,5 +353,27 @@ test("http contracts keep CommonJS bridge aligned with ESM helpers", () => {
   assert.deepEqual(
     cjsHttp.buildErrorEnvelopePayload(source, 404, "not found"),
     buildErrorEnvelopePayload(source, 404, "not found"),
+  );
+  assert.deepEqual(
+    cjsHttp.extractAuthVerifyResult({
+      data: {
+        valid: true,
+        identity: {
+          principalType: "user",
+          principalId: "user_uid_1",
+          legacyId: "1",
+        },
+      },
+    }),
+    extractAuthVerifyResult({
+      data: {
+        valid: true,
+        identity: {
+          principalType: "user",
+          principalId: "user_uid_1",
+          legacyId: "1",
+        },
+      },
+    }),
   );
 });

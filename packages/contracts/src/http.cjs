@@ -118,6 +118,42 @@ function normalizeSuccessData(data) {
   return data;
 }
 
+function normalizeBooleanFlag(value) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  const normalized = trimText(value).toLowerCase();
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (normalized === "true" || normalized === "1" || normalized === "yes") {
+    return true;
+  }
+  if (normalized === "false" || normalized === "0" || normalized === "no") {
+    return false;
+  }
+
+  return Boolean(value);
+}
+
+function normalizeIdentityScope(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => trimText(item)).filter(Boolean);
+  }
+
+  const normalized = trimText(value);
+  if (!normalized) {
+    return [];
+  }
+
+  return normalized
+    .split(/[,\s]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function buildSuccessEnvelopePayload(source, message, data, options = {}) {
   const normalizedMessage = trimText(message) || "ok";
   const payload = {
@@ -367,6 +403,96 @@ function extractSMSResult(payload) {
   };
 }
 
+function extractAuthVerifyResult(payload) {
+  if (!payload || typeof payload !== "object") {
+    return {
+      request_id: "",
+      code: "",
+      message: "",
+      valid: false,
+      identity: null,
+    };
+  }
+
+  const data = extractEnvelopeData(payload);
+  const source = data && typeof data === "object" ? data : payload;
+  const identitySource =
+    source.identity && typeof source.identity === "object"
+      ? source.identity
+      : source;
+
+  const principalId = trimText(
+    identitySource.principalId ||
+      identitySource.principal_id ||
+      source.principalId ||
+      source.principal_id ||
+      source.id,
+  );
+  const legacyId = trimText(
+    identitySource.legacyId ||
+      identitySource.legacy_id ||
+      identitySource.userId ||
+      identitySource.user_id ||
+      source.legacyId ||
+      source.legacy_id ||
+      source.userId ||
+      source.user_id,
+  );
+  const phone = trimText(identitySource.phone || source.phone);
+  const principalType = trimText(
+    identitySource.principalType ||
+      identitySource.principal_type ||
+      source.principalType ||
+      source.principal_type,
+  );
+  const role = trimText(identitySource.role || source.role);
+  const sessionId = trimText(
+    identitySource.sessionId ||
+      identitySource.session_id ||
+      source.sessionId ||
+      source.session_id,
+  );
+  const name = trimText(identitySource.name || source.name);
+  const explicitValid = normalizeBooleanFlag(source.valid ?? payload.valid);
+  const success = normalizeBooleanFlag(payload.success);
+  const hasIdentity = Boolean(
+    principalId ||
+      legacyId ||
+      phone ||
+      principalType ||
+      role ||
+      sessionId ||
+      name,
+  );
+  const valid =
+    explicitValid !== undefined
+      ? explicitValid
+      : success === false
+        ? false
+        : hasIdentity;
+
+  return {
+    request_id: extractEnvelopeRequestId(payload),
+    code: extractEnvelopeCode(payload, valid ? "OK" : ""),
+    message: extractEnvelopeMessage(payload, ""),
+    valid,
+    identity: hasIdentity
+      ? {
+          id: trimText(principalId || legacyId || phone),
+          principalId,
+          principalType,
+          legacyId,
+          userId: legacyId,
+          phone,
+          role,
+          sessionId,
+          scope: normalizeIdentityScope(identitySource.scope ?? source.scope),
+          name,
+        }
+      : null,
+  };
+}
+
 function extractErrorMessage(payload, fallback = "请求失败") {
   if (!payload) {
     return fallback;
@@ -405,5 +531,6 @@ module.exports = {
   isProtectedUploadUrl,
   resolveUploadAssetUrl,
   extractSMSResult,
+  extractAuthVerifyResult,
   extractErrorMessage,
 };

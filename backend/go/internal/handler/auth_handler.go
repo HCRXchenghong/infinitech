@@ -3,6 +3,7 @@ package handler
 import (
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -111,6 +112,22 @@ func respondAuthInvalidRequest(c *gin.Context, message, detail string) {
 		legacy["detail"] = trimmedDetail
 	}
 	respondEnvelope(c, http.StatusBadRequest, responseCodeInvalidArgument, firstNonEmptyText(message, "请求参数错误"), payload, legacy)
+}
+
+func buildVerifiedAuthIdentityPayload(identity *service.VerifiedTokenIdentity) gin.H {
+	if identity == nil {
+		return gin.H{}
+	}
+
+	return gin.H{
+		"principalId":   identity.PrincipalID,
+		"principalType": identity.PrincipalType,
+		"legacyId":      strconv.FormatInt(identity.UserID, 10),
+		"role":          identity.Role,
+		"sessionId":     identity.SessionID,
+		"phone":         identity.Phone,
+		"scope":         identity.Scope,
+	}
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -281,8 +298,10 @@ func (h *AuthHandler) VerifyToken(c *gin.Context) {
 	}
 
 	log.Printf("[Auth Handler] token verify success: phone=%s userId=%d", maskPhoneForLog(identity.Phone), identity.UserID)
+	identityPayload := buildVerifiedAuthIdentityPayload(identity)
 	respondAuthMirroredSuccess(c, "令牌校验成功", gin.H{
 		"valid":         true,
+		"identity":      identityPayload,
 		"phone":         identity.Phone,
 		"userId":        identity.UserID,
 		"id":            identity.PrincipalID,

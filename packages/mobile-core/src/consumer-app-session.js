@@ -1,3 +1,5 @@
+import { extractAuthVerifyResult } from "../../contracts/src/http.js";
+
 function resolveLogger(options = {}) {
   const logger = options.logger;
 
@@ -130,8 +132,10 @@ export function createConsumerAppSessionManager(options = {}) {
         },
       });
 
-      const data = response && response.data ? response.data : null;
-      if (response.statusCode !== 200 || !data || !data.valid) {
+      const verification = extractAuthVerifyResult(
+        response && response.data ? response.data : null,
+      );
+      if (response.statusCode !== 200 || !verification.valid) {
         forceLogout();
         return false;
       }

@@ -3,6 +3,7 @@ import {
   normalizeBearerToken,
   parseUnifiedTokenPayload,
 } from '../packages/contracts/src/identity.js';
+import { extractAuthVerifyResult } from '../packages/contracts/src/http.js';
 import {
   buildRuntimePrincipalIdentity,
   resolveSocketSubjectId,
@@ -149,14 +150,22 @@ export async function validateSocketIdentity({ role, claimedUserId, authHeader, 
         headers: { Authorization: normalizedAuthHeader },
         requestId
       });
-      const verifyIdentity = buildRuntimePrincipalIdentity(verifyData || {}, {
+      const verifyResult = extractAuthVerifyResult(verifyData);
+      if (!verifyResult.valid) {
+        throw createHttpError(401, verifyResult.message || 'Unable to verify user identity for socket auth', {
+          pathname: '/api/auth/verify',
+          data: verifyData,
+          requestId,
+        });
+      }
+      const verifyIdentity = buildRuntimePrincipalIdentity(verifyResult.identity || {}, {
         expectedPrincipalType: 'user',
         defaultRole: 'user',
       }) || null;
 
       const resolvedUserId = resolveSocketSubjectId(
         claimedUserId,
-        [verifyIdentity, tokenIdentity, { id: verifyData?.userId }],
+        [verifyIdentity, tokenIdentity, verifyResult.identity],
         { preferNumericId: true },
       );
       if (!resolvedUserId) {
@@ -167,7 +176,7 @@ export async function validateSocketIdentity({ role, claimedUserId, authHeader, 
         role: 'user',
         socketUserId: resolvedUserId,
         authToken: normalizedAuthHeader,
-        payload: parsedPayload || verifyData,
+        payload: parsedPayload || verifyResult.identity || verifyData,
         verifiedBy: '/api/auth/verify'
       };
     }
