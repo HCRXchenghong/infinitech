@@ -8,6 +8,13 @@ const {
 const { buildErrorEnvelopePayload } = require("./apiEnvelope");
 const { logger } = require("./logger");
 
+const PROTECTED_LEGACY_UPLOAD_PREFIXES = [
+  "/uploads/certs/",
+  "/uploads/merchant_document/",
+  "/uploads/medical_document/",
+  "/uploads/onboarding-invite/",
+];
+
 function appendForwardedPort(host, port, protocol) {
   const normalizedHost = String(host || "").trim();
   const normalizedPort = String(port || "").trim();
@@ -68,40 +75,79 @@ function getRequestOrigin(req) {
   return `${protocol}://${host}`;
 }
 
-function normalizeUploadUrl(url, req) {
+function extractUploadPath(url) {
+  if (!url || typeof url !== "string") {
+    return "";
+  }
+
+  const raw = String(url).trim();
+  if (!raw) {
+    return "";
+  }
+  if (raw.startsWith("/uploads/")) {
+    return raw;
+  }
+
+  const uploadPathMatch = raw.match(/\/uploads\/.+$/);
+  if (uploadPathMatch) {
+    return uploadPathMatch[0];
+  }
+  return "";
+}
+
+function isProtectedLegacyUploadUrl(url) {
+  const uploadPath = extractUploadPath(url);
+  if (!uploadPath) {
+    return false;
+  }
+  return PROTECTED_LEGACY_UPLOAD_PREFIXES.some((prefix) =>
+    uploadPath.startsWith(prefix),
+  );
+}
+
+function normalizeUploadUrl(url, req, options = {}) {
   if (!url || typeof url !== "string") {
     return url;
   }
-  if (url.startsWith("/uploads/")) {
-    return `${getRequestOrigin(req)}${url}`;
+
+  const accessPolicy = String(options.accessPolicy || "").trim().toLowerCase();
+  if (accessPolicy === "private" || isProtectedLegacyUploadUrl(url)) {
+    return url;
   }
-  const uploadPathMatch = url.match(/\/uploads\/.+$/);
-  if (uploadPathMatch) {
-    return `${getRequestOrigin(req)}${uploadPathMatch[0]}`;
+
+  const uploadPath = extractUploadPath(url);
+  if (uploadPath) {
+    return `${getRequestOrigin(req)}${uploadPath}`;
   }
+
   return url;
 }
 
-function normalizeUploadPayload(payload, req) {
+function normalizeUploadPayload(payload, req, context = {}) {
   if (Array.isArray(payload)) {
-    return payload.map((item) => normalizeUploadPayload(item, req));
+    return payload.map((item) => normalizeUploadPayload(item, req, context));
   }
 
   if (!payload || typeof payload !== "object") {
     if (typeof payload === "string") {
-      return normalizeUploadUrl(payload, req);
+      return normalizeUploadUrl(payload, req, context);
     }
     return payload;
   }
 
+  const accessPolicy =
+    typeof payload.access_policy === "string" && payload.access_policy.trim()
+      ? payload.access_policy
+      : context.accessPolicy;
+
   const next = {};
   for (const [key, value] of Object.entries(payload)) {
     if (typeof value === "string") {
-      next[key] = normalizeUploadUrl(value, req);
+      next[key] = normalizeUploadUrl(value, req, { accessPolicy });
       continue;
     }
     if (Array.isArray(value) || (value && typeof value === "object")) {
-      next[key] = normalizeUploadPayload(value, req);
+      next[key] = normalizeUploadPayload(value, req, { accessPolicy });
       continue;
     }
     next[key] = value;

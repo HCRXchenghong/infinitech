@@ -29,7 +29,10 @@ jest.mock("../../src/utils/goProxy", () => {
 });
 
 const { requestGoRaw } = require("../../src/utils/goProxy");
-const { proxyMultipartUpload } = require("../../src/utils/multipartProxy");
+const {
+  normalizeUploadPayload,
+  proxyMultipartUpload,
+} = require("../../src/utils/multipartProxy");
 
 function createResponse() {
   return {
@@ -104,5 +107,67 @@ describe("multipartProxy envelopes", () => {
       }),
     );
     expect(next).not.toHaveBeenCalled();
+  });
+
+  test("keeps protected legacy document upload paths non-public for private assets", () => {
+    const req = {
+      headers: {
+        origin: "https://uploads.example.com",
+      },
+    };
+
+    expect(
+      normalizeUploadPayload(
+        {
+          request_id: "req-private-1",
+          code: "OK",
+          message: "上传成功",
+          data: {
+            access_policy: "private",
+            asset_url: "/uploads/merchant_document/license.png",
+            previewUrl: "/api/private-assets/preview?asset_id=private://document/merchant_document/merchant/18/license.png",
+            owner_scope: "merchant_document:merchant:18",
+          },
+        },
+        req,
+      ),
+    ).toEqual({
+      request_id: "req-private-1",
+      code: "OK",
+      message: "上传成功",
+      data: {
+        access_policy: "private",
+        asset_url: "/uploads/merchant_document/license.png",
+        previewUrl: "/api/private-assets/preview?asset_id=private://document/merchant_document/merchant/18/license.png",
+        owner_scope: "merchant_document:merchant:18",
+      },
+    });
+  });
+
+  test("still normalizes public upload paths for public assets", () => {
+    const req = {
+      headers: {
+        origin: "https://uploads.example.com",
+      },
+    };
+
+    expect(
+      normalizeUploadPayload(
+        {
+          access_policy: "public",
+          asset_url: "/uploads/profile_image/avatar.png",
+          nested: {
+            url: "https://api.example.com/uploads/review_media/review.png",
+          },
+        },
+        req,
+      ),
+    ).toEqual({
+      access_policy: "public",
+      asset_url: "https://uploads.example.com/uploads/profile_image/avatar.png",
+      nested: {
+        url: "https://uploads.example.com/uploads/review_media/review.png",
+      },
+    });
   });
 });
