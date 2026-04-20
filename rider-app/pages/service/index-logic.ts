@@ -1,4 +1,5 @@
 ﻿import Vue from "vue";
+import { resolveUploadAssetUrl } from "../../../packages/contracts/src/http.js";
 import { UPLOAD_DOMAINS } from "../../../packages/contracts/src/upload.js";
 import {
   fetchHistory,
@@ -626,7 +627,8 @@ export default Vue.extend({
           })
             .then((data: any) => {
               uni.hideLoading();
-              if (!data?.url) {
+              const imageUrl = String(resolveUploadAssetUrl(data) || "").trim();
+              if (!imageUrl) {
                 uni.showToast({ title: "上传失败", icon: "none" });
                 return;
               }
@@ -638,7 +640,7 @@ export default Vue.extend({
               );
               const newMsg = {
                 id: tempId,
-                content: data.url,
+                content: imageUrl,
                 type: "image",
                 isSelf: true,
                 timestamp: messageTimestamp,

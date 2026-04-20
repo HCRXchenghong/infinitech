@@ -16,6 +16,7 @@
 
 <script lang="ts">
 import Vue from "vue";
+import { resolveUploadAssetUrl } from "../../../packages/contracts/src/http.js";
 import { UPLOAD_DOMAINS } from "../../../packages/contracts/src/upload.js";
 import { updateAvatar, uploadImage } from "../../shared-ui/api";
 import {
@@ -62,7 +63,7 @@ export default Vue.extend({
         const uploadRes: any = await uploadImage(filePath, {
           uploadDomain: UPLOAD_DOMAINS.PROFILE_IMAGE,
         });
-        const imageUrl = String(uploadRes?.url || "").trim();
+        const imageUrl = String(resolveUploadAssetUrl(uploadRes) || "").trim();
         if (!imageUrl) {
           throw new Error("上传返回地址为空");
         }
