@@ -2,13 +2,10 @@ import {
   ADMIN_METADATA_DUPLICATE_HINT,
   requireAdminProtectedRoute,
 } from "./route-registry.js";
+import { adminNavigationCatalog, adminNavigationModules } from "./navigation-catalog.js";
 
 function normalizeText(value) {
   return String(value == null ? "" : value).trim();
-}
-
-function freezeRouteList(routes = []) {
-  return Object.freeze([...routes]);
 }
 
 function assertUniqueModuleValue(seen, value, owner, label) {
@@ -67,74 +64,43 @@ export function validateAdminModuleCatalog(catalog = []) {
   return catalog;
 }
 
-const ADMIN_MODULE_CATALOG = [
-  {
-    key: "identity-account",
-    title: "身份与账号",
-    routes: ["users", "riders", "merchants", "management-center"],
-  },
-  {
-    key: "payment-center",
-    title: "支付中心",
-    routes: [
-      "payment-center",
-      "finance-center",
-      "transaction-logs",
-      "coupon-management",
-    ],
-  },
-  {
-    key: "system-config",
-    title: "系统配置",
-    routes: [
-      "settings",
-      "data-management",
-      "content-settings",
-      "api-management",
-      "api-permissions",
-      "api-documentation",
-    ],
-  },
-  {
-    key: "message-notify",
-    title: "消息与通知",
-    routes: [
-      "support-chat",
-      "monitor-chat",
-      "official-site-center",
-      "official-notifications",
-    ],
-  },
-  {
-    key: "audit-log",
-    title: "审计与日志",
-    routes: ["system-logs", "contact-phone-audits", "rtc-call-audits"],
-  },
-  {
-    key: "realtime-console",
-    title: "实时控制台",
-    routes: ["rtc-console", "blank-page"],
-  },
-  {
-    key: "operations-config",
-    title: "运营配置",
-    routes: [
-      "orders",
-      "after-sales",
-      "operations-center",
-      "home-entry-settings",
-      "errand-settings",
-      "dining-buddy-governance",
-      "featured-products",
-      "home-campaigns",
-      "merchant-taxonomy-settings",
-      "rider-rank-settings",
-    ],
-  },
-];
+function freezeRouteList(routes = []) {
+  return Object.freeze([...routes]);
+}
+
+function buildAdminModuleCatalogFromNavigation(catalog = adminNavigationCatalog) {
+  const buckets = new Map(
+    adminNavigationModules.map((module) => [
+      module.key,
+      { key: module.key, title: module.title, routes: [] },
+    ]),
+  );
+
+  for (const group of catalog) {
+    for (const section of group.sections || []) {
+      for (const item of section.items || []) {
+        const moduleKey = normalizeText(item?.moduleKey);
+        if (!moduleKey) {
+          continue;
+        }
+        const bucket = buckets.get(moduleKey);
+        if (!bucket) {
+          throw new Error(
+            `admin module route is assigned to unknown module: ${moduleKey} <- ${item.route}`,
+          );
+        }
+        bucket.routes.push(item.route);
+      }
+    }
+  }
+
+  return adminNavigationModules
+    .map((module) => buckets.get(module.key))
+    .filter((bucket) => Array.isArray(bucket?.routes) && bucket.routes.length > 0);
+}
 
 export const adminModuleCatalog = Object.freeze(
-  validateAdminModuleCatalog(ADMIN_MODULE_CATALOG).map((section) =>
+  validateAdminModuleCatalog(buildAdminModuleCatalogFromNavigation()).map((section) =>
     Object.freeze({
       ...section,
       routes: freezeRouteList(section.routes),

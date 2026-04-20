@@ -7,6 +7,10 @@ import {
   validateAdminProtectedRouteRecords,
 } from "./route-registry.js";
 import {
+  adminNavigationCatalog,
+  validateAdminNavigationCatalog,
+} from "./navigation-catalog.js";
+import {
   adminModuleCatalog,
   validateAdminModuleCatalog,
 } from "./module-catalog.js";
@@ -16,6 +20,10 @@ test("admin navigation metadata validators accept the shared registry state", ()
   assert.equal(
     validateAdminProtectedRouteRecords(adminProtectedRouteRecords),
     adminProtectedRouteRecords,
+  );
+  assert.equal(
+    validateAdminNavigationCatalog(adminNavigationCatalog),
+    adminNavigationCatalog,
   );
   assert.equal(validateAdminModuleCatalog(adminModuleCatalog), adminModuleCatalog);
   assert.equal(validateAdminMenuGroups(adminMenuGroups), adminMenuGroups);
@@ -44,6 +52,66 @@ test("admin route registry rejects duplicate names and invalid menu roots", () =
         },
       ]),
     /menu root is not registered/,
+  );
+});
+
+test("admin navigation catalog rejects duplicate ids and repeated route ownership", () => {
+  assert.throws(
+    () =>
+      validateAdminNavigationCatalog([
+        {
+          id: "overview",
+          name: "总览中心",
+          sections: [
+            {
+              id: "overview-a",
+              name: "总览",
+              items: [{ route: "dashboard" }],
+            },
+          ],
+        },
+        {
+          id: "overview",
+          name: "运营中心",
+          sections: [
+            {
+              id: "operations-a",
+              name: "运营",
+              items: [{ route: "orders", moduleKey: "operations-config" }],
+            },
+          ],
+        },
+      ]),
+    new RegExp(ADMIN_METADATA_DUPLICATE_HINT),
+  );
+
+  assert.throws(
+    () =>
+      validateAdminNavigationCatalog([
+        {
+          id: "overview",
+          name: "总览中心",
+          sections: [
+            {
+              id: "overview-a",
+              name: "总览",
+              items: [{ route: "dashboard" }],
+            },
+          ],
+        },
+        {
+          id: "operations",
+          name: "运营中心",
+          sections: [
+            {
+              id: "operations-a",
+              name: "运营",
+              items: [{ route: "dashboard", moduleKey: "operations-config" }],
+            },
+          ],
+        },
+      ]),
+    /请收敛到单一路径/,
   );
 });
 

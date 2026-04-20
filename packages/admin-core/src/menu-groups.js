@@ -2,6 +2,7 @@ import {
   ADMIN_METADATA_DUPLICATE_HINT,
   requireAdminProtectedRoute,
 } from "./route-registry.js";
+import { adminNavigationCatalog } from "./navigation-catalog.js";
 
 function normalizeText(value) {
   return String(value == null ? "" : value).trim();
@@ -97,141 +98,20 @@ export function validateAdminMenuGroups(groups = []) {
   return groups;
 }
 
-const ADMIN_MENU_GROUPS = [
-  {
-    id: "overview",
-    name: "总览中心",
-    sections: [
-      { id: "overview-dashboard", name: "总览视图", routes: ["dashboard"] },
-    ],
-  },
-  {
-    id: "account",
-    name: "账号管理",
-    sections: [
-      {
-        id: "account-admin",
-        name: "后台与权限",
-        routes: ["management-center"],
-      },
-      {
-        id: "account-roles",
-        name: "平台角色",
-        routes: ["users", "riders", "rider-ranks", "merchants"],
-      },
-    ],
-  },
-  {
-    id: "order-service",
-    name: "订单服务",
-    sections: [
-      {
-        id: "order-fulfillment",
-        name: "履约与售后",
-        routes: ["orders", "after-sales"],
-      },
-      {
-        id: "order-audits",
-        name: "沟通与审计",
-        routes: [
-          "support-chat",
-          "rtc-console",
-          "contact-phone-audits",
-          "rtc-call-audits",
-        ],
-      },
-    ],
-  },
-  {
-    id: "operation",
-    name: "运营营销",
-    sections: [
-      {
-        id: "operation-campaign",
-        name: "活动与投放",
-        routes: [
-          "operations-center",
-          "home-entry-settings",
-          "errand-settings",
-          "dining-buddy-governance",
-          "featured-products",
-          "home-campaigns",
-          "coupon-management",
-        ],
-      },
-      {
-        id: "operation-content",
-        name: "内容与触达",
-        routes: [
-          "official-site-center",
-          "official-notifications",
-          "content-settings",
-        ],
-      },
-    ],
-  },
-  {
-    id: "finance",
-    name: "财务数据",
-    sections: [
-      {
-        id: "finance-overview",
-        name: "财务总览",
-        routes: ["finance-center", "transaction-logs"],
-      },
-      {
-        id: "finance-payment",
-        name: "支付与结算",
-        routes: ["payment-center"],
-      },
-    ],
-  },
-  {
-    id: "intelligent",
-    name: "智能监控",
-    sections: [
-      {
-        id: "intelligent-runtime",
-        name: "平台监控",
-        routes: ["monitor-chat"],
-      },
-      {
-        id: "intelligent-debug",
-        name: "联调排障",
-        routes: ["blank-page"],
-      },
-    ],
-  },
-  {
-    id: "system",
-    name: "系统配置",
-    sections: [
-      {
-        id: "system-settings",
-        name: "基础与平台配置",
-        routes: [
-          "settings",
-          "merchant-taxonomy-settings",
-          "rider-rank-settings",
-          "data-management",
-        ],
-      },
-      {
-        id: "system-open-platform",
-        name: "开放平台",
-        routes: ["api-management", "api-permissions", "api-documentation"],
-      },
-      {
-        id: "system-audit",
-        name: "审计记录",
-        routes: ["system-logs"],
-      },
-    ],
-  },
-];
+function buildAdminMenuGroupsFromNavigation(catalog = adminNavigationCatalog) {
+  return catalog.map((group) => ({
+    id: group.id,
+    name: group.name,
+    sections: (group.sections || []).map((menuSection) => ({
+      id: menuSection.id,
+      name: menuSection.name,
+      routes: (menuSection.items || []).map((item) => item.route),
+    })),
+  }));
+}
 
 export const adminMenuGroups = Object.freeze(
-  validateAdminMenuGroups(ADMIN_MENU_GROUPS).map((group) =>
+  validateAdminMenuGroups(buildAdminMenuGroupsFromNavigation()).map((group) =>
     Object.freeze({
       ...group,
       sections: freezeList(
