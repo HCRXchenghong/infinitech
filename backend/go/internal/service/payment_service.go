@@ -64,13 +64,10 @@ type PaymentService struct {
 }
 
 func NewPaymentService(walletRepo repository.WalletRepository, riskSvc *RiskControlService, signSecret string) *PaymentService {
-	if signSecret == "" {
-		signSecret = "wallet-sign-secret-change-in-production"
-	}
 	return &PaymentService{
 		walletRepo: walletRepo,
 		riskSvc:    riskSvc,
-		signSecret: signSecret,
+		signSecret: strings.TrimSpace(signSecret),
 	}
 }
 

@@ -483,6 +483,9 @@ func (s *GroupbuyService) buildScanToken(voucher repository.GroupbuyVoucher, ttl
 	if ttl <= 0 {
 		ttl = defaultScanTokenTTL
 	}
+	if strings.TrimSpace(s.signSecret) == "" {
+		return "", time.Time{}, fmt.Errorf("groupbuy scan signing secret is required")
+	}
 	expAt := time.Now().Add(ttl)
 	nonce, err := randomHex(8)
 	if err != nil {
@@ -500,9 +503,6 @@ func (s *GroupbuyService) buildScanToken(voucher repository.GroupbuyVoucher, ttl
 	payloadSegment := base64.RawURLEncoding.EncodeToString(payloadBytes)
 
 	mac := hmac.New(sha256.New, []byte(s.signSecret))
-	if s.signSecret == "" {
-		mac = hmac.New(sha256.New, []byte("groupbuy-scan-secret"))
-	}
 	_, _ = mac.Write([]byte(payloadSegment))
 	sign := hex.EncodeToString(mac.Sum(nil))
 	return payloadSegment + "." + sign, expAt, nil
@@ -511,6 +511,10 @@ func (s *GroupbuyService) buildScanToken(voucher repository.GroupbuyVoucher, ttl
 func tryParseScanToken(token string, secret string) (*voucherScanPayload, bool) {
 	token = strings.TrimSpace(token)
 	if token == "" {
+		return nil, false
+	}
+	resolvedSecret := strings.TrimSpace(secret)
+	if resolvedSecret == "" {
 		return nil, false
 	}
 	parts := strings.Split(token, ".")
@@ -529,7 +533,7 @@ func tryParseScanToken(token string, secret string) (*voucherScanPayload, bool) 
 		expected := hex.EncodeToString(mac.Sum(nil))
 		return hmac.Equal([]byte(expected), []byte(signature))
 	}
-	if !verify(secret) && !verify("groupbuy-scan-secret") {
+	if !verify(resolvedSecret) {
 		return nil, false
 	}
 

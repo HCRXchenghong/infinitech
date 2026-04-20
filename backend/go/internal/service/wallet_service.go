@@ -117,14 +117,11 @@ type AdminOperationListQuery struct {
 }
 
 func NewWalletService(walletRepo repository.WalletRepository, paymentSvc *PaymentService, riskSvc *RiskControlService, signSecret string) *WalletService {
-	if signSecret == "" {
-		signSecret = "wallet-sign-secret-change-in-production"
-	}
 	return &WalletService{
 		walletRepo:                       walletRepo,
 		paymentSvc:                       paymentSvc,
 		riskSvc:                          riskSvc,
-		signSecret:                       signSecret,
+		signSecret:                       strings.TrimSpace(signSecret),
 		withdrawReconcileEnabled:         true,
 		withdrawReconcileInterval:        time.Minute,
 		withdrawReconcileBatchSize:       50,
