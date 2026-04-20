@@ -2,6 +2,8 @@ function normalizeText(value) {
   return String(value == null ? "" : value).trim();
 }
 
+export const ADMIN_METADATA_DUPLICATE_HINT = "请换个名称或在后面加编号";
+
 function normalizePath(path) {
   const raw = normalizeText(path);
   if (!raw) {
@@ -37,6 +39,27 @@ function freezeRouteRecord(route) {
     requiresAuth: route.requiresAuth !== false,
     matchPatterns: freezeList(route.matchPatterns),
   });
+}
+
+function assertUniqueAdminMetadataValues(
+  entries,
+  { label, resolveValue, resolveOwner, normalize = normalizeText },
+) {
+  const seen = new Map();
+  for (const entry of entries) {
+    const value = normalize(resolveValue(entry));
+    if (!value) {
+      continue;
+    }
+    const owner = normalize(resolveOwner(entry)) || value;
+    const previousOwner = seen.get(value);
+    if (previousOwner) {
+      throw new Error(
+        `admin navigation ${label} duplicated: ${value} (${previousOwner}, ${owner})，${ADMIN_METADATA_DUPLICATE_HINT}`,
+      );
+    }
+    seen.set(value, owner);
+  }
 }
 
 const ADMIN_PRIMARY_PROTECTED_ROUTE_RECORDS = [
@@ -168,11 +191,53 @@ const ADMIN_AUXILIARY_PROTECTED_ROUTE_RECORDS = [
   },
 ];
 
-export const adminProtectedRouteRecords = Object.freeze(
+export function validateAdminProtectedRouteRecords(records = []) {
+  assertUniqueAdminMetadataValues(records, {
+    label: "route name",
+    resolveValue: (route) => route?.name,
+    resolveOwner: (route) => route?.path,
+  });
+  assertUniqueAdminMetadataValues(records, {
+    label: "route path",
+    resolveValue: (route) => route?.path,
+    resolveOwner: (route) => route?.name,
+    normalize: normalizePath,
+  });
+  assertUniqueAdminMetadataValues(
+    records.filter((route) => route?.menuVisible),
+    {
+      label: "menu title",
+      resolveValue: (route) => route?.title,
+      resolveOwner: (route) => route?.name,
+    },
+  );
+
+  const menuRoots = new Set(
+    records.filter((route) => route?.menuVisible).map((route) => route.path),
+  );
+  for (const route of records) {
+    if (route?.menuVisible || !route?.menuRoot) {
+      continue;
+    }
+    if (!menuRoots.has(route.menuRoot)) {
+      throw new Error(
+        `admin navigation menu root is not registered: ${route.menuRoot} <- ${route.name}`,
+      );
+    }
+  }
+
+  return records;
+}
+
+const validatedAdminProtectedRouteRecords = validateAdminProtectedRouteRecords(
   [
     ...ADMIN_PRIMARY_PROTECTED_ROUTE_RECORDS,
     ...ADMIN_AUXILIARY_PROTECTED_ROUTE_RECORDS,
   ].map(freezeRouteRecord),
+);
+
+export const adminProtectedRouteRecords = Object.freeze(
+  validatedAdminProtectedRouteRecords,
 );
 
 export const adminProtectedRoutes = Object.freeze(
