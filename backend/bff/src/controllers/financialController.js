@@ -16,19 +16,16 @@ const DEFAULT_FINANCIAL_PROXY_OPTIONS = {
   defaultErrorMessage: "财务中心请求失败",
 };
 
-const FINANCIAL_LOG_VERIFY_ACCOUNT = String(
-  process.env.FINANCIAL_LOG_VERIFY_ACCOUNT ||
-  process.env.SYSTEM_LOG_DELETE_ACCOUNT ||
-  ""
-).trim();
-const FINANCIAL_LOG_VERIFY_PASSWORD = String(
-  process.env.FINANCIAL_LOG_VERIFY_PASSWORD ||
-  process.env.SYSTEM_LOG_DELETE_PASSWORD ||
-  ""
-);
+function resolveFinancialMutationCredential() {
+  return {
+    account: String(process.env.FINANCIAL_LOG_VERIFY_ACCOUNT || "").trim(),
+    password: String(process.env.FINANCIAL_LOG_VERIFY_PASSWORD || ""),
+  };
+}
 
 function isMutationCredentialConfigured() {
-  return Boolean(FINANCIAL_LOG_VERIFY_ACCOUNT && FINANCIAL_LOG_VERIFY_PASSWORD);
+  const credential = resolveFinancialMutationCredential();
+  return Boolean(credential.account && credential.password);
 }
 
 function respondFinancialError(req, res, status, message, options = {}) {
@@ -49,6 +46,7 @@ function proxyFinancialGet(req, res, next, path, defaultErrorMessage) {
 }
 
 function verifyMutationCredential(req, action) {
+  const credential = resolveFinancialMutationCredential();
   if (!isMutationCredentialConfigured()) {
     logger.error(`POST /api/admin/financial/transaction-logs/${action}`, {
       action: `financial_log_${action}_verify_unconfigured`
@@ -68,8 +66,8 @@ function verifyMutationCredential(req, action) {
     req,
     verifyAccount,
     verifyPassword,
-    expectedAccount: FINANCIAL_LOG_VERIFY_ACCOUNT,
-    expectedPassword: FINANCIAL_LOG_VERIFY_PASSWORD,
+    expectedAccount: credential.account,
+    expectedPassword: credential.password,
   });
 
   if (!verified.ok) {

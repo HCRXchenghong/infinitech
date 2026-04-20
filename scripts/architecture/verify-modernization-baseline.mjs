@@ -2874,6 +2874,14 @@ assertContains(
   "backend/bff/src/utils/authIdentity.js",
   "verificationSecret: config.adminTokenSecret",
 );
+assertNotContains(
+  "backend/bff/src/controllers/financialController.js",
+  "process.env.FINANCIAL_LOG_VERIFY_ACCOUNT ||\n  process.env.SYSTEM_LOG_DELETE_ACCOUNT",
+);
+assertNotContains(
+  "backend/bff/src/controllers/financialController.js",
+  "process.env.FINANCIAL_LOG_VERIFY_PASSWORD ||\n  process.env.SYSTEM_LOG_DELETE_PASSWORD",
+);
 assertNotContains("scripts/verify-im-e2e.mjs", "DEFAULT_JWT_SECRET");
 assertNotContains(
   "scripts/verify-im-e2e.mjs",
