@@ -73,9 +73,7 @@ export function buildConsumerProfileUpdatePayload(input = {}) {
 }
 
 export function extractConsumerUploadedImageUrl(payload) {
-  return trimProfileEditText(
-    resolveUploadAssetUrl(payload) || payload?.url || payload?.data?.url,
-  );
+  return trimProfileEditText(resolveUploadAssetUrl(payload));
 }
 
 export function normalizeConsumerProfileEditErrorMessage(

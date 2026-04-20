@@ -118,7 +118,7 @@ export function uploadAuthenticatedAsset({
             "",
         ).trim();
         const normalizedUrl = normalizeResourceUrl(
-          resolveUploadAssetUrl(asset || parsed) || parsed?.url || "",
+          resolveUploadAssetUrl(asset || parsed),
           resolvedBaseUrl,
           { accessPolicy },
         );
