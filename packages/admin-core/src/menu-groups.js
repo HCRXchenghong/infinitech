@@ -1,18 +1,11 @@
-import { adminProtectedRoutes } from "./route-registry.js";
-
-const routeMap = new Map(
-  adminProtectedRoutes.map((route) => [
-    route.name,
-    { path: route.path, name: route.title },
-  ]),
-);
+import { requireAdminProtectedRoute } from "./route-registry.js";
 
 function sharedRoute(routeName) {
-  const route = routeMap.get(routeName);
-  if (!route) {
-    throw new Error(`admin menu route is not registered: ${routeName}`);
-  }
-  return route;
+  const route = requireAdminProtectedRoute(routeName);
+  return {
+    path: route.path,
+    name: route.title,
+  };
 }
 
 function section(id, name, routeNames) {

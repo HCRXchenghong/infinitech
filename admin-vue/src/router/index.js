@@ -3,7 +3,10 @@ import Login from "@/views/Login.vue";
 import InviteLanding from "@/views/InviteLanding.vue";
 import CouponLanding from "@/views/CouponLanding.vue";
 import AccessDenied from "@/views/AccessDenied.vue";
-import { adminProtectedRoutes } from "@infinitech/admin-core/route-registry";
+import {
+  adminProtectedRouteRecords,
+  buildAdminRouteMeta,
+} from "@infinitech/admin-core/route-registry";
 import { getAppRuntime, getToken } from "@/utils/runtime";
 import {
   applyOfficialSiteSeo,
@@ -12,7 +15,7 @@ import {
 } from "@/utils/officialSiteSeo";
 import { getSiteCookieConsent } from "@/utils/siteCookieConsent";
 
-const protectedRoutes = adminProtectedRoutes;
+const protectedRoutes = adminProtectedRouteRecords;
 
 const protectedViewMap = {
   dashboard: () => import("@/views/Dashboard.vue"),
@@ -52,6 +55,12 @@ const protectedViewMap = {
   "api-management": () => import("@/views/ApiManagement.vue"),
   "api-permissions": () => import("@/views/ApiPermissions.vue"),
   "api-documentation": () => import("@/views/ApiDocumentation.vue"),
+  "shop-menu-manage": () => import("@/views/ShopMenuManage.vue"),
+  "shop-manage-detail": () => import("@/views/ShopManageDetail.vue"),
+  "merchant-profile": () => import("@/views/MerchantProfile.vue"),
+  "notification-create": () => import("@/views/NotificationEditorPage.vue"),
+  "notification-edit": () => import("@/views/NotificationEditorPage.vue"),
+  "notification-preview": () => import("@/views/NotificationPreviewPage.vue"),
 };
 
 function resolveProtectedView(routeName) {
@@ -165,47 +174,11 @@ const routes = [
       },
     ],
   },
-  {
-    path: "/merchants/:merchantId/shops/:shopId/menu",
-    name: "shop-menu-manage",
-    component: () => import("@/views/ShopMenuManage.vue"),
-    meta: { requiresAuth: true, title: "菜单管理", menuRoot: "/merchants" },
-  },
-  {
-    path: "/merchants/:merchantId/shops/:shopId",
-    name: "shop-manage-detail",
-    component: () => import("@/views/ShopManageDetail.vue"),
-    meta: { requiresAuth: true, title: "店铺详情", menuRoot: "/merchants" },
-  },
-  {
-    path: "/merchants/:id",
-    name: "merchant-profile",
-    component: () => import("@/views/MerchantProfile.vue"),
-    meta: { requiresAuth: true, title: "商户详情", menuRoot: "/merchants" },
-  },
-  {
-    path: "/notifications/edit",
-    name: "notification-create",
-    component: () => import("@/views/NotificationEditorPage.vue"),
-    meta: { requiresAuth: true, title: "新建通知" },
-  },
-  {
-    path: "/notifications/edit/:id",
-    name: "notification-edit",
-    component: () => import("@/views/NotificationEditorPage.vue"),
-    meta: { requiresAuth: true, title: "编辑通知" },
-  },
-  {
-    path: "/notifications/preview/:id",
-    name: "notification-preview",
-    component: () => import("@/views/NotificationPreviewPage.vue"),
-    meta: { requiresAuth: true, title: "通知预览" },
-  },
   ...protectedRoutes.map((item) => ({
     path: item.path,
     name: item.name,
-    component: resolveProtectedView(item.name),
-    meta: { requiresAuth: true, title: item.title },
+    component: resolveProtectedView(item.view || item.name),
+    meta: buildAdminRouteMeta(item),
   })),
   { path: "/system-settings", redirect: "/settings" },
 ];

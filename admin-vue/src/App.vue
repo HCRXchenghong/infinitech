@@ -81,6 +81,12 @@
 <script setup>
 import { computed, ref, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import {
+  isAdminPublicPath,
+  resolveAdminRouteMenuPath,
+  resolveAdminRouteTitle,
+  resolveAdminTabTitle,
+} from '@infinitech/admin-core';
 import NetworkStatus from '@/components/NetworkStatus.vue';
 import AdminRTCCallDialog from '@/components/AdminRTCCallDialog.vue';
 import { MENU_GROUPS } from '@/config/menuGroups';
@@ -101,8 +107,6 @@ const openedTabs = ref([]);
 const activeTab = ref('');
 const openedMenuGroups = ref([]);
 const retiredPaths = new Set(['/customer-service']);
-const PUBLIC_ROUTE_EXACT = new Set(['/login', '/download', '/access-denied']);
-const PUBLIC_ROUTE_PREFIXES = ['/invite/', '/coupon/'];
 
 function sanitizeTabs(rawTabs) {
   if (!Array.isArray(rawTabs)) return [];
@@ -232,11 +236,11 @@ const flatMenus = computed(() =>
 );
 
 function resolveActiveMenuPath(path = '') {
+  const sharedMenuPath = resolveAdminRouteMenuPath(path);
+  if (sharedMenuPath) return sharedMenuPath;
   if (!path) return '';
   const prefixed = flatMenus.value.find((item) => path === item.path || path.startsWith(`${item.path}/`));
   if (prefixed) return prefixed.path;
-  if (path.startsWith('/notifications/')) return '/notifications';
-  if (path.startsWith('/merchants/')) return '/merchants';
   return path;
 }
 
@@ -287,7 +291,7 @@ const activeGroupId = computed(() => {
 
 const currentName = computed(() => {
   const menuLocation = findMenuLocation(activeMenuPath.value);
-  const routeTitle = typeof route.meta?.title === 'string' ? route.meta.title.trim() : '';
+  const routeTitle = resolveAdminRouteTitle(route);
   if (menuLocation) {
     return buildMenuTrail(menuLocation, routeTitle || menuLocation.item.name);
   }
@@ -295,30 +299,11 @@ const currentName = computed(() => {
   if (routeTitle) {
     return routeTitle;
   }
-
-  const nameMap = {
-    '/api-management': 'API管理',
-    '/system-settings': '系统设置',
-    '/data-management': '数据管理',
-    '/content-settings': '内容设置',
-    '/api-permissions': 'API权限管理',
-    '/support-chat': '客服工作台',
-    '/after-sales': '售后服务',
-    '/monitor-chat': '平台监控',
-    '/operations-center': '运营管理',
-    '/management-center': '管理中心'
-  };
-  return nameMap[route.path] || '';
+  return '';
 });
 
 function isPublicPath(path = '') {
-  if (getAppRuntime() === 'site') {
-    return true;
-  }
-  if (PUBLIC_ROUTE_EXACT.has(path)) {
-    return true;
-  }
-  return PUBLIC_ROUTE_PREFIXES.some((prefix) => path.startsWith(prefix));
+  return isAdminPublicPath(path, { runtime: getAppRuntime() });
 }
 
 const isPublicRoute = computed(() => isPublicPath(route.path));
@@ -404,15 +389,9 @@ watch(
 );
 
 function resolveTabTitle(targetRoute) {
-  const baseTitle = targetRoute.meta?.title || '';
-  if (targetRoute.name === 'merchant-profile' && targetRoute.params?.id) {
-    return `${baseTitle || '商户详情'} #${targetRoute.params.id}`;
-  }
-  if (targetRoute.name === 'shop-manage-detail' && targetRoute.params?.shopId) {
-    return `${baseTitle || '店铺详情'} #${targetRoute.params.shopId}`;
-  }
-  if (baseTitle) {
-    return baseTitle;
+  const routeTitle = resolveAdminTabTitle(targetRoute);
+  if (routeTitle) {
+    return routeTitle;
   }
   const menuItem = flatMenus.value.find((item) => resolveActiveMenuPath(targetRoute.path) === item.path);
   return menuItem ? menuItem.name : targetRoute.path;
