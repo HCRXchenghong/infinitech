@@ -14,13 +14,11 @@ import {
   appendVIPPointRule as buildNextVIPPointRules,
   appendVIPTask as buildNextVIPTasks,
   appendAdminUploadDomain,
-  buildAppDownloadConfigPayload,
   buildCharitySettingsPayload,
   buildServiceSettingsPayload as buildSharedServiceSettingsPayload,
   buildVIPSettingsPayload,
   buildWechatLoginConfigPayload,
   createDefaultAlipayConfig,
-  createDefaultAppDownloadConfig,
   createDefaultCharitySettings,
   createDefaultDebugMode,
   createDefaultPayMode,
@@ -29,7 +27,6 @@ import {
   createDefaultWechatLoginConfig,
   createDefaultWxpayConfig,
   normalizeAlipayConfig,
-  normalizeAppDownloadConfig,
   normalizeCharitySettings,
   normalizeDebugModeConfig,
   normalizePayModeConfig,
@@ -50,13 +47,12 @@ import {
   resolveAdminServiceSoundPreviewUrl,
   SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES,
   validateAdminAudioFile,
-  validateAdminMiniProgramQrFile,
-  validateAdminPackageFile,
 } from '@infinitech/admin-core';
 import request from '@/utils/request';
 import { useDataManagementPage } from './dataManagementHelpers';
 import { useSettingsApiManagement } from './settingsApiManagementHelpers';
 import { useSettingsActionHelpers } from './settingsActionHelpers';
+import { useAppDownloadSettings } from './settingsHelpers/appDownload';
 import { useSmsSettings } from './settingsHelpers/sms';
 import { useWeatherSettings } from './settingsHelpers/weather';
 
@@ -81,6 +77,10 @@ export function useSettingsPage() {
   const sms = smsSettings.sms;
   const DEFAULT_WEATHER_CONFIG = weatherSettings.DEFAULT_WEATHER_CONFIG;
   const weather = weatherSettings.weather;
+  const appDownloadSettings = useAppDownloadSettings({
+    request,
+    ElMessage,
+  });
   const DEFAULT_SERVICE_SETTINGS = createDefaultServiceSettings();
   const serviceSettings = ref(createDefaultServiceSettings());
   const savingServiceSettings = ref(false);
@@ -98,13 +98,10 @@ export function useSettingsPage() {
   const wechatLoginConfig = ref(createDefaultWechatLoginConfig());
   const savingWechatLoginConfig = ref(false);
 
-  const appDownloadConfig = ref(createDefaultAppDownloadConfig());
-  const savingAppDownload = ref(false);
-  const uploadingPackage = reactive({
-    ios: false,
-    android: false,
-    miniProgramQr: false
-  });
+  const DEFAULT_APP_DOWNLOAD_CONFIG = appDownloadSettings.DEFAULT_APP_DOWNLOAD_CONFIG;
+  const appDownloadConfig = appDownloadSettings.appDownloadConfig;
+  const savingAppDownload = appDownloadSettings.savingAppDownload;
+  const uploadingPackage = appDownloadSettings.uploadingPackage;
 
   const debugMode = ref(createDefaultDebugMode());
   const savingDebugMode = ref(false);
@@ -318,7 +315,7 @@ export function useSettingsPage() {
         request.get('/api/service-settings'),
         request.get('/api/charity-settings'),
         request.get('/api/vip-settings'),
-        request.get('/api/app-download-config'),
+        appDownloadSettings.loadAppDownloadConfig({ clearError: false, throwOnError: true }),
         request.get('/api/pay-config/mode'),
         request.get('/api/pay-config/wxpay'),
         request.get('/api/pay-config/alipay'),
@@ -340,9 +337,6 @@ export function useSettingsPage() {
       }
       if (vipResp.status === 'fulfilled' && vipResp.value?.data) {
         mergeVIPSettings(extractEnvelopeData(vipResp.value.data) || {});
-      }
-      if (downloadResp.status === 'fulfilled' && downloadResp.value?.data) {
-        appDownloadConfig.value = normalizeAppDownloadConfig(extractEnvelopeData(downloadResp.value.data) || {});
       }
       if (payModeResp.status === 'fulfilled' && payModeResp.value?.data) {
         payMode.value = normalizePayModeConfig(extractEnvelopeData(payModeResp.value.data) || {});
@@ -656,113 +650,7 @@ export function useSettingsPage() {
   }
 
   async function saveAppDownload() {
-    savingAppDownload.value = true;
-    try {
-      const payload = buildAppDownloadConfigPayload(appDownloadConfig.value);
-      await request.post('/api/app-download-config', payload);
-      appDownloadConfig.value = normalizeAppDownloadConfig(payload);
-      ElMessage.success('APP下载配置保存成功');
-    } catch (error) {
-      ElMessage.error(extractErrorMessage(error, '保存APP下载配置失败'));
-    } finally {
-      savingAppDownload.value = false;
-    }
-  }
-
-  function beforePackageUpload(file) {
-    const result = validateAdminPackageFile(file, 300);
-    if (!result.valid) {
-      ElMessage.error(result.message);
-      return false;
-    }
-    return true;
-  }
-
-  function beforeMiniProgramQrUpload(file) {
-    const result = validateAdminMiniProgramQrFile(file, 10);
-    if (!result.valid) {
-      ElMessage.error(result.message);
-      return false;
-    }
-    return true;
-  }
-
-  async function handlePackageUpload(platform, options) {
-    const file = options?.file;
-    if (!file) return;
-
-    uploadingPackage[platform] = true;
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const { data } = await request.post('/api/upload-package', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      const asset = extractUploadAsset(data);
-      const nextUrl = asset?.url || '';
-      if (!nextUrl) {
-        throw new Error('上传返回地址为空');
-      }
-
-      if (platform === 'ios') {
-        appDownloadConfig.value = normalizeAppDownloadConfig({
-          ...appDownloadConfig.value,
-          ios_url: nextUrl
-        });
-      } else {
-        appDownloadConfig.value = normalizeAppDownloadConfig({
-          ...appDownloadConfig.value,
-          android_url: nextUrl
-        });
-      }
-      ElMessage.success('安装包上传成功');
-      options?.onSuccess?.(data);
-    } catch (error) {
-      ElMessage.error(extractErrorMessage(error, '安装包上传失败'));
-      options?.onError?.(error);
-    } finally {
-      uploadingPackage[platform] = false;
-    }
-  }
-
-  async function handleMiniProgramQrUpload(options) {
-    const file = options?.file;
-    if (!file) return;
-
-    uploadingPackage.miniProgramQr = true;
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      appendAdminUploadDomain(formData, UPLOAD_DOMAINS.APP_DOWNLOAD_QR);
-      const { data } = await request.post('/api/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      const asset = extractUploadAsset(data);
-      const nextUrl = asset?.url || '';
-      if (!nextUrl) {
-        throw new Error('上传返回地址为空');
-      }
-
-      appDownloadConfig.value = normalizeAppDownloadConfig({
-        ...appDownloadConfig.value,
-        mini_program_qr_url: nextUrl
-      });
-      ElMessage.success('小程序二维码上传成功');
-      options?.onSuccess?.(data);
-    } catch (error) {
-      ElMessage.error(extractErrorMessage(error, '小程序二维码上传失败'));
-      options?.onError?.(error);
-    } finally {
-      uploadingPackage.miniProgramQr = false;
-    }
-  }
-
-  function openDownloadLink(url, label) {
-    if (!url) {
-      ElMessage.warning(`${label} 下载地址为空`);
-      return;
-    }
-    window.open(url, '_blank');
+    await appDownloadSettings.saveAppDownloadConfig();
   }
 
   function openClearAllDataDialog() {
@@ -803,6 +691,7 @@ export function useSettingsPage() {
     apiListError,
     pageError,
     sms,
+    DEFAULT_APP_DOWNLOAD_CONFIG,
     DEFAULT_WEATHER_CONFIG,
     weather,
     DEFAULT_SERVICE_SETTINGS,
@@ -887,11 +776,11 @@ export function useSettingsPage() {
     addVIPPointRule,
     removeVIPPointRule,
     saveAppDownload,
-    beforePackageUpload,
-    handlePackageUpload,
-    beforeMiniProgramQrUpload,
-    handleMiniProgramQrUpload,
-    openDownloadLink,
+    beforePackageUpload: appDownloadSettings.beforePackageUpload,
+    handlePackageUpload: appDownloadSettings.handlePackageUpload,
+    beforeMiniProgramQrUpload: appDownloadSettings.beforeMiniProgramQrUpload,
+    handleMiniProgramQrUpload: appDownloadSettings.handleMiniProgramQrUpload,
+    openDownloadLink: appDownloadSettings.openDownloadLink,
     openClearAllDataDialog,
     confirmClearAllData,
     savePayMode,
