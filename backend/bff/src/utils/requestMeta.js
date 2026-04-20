@@ -125,12 +125,17 @@ function normalizeRequestPath(value) {
 
 function inferActorTypeByPath(rawPath) {
   const path = normalizeRequestPath(rawPath).toLowerCase();
+  const segments = path.split("/").filter(Boolean);
+  const hasAdminSegment = segments.includes("admin") || segments.includes("admins");
 
   if (
     path === "/login" ||
     path === "/api/login" ||
     path.startsWith("/admins") ||
-    path.startsWith("/api/admins")
+    path.startsWith("/api/admins") ||
+    path.startsWith("/admin") ||
+    path.startsWith("/api/admin") ||
+    hasAdminSegment
   ) {
     return "admin";
   }

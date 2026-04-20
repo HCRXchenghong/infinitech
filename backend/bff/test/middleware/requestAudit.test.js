@@ -146,6 +146,47 @@ describe("requestAudit verified operator attribution", () => {
     );
   });
 
+  test("treats /api/admin/* routes as admin-only for operator attribution", () => {
+    const logger = createLogger();
+    const middleware = createRequestAuditMiddleware({
+      logger,
+      extractVerifiedOperatorFromRequest,
+      slowRequestWarnMs: 999999,
+    });
+    const forgedBusinessSignedAdminToken = signToken(
+      {
+        principal_type: "admin",
+        principal_id: "25072401000033",
+        principal_legacy_id: 33,
+        role: "super_admin",
+        name: "Wrong Secret Admin",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        iat: Math.floor(Date.now() / 1000),
+      },
+      process.env.JWT_SECRET,
+    );
+    const { req, res, emitFinish } = createReqRes({
+      path: "/api/admin/financial/transaction-logs/delete",
+      token: forgedBusinessSignedAdminToken,
+    });
+
+    middleware(req, res, jest.fn());
+    emitFinish();
+
+    expect(req.operator).toEqual({
+      operatorId: "",
+      operatorName: "",
+    });
+    expect(logger.info).toHaveBeenCalledWith(
+      "POST /api/admin/financial/transaction-logs/delete",
+      expect.objectContaining({
+        actorType: "admin",
+        operatorId: "",
+        operatorName: "",
+      }),
+    );
+  });
+
   test("records verified business operator identity on shared request routes", () => {
     const logger = createLogger();
     const middleware = createRequestAuditMiddleware({
