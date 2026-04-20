@@ -1,26 +1,17 @@
-import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
-import {
-  createDefaultAlipayConfig,
-  createDefaultDebugMode,
-  createDefaultPayMode,
-  createDefaultWxpayConfig,
-  normalizeAlipayConfig,
-  normalizeDebugModeConfig,
-  normalizePayModeConfig,
-  normalizeWxpayConfig,
-  SYSTEM_SETTINGS_COLLECTION_LIMIT_MESSAGES,
-} from '@infinitech/admin-core';
+import { extractErrorMessage } from '@infinitech/contracts';
 import request from '@/utils/request';
 import { useCharitySettings } from './settingsHelpers/charitySettings';
 import { useDataManagementPage } from './dataManagementHelpers';
 import { useSettingsApiManagement } from './settingsApiManagementHelpers';
 import { useSettingsActionHelpers } from './settingsActionHelpers';
 import { useAppDownloadSettings } from './settingsHelpers/appDownload';
+import { usePaymentAndDebugSettings } from './settingsHelpers/paymentAndDebug';
 import { useServiceSettings } from './settingsHelpers/serviceSettings';
 import { useSmsSettings } from './settingsHelpers/sms';
+import { useSystemMaintenanceActions } from './settingsHelpers/systemMaintenance';
 import { useWechatLoginSettings } from './settingsHelpers/wechatLogin';
 import { useVipSettings } from './settingsHelpers/vipSettings';
 import { useWeatherSettings } from './settingsHelpers/weather';
@@ -84,22 +75,18 @@ export function useSettingsPage() {
   const appDownloadConfig = appDownloadSettings.appDownloadConfig;
   const savingAppDownload = appDownloadSettings.savingAppDownload;
   const uploadingPackage = appDownloadSettings.uploadingPackage;
-
-  const debugMode = ref(createDefaultDebugMode());
-  const savingDebugMode = ref(false);
-  const payMode = ref(createDefaultPayMode());
-  const savingPayMode = ref(false);
-  const wxpay = ref(createDefaultWxpayConfig());
-  const savingWx = ref(false);
-  const alipay = ref(createDefaultAlipayConfig());
-  const savingAli = ref(false);
-
-  const clearAllDialogVisible = ref(false);
-  const clearingAllData = ref(false);
-  const clearAllVerifyForm = reactive({
-    verifyAccount: '',
-    verifyPassword: ''
+  const paymentAndDebugSettings = usePaymentAndDebugSettings({
+    request,
+    ElMessage,
   });
+  const debugMode = paymentAndDebugSettings.debugMode;
+  const savingDebugMode = paymentAndDebugSettings.savingDebugMode;
+  const payMode = paymentAndDebugSettings.payMode;
+  const savingPayMode = paymentAndDebugSettings.savingPayMode;
+  const wxpay = paymentAndDebugSettings.wxpay;
+  const savingWx = paymentAndDebugSettings.savingWx;
+  const alipay = paymentAndDebugSettings.alipay;
+  const savingAli = paymentAndDebugSettings.savingAli;
 
   const mergeWeatherConfig = weatherSettings.applyWeatherConfig;
   const loadServiceSettings = serviceSettingsController.loadServiceSettings;
@@ -123,6 +110,11 @@ export function useSettingsPage() {
   const removeCharityNewsItem = charitySettingsController.removeCharityNewsItem;
   const loadWechatLoginConfig = wechatLoginSettings.loadWechatLoginConfig;
   const saveWechatLoginConfig = wechatLoginSettings.saveWechatLoginConfig;
+  const loadPaymentAndDebugSettings = paymentAndDebugSettings.loadPaymentAndDebugSettings;
+  const savePayMode = paymentAndDebugSettings.savePayMode;
+  const saveDebugMode = paymentAndDebugSettings.saveDebugMode;
+  const saveWxpay = paymentAndDebugSettings.saveWxpay;
+  const saveAlipay = paymentAndDebugSettings.saveAlipay;
   const loadVipSettings = vipSettingsController.loadVipSettings;
   const saveVIPSettings = vipSettingsController.saveVIPSettings;
   const addVIPLevel = vipSettingsController.addVIPLevel;
@@ -242,32 +234,14 @@ export function useSettingsPage() {
     try {
       const results = await Promise.allSettled([
         smsSettings.loadSmsConfig({ clearError: false, throwOnError: true }),
-        request.get('/api/debug-mode'),
         weatherSettings.loadWeatherConfig({ clearError: false, throwOnError: true }),
         loadWechatLoginConfig({ clearError: false, throwOnError: true }),
         loadServiceSettings({ clearError: false, throwOnError: true }),
         loadCharitySettings({ clearError: false, throwOnError: true }),
         loadVipSettings({ clearError: false, throwOnError: true }),
         appDownloadSettings.loadAppDownloadConfig({ clearError: false, throwOnError: true }),
-        request.get('/api/pay-config/mode'),
-        request.get('/api/pay-config/wxpay'),
-        request.get('/api/pay-config/alipay'),
+        loadPaymentAndDebugSettings({ clearError: false, throwOnError: true }),
       ]);
-
-      const [, debugResp, , , , , , , payModeResp, wxResp, aliResp] = results;
-
-      if (debugResp.status === 'fulfilled' && debugResp.value?.data) {
-        debugMode.value = normalizeDebugModeConfig(extractEnvelopeData(debugResp.value.data) || {});
-      }
-      if (payModeResp.status === 'fulfilled' && payModeResp.value?.data) {
-        payMode.value = normalizePayModeConfig(extractEnvelopeData(payModeResp.value.data) || {});
-      }
-      if (wxResp.status === 'fulfilled' && wxResp.value?.data) {
-        wxpay.value = normalizeWxpayConfig(extractEnvelopeData(wxResp.value.data) || {});
-      }
-      if (aliResp.status === 'fulfilled' && aliResp.value?.data) {
-        alipay.value = normalizeAlipayConfig(extractEnvelopeData(aliResp.value.data) || {});
-      }
 
       if (results.some((item) => item.status === 'rejected')) {
         loadError.value = '部分系统配置加载失败，请稍后重试';
@@ -281,22 +255,8 @@ export function useSettingsPage() {
   }
 
   const {
-    savePayMode,
-    saveDebugMode,
-    saveWxpay,
-    saveAlipay,
     handleLogout,
   } = useSettingsActionHelpers({
-    request,
-    payMode,
-    debugMode,
-    wxpay,
-    alipay,
-    savingPayMode,
-    savingDebugMode,
-    savingWx,
-    savingAli,
-    loadAll,
     router,
     ElMessage,
     ElMessageBox,
@@ -313,35 +273,16 @@ export function useSettingsPage() {
   async function saveAppDownload() {
     await appDownloadSettings.saveAppDownloadConfig();
   }
-
-  function openClearAllDataDialog() {
-    clearAllVerifyForm.verifyAccount = '';
-    clearAllVerifyForm.verifyPassword = '';
-    clearAllDialogVisible.value = true;
-  }
-
-  async function confirmClearAllData() {
-    if (!clearAllVerifyForm.verifyAccount || !clearAllVerifyForm.verifyPassword) {
-      ElMessage.warning('请输入验证账号和密码');
-      return;
-    }
-
-    clearingAllData.value = true;
-    try {
-      const { data } = await request.post('/api/settings/clear-all-data', {
-        verifyAccount: clearAllVerifyForm.verifyAccount,
-        verifyPassword: clearAllVerifyForm.verifyPassword
-      });
-      const rows = Number(data?.goResult?.result?.clearedRows || 0);
-      ElMessage.success(`系统数据清空完成，共清理约 ${rows} 条记录`);
-      clearAllDialogVisible.value = false;
-      await loadAll();
-    } catch (error) {
-      ElMessage.error(extractErrorMessage(error, '清空全部信息失败'));
-    } finally {
-      clearingAllData.value = false;
-    }
-  }
+  const systemMaintenance = useSystemMaintenanceActions({
+    request,
+    ElMessage,
+    reload: loadAll,
+  });
+  const clearAllDialogVisible = systemMaintenance.clearAllDialogVisible;
+  const clearingAllData = systemMaintenance.clearingAllData;
+  const clearAllVerifyForm = systemMaintenance.clearAllVerifyForm;
+  const openClearAllDataDialog = systemMaintenance.openClearAllDataDialog;
+  const confirmClearAllData = systemMaintenance.confirmClearAllData;
 
   return {
     router,
