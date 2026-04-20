@@ -29,11 +29,16 @@ test("auth portal login page binds existing consumers and persists session", asy
     async wechatBindLogin(payload) {
       bindCalls.push(payload);
       return {
+        request_id: "req-login-bind-1",
+        code: "OK",
+        message: "绑定成功",
         success: true,
-        token: "token-1",
-        refreshToken: "refresh-1",
-        expiresIn: 7200,
-        user: { id: 7, nickname: "测试用户" },
+        data: {
+          token: "token-1",
+          refreshToken: "refresh-1",
+          expiresIn: 7200,
+          user: { id: 7, nickname: "测试用户" },
+        },
       };
     },
     saveTokenInfo(...args) {
@@ -99,6 +104,73 @@ test("auth portal login page binds existing consumers and persists session", asy
   assert.deepEqual(switchTabs, [{ url: "/pages/index/index" }]);
 });
 
+test("auth portal register page persists direct auth session when register returns token envelope", async () => {
+  const tokenCalls = [];
+  const storage = {};
+  const switchTabs = [];
+  let loginCalls = 0;
+  const page = createRegisterPage({
+    async verifySMSCodeCheck() {
+      return { success: true };
+    },
+    async registerApi() {
+      return {
+        request_id: "req-register-1",
+        code: "OK",
+        message: "注册成功",
+        success: true,
+        data: {
+          token: "register-token-1",
+          refreshToken: "register-refresh-1",
+          expiresIn: 7200,
+          user: { id: 9, nickname: "新用户" },
+        },
+      };
+    },
+    async loginApi() {
+      loginCalls += 1;
+      return {};
+    },
+    saveTokenInfo(...args) {
+      tokenCalls.push(args);
+    },
+    uniApp: {
+      setStorageSync(key, value) {
+        storage[key] = value;
+      },
+      showToast() {},
+      switchTab(payload) {
+        switchTabs.push(payload);
+      },
+      showModal() {},
+      redirectTo() {},
+    },
+    setTimeoutImpl(callback) {
+      callback();
+      return 1;
+    },
+  });
+  const instance = {
+    ...page.data(),
+    ...page.methods,
+  };
+  bindComputed(instance, page.computed);
+
+  page.onLoad.call(instance, {});
+  instance.nickname = "新用户";
+  instance.phone = "13800138000";
+  instance.password = "secret-123";
+  instance.confirmPassword = "secret-123";
+  instance.code = "123456";
+  await instance.submit();
+
+  assert.equal(loginCalls, 0);
+  assert.deepEqual(tokenCalls, [["register-token-1", "register-refresh-1", 7200]]);
+  assert.equal(storage.authMode, "user");
+  assert.equal(storage.userProfile.nickname, "新用户");
+  assert.deepEqual(switchTabs, [{ url: "/pages/index/index" }]);
+});
+
 test("auth portal register page enables captcha flow when backend requests it", async () => {
   const toasts = [];
   const page = createRegisterPage({
@@ -143,6 +215,9 @@ test("auth portal wechat callback page redirects bind-required consumers", async
   const page = createWechatCallbackPage({
     async consumeWechatSession() {
       return {
+        request_id: "req-wechat-session-1",
+        code: "OK",
+        message: "微信会话处理成功",
         success: true,
         data: {
           type: "bind_required",

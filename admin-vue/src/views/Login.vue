@@ -233,7 +233,12 @@ import {
   ADMIN_AUTH_STORAGE_KEYS,
   buildAdminAuthSession,
 } from '@infinitech/admin-core/admin-auth-session'
-import { extractEnvelopeData, extractErrorMessage, extractSMSResult } from '@infinitech/contracts'
+import {
+  extractAuthSessionResult,
+  extractEnvelopeData,
+  extractErrorMessage,
+  extractSMSResult,
+} from '@infinitech/contracts'
 import {
   createDefaultLoginForm,
   getQrFlowErrorMessage,
@@ -373,14 +378,15 @@ function handleBootstrapLogout() {
 }
 
 function saveLoginSession(payload, mode = credentialMode.value) {
-  if (!payload?.token) {
+  const sessionPayload = extractAuthSessionResult(payload)
+  if (!sessionPayload.authenticated) {
     ElMessage.error('登录失败，缺少有效凭证')
     return
   }
 
   let session
   try {
-    session = buildAdminAuthSession(payload.token, payload.user || {}, {
+    session = buildAdminAuthSession(sessionPayload.token, sessionPayload.user || {}, {
       source: mode,
     })
   } catch (error) {
@@ -391,9 +397,9 @@ function saveLoginSession(payload, mode = credentialMode.value) {
   clearLoginSession()
   const storage = form.value.rememberMe ? localStorage : sessionStorage
   const persistedUser = {
-    ...(payload.user && typeof payload.user === 'object' ? payload.user : {}),
+    ...(sessionPayload.user && typeof sessionPayload.user === 'object' ? sessionPayload.user : {}),
     ...session.user,
-    mustChangeBootstrap: Boolean(payload?.user?.mustChangeBootstrap),
+    mustChangeBootstrap: Boolean(sessionPayload?.user?.mustChangeBootstrap),
   }
 
   storage.setItem('admin_token', session.token)
@@ -452,8 +458,8 @@ async function handleCompleteBootstrap() {
       newPassword: bootstrapForm.value.newPassword,
       confirmPassword: bootstrapForm.value.confirmPassword,
     })
-    const payload = extractEnvelopeData(data)
-    if (!payload?.token) {
+    const payload = extractAuthSessionResult(data)
+    if (!payload.authenticated) {
       throw new Error('首次管理员初始化失败，未返回新的登录凭证')
     }
 
@@ -529,14 +535,15 @@ async function pollQrStatus() {
   try {
     const { data } = await request.get(`/api/qr-login/session/${encodeURIComponent(qrTicket.value)}`)
     const payload = extractEnvelopeData(data) || {}
+    const sessionPayload = extractAuthSessionResult(payload)
     if (typeof payload.remainSeconds === 'number') {
       qrRemainSeconds.value = Math.max(0, payload.remainSeconds)
     }
 
     const status = String(payload.status || 'pending')
-    if (status === 'confirmed' && payload.token) {
+    if (status === 'confirmed' && sessionPayload.authenticated) {
       clearQrTimers()
-      saveLoginSession({ token: payload.token, user: payload.user }, 'qr')
+      saveLoginSession(sessionPayload, 'qr')
       return
     }
 
@@ -677,11 +684,11 @@ async function handleLogin() {
   loading.value = true
   try {
     const { data } = await request.post('/api/login', loginData)
-    const payload = extractEnvelopeData(data)
-    if (payload?.token) {
+    const payload = extractAuthSessionResult(data)
+    if (payload.authenticated) {
       saveLoginSession(payload, credentialMode.value)
     } else {
-      ElMessage.error('登录失败，请稍后重试')
+      ElMessage.error(payload.error || payload.message || '登录失败，请稍后重试')
     }
   } catch (error) {
     const errorMessage = extractErrorMessage(error, '登录失败')

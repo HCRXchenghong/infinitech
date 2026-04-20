@@ -152,6 +152,23 @@ function normalizeIdentityScope(value) {
     .filter(Boolean);
 }
 
+function normalizeNumberValue(value, fallback = 0) {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? normalized : fallback;
+}
+
+function normalizePlainObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value
+    : null;
+}
+
+function normalizeAuthSessionUser(source) {
+  const user =
+    normalizePlainObject(source?.user) || normalizePlainObject(source?.profile);
+  return user ? { ...user } : null;
+}
+
 export function buildSuccessEnvelopePayload(source, message, data, options = {}) {
   const normalizedMessage = trimText(message) || "ok";
   const payload = {
@@ -400,6 +417,75 @@ export function extractSMSResult(payload) {
     ),
     code: smsCode,
     smsCode,
+  };
+}
+
+export function extractAuthSessionResult(payload) {
+  if (!payload || typeof payload !== "object") {
+    return {
+      request_id: "",
+      code: "",
+      message: "",
+      success: false,
+      authenticated: false,
+      token: "",
+      refreshToken: "",
+      expiresIn: 0,
+      user: null,
+      error: "",
+      needRegister: false,
+      type: "",
+      bindToken: "",
+      nickname: "",
+      avatarUrl: "",
+    };
+  }
+
+  const data = extractEnvelopeData(payload);
+  const source = normalizePlainObject(data) || normalizePlainObject(payload) || {};
+  const token = trimText(
+    source.token || source.accessToken || source.access_token,
+  );
+  const refreshToken = trimText(
+    source.refreshToken || source.refresh_token,
+  );
+  const type = trimText(source.type);
+  const bindToken = trimText(source.bindToken || source.bind_token);
+  const needRegister =
+    normalizeBooleanFlag(source.needRegister ?? source.need_register) === true;
+  const explicitSuccess = normalizeBooleanFlag(source.success ?? payload.success);
+  const authenticated = Boolean(token);
+  const success =
+    explicitSuccess !== undefined
+      ? explicitSuccess
+      : type === "error"
+        ? false
+        : authenticated ||
+          (type === "login" && normalizeAuthSessionUser(source)) ||
+          (type === "bind_required" && bindToken);
+  const message =
+    trimText(source.message || source.error) ||
+    extractEnvelopeMessage(payload, "");
+
+  return {
+    request_id: extractEnvelopeRequestId(payload),
+    code: extractEnvelopeCode(payload, success ? "OK" : ""),
+    message,
+    success,
+    authenticated,
+    token,
+    refreshToken,
+    expiresIn: normalizeNumberValue(
+      source.expiresIn ?? source.expires_in,
+      0,
+    ),
+    user: normalizeAuthSessionUser(source),
+    error: trimText(source.error || (success ? "" : message)),
+    needRegister,
+    type,
+    bindToken,
+    nickname: trimText(source.nickname),
+    avatarUrl: trimText(source.avatarUrl || source.avatar_url),
   };
 }
 

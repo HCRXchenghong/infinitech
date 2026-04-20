@@ -1,3 +1,4 @@
+import { extractAuthSessionResult } from "../../contracts/src/http.js";
 import {
   buildAuthPortalPageUrl,
   buildConsumerAuthUserProfile,
@@ -90,10 +91,15 @@ function persistConsumerAuthSession(options = {}) {
     redirectDelay = 500,
   } = options;
 
-  saveTokenInfo(result.token, result.refreshToken, result.expiresIn || 7200);
+  const session = extractAuthSessionResult(result);
+  if (!session.authenticated) {
+    return false;
+  }
+
+  saveTokenInfo(session.token, session.refreshToken, session.expiresIn || 7200);
   uniApp.setStorageSync?.(
     "userProfile",
-    buildConsumerAuthUserProfile(result.user, fallbackPhone),
+    buildConsumerAuthUserProfile(session.user, fallbackPhone),
   );
   uniApp.setStorageSync?.("authMode", "user");
   uniApp.setStorageSync?.("hasSeenWelcome", true);
@@ -101,6 +107,7 @@ function persistConsumerAuthSession(options = {}) {
   setTimeoutImpl(() => {
     uniApp.switchTab?.({ url: "/pages/index/index" });
   }, redirectDelay);
+  return true;
 }
 
 function openConsumerAuthExternalLink(options = {}) {
@@ -403,18 +410,19 @@ export function createLoginPage(options = {}) {
               : await loginApi({ phone, password });
           }
 
-          if (response && response.success) {
-            this.persistLoginSuccess(response, phone);
+          const result = extractAuthSessionResult(response);
+          if (result.authenticated) {
+            this.persistLoginSuccess(result, phone);
             return;
           }
 
-          if (response && response.needRegister) {
+          if (result.needRegister) {
             this.showNeedRegisterModal();
             return;
           }
 
           uniApp.showToast?.({
-            title: normalizeErrorMessage(response, "登录失败"),
+            title: normalizeErrorMessage(result, "登录失败"),
             icon: "none",
           });
         } catch (error) {
@@ -785,28 +793,35 @@ export function createRegisterPage(options = {}) {
             );
           }
 
-          const response = await registerApi({
+          const registerResult = extractAuthSessionResult(await registerApi({
             phone,
             name: nickname,
             password,
             inviteCode: normalizeConsumerInviteCode(this.inviteCode),
             wechatBindToken: this.wechatBindToken || undefined,
-          });
+          }));
 
-          if (!response.success) {
-            if (this.maybeRedirectToLogin(response.error || response.message)) {
+          if (!registerResult.success) {
+            if (this.maybeRedirectToLogin(registerResult.error || registerResult.message)) {
               return;
             }
             uniApp.showToast?.({
-              title: response.error || response.message || "注册失败",
+              title: registerResult.error || registerResult.message || "注册失败",
               icon: "none",
             });
             return;
           }
 
+          if (registerResult.authenticated) {
+            this.persistLoginSuccess(registerResult, phone);
+            return;
+          }
+
           try {
-            const loginResponse = await loginApi({ phone, password });
-            if (loginResponse && loginResponse.success) {
+            const loginResponse = extractAuthSessionResult(
+              await loginApi({ phone, password }),
+            );
+            if (loginResponse.authenticated) {
               this.persistLoginSuccess(loginResponse, phone);
               return;
             }
@@ -884,26 +899,22 @@ export function createWechatCallbackPage(options = {}) {
         }
 
         try {
-          const response = await consumeWechatSession(sessionToken);
-          const result =
-            response && response.success !== false ? response.data : null;
-          if (!result) {
-            throw new Error(
-              normalizeErrorMessage(response, "微信登录处理失败"),
-            );
-          }
-
-          if (result.type === "login") {
+          const result = extractAuthSessionResult(
+            await consumeWechatSession(sessionToken),
+          );
+          if (result.type === "login" && result.authenticated) {
             this.finishLogin(result);
             return;
           }
 
-          if (result.type === "bind_required") {
+          if (result.type === "bind_required" && result.bindToken) {
             this.redirectToBind(result);
             return;
           }
 
-          throw new Error(result.message || "微信登录失败");
+          throw new Error(
+            normalizeErrorMessage(result, "微信登录处理失败"),
+          );
         } catch (error) {
           this.failWith(
             normalizeErrorMessage(error, "微信登录失败，请稍后重试"),

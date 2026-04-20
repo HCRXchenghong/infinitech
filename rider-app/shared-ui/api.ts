@@ -6,6 +6,7 @@ import config from './config'
 import { buildUniNetworkErrorMessage } from '../../packages/client-sdk/src/uni-request.js'
 import { createRiderPreferenceApi } from '../../packages/client-sdk/src/mobile-capabilities.js'
 import {
+  extractAuthSessionResult,
   extractEnvelopeData,
   extractPaginatedItems,
   extractSMSResult,
@@ -93,7 +94,7 @@ export const riderLogin = (credentials: any) => request({
   url: '/api/auth/rider/login',
   method: 'POST',
   data: credentials
-})
+}).then((response: any) => extractAuthSessionResult(response))
 
 // 发送验证码
 export const requestSMSCode = (phone: string, scene: string = 'rider_login', extra: Record<string, unknown> = {}) => request({
@@ -270,7 +271,7 @@ export const changePhone = (data: any) => {
     url: `/api/riders/${riderId}/change-phone`,
     method: 'POST',
     data
-  })
+  }).then((response: any) => extractAuthSessionResult(response))
 }
 
 // 修改密码

@@ -206,6 +206,81 @@ test("consumer api shares upload, auth, push, and rtc request wiring", async () 
   );
 });
 
+test("consumer api normalizes auth session responses across login, wechat session, and phone change", async () => {
+  const api = createConsumerApi({
+    config: {},
+    uniApp: {},
+    createUniRequestClientImpl: createRequestClientStub(
+      async (requestOptions) => {
+        if (requestOptions.url === "/api/auth/login") {
+          return {
+            request_id: "req-login-1",
+            code: "OK",
+            message: "登录成功",
+            success: true,
+            data: {
+              token: "token-1",
+              refreshToken: "refresh-1",
+              expiresIn: 7200,
+              user: {
+                id: "user-1",
+                nickname: "测试用户",
+              },
+            },
+          };
+        }
+        if (requestOptions.url === "/api/auth/wechat/session") {
+          return {
+            success: true,
+            data: {
+              type: "bind_required",
+              bindToken: "bind-1",
+              nickname: "微信用户",
+            },
+          };
+        }
+        if (requestOptions.url === "/api/user/user-1/change-phone") {
+          return {
+            success: true,
+            data: {
+              token: "token-2",
+              refreshToken: "refresh-2",
+              expiresIn: 3600,
+              message: "手机号修改成功",
+              user: {
+                id: "user-1",
+                phone: "13800138001",
+              },
+            },
+          };
+        }
+        return {};
+      },
+      [],
+    ),
+  });
+
+  const loginResult = await api.login({ phone: "13800138000", password: "secret" });
+  const wechatResult = await api.consumeWechatSession("wechat-session-1");
+  const phoneChangeResult = await api.changeUserPhone("user-1", {
+    oldPhone: "13800138000",
+    oldCode: "123456",
+    newPhone: "13800138001",
+    newCode: "654321",
+  });
+
+  assert.equal(loginResult.authenticated, true);
+  assert.equal(loginResult.token, "token-1");
+  assert.equal(loginResult.user.nickname, "测试用户");
+  assert.equal(wechatResult.success, true);
+  assert.equal(wechatResult.authenticated, false);
+  assert.equal(wechatResult.type, "bind_required");
+  assert.equal(wechatResult.bindToken, "bind-1");
+  assert.equal(phoneChangeResult.authenticated, true);
+  assert.equal(phoneChangeResult.refreshToken, "refresh-2");
+  assert.equal(phoneChangeResult.user.phone, "13800138001");
+});
+
 test("consumer api normalizes notifications, home feed, weather, and reverse geocoding", async () => {
   const api = createConsumerApi({
     config: {},

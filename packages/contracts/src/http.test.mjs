@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
 import {
+  extractAuthSessionResult,
   extractAuthVerifyResult,
   buildErrorEnvelopePayload,
   buildSuccessEnvelopePayload,
@@ -274,6 +275,101 @@ test("extractSMSResult preserves sms debug code from enveloped payloads", () => 
   );
 });
 
+test("extractAuthSessionResult normalizes authenticated and bind-required payloads", () => {
+  assert.deepEqual(
+    extractAuthSessionResult({
+      request_id: "req_auth_session_1",
+      code: "OK",
+      message: "登录成功",
+      success: true,
+      data: {
+        token: "token-1",
+        refreshToken: "refresh-1",
+        expiresIn: 7200,
+        user: {
+          id: "user-1",
+          nickname: "测试用户",
+        },
+      },
+    }),
+    {
+      request_id: "req_auth_session_1",
+      code: "OK",
+      message: "登录成功",
+      success: true,
+      authenticated: true,
+      token: "token-1",
+      refreshToken: "refresh-1",
+      expiresIn: 7200,
+      user: {
+        id: "user-1",
+        nickname: "测试用户",
+      },
+      error: "",
+      needRegister: false,
+      type: "",
+      bindToken: "",
+      nickname: "",
+      avatarUrl: "",
+    },
+  );
+
+  assert.deepEqual(
+    extractAuthSessionResult({
+      success: true,
+      data: {
+        type: "bind_required",
+        bindToken: "bind-token-1",
+        nickname: "微信用户",
+        avatarUrl: "https://example.com/avatar.png",
+        message: "请继续绑定手机号",
+      },
+    }),
+    {
+      request_id: "",
+      code: "OK",
+      message: "请继续绑定手机号",
+      success: true,
+      authenticated: false,
+      token: "",
+      refreshToken: "",
+      expiresIn: 0,
+      user: null,
+      error: "",
+      needRegister: false,
+      type: "bind_required",
+      bindToken: "bind-token-1",
+      nickname: "微信用户",
+      avatarUrl: "https://example.com/avatar.png",
+    },
+  );
+
+  assert.deepEqual(
+    extractAuthSessionResult({
+      success: false,
+      error: "user not found, please register first",
+      needRegister: true,
+    }),
+    {
+      request_id: "",
+      code: "",
+      message: "user not found, please register first",
+      success: false,
+      authenticated: false,
+      token: "",
+      refreshToken: "",
+      expiresIn: 0,
+      user: null,
+      error: "user not found, please register first",
+      needRegister: true,
+      type: "",
+      bindToken: "",
+      nickname: "",
+      avatarUrl: "",
+    },
+  );
+});
+
 test("extractAuthVerifyResult prefers standardized identity envelopes and falls back safely", () => {
   assert.deepEqual(
     extractAuthVerifyResult({
@@ -353,6 +449,30 @@ test("http contracts keep CommonJS bridge aligned with ESM helpers", () => {
   assert.deepEqual(
     cjsHttp.buildErrorEnvelopePayload(source, 404, "not found"),
     buildErrorEnvelopePayload(source, 404, "not found"),
+  );
+  assert.deepEqual(
+    cjsHttp.extractAuthSessionResult({
+      success: true,
+      data: {
+        token: "token-1",
+        refreshToken: "refresh-1",
+        expiresIn: 3600,
+        user: {
+          id: "user-1",
+        },
+      },
+    }),
+    extractAuthSessionResult({
+      success: true,
+      data: {
+        token: "token-1",
+        refreshToken: "refresh-1",
+        expiresIn: 3600,
+        user: {
+          id: "user-1",
+        },
+      },
+    }),
   );
   assert.deepEqual(
     cjsHttp.extractAuthVerifyResult({

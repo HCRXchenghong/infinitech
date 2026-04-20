@@ -6,6 +6,7 @@ import {
   isRetryableUniNetworkError,
 } from "../../client-sdk/src/uni-request.js";
 import {
+  extractAuthSessionResult,
   extractEnvelopeData,
   extractPaginatedItems,
   extractSMSResult,
@@ -438,28 +439,28 @@ export function createConsumerApi(options = {}) {
       url: "/api/auth/login",
       method: "POST",
       data: credentials,
-    });
+    }).then((response) => extractAuthSessionResult(response));
 
   const register = (userData) =>
     request({
       url: "/api/auth/register",
       method: "POST",
       data: userData,
-    });
+    }).then((response) => extractAuthSessionResult(response));
 
   const consumeWechatSession = (token) =>
     request({
       url: "/api/auth/wechat/session",
       method: "GET",
       data: { token },
-    });
+    }).then((response) => extractAuthSessionResult(response));
 
   const wechatBindLogin = (payload) =>
     request({
       url: "/api/auth/wechat/bind-login",
       method: "POST",
       data: payload,
-    });
+    }).then((response) => extractAuthSessionResult(response));
 
   const requestSMSCode = (phone, scene, extra = {}) =>
     request({
@@ -488,7 +489,7 @@ export function createConsumerApi(options = {}) {
       url: `/api/user/${encodeURIComponent(userId)}/change-phone`,
       method: "POST",
       data: payload,
-    }).then((response) => extractEnvelopeData(response) || response || {});
+    }).then((response) => extractAuthSessionResult(response));
 
   const updateUserProfile = (userId, payload) =>
     request({

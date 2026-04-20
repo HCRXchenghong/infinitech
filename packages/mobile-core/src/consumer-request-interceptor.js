@@ -1,3 +1,5 @@
+import { extractAuthSessionResult } from "../../contracts/src/http.js";
+
 function resolveLogger(logger) {
   if (logger && typeof logger === "object") {
     return {
@@ -90,13 +92,17 @@ export function createConsumerRequestInterceptor(options = {}) {
         },
       });
 
-      const data = response.data || {};
-      if (response.statusCode === 200 && data.success && data.token) {
-        saveTokenInfo(data.token, data.refreshToken, data.expiresIn || 7200);
-        return data.token;
+      const result = extractAuthSessionResult(response.data || {});
+      if (response.statusCode === 200 && result.authenticated) {
+        saveTokenInfo(
+          result.token,
+          result.refreshToken || tokenInfo.refreshToken,
+          result.expiresIn || 7200,
+        );
+        return result.token;
       }
 
-      logger.error("❌ Token 刷新失败:", data.error);
+      logger.error("❌ Token 刷新失败:", result.error || result.message);
       return null;
     } catch (error) {
       logger.error("❌ Token 刷新请求失败:", error);

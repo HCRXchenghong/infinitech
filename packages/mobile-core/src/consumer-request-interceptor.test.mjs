@@ -34,10 +34,15 @@ function createUniRuntime() {
         options.success({
           statusCode: 200,
           data: {
+            request_id: "req-refresh-1",
+            code: "OK",
+            message: "令牌刷新成功",
             success: true,
-            token: "new-token",
-            refreshToken: "new-refresh",
-            expiresIn: 7200,
+            data: {
+              token: "new-token",
+              refreshToken: "new-refresh",
+              expiresIn: 7200,
+            },
           },
         });
         return;

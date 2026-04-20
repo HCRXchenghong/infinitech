@@ -1,6 +1,7 @@
 import config, { updateConfig } from "./config";
 import { buildUniNetworkErrorMessage } from "../../packages/client-sdk/src/uni-request.js";
 import {
+  extractAuthSessionResult,
   extractEnvelopeData,
   extractPaginatedItems,
   extractSMSResult,
@@ -147,7 +148,10 @@ export const merchantLogin = (credentials: {
   phone: string;
   code?: string;
   password?: string;
-}) => apiPost("/api/auth/merchant/login", credentials, false);
+}) =>
+  apiPost("/api/auth/merchant/login", credentials, false).then((response) =>
+    extractAuthSessionResult(response),
+  );
 
 export const requestSMSCode = (
   phone: string,
