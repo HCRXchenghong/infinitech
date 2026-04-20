@@ -2854,6 +2854,26 @@ assertNotContains(
   "backend/go/.env.example",
   "JWT_SECRET=yuexiang-dev-secret-key-change-in-production-32chars",
 );
+assertContains(
+  "backend/bff/.env.example",
+  "ADMIN_TOKEN_SECRET=replace-with-a-long-random-admin-token-secret",
+);
+assertContains(
+  "backend/bff/src/config/index.js",
+  'const requestTokenSecret = requireSecret("JWT_SECRET");',
+);
+assertContains(
+  "backend/bff/src/config/index.js",
+  'const adminTokenSecret = requireSecret("ADMIN_TOKEN_SECRET");',
+);
+assertNotContains(
+  "backend/bff/src/config/index.js",
+  "process.env.JWT_SECRET || process.env.ADMIN_TOKEN_SECRET",
+);
+assertContains(
+  "backend/bff/src/utils/authIdentity.js",
+  "verificationSecret: config.adminTokenSecret",
+);
 assertNotContains("scripts/verify-im-e2e.mjs", "DEFAULT_JWT_SECRET");
 assertNotContains(
   "scripts/verify-im-e2e.mjs",

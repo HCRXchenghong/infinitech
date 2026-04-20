@@ -98,7 +98,7 @@ function parseOperatorFromAuthHeader(authorization) {
   };
 }
 
-function verifySignedTokenSignature(token, secret = config.jwt.secret || config.adminTokenSecret) {
+function verifySignedTokenSignature(token, secret = config.jwt.secret) {
   const rawToken = normalizeBearerToken(token);
   const resolvedSecret = String(secret || "").trim();
   if (!rawToken || !resolvedSecret) {
@@ -152,7 +152,8 @@ function extractVerifiedAuthIdentity(req, options = {}) {
     return null;
   }
 
-  const verification = verifySignedTokenSignature(identity.token);
+  const verificationSecret = String(options.verificationSecret || config.jwt.secret || "").trim();
+  const verification = verifySignedTokenSignature(identity.token, verificationSecret);
   if (!verification.valid) {
     return {
       ...identity,
@@ -180,7 +181,10 @@ function extractVerifiedAuthIdentity(req, options = {}) {
 }
 
 function extractVerifiedAdminIdentity(req, options = {}) {
-  return extractVerifiedAuthIdentity(req, options);
+  return extractVerifiedAuthIdentity(req, {
+    ...options,
+    verificationSecret: config.adminTokenSecret,
+  });
 }
 
 module.exports = {

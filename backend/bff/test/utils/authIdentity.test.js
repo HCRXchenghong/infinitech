@@ -13,7 +13,7 @@ function encodeBase64Url(value) {
     .replace(/=+$/g, "");
 }
 
-function signToken(payload, secret = process.env.ADMIN_TOKEN_SECRET || process.env.JWT_SECRET) {
+function signToken(payload, secret = process.env.ADMIN_TOKEN_SECRET) {
   const payloadPart = encodeBase64Url(JSON.stringify(payload));
   const signaturePart = crypto
     .createHmac("sha256", secret)
@@ -80,5 +80,28 @@ describe("authIdentity unified claims parsing", () => {
       operatorId: "25072401000018",
       operatorName: "Ops Admin",
     });
+  });
+
+  test("extractVerifiedAdminIdentity rejects tokens signed with the business jwt secret", () => {
+    const token = signToken(
+      {
+        principal_type: "admin",
+        principal_id: "25072401000021",
+        principal_legacy_id: 21,
+        role: "super_admin",
+        name: "Separated Secret Admin",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        iat: Math.floor(Date.now() / 1000),
+      },
+      process.env.JWT_SECRET,
+    );
+
+    const identity = extractVerifiedAdminIdentity(
+      { headers: { authorization: `Bearer ${token}` } },
+      { normalizeType: true }
+    );
+
+    expect(identity?.verification?.valid).toBe(false);
+    expect(identity?.verification?.reason).toBe("signature_mismatch");
   });
 });

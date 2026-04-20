@@ -40,10 +40,10 @@ function uniqueValues(values) {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
-function requireSharedSecret() {
-  const secret = String(process.env.JWT_SECRET || process.env.ADMIN_TOKEN_SECRET || "").trim();
+function requireSecret(name) {
+  const secret = String(process.env[name] || "").trim();
   if (!secret) {
-    throw new Error("BFF requires ADMIN_TOKEN_SECRET or JWT_SECRET");
+    throw new Error(`BFF requires ${name}`);
   }
   return secret;
 }
@@ -75,7 +75,8 @@ function buildCorsOrigins(productionLike) {
   ]);
 }
 
-const adminTokenSecret = requireSharedSecret();
+const requestTokenSecret = requireSecret("JWT_SECRET");
+const adminTokenSecret = requireSecret("ADMIN_TOKEN_SECRET");
 const env = process.env.NODE_ENV || process.env.ENV || "development";
 const productionLike = ["production", "prod", "staging"].includes(String(env).trim().toLowerCase());
 const corsOrigins = buildCorsOrigins(productionLike);
@@ -112,11 +113,12 @@ module.exports = {
   },
 
   jwt: {
-    secret: adminTokenSecret,
+    secret: requestTokenSecret,
     expiresIn: process.env.JWT_EXPIRES_IN || "7d"
   },
 
-  jwtSecret: adminTokenSecret,
+  jwtSecret: requestTokenSecret,
+  requestTokenSecret,
   adminTokenSecret,
   adminWebBaseUrl: process.env.ADMIN_WEB_BASE_URL || "",
   siteWebBaseUrl: process.env.SITE_WEB_BASE_URL || "",

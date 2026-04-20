@@ -10,7 +10,7 @@ function encodeBase64Url(value) {
     .replace(/=+$/g, "");
 }
 
-function signToken(payload, secret = process.env.JWT_SECRET || process.env.ADMIN_TOKEN_SECRET) {
+function signToken(payload, secret = process.env.JWT_SECRET) {
   const payloadPart = encodeBase64Url(JSON.stringify(payload));
   const signaturePart = crypto
     .createHmac("sha256", secret)
@@ -115,5 +115,29 @@ describe("requireRequestAuth", () => {
       sessionId: "merchant_session_1",
     });
     expect(req.authIdentity?.verification?.valid).toBe(true);
+  });
+
+  test("rejects tokens signed with the admin token secret on request routes", () => {
+    const token = signToken(
+      {
+        principal_type: "merchant",
+        principal_id: "merchant_uid_19",
+        principal_legacy_id: 19,
+        role: "merchant",
+        token_kind: "access",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        iat: Math.floor(Date.now() / 1000),
+      },
+      process.env.ADMIN_TOKEN_SECRET,
+    );
+
+    const req = { headers: { authorization: `Bearer ${token}` } };
+    const res = createResponse();
+    const next = jest.fn();
+
+    requireRequestAuth(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
   });
 });
