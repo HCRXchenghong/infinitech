@@ -11,20 +11,17 @@ import {
   appendVIPTask as buildNextVIPTasks,
   buildCharitySettingsPayload,
   buildVIPSettingsPayload,
-  buildWechatLoginConfigPayload,
   createDefaultAlipayConfig,
   createDefaultCharitySettings,
   createDefaultDebugMode,
   createDefaultPayMode,
   createDefaultVIPSettings,
-  createDefaultWechatLoginConfig,
   createDefaultWxpayConfig,
   normalizeAlipayConfig,
   normalizeCharitySettings,
   normalizeDebugModeConfig,
   normalizePayModeConfig,
   normalizeVIPSettings,
-  normalizeWechatLoginConfig,
   normalizeWxpayConfig,
   removeCharityLeaderboardItem as buildNextCharityLeaderboardAfterRemove,
   removeCharityNewsItem as buildNextCharityNewsAfterRemove,
@@ -41,6 +38,7 @@ import { useSettingsActionHelpers } from './settingsActionHelpers';
 import { useAppDownloadSettings } from './settingsHelpers/appDownload';
 import { useServiceSettings } from './settingsHelpers/serviceSettings';
 import { useSmsSettings } from './settingsHelpers/sms';
+import { useWechatLoginSettings } from './settingsHelpers/wechatLogin';
 import { useWeatherSettings } from './settingsHelpers/weather';
 
 export function useSettingsPage() {
@@ -82,9 +80,13 @@ export function useSettingsPage() {
   const DEFAULT_VIP_SETTINGS = createDefaultVIPSettings();
   const vipSettings = ref(createDefaultVIPSettings());
   const savingVipSettings = ref(false);
-  const DEFAULT_WECHAT_LOGIN_CONFIG = createDefaultWechatLoginConfig();
-  const wechatLoginConfig = ref(createDefaultWechatLoginConfig());
-  const savingWechatLoginConfig = ref(false);
+  const wechatLoginSettings = useWechatLoginSettings({
+    request,
+    ElMessage,
+  });
+  const DEFAULT_WECHAT_LOGIN_CONFIG = wechatLoginSettings.DEFAULT_WECHAT_LOGIN_CONFIG;
+  const wechatLoginConfig = wechatLoginSettings.wechatLoginConfig;
+  const savingWechatLoginConfig = wechatLoginSettings.savingWechatLoginConfig;
 
   const DEFAULT_APP_DOWNLOAD_CONFIG = appDownloadSettings.DEFAULT_APP_DOWNLOAD_CONFIG;
   const appDownloadConfig = appDownloadSettings.appDownloadConfig;
@@ -121,13 +123,11 @@ export function useSettingsPage() {
   const removeRiderInsuranceClaimStep = serviceSettingsController.removeRiderInsuranceClaimStep;
   const addRTCIceServer = serviceSettingsController.addRTCIceServer;
   const removeRTCIceServer = serviceSettingsController.removeRTCIceServer;
+  const loadWechatLoginConfig = wechatLoginSettings.loadWechatLoginConfig;
+  const saveWechatLoginConfig = wechatLoginSettings.saveWechatLoginConfig;
 
   function mergeCharitySettings(payload = {}) {
     charitySettings.value = normalizeCharitySettings(payload);
-  }
-
-  function mergeWechatLoginConfig(payload = {}) {
-    wechatLoginConfig.value = normalizeWechatLoginConfig(payload);
   }
 
   function mergeVIPSettings(payload = {}) {
@@ -244,7 +244,7 @@ export function useSettingsPage() {
         smsSettings.loadSmsConfig({ clearError: false, throwOnError: true }),
         request.get('/api/debug-mode'),
         weatherSettings.loadWeatherConfig({ clearError: false, throwOnError: true }),
-        request.get('/api/wechat-login-config'),
+        loadWechatLoginConfig({ clearError: false, throwOnError: true }),
         loadServiceSettings({ clearError: false, throwOnError: true }),
         request.get('/api/charity-settings'),
         request.get('/api/vip-settings'),
@@ -254,13 +254,10 @@ export function useSettingsPage() {
         request.get('/api/pay-config/alipay'),
       ]);
 
-      const [smsResp, debugResp, weaResp, wechatLoginResp, , charityResp, vipResp, downloadResp, payModeResp, wxResp, aliResp] = results;
+      const [, debugResp, , , , charityResp, vipResp, , payModeResp, wxResp, aliResp] = results;
 
       if (debugResp.status === 'fulfilled' && debugResp.value?.data) {
         debugMode.value = normalizeDebugModeConfig(extractEnvelopeData(debugResp.value.data) || {});
-      }
-      if (wechatLoginResp.status === 'fulfilled' && wechatLoginResp.value?.data) {
-        mergeWechatLoginConfig(extractEnvelopeData(wechatLoginResp.value.data) || {});
       }
       if (charityResp.status === 'fulfilled' && charityResp.value?.data) {
         mergeCharitySettings(extractEnvelopeData(charityResp.value.data) || {});
@@ -441,24 +438,6 @@ export function useSettingsPage() {
       ElMessage.error(extractErrorMessage(error, '保存会员配置失败'));
     } finally {
       savingVipSettings.value = false;
-    }
-  }
-
-  async function saveWechatLoginConfig() {
-    savingWechatLoginConfig.value = true;
-    try {
-      const payload = buildWechatLoginConfigPayload(wechatLoginConfig.value);
-      await request.post('/api/wechat-login-config', payload);
-      mergeWechatLoginConfig({
-        ...payload,
-        app_secret: '',
-        has_app_secret: payload.app_secret !== '' || wechatLoginConfig.value.has_app_secret
-      });
-      ElMessage.success('微信登录配置保存成功');
-    } catch (error) {
-      ElMessage.error(extractErrorMessage(error, '保存微信登录配置失败'));
-    } finally {
-      savingWechatLoginConfig.value = false;
     }
   }
 
