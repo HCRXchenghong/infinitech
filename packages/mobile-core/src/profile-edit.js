@@ -1,4 +1,4 @@
-import { extractUploadAsset } from "../../contracts/src/http.js";
+import { resolveUploadAssetUrl } from "../../contracts/src/http.js";
 import { UPLOAD_DOMAINS } from "../../contracts/src/upload.js";
 import {
   DEFAULT_CONSUMER_PROFILE_NAME,
@@ -73,9 +73,8 @@ export function buildConsumerProfileUpdatePayload(input = {}) {
 }
 
 export function extractConsumerUploadedImageUrl(payload) {
-  const asset = extractUploadAsset(payload);
   return trimProfileEditText(
-    asset?.asset_url || asset?.url || payload?.url || payload?.data?.url,
+    resolveUploadAssetUrl(payload) || payload?.url || payload?.data?.url,
   );
 }
 

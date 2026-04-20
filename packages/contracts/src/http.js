@@ -2,6 +2,33 @@ function trimText(value) {
   return String(value == null ? "" : value).trim();
 }
 
+const PROTECTED_UPLOAD_PATH_PREFIXES = [
+  "/uploads/certs/",
+  "/uploads/merchant_document/",
+  "/uploads/medical_document/",
+  "/uploads/onboarding-invite/",
+];
+
+export function isProtectedUploadUrl(url) {
+  const raw = trimText(url);
+  if (!raw) {
+    return false;
+  }
+
+  let pathname = raw;
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      pathname = trimText(new URL(raw).pathname);
+    } catch {
+      pathname = raw;
+    }
+  }
+
+  return PROTECTED_UPLOAD_PATH_PREFIXES.some((prefix) =>
+    pathname.startsWith(prefix),
+  );
+}
+
 export function normalizeErrorCode(status, explicitCode = "") {
   const code = trimText(explicitCode);
   if (code) {
@@ -236,6 +263,28 @@ export function extractUploadAsset(payload) {
     url,
     filename: String(data.filename || "").trim(),
   };
+}
+
+export function resolveUploadAssetUrl(payload) {
+  const asset = extractUploadAsset(payload) || payload;
+  if (!asset || typeof asset !== "object") {
+    return "";
+  }
+
+  const accessPolicy = trimText(asset.access_policy || asset.accessPolicy).toLowerCase();
+  const previewUrl = trimText(asset.previewUrl || asset.preview_url);
+  const assetUrl = trimText(asset.asset_url || asset.assetUrl);
+  const directUrl = trimText(asset.url);
+
+  if (accessPolicy === "private") {
+    return previewUrl || assetUrl || directUrl;
+  }
+
+  if (previewUrl && (isProtectedUploadUrl(assetUrl) || isProtectedUploadUrl(directUrl))) {
+    return previewUrl;
+  }
+
+  return assetUrl || directUrl || previewUrl;
 }
 
 export function extractSMSResult(payload) {

@@ -10,10 +10,12 @@ import {
   extractEnvelopeMessage,
   extractEnvelopeRequestId,
   extractPaginatedItems,
+  isProtectedUploadUrl,
   extractSMSResult,
   extractTemporaryCredential,
   extractUploadAsset,
   normalizeErrorCode,
+  resolveUploadAssetUrl,
 } from "./http.js";
 
 const require = createRequire(import.meta.url);
@@ -179,6 +181,31 @@ test("extractUploadAsset reads standardized asset payloads", () => {
       url: "https://cdn.example.com/file.png",
     },
   );
+});
+
+test("resolveUploadAssetUrl prefers preview urls for private or protected assets", () => {
+  assert.equal(
+    resolveUploadAssetUrl({
+      data: {
+        access_policy: "private",
+        asset_url: "/uploads/merchant_document/license.png",
+        previewUrl: "/api/private-assets/preview?asset_id=private://document/merchant_document/merchant/18/license.png",
+      },
+    }),
+    "/api/private-assets/preview?asset_id=private://document/merchant_document/merchant/18/license.png",
+  );
+
+  assert.equal(
+    resolveUploadAssetUrl({
+      data: {
+        asset_url: "https://cdn.example.com/uploads/profile_image/avatar.png",
+      },
+    }),
+    "https://cdn.example.com/uploads/profile_image/avatar.png",
+  );
+
+  assert.equal(isProtectedUploadUrl("/uploads/medical_document/rx.png"), true);
+  assert.equal(isProtectedUploadUrl("/uploads/profile_image/avatar.png"), false);
 });
 
 test("extractSMSResult preserves sms debug code from enveloped payloads", () => {

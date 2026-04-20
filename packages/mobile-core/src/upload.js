@@ -1,5 +1,10 @@
 import { buildAuthorizationHeaders } from "../../client-sdk/src/auth.js";
-import { extractErrorMessage, extractUploadAsset } from "../../contracts/src/http.js";
+import {
+  extractErrorMessage,
+  extractUploadAsset,
+  isProtectedUploadUrl,
+  resolveUploadAssetUrl,
+} from "../../contracts/src/http.js";
 import { normalizeUploadDomain } from "../../contracts/src/upload.js";
 
 export function createAuthenticatedUploadOptions({
@@ -42,9 +47,11 @@ export function readStoredBearerToken(
   return "";
 }
 
-export function normalizeResourceUrl(url, baseUrl) {
+export function normalizeResourceUrl(url, baseUrl, options = {}) {
   const raw = String(url || "").trim();
   if (!raw) return "";
+  const accessPolicy = String(options.accessPolicy || "").trim().toLowerCase();
+  if (accessPolicy === "private" && isProtectedUploadUrl(raw)) return raw;
   if (/^https?:\/\//i.test(raw)) return raw;
   if (raw.startsWith("//")) return `http:${raw}`;
   const normalizedBaseUrl = String(baseUrl || "").replace(/\/+$/, "");
@@ -101,9 +108,19 @@ export function uploadAuthenticatedAsset({
         }
 
         const asset = extractUploadAsset(parsed);
+        const accessPolicy = String(
+          asset?.access_policy ||
+            asset?.accessPolicy ||
+            parsed?.data?.access_policy ||
+            parsed?.data?.accessPolicy ||
+            parsed?.access_policy ||
+            parsed?.accessPolicy ||
+            "",
+        ).trim();
         const normalizedUrl = normalizeResourceUrl(
-          asset?.asset_url || asset?.url || parsed?.url || "",
+          resolveUploadAssetUrl(asset || parsed) || parsed?.url || "",
           resolvedBaseUrl,
+          { accessPolicy },
         );
         const payload =
           parsed && typeof parsed === "object" ? { ...parsed } : { data: parsed };

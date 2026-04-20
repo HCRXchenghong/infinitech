@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { UPLOAD_DOMAINS } from "../../contracts/src/upload.js";
 import {
   createAuthenticatedUploadOptions,
+  normalizeResourceUrl,
   uploadAuthenticatedAsset,
 } from "./upload.js";
 
@@ -75,5 +76,49 @@ test("uploadAuthenticatedAsset forwards normalized upload domain and merged payl
   assert.equal(
     payload.asset_url,
     "https://api.example.com/uploads/chat_attachment/demo.png",
+  );
+});
+
+test("uploadAuthenticatedAsset prefers private preview urls over protected legacy upload paths", async () => {
+  const uniApp = {
+    uploadFile(options) {
+      options.success({
+        statusCode: 200,
+        data: JSON.stringify({
+          data: {
+            access_policy: "private",
+            asset_url: "/uploads/merchant_document/license.png",
+            previewUrl: "/api/private-assets/preview?asset_id=private://document/merchant_document/merchant/18/license.png",
+          },
+        }),
+      });
+    },
+  };
+
+  const payload = await uploadAuthenticatedAsset({
+    uniApp,
+    baseUrl: "https://api.example.com",
+    filePath: "/tmp/license.png",
+    uploadDomain: UPLOAD_DOMAINS.MERCHANT_DOCUMENT,
+  });
+
+  assert.equal(
+    payload.url,
+    "https://api.example.com/api/private-assets/preview?asset_id=private://document/merchant_document/merchant/18/license.png",
+  );
+  assert.equal(
+    payload.asset_url,
+    "https://api.example.com/api/private-assets/preview?asset_id=private://document/merchant_document/merchant/18/license.png",
+  );
+});
+
+test("normalizeResourceUrl keeps protected private upload paths from being publicized", () => {
+  assert.equal(
+    normalizeResourceUrl(
+      "/uploads/merchant_document/license.png",
+      "https://api.example.com",
+      { accessPolicy: "private" },
+    ),
+    "/uploads/merchant_document/license.png",
   );
 });
