@@ -53,7 +53,7 @@ const redisEnabled = toBoolean(process.env.SOCKET_REDIS_ENABLED ?? process.env.R
 const redisConfig = {
   host: String(process.env.SOCKET_REDIS_HOST || process.env.REDIS_HOST || '127.0.0.1').trim(),
   port: toPositiveInt(process.env.SOCKET_REDIS_PORT || process.env.REDIS_PORT, 2550),
-  password: String(process.env.SOCKET_REDIS_PASSWORD || process.env.REDIS_PASSWORD || '').trim(),
+  password: String(process.env.SOCKET_REDIS_PASSWORD || '').trim(),
   database: toPositiveInt(process.env.SOCKET_REDIS_DB || process.env.REDIS_DB, 0),
   connectTimeout: toPositiveInt(process.env.SOCKET_REDIS_CONNECT_TIMEOUT_MS, 1000)
 };
@@ -422,6 +422,7 @@ export function getRedisHealthSnapshot() {
     host: redisConfig.host,
     port: redisConfig.port,
     database: redisConfig.database,
+    passwordConfigured: Boolean(redisConfig.password),
     connected: Boolean(redisClient?.isOpen),
     connecting: Boolean(redisConnectPromise),
     adapterConnecting: Boolean(adapterClientsPromise),
