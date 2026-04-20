@@ -35,7 +35,7 @@ function fromBase64Url(value) {
 }
 
 function getQrLoginEncryptionKey() {
-  const secret = String(config.adminQrLoginSecret || config.adminTokenSecret || "").trim();
+  const secret = String(config.adminQrLoginSecret || "").trim();
   return crypto.createHash("sha256").update(secret).digest();
 }
 

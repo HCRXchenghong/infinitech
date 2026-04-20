@@ -77,6 +77,7 @@ function buildCorsOrigins(productionLike) {
 
 const requestTokenSecret = requireSecret("JWT_SECRET");
 const adminTokenSecret = requireSecret("ADMIN_TOKEN_SECRET");
+const adminQrLoginSecret = requireSecret("ADMIN_QR_LOGIN_SECRET");
 const env = process.env.NODE_ENV || process.env.ENV || "development";
 const productionLike = ["production", "prod", "staging"].includes(String(env).trim().toLowerCase());
 const corsOrigins = buildCorsOrigins(productionLike);
@@ -120,9 +121,9 @@ module.exports = {
   jwtSecret: requestTokenSecret,
   requestTokenSecret,
   adminTokenSecret,
+  adminQrLoginSecret,
   adminWebBaseUrl: process.env.ADMIN_WEB_BASE_URL || "",
   siteWebBaseUrl: process.env.SITE_WEB_BASE_URL || "",
-  adminQrLoginSecret: String(process.env.ADMIN_QR_LOGIN_SECRET || adminTokenSecret).trim(),
   corsOrigins,
 
   http: {

@@ -15,6 +15,7 @@ describe("bff config hardening", () => {
     delete process.env.SOCKET_SERVER_API_SECRET;
     process.env.JWT_SECRET = "test-request-secret-key-for-jest-1234567890";
     process.env.ADMIN_TOKEN_SECRET = "test-admin-secret-key-for-jest-1234567890";
+    process.env.ADMIN_QR_LOGIN_SECRET = "test-admin-qr-login-secret-key-for-jest-1234567890";
   });
 
   afterAll(() => {
@@ -46,6 +47,12 @@ describe("bff config hardening", () => {
     delete process.env.ADMIN_TOKEN_SECRET;
 
     expect(() => loadConfig()).toThrow(/ADMIN_TOKEN_SECRET/);
+  });
+
+  test("startup requires explicit admin qr login secret", () => {
+    delete process.env.ADMIN_QR_LOGIN_SECRET;
+
+    expect(() => loadConfig()).toThrow(/ADMIN_QR_LOGIN_SECRET/);
   });
 
   test("production requires explicit cors origins", () => {
