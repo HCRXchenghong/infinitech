@@ -40,6 +40,10 @@ func respondRiderInvalidRequest(c *gin.Context, message string) {
 	respondRiderError(c, http.StatusBadRequest, message)
 }
 
+func respondRiderForbidden(c *gin.Context, message string) {
+	respondRiderError(c, http.StatusForbidden, message)
+}
+
 func respondRiderNotFound(c *gin.Context, message string) {
 	respondRiderError(c, http.StatusNotFound, message)
 }
@@ -103,6 +107,33 @@ func riderVerificationReady(current *repository.Rider, updates map[string]interf
 	idCardBack := riderVerificationFieldValue(updates, "id_card_back", current.IDCardBack)
 
 	return realName != "" && idCardNumber != "" && idCardFront != "" && idCardBack != ""
+}
+
+func riderProfileVerificationFieldsChanged(current *repository.Rider, updates map[string]interface{}) bool {
+	if current == nil || len(updates) == 0 {
+		return false
+	}
+
+	if value, ok := updates["real_name"]; ok && strings.TrimSpace(fmt.Sprint(value)) != strings.TrimSpace(current.RealName) {
+		return true
+	}
+	if value, ok := updates["id_card_number"]; ok && strings.TrimSpace(fmt.Sprint(value)) != strings.TrimSpace(current.IDCardNumber) {
+		return true
+	}
+	if value, ok := updates["id_card_front"]; ok && strings.TrimSpace(fmt.Sprint(value)) != strings.TrimSpace(current.IDCardFront) {
+		return true
+	}
+	if value, ok := updates["id_card_back"]; ok && strings.TrimSpace(fmt.Sprint(value)) != strings.TrimSpace(current.IDCardBack) {
+		return true
+	}
+	if value, ok := updates["health_cert"]; ok && strings.TrimSpace(fmt.Sprint(value)) != strings.TrimSpace(current.HealthCert) {
+		return true
+	}
+	if _, ok := updates["health_cert_expiry"]; ok {
+		return true
+	}
+
+	return false
 }
 
 func (h *RiderHandler) resolveRiderID(raw string) (uint, error) {
@@ -195,7 +226,7 @@ func (h *RiderHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	currentRider, err := h.loadRiderByID(riderID, "id", "real_name", "id_card_number", "id_card_front", "id_card_back", "is_verified")
+	currentRider, err := h.loadRiderByID(riderID, "id", "real_name", "id_card_number", "id_card_front", "id_card_back", "health_cert", "health_cert_expiry", "is_verified")
 	if err != nil {
 		respondRiderNotFound(c, "骑手不存在")
 		return
@@ -205,6 +236,10 @@ func (h *RiderHandler) UpdateProfile(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondRiderInvalidRequest(c, "参数错误")
+		return
+	}
+	if _, exists := req["is_verified"]; exists {
+		respondRiderForbidden(c, "骑手不能自行修改认证状态")
 		return
 	}
 
@@ -233,21 +268,6 @@ func (h *RiderHandler) UpdateProfile(c *gin.Context) {
 		}
 	}
 
-	fullVerificationPayload := req["real_name"] != nil &&
-		req["id_card_number"] != nil &&
-		req["id_card_front"] != nil &&
-		req["id_card_back"] != nil
-	verifyRequested := riderTruthy(req["is_verified"])
-
-	if verifyRequested && !riderVerificationReady(currentRider, updates) {
-		respondRiderInvalidRequest(c, "请先完善实名认证资料")
-		return
-	}
-
-	if verifyRequested || (fullVerificationPayload && riderVerificationReady(currentRider, updates)) {
-		updates["is_verified"] = true
-	}
-
 	if len(updates) == 0 {
 		respondRiderMirroredSuccess(c, "骑手资料已是最新状态", gin.H{
 			"updated": false,
@@ -255,14 +275,24 @@ func (h *RiderHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
+	verificationReset := currentRider.IsVerified && riderProfileVerificationFieldsChanged(currentRider, updates)
+	if verificationReset {
+		updates["is_verified"] = false
+	}
+
 	if err := h.db.Model(&repository.Rider{}).Where("id = ?", riderID).Updates(updates).Error; err != nil {
 		respondRiderInternalError(c, "更新失败")
 		return
 	}
 
-	respondRiderMirroredSuccess(c, "骑手资料更新成功", gin.H{
-		"updated": true,
-		"fields":  updates,
+	message := "骑手资料更新成功"
+	if verificationReset {
+		message = "骑手资料更新成功，实名认证已重新进入审核状态"
+	}
+	respondRiderMirroredSuccess(c, message, gin.H{
+		"updated":            true,
+		"fields":             updates,
+		"verification_reset": verificationReset,
 	})
 }
 

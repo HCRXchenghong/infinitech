@@ -34,9 +34,18 @@
       </view>
     </view>
 
-    <button v-if="!profile.is_verified && canSubmit" class="btn-submit" @click="submitVerification">
-      提交认证
-    </button>
+    <view class="section">
+      <view class="section-title">认证状态</view>
+      <view class="status-card">
+        <view class="status-row">
+          <text class="status-label">当前状态</text>
+          <text class="status-value" :class="{ verified: profile.is_verified, pending: !profile.is_verified }">
+            {{ verificationStatusText }}
+          </text>
+        </view>
+        <text class="status-hint">{{ verificationStatusHint }}</text>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -51,8 +60,20 @@ export default Vue.extend({
     }
   },
   computed: {
-    canSubmit(): boolean {
-      return !!(this.profile.real_name && this.profile.id_card_number)
+    verificationStatusText(): string {
+      if (this.profile.is_verified) {
+        return '已通过平台审核'
+      }
+      if (this.profile.real_name && this.profile.id_card_number) {
+        return '资料已保存，待平台审核'
+      }
+      return '请先完善实名资料'
+    },
+    verificationStatusHint(): string {
+      if (this.profile.is_verified) {
+        return '如需修改实名或证件资料，系统会自动撤销旧认证并重新进入平台审核。'
+      }
+      return '实名与证件资料修改后会进入平台人工审核，骑手端不再直接修改认证通过状态。'
     }
   },
   onLoad() {
@@ -116,15 +137,6 @@ export default Vue.extend({
         this.loadProfile()
       } catch (err: any) {
         uni.showToast({ title: err.error || '更新失败', icon: 'none' })
-      }
-    },
-    async submitVerification() {
-      try {
-        await updateRiderProfile({ is_verified: true })
-        uni.showToast({ title: '提交成功', icon: 'success' })
-        this.loadProfile()
-      } catch (err: any) {
-        uni.showToast({ title: err.error || '提交失败', icon: 'none' })
       }
     },
     maskIDCard(idCard: string) {
@@ -198,15 +210,42 @@ export default Vue.extend({
   margin: 0 32rpx;
 }
 
-.btn-submit {
-  width: 100%;
-  height: 96rpx;
-  background: linear-gradient(135deg, #009bf5 0%, #0284c7 100%);
-  color: white;
-  font-size: 32rpx;
-  font-weight: 600;
+.status-card {
+  background: white;
   border-radius: 16rpx;
-  border: none;
-  margin-top: 32rpx;
+  padding: 32rpx;
+  box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.status-label {
+  font-size: 30rpx;
+  color: #6b7280;
+}
+
+.status-value {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.status-value.verified {
+  color: #059669;
+}
+
+.status-value.pending {
+  color: #d97706;
+}
+
+.status-hint {
+  display: block;
+  font-size: 26rpx;
+  line-height: 1.6;
+  color: #6b7280;
 }
 </style>

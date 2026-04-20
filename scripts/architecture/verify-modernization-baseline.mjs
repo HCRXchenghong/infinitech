@@ -7005,6 +7005,11 @@ assertContains("backend/bff/src/controllers/adminDataController.js", "getRealtim
 assertContains("backend/bff/src/routes/admin.js", "router.get('/realtime/stats', adminDataController.getRealtimeStats);");
 assertNotContains("backend/docker/Caddyfile", "/api/stats*");
 assertNotContains("backend/docker/nginx.admin.conf", "location = /api/stats");
+assertContains("backend/go/internal/handler/rider_handler.go", "骑手不能自行修改认证状态");
+assertContains("backend/go/internal/handler/rider_handler.go", "verification_reset");
+assertNotContains("rider-app/pages/profile/personal-info.vue", "updateRiderProfile({ is_verified: true })");
+assertContains("rider-app/pages/profile/personal-info.vue", "资料已保存，待平台审核");
+assertExists("backend/go/internal/handler/rider_handler_profile_security_test.go");
 assertContains(
   "backend/bff/src/config/index.js",
   "BFF requires BFF_CORS_ORIGINS or explicit ADMIN_WEB_BASE_URL/SITE_WEB_BASE_URL in production-like environments",
