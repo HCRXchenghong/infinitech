@@ -3,22 +3,14 @@
  */
 
 const express = require("express");
-const multer = require("multer");
-const config = require("../config");
 const uploadController = require("../controllers/uploadController");
 const adminSettingsController = require("../controllers/adminSettingsController");
 const { requireAdminAuth } = require("../middleware/requireAdminAuth");
 const { requireRequestAuth } = require("../middleware/requireRequestAuth");
+const { createSharedUpload } = require("./sharedUpload");
 
 const router = express.Router();
-const upload = multer({
-  dest: "uploads/",
-  limits: {
-    fileSize: config.uploads.fileSizeBytes,
-    fieldSize: config.uploads.fieldSizeBytes,
-    files: config.uploads.files,
-  },
-});
+const upload = createSharedUpload();
 
 router.post(
   "/",

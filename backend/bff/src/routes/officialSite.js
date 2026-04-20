@@ -1,17 +1,9 @@
 const express = require("express");
-const multer = require("multer");
 const officialSiteController = require("../controllers/officialSiteController");
-const config = require("../config");
+const { createSharedUpload } = require("./sharedUpload");
 
 const router = express.Router();
-const upload = multer({
-  dest: "uploads/",
-  limits: {
-    fileSize: config.uploads.fileSizeBytes,
-    fieldSize: config.uploads.fieldSizeBytes,
-    files: config.uploads.files,
-  },
-});
+const upload = createSharedUpload();
 
 router.get("/news", officialSiteController.listPublicNews);
 router.get("/news/:id", officialSiteController.getPublicNewsDetail);

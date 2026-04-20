@@ -8,11 +8,9 @@ describe('rider route upload security', () => {
       'utf8'
     );
 
-    expect(source).toContain("const config = require('../config')");
     expect(source).toContain("const { requireRequestAuth } = require('../middleware/requireRequestAuth')");
-    expect(source).toContain('fileSize: config.uploads.fileSizeBytes');
-    expect(source).toContain('fieldSize: config.uploads.fieldSizeBytes');
-    expect(source).toContain('files: config.uploads.files');
+    expect(source).toContain("const { createSharedUpload } = require('./sharedUpload')");
+    expect(source).toContain('const upload = createSharedUpload()');
     expect(source).toContain("router.post('/:riderId/cert', requireRequestAuth, upload.single('image'), riderController.uploadCert)");
 
     expect(

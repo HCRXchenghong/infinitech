@@ -1,8 +1,6 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const multer = require('multer');
 
-const config = require('../config');
 const { requireAdminAuth } = require('../middleware/requireAdminAuth');
 const adminController = require('../controllers/adminController');
 const adminDataController = require('../controllers/adminDataController');
@@ -21,16 +19,10 @@ const {
   buildErrorEnvelopePayload,
   buildSuccessEnvelopePayload,
 } = require('../utils/apiEnvelope');
+const { createSharedUpload } = require('./sharedUpload');
 
 const router = express.Router();
-const upload = multer({
-  dest: 'uploads/',
-  limits: {
-    fileSize: config.uploads.fileSizeBytes,
-    fieldSize: config.uploads.fieldSizeBytes,
-    files: config.uploads.files,
-  },
-});
+const upload = createSharedUpload();
 
 function createRateLimitHandler(message, legacy = {}) {
   return function rateLimitHandler(req, res, _next, options = {}) {

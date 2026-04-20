@@ -8,10 +8,8 @@ describe('admin route order', () => {
       'utf8'
     );
 
-    expect(source).toContain("const config = require('../config');");
-    expect(source).toContain('fileSize: config.uploads.fileSizeBytes');
-    expect(source).toContain('fieldSize: config.uploads.fieldSizeBytes');
-    expect(source).toContain('files: config.uploads.files');
+    expect(source).toContain("const { createSharedUpload } = require('./sharedUpload');");
+    expect(source).toContain('const upload = createSharedUpload();');
   });
 
   it('registers static export routes before dynamic user and rider detail routes', () => {

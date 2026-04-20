@@ -1,17 +1,9 @@
 const express = require('express')
 const router = express.Router()
 const riderController = require('../controllers/riderController')
-const multer = require('multer')
-const config = require('../config')
 const { requireRequestAuth } = require('../middleware/requireRequestAuth')
-const upload = multer({
-  dest: 'uploads/',
-  limits: {
-    fileSize: config.uploads.fileSizeBytes,
-    fieldSize: config.uploads.fieldSizeBytes,
-    files: config.uploads.files,
-  },
-})
+const { createSharedUpload } = require('./sharedUpload')
+const upload = createSharedUpload()
 
 router.put('/:riderId/online-status', riderController.updateRiderStatus)
 router.post('/:riderId/heartbeat', riderController.heartbeatRiderStatus)

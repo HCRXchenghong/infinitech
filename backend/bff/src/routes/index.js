@@ -1,7 +1,5 @@
 const express = require("express");
-const multer = require("multer");
 
-const config = require("../config");
 const shopRoutes = require("./shop");
 const orderRoutes = require("./order");
 const userRoutes = require("./user");
@@ -46,16 +44,10 @@ const afterSalesController = require("../controllers/afterSalesController");
 const onboardingInviteController = require("../controllers/onboardingInviteController");
 const adminSettingsController = require("../controllers/adminSettingsController");
 const homeController = require("../controllers/homeController");
+const { createSharedUpload } = require("./sharedUpload");
 
 const router = express.Router();
-const upload = multer({
-  dest: "uploads/",
-  limits: {
-    fileSize: config.uploads.fileSizeBytes,
-    fieldSize: config.uploads.fieldSizeBytes,
-    files: config.uploads.files,
-  },
-});
+const upload = createSharedUpload();
 
 router.use("/shops", shopRoutes);
 router.use("/orders", orderRoutes);
