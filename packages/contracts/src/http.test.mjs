@@ -181,6 +181,22 @@ test("extractUploadAsset reads standardized asset payloads", () => {
       url: "https://cdn.example.com/file.png",
     },
   );
+
+  assert.deepEqual(
+    extractUploadAsset({
+      data: {
+        assetId: "asset_legacy",
+        imageUrl: "https://cdn.example.com/legacy.png",
+      },
+    }),
+    {
+      assetId: "asset_legacy",
+      imageUrl: "https://cdn.example.com/legacy.png",
+      asset_id: "asset_legacy",
+      filename: "",
+      url: "https://cdn.example.com/legacy.png",
+    },
+  );
 });
 
 test("resolveUploadAssetUrl prefers preview urls for private or protected assets", () => {
@@ -202,6 +218,20 @@ test("resolveUploadAssetUrl prefers preview urls for private or protected assets
       },
     }),
     "https://cdn.example.com/uploads/profile_image/avatar.png",
+  );
+
+  assert.equal(
+    resolveUploadAssetUrl({
+      data: {
+        image_url: "https://cdn.example.com/legacy-image.png",
+      },
+    }),
+    "https://cdn.example.com/legacy-image.png",
+  );
+
+  assert.equal(
+    resolveUploadAssetUrl("https://cdn.example.com/direct-string.png"),
+    "https://cdn.example.com/direct-string.png",
   );
 
   assert.equal(isProtectedUploadUrl("/uploads/medical_document/rx.png"), true);

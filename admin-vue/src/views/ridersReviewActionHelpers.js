@@ -1,6 +1,6 @@
 import { getRiderRankName, loadRiderRankSettings } from '@/utils/platform-settings';
 import { appendAdminUploadDomain, extractRiderReviewPage } from '@infinitech/admin-core';
-import { extractErrorMessage, extractUploadAsset, UPLOAD_DOMAINS } from '@infinitech/contracts';
+import { extractErrorMessage, resolveUploadAssetUrl, UPLOAD_DOMAINS } from '@infinitech/contracts';
 
 export function useRiderReviewActionHelpers(ctx) {
   const {
@@ -120,8 +120,7 @@ export function useRiderReviewActionHelpers(ctx) {
       const { data } = await request.post('/api/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      const asset = extractUploadAsset(data);
-      const nextUrl = asset?.url || '';
+      const nextUrl = String(resolveUploadAssetUrl(data) || '').trim();
       if (!nextUrl) {
         throw new Error('上传返回地址为空');
       }

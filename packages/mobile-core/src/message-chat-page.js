@@ -1,4 +1,5 @@
 import { UPLOAD_DOMAINS } from "../../contracts/src/upload.js";
+import { resolveUploadAssetUrl } from "../../contracts/src/http.js";
 import {
   clearCachedSocketToken as clearCachedSocketTokenCache,
   resolveSocketToken,
@@ -82,12 +83,6 @@ const formatAudioDuration = (value) => {
   }
   return `${totalSeconds}"`;
 };
-
-function resolveUploadedAssetUrl(payload) {
-  return String(
-    (payload && (payload.asset_url || payload.assetUrl || payload.url)) || "",
-  ).trim();
-}
 
 function normalizeLocationContent(content, pickFirstDefined) {
   const parsed = safeParseJson(content);
@@ -1051,7 +1046,7 @@ export function createMessageChatPage({
         })
           .then((data) => {
             uni.hideLoading();
-            const imageUrl = resolveUploadedAssetUrl(data);
+            const imageUrl = resolveUploadAssetUrl(data);
             if (!imageUrl) {
               uni.showToast({ title: "图片发送失败", icon: "none" });
               return;

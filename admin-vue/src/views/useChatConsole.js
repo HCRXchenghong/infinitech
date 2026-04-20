@@ -1,6 +1,6 @@
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { extractErrorMessage, extractUploadAsset, UPLOAD_DOMAINS } from '@infinitech/contracts';
+import { extractErrorMessage, resolveUploadAssetUrl, UPLOAD_DOMAINS } from '@infinitech/contracts';
 import {
   appendAdminUploadDomain,
   createIncomingDisplayMessage,
@@ -232,8 +232,7 @@ export function useChatConsole(options = {}) {
           'Content-Type': 'multipart/form-data'
         }
       });
-      const asset = extractUploadAsset(data);
-      const imageUrl = String(asset?.url || '').trim();
+      const imageUrl = String(resolveUploadAssetUrl(data) || '').trim();
       if (!imageUrl) throw new Error('image_upload_failed');
 
       messages.value.push(createOutgoingTempMessage({

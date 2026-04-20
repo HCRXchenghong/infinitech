@@ -6,6 +6,7 @@ import {
   normalizeOrder as normalizeOrderPayload,
   resolveMessageTimestamp as resolveIncomingMessageTimestamp,
 } from "./customer-service-chat-utils.js";
+import { resolveUploadAssetUrl } from "../../contracts/src/http.js";
 import { UPLOAD_DOMAINS } from "../../contracts/src/upload.js";
 import {
   clearCachedSocketToken as clearCachedSocketTokenCache,
@@ -14,12 +15,6 @@ import {
 
 const SOCKET_TOKEN_KEY = "socket_token";
 const SOCKET_TOKEN_ACCOUNT_KEY = "socket_token_account_key";
-
-function resolveUploadedAssetUrl(payload) {
-  return String(
-    (payload && (payload.asset_url || payload.assetUrl || payload.url)) || "",
-  ).trim();
-}
 
 export function createCustomerServicePage({
   createSocket,
@@ -490,7 +485,7 @@ export function createCustomerServicePage({
             })
               .then((data) => {
                 uni.hideLoading();
-                const imageUrl = resolveUploadedAssetUrl(data);
+                const imageUrl = resolveUploadAssetUrl(data);
                 if (!imageUrl) {
                   uni.showToast({ title: "上传失败", icon: "none" });
                   return;

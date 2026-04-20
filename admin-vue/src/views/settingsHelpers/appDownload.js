@@ -1,5 +1,5 @@
 import { reactive, ref } from 'vue';
-import { extractEnvelopeData, extractErrorMessage, extractUploadAsset, UPLOAD_DOMAINS } from '@infinitech/contracts';
+import { extractEnvelopeData, extractErrorMessage, resolveUploadAssetUrl, UPLOAD_DOMAINS } from '@infinitech/contracts';
 import {
   appendAdminUploadDomain,
   buildAppDownloadConfigPayload,
@@ -115,8 +115,7 @@ export function useAppDownloadSettings({ request, ElMessage } = {}) {
       const { data } = await request.post('/api/upload-package', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      const asset = extractUploadAsset(data);
-      const nextUrl = String(asset?.url || '').trim();
+      const nextUrl = String(resolveUploadAssetUrl(data) || '').trim();
       if (!nextUrl) {
         throw new Error('上传返回地址为空');
       }
@@ -149,8 +148,7 @@ export function useAppDownloadSettings({ request, ElMessage } = {}) {
       const { data } = await request.post('/api/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      const asset = extractUploadAsset(data);
-      const nextUrl = String(asset?.url || '').trim();
+      const nextUrl = String(resolveUploadAssetUrl(data) || '').trim();
       if (!nextUrl) {
         throw new Error('上传返回地址为空');
       }

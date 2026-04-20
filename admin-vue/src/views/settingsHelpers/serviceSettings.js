@@ -1,5 +1,5 @@
 import { reactive, ref } from 'vue';
-import { extractEnvelopeData, extractErrorMessage, extractUploadAsset, UPLOAD_DOMAINS } from '@infinitech/contracts';
+import { extractEnvelopeData, extractErrorMessage, resolveUploadAssetUrl, UPLOAD_DOMAINS } from '@infinitech/contracts';
 import {
   appendAdminUploadDomain,
   appendRiderInsuranceClaimStep as buildNextRiderInsuranceClaimSteps,
@@ -212,8 +212,7 @@ export function useServiceSettings({ request, ElMessage, model = null, savingRef
       });
       options?.onSuccess?.(data);
 
-      const asset = extractUploadAsset(data);
-      const nextUrl = String(asset?.url || '').trim();
+      const nextUrl = String(resolveUploadAssetUrl(data) || '').trim();
       if (!nextUrl) {
         throw new Error('上传成功但未返回文件地址');
       }

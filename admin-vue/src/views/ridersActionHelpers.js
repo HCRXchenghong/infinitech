@@ -6,7 +6,7 @@ import {
   createOnboardingInviteApi,
   getInviteRemainingUses as resolveInviteRemainingUses,
 } from '@infinitech/client-sdk';
-import { extractEnvelopeData, extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
+import { extractEnvelopeData, extractErrorMessage, extractUploadAsset, resolveUploadAssetUrl } from '@infinitech/contracts';
 import { loadAuthorizedBlobUrl, revokeBlobUrl } from '@/utils/privateAsset';
 import { downloadCredentialReceipt } from '@/utils/credentialReceipt';
 
@@ -357,7 +357,7 @@ export function useRiderActionHelpers(ctx) {
       });
       const asset = extractUploadAsset(data);
       const nextRef = String(asset?.asset_id || data?.assetRef || data?.imageUrl || '').trim();
-      const previewSource = String(asset?.asset_url || data?.previewUrl || '').trim();
+      const previewSource = String(resolveUploadAssetUrl(data) || '').trim();
       if (!nextRef || !previewSource) {
         throw new Error('上传返回的证件资源信息不完整');
       }

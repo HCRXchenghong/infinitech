@@ -1,6 +1,7 @@
 import { computed, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { createShop, fetchShopDetail, updateShop, uploadImage } from '@/shared-ui/api'
+import { resolveUploadAssetUrl } from '../../packages/contracts/src/http.js'
 import { UPLOAD_DOMAINS } from '../../packages/contracts/src/upload.js'
 import {
   clearMerchantContext,
@@ -22,7 +23,7 @@ function toText(value: any) {
 }
 
 function resolveUploadedImageUrl(payload: any) {
-  return toText(payload?.asset_url || payload?.assetUrl || payload?.url)
+  return toText(resolveUploadAssetUrl(payload))
 }
 
 function parseHours(text: any) {

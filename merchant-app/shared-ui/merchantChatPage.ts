@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
+import { resolveUploadAssetUrl } from '../../packages/contracts/src/http.js'
 import { UPLOAD_DOMAINS } from '../../packages/contracts/src/upload.js'
 import {
   clearCachedSocketToken as clearCachedSocketTokenCache,
@@ -71,10 +72,6 @@ function normalizeRole(raw: unknown): ChatRole {
   if (role === 'rider') return 'rider'
   if (role === 'admin' || role === 'support' || role === 'cs') return 'admin'
   return 'user'
-}
-
-function normalizeUploadResult(payload: any) {
-  return String(payload?.asset_url || payload?.assetUrl || payload?.url || '').trim()
 }
 
 export function useMerchantChatPage() {
@@ -450,7 +447,7 @@ export function useMerchantChatPage() {
         })
           .then((payload: any) => {
             uni.hideLoading()
-            const imageUrl = normalizeUploadResult(payload)
+            const imageUrl = String(resolveUploadAssetUrl(payload) || '').trim()
             if (!imageUrl) {
               uni.showToast({ title: '图片发送失败', icon: 'none' })
               return

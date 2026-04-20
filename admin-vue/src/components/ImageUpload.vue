@@ -35,7 +35,7 @@ import {
   buildAdminUploadData,
   buildAdminUploadHeaders,
 } from "@infinitech/admin-core/upload";
-import { extractUploadAsset, UPLOAD_DOMAINS } from "@infinitech/contracts";
+import { resolveUploadAssetUrl, UPLOAD_DOMAINS } from "@infinitech/contracts";
 import request from "@/utils/request";
 import { getToken } from "@/utils/runtime";
 
@@ -103,8 +103,7 @@ const beforeUpload = (file) => {
 };
 
 const handleSuccess = (response) => {
-  const asset = extractUploadAsset(response);
-  const nextUrl = String(asset?.asset_url || asset?.url || response?.imageUrl || "").trim();
+  const nextUrl = String(resolveUploadAssetUrl(response) || "").trim();
   if (nextUrl) {
     imageUrl.value = nextUrl;
     emit("update:modelValue", nextUrl);

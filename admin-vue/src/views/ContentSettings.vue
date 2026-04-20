@@ -14,7 +14,7 @@ import {
   getPushDeliveryActionTagType,
   getPushDeliveryStatusTagType,
 } from '@infinitech/admin-core';
-import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts';
+import { extractEnvelopeData, extractErrorMessage, resolveUploadAssetUrl } from '@infinitech/contracts';
 import request from '@/utils/request';
 import PageStateAlert from '@/components/PageStateAlert.vue';
 import {
@@ -233,8 +233,7 @@ async function handleUpload(options) {
   
   try {
     const { data } = await request.post('/api/upload-image', formData);
-    const payload = extractEnvelopeData(data) || data || {};
-    const imageUrl = String(payload.imageUrl || payload.image_url || payload.url || '').trim();
+    const imageUrl = String(resolveUploadAssetUrl(data) || '').trim();
 
     if (imageUrl) {
       newCarousel.image_url = imageUrl;
@@ -404,8 +403,7 @@ async function handlePushMessageUpload(options) {
         'Content-Type': 'multipart/form-data'
       }
     });
-    const payload = extractEnvelopeData(data) || data || {};
-    const imageUrl = String(payload.imageUrl || payload.image_url || payload.url || '').trim();
+    const imageUrl = String(resolveUploadAssetUrl(data) || '').trim();
 
     if (imageUrl) {
       pushMessageForm.image_url = imageUrl;

@@ -2,6 +2,7 @@ import {
   extractEnvelopeData,
   extractErrorMessage as extractContractErrorMessage,
   extractUploadAsset,
+  resolveUploadAssetUrl,
 } from "@infinitech/contracts";
 import {
   extractOfficialSiteRecordCollection,
@@ -84,7 +85,7 @@ export async function uploadOfficialSiteFile(file) {
   }
   return {
     ...asset,
-    url: resolveOfficialSiteMediaUrl(asset.url),
+    url: resolveOfficialSiteMediaUrl(resolveUploadAssetUrl(asset)),
   };
 }
 

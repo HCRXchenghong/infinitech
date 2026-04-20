@@ -256,7 +256,7 @@ import {
   Plus,
   Top
 } from '@element-plus/icons-vue';
-import { extractEnvelopeData, extractErrorMessage, extractUploadAsset } from '@infinitech/contracts';
+import { extractEnvelopeData, extractErrorMessage, resolveUploadAssetUrl } from '@infinitech/contracts';
 import request from '@/utils/request';
 import {
   blockTypeLabel,
@@ -364,8 +364,7 @@ async function uploadCover(option) {
     const { data } = await request.post('/api/upload/image', fd, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
-    const asset = extractUploadAsset(data);
-    const imageUrl = asset?.url || '';
+    const imageUrl = String(resolveUploadAssetUrl(data) || '').trim();
     if (!imageUrl) throw new Error('no image url');
     form.value.cover = imageUrl;
     ElMessage.success('封面上传成功');
@@ -389,8 +388,7 @@ async function uploadBlockImage(option, blockIndex) {
     const { data } = await request.post('/api/upload/image', fd, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
-    const asset = extractUploadAsset(data);
-    const imageUrl = asset?.url || '';
+    const imageUrl = String(resolveUploadAssetUrl(data) || '').trim();
     if (!imageUrl) throw new Error('no image url');
     form.value.blocks[blockIndex].url = imageUrl;
     ElMessage.success('内容图上传成功');

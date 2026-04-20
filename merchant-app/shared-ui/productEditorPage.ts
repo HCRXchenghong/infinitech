@@ -1,5 +1,6 @@
 import { computed, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { resolveUploadAssetUrl } from '../../packages/contracts/src/http.js'
 import { UPLOAD_DOMAINS } from '../../packages/contracts/src/upload.js'
 import {
   createProduct,
@@ -28,10 +29,6 @@ function createInitialForm() {
 
 function resetProductForm(target: Record<string, any>) {
   Object.assign(target, createInitialForm())
-}
-
-function resolveUploadedImageUrl(payload: any): string {
-  return String(payload?.asset_url || payload?.assetUrl || payload?.url || '').trim()
 }
 
 function getErrorMessage(error: any, fallback: string): string {
@@ -91,7 +88,7 @@ export function useProductEditorPage(mode: ProductEditorMode) {
           const uploaded: any = await uploadImage(filePath, {
             uploadDomain: UPLOAD_DOMAINS.SHOP_MEDIA,
           })
-          const nextImage = resolveUploadedImageUrl(uploaded)
+          const nextImage = String(resolveUploadAssetUrl(uploaded) || '').trim()
           if (!nextImage) {
             throw new Error('上传返回缺少图片地址')
           }
@@ -152,7 +149,7 @@ export function useProductEditorPage(mode: ProductEditorMode) {
     form.price = String(detail?.price || '')
     form.stock = String(detail?.stock ?? 999)
     form.description = String(detail?.description || '')
-    form.image = String(detail?.image || detail?.asset_url || detail?.assetUrl || '')
+    form.image = String(detail?.image || resolveUploadAssetUrl(detail) || '').trim()
     if (detail?.isActive !== undefined || detail?.is_active !== undefined) {
       form.isActive = !!(detail?.isActive ?? detail?.is_active)
     }

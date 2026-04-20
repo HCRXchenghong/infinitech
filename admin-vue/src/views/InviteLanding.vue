@@ -238,6 +238,7 @@ import {
 } from "@infinitech/domain-core";
 import {
   extractErrorMessage,
+  resolveUploadAssetUrl,
 } from "@infinitech/contracts/http";
 import request from "@/utils/request";
 import OldUserInviteFlow from "@/components/OldUserInviteFlow.vue";
@@ -374,7 +375,7 @@ async function handleImageChange(field, uploadFile) {
         },
       },
     );
-    const url = asset?.url || "";
+    const url = resolveUploadAssetUrl(asset);
     if (!url) {
       throw new Error("上传返回地址为空");
     }

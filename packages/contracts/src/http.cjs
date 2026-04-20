@@ -4,6 +4,30 @@ function trimText(value) {
   return String(value == null ? "" : value).trim();
 }
 
+function resolveAssetPreviewUrl(source) {
+  if (!source || typeof source !== "object") {
+    return "";
+  }
+
+  return trimText(source.previewUrl || source.preview_url);
+}
+
+function resolveAssetCanonicalUrl(source) {
+  if (!source || typeof source !== "object") {
+    return "";
+  }
+
+  return trimText(source.asset_url || source.assetUrl);
+}
+
+function resolveAssetDirectUrl(source) {
+  if (!source || typeof source !== "object") {
+    return "";
+  }
+
+  return trimText(source.url || source.imageUrl || source.image_url);
+}
+
 const PROTECTED_UPLOAD_PATH_PREFIXES = [
   "/uploads/certs/",
   "/uploads/merchant_document/",
@@ -253,7 +277,10 @@ function extractUploadAsset(payload) {
     return null;
   }
   const assetId = String(data.asset_id || data.assetId || data.assetRef || "").trim();
-  const url = String(data.asset_url || data.assetUrl || data.previewUrl || data.url || "").trim();
+  const url =
+    resolveAssetCanonicalUrl(data) ||
+    resolveAssetPreviewUrl(data) ||
+    resolveAssetDirectUrl(data);
   if (!url && !assetId) {
     return null;
   }
@@ -266,15 +293,19 @@ function extractUploadAsset(payload) {
 }
 
 function resolveUploadAssetUrl(payload) {
+  if (typeof payload === "string") {
+    return trimText(payload);
+  }
+
   const asset = extractUploadAsset(payload) || payload;
   if (!asset || typeof asset !== "object") {
     return "";
   }
 
   const accessPolicy = trimText(asset.access_policy || asset.accessPolicy).toLowerCase();
-  const previewUrl = trimText(asset.previewUrl || asset.preview_url);
-  const assetUrl = trimText(asset.asset_url || asset.assetUrl);
-  const directUrl = trimText(asset.url);
+  const previewUrl = resolveAssetPreviewUrl(asset);
+  const assetUrl = resolveAssetCanonicalUrl(asset);
+  const directUrl = resolveAssetDirectUrl(asset);
 
   if (accessPolicy === "private") {
     return previewUrl || assetUrl || directUrl;
