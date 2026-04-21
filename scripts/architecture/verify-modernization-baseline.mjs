@@ -1495,11 +1495,11 @@ assertContains(
   "@infinitech/admin-core",
 );
 assertContains(
-  "admin-vue/src/views/OperationsCenter.vue",
+  "admin-vue/src/views/operationsCenterPageHelpers.js",
   "extractOperationsCooperationPage",
 );
 assertContains(
-  "admin-vue/src/views/OperationsCenter.vue",
+  "admin-vue/src/views/operationsCenterPageHelpers.js",
   "createOperationsGoodFormState",
 );
 assertContains("admin-vue/src/views/Dashboard.vue", "DashboardOverviewSection");
@@ -4701,9 +4701,25 @@ assertContains(
   "extractAdminNotificationPage(data).items",
 );
 assertContains(
-  "admin-vue/src/views/OperationsCenter.vue",
+  "admin-vue/src/views/operationsCenterPageHelpers.js",
   "extractOperationsCooperationPage(data).items",
 );
+assertExists("admin-vue/src/views/operationsCenterPageHelpers.js");
+assertExists("admin-vue/src/views/OperationsCenter.css");
+assertExists("admin-vue/src/views/operationsCenterSections/OperationsCenterHeader.vue");
+assertExists("admin-vue/src/views/operationsCenterSections/OperationsCenterCooperationsSection.vue");
+assertExists("admin-vue/src/views/operationsCenterSections/OperationsCenterInviteSection.vue");
+assertExists("admin-vue/src/views/operationsCenterSections/OperationsCenterRedemptionsSection.vue");
+assertExists("admin-vue/src/views/operationsCenterSections/OperationsCenterGoodsSection.vue");
+assertExists("admin-vue/src/views/operationsCenterSections/OperationsCenterGoodDialog.vue");
+assertContains("admin-vue/src/views/OperationsCenter.vue", "useOperationsCenterPage({");
+assertContains("admin-vue/src/views/OperationsCenter.vue", "OperationsCenterHeader");
+assertContains("admin-vue/src/views/OperationsCenter.vue", "OperationsCenterCooperationsSection");
+assertContains("admin-vue/src/views/OperationsCenter.vue", "OperationsCenterInviteSection");
+assertContains("admin-vue/src/views/OperationsCenter.vue", "OperationsCenterRedemptionsSection");
+assertContains("admin-vue/src/views/OperationsCenter.vue", "OperationsCenterGoodsSection");
+assertContains("admin-vue/src/views/OperationsCenter.vue", "OperationsCenterGoodDialog");
+assertContains("admin-vue/src/views/OperationsCenter.vue", "OperationsCenter.css");
 assertContains(
   "admin-vue/src/views/contentSettingsPageHelpers.js",
   "extractAdminCarouselPage(data).items",
@@ -5177,6 +5193,18 @@ assertNotContains("admin-vue/src/views/ShopMenuManage.vue", "const categories = 
 assertNotContains(
   "admin-vue/src/views/OperationsCenter.vue",
   "function extractErrorMessage(error, fallback)",
+);
+assertNotContains(
+  "admin-vue/src/views/OperationsCenter.vue",
+  "async function loadCooperations()",
+);
+assertNotContains(
+  "admin-vue/src/views/OperationsCenter.vue",
+  "const cooperations = ref([])",
+);
+assertNotContains(
+  "admin-vue/src/views/OperationsCenter.vue",
+  "<el-dialog v-model=\"goodDialogVisible\"",
 );
 assertNotContains(
   "admin-vue/src/views/ApiPermissions.vue",

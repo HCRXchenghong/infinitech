@@ -1,0 +1,54 @@
+.operations-center-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.operations-center-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.operations-center-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.operations-center-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.operations-center-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.operations-center-tabs :deep(.el-tabs__content) {
+  padding-top: 8px;
+}
+
+.operations-center-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.operations-center-subtitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.operations-center-goods-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
