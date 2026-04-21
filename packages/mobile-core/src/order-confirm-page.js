@@ -2,6 +2,7 @@ import {
   extractConsumerAvailableOrderCoupons,
   resolveConsumerOrderCouponUserId,
 } from "./order-coupon.js";
+import { readConsumerStoredProfile } from "./consumer-profile-storage.js";
 import { getMobileRuntimePlatform } from "./mobile-client-context.js";
 import {
   fallbackOrderPayMethods,
@@ -328,7 +329,7 @@ export function createOrderConfirmPage(options = {}) {
       async syncDeliveryAddress() {
         const cachedAddresses = normalizeAddresses(uni.getStorageSync("addresses"));
         let addresses = cachedAddresses;
-        const profile = uni.getStorageSync("userProfile") || {};
+        const profile = readConsumerStoredProfile({ uniApp: uni });
         const userId = String(
           profile.id || profile.userId || profile.phone || "",
         ).trim();
@@ -439,7 +440,7 @@ export function createOrderConfirmPage(options = {}) {
       },
       async loadAvailableCoupons(shopId) {
         try {
-          const profile = uni.getStorageSync("userProfile") || {};
+          const profile = readConsumerStoredProfile({ uniApp: uni });
           const userId = resolveConsumerOrderCouponUserId(profile);
           if (!userId) return;
 
@@ -506,7 +507,7 @@ export function createOrderConfirmPage(options = {}) {
           return;
         }
 
-        const profile = uni.getStorageSync("userProfile") || {};
+        const profile = readConsumerStoredProfile({ uniApp: uni });
         const userId = resolveConsumerOrderCouponUserId(profile);
         const token = uni.getStorageSync("token") || "";
         if (!this.selectedPayMethod) {

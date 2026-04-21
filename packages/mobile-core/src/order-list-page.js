@@ -1,4 +1,5 @@
 import { extractEnvelopeData } from "../../contracts/src/http.js";
+import { readConsumerStoredProfile } from "./consumer-profile-storage.js";
 import {
   buildOrderChatContext,
   buildOrderPhoneAuditPayload,
@@ -120,7 +121,7 @@ export function createOrderListPage(options = {}) {
         this.showRtcContact = resolveRTCContactAvailable();
       },
       loadOrders() {
-        const profile = uni.getStorageSync("userProfile") || {};
+        const profile = readConsumerStoredProfile({ uniApp: uni });
         let userId = profile.phone || profile.id || profile.userId;
 
         if (userId) {

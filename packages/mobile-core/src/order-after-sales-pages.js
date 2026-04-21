@@ -17,6 +17,7 @@ import {
   pickOrderReviewErrorMessage,
   yuanToFen,
 } from "./order-after-sales.js";
+import { readConsumerStoredProfile } from "./consumer-profile-storage.js";
 
 export function createOrderRefundPage(options = {}) {
   const {
@@ -45,7 +46,7 @@ export function createOrderRefundPage(options = {}) {
       };
     },
     onLoad(query = {}) {
-      const profile = uni.getStorageSync("userProfile") || {};
+      const profile = readConsumerStoredProfile({ uniApp: uni });
       if (profile.phone) {
         this.contactPhone = String(profile.phone);
       }
@@ -200,7 +201,7 @@ export function createOrderRefundPage(options = {}) {
           return;
         }
 
-        const profile = uni.getStorageSync("userProfile") || {};
+        const profile = readConsumerStoredProfile({ uniApp: uni });
         const userId = String(
           profile.phone || profile.id || profile.userId || "",
         ).trim();
@@ -354,7 +355,7 @@ export function createOrderReviewPage(options = {}) {
         }
 
         const orderId = String(this.order.id || "").trim();
-        const profile = uni.getStorageSync("userProfile") || {};
+        const profile = readConsumerStoredProfile({ uniApp: uni });
         const shopPayload = buildShopReviewPayload({
           order: this.order,
           shopRating: this.shopRating,

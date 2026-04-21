@@ -1,4 +1,5 @@
 import { extractEnvelopeData } from "../../contracts/src/http.js";
+import { readConsumerStoredProfile } from "./consumer-profile-storage.js";
 import { getMobileRuntimePlatform } from "./mobile-client-context.js";
 import {
   buildOrderChatContext,
@@ -419,7 +420,7 @@ export function createOrderDetailPage(options = {}) {
         return status === "completed" || status === "cancelled";
       },
       getAuth() {
-        const profile = uni.getStorageSync("userProfile") || {};
+        const profile = readConsumerStoredProfile({ uniApp: uni });
         const userId = String(
           profile.phone || profile.id || profile.userId || "",
         ).trim();

@@ -8,6 +8,7 @@ import {
   formatConsumerOrderCouponValidity,
   resolveConsumerOrderCouponUserId,
 } from "./order-coupon.js";
+import { readConsumerStoredProfile } from "./consumer-profile-storage.js";
 
 export function createOrderCouponPage(options = {}) {
   const { request = async () => ({}) } = options;
@@ -30,7 +31,7 @@ export function createOrderCouponPage(options = {}) {
     methods: {
       async loadCoupons() {
         try {
-          const profile = uni.getStorageSync("userProfile") || {};
+          const profile = readConsumerStoredProfile({ uniApp: uni });
           const userId = resolveConsumerOrderCouponUserId(profile);
           if (!userId) {
             uni.showToast({ title: "请先登录", icon: "none" });
