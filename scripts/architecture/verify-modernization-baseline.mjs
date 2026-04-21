@@ -666,6 +666,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "backend/go/internal/handler/file_upload_handler_test.go",
   "packages/admin-core/src/DesktopShellApp.vue",
   "admin-vue/src/views/dataManagementRuntimeHelpers.js",
+  "admin-vue/src/views/paymentCenterHelpers/runtime.js",
+  "admin-vue/src/views/paymentCenterHelpers/callbacks.js",
+  "admin-vue/src/views/paymentCenterHelpers/settlement.js",
+  "admin-vue/src/views/paymentCenterHelpers/withdrawals.js",
   "admin-win/src/main.ts",
   "admin-win/vite.config.mts",
   "admin-mac/src/main.ts",
@@ -1146,19 +1150,43 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/paymentCenterHelpers.js",
+  "usePaymentCenterCallbacks",
+);
+assertContains(
+  "admin-vue/src/views/paymentCenterHelpers.js",
+  "usePaymentCenterWithdrawals",
+);
+assertContains(
+  "admin-vue/src/views/paymentCenterHelpers.js",
+  "usePaymentCenterSettlement",
+);
+assertContains(
+  "admin-vue/src/views/paymentCenterHelpers/runtime.js",
   "createPaymentCenterConfigDraft",
 );
 assertContains(
-  "admin-vue/src/views/paymentCenterHelpers.js",
+  "admin-vue/src/views/paymentCenterHelpers/callbacks.js",
   "extractPaymentCallbackDetail",
 );
 assertContains(
-  "admin-vue/src/views/paymentCenterHelpers.js",
+  "admin-vue/src/views/paymentCenterHelpers/callbacks.js",
   "buildPaymentCallbackQuery",
 );
 assertContains(
-  "admin-vue/src/views/paymentCenterHelpers.js",
+  "admin-vue/src/views/paymentCenterHelpers/callbacks.js",
   "createPaymentCallbackFilterState",
+);
+assertContains(
+  "admin-vue/src/views/paymentCenterHelpers/withdrawals.js",
+  "buildWithdrawReviewPayload",
+);
+assertContains(
+  "admin-vue/src/views/paymentCenterHelpers/withdrawals.js",
+  "buildBankPayoutCompletePayload",
+);
+assertContains(
+  "admin-vue/src/views/paymentCenterHelpers/settlement.js",
+  "/api/settlement/rule-preview",
 );
 assertContains(
   "admin-vue/src/views/BlankPage.vue",
@@ -4159,16 +4187,12 @@ assertContains(
   "extractRiderReviewPage",
 );
 assertContains(
-  "admin-vue/src/views/paymentCenterHelpers.js",
+  "admin-vue/src/views/paymentCenterHelpers/callbacks.js",
   "extractPaymentCallbackPage",
 );
 assertContains(
-  "admin-vue/src/views/paymentCenterHelpers.js",
-  "buildWithdrawReviewPayload",
-);
-assertContains(
-  "admin-vue/src/views/paymentCenterHelpers.js",
-  "buildBankPayoutCompletePayload",
+  "admin-vue/src/views/paymentCenterHelpers/runtime.js",
+  "addPaymentChannelRow",
 );
 assertContains(
   "admin-vue/src/views/PaymentCenter.vue",
@@ -6517,7 +6541,7 @@ assertContains(
   "paymentCallbackStatusTag",
 );
 assertContains(
-  "admin-vue/src/views/paymentCenterHelpers.js",
+  "admin-vue/src/views/paymentCenterHelpers/withdrawals.js",
   "getWithdrawReviewActionTitle",
 );
 assertContains(
