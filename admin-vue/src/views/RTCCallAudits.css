@@ -1,0 +1,124 @@
+.rtc-call-audits-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rtc-call-audits-page .panel {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.rtc-call-audits-page .panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.rtc-call-audits-page .panel-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.rtc-call-audits-page .panel-subtitle {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #6b7280;
+}
+
+.rtc-call-audits-page .panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.rtc-call-audits-page .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.rtc-call-audits-page .summary-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.rtc-call-audits-page .summary-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.rtc-call-audits-page .summary-value {
+  margin-top: 8px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.rtc-call-audits-page .summary-value.success {
+  color: #059669;
+}
+
+.rtc-call-audits-page .summary-value.primary {
+  color: #2563eb;
+}
+
+.rtc-call-audits-page .summary-value.danger {
+  color: #dc2626;
+}
+
+.rtc-call-audits-page .summary-value.warning {
+  color: #d97706;
+}
+
+.rtc-call-audits-page .filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.rtc-call-audits-page .muted-text {
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.rtc-call-audits-page .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.rtc-call-audits-page .metadata-title {
+  margin: 18px 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.rtc-call-audits-page .dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.rtc-call-audits-page .pager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+@media (max-width: 1280px) {
+  .rtc-call-audits-page .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -4329,6 +4329,15 @@ assertContains(
   "admin-vue/src/views/RTCCallAudits.vue",
   "useRTCCallAuditsPage({",
 );
+assertExists("admin-vue/src/views/RTCCallAudits.css");
+assertExists("admin-vue/src/views/rtcCallAuditsSections/RTCCallAuditsHero.vue");
+assertExists("admin-vue/src/views/rtcCallAuditsSections/RTCCallAuditsFilters.vue");
+assertExists("admin-vue/src/views/rtcCallAuditsSections/RTCCallAuditsTable.vue");
+assertExists("admin-vue/src/views/rtcCallAuditsSections/RTCCallAuditDetailDialog.vue");
+assertContains("admin-vue/src/views/RTCCallAudits.vue", "RTCCallAuditsHero");
+assertContains("admin-vue/src/views/RTCCallAudits.vue", "RTCCallAuditsTable");
+assertContains("admin-vue/src/views/RTCCallAudits.vue", "RTCCallAuditDetailDialog");
+assertContains("admin-vue/src/views/RTCCallAudits.vue", "RTCCallAudits.css");
 assertContains(
   "admin-vue/src/views/rtcCallAuditsHelpers.js",
   "extractRTCCallAuditPage(data)",
@@ -4504,6 +4513,10 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/RTCCallAudits.vue",
   "function statusLabel(value)",
+);
+assertNotContains(
+  "admin-vue/src/views/RTCCallAudits.vue",
+  "<div class=\"summary-grid\">",
 );
 assertNotContains(
   "admin-vue/src/views/AdminRTCConsole.vue",
