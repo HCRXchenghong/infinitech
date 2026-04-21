@@ -56,6 +56,37 @@ func respondRiderMirroredSuccess(c *gin.Context, message string, data interface{
 	respondMirroredSuccessEnvelope(c, message, data)
 }
 
+func (h *RiderHandler) buildPhoneChangeSuccessPayload(rider *repository.Rider, riderID uint, nextPhone string) gin.H {
+	payload := gin.H{
+		"success": true,
+		"message": "手机号修改成功",
+		"updated": true,
+		"phone":   strings.TrimSpace(nextPhone),
+		"user": gin.H{
+			"id":       rider.UID,
+			"phone":    strings.TrimSpace(nextPhone),
+			"name":     rider.Name,
+			"nickname": firstNonEmptyText(rider.Nickname, rider.Name),
+		},
+	}
+
+	if h.auth != nil {
+		token, expiresIn, err := h.auth.IssuePrincipalAccessToken("rider", nextPhone, int64(riderID))
+		if err == nil && strings.TrimSpace(token) != "" {
+			payload["token"] = token
+			if expiresIn > 0 {
+				payload["expiresIn"] = expiresIn
+			}
+		}
+	}
+
+	normalized, ok := buildAuthSessionPayload(payload).(gin.H)
+	if ok {
+		return normalized
+	}
+	return payload
+}
+
 func (h *RiderHandler) loadRiderByID(riderID uint, fields ...string) (*repository.Rider, error) {
 	query := h.db
 	if len(fields) > 0 {
@@ -507,23 +538,7 @@ func (h *RiderHandler) ChangePhone(c *gin.Context) {
 		return
 	}
 
-	response := gin.H{
-		"updated": true,
-		"phone":   req.NewPhone,
-		"user": gin.H{
-			"id":       rider.UID,
-			"phone":    req.NewPhone,
-			"name":     rider.Name,
-			"nickname": rider.Nickname,
-		},
-	}
-	if h.auth != nil {
-		if token, tokenErr := h.auth.IssueAccessToken(req.NewPhone, int64(riderID)); tokenErr == nil && strings.TrimSpace(token) != "" {
-			response["token"] = token
-		}
-	}
-
-	respondRiderMirroredSuccess(c, "手机号修改成功", response)
+	respondRiderMirroredSuccess(c, "手机号修改成功", h.buildPhoneChangeSuccessPayload(rider, riderID, req.NewPhone))
 }
 
 // ChangePassword 修改密码

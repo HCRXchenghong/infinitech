@@ -143,6 +143,195 @@ func cloneAuthMap(source map[string]interface{}) gin.H {
 	return clone
 }
 
+func normalizeAuthMap(source interface{}) gin.H {
+	switch typed := source.(type) {
+	case gin.H:
+		return cloneAuthMap(typed)
+	case map[string]interface{}:
+		return cloneAuthMap(typed)
+	default:
+		return nil
+	}
+}
+
+func authPayloadText(value interface{}) string {
+	switch typed := value.(type) {
+	case string:
+		return strings.TrimSpace(typed)
+	default:
+		return strings.TrimSpace(toText(typed))
+	}
+}
+
+func authPayloadInt64(value interface{}) int64 {
+	switch typed := value.(type) {
+	case int:
+		return int64(typed)
+	case int8:
+		return int64(typed)
+	case int16:
+		return int64(typed)
+	case int32:
+		return int64(typed)
+	case int64:
+		return typed
+	case uint:
+		return int64(typed)
+	case uint8:
+		return int64(typed)
+	case uint16:
+		return int64(typed)
+	case uint32:
+		return int64(typed)
+	case uint64:
+		return int64(typed)
+	case float32:
+		return int64(typed)
+	case float64:
+		return int64(typed)
+	case string:
+		parsed, _ := strconv.ParseInt(strings.TrimSpace(typed), 10, 64)
+		return parsed
+	default:
+		return 0
+	}
+}
+
+func authPayloadBool(value interface{}) (bool, bool) {
+	switch typed := value.(type) {
+	case bool:
+		return typed, true
+	case string:
+		normalized := strings.TrimSpace(strings.ToLower(typed))
+		switch normalized {
+		case "1", "true", "yes", "on":
+			return true, true
+		case "0", "false", "no", "off":
+			return false, true
+		}
+	case int:
+		return typed != 0, true
+	case int8:
+		return typed != 0, true
+	case int16:
+		return typed != 0, true
+	case int32:
+		return typed != 0, true
+	case int64:
+		return typed != 0, true
+	case uint:
+		return typed != 0, true
+	case uint8:
+		return typed != 0, true
+	case uint16:
+		return typed != 0, true
+	case uint32:
+		return typed != 0, true
+	case uint64:
+		return typed != 0, true
+	case float32:
+		return typed != 0, true
+	case float64:
+		return typed != 0, true
+	}
+	return false, false
+}
+
+func buildAuthSessionMapPayload(source map[string]interface{}) gin.H {
+	payload := cloneAuthMap(source)
+	if payload == nil {
+		return nil
+	}
+
+	sessionSource := normalizeAuthMap(source["session"])
+	if sessionSource == nil {
+		sessionSource = normalizeAuthMap(source["authSession"])
+	}
+	token := firstNonEmptyText(
+		authPayloadText(sessionSource["token"]),
+		authPayloadText(sessionSource["accessToken"]),
+		authPayloadText(sessionSource["access_token"]),
+		authPayloadText(source["token"]),
+		authPayloadText(source["accessToken"]),
+		authPayloadText(source["access_token"]),
+	)
+	refreshToken := firstNonEmptyText(
+		authPayloadText(sessionSource["refreshToken"]),
+		authPayloadText(sessionSource["refresh_token"]),
+		authPayloadText(source["refreshToken"]),
+		authPayloadText(source["refresh_token"]),
+	)
+	expiresIn := authPayloadInt64(sessionSource["expiresIn"])
+	if expiresIn <= 0 {
+		expiresIn = authPayloadInt64(sessionSource["expires_in"])
+	}
+	if expiresIn <= 0 {
+		expiresIn = authPayloadInt64(source["expiresIn"])
+	}
+	if expiresIn <= 0 {
+		expiresIn = authPayloadInt64(source["expires_in"])
+	}
+	if session := buildAuthSessionObject(token, refreshToken, expiresIn); session != nil {
+		payload["session"] = session
+		payload["token"] = session["token"]
+		if value, ok := session["refreshToken"]; ok {
+			payload["refreshToken"] = value
+		}
+		if value, ok := session["expiresIn"]; ok {
+			payload["expiresIn"] = value
+		}
+	}
+
+	if normalizedUser := normalizeAuthMap(source["user"]); normalizedUser != nil {
+		payload["user"] = normalizedUser
+	}
+
+	bindingSource := normalizeAuthMap(source["binding"])
+	if bindingSource == nil {
+		bindingSource = normalizeAuthMap(source["bind"])
+	}
+	bindToken := firstNonEmptyText(
+		authPayloadText(bindingSource["bindToken"]),
+		authPayloadText(bindingSource["bind_token"]),
+		authPayloadText(source["bindToken"]),
+		authPayloadText(source["bind_token"]),
+	)
+	nickname := firstNonEmptyText(
+		authPayloadText(bindingSource["nickname"]),
+		authPayloadText(source["nickname"]),
+	)
+	avatarURL := firstNonEmptyText(
+		authPayloadText(bindingSource["avatarUrl"]),
+		authPayloadText(bindingSource["avatar_url"]),
+		authPayloadText(source["avatarUrl"]),
+		authPayloadText(source["avatar_url"]),
+	)
+	if binding := buildAuthBindingObject(bindToken, nickname, avatarURL); binding != nil {
+		payload["binding"] = binding
+		if value, ok := binding["bindToken"]; ok {
+			payload["bindToken"] = value
+		}
+		if value, ok := binding["nickname"]; ok {
+			payload["nickname"] = value
+		}
+		if value, ok := binding["avatarUrl"]; ok {
+			payload["avatarUrl"] = value
+		}
+	}
+
+	if authenticated, ok := authPayloadBool(source["authenticated"]); ok {
+		payload["authenticated"] = authenticated
+	} else if authenticated, ok := authPayloadBool(source["isAuthenticated"]); ok {
+		payload["authenticated"] = authenticated
+	} else if strings.TrimSpace(token) != "" {
+		payload["authenticated"] = true
+	} else if strings.TrimSpace(bindToken) != "" {
+		payload["authenticated"] = false
+	}
+
+	return payload
+}
+
 func buildAuthSessionObject(token, refreshToken string, expiresIn int64) gin.H {
 	session := gin.H{}
 	if normalized := strings.TrimSpace(token); normalized != "" {
@@ -298,6 +487,10 @@ func buildAuthSessionPayload(data interface{}) interface{} {
 	case service.WechatSessionResult:
 		copy := typed
 		return buildWechatSessionPayload(&copy)
+	case gin.H:
+		return buildAuthSessionMapPayload(typed)
+	case map[string]interface{}:
+		return buildAuthSessionMapPayload(typed)
 	default:
 		return data
 	}

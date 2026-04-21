@@ -2221,7 +2221,7 @@ assertContains(
 );
 assertContains(
   "backend/go/internal/handler/user_handler.go",
-  'respondUserMirroredSuccess(c, firstNonEmptyText(extractMapText(result, "message"), "手机号修改成功"), result)',
+  'buildAuthSessionPayload(result)',
 );
 assertContains(
   "backend/go/internal/handler/featured_product_handler.go",
@@ -2473,7 +2473,7 @@ assertContains(
 );
 assertContains(
   "backend/go/internal/handler/rider_change_phone_handler.go",
-  'respondMirroredSuccessEnvelope(c, "手机号修改成功", response)',
+  'respondMirroredSuccessEnvelope(c, "手机号修改成功", h.buildPhoneChangeSuccessPayload(&rider, riderID, req.NewPhone))',
 );
 assertContains(
   "backend/go/internal/handler/medicine_handler.go",

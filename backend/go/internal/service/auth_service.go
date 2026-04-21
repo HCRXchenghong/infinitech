@@ -594,6 +594,19 @@ func (s *AuthService) IssueAccessToken(phone string, userId int64) (string, erro
 	return s.generateToken(phone, userId)
 }
 
+// IssuePrincipalAccessToken exposes principal-scoped access-token issuance for
+// non-user flows that still need a fresh business token after identity changes.
+func (s *AuthService) IssuePrincipalAccessToken(principalType, phone string, principalNumericID int64) (string, int64, error) {
+	token, err := s.generatePrincipalAccessToken(principalType, phone, principalNumericID)
+	if err != nil {
+		return "", 0, err
+	}
+	if s == nil || s.config == nil {
+		return token, 0, nil
+	}
+	return token, int64(s.config.JWT.AccessTokenExpiry.Seconds()), nil
+}
+
 // IssueTokenPair re-issues access and refresh tokens after identity changes.
 func (s *AuthService) IssueTokenPair(phone string, userId int64) (string, string, int64, error) {
 	accessToken, err := s.generateToken(phone, userId)

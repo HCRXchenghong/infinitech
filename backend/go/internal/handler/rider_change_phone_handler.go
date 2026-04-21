@@ -88,23 +88,5 @@ func (h *RiderHandler) SecureChangePhone(c *gin.Context) {
 		return
 	}
 
-	response := gin.H{
-		"success": true,
-		"message": "手机号修改成功",
-		"user": gin.H{
-			"id":       rider.UID,
-			"phone":    req.NewPhone,
-			"name":     rider.Name,
-			"nickname": rider.Nickname,
-		},
-	}
-
-	if h.auth != nil {
-		token, tokenErr := h.auth.IssueAccessToken(req.NewPhone, int64(riderID))
-		if tokenErr == nil && strings.TrimSpace(token) != "" {
-			response["token"] = token
-		}
-	}
-
-	respondMirroredSuccessEnvelope(c, "手机号修改成功", response)
+	respondMirroredSuccessEnvelope(c, "手机号修改成功", h.buildPhoneChangeSuccessPayload(&rider, riderID, req.NewPhone))
 }

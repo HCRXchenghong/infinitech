@@ -201,11 +201,14 @@ export default Vue.extend({
         })
 
         if (res.token) {
+          const nextTokenExpiresAt = Number(res.expiresIn || 0) > 0
+            ? Date.now() + Number(res.expiresIn) * 1000
+            : currentSession.tokenExpiresAt || null
           persistRiderAuthSession({
             uniApp: uni,
             token: res.token,
-            refreshToken: currentSession.refreshToken || null,
-            tokenExpiresAt: currentSession.tokenExpiresAt || null,
+            refreshToken: res.refreshToken || currentSession.refreshToken || null,
+            tokenExpiresAt: nextTokenExpiresAt,
             profile: nextProfile,
             extraStorageValues: {
               riderId: res.user?.id != null

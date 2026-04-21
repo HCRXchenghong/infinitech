@@ -151,5 +151,9 @@ func (h *UserHandler) ChangePhone(c *gin.Context) {
 		return
 	}
 
-	respondUserMirroredSuccess(c, firstNonEmptyText(extractMapText(result, "message"), "手机号修改成功"), result)
+	respondUserMirroredSuccess(
+		c,
+		firstNonEmptyText(extractMapText(result, "message"), "手机号修改成功"),
+		buildAuthSessionPayload(result),
+	)
 }
