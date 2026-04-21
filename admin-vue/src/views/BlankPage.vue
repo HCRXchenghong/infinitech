@@ -1,230 +1,71 @@
 <template>
   <div class="workbench-page">
-    <div class="hero">
-      <div>
-        <p class="eyebrow">联调工作台</p>
-        <h1>服务健康、支付配置和提现队列都收在这里</h1>
-        <p class="subtitle">
-          这个入口继续保留在原来的导航位置，不再是空白页。现在它直接承接系统健康巡检、
-          支付链路就绪度排查、保证金与提现队列的日常联调工作。
-        </p>
-        <div class="hero-meta">
-          <span>最近检查：{{ formatTime(serviceStatus.checkedAt) }}</span>
-          <span>整体状态：{{ overallStatusLabel }}</span>
-          <span>待处理提现：{{ pendingWithdrawCount }}</span>
-          <span>待自动重试：{{ autoRetryPendingCount }}</span>
-        </div>
-      </div>
-      <div class="hero-actions">
-        <el-button :loading="loading" @click="loadWorkbench">刷新工作台</el-button>
-        <el-button type="primary" @click="go('/payment-center')">打开支付中心</el-button>
-        <el-button @click="go('/system-logs')">查看系统日志</el-button>
-      </div>
-    </div>
+    <BlankPageHero
+      :service-status="serviceStatus"
+      :overall-status-label="overallStatusLabel"
+      :pending-withdraw-count="pendingWithdrawCount"
+      :auto-retry-pending-count="autoRetryPendingCount"
+      :loading="loading"
+      :load-workbench="loadWorkbench"
+      :go="go"
+      :format-time="formatTime"
+    />
 
     <PageStateAlert :message="pageError" />
 
-    <div class="summary-grid">
-      <el-card class="summary-card">
-        <span class="summary-label">核心服务</span>
-        <strong>{{ serviceStatus.services.length }}</strong>
-        <small>{{ upServiceCount }} 个在线，{{ downServiceCount }} 个异常</small>
-      </el-card>
-      <el-card class="summary-card">
-        <span class="summary-label">业务旅程</span>
-        <strong>{{ journeyCounts.ok }}</strong>
-        <small>{{ journeyCounts.degraded }} 个降级，{{ journeyCounts.down }} 个阻断</small>
-      </el-card>
-      <el-card class="summary-card">
-        <span class="summary-label">支付网关</span>
-        <strong>{{ gatewayReadyCount }}/3</strong>
-        <small>{{ gatewayModeLabel }}</small>
-      </el-card>
-      <el-card class="summary-card">
-        <span class="summary-label">保证金概览</span>
-        <strong>{{ riderDepositOverview.total || 0 }}</strong>
-        <small>可提现 {{ riderDepositOverview.withdrawable || 0 }}，提现中 {{ riderDepositOverview.withdrawing || 0 }}</small>
-      </el-card>
+    <BlankPageSummaryGrid
+      :service-status="serviceStatus"
+      :up-service-count="upServiceCount"
+      :down-service-count="downServiceCount"
+      :journey-counts="journeyCounts"
+      :gateway-ready-count="gatewayReadyCount"
+      :gateway-mode-label="gatewayModeLabel"
+      :rider-deposit-overview="riderDepositOverview"
+    />
+
+    <div class="workbench-main-grid">
+      <BlankPageServiceHealthPanel
+        :loading="loading"
+        :service-status="serviceStatus"
+        :overall-status-label="overallStatusLabel"
+        :status-tag-type="statusTagType"
+        :service-status-label="serviceStatusLabel"
+        :format-service-detail="formatServiceDetail"
+      />
+      <BlankPageGatewayPanel
+        :gateway-summary="gatewaySummary"
+        :gateway-mode-label="gatewayModeLabel"
+        :yes-no="yesNo"
+        :go="go"
+      />
     </div>
 
-    <div class="main-grid">
-      <el-card class="panel">
-        <template #header>
-          <div class="panel-header">
-            <span>服务健康</span>
-            <el-tag size="small" :type="statusTagType(serviceStatus.overall)">
-              {{ overallStatusLabel }}
-            </el-tag>
-          </div>
-        </template>
-        <div v-if="loading" class="skeleton-wrap">
-          <el-skeleton :rows="6" animated />
-        </div>
-        <div v-else class="service-grid">
-          <div v-for="item in serviceStatus.services" :key="item.key" class="service-item">
-            <div class="service-top">
-              <div>
-                <div class="service-name">{{ item.label || item.key }}</div>
-                <div class="service-target">{{ item.target || '-' }}</div>
-              </div>
-              <el-tag size="small" :type="statusTagType(item.status)">
-                {{ serviceStatusLabel(item.status) }}
-              </el-tag>
-            </div>
-            <div class="service-meta">
-              <span v-if="item.probe">探针 {{ item.probe }}</span>
-              <span v-if="item.httpStatus">HTTP {{ item.httpStatus }}</span>
-              <span v-if="item.latencyMs !== null && item.latencyMs !== undefined">延迟 {{ item.latencyMs }}ms</span>
-            </div>
-            <div class="service-detail">
-              {{ item.error ? `异常：${item.error}` : formatServiceDetail(item.detail) }}
-            </div>
-          </div>
-        </div>
-      </el-card>
-
-      <el-card class="panel">
-        <template #header>
-          <div class="panel-header">
-            <span>支付配置摘要</span>
-            <el-button link type="primary" @click="go('/payment-center')">去维护</el-button>
-          </div>
-        </template>
-        <div class="gateway-grid">
-          <div class="gateway-item">
-            <div class="gateway-top">
-              <span class="gateway-name">微信支付</span>
-              <el-tag size="small" :type="gatewaySummary.wechat?.ready ? 'success' : 'danger'">
-                {{ gatewaySummary.wechat?.ready ? '已就绪' : '未完成' }}
-              </el-tag>
-            </div>
-            <ul class="gateway-list">
-              <li>商户号：{{ yesNo(gatewaySummary.wechat?.mchIdConfigured) }}</li>
-              <li>API V3 Key：{{ yesNo(gatewaySummary.wechat?.apiV3KeyConfigured) }}</li>
-              <li>证书序列号：{{ yesNo(gatewaySummary.wechat?.serialNoConfigured) }}</li>
-              <li>回调地址：{{ yesNo(gatewaySummary.wechat?.notifyUrlConfigured) }}</li>
-            </ul>
-          </div>
-          <div class="gateway-item">
-            <div class="gateway-top">
-              <span class="gateway-name">支付宝</span>
-              <el-tag size="small" :type="gatewaySummary.alipay?.ready ? 'success' : 'danger'">
-                {{ gatewaySummary.alipay?.ready ? '已就绪' : '未完成' }}
-              </el-tag>
-            </div>
-            <ul class="gateway-list">
-              <li>AppID：{{ yesNo(gatewaySummary.alipay?.appIdConfigured) }}</li>
-              <li>私钥：{{ yesNo(gatewaySummary.alipay?.privateKeyConfigured) }}</li>
-              <li>公钥：{{ yesNo(gatewaySummary.alipay?.publicKeyConfigured) }}</li>
-              <li>侧车地址：{{ yesNo(gatewaySummary.alipay?.sidecarUrlConfigured) }}</li>
-              <li>Stub 兜底：{{ gatewaySummary.alipay?.allowStubBlocked ? '已封禁(生产/类生产环境)' : (gatewaySummary.alipay?.allowStub ? '开启' : '关闭') }}</li>
-            </ul>
-          </div>
-          <div class="gateway-item">
-            <div class="gateway-top">
-              <span class="gateway-name">银行卡出款</span>
-              <el-tag size="small" :type="gatewaySummary.bankCard?.ready ? 'success' : 'danger'">
-                {{ gatewaySummary.bankCard?.ready ? '已就绪' : '未完成' }}
-              </el-tag>
-            </div>
-            <ul class="gateway-list">
-              <li>到账时效：{{ gatewaySummary.bankCard?.arrivalText || '24小时-48小时' }}</li>
-              <li>侧车地址：{{ yesNo(gatewaySummary.bankCard?.sidecarUrlConfigured) }}</li>
-              <li>供应商地址：{{ yesNo(gatewaySummary.bankCard?.providerUrlConfigured) }}</li>
-              <li>商户号：{{ yesNo(gatewaySummary.bankCard?.merchantIdConfigured) }}</li>
-              <li>API Key：{{ yesNo(gatewaySummary.bankCard?.apiKeyConfigured) }}</li>
-              <li>回调地址：{{ yesNo(gatewaySummary.bankCard?.notifyUrlConfigured) }}</li>
-              <li>Stub 兜底：{{ gatewaySummary.bankCard?.allowStubBlocked ? '已封禁(生产/类生产环境)' : (gatewaySummary.bankCard?.allowStub ? '开启' : '关闭') }}</li>
-            </ul>
-          </div>
-        </div>
-        <div class="mode-note">
-          当前运行模式：{{ gatewayModeLabel }}
-        </div>
-      </el-card>
+    <div class="workbench-main-grid">
+      <BlankPageJourneysPanel
+        :journeys="journeys"
+        :journey-status-label="journeyStatusLabel"
+        :status-tag-type="statusTagType"
+      />
+      <BlankPageWithdrawQueuePanel
+        :recent-withdraw-requests="recentWithdrawRequests"
+        :go="go"
+        :user-type-label="userTypeLabel"
+        :withdraw-method-label="withdrawMethodLabel"
+        :format-fen="formatFen"
+        :withdraw-status-tag="withdrawStatusTag"
+        :withdraw-status-label="withdrawStatusLabel"
+        :get-withdraw-auto-retry="getWithdrawAutoRetry"
+        :workbench-withdraw-auto-retry-label="workbenchWithdrawAutoRetryLabel"
+        :format-time="formatTime"
+      />
     </div>
 
-    <div class="main-grid">
-      <el-card class="panel">
-        <template #header>关键业务旅程</template>
-        <div class="journey-grid">
-          <div v-for="journey in journeys" :key="journey.key" class="journey-item">
-            <div class="journey-top">
-              <span class="journey-name">{{ journey.label }}</span>
-              <el-tag size="small" :type="statusTagType(journey.status)">
-                {{ journeyStatusLabel(journey.status) }}
-              </el-tag>
-            </div>
-            <p class="journey-detail">{{ journey.detail || '暂无说明' }}</p>
-          </div>
-        </div>
-      </el-card>
-
-      <el-card class="panel">
-        <template #header>
-          <div class="panel-header">
-            <span>待处理提现队列</span>
-            <el-button link type="primary" @click="go('/payment-center')">去处理</el-button>
-          </div>
-        </template>
-        <el-table :data="recentWithdrawRequests" size="small" stripe>
-          <el-table-column prop="request_id" label="提现单号" min-width="180" />
-          <el-table-column label="端类型" width="90">
-            <template #default="{ row }">{{ userTypeLabel(row.user_type) }}</template>
-          </el-table-column>
-          <el-table-column label="渠道" width="110">
-            <template #default="{ row }">{{ withdrawMethodLabel(row.withdraw_method) }}</template>
-          </el-table-column>
-          <el-table-column label="金额" width="110">
-            <template #default="{ row }">￥{{ formatFen(row.amount) }}</template>
-          </el-table-column>
-          <el-table-column label="状态" width="100">
-            <template #default="{ row }">
-              <div class="withdraw-status-cell">
-                <el-tag size="small" :type="withdrawStatusTag(row.status)">
-                  {{ withdrawStatusLabel(row.status) }}
-                </el-tag>
-                <span v-if="getWithdrawAutoRetry(row)" class="muted-text">
-                  {{ workbenchWithdrawAutoRetryLabel(row) }}
-                </span>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column label="创建时间" width="170">
-            <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
-          </el-table-column>
-        </el-table>
-        <div v-if="!recentWithdrawRequests.length" class="empty-note">
-          当前没有需要跟进的提现请求。
-        </div>
-      </el-card>
-    </div>
-
-    <el-card class="panel">
-      <template #header>快捷入口</template>
-      <div class="action-grid">
-        <button class="action-item" @click="go('/dashboard')">
-          <span>仪表盘</span>
-          <small>回到经营概览和核心统计</small>
-        </button>
-        <button class="action-item" @click="go('/transaction-logs')">
-          <span>财务日志</span>
-          <small>检查充值、提现、退款和补单流水</small>
-        </button>
-        <button class="action-item" @click="go('/payment-center')">
-          <span>支付中心</span>
-          <small>维护渠道、分账、保证金和提现费</small>
-        </button>
-        <button class="action-item" @click="go('/monitor-chat')">
-          <span>平台监控</span>
-          <small>查看消息、RTC 和实时运行态</small>
-        </button>
-      </div>
-    </el-card>
+    <BlankPageQuickActionsPanel :go="go" />
   </div>
 </template>
 
 <script setup>
+import './BlankPage.css'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { extractEnvelopeData, extractErrorMessage } from '@infinitech/contracts'
@@ -248,6 +89,13 @@ import {
 } from '@infinitech/admin-core'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
+import BlankPageGatewayPanel from './blankPageSections/BlankPageGatewayPanel.vue'
+import BlankPageHero from './blankPageSections/BlankPageHero.vue'
+import BlankPageJourneysPanel from './blankPageSections/BlankPageJourneysPanel.vue'
+import BlankPageQuickActionsPanel from './blankPageSections/BlankPageQuickActionsPanel.vue'
+import BlankPageServiceHealthPanel from './blankPageSections/BlankPageServiceHealthPanel.vue'
+import BlankPageSummaryGrid from './blankPageSections/BlankPageSummaryGrid.vue'
+import BlankPageWithdrawQueuePanel from './blankPageSections/BlankPageWithdrawQueuePanel.vue'
 
 const router = useRouter()
 const loading = ref(false)
@@ -345,263 +193,3 @@ async function loadWorkbench() {
 
 onMounted(loadWorkbench)
 </script>
-
-<style scoped>
-.workbench-page {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.hero {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 28px;
-  border-radius: 24px;
-  border: 1px solid #f0e4c4;
-  background:
-    radial-gradient(circle at top right, rgba(255, 196, 88, 0.28), transparent 32%),
-    linear-gradient(135deg, #fff9ec, #fff 58%, #f2f7ff);
-}
-
-.eyebrow {
-  margin: 0 0 10px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: #9a6b00;
-}
-
-.hero h1 {
-  margin: 0;
-  font-size: 32px;
-  line-height: 1.15;
-  color: #1f2937;
-}
-
-.subtitle {
-  max-width: 760px;
-  margin: 12px 0 0;
-  color: #5b6472;
-  line-height: 1.7;
-}
-
-.hero-meta {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  margin-top: 16px;
-  color: #6b7280;
-  font-size: 13px;
-}
-
-.hero-actions {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.summary-card {
-  border-radius: 18px;
-}
-
-.summary-card :deep(.el-card__body) {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.summary-label {
-  font-size: 13px;
-  color: #6b7280;
-}
-
-.summary-card strong {
-  font-size: 28px;
-  color: #111827;
-}
-
-.summary-card small {
-  color: #6b7280;
-}
-
-.main-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.panel {
-  border-radius: 18px;
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.skeleton-wrap {
-  padding: 8px 0;
-}
-
-.service-grid,
-.journey-grid,
-.action-grid,
-.gateway-grid {
-  display: grid;
-  gap: 12px;
-}
-
-.service-grid,
-.journey-grid,
-.action-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.gateway-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.service-item,
-.journey-item,
-.gateway-item,
-.action-item {
-  border: 1px solid #e7ebf3;
-  border-radius: 16px;
-  background: #fff;
-}
-
-.service-item,
-.journey-item,
-.gateway-item {
-  padding: 14px 16px;
-}
-
-.service-top,
-.journey-top,
-.gateway-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.service-name,
-.journey-name,
-.gateway-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.service-target {
-  margin-top: 4px;
-  color: #6b7280;
-  font-size: 12px;
-  word-break: break-all;
-}
-
-.service-meta {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-  color: #6b7280;
-  font-size: 12px;
-}
-
-.service-detail,
-.journey-detail,
-.mode-note {
-  margin-top: 12px;
-  color: #4b5563;
-  line-height: 1.7;
-}
-
-.withdraw-status-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.muted-text {
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.gateway-list {
-  margin: 12px 0 0;
-  padding-left: 18px;
-  color: #4b5563;
-  line-height: 1.8;
-}
-
-.empty-note {
-  padding-top: 14px;
-  color: #8b93a3;
-}
-
-.action-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 14px 16px;
-  cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.action-item:hover {
-  transform: translateY(-1px);
-  border-color: #f2b84b;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
-}
-
-.action-item span {
-  font-size: 16px;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.action-item small {
-  color: #6b7280;
-}
-
-@media (max-width: 1180px) {
-  .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .main-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 960px) {
-  .hero {
-    flex-direction: column;
-  }
-
-  .service-grid,
-  .journey-grid,
-  .action-grid,
-  .gateway-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 720px) {
-  .summary-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

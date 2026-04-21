@@ -1,0 +1,257 @@
+.workbench-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.workbench-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 28px;
+  border-radius: 24px;
+  border: 1px solid #f0e4c4;
+  background:
+    radial-gradient(circle at top right, rgba(255, 196, 88, 0.28), transparent 32%),
+    linear-gradient(135deg, #fff9ec, #fff 58%, #f2f7ff);
+}
+
+.workbench-eyebrow {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #9a6b00;
+}
+
+.workbench-hero h1 {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.15;
+  color: #1f2937;
+}
+
+.workbench-subtitle {
+  max-width: 760px;
+  margin: 12px 0 0;
+  color: #5b6472;
+  line-height: 1.7;
+}
+
+.workbench-hero-meta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.workbench-hero-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.workbench-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.workbench-summary-card {
+  border-radius: 18px;
+}
+
+.workbench-summary-card .el-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workbench-summary-label {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.workbench-summary-card strong {
+  font-size: 28px;
+  color: #111827;
+}
+
+.workbench-summary-card small {
+  color: #6b7280;
+}
+
+.workbench-main-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.workbench-panel {
+  border-radius: 18px;
+}
+
+.workbench-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.workbench-skeleton-wrap {
+  padding: 8px 0;
+}
+
+.workbench-service-grid,
+.workbench-journey-grid,
+.workbench-action-grid,
+.workbench-gateway-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.workbench-service-grid,
+.workbench-journey-grid,
+.workbench-action-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.workbench-gateway-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.workbench-service-item,
+.workbench-journey-item,
+.workbench-gateway-item,
+.workbench-action-item {
+  border: 1px solid #e7ebf3;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.workbench-service-item,
+.workbench-journey-item,
+.workbench-gateway-item {
+  padding: 14px 16px;
+}
+
+.workbench-service-top,
+.workbench-journey-top,
+.workbench-gateway-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workbench-service-name,
+.workbench-journey-name,
+.workbench-gateway-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.workbench-service-target {
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.workbench-service-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.workbench-service-detail,
+.workbench-journey-detail,
+.workbench-mode-note {
+  margin-top: 12px;
+  color: #4b5563;
+  line-height: 1.7;
+}
+
+.workbench-withdraw-status-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.workbench-muted-text {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.workbench-gateway-list {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  color: #4b5563;
+  line-height: 1.8;
+}
+
+.workbench-empty-note {
+  padding-top: 14px;
+  color: #8b93a3;
+}
+
+.workbench-action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.workbench-action-item:hover {
+  transform: translateY(-1px);
+  border-color: #f2b84b;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+.workbench-action-item span {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.workbench-action-item small {
+  color: #6b7280;
+}
+
+@media (max-width: 1180px) {
+  .workbench-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workbench-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 960px) {
+  .workbench-hero {
+    flex-direction: column;
+  }
+
+  .workbench-service-grid,
+  .workbench-journey-grid,
+  .workbench-action-grid,
+  .workbench-gateway-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .workbench-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}

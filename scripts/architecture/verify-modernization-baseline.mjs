@@ -686,6 +686,14 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "admin-vue/src/views/officialSiteCenterSections/OfficialSiteCenterExposuresTab.vue",
   "admin-vue/src/views/officialSiteCenterSections/OfficialSiteCenterCooperationTab.vue",
   "admin-vue/src/views/officialSiteCenterSections/OfficialSiteCenterExposureDialog.vue",
+  "admin-vue/src/views/BlankPage.css",
+  "admin-vue/src/views/blankPageSections/BlankPageHero.vue",
+  "admin-vue/src/views/blankPageSections/BlankPageSummaryGrid.vue",
+  "admin-vue/src/views/blankPageSections/BlankPageServiceHealthPanel.vue",
+  "admin-vue/src/views/blankPageSections/BlankPageGatewayPanel.vue",
+  "admin-vue/src/views/blankPageSections/BlankPageJourneysPanel.vue",
+  "admin-vue/src/views/blankPageSections/BlankPageWithdrawQueuePanel.vue",
+  "admin-vue/src/views/blankPageSections/BlankPageQuickActionsPanel.vue",
   "admin-win/src/main.ts",
   "admin-win/vite.config.mts",
   "admin-mac/src/main.ts",
@@ -1211,6 +1219,46 @@ assertContains(
 assertContains(
   "admin-vue/src/views/BlankPage.vue",
   "createDefaultServiceHealthStatus",
+);
+assertContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "BlankPageHero",
+);
+assertContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "BlankPageSummaryGrid",
+);
+assertContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "BlankPageServiceHealthPanel",
+);
+assertContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "BlankPageGatewayPanel",
+);
+assertContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "BlankPageJourneysPanel",
+);
+assertContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "BlankPageWithdrawQueuePanel",
+);
+assertContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "BlankPageQuickActionsPanel",
+);
+assertContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "BlankPage.css",
+);
+assertNotContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "<div class=\"workbench-hero\">",
+);
+assertNotContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "<div class=\"workbench-summary-grid\">",
 );
 assertContains(
   "admin-vue/src/views/SystemLogs.vue",
