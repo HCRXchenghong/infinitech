@@ -4127,15 +4127,15 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/AdminRTCConsole.vue",
+  "useAdminRTCConsolePage({",
+);
+assertContains(
+  "admin-vue/src/views/adminRTCConsoleHelpers.js",
   "extractRTCCallAuditPage",
 );
 assertContains(
-  "admin-vue/src/views/AdminRTCConsole.vue",
-  "getAdminRTCCallStatusLabel",
-);
-assertContains(
-  "admin-vue/src/views/AdminRTCConsole.vue",
-  "createAdminRTCCallAuditSummary",
+  "admin-vue/src/views/adminRTCConsoleHelpers.js",
+  "searchAdminRTCTargets(searchForm.keyword)",
 );
 assertContains("admin-vue/src/views/Login.vue", "extractEnvelopeData(data)");
 assertContains(
@@ -4246,6 +4246,10 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/AdminRTCConsole.vue",
   "function statusLabel(value)",
+);
+assertNotContains(
+  "admin-vue/src/views/AdminRTCConsole.vue",
+  "createAdminRTCCallAuditSummary",
 );
 assertContains(
   "admin-vue/src/views/MerchantTaxonomySettings.vue",
@@ -4414,8 +4418,16 @@ assertContains(
   "extractEnvelopeData(data) || {}",
 );
 assertContains(
-  "admin-vue/src/views/AdminRTCConsole.vue",
-  "searchAdminRTCTargets(searchForm.keyword)",
+  "packages/admin-core/src/communication-audit-resources.js",
+  "export function createAdminRTCTargetSearchForm(source = {})",
+);
+assertContains(
+  "packages/admin-core/src/communication-audit-resources.js",
+  "export function normalizeAdminRTCTarget(raw = {})",
+);
+assertContains(
+  "packages/admin-core/src/communication-audit-resources.js",
+  "export function filterAdminRTCTargets(list = [], role = \"\")",
 );
 assertContains(
   "admin-vue/src/views/systemLogsHelpers.js",

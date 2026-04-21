@@ -6,10 +6,13 @@ import {
   buildAdminRTCCallAuditQuery,
   createAdminAuditPaginationState,
   createAdminContactPhoneAuditFilters,
+  createAdminRTCCallForm,
   createAdminContactPhoneAuditSummary,
   createAdminRTCCallAuditFilters,
   createAdminRTCCallAuditSummary,
   createAdminRTCCallReviewAction,
+  createAdminRTCTargetSearchForm,
+  filterAdminRTCTargets,
   formatAdminCommunicationAuditDateTime,
   formatAdminCommunicationAuditMetadata,
   formatAdminRTCCallDuration,
@@ -27,6 +30,7 @@ import {
   mergeAdminRTCCallAuditDetail,
   mergeAdminRTCCallAuditRecords,
   normalizeAdminCommunicationRole,
+  normalizeAdminRTCTarget,
 } from "./communication-audit-resources.js";
 
 test("communication audit resources keep contact phone audit semantics stable", () => {
@@ -96,6 +100,16 @@ test("communication audit resources keep contact phone audit semantics stable", 
 });
 
 test("communication audit resources keep rtc labels, queries and duration semantics stable", () => {
+  assert.deepEqual(createAdminRTCTargetSearchForm({ keyword: " 13800138000 ", role: "shop" }), {
+    keyword: "13800138000",
+    role: "merchant",
+  });
+  assert.deepEqual(createAdminRTCCallForm({ orderId: " order-1 " }), {
+    conversationId: "",
+    orderId: "order-1",
+    entryPoint: "admin_rtc_console",
+    scene: "admin_support",
+  });
   assert.deepEqual(createAdminRTCCallAuditFilters(), {
     callerRole: "",
     calleeRole: "",
@@ -149,6 +163,48 @@ test("communication audit resources keep rtc labels, queries and duration semant
   assert.equal(formatAdminRTCCallDuration(45), "45 秒");
   assert.equal(formatAdminRTCCallDuration(75), "1 分 15 秒");
   assert.equal(formatAdminRTCCallDuration(3600), "1 小时");
+  assert.deepEqual(
+    normalizeAdminRTCTarget({
+      role: "shop",
+      id: "merchant-1",
+      phone: "13800138000",
+      name: " 商户A ",
+    }),
+    {
+      resultKey: "merchant:merchant-1",
+      role: "merchant",
+      chatId: "merchant-1",
+      id: "merchant-1",
+      uid: "",
+      legacyId: "",
+      phone: "13800138000",
+      name: "商户A",
+      avatar: "",
+    },
+  );
+  assert.deepEqual(
+    filterAdminRTCTargets(
+      [
+        { role: "user", id: "u-1" },
+        { role: "shop", id: "m-1" },
+        { role: "admin", id: "a-1" },
+      ],
+      "merchant",
+    ),
+    [
+      {
+        resultKey: "merchant:m-1",
+        role: "merchant",
+        chatId: "m-1",
+        id: "m-1",
+        uid: "",
+        legacyId: "",
+        phone: "",
+        name: "",
+        avatar: "",
+      },
+    ],
+  );
 });
 
 test("communication audit resources keep rtc review actions and merge semantics stable", () => {

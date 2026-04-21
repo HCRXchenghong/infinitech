@@ -173,6 +173,53 @@ export function createAdminRTCCallAuditSummary(source = {}) {
   };
 }
 
+export function createAdminRTCTargetSearchForm(source = {}) {
+  return {
+    keyword: normalizeText(source.keyword),
+    role: normalizeAdminCommunicationRole(source.role),
+  };
+}
+
+export function createAdminRTCCallForm(source = {}) {
+  return {
+    conversationId: normalizeText(source.conversationId),
+    orderId: normalizeText(source.orderId),
+    entryPoint: normalizeText(source.entryPoint, "admin_rtc_console"),
+    scene: normalizeText(source.scene, "admin_support"),
+  };
+}
+
+export function normalizeAdminRTCTarget(raw = {}) {
+  const role = normalizeAdminCommunicationRole(raw.role);
+  const chatId = normalizeText(raw.chatId || raw.id || raw.uid);
+  const legacyId = normalizeText(raw.legacyId);
+  return {
+    resultKey: `${role}:${chatId || legacyId || raw.phone || raw.name || "target"}`,
+    role,
+    chatId,
+    id: normalizeText(raw.id),
+    uid: normalizeText(raw.uid),
+    legacyId,
+    phone: normalizeText(raw.phone),
+    name: normalizeText(raw.name),
+    avatar: normalizeText(raw.avatar),
+  };
+}
+
+function isSupportedAdminRTCTargetRole(role) {
+  return ["user", "merchant", "rider"].includes(normalizeAdminCommunicationRole(role));
+}
+
+export function filterAdminRTCTargets(list = [], role = "") {
+  const normalizedRole = normalizeAdminCommunicationRole(role);
+  return (Array.isArray(list) ? list : [])
+    .map((item) => normalizeAdminRTCTarget(item))
+    .filter(
+      (item) => isSupportedAdminRTCTargetRole(item.role)
+        && (!normalizedRole || item.role === normalizedRole),
+    );
+}
+
 export function buildAdminRTCCallAuditQuery(filters = {}, pagination = {}) {
   return {
     callerRole: toOptionalQueryValue(filters.callerRole),

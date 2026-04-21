@@ -290,266 +290,55 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
-import {
-  buildAdminRTCCallAuditQuery,
-  createAdminRTCCallAuditSummary,
-  extractRTCCallAuditPage,
-  formatAdminCommunicationAuditDateTime,
-  formatAdminRTCCallDuration,
-  getAdminCommunicationRoleLabel,
-  getAdminRTCCallComplaintLabel,
-  getAdminRTCCallComplaintTagType,
-  getAdminRTCCallStatusLabel,
-  getAdminRTCCallStatusTagType,
-  normalizeAdminCommunicationRole,
-} from '@infinitech/admin-core'
-import { extractErrorMessage } from '@infinitech/contracts'
-
 import PageStateAlert from '@/components/PageStateAlert.vue'
-import {
-  acceptAdminRTCCall,
+import request from '@/utils/request'
+import { useAdminRTCConsolePage } from './adminRTCConsoleHelpers'
+
+const {
   adminRTCState,
-  cancelAdminRTCCall,
-  canStartAdminRTCCall,
-  dismissAdminRTCCallDialog,
-  endAdminRTCCall,
-  ensureAdminRTCBridge,
-  isFinalStatus,
-  isWaitingStatus,
-  rejectAdminRTCCall,
-  searchAdminRTCTargets,
-  startAdminRTCCall,
-} from '@/utils/adminRtc'
-
-const router = useRouter()
-
-const searchForm = reactive({
-  keyword: '',
-  role: '',
+  auditsError,
+  auditsLoading,
+  auditSummary,
+  callForm,
+  canCallSelected,
+  canCloseCurrentCall,
+  complaintLabel,
+  complaintTagType,
+  currentBizText,
+  currentCallActive,
+  currentTargetText,
+  filteredTargets,
+  formatDateTime,
+  formatDuration,
+  goToAudits,
+  goToChatConsole,
+  handleAccept,
+  handleCancel,
+  handleCloseCall,
+  handleEnd,
+  handleReject,
+  loadRecentAudits,
+  recentAudits,
+  roleLabel,
+  searchForm,
+  searchTargets,
+  selectTarget,
+  selectedTarget,
+  showAccept,
+  showCancel,
+  showEnd,
+  showReject,
+  startCall,
+  startingCall,
+  statusLabel,
+  statusTagType,
+  targetsError,
+  targetsLoading,
+} = useAdminRTCConsolePage({
+  request,
+  ElMessage,
 })
-
-const callForm = reactive({
-  conversationId: '',
-  orderId: '',
-  entryPoint: 'admin_rtc_console',
-  scene: 'admin_support',
-})
-
-const targetsLoading = ref(false)
-const targetsError = ref('')
-const targets = ref([])
-const selectedTarget = ref(null)
-const startingCall = ref(false)
-
-const recentAudits = ref([])
-const auditsLoading = ref(false)
-const auditsError = ref('')
-
-const auditSummary = reactive(createAdminRTCCallAuditSummary())
-
-function normalizeRole(value) {
-  return normalizeAdminCommunicationRole(value)
-}
-
-function normalizeTarget(raw = {}) {
-  const role = normalizeRole(raw.role)
-  const chatId = String(raw.chatId || raw.id || raw.uid || '').trim()
-  const legacyId = String(raw.legacyId || '').trim()
-  return {
-    resultKey: `${role}:${chatId || legacyId || raw.phone || raw.name || 'target'}`,
-    role,
-    chatId,
-    id: String(raw.id || '').trim(),
-    uid: String(raw.uid || '').trim(),
-    legacyId,
-    phone: String(raw.phone || '').trim(),
-    name: String(raw.name || '').trim(),
-    avatar: String(raw.avatar || '').trim(),
-  }
-}
-
-const filteredTargets = computed(() => {
-  const role = normalizeRole(searchForm.role)
-  return targets.value.filter((item) => !role || item.role === role)
-})
-
-const canCallSelected = computed(() => canStartAdminRTCCall(selectedTarget.value || {}))
-const currentCallActive = computed(() => Boolean(adminRTCState.callId) && !isFinalStatus(adminRTCState.status))
-const currentTargetText = computed(() => {
-  return adminRTCState.targetPhone || adminRTCState.targetName || adminRTCState.targetId || '--'
-})
-const currentBizText = computed(() => {
-  return [adminRTCState.conversationId || '--', adminRTCState.orderId || '--'].join(' / ')
-})
-
-const showAccept = computed(() => {
-  return adminRTCState.mode === 'incoming' && isWaitingStatus(adminRTCState.status)
-})
-
-const showReject = computed(() => {
-  return adminRTCState.mode === 'incoming' && isWaitingStatus(adminRTCState.status)
-})
-
-const showCancel = computed(() => {
-  return adminRTCState.mode === 'outgoing' && isWaitingStatus(adminRTCState.status)
-})
-
-const showEnd = computed(() => adminRTCState.status === 'accepted')
-const canCloseCurrentCall = computed(() => !adminRTCState.callId || isFinalStatus(adminRTCState.status))
-
-function selectTarget(target) {
-  selectedTarget.value = target
-  callForm.conversationId = target.chatId || ''
-}
-
-async function searchTargets() {
-  if (!searchForm.keyword) {
-    targets.value = []
-    selectedTarget.value = null
-    targetsError.value = ''
-    return
-  }
-
-  targetsLoading.value = true
-  targetsError.value = ''
-  try {
-    const list = await searchAdminRTCTargets(searchForm.keyword)
-    targets.value = list
-      .map((item) => normalizeTarget(item))
-      .filter((item) => ['user', 'merchant', 'rider'].includes(item.role))
-
-    if (targets.value.length > 0) {
-      selectTarget(targets.value[0])
-    } else {
-      selectedTarget.value = null
-    }
-  } catch (error) {
-    targets.value = []
-    selectedTarget.value = null
-    targetsError.value = extractErrorMessage(error, '搜索 RTC 联系人失败')
-    ElMessage.error(targetsError.value)
-  } finally {
-    targetsLoading.value = false
-  }
-}
-
-async function loadRecentAudits() {
-  auditsLoading.value = true
-  auditsError.value = ''
-  try {
-    const { data } = await request.get('/api/rtc-call-audits', {
-      params: buildAdminRTCCallAuditQuery({}, { page: 1, limit: 8 }),
-    })
-    const payload = extractRTCCallAuditPage(data)
-    recentAudits.value = payload.items
-    Object.assign(auditSummary, createAdminRTCCallAuditSummary(payload.summary))
-  } catch (error) {
-    recentAudits.value = []
-    Object.assign(auditSummary, createAdminRTCCallAuditSummary())
-    auditsError.value = extractErrorMessage(error, '加载 RTC 通话记录失败')
-    ElMessage.error(auditsError.value)
-  } finally {
-    auditsLoading.value = false
-  }
-}
-
-async function startCall() {
-  if (!selectedTarget.value) {
-    ElMessage.warning('请先选择联系人')
-    return
-  }
-
-  startingCall.value = true
-  try {
-    await startAdminRTCCall({
-      role: selectedTarget.value.role,
-      chatId: callForm.conversationId || selectedTarget.value.chatId,
-      conversationId: callForm.conversationId || selectedTarget.value.chatId,
-      targetId: selectedTarget.value.id || selectedTarget.value.chatId,
-      targetLegacyId: selectedTarget.value.legacyId,
-      phone: selectedTarget.value.phone,
-      name: selectedTarget.value.name,
-      orderId: callForm.orderId,
-      entryPoint: callForm.entryPoint || 'admin_rtc_console',
-      scene: callForm.scene || 'admin_support',
-    })
-    ElMessage.success('RTC 呼叫已发起')
-    await loadRecentAudits()
-  } catch (error) {
-    ElMessage.error(extractErrorMessage(error, '发起 RTC 呼叫失败'))
-  } finally {
-    startingCall.value = false
-  }
-}
-
-async function handleAccept() {
-  try {
-    await acceptAdminRTCCall()
-    ElMessage.success('已接听 RTC 通话')
-  } catch (error) {
-    ElMessage.error(extractErrorMessage(error, '接听 RTC 通话失败'))
-  }
-}
-
-async function handleReject() {
-  try {
-    await rejectAdminRTCCall()
-    ElMessage.success('已拒绝 RTC 来电')
-  } catch (error) {
-    ElMessage.error(extractErrorMessage(error, '拒绝 RTC 来电失败'))
-  }
-}
-
-async function handleCancel() {
-  try {
-    await cancelAdminRTCCall()
-    ElMessage.success('已取消 RTC 呼叫')
-  } catch (error) {
-    ElMessage.error(extractErrorMessage(error, '取消 RTC 呼叫失败'))
-  }
-}
-
-async function handleEnd() {
-  try {
-    await endAdminRTCCall()
-    ElMessage.success('RTC 通话已结束')
-    await loadRecentAudits()
-  } catch (error) {
-    ElMessage.error(extractErrorMessage(error, '结束 RTC 通话失败'))
-  }
-}
-
-function handleCloseCall() {
-  if (!dismissAdminRTCCallDialog()) {
-    ElMessage.warning('请先结束当前 RTC 通话')
-    return
-  }
-  ElMessage.success('已关闭当前通话状态')
-}
-
-function goToAudits() {
-  router.push('/rtc-call-audits')
-}
-
-function goToChatConsole() {
-  router.push('/support-chat')
-}
-
-onMounted(() => {
-  void ensureAdminRTCBridge()
-  void loadRecentAudits()
-})
-
-const roleLabel = getAdminCommunicationRoleLabel
-const statusLabel = getAdminRTCCallStatusLabel
-const statusTagType = getAdminRTCCallStatusTagType
-const complaintLabel = getAdminRTCCallComplaintLabel
-const complaintTagType = getAdminRTCCallComplaintTagType
-const formatDateTime = formatAdminCommunicationAuditDateTime
-const formatDuration = formatAdminRTCCallDuration
 </script>
 
 <style scoped>
