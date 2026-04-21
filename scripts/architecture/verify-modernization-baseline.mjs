@@ -711,6 +711,12 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "admin-vue/src/views/paymentCenterSections/PaymentCenterBankPayoutDialog.vue",
   "admin-vue/src/views/paymentCenterSections/PaymentCenterWithdrawHistoryDialog.vue",
   "admin-vue/src/views/paymentCenterSections/PaymentCenterCallbackDetailDrawer.vue",
+  "admin-vue/src/views/AdminRTCConsole.css",
+  "admin-vue/src/views/adminRTCConsoleSections/AdminRTCConsoleHero.vue",
+  "admin-vue/src/views/adminRTCConsoleSections/AdminRTCConsoleSearchPanel.vue",
+  "admin-vue/src/views/adminRTCConsoleSections/AdminRTCConsoleComposePanel.vue",
+  "admin-vue/src/views/adminRTCConsoleSections/AdminRTCConsoleStatusPanel.vue",
+  "admin-vue/src/views/adminRTCConsoleSections/AdminRTCConsoleHistoryPanel.vue",
   "admin-win/src/main.ts",
   "admin-win/vite.config.mts",
   "admin-mac/src/main.ts",
@@ -4286,6 +4292,26 @@ assertContains(
   "admin-vue/src/views/adminRTCConsoleHelpers.js",
   "searchAdminRTCTargets(searchForm.keyword)",
 );
+assertContains(
+  "admin-vue/src/views/AdminRTCConsole.vue",
+  "AdminRTCConsoleHero",
+);
+assertContains(
+  "admin-vue/src/views/AdminRTCConsole.vue",
+  "AdminRTCConsoleSearchPanel",
+);
+assertContains(
+  "admin-vue/src/views/AdminRTCConsole.vue",
+  "AdminRTCConsoleStatusPanel",
+);
+assertContains(
+  "admin-vue/src/views/AdminRTCConsole.vue",
+  "AdminRTCConsoleHistoryPanel",
+);
+assertContains(
+  "admin-vue/src/views/AdminRTCConsole.vue",
+  "AdminRTCConsole.css",
+);
 assertContains("admin-vue/src/views/Login.vue", "extractEnvelopeData(data)");
 assertNotContains("admin-vue/src/views/Login.vue", "扫码登录</h3>");
 assertNotContains("admin-vue/src/views/Login.vue", "完成首次管理员初始化");
@@ -4413,6 +4439,14 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/AdminRTCConsole.vue",
   "createAdminRTCCallAuditSummary",
+);
+assertNotContains(
+  "admin-vue/src/views/AdminRTCConsole.vue",
+  "<div class=\"summary-grid\">",
+);
+assertNotContains(
+  "admin-vue/src/views/AdminRTCConsole.vue",
+  "<el-card class=\"card history-card\">",
 );
 assertContains(
   "admin-vue/src/views/MerchantTaxonomySettings.vue",
