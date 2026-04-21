@@ -722,6 +722,17 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "admin-vue/src/views/dashboardSections/DashboardImStatusRow.vue",
   "admin-vue/src/views/dashboardSections/DashboardPresencePanel.vue",
   "admin-vue/src/views/dashboardSections/DashboardRankSection.vue",
+  "admin-vue/src/views/DiningBuddyGovernance.css",
+  "admin-vue/src/views/diningBuddyGovernanceSections/DiningBuddyRuntimeTab.vue",
+  "admin-vue/src/views/diningBuddyGovernanceSections/DiningBuddyPartiesTab.vue",
+  "admin-vue/src/views/diningBuddyGovernanceSections/DiningBuddyReportsTab.vue",
+  "admin-vue/src/views/diningBuddyGovernanceSections/DiningBuddySensitiveWordsTab.vue",
+  "admin-vue/src/views/diningBuddyGovernanceSections/DiningBuddyRestrictionsTab.vue",
+  "admin-vue/src/views/diningBuddyGovernanceSections/DiningBuddyAuditTab.vue",
+  "admin-vue/src/views/diningBuddyGovernanceSections/DiningBuddyPartyDetailDrawer.vue",
+  "admin-vue/src/views/diningBuddyGovernanceSections/DiningBuddyMessageDrawer.vue",
+  "admin-vue/src/views/diningBuddyGovernanceSections/DiningBuddySensitiveDialog.vue",
+  "admin-vue/src/views/diningBuddyGovernanceSections/DiningBuddyRestrictionDialog.vue",
   "admin-win/src/main.ts",
   "admin-win/vite.config.mts",
   "admin-mac/src/main.ts",
@@ -4475,6 +4486,22 @@ assertContains(
   "useDiningBuddyGovernancePage({",
 );
 assertContains(
+  "admin-vue/src/views/DiningBuddyGovernance.vue",
+  "DiningBuddyRuntimeTab",
+);
+assertContains(
+  "admin-vue/src/views/DiningBuddyGovernance.vue",
+  "DiningBuddyPartiesTab",
+);
+assertContains(
+  "admin-vue/src/views/DiningBuddyGovernance.vue",
+  "DiningBuddySensitiveDialog",
+);
+assertContains(
+  "admin-vue/src/views/DiningBuddyGovernance.vue",
+  "DiningBuddyGovernance.css",
+);
+assertContains(
   "admin-vue/src/views/diningBuddyGovernanceHelpers.js",
   "extractDiningBuddyRuntimeSettings(data)",
 );
@@ -4497,6 +4524,14 @@ assertContains(
 assertContains(
   "admin-vue/src/views/DiningBuddyGovernance.vue",
   "DINING_BUDDY_PARTY_STATUS_OPTIONS",
+);
+assertNotContains(
+  "admin-vue/src/views/DiningBuddyGovernance.vue",
+  "<el-card shadow=\"never\" v-loading=\"runtimeLoading\">",
+);
+assertNotContains(
+  "admin-vue/src/views/DiningBuddyGovernance.vue",
+  "<el-drawer v-model=\"messageDrawerVisible\" title=\"消息治理\" size=\"55%\">",
 );
 assertNotContains(
   "admin-vue/src/views/DiningBuddyGovernance.vue",

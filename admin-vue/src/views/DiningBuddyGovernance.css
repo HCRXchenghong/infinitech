@@ -1,0 +1,64 @@
+.page-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.page-header h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+
+.page-header p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.page-actions,
+.inline-filters,
+.drawer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.card-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.runtime-block {
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid #ebeef5;
+  border-radius: 12px;
+}
+
+.block-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.option-row {
+  display: grid;
+  grid-template-columns: 1.5fr 120px 70px;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.drawer-toolbar {
+  margin-bottom: 12px;
+  justify-content: space-between;
+}
