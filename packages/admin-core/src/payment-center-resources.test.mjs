@@ -4,18 +4,25 @@ import assert from "node:assert/strict";
 import {
   buildBankPayoutCompletePayload,
   buildPaymentCallbackQuery,
+  buildPaymentCenterConfigPayload,
   buildWithdrawHistoryTarget,
   buildWithdrawReviewPayload,
   canReplayPaymentCallback,
   canWithdrawAction,
+  collectBankWithdrawRequests,
+  collectPendingBankWithdrawRequests,
   createBankPayoutFormState,
   createPaymentCallbackFilterState,
+  createPaymentCenterConfigDraft,
   createPaymentCallbackReplayPayload,
   createWithdrawHistoryTargetState,
+  createWithdrawRequestFilterState,
   createDefaultPaymentGatewaySummary,
+  countAutoRetryWithdrawRequests,
   extractPaymentCallbackDetail,
   extractPaymentCallbackPage,
   extractWithdrawRequestPage,
+  filterWithdrawRequests,
   formatAdminWalletOperationActor,
   formatAdminDateTime,
   getPaymentCallbackId,
@@ -79,6 +86,74 @@ test("normalizePaymentCenterConfig fills payment-center defaults", () => {
   assert.equal(result.bank_card_config.merchant_id, "");
   assert.deepEqual(result.settlement_rules, [{ uid: "rule-1" }]);
   assert.deepEqual(result.rider_deposit_policy.allowed_methods, ["wechat", "alipay"]);
+});
+
+test("payment center config draft and payload stay round-trippable", () => {
+  const draft = createPaymentCenterConfigDraft({
+    gateway_summary: {
+      mode: { isProd: true },
+      bankCard: { ready: true },
+    },
+    pay_mode: { isProd: true },
+    settlement_rules: [{ uid: "rule-1" }],
+    bank_card_config: {
+      merchant_id: "M-1",
+    },
+  });
+
+  assert.equal(draft.gatewaySummary.mode.isProd, true);
+  assert.equal(draft.bank_card_config.merchant_id, "M-1");
+  assert.equal(draft.settlementRulesText, '[\n  {\n    "uid": "rule-1"\n  }\n]');
+  assert.deepEqual(buildPaymentCenterConfigPayload(draft), {
+    pay_mode: { isProd: true },
+    wxpay_config: {
+      appId: "",
+      mchId: "",
+      apiKey: "",
+      apiV3Key: "",
+      serialNo: "",
+      notifyUrl: "",
+      refundNotifyUrl: "",
+      payoutNotifyUrl: "",
+      payoutSceneId: "",
+    },
+    alipay_config: {
+      appId: "",
+      privateKey: "",
+      alipayPublicKey: "",
+      notifyUrl: "",
+      payoutNotifyUrl: "",
+      sidecarUrl: "",
+      sandbox: true,
+    },
+    channel_matrix: [],
+    withdraw_fee_rules: [],
+    settlement_rules: [{ uid: "rule-1" }],
+    settlement_subjects: [],
+    rider_deposit_policy: {
+      amount: 5000,
+      unlock_days: 7,
+      auto_approve_withdrawal: true,
+      allowed_methods: ["wechat", "alipay"],
+    },
+    bank_card_config: {
+      arrival_text: "24小时-48小时",
+      sidecar_url: "",
+      provider_url: "",
+      merchant_id: "M-1",
+      api_key: "",
+      notify_url: "",
+    },
+  });
+
+  assert.throws(
+    () => buildPaymentCenterConfigPayload({ settlementRulesText: "{bad json}" }),
+    /分账规则 JSON 格式不正确/,
+  );
+  assert.throws(
+    () => buildPaymentCenterConfigPayload({ settlementRulesText: '{"uid":"rule-1"}' }),
+    /分账规则 JSON 必须是数组/,
+  );
 });
 
 test("extractWithdrawRequestPage normalizes mixed legacy fields", () => {
@@ -233,6 +308,56 @@ test("payment center callback helpers keep filter and replay semantics stable", 
   assert.deepEqual(createPaymentCallbackReplayPayload("  后台重放  "), {
     remark: "后台重放",
   });
+});
+
+test("withdraw request list helpers keep page filters centralized", () => {
+  const records = [
+    {
+      request_id: "WR-1",
+      status: "failed",
+      user_type: "merchant",
+      withdraw_method: "bank_card",
+      auto_retry: {
+        eligible: true,
+        next_retry_at: "2026-04-16T10:00:00Z",
+      },
+    },
+    {
+      requestId: "WR-2",
+      status: "pending_transfer",
+      userType: "merchant",
+      withdrawMethod: "bank_card",
+    },
+    {
+      requestId: "WR-3",
+      status: "pending_review",
+      userType: "customer",
+      withdrawMethod: "wechat",
+    },
+  ];
+
+  assert.deepEqual(createWithdrawRequestFilterState(), {
+    status: "",
+    userType: "",
+    withdrawMethod: "",
+  });
+  assert.deepEqual(
+    filterWithdrawRequests(records, {
+      status: "pending_transfer",
+      userType: "merchant",
+      withdrawMethod: "bank_card",
+    }).map((item) => item.request_id || item.requestId),
+    ["WR-2"],
+  );
+  assert.equal(countAutoRetryWithdrawRequests(records), 1);
+  assert.deepEqual(
+    collectBankWithdrawRequests(records).map((item) => item.request_id || item.requestId),
+    ["WR-1", "WR-2"],
+  );
+  assert.deepEqual(
+    collectPendingBankWithdrawRequests(records).map((item) => item.request_id || item.requestId),
+    ["WR-2"],
+  );
 });
 
 test("payment center withdraw helpers keep review and bank payout semantics stable", () => {

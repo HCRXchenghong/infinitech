@@ -1142,18 +1142,22 @@ assertContains(
 assertContains("admin-vue/src/views/Users.vue", "extractTemporaryCredential(");
 assertContains(
   "admin-vue/src/views/PaymentCenter.vue",
-  "normalizePaymentCenterConfig",
+  "usePaymentCenterPage",
 );
 assertContains(
-  "admin-vue/src/views/PaymentCenter.vue",
+  "admin-vue/src/views/paymentCenterHelpers.js",
+  "createPaymentCenterConfigDraft",
+);
+assertContains(
+  "admin-vue/src/views/paymentCenterHelpers.js",
   "extractPaymentCallbackDetail",
 );
 assertContains(
-  "admin-vue/src/views/PaymentCenter.vue",
+  "admin-vue/src/views/paymentCenterHelpers.js",
   "buildPaymentCallbackQuery",
 );
 assertContains(
-  "admin-vue/src/views/PaymentCenter.vue",
+  "admin-vue/src/views/paymentCenterHelpers.js",
   "createPaymentCallbackFilterState",
 );
 assertContains(
@@ -4145,15 +4149,15 @@ assertContains(
   "extractRiderReviewPage",
 );
 assertContains(
-  "admin-vue/src/views/PaymentCenter.vue",
+  "admin-vue/src/views/paymentCenterHelpers.js",
   "extractPaymentCallbackPage",
 );
 assertContains(
-  "admin-vue/src/views/PaymentCenter.vue",
+  "admin-vue/src/views/paymentCenterHelpers.js",
   "buildWithdrawReviewPayload",
 );
 assertContains(
-  "admin-vue/src/views/PaymentCenter.vue",
+  "admin-vue/src/views/paymentCenterHelpers.js",
   "buildBankPayoutCompletePayload",
 );
 assertContains(
@@ -6434,7 +6438,7 @@ assertContains(
   "buildApiDocumentationText",
 );
 assertContains(
-  "admin-vue/src/views/PaymentCenter.vue",
+  "admin-vue/src/views/paymentCenterHelpers.js",
   "extractErrorMessage(error",
 );
 assertContains(
@@ -6455,7 +6459,7 @@ assertContains(
   "paymentCallbackStatusTag",
 );
 assertContains(
-  "admin-vue/src/views/PaymentCenter.vue",
+  "admin-vue/src/views/paymentCenterHelpers.js",
   "getWithdrawReviewActionTitle",
 );
 assertContains(

@@ -1058,37 +1058,13 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  extractEnvelopeData,
-  extractErrorMessage,
-  extractPaginatedItems,
-} from '@infinitech/contracts'
-import {
-  buildBankPayoutCompletePayload,
-  buildPaymentCallbackQuery,
-  buildWithdrawHistoryTarget,
-  buildWithdrawReviewPayload,
   canReplayPaymentCallback,
   canWithdrawAction,
-  createBankPayoutFormState,
-  createPaymentCallbackFilterState,
-  createPaymentCallbackReplayPayload,
-  createWithdrawHistoryTargetState,
-  extractPaymentCallbackDetail,
-  extractPaymentCallbackPage,
-  extractWithdrawRequestPage,
   formatAdminWalletOperationActor,
   formatAdminDateTime as formatDateTime,
-  getPaymentCallbackId,
-  getWithdrawAutoRetry,
-  getWithdrawRequestId,
-  getWithdrawReviewActionTitle,
-  getWithdrawTransactionId,
-  isWithdrawGatewaySubmitted,
   maskCardNo,
-  normalizePaymentCenterConfig,
   paymentCallbackChannelLabel,
   paymentCallbackStatusLabel,
   paymentCallbackStatusTag,
@@ -1100,586 +1076,79 @@ import {
   withdrawOperationTypeLabel,
   withdrawStatusLabel,
   withdrawUserTypeLabel,
-  validateBankPayoutForm,
 } from '@infinitech/admin-core'
 import request from '@/utils/request'
 import PageStateAlert from '@/components/PageStateAlert.vue'
 import ImageUpload from '@/components/ImageUpload.vue'
-
-const activeTab = ref('basic')
-const loading = ref(false)
-const saving = ref(false)
-const previewing = ref(false)
-const pageError = ref('')
-const riderDepositOverview = ref({})
-const settlementPreviewEntries = ref([])
-const settlementLookupLoading = ref(false)
-const settlementOrderDetail = ref(null)
-const gatewaySummary = ref({})
-const withdrawActionLoading = ref('')
-const bankPayoutDialogVisible = ref(false)
-const bankPayoutSubmitting = ref(false)
-const withdrawHistoryDialogVisible = ref(false)
-const withdrawHistoryLoading = ref(false)
-const withdrawActionHistory = ref([])
-const callbackLoading = ref(false)
-const callbackReplayLoading = ref('')
-const callbackDetailLoading = ref(false)
-const callbackDetailVisible = ref(false)
-const callbackDetail = ref(null)
-
-const state = reactive({
-  pay_mode: { isProd: false },
-  wxpay_config: { appId: '', mchId: '', apiKey: '', apiV3Key: '', serialNo: '', notifyUrl: '', refundNotifyUrl: '', payoutNotifyUrl: '', payoutSceneId: '' },
-  alipay_config: { appId: '', privateKey: '', alipayPublicKey: '', notifyUrl: '', payoutNotifyUrl: '', sidecarUrl: '', sandbox: true },
-  channel_matrix: [],
-  withdraw_fee_rules: [],
-  settlement_subjects: [],
-  settlementRulesText: '[]',
-  rider_deposit_policy: { amount: 5000, unlock_days: 7, auto_approve_withdrawal: true, allowed_methods: ['wechat', 'alipay'] },
-  bank_card_config: {
-    arrival_text: '24小时-48小时',
-    sidecar_url: '',
-    provider_url: '',
-    merchant_id: '',
-    api_key: '',
-    notify_url: '',
-  },
-  riderDepositRecords: [],
-  withdrawRequests: [],
-  paymentCallbacks: [],
-})
-
-const bankPayoutForm = reactive({
-  ...createBankPayoutFormState(),
-})
-
-const withdrawHistoryTarget = reactive({
-  ...createWithdrawHistoryTargetState(),
-})
-
-const previewForm = reactive({
-  amount: 1000,
-  ruleSetName: '',
-})
-
-const settlementLookupForm = reactive({
-  orderId: '',
-})
-
-const withdrawFilter = reactive({
-  status: '',
-  userType: '',
-  withdrawMethod: '',
-})
-
-const callbackFilter = reactive({
-  ...createPaymentCallbackFilterState(),
-})
-
-function normalizeListPayload(payload) {
-  return extractPaginatedItems(payload).items
-}
-
-const filteredWithdrawRequests = computed(() => {
-  return (state.withdrawRequests || []).filter((item) => {
-    if (withdrawFilter.status && item.status !== withdrawFilter.status) return false
-    if (withdrawFilter.userType && item.user_type !== withdrawFilter.userType) return false
-    if (withdrawFilter.withdrawMethod && item.withdraw_method !== withdrawFilter.withdrawMethod) return false
-    return true
-  })
-})
-
-const autoRetryWithdrawCount = computed(() => {
-  return (state.withdrawRequests || []).filter((item) => {
-    const retry = getWithdrawAutoRetry(item)
-    return String(item?.status || '') === 'failed' && Boolean(retry?.eligible) && String(retry?.nextRetryAt || '').trim() !== ''
-  }).length
-})
-
-const bankWithdrawRequests = computed(() => {
-  return (state.withdrawRequests || []).filter((item) => String(item.withdraw_method || '') === 'bank_card')
-})
-
-const pendingBankWithdrawRequests = computed(() => {
-  return bankWithdrawRequests.value.filter((item) => ['pending', 'pending_review', 'pending_transfer', 'transferring'].includes(String(item.status || '')))
-})
-
-function normalizeConfig(payload = {}) {
-  const normalized = normalizePaymentCenterConfig(payload)
-  gatewaySummary.value = normalized.gatewaySummary
-  state.pay_mode = normalized.pay_mode
-  state.wxpay_config = normalized.wxpay_config
-  state.alipay_config = normalized.alipay_config
-  state.channel_matrix = normalized.channel_matrix
-  state.withdraw_fee_rules = normalized.withdraw_fee_rules
-  state.settlement_subjects = normalized.settlement_subjects
-  state.settlementRulesText = JSON.stringify(normalized.settlement_rules, null, 2)
-  state.rider_deposit_policy = normalized.rider_deposit_policy
-  state.bank_card_config = normalized.bank_card_config
-}
-
-async function loadAll() {
-  loading.value = true
-  pageError.value = ''
-  try {
-    const [configRes, overviewRes, recordsRes, withdrawRes, callbackRes] = await Promise.all([
-      request.get('/api/pay-center/config'),
-      request.get('/api/rider-deposit/overview'),
-      request.get('/api/rider-deposit/records', { params: { page: 1, limit: 20 } }),
-      request.get('/api/pay-center/withdraw-requests', { params: { page: 1, limit: 50 } }),
-      request.get('/api/admin/wallet/payment-callbacks', { params: { page: 1, limit: 50 } }),
-    ])
-    normalizeConfig(configRes.data || {})
-    riderDepositOverview.value = extractEnvelopeData(overviewRes.data) || {}
-    state.riderDepositRecords = normalizeListPayload(recordsRes.data)
-    state.withdrawRequests = extractWithdrawRequestPage(withdrawRes.data).items
-    state.paymentCallbacks = extractPaymentCallbackPage(callbackRes.data).items
-  } catch (error) {
-    pageError.value = extractErrorMessage(error, '加载支付中心失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadPaymentCallbacks() {
-  callbackLoading.value = true
-  pageError.value = ''
-  try {
-    const { data } = await request.get('/api/admin/wallet/payment-callbacks', {
-      params: buildPaymentCallbackQuery(callbackFilter),
-    })
-    state.paymentCallbacks = extractPaymentCallbackPage(data).items
-  } catch (error) {
-    pageError.value = extractErrorMessage(error, '加载回调日志失败')
-  } finally {
-    callbackLoading.value = false
-  }
-}
-
-function resetCallbackFilters() {
-  Object.assign(callbackFilter, createPaymentCallbackFilterState())
-  loadPaymentCallbacks()
-}
-
-function addChannelRow() {
-  state.channel_matrix.push({
-    user_type: 'customer',
-    platform: 'app',
-    scene: 'order_payment',
-    channel: 'wechat',
-    enabled: true,
-    label: '新渠道',
-    description: '',
-  })
-}
-
-function addFeeRule() {
-  state.withdraw_fee_rules.push({
-    user_type: 'customer',
-    withdraw_method: 'wechat',
-    min_amount: 0,
-    max_amount: 0,
-    rate_basis_points: 0,
-    min_fee: 0,
-    max_fee: 0,
-    enabled: true,
-    sort_order: state.withdraw_fee_rules.length * 10 + 10,
-  })
-}
-
-function addSubject() {
-  state.settlement_subjects.push({
-    uid: `custom-${Date.now()}`,
-    name: '新分账对象',
-    subject_type: 'custom',
-    scope_type: 'global',
-    scope_id: '',
-    external_account: '',
-    external_channel: '',
-    account_holder_name: '',
-    enabled: true,
-    sort_order: state.settlement_subjects.length * 10 + 10,
-    notes: '',
-  })
-}
-
-function removeRow(list, index) {
-  list.splice(index, 1)
-}
-
-function formatFen(value) {
-  return (Number(value || 0) / 100).toFixed(2)
-}
-
-function formatFenOrDash(value) {
-  if (value === null || value === undefined || value === '') return '-'
-  return formatFen(value)
-}
-
-function prettyJson(value) {
-  if (value == null || value === '') return '-'
-  if (typeof value === 'string') {
-    try {
-      return JSON.stringify(JSON.parse(value), null, 2)
-    } catch (_) {
-      return value
-    }
-  }
-  try {
-    return JSON.stringify(value, null, 2)
-  } catch (_) {
-    return String(value)
-  }
-}
-
-async function loadSettlementOrder() {
-  const orderId = String(settlementLookupForm.orderId || '').trim()
-  if (!orderId) {
-    ElMessage.warning('请先输入订单号')
-    return
-  }
-  settlementLookupLoading.value = true
-  pageError.value = ''
-  try {
-    const { data } = await request.get(`/api/settlement/orders/${encodeURIComponent(orderId)}`)
-    settlementOrderDetail.value = extractEnvelopeData(data) || null
-  } catch (error) {
-    settlementOrderDetail.value = null
-    pageError.value = extractErrorMessage(error, '查询订单分账失败')
-    ElMessage.error(pageError.value)
-  } finally {
-    settlementLookupLoading.value = false
-  }
-}
-
-function resetSettlementOrder() {
-  settlementLookupForm.orderId = ''
-  settlementOrderDetail.value = null
-}
-
-async function openPaymentCallbackDetail(row) {
-  const callbackId = getPaymentCallbackId(row)
-  if (!callbackId) return
-  callbackDetailLoading.value = true
-  pageError.value = ''
-  try {
-    const { data } = await request.get(`/api/admin/wallet/payment-callbacks/${encodeURIComponent(callbackId)}`)
-    callbackDetail.value = extractPaymentCallbackDetail(data)
-    callbackDetailVisible.value = true
-  } catch (error) {
-    pageError.value = extractErrorMessage(error, '加载回调详情失败')
-  } finally {
-    callbackDetailLoading.value = false
-  }
-}
-
-async function replayPaymentCallback(row) {
-  const callbackId = getPaymentCallbackId(row)
-  if (!callbackId || !canReplayPaymentCallback(row)) return
-
-  const prompt = await ElMessageBox.prompt('请输入这次重放的备注，方便后续审计追踪。', '重放已验签回调', {
-    inputPlaceholder: '后台重放已验签回调',
-    inputValue: '后台重放已验签回调',
-    confirmButtonText: '确认重放',
-    cancelButtonText: '取消',
-  }).catch(() => null)
-  if (!prompt) return
-
-  callbackReplayLoading.value = callbackId
-  pageError.value = ''
-  try {
-    const { data } = await request.post(
-      `/api/admin/wallet/payment-callbacks/${encodeURIComponent(callbackId)}/replay`,
-      createPaymentCallbackReplayPayload(prompt.value),
-    )
-    ElMessage.success(data?.duplicated ? '回调已被处理过，已按当前状态回填' : '回调已重放处理')
-    await loadPaymentCallbacks()
-    const nextCallbackId = data?.callbackId || callbackId
-    await openPaymentCallbackDetail({ callback_id: nextCallbackId })
-  } catch (error) {
-    pageError.value = extractErrorMessage(error, '重放回调失败')
-    ElMessage.error(pageError.value)
-  } finally {
-    callbackReplayLoading.value = ''
-  }
-}
-
-function resetWithdrawHistory() {
-  withdrawActionHistory.value = []
-  Object.assign(withdrawHistoryTarget, createWithdrawHistoryTargetState())
-}
-
-async function openWithdrawHistory(row) {
-  const transactionId = getWithdrawTransactionId(row)
-  if (!transactionId) {
-    ElMessage.warning('当前提现单缺少关联交易号，暂时无法加载处理轨迹')
-    return
-  }
-  withdrawHistoryDialogVisible.value = true
-  withdrawHistoryLoading.value = true
-  resetWithdrawHistory()
-  Object.assign(withdrawHistoryTarget, buildWithdrawHistoryTarget(row))
-  try {
-    const { data } = await request.get('/api/pay-center/operations', {
-      params: {
-        transactionId,
-        page: 1,
-        limit: 50,
-      },
-    })
-    withdrawActionHistory.value = normalizeListPayload(data)
-  } catch (error) {
-    pageError.value = extractErrorMessage(error, '加载提现处理轨迹失败')
-    ElMessage.error(pageError.value)
-  } finally {
-    withdrawHistoryLoading.value = false
-  }
-}
-
-function openBankVoucher(url) {
-  const target = String(url || '').trim()
-  if (!target) return
-  if (typeof window !== 'undefined') {
-    window.open(target, '_blank', 'noopener,noreferrer')
-  }
-}
-
-function openBankPayoutDialog(row) {
-  Object.assign(bankPayoutForm, createBankPayoutFormState(row))
-  bankPayoutDialogVisible.value = true
-}
-
-function handleBankPayoutDialogClosed() {
-  Object.assign(bankPayoutForm, createBankPayoutFormState())
-}
-
-async function submitWithdrawAction(row, action) {
-  const requestId = getWithdrawRequestId(row)
-  if (!requestId) return
-  if (action === 'complete' && String(row?.withdraw_method || '') === 'bank_card') {
-    openBankPayoutDialog(row)
-    return
-  }
-
-  const actionTitle = getWithdrawReviewActionTitle(action)
-
-  let note = ''
-  if (action === 'reject' || action === 'fail') {
-    const prompt = await ElMessageBox.prompt('请输入处理说明', actionTitle, {
-      inputPlaceholder: '请输入备注或失败原因',
-      inputValidator: (value) => (String(value || '').trim() ? true : '请填写处理说明'),
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-    }).catch(() => null)
-    if (!prompt) return
-    note = String(prompt.value || '').trim()
-  } else {
-    const confirmed = await ElMessageBox.confirm(`确认执行“${actionTitle}”吗？`, '确认操作', {
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-      type: 'warning',
-    }).catch(() => false)
-    if (!confirmed) return
-  }
-
-  withdrawActionLoading.value = `${requestId}:${action}`
-  pageError.value = ''
-  try {
-    await request.post(
-      '/api/pay-center/withdraw-requests/review',
-      buildWithdrawReviewPayload(requestId, action, { remark: note }),
-    )
-    ElMessage.success(`${actionTitle}已提交`)
-    await loadAll()
-  } catch (error) {
-    pageError.value = extractErrorMessage(error, `${actionTitle}失败`)
-    ElMessage.error(pageError.value)
-  } finally {
-    withdrawActionLoading.value = ''
-  }
-}
-
-async function submitBankPayoutComplete() {
-  const validationMessage = validateBankPayoutForm(bankPayoutForm)
-  if (validationMessage) {
-    ElMessage.error(validationMessage)
-    return
-  }
-
-  bankPayoutSubmitting.value = true
-  withdrawActionLoading.value = `${bankPayoutForm.requestId}:complete`
-  pageError.value = ''
-  try {
-    await request.post(
-      '/api/pay-center/withdraw-requests/review',
-      buildBankPayoutCompletePayload(bankPayoutForm),
-    )
-    ElMessage.success('\u5df2\u6807\u8bb0\u4e3a\u5df2\u6253\u6b3e\u5e76\u4fdd\u5b58\u51ed\u8bc1')
-    bankPayoutDialogVisible.value = false
-    Object.assign(bankPayoutForm, createBankPayoutFormState())
-    await loadAll()
-  } catch (error) {
-    pageError.value = extractErrorMessage(error, '\u4fdd\u5b58\u94f6\u884c\u5361\u6253\u6b3e\u8bb0\u5f55\u5931\u8d25')
-    ElMessage.error(pageError.value)
-  } finally {
-    bankPayoutSubmitting.value = false
-    withdrawActionLoading.value = ''
-  }
-}
-
-async function syncWithdrawStatus(row) {
-  const requestId = getWithdrawRequestId(row)
-  if (!requestId) return
-  withdrawActionLoading.value = `${requestId}:sync_gateway_status`
-  pageError.value = ''
-  try {
-    const { data } = await request.post(
-      '/api/pay-center/withdraw-requests/review',
-      buildWithdrawReviewPayload(requestId, 'sync_gateway_status'),
-    )
-    ElMessage.success(`同步完成，当前状态：${withdrawStatusLabel(data?.status || row?.status)}`)
-    await loadAll()
-  } catch (error) {
-    pageError.value = extractErrorMessage(error, '同步网关状态失败')
-    ElMessage.error(pageError.value)
-  } finally {
-    withdrawActionLoading.value = ''
-  }
-}
-
-async function retryWithdrawPayout(row) {
-  const requestId = getWithdrawRequestId(row)
-  if (!requestId) return
-  const confirmed = await ElMessageBox.confirm('确认重试这笔提现打款吗？如果网关未就绪，会先恢复为待打款状态。', '重试打款', {
-    confirmButtonText: '确认重试',
-    cancelButtonText: '取消',
-    type: 'warning',
-  }).catch(() => false)
-  if (!confirmed) return
-
-  withdrawActionLoading.value = `${requestId}:retry_payout`
-  pageError.value = ''
-  try {
-    const { data } = await request.post(
-      '/api/pay-center/withdraw-requests/review',
-      buildWithdrawReviewPayload(requestId, 'retry_payout', {
-        remark: '后台重试打款',
-      }),
-    )
-    if (data?.warning) {
-      ElMessage.warning(data.warning)
-    } else {
-      ElMessage.success('已重新发起打款')
-    }
-    await loadAll()
-  } catch (error) {
-    pageError.value = extractErrorMessage(error, '重试打款失败')
-    ElMessage.error(pageError.value)
-  } finally {
-    withdrawActionLoading.value = ''
-  }
-}
-
-async function supplementWithdraw(row, action) {
-  const requestId = getWithdrawRequestId(row)
-  if (!requestId) return
-
-  const isSuccess = action === 'supplement_success'
-  const actionTitle = getWithdrawReviewActionTitle(action)
-  const defaultRemark = isSuccess ? '后台补记成功' : '后台补记失败'
-  const defaultThirdPartyOrderId = row?.third_party_order_id || row?.thirdPartyOrderId || requestId
-
-  const prompt = await ElMessageBox.prompt('请输入补单备注，可选填写第三方单号。', actionTitle, {
-    inputPlaceholder: defaultRemark,
-    inputValue: defaultRemark,
-    confirmButtonText: '确认补记',
-    cancelButtonText: '取消',
-  }).catch(() => null)
-  if (!prompt) return
-
-  const thirdPartyPrompt = await ElMessageBox.prompt('请输入第三方流水号，留空则沿用当前提现单号。', actionTitle, {
-    inputPlaceholder: defaultThirdPartyOrderId,
-    inputValue: defaultThirdPartyOrderId,
-    confirmButtonText: '继续',
-    cancelButtonText: '取消',
-  }).catch(() => null)
-  if (!thirdPartyPrompt) return
-
-  withdrawActionLoading.value = `${requestId}:${action}`
-  pageError.value = ''
-  try {
-    const { data } = await request.post(
-      '/api/pay-center/withdraw-requests/review',
-      buildWithdrawReviewPayload(requestId, action, {
-        remark: String(prompt.value || defaultRemark).trim() || defaultRemark,
-        thirdPartyOrderId: String(thirdPartyPrompt.value || defaultThirdPartyOrderId).trim() || defaultThirdPartyOrderId,
-      }),
-    )
-    if (data?.duplicated) {
-      ElMessage.warning(`${actionTitle}已存在，已按最新状态回写`)
-    } else {
-      ElMessage.success(`${actionTitle}已提交`)
-    }
-    await loadAll()
-  } catch (error) {
-    pageError.value = extractErrorMessage(error, `${actionTitle}失败`)
-    ElMessage.error(pageError.value)
-  } finally {
-    withdrawActionLoading.value = ''
-  }
-}
+import {
+  formatFen,
+  formatFenOrDash,
+  prettyJson,
+  usePaymentCenterPage,
+} from './paymentCenterHelpers'
 
 const formatAdminOperationActor = formatAdminWalletOperationActor
 
-async function saveAll() {
-  saving.value = true
-  pageError.value = ''
-  try {
-    let settlementRules = []
-    try {
-      settlementRules = JSON.parse(state.settlementRulesText || '[]')
-    } catch (error) {
-      throw new Error('分账规则 JSON 格式不正确，请先修正后再保存')
-    }
-    const payload = {
-      pay_mode: state.pay_mode,
-      wxpay_config: state.wxpay_config,
-      alipay_config: state.alipay_config,
-      channel_matrix: state.channel_matrix,
-      withdraw_fee_rules: state.withdraw_fee_rules,
-      settlement_rules: settlementRules,
-      settlement_subjects: state.settlement_subjects,
-      rider_deposit_policy: state.rider_deposit_policy,
-      bank_card_config: state.bank_card_config,
-    }
-    const { data } = await request.post('/api/pay-center/config', payload)
-    normalizeConfig(data || {})
-    ElMessage.success('支付中心配置已保存')
-  } catch (error) {
-    pageError.value = extractErrorMessage(error, '保存失败')
-    ElMessage.error(pageError.value)
-  } finally {
-    saving.value = false
-  }
-}
-
-async function runPreview() {
-  previewing.value = true
-  try {
-    const { data } = await request.post('/api/settlement/rule-preview', {
-      amount: previewForm.amount,
-      ruleSetName: previewForm.ruleSetName,
-    })
-    settlementPreviewEntries.value = data?.preview_entries || []
-  } catch (error) {
-    ElMessage.error(extractErrorMessage(error, '预览失败'))
-  } finally {
-    previewing.value = false
-  }
-}
-
-onMounted(loadAll)
+const {
+  activeTab,
+  autoRetryWithdrawCount,
+  bankPayoutDialogVisible,
+  bankPayoutForm,
+  bankPayoutSubmitting,
+  bankWithdrawRequests,
+  callbackDetail,
+  callbackDetailLoading,
+  callbackDetailVisible,
+  callbackFilter,
+  callbackLoading,
+  callbackReplayLoading,
+  filteredWithdrawRequests,
+  gatewaySummary,
+  loadAll,
+  loadPaymentCallbacks,
+  loadSettlementOrder,
+  loading,
+  openBankPayoutDialog,
+  openBankVoucher,
+  openPaymentCallbackDetail,
+  openWithdrawHistory,
+  pageError,
+  pendingBankWithdrawRequests,
+  previewForm,
+  previewing,
+  replayPaymentCallback,
+  resetCallbackFilters,
+  resetSettlementOrder,
+  riderDepositOverview,
+  runPreview,
+  saveAll,
+  saving,
+  settlementLookupForm,
+  settlementLookupLoading,
+  settlementOrderDetail,
+  settlementPreviewEntries,
+  state,
+  submitBankPayoutComplete,
+  submitWithdrawAction,
+  supplementWithdraw,
+  syncWithdrawStatus,
+  retryWithdrawPayout,
+  withdrawActionHistory,
+  withdrawActionLoading,
+  withdrawFilter,
+  withdrawHistoryDialogVisible,
+  withdrawHistoryLoading,
+  withdrawHistoryTarget,
+  handleBankPayoutDialogClosed,
+  addChannelRow,
+  addFeeRule,
+  addSubject,
+  removeRow,
+} = usePaymentCenterPage({
+  request,
+  ElMessage,
+  ElMessageBox,
+})
 </script>
 
 <style scoped>

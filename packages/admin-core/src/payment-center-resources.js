@@ -76,6 +76,12 @@ const DEFAULT_WITHDRAW_HISTORY_TARGET = {
   amount: 0,
 };
 
+const DEFAULT_WITHDRAW_REQUEST_FILTER = {
+  status: "",
+  userType: "",
+  withdrawMethod: "",
+};
+
 function asRecord(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
@@ -83,6 +89,10 @@ function asRecord(value) {
 function cloneValue(value, fallback) {
   const source = value == null ? fallback : value;
   return JSON.parse(JSON.stringify(source));
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
 }
 
 function normalizeText(value, fallback = "") {
@@ -277,6 +287,72 @@ export function normalizePaymentCenterConfig(payload = {}) {
       ...cloneValue(source.rider_deposit_policy, {}),
     },
     bank_card_config: bankCardConfig,
+  };
+}
+
+export function createPaymentCenterConfigDraft(payload = {}) {
+  const normalized = normalizePaymentCenterConfig(payload);
+  return {
+    gatewaySummary: cloneValue(
+      normalized.gatewaySummary,
+      DEFAULT_PAYMENT_GATEWAY_SUMMARY,
+    ),
+    pay_mode: cloneValue(normalized.pay_mode, DEFAULT_PAY_MODE),
+    wxpay_config: cloneValue(normalized.wxpay_config, DEFAULT_WXPAY_CONFIG),
+    alipay_config: cloneValue(normalized.alipay_config, DEFAULT_ALIPAY_CONFIG),
+    channel_matrix: cloneValue(normalized.channel_matrix, []),
+    withdraw_fee_rules: cloneValue(normalized.withdraw_fee_rules, []),
+    settlement_subjects: cloneValue(normalized.settlement_subjects, []),
+    settlementRulesText: JSON.stringify(
+      cloneValue(normalized.settlement_rules, []),
+      null,
+      2,
+    ),
+    rider_deposit_policy: cloneValue(
+      normalized.rider_deposit_policy,
+      DEFAULT_RIDER_DEPOSIT_POLICY,
+    ),
+    bank_card_config: cloneValue(
+      normalized.bank_card_config,
+      DEFAULT_BANK_CARD_CONFIG,
+    ),
+  };
+}
+
+export function buildPaymentCenterConfigPayload(draft = {}) {
+  let settlementRules = [];
+
+  try {
+    const parsed = JSON.parse(
+      normalizeText(firstDefined(draft.settlementRulesText), "[]"),
+    );
+    if (!Array.isArray(parsed)) {
+      throw new Error("分账规则 JSON 必须是数组");
+    }
+    settlementRules = cloneValue(parsed, []);
+  } catch (error) {
+    if (error?.message === "分账规则 JSON 必须是数组") {
+      throw error;
+    }
+    throw new Error("分账规则 JSON 格式不正确，请先修正后再保存");
+  }
+
+  return {
+    pay_mode: cloneValue(draft.pay_mode, DEFAULT_PAY_MODE),
+    wxpay_config: cloneValue(draft.wxpay_config, DEFAULT_WXPAY_CONFIG),
+    alipay_config: cloneValue(draft.alipay_config, DEFAULT_ALIPAY_CONFIG),
+    channel_matrix: cloneValue(draft.channel_matrix, []),
+    withdraw_fee_rules: cloneValue(draft.withdraw_fee_rules, []),
+    settlement_rules: settlementRules,
+    settlement_subjects: cloneValue(draft.settlement_subjects, []),
+    rider_deposit_policy: cloneValue(
+      draft.rider_deposit_policy,
+      DEFAULT_RIDER_DEPOSIT_POLICY,
+    ),
+    bank_card_config: cloneValue(
+      draft.bank_card_config,
+      DEFAULT_BANK_CARD_CONFIG,
+    ),
   };
 }
 
@@ -733,6 +809,68 @@ export function createPaymentCallbackFilterState(overrides = {}) {
     transactionId: normalizeText(overrides.transactionId),
     thirdPartyOrderId: normalizeText(overrides.thirdPartyOrderId),
   };
+}
+
+export function createWithdrawRequestFilterState(overrides = {}) {
+  return {
+    ...DEFAULT_WITHDRAW_REQUEST_FILTER,
+    ...overrides,
+    status: normalizeText(overrides.status),
+    userType: normalizeText(overrides.userType),
+    withdrawMethod: normalizeText(overrides.withdrawMethod),
+  };
+}
+
+export function filterWithdrawRequests(records = [], filter = {}) {
+  const normalizedFilter = createWithdrawRequestFilterState(filter);
+  return asArray(records).filter((item) => {
+    if (
+      normalizedFilter.status
+      && normalizeText(item?.status) !== normalizedFilter.status
+    ) {
+      return false;
+    }
+    if (
+      normalizedFilter.userType
+      && firstText(item?.user_type, item?.userType) !== normalizedFilter.userType
+    ) {
+      return false;
+    }
+    if (
+      normalizedFilter.withdrawMethod
+      && firstText(item?.withdraw_method, item?.withdrawMethod)
+        !== normalizedFilter.withdrawMethod
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
+
+export function countAutoRetryWithdrawRequests(records = []) {
+  return asArray(records).filter((item) => {
+    const retry = getWithdrawAutoRetry(item);
+    return normalizeText(item?.status) === "failed"
+      && Boolean(retry?.eligible)
+      && normalizeText(retry?.nextRetryAt) !== "";
+  }).length;
+}
+
+export function collectBankWithdrawRequests(records = []) {
+  return asArray(records).filter(
+    (item) => firstText(item?.withdraw_method, item?.withdrawMethod) === "bank_card",
+  );
+}
+
+export function collectPendingBankWithdrawRequests(records = []) {
+  return collectBankWithdrawRequests(records).filter((item) =>
+    [
+      "pending",
+      "pending_review",
+      "pending_transfer",
+      "transferring",
+    ].includes(normalizeText(item?.status)),
+  );
 }
 
 export function buildPaymentCallbackQuery(filter = {}) {
