@@ -1,14 +1,13 @@
+import { readStoredAdminRememberMe } from '@infinitech/admin-core'
+
 const PHONE_REGEX = /^1[3-9]\d{9}$/
 
 export function createDefaultLoginForm() {
-  const stored = localStorage.getItem('admin_remember_me') || sessionStorage.getItem('admin_remember_me')
-  const rememberMe = stored === null ? true : stored === 'true'
-
   return {
     phone: '',
     password: '',
     code: '',
-    rememberMe,
+    rememberMe: readStoredAdminRememberMe(),
   }
 }
 

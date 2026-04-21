@@ -230,15 +230,12 @@ import QRCode from 'qrcode'
 import request from '@/utils/request'
 import { buildRuntimeUrl, clearAdminSessionStorage, getStoredAdminUser } from '@/utils/runtime'
 import {
-  ADMIN_AUTH_STORAGE_KEYS,
-  buildAdminAuthSession,
-} from '@infinitech/admin-core/admin-auth-session'
-import {
-  extractAuthSessionResult,
-  extractEnvelopeData,
-  extractErrorMessage,
-  extractSMSResult,
-} from '@infinitech/contracts'
+  hasStoredAdminAuthToken,
+  persistAdminAuthSessionFromAuthResult,
+  readStoredAdminLoginType,
+  writeStoredAdminLoginType,
+} from '@infinitech/admin-core'
+import { extractEnvelopeData, extractErrorMessage, extractSMSResult } from '@infinitech/contracts'
 import {
   createDefaultLoginForm,
   getQrFlowErrorMessage,
@@ -254,7 +251,7 @@ const sendingCode = ref(false)
 const countdown = ref(0)
 const isMobile = ref(window.innerWidth <= 768)
 const showLogin = ref(false)
-const credentialMode = ref(localStorage.getItem('admin_login_type') === 'code' ? 'code' : 'password')
+const credentialMode = ref(readStoredAdminLoginType())
 const isQrMode = ref(false)
 const qrLoading = ref(false)
 const qrImage = ref('')
@@ -378,51 +375,35 @@ function handleBootstrapLogout() {
 }
 
 function saveLoginSession(payload, mode = credentialMode.value) {
-  const sessionPayload = extractAuthSessionResult(payload)
-  if (!sessionPayload.authenticated) {
-    ElMessage.error('登录失败，缺少有效凭证')
-    return
-  }
-
-  let session
+  let persistedResult
   try {
-    session = buildAdminAuthSession(sessionPayload.token, sessionPayload.user || {}, {
+    persistedResult = persistAdminAuthSessionFromAuthResult(payload, {
+      loginType: mode,
       source: mode,
+      rememberMe: form.value.rememberMe,
+      clearSessionStorage: clearLoginSession,
+      localStorage,
+      sessionStorage,
     })
   } catch (error) {
     ElMessage.error(error?.message || '登录失败，管理员会话无效')
-    return
+    return null
   }
 
-  clearLoginSession()
-  const storage = form.value.rememberMe ? localStorage : sessionStorage
-  const persistedUser = {
-    ...(sessionPayload.user && typeof sessionPayload.user === 'object' ? sessionPayload.user : {}),
-    ...session.user,
-    mustChangeBootstrap: Boolean(sessionPayload?.user?.mustChangeBootstrap),
+  if (!persistedResult.persisted) {
+    ElMessage.error(persistedResult.message || '登录失败，缺少有效凭证')
+    return null
   }
 
-  storage.setItem('admin_token', session.token)
-  storage.setItem(
-    'admin_user',
-    JSON.stringify(persistedUser),
-  )
-  storage.setItem(
-    ADMIN_AUTH_STORAGE_KEYS.SESSION_KEY,
-    JSON.stringify(session),
-  )
-  storage.setItem('admin_login_type', mode)
-  storage.setItem('admin_remember_me', String(form.value.rememberMe))
-  localStorage.setItem('admin_login_type', mode)
-
-  if (persistedUser.mustChangeBootstrap) {
-    openBootstrapDialog(persistedUser)
+  if (persistedResult.mustChangeBootstrap) {
+    openBootstrapDialog(persistedResult.user)
     ElMessage.warning('请先完成首次管理员初始化，再进入后台。')
-    return
+    return persistedResult
   }
 
   bootstrapDialogVisible.value = false
   router.push('/dashboard')
+  return persistedResult
 }
 
 async function handleCompleteBootstrap() {
@@ -458,13 +439,12 @@ async function handleCompleteBootstrap() {
       newPassword: bootstrapForm.value.newPassword,
       confirmPassword: bootstrapForm.value.confirmPassword,
     })
-    const payload = extractAuthSessionResult(data)
-    if (!payload.authenticated) {
+    const persistedResult = saveLoginSession(data, 'password')
+    if (!persistedResult) {
       throw new Error('首次管理员初始化失败，未返回新的登录凭证')
     }
 
     ElMessage.success('首次管理员初始化已完成，请使用新的管理员信息进入后台。')
-    saveLoginSession(payload, 'password')
   } catch (error) {
     ElMessage.error(extractErrorMessage(error, '首次管理员初始化失败'))
   } finally {
@@ -535,15 +515,17 @@ async function pollQrStatus() {
   try {
     const { data } = await request.get(`/api/qr-login/session/${encodeURIComponent(qrTicket.value)}`)
     const payload = extractEnvelopeData(data) || {}
-    const sessionPayload = extractAuthSessionResult(payload)
     if (typeof payload.remainSeconds === 'number') {
       qrRemainSeconds.value = Math.max(0, payload.remainSeconds)
     }
 
     const status = String(payload.status || 'pending')
-    if (status === 'confirmed' && sessionPayload.authenticated) {
+    if (status === 'confirmed') {
       clearQrTimers()
-      saveLoginSession(sessionPayload, 'qr')
+      if (!saveLoginSession(payload, 'qr')) {
+        updateQrStatus('error')
+        scheduleQrRefresh(QR_REFRESH_INTERVAL_MS)
+      }
       return
     }
 
@@ -573,7 +555,10 @@ async function pollQrStatus() {
 
 function switchCredentialMode(mode) {
   credentialMode.value = mode === 'code' ? 'code' : 'password'
-  localStorage.setItem('admin_login_type', credentialMode.value)
+  writeStoredAdminLoginType(credentialMode.value, {
+    localStorage,
+    sessionStorage,
+  })
 }
 
 function toggleMode() {
@@ -684,12 +669,7 @@ async function handleLogin() {
   loading.value = true
   try {
     const { data } = await request.post('/api/login', loginData)
-    const payload = extractAuthSessionResult(data)
-    if (payload.authenticated) {
-      saveLoginSession(payload, credentialMode.value)
-    } else {
-      ElMessage.error(payload.error || payload.message || '登录失败，请稍后重试')
-    }
+    saveLoginSession(data, credentialMode.value)
   } catch (error) {
     const errorMessage = extractErrorMessage(error, '登录失败')
     const statusCode = Number(error?.response?.status || 0)
@@ -729,7 +709,10 @@ function handleResize() {
 onMounted(() => {
   window.addEventListener('resize', handleResize)
   const storedUser = getStoredAdminUser()
-  const hasToken = Boolean(localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token'))
+  const hasToken = hasStoredAdminAuthToken({
+    localStorage,
+    sessionStorage,
+  })
   if (hasToken && storedUser?.mustChangeBootstrap) {
     openBootstrapDialog(storedUser)
   }

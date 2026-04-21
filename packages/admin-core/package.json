@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.js",
+    "./admin-auth-response": "./src/admin-auth-response.js",
     "./admin-auth-session": "./src/admin-auth-session.js",
     "./route-registry": "./src/route-registry.js",
     "./module-catalog": "./src/module-catalog.js",

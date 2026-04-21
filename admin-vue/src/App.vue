@@ -82,6 +82,8 @@
 import { computed, ref, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
+  ADMIN_AUTH_RESPONSE_STORAGE_KEYS,
+  ADMIN_AUTH_STORAGE_KEYS,
   isAdminPublicPath,
   resolveAdminRouteMenuPath,
   resolveAdminRouteTitle,
@@ -107,6 +109,15 @@ const openedTabs = ref([]);
 const activeTab = ref('');
 const openedMenuGroups = ref([]);
 const retiredPaths = new Set(['/customer-service']);
+
+function handleAdminStorageChange(event) {
+  if (
+    event.key === ADMIN_AUTH_RESPONSE_STORAGE_KEYS.USER_KEY ||
+    event.key === ADMIN_AUTH_STORAGE_KEYS.SESSION_KEY
+  ) {
+    loadUserInfo();
+  }
+}
 
 function sanitizeTabs(rawTabs) {
   if (!Array.isArray(rawTabs)) return [];
@@ -195,11 +206,7 @@ function loadUserInfo() {
 onMounted(() => {
   loadUserInfo();
   ensureCurrentRouteTab();
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'admin_user' || e.key === 'admin_session_v2') {
-      loadUserInfo();
-    }
-  });
+  window.addEventListener('storage', handleAdminStorageChange);
 });
 
 watch(() => route.path, () => {
@@ -327,6 +334,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  window.removeEventListener('storage', handleAdminStorageChange);
   applyPublicScrollLock(false);
   disconnectAdminRTCBridge();
 });

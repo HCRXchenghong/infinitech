@@ -1,9 +1,12 @@
 import {
+  ADMIN_AUTH_RESPONSE_STORAGE_KEYS,
   ADMIN_AUTH_STORAGE_KEYS,
+  clearStoredAdminAuthSession,
+  readStoredAdminAuthToken,
   createAdminSessionIdentity,
   normalizeAdminAuthSessionRecord,
   normalizeAdminSessionUser,
-} from '@infinitech/admin-core/admin-auth-session';
+} from '@infinitech/admin-core';
 import {
   parseUnifiedTokenPayload
 } from '@infinitech/contracts/identity';
@@ -22,17 +25,15 @@ function getSessionStorageRecord(storage) {
 }
 
 function getStoredRawAdminUser() {
-  return safeJsonParse(localStorage.getItem('admin_user') || sessionStorage.getItem('admin_user') || '');
+  return safeJsonParse(
+    localStorage.getItem(ADMIN_AUTH_RESPONSE_STORAGE_KEYS.USER_KEY) ||
+      sessionStorage.getItem(ADMIN_AUTH_RESPONSE_STORAGE_KEYS.USER_KEY) ||
+      '',
+  );
 }
 
 export function getToken() {
-  const session =
-    getSessionStorageRecord(localStorage) || getSessionStorageRecord(sessionStorage);
-  if (session?.token) {
-    return session.token;
-  }
-
-  return localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token') || '';
+  return readStoredAdminAuthToken({ localStorage, sessionStorage });
 }
 
 export const ADMIN_WEB_PORT = '8888';
@@ -77,10 +78,10 @@ export function getAdminSessionStorage() {
   if (getSessionStorageRecord(sessionStorage)) {
     return sessionStorage;
   }
-  if (localStorage.getItem('admin_token')) {
+  if (localStorage.getItem(ADMIN_AUTH_RESPONSE_STORAGE_KEYS.TOKEN_KEY)) {
     return localStorage;
   }
-  if (sessionStorage.getItem('admin_token')) {
+  if (sessionStorage.getItem(ADMIN_AUTH_RESPONSE_STORAGE_KEYS.TOKEN_KEY)) {
     return sessionStorage;
   }
   return localStorage;
@@ -132,12 +133,7 @@ export function clearCachedSocketToken() {
 }
 
 export function clearAdminSessionStorage() {
-  localStorage.removeItem('admin_token');
-  localStorage.removeItem('admin_user');
-  localStorage.removeItem(ADMIN_AUTH_STORAGE_KEYS.SESSION_KEY);
-  sessionStorage.removeItem('admin_token');
-  sessionStorage.removeItem('admin_user');
-  sessionStorage.removeItem(ADMIN_AUTH_STORAGE_KEYS.SESSION_KEY);
+  clearStoredAdminAuthSession({ localStorage, sessionStorage });
   clearCachedSocketToken();
 }
 
