@@ -1,224 +1,41 @@
 <template>
   <div class="login-shell">
-    <div v-if="isMobile && !showLogin" class="intro-page">
-      <div class="intro-content">
-        <div class="logo-row">
-          <img class="logo-mark" :src="logoUrl" alt="悦享e食" />
-          <div class="logo-text">悦享e食</div>
-        </div>
-        <div class="intro-title">管理后台</div>
-        <div class="intro-slogan">高效运营 · 轻松管理 · 即时履约</div>
-        <button class="start-btn" @click="enterLogin">立即开始</button>
-      </div>
-    </div>
+    <LoginIntroSplash
+      v-if="isMobile && !showLogin"
+      :logo-url="logoUrl"
+      :enter-login="enterLogin"
+    />
 
     <template v-else>
-      <div v-if="!isMobile" class="hero">
-        <div class="hero-logo-ring">
-          <img class="hero-logo" :src="logoUrl" alt="悦享e食" />
-        </div>
-        <h1 class="hero-title">悦享e食管理后台</h1>
-        <p class="hero-subtitle">高效运营 · 轻松管理 · 即时履约</p>
-      </div>
-
-      <div class="login-card" :class="{ 'mobile-card': isMobile }">
-        <button class="corner-switch" @click="toggleMode">
-          <span class="corner-bg" :class="{ inactive: isQrMode }"></span>
-          <span class="corner-fold"></span>
-          <span class="corner-icon">{{ isQrMode ? '账号' : 'QR' }}</span>
-        </button>
-
-        <div class="card-content">
-          <transition name="slide-fade" mode="out-in">
-            <div v-if="!isQrMode" key="login-form" class="card-body">
-              <header class="panel-header">
-                <h3>欢迎回来</h3>
-                <p>请输入管理员凭证以访问后台</p>
-              </header>
-
-              <div class="mode-tabs">
-                <button
-                  type="button"
-                  :class="['mode-tab', { active: credentialMode === 'password' }]"
-                  @click="switchCredentialMode('password')"
-                >
-                  密码登录
-                </button>
-                <button
-                  type="button"
-                  :class="['mode-tab', { active: credentialMode === 'code' }]"
-                  @click="switchCredentialMode('code')"
-                >
-                  验证码登录
-                </button>
-              </div>
-
-              <form class="login-form" @submit.prevent="handleLogin">
-                <div class="field-group">
-                  <label>手机号</label>
-                  <input
-                    v-model.trim="form.phone"
-                    class="glass-input"
-                    type="text"
-                    maxlength="11"
-                    placeholder="请输入管理员手机号"
-                    autocomplete="username"
-                  />
-                </div>
-
-                <div class="field-group">
-                  <label>{{ credentialMode === 'password' ? '登录密码' : '短信验证码' }}</label>
-                  <div class="credential-row">
-                    <input
-                      v-if="credentialMode === 'password'"
-                      v-model="form.password"
-                      class="glass-input"
-                      type="password"
-                      placeholder="请输入登录密码"
-                      autocomplete="current-password"
-                    />
-                    <input
-                      v-else
-                      v-model.trim="form.code"
-                      class="glass-input"
-                      type="text"
-                      maxlength="6"
-                      placeholder="请输入短信验证码"
-                    />
-                    <button
-                      v-if="credentialMode === 'code'"
-                      type="button"
-                      class="code-btn"
-                      :disabled="!canSendCode || sendingCode || loading"
-                      @click="sendCode"
-                    >
-                      {{ sendingCode ? '发送中' : (countdown > 0 ? `${countdown}s` : '获取验证码') }}
-                    </button>
-                  </div>
-                </div>
-
-                <div class="form-meta">
-                  <label class="remember-label">
-                    <input v-model="form.rememberMe" type="checkbox" />
-                    <span>保持登录状态</span>
-                  </label>
-                  <span class="meta-note">忘记密码请联系平台负责人处理</span>
-                </div>
-
-                <button type="submit" class="submit-btn" :disabled="loading || sendingCode">
-                  {{ loading ? '登录中...' : '进入后台' }}
-                </button>
-              </form>
-            </div>
-
-            <div v-else key="qr-panel" class="card-body qr-body">
-              <header class="panel-header qr-header">
-                <h3>扫码登录</h3>
-                <p>使用管理端 App 扫描二维码确认登录</p>
-              </header>
-
-              <div class="qr-wrap">
-                <div class="qr-shell">
-                  <img v-if="qrImage" :src="qrImage" class="qr-image" alt="扫码登录二维码" />
-                  <div
-                    v-if="qrStatus === 'pending' || qrStatus === 'scanned'"
-                    class="qr-scan-line"
-                  ></div>
-                  <div
-                    v-if="qrLoading || qrStatus === 'expired' || qrStatus === 'error' || qrStatus === 'rejected'"
-                    class="qr-overlay"
-                  >
-                    <div class="overlay-title">{{ qrOverlayText }}</div>
-                    <button
-                      type="button"
-                      class="overlay-refresh"
-                      :disabled="qrLoading"
-                      @click="refreshQrCode(true)"
-                    >
-                      立即刷新
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <button type="button" class="submit-btn" :disabled="qrLoading" @click="refreshQrCode(true)">
-                {{ qrLoading ? '刷新中...' : '刷新二维码' }}
-              </button>
-            </div>
-          </transition>
-        </div>
-
-        <footer class="card-footer">安全连接已启用</footer>
-      </div>
+      <LoginHeroPanel v-if="!isMobile" :logo-url="logoUrl" />
+      <LoginAccessCard
+        :is-mobile="isMobile"
+        :is-qr-mode="isQrMode"
+        :toggle-mode="toggleMode"
+        :credential-mode="credentialMode"
+        :switch-credential-mode="switchCredentialMode"
+        :form="form"
+        :can-send-code="canSendCode"
+        :sending-code="sendingCode"
+        :loading="loading"
+        :countdown="countdown"
+        :send-code="sendCode"
+        :handle-login="handleLogin"
+        :qr-image="qrImage"
+        :qr-status="qrStatus"
+        :qr-loading="qrLoading"
+        :qr-overlay-text="qrOverlayText"
+        :refresh-qr-code="refreshQrCode"
+      />
     </template>
+    <LoginBootstrapDialog
+      :bootstrap-dialog-visible="bootstrapDialogVisible"
+      :bootstrap-form="bootstrapForm"
+      :bootstrap-submitting="bootstrapSubmitting"
+      :handle-complete-bootstrap="handleCompleteBootstrap"
+      :handle-bootstrap-logout="handleBootstrapLogout"
+    />
   </div>
-
-  <el-dialog
-    v-model="bootstrapDialogVisible"
-    title="完成首次管理员初始化"
-    width="420px"
-    :close-on-click-modal="false"
-    :close-on-press-escape="false"
-    :show-close="false"
-  >
-    <p style="margin-top: 0; color: #6b7280;">
-      检测到你当前使用的是首次部署生成的临时管理员账号。请先改成真实的管理员名称、手机号和密码后再进入后台。
-    </p>
-
-    <form id="bootstrap-form" @submit.prevent="handleCompleteBootstrap">
-      <div class="field-group">
-        <label>真实管理员名称</label>
-        <input
-          v-model.trim="bootstrapForm.name"
-          class="glass-input"
-          type="text"
-          placeholder="请输入真实管理员名称"
-        />
-      </div>
-
-      <div class="field-group">
-        <label>真实管理员手机号</label>
-        <input
-          v-model.trim="bootstrapForm.phone"
-          class="glass-input"
-          type="text"
-          maxlength="11"
-          placeholder="请输入真实管理员手机号"
-          autocomplete="username"
-          inputmode="numeric"
-        />
-      </div>
-
-      <div class="field-group">
-        <label>新的管理员密码</label>
-        <input
-          v-model="bootstrapForm.newPassword"
-          class="glass-input"
-          type="password"
-          placeholder="请输入新的管理员密码"
-          autocomplete="new-password"
-        />
-      </div>
-
-      <div class="field-group">
-        <label>确认新的管理员密码</label>
-        <input
-          v-model="bootstrapForm.confirmPassword"
-          class="glass-input"
-          type="password"
-          placeholder="请再次输入新的管理员密码"
-          autocomplete="new-password"
-        />
-      </div>
-    </form>
-
-    <template #footer>
-      <el-button @click="handleBootstrapLogout">退出登录</el-button>
-      <el-button type="primary" native-type="submit" form="bootstrap-form" :loading="bootstrapSubmitting">
-        保存并进入后台
-      </el-button>
-    </template>
-  </el-dialog>
 </template>
 
 <script setup>
@@ -226,6 +43,10 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import QRCode from 'qrcode'
+import LoginAccessCard from './loginSections/LoginAccessCard.vue'
+import LoginBootstrapDialog from './loginSections/LoginBootstrapDialog.vue'
+import LoginHeroPanel from './loginSections/LoginHeroPanel.vue'
+import LoginIntroSplash from './loginSections/LoginIntroSplash.vue'
 
 import request from '@/utils/request'
 import { buildRuntimeUrl, clearAdminSessionStorage, getStoredAdminUser } from '@/utils/runtime'
@@ -397,7 +218,7 @@ function saveLoginSession(payload, mode = credentialMode.value) {
 
   if (persistedResult.mustChangeBootstrap) {
     openBootstrapDialog(persistedResult.user)
-    ElMessage.warning('请先完成首次管理员初始化，再进入后台。')
+    ElMessage.warning('请先完成首次管理员设置，再进入后台。')
     return persistedResult
   }
 

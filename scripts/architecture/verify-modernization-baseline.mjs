@@ -676,6 +676,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "admin-vue/src/views/settingsSections/SettingsDistributionSection.vue",
   "admin-vue/src/views/settingsSections/SettingsOperationsSection.vue",
   "admin-vue/src/views/settingsSections/SettingsClearAllDialog.vue",
+  "admin-vue/src/views/loginSections/LoginIntroSplash.vue",
+  "admin-vue/src/views/loginSections/LoginHeroPanel.vue",
+  "admin-vue/src/views/loginSections/LoginAccessCard.vue",
+  "admin-vue/src/views/loginSections/LoginBootstrapDialog.vue",
   "admin-win/src/main.ts",
   "admin-win/vite.config.mts",
   "admin-mac/src/main.ts",
@@ -1357,6 +1361,10 @@ assertContains(
 assertContains("admin-vue/src/App.vue", "getStoredAdminUser");
 assertContains("admin-vue/src/views/AfterSales.vue", "getStoredAdminUser");
 assertContains("admin-vue/src/views/Login.vue", "getStoredAdminUser");
+assertContains("admin-vue/src/views/Login.vue", "LoginAccessCard");
+assertContains("admin-vue/src/views/Login.vue", "LoginBootstrapDialog");
+assertContains("admin-vue/src/views/Login.vue", "LoginHeroPanel");
+assertContains("admin-vue/src/views/Login.vue", "LoginIntroSplash");
 assertContains(
   "packages/admin-core/src/index.js",
   'export * from "./admin-auth-response.js";',
@@ -4172,6 +4180,8 @@ assertContains(
   "searchAdminRTCTargets(searchForm.keyword)",
 );
 assertContains("admin-vue/src/views/Login.vue", "extractEnvelopeData(data)");
+assertNotContains("admin-vue/src/views/Login.vue", "扫码登录</h3>");
+assertNotContains("admin-vue/src/views/Login.vue", "完成首次管理员初始化");
 assertContains(
   "admin-vue/src/views/ShopManageDetail.vue",
   "extractShopReviewPage",
