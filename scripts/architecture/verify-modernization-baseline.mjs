@@ -102,6 +102,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
 }
 
 [
+  "scripts/architecture/check-admin-shell-duplicates.mjs",
+  "scripts/architecture/check-admin-shell-duplicates.test.mjs",
   "packages/contracts/src/index.js",
   "packages/contracts/src/http.cjs",
   "packages/contracts/src/http.test.mjs",
@@ -3222,11 +3224,15 @@ assertContains(
 );
 assertContains(
   "package.json",
+  '"verify:architecture-tests": "node --test scripts/architecture/check-admin-shell-duplicates.test.mjs"',
+);
+assertContains(
+  "package.json",
   '"verify:admin-core-tests": "node --test packages/admin-core/src/admin-auth-session.test.mjs packages/admin-core/src/admin-auth-response.test.mjs packages/admin-core/src/route-registry.test.mjs packages/admin-core/src/navigation-metadata.test.mjs packages/admin-core/src/paginated-resources.test.mjs packages/admin-core/src/system-log-resources.test.mjs packages/admin-core/src/payment-center-resources.test.mjs packages/admin-core/src/service-health-resources.test.mjs packages/admin-core/src/official-site-resources.test.mjs packages/admin-core/src/financial-transaction-resources.test.mjs packages/admin-core/src/notification-resources.test.mjs packages/admin-core/src/content-settings-resources.test.mjs packages/admin-core/src/operations-center-resources.test.mjs packages/admin-core/src/dashboard-resources.test.mjs packages/admin-core/src/system-settings-resources.test.mjs packages/admin-core/src/api-management-resources.test.mjs packages/admin-core/src/order-resources.test.mjs packages/admin-core/src/user-management-resources.test.mjs packages/admin-core/src/shop-management-resources.test.mjs packages/admin-core/src/merchant-profile-resources.test.mjs packages/admin-core/src/home-entry-resources.test.mjs packages/admin-core/src/communication-audit-resources.test.mjs packages/admin-core/src/home-campaign-resources.test.mjs packages/admin-core/src/admin-management-resources.test.mjs packages/admin-core/src/dining-buddy-governance-resources.test.mjs packages/admin-core/src/chat-console-resources.test.mjs packages/admin-core/src/data-management-resources.test.mjs packages/admin-core/src/coupon-resources.test.mjs packages/admin-core/src/api-documentation-resources.test.mjs"',
 );
 assertContains(
   "package.json",
-  '"verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"',
+  '"verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && node scripts/architecture/check-admin-shell-duplicates.mjs && npm run verify:architecture-tests && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"',
 );
 assertContains(
   "package.json",
