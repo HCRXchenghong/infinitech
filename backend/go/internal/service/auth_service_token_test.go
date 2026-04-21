@@ -200,3 +200,66 @@ func TestPrincipalAccessTokensCarryUnifiedClaimsForRiderAndMerchant(t *testing.T
 		t.Fatalf("expected merchant token verification success, got valid=%v phone=%q merchantID=%d err=%v", valid, phone, merchantID, err)
 	}
 }
+
+func TestRoleLoginResponsesExposeAccessTokenExpiry(t *testing.T) {
+	svc, db := newAuthServiceForTokenTest(t)
+
+	riderPasswordHash, err := hashPassword("rider-secret")
+	if err != nil {
+		t.Fatalf("hash rider password failed: %v", err)
+	}
+	merchantPasswordHash, err := hashPassword("merchant-secret")
+	if err != nil {
+		t.Fatalf("hash merchant password failed: %v", err)
+	}
+
+	rider := repository.Rider{
+		UnifiedIdentity: repository.UnifiedIdentity{UID: "25072403000022"},
+		Phone:           "13800001012",
+		Name:            "Rider Session",
+		PasswordHash:    riderPasswordHash,
+	}
+	merchant := repository.Merchant{
+		UnifiedIdentity: repository.UnifiedIdentity{UID: "25072404000032"},
+		Phone:           "13800001013",
+		Name:            "Merchant Session",
+		OwnerName:       "Owner",
+		PasswordHash:    merchantPasswordHash,
+	}
+	if err := db.Create(&rider).Error; err != nil {
+		t.Fatalf("seed rider failed: %v", err)
+	}
+	if err := db.Create(&merchant).Error; err != nil {
+		t.Fatalf("seed merchant failed: %v", err)
+	}
+
+	riderLogin, err := svc.RiderLogin(context.Background(), rider.Phone, "", "rider-secret")
+	if err != nil {
+		t.Fatalf("rider login failed: %v", err)
+	}
+	riderResponse, ok := riderLogin.(*LoginResponse)
+	if !ok {
+		t.Fatalf("expected rider login response, got %T", riderLogin)
+	}
+	if riderResponse.ExpiresIn != int64(svc.config.JWT.AccessTokenExpiry.Seconds()) {
+		t.Fatalf("expected rider expiresIn %d, got %d", int64(svc.config.JWT.AccessTokenExpiry.Seconds()), riderResponse.ExpiresIn)
+	}
+	if valid, phone, riderID, err := svc.VerifyRiderToken(riderResponse.Token); err != nil || !valid || phone != rider.Phone || riderID != int64(rider.ID) {
+		t.Fatalf("expected rider session token verification success, got valid=%v phone=%q riderID=%d err=%v", valid, phone, riderID, err)
+	}
+
+	merchantLogin, err := svc.MerchantLogin(context.Background(), merchant.Phone, "", "merchant-secret")
+	if err != nil {
+		t.Fatalf("merchant login failed: %v", err)
+	}
+	merchantResponse, ok := merchantLogin.(*LoginResponse)
+	if !ok {
+		t.Fatalf("expected merchant login response, got %T", merchantLogin)
+	}
+	if merchantResponse.ExpiresIn != int64(svc.config.JWT.AccessTokenExpiry.Seconds()) {
+		t.Fatalf("expected merchant expiresIn %d, got %d", int64(svc.config.JWT.AccessTokenExpiry.Seconds()), merchantResponse.ExpiresIn)
+	}
+	if valid, phone, merchantID, err := svc.VerifyMerchantToken(merchantResponse.Token); err != nil || !valid || phone != merchant.Phone || merchantID != int64(merchant.ID) {
+		t.Fatalf("expected merchant session token verification success, got valid=%v phone=%q merchantID=%d err=%v", valid, phone, merchantID, err)
+	}
+}

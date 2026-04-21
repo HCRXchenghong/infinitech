@@ -123,6 +123,11 @@ export function useMerchantLoginPage() {
       persistMerchantAuthSession({
         uniApp: uni,
         token: response.token,
+        refreshToken: response.refreshToken || null,
+        tokenExpiresAt:
+          Number(response.expiresIn || 0) > 0
+            ? Date.now() + Number(response.expiresIn) * 1000
+            : null,
         profile: response.user || { phone: normalizedPhone },
       })
       clearMerchantContext()

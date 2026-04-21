@@ -92,6 +92,13 @@ func (s *AuthService) verifyCodeByScene(ctx context.Context, scene, phone, code 
 	return nil
 }
 
+func (s *AuthService) accessTokenExpiresInSeconds() int64 {
+	if s == nil || s.config == nil {
+		return 0
+	}
+	return int64(s.config.JWT.AccessTokenExpiry.Seconds())
+}
+
 // LoginRequest defines the login request payload.
 type LoginRequest struct {
 	Phone    string `json:"phone"`
@@ -601,10 +608,7 @@ func (s *AuthService) IssuePrincipalAccessToken(principalType, phone string, pri
 	if err != nil {
 		return "", 0, err
 	}
-	if s == nil || s.config == nil {
-		return token, 0, nil
-	}
-	return token, int64(s.config.JWT.AccessTokenExpiry.Seconds()), nil
+	return token, s.accessTokenExpiresInSeconds(), nil
 }
 
 // IssueTokenPair re-issues access and refresh tokens after identity changes.
@@ -1002,9 +1006,10 @@ func (s *AuthService) RiderLogin(ctx context.Context, phone, code, password stri
 	}
 
 	return &LoginResponse{
-		Success: true,
-		Token:   token,
-		User:    riderInfo,
+		Success:   true,
+		Token:     token,
+		ExpiresIn: s.accessTokenExpiresInSeconds(),
+		User:      riderInfo,
 	}, nil
 }
 
@@ -1075,9 +1080,10 @@ func (s *AuthService) MerchantLogin(ctx context.Context, phone, code, password s
 	}
 
 	return &LoginResponse{
-		Success: true,
-		Token:   token,
-		User:    merchantInfo,
+		Success:   true,
+		Token:     token,
+		ExpiresIn: s.accessTokenExpiresInSeconds(),
+		User:      merchantInfo,
 	}, nil
 }
 

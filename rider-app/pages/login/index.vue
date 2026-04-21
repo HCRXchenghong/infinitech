@@ -76,9 +76,12 @@ export default Vue.extend({
     },
 
     saveRiderSession(payload: any, phone: string) {
+      const expiresIn = Number(payload?.expiresIn || 0)
       persistRiderAuthSession({
         uniApp: uni,
         token: payload?.token,
+        refreshToken: payload?.refreshToken || null,
+        tokenExpiresAt: expiresIn > 0 ? Date.now() + expiresIn * 1000 : null,
         profile: payload?.user || { phone, nickname: '骑手' },
         extraStorageValues: {
           riderId: payload?.user?.id != null ? String(payload.user.id) : null,
