@@ -4339,15 +4339,15 @@ assertContains(
 );
 assertContains("admin-vue/src/views/ridersHelpers.js", "extractAdminRiderPage");
 assertContains(
-  "admin-vue/src/views/ContactPhoneAudits.vue",
+  "admin-vue/src/views/contactPhoneAuditsPageHelpers.js",
   "extractContactPhoneAuditPage",
 );
 assertContains(
-  "admin-vue/src/views/ContactPhoneAudits.vue",
+  "admin-vue/src/views/contactPhoneAuditsPageHelpers.js",
   "buildAdminContactPhoneAuditQuery",
 );
 assertContains(
-  "admin-vue/src/views/ContactPhoneAudits.vue",
+  "admin-vue/src/views/contactPhoneAuditsPageHelpers.js",
   "getAdminCommunicationRoleLabel",
 );
 assertContains(
@@ -4599,9 +4599,54 @@ assertNotContains(
   "admin-vue/src/views/HomeEntrySettings.vue",
   "function moveEntry(index, delta)",
 );
+assertExists("admin-vue/src/views/contactPhoneAuditsPageHelpers.js");
+assertExists("admin-vue/src/views/ContactPhoneAudits.css");
+assertExists(
+  "admin-vue/src/views/contactPhoneAuditsSections/ContactPhoneAuditsHeader.vue",
+);
+assertExists(
+  "admin-vue/src/views/contactPhoneAuditsSections/ContactPhoneAuditsSummaryGrid.vue",
+);
+assertExists(
+  "admin-vue/src/views/contactPhoneAuditsSections/ContactPhoneAuditsFilters.vue",
+);
+assertExists(
+  "admin-vue/src/views/contactPhoneAuditsSections/ContactPhoneAuditsTable.vue",
+);
+assertExists(
+  "admin-vue/src/views/contactPhoneAuditsSections/ContactPhoneAuditDetailDialog.vue",
+);
+assertContains(
+  "admin-vue/src/views/ContactPhoneAudits.vue",
+  "useContactPhoneAuditsPage({",
+);
+assertContains(
+  "admin-vue/src/views/ContactPhoneAudits.vue",
+  "ContactPhoneAuditsSummaryGrid",
+);
+assertContains(
+  "admin-vue/src/views/ContactPhoneAudits.vue",
+  "ContactPhoneAuditsTable",
+);
+assertContains(
+  "admin-vue/src/views/contactPhoneAuditsPageHelpers.js",
+  "extractContactPhoneAuditPage(data)",
+);
+assertContains(
+  "admin-vue/src/views/contactPhoneAuditsPageHelpers.js",
+  "buildAdminContactPhoneAuditQuery(filters, pagination)",
+);
 assertNotContains(
   "admin-vue/src/views/ContactPhoneAudits.vue",
   "function roleLabel(role)",
+);
+assertNotContains(
+  "admin-vue/src/views/ContactPhoneAudits.vue",
+  "async function loadAudits()",
+);
+assertNotContains(
+  "admin-vue/src/views/ContactPhoneAudits.vue",
+  "function openDetail(row)",
 );
 assertNotContains(
   "admin-vue/src/views/RTCCallAudits.vue",

@@ -1,0 +1,120 @@
+.contact-phone-audits-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.contact-phone-audits-panel {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.contact-phone-audits-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.contact-phone-audits-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.contact-phone-audits-subtitle {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #6b7280;
+}
+
+.contact-phone-audits-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.contact-phone-audits-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.contact-phone-audits-summary-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.contact-phone-audits-summary-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.contact-phone-audits-summary-value {
+  margin-top: 8px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.contact-phone-audits-summary-value.success {
+  color: #059669;
+}
+
+.contact-phone-audits-summary-value.primary {
+  color: #2563eb;
+}
+
+.contact-phone-audits-summary-value.danger {
+  color: #dc2626;
+}
+
+.contact-phone-audits-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.contact-phone-audits-muted-text {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.contact-phone-audits-pager {
+  margin-top: 18px;
+  justify-content: center;
+}
+
+.contact-phone-audits-metadata-title {
+  margin: 16px 0 10px;
+  font-weight: 600;
+  color: #111827;
+}
+
+@media (max-width: 1200px) {
+  .contact-phone-audits-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .contact-phone-audits-panel {
+    padding: 16px;
+  }
+
+  .contact-phone-audits-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .contact-phone-audits-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
