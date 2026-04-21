@@ -1459,7 +1459,7 @@ assertContains(
   "extractOfficialSiteRecordCollection",
 );
 assertContains(
-  "admin-vue/src/views/FinanceCenter.vue",
+  "admin-vue/src/views/financeCenterHelpers.js",
   "buildFinanceOverviewKpiCards",
 );
 assertContains(
@@ -4911,24 +4911,37 @@ assertContains(
   "admin-vue/src/views/dashboardPageHelpers.js",
   "const payload = extractEnvelopeData(data) || {}",
 );
+assertExists("admin-vue/src/views/financeCenterHelpers.js");
+assertExists("admin-vue/src/views/financeCenterSections/FinanceCenterHeader.vue");
+assertExists("admin-vue/src/views/financeCenterSections/FinanceCenterMetricSection.vue");
+assertExists("admin-vue/src/views/financeCenterSections/FinanceCenterWalletSection.vue");
+assertExists("admin-vue/src/views/financeCenterSections/FinanceCenterLeaderboardsSection.vue");
+assertExists("admin-vue/src/views/financeCenterSections/FinanceCenterLogsSection.vue");
+assertExists("admin-vue/src/views/financeCenterSections/FinanceCenterKpiDialog.vue");
+assertExists("admin-vue/src/views/financeCenterSections/FinanceCenterUserDialog.vue");
+assertExists("admin-vue/src/views/financeCenterSections/FinanceCenterWalletActionDialog.vue");
+assertContains("admin-vue/src/views/FinanceCenter.vue", "useFinanceCenterPage({");
+assertContains("admin-vue/src/views/FinanceCenter.vue", "FinanceCenterHeader");
+assertContains("admin-vue/src/views/FinanceCenter.vue", "FinanceCenterMetricSection");
+assertContains("admin-vue/src/views/FinanceCenter.vue", "FinanceCenterWalletActionDialog");
 assertContains(
-  "admin-vue/src/views/FinanceCenter.vue",
-  "const payload = extractEnvelopeData(res.data) || {};",
+  "admin-vue/src/views/financeCenterHelpers.js",
+  "const payload = extractEnvelopeData(res.data) || {}",
 );
 assertContains(
-  "admin-vue/src/views/FinanceCenter.vue",
-  "const payload = extractEnvelopeData(res.data) || res.data || {};",
+  "admin-vue/src/views/financeCenterHelpers.js",
+  "const payload = extractEnvelopeData(res.data) || res.data || {}",
 );
 assertContains(
-  "admin-vue/src/views/FinanceCenter.vue",
+  "admin-vue/src/views/financeCenterHelpers.js",
   "buildFinanceCenterParams",
 );
 assertContains(
-  "admin-vue/src/views/FinanceCenter.vue",
+  "admin-vue/src/views/financeCenterHelpers.js",
   "createFinanceWalletActionForm",
 );
 assertContains(
-  "admin-vue/src/views/FinanceCenter.vue",
+  "admin-vue/src/views/financeCenterHelpers.js",
   "buildFinanceDeductPayload",
 );
 assertContains(
@@ -6842,7 +6855,7 @@ assertContains(
   "extractErrorMessage(error",
 );
 assertContains(
-  "admin-vue/src/views/FinanceCenter.vue",
+  "admin-vue/src/views/financeCenterHelpers.js",
   "extractEnvelopeData(res.data)",
 );
 assertNotContains(
@@ -6852,6 +6865,10 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/FinanceCenter.vue",
   "function fmtDate(d)",
+);
+assertNotContains(
+  "admin-vue/src/views/FinanceCenter.vue",
+  "const periodType = ref('daily')",
 );
 assertContains("admin-vue/src/views/Login.vue", "extractSMSResult(data)");
 assertContains(
