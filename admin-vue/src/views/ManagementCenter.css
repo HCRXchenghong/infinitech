@@ -1,0 +1,87 @@
+.management-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.management-page .management-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f7fbff 0%, #edf4ff 52%, #f4f8ff 100%);
+  border: 1px solid #dbe7ff;
+}
+
+.management-page .management-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.management-page .management-page-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.management-page .management-page-subtitle {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.management-page .management-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.management-page .management-panel-card {
+  border-radius: 14px;
+}
+
+.management-page .management-panel-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.management-page .management-account-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.management-page .management-search {
+  width: 240px;
+}
+
+.management-page .management-table-actions {
+  display: flex;
+  gap: 4px;
+}
+
+@media (max-width: 768px) {
+  .management-page .management-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .management-page .management-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .management-page .management-account-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .management-page .management-search {
+    width: 100%;
+  }
+}

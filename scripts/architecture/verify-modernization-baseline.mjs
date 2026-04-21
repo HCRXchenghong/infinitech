@@ -2324,7 +2324,7 @@ assertContains(
   "extractTemporaryCredential(",
 );
 assertContains(
-  "admin-vue/src/views/ManagementCenter.vue",
+  "admin-vue/src/views/managementCenterPageHelpers.js",
   "extractTemporaryCredential(",
 );
 assertContains(
@@ -4667,19 +4667,29 @@ assertNotContains(
   "function createRestrictionForm(source = {})",
 );
 assertContains(
-  "admin-vue/src/views/ManagementCenter.vue",
+  "admin-vue/src/views/managementCenterPageHelpers.js",
   "extractAdminManagementPage(data).items",
 );
+assertExists("admin-vue/src/views/managementCenterPageHelpers.js");
+assertExists("admin-vue/src/views/ManagementCenter.css");
+assertExists("admin-vue/src/views/managementCenterSections/ManagementCenterHeader.vue");
+assertExists("admin-vue/src/views/managementCenterSections/ManagementCenterAccountsPanel.vue");
+assertExists("admin-vue/src/views/managementCenterSections/ManagementCenterAdminDialog.vue");
+assertContains("admin-vue/src/views/ManagementCenter.vue", "useManagementCenterPage({");
+assertContains("admin-vue/src/views/ManagementCenter.vue", "ManagementCenterHeader");
+assertContains("admin-vue/src/views/ManagementCenter.vue", "ManagementCenterAccountsPanel");
+assertContains("admin-vue/src/views/ManagementCenter.vue", "ManagementCenterAdminDialog");
+assertContains("admin-vue/src/views/ManagementCenter.vue", "ManagementCenter.css");
 assertContains(
-  "admin-vue/src/views/ManagementCenter.vue",
+  "admin-vue/src/views/managementCenterPageHelpers.js",
   "createAdminManagementFormState",
 );
 assertContains(
-  "admin-vue/src/views/ManagementCenter.vue",
+  "admin-vue/src/views/managementCenterPageHelpers.js",
   "buildAdminManagementPayload",
 );
 assertContains(
-  "admin-vue/src/views/ManagementCenter.vue",
+  "admin-vue/src/views/managementCenterPageHelpers.js",
   "ADMIN_MANAGEMENT_ROLE_OPTIONS",
 );
 assertContains(
@@ -5221,6 +5231,14 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/ManagementCenter.vue",
   "extractPaginatedItems(data",
+);
+assertNotContains(
+  "admin-vue/src/views/ManagementCenter.vue",
+  "async function loadAdmins(",
+);
+assertNotContains(
+  "admin-vue/src/views/ManagementCenter.vue",
+  "<el-card class=\"panel-card\">",
 );
 assertNotContains(
   "admin-vue/src/views/SystemLogs.vue",
