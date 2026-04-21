@@ -3248,7 +3248,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && node scripts/architecture/check-admin-shell-duplicates.mjs && npm run verify:architecture-tests && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"',
+  '"verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && node scripts/architecture/check-admin-shell-duplicates.mjs && npm run verify:architecture-tests && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:admin-vue-tests && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"',
 );
 assertContains(
   "package.json",
@@ -4481,11 +4481,35 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers.js",
-  "useSmsSettings({",
+  "useSharedSystemConfigSections({",
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers.js",
   "useVipSettings({",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers.js",
+  "runSettledTaskGroup(",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers/pageRuntime.js",
+  "useSharedSystemConfigSections({",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers/pageRuntime.js",
+  "resolveSettledTaskGroupError(",
+);
+assertContains(
+  "admin-vue/src/views/settingsHelpers/pageRuntime.test.mjs",
+  "runSettledTaskGroup(",
+);
+assertContains(
+  "package.json",
+  "\"verify:admin-vue-tests\":",
+);
+assertContains(
+  "package.json",
+  "verify:admin-vue-tests",
 );
 assertContains(
   "admin-vue/src/views/settingsHelpers.js",
@@ -4577,11 +4601,11 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/apiManagementHelpers.js",
-  "useSmsSettings({",
+  "useSharedSystemConfigSections({",
 );
 assertContains(
   "admin-vue/src/views/apiManagementHelpers.js",
-  "useWeatherSettings({",
+  "runSettledTaskGroup(",
 );
 assertContains(
   "admin-vue/src/views/publicApiManagementCore.js",

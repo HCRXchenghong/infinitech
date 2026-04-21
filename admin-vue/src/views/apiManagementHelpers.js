@@ -7,27 +7,27 @@ import {
 } from '@infinitech/admin-core';
 import request from '@/utils/request';
 import { usePublicApiManagement } from './publicApiManagementCore';
-import { useSmsSettings } from './settingsHelpers/sms';
-import { useWeatherSettings } from './settingsHelpers/weather';
+import {
+  runSettledTaskGroup,
+  useResponsiveAdminPage,
+  useSharedSystemConfigSections,
+} from './settingsHelpers/pageRuntime';
 
 export function useApiManagementPage(options = {}) {
   const router = useRouter();
   const includeExternalApiManagement = options.includeExternalApiManagement !== false;
 
-  const isMobile = ref(window.innerWidth <= 768);
-  const handleResize = () => {
-    isMobile.value = window.innerWidth <= 768;
-  };
+  const {
+    isMobile,
+    handleResize,
+    bindWindowResize,
+    unbindWindowResize,
+  } = useResponsiveAdminPage();
 
   const loading = ref(false);
   const saving = ref(false);
   const settingsError = ref('');
-  const smsSettings = useSmsSettings({
-    request,
-    ElMessage,
-    savingRef: saving,
-  });
-  const weatherSettings = useWeatherSettings({
+  const sharedSystemConfig = useSharedSystemConfigSections({
     request,
     ElMessage,
     savingRef: saving,
@@ -39,8 +39,8 @@ export function useApiManagementPage(options = {}) {
     cache: true,
   });
   const pageError = computed(() => settingsError.value || publicApiManagement.apiListError.value || '');
-  const sms = smsSettings.sms;
-  const weather = weatherSettings.weather;
+  const sms = sharedSystemConfig.sms;
+  const weather = sharedSystemConfig.weather;
 
   const downloadDialogVisible = ref(false);
   const downloadLanguage = ref('java');
@@ -49,33 +49,34 @@ export function useApiManagementPage(options = {}) {
 
   onMounted(() => {
     loadAll();
-    window.addEventListener('resize', handleResize);
+    bindWindowResize();
   });
 
   onUnmounted(() => {
-    window.removeEventListener('resize', handleResize);
+    unbindWindowResize();
   });
 
   async function loadAll(forceRefresh = false) {
     settingsError.value = '';
     loading.value = true;
     try {
-      const [smsResp, weaResp] = await Promise.allSettled([
-        smsSettings.loadSmsConfig({ clearError: false, throwOnError: true }),
-        weatherSettings.loadWeatherConfig({ clearError: false, throwOnError: true }),
-      ]);
-      let firstError = '';
+      const { errorMessage } = await runSettledTaskGroup(
+        [
+          () => sharedSystemConfig.loadSmsConfig({ clearError: false, throwOnError: true }),
+          () => sharedSystemConfig.loadWeatherConfig({ clearError: false, throwOnError: true }),
+        ],
+        {
+          mode: 'first_rejected',
+          fallbackMessage: '加载系统配置失败，请稍后重试',
+          fallbackMessages: [
+            '加载短信配置失败，请稍后重试',
+            '加载天气配置失败，请稍后重试',
+          ],
+        },
+      );
 
-      if (smsResp.status === 'rejected') {
-        firstError = extractErrorMessage(smsResp.reason, '加载短信配置失败，请稍后重试');
-      }
-
-      if (weaResp.status === 'rejected' && !firstError) {
-        firstError = extractErrorMessage(weaResp.reason, '加载天气配置失败，请稍后重试');
-      }
-
-      if (firstError) {
-        settingsError.value = firstError;
+      if (errorMessage) {
+        settingsError.value = errorMessage;
       }
     } catch (error) {
       settingsError.value = extractErrorMessage(error, '加载系统配置失败，请稍后重试');
@@ -89,11 +90,11 @@ export function useApiManagementPage(options = {}) {
   }
 
   async function saveSms() {
-    await smsSettings.saveSmsConfig();
+    await sharedSystemConfig.saveSmsConfig();
   }
 
   async function saveWeather() {
-    await weatherSettings.saveWeatherConfig();
+    await sharedSystemConfig.saveWeatherConfig();
   }
 
   function goToApiPermissions() {

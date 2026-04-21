@@ -9,34 +9,37 @@ import { useSettingsActionHelpers } from './settingsActionHelpers';
 import { useAppDownloadSettings } from './settingsHelpers/appDownload';
 import { useSettingsDataManagement } from './settingsHelpers/dataManagement';
 import { usePaymentAndDebugSettings } from './settingsHelpers/paymentAndDebug';
+import {
+  runSettledTaskGroup,
+  useResponsiveAdminPage,
+  useSharedSystemConfigSections,
+} from './settingsHelpers/pageRuntime';
 import { useServiceSettings } from './settingsHelpers/serviceSettings';
-import { useSmsSettings } from './settingsHelpers/sms';
 import { useSystemMaintenanceActions } from './settingsHelpers/systemMaintenance';
 import { useWechatLoginSettings } from './settingsHelpers/wechatLogin';
 import { useVipSettings } from './settingsHelpers/vipSettings';
-import { useWeatherSettings } from './settingsHelpers/weather';
 
 export function useSettingsPage() {
   const router = useRouter();
 
-  const isMobile = ref(window.innerWidth <= 768);
+  const {
+    isMobile,
+    handleResize,
+    bindWindowResize,
+    unbindWindowResize,
+  } = useResponsiveAdminPage();
 
   const loading = ref(false);
   const saving = ref(false);
   const loadError = ref('');
-  const smsSettings = useSmsSettings({
+  const sharedSystemConfig = useSharedSystemConfigSections({
     request,
     ElMessage,
     savingRef: saving,
   });
-  const weatherSettings = useWeatherSettings({
-    request,
-    ElMessage,
-    savingRef: saving,
-  });
-  const sms = smsSettings.sms;
-  const DEFAULT_WEATHER_CONFIG = weatherSettings.DEFAULT_WEATHER_CONFIG;
-  const weather = weatherSettings.weather;
+  const sms = sharedSystemConfig.sms;
+  const DEFAULT_WEATHER_CONFIG = sharedSystemConfig.DEFAULT_WEATHER_CONFIG;
+  const weather = sharedSystemConfig.weather;
   const appDownloadSettings = useAppDownloadSettings({
     request,
     ElMessage,
@@ -88,7 +91,7 @@ export function useSettingsPage() {
   const alipay = paymentAndDebugSettings.alipay;
   const savingAli = paymentAndDebugSettings.savingAli;
 
-  const mergeWeatherConfig = weatherSettings.applyWeatherConfig;
+  const mergeWeatherConfig = sharedSystemConfig.mergeWeatherConfig;
   const loadServiceSettings = serviceSettingsController.loadServiceSettings;
   const saveServiceSettings = serviceSettingsController.saveServiceSettings;
   const previewServiceSound = serviceSettingsController.previewServiceSound;
@@ -190,43 +193,43 @@ export function useSettingsPage() {
 
   const pageError = computed(() => loadError.value || '');
 
-  const handleResize = () => {
-    isMobile.value = window.innerWidth <= 768;
-  };
-
   onMounted(() => {
     loadAll();
-    window.addEventListener('resize', handleResize);
+    bindWindowResize();
   });
 
   onUnmounted(() => {
-    window.removeEventListener('resize', handleResize);
+    unbindWindowResize();
   });
 
   async function loadAll() {
     loadError.value = '';
     loading.value = true;
     try {
-      const results = await Promise.allSettled([
-        smsSettings.loadSmsConfig({ clearError: false, throwOnError: true }),
-        weatherSettings.loadWeatherConfig({ clearError: false, throwOnError: true }),
-        loadWechatLoginConfig({ clearError: false, throwOnError: true }),
-        loadServiceSettings({ clearError: false, throwOnError: true }),
-        loadCharitySettings({ clearError: false, throwOnError: true }),
-        loadVipSettings({ clearError: false, throwOnError: true }),
-        appDownloadSettings.loadAppDownloadConfig({ clearError: false, throwOnError: true }),
-        loadPaymentAndDebugSettings({ clearError: false, throwOnError: true }),
-      ]);
+      const { errorMessage } = await runSettledTaskGroup(
+        [
+          () => sharedSystemConfig.loadSmsConfig({ clearError: false, throwOnError: true }),
+          () => sharedSystemConfig.loadWeatherConfig({ clearError: false, throwOnError: true }),
+          () => loadWechatLoginConfig({ clearError: false, throwOnError: true }),
+          () => loadServiceSettings({ clearError: false, throwOnError: true }),
+          () => loadCharitySettings({ clearError: false, throwOnError: true }),
+          () => loadVipSettings({ clearError: false, throwOnError: true }),
+          () => appDownloadSettings.loadAppDownloadConfig({ clearError: false, throwOnError: true }),
+          () => loadPaymentAndDebugSettings({ clearError: false, throwOnError: true }),
+        ],
+        {
+          partialFailureMessage: '部分系统配置加载失败，请稍后重试',
+        },
+      );
 
-      if (results.some((item) => item.status === 'rejected')) {
-        loadError.value = '部分系统配置加载失败，请稍后重试';
+      if (errorMessage) {
+        loadError.value = errorMessage;
       }
     } catch (error) {
       loadError.value = extractErrorMessage(error, '加载系统设置失败，请稍后重试');
     } finally {
       loading.value = false;
     }
-
   }
 
   const {
@@ -238,11 +241,11 @@ export function useSettingsPage() {
   });
 
   async function saveSms() {
-    await smsSettings.saveSmsConfig({ reloadAfterSave: true });
+    await sharedSystemConfig.saveSmsConfig({ reloadAfterSave: true });
   }
 
   async function saveWeather() {
-    await weatherSettings.saveWeatherConfig();
+    await sharedSystemConfig.saveWeatherConfig();
   }
 
   async function saveAppDownload() {

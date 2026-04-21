@@ -10,6 +10,7 @@
     "verify:app-mobile-types": "npx tsc -p app-mobile/tsconfig.json --noEmit",
     "verify:mobile-types": "npm run verify:merchant-types && npm run verify:rider-types && npm run verify:user-types && npm run verify:app-mobile-types",
     "verify:admin-vue-build": "npm --workspace admin-vue run build",
+    "verify:admin-vue-tests": "node --test admin-vue/src/views/settingsHelpers/pageRuntime.test.mjs",
     "verify:admin-win-types": "npx tsc -p admin-win/tsconfig.json --noEmit",
     "verify:admin-mac-types": "npx tsc -p admin-mac/tsconfig.json --noEmit",
     "verify:admin-win-build": "npm --workspace admin-win run build",
@@ -27,7 +28,7 @@
     "verify:sidecar-tests": "npm --prefix backend/bank-payout-sidecar test && npm --prefix backend/alipay-sidecar test && npm --prefix backend/bank-payout-sidecar run check && npm --prefix backend/alipay-sidecar run check",
     "verify:management-tests": "node --test scripts/lib/management/management.test.mjs",
     "verify:backend-runtime": "npm run verify:go-tests && npm run verify:bff-tests && npm run verify:socket-tests && npm run verify:socket-check && npm run verify:sidecar-tests",
-    "verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && node scripts/architecture/check-admin-shell-duplicates.mjs && npm run verify:architecture-tests && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"
+    "verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && node scripts/architecture/check-admin-shell-duplicates.mjs && npm run verify:architecture-tests && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:admin-vue-tests && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"
   },
   "workspaces": [
     "packages/*",
