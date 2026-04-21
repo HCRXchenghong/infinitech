@@ -1,452 +1,192 @@
-<template src="./ContentSettings.template.html"></template>
+<template>
+  <div class="content-settings-page">
+    <ContentSettingsHeader :loading="loading" :load-all="loadAll" />
+    <PageStateAlert :message="pageError" />
+
+    <div class="settings-grid">
+      <ContentSettingsPushMessagesSection
+        v-if="isMobile"
+        :push-messages="pushMessages"
+        :push-message-loading="pushMessageLoading"
+        :show-add-push-message-dialog="showAddPushMessageDialog"
+        :load-push-messages="loadPushMessages"
+        :show-push-message-stats="showPushMessageStats"
+        :edit-push-message="editPushMessage"
+        :delete-push-message="deletePushMessage"
+      />
+
+      <ContentSettingsCarouselSection
+        :is-mobile="isMobile"
+        :saving="saving"
+        :carousel-settings="carouselSettings"
+        :save-carousel-settings="saveCarouselSettings"
+        :show-add-carousel-dialog="showAddCarouselDialog"
+        :load-carousel-list="loadCarouselList"
+        :carousel-loading="carouselLoading"
+        :carousel-list="carouselList"
+        :carousel-error="carouselError"
+        :start-edit="startEdit"
+        :finish-edit="finishEdit"
+        :cancel-edit="cancelEdit"
+        :delete-carousel="deleteCarousel"
+        :show-carousel-detail="showCarouselDetail"
+      />
+    </div>
+
+    <ContentSettingsCarouselDetailDialog
+      :visible="carouselDetailVisible"
+      :carousel="currentCarousel"
+      :edit-from-detail="editFromDetail"
+      :copy-to-clipboard="copyToClipboard"
+      @update:visible="handleCarouselDetailVisibleUpdate"
+    />
+
+    <ContentSettingsCarouselFormDialog
+      :visible="addCarouselVisible"
+      :new-carousel="newCarousel"
+      :saving="saving"
+      :cancel-add-carousel="cancelAddCarousel"
+      :confirm-add-carousel="confirmAddCarousel"
+      :upload-carousel-image="uploadCarouselImage"
+      :before-carousel-upload="beforeCarouselUpload"
+      @update:visible="handleAddCarouselVisibleUpdate"
+    />
+
+    <ContentSettingsPushMessageDialog
+      :visible="pushMessageDialogVisible"
+      :is-mobile="isMobile"
+      :editing-push-message="editingPushMessage"
+      :push-message-form="pushMessageForm"
+      :saving-push-message="savingPushMessage"
+      :save-push-message="savePushMessage"
+      :cancel-push-message-dialog="cancelPushMessageDialog"
+      :upload-push-message-image="uploadPushMessageImage"
+      :before-push-message-upload="beforePushMessageUpload"
+      :insert-image-tag="insertImageTag"
+      :clear-push-message-image="clearPushMessageImage"
+      @update:visible="handlePushMessageDialogVisibleUpdate"
+    />
+
+    <ContentSettingsPushMessageStatsDialog
+      :visible="pushMessageStatsVisible"
+      :is-mobile="isMobile"
+      :current-push-message-stats="currentPushMessageStats"
+      :current-push-message-deliveries="currentPushMessageDeliveries"
+      :push-message-delivery-loading="pushMessageDeliveryLoading"
+      :format-push-delivery-action-label="formatPushDeliveryActionLabel"
+      :format-push-delivery-error="formatPushDeliveryError"
+      :format-push-delivery-time="formatPushDeliveryTime"
+      :get-push-delivery-action-tag-type="getPushDeliveryActionTagType"
+      :get-push-delivery-status-tag-type="getPushDeliveryStatusTagType"
+      @update:visible="handlePushMessageStatsVisibleUpdate"
+    />
+  </div>
+</template>
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
+import './ContentSettings.css';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, Refresh, More } from '@element-plus/icons-vue';
-import {
-  buildAdminPushMessageStats,
-  extractAdminCarouselPage,
-  extractAdminPushDeliveryPage,
-  extractAdminPushMessagePage,
+import PageStateAlert from '@/components/PageStateAlert.vue';
+import request from '@/utils/request';
+import ContentSettingsCarouselDetailDialog from './contentSettingsSections/ContentSettingsCarouselDetailDialog.vue';
+import ContentSettingsCarouselFormDialog from './contentSettingsSections/ContentSettingsCarouselFormDialog.vue';
+import ContentSettingsCarouselSection from './contentSettingsSections/ContentSettingsCarouselSection.vue';
+import ContentSettingsHeader from './contentSettingsSections/ContentSettingsHeader.vue';
+import ContentSettingsPushMessageDialog from './contentSettingsSections/ContentSettingsPushMessageDialog.vue';
+import ContentSettingsPushMessageStatsDialog from './contentSettingsSections/ContentSettingsPushMessageStatsDialog.vue';
+import ContentSettingsPushMessagesSection from './contentSettingsSections/ContentSettingsPushMessagesSection.vue';
+import { useContentSettingsPage } from './contentSettingsPageHelpers';
+
+const {
+  addCarouselVisible,
+  beforeCarouselUpload,
+  beforePushMessageUpload,
+  cancelAddCarousel,
+  cancelEdit,
+  cancelPushMessageDialog,
+  carouselDetailVisible,
+  carouselError,
+  carouselList,
+  carouselLoading,
+  carouselSettings,
+  clearPushMessageImage,
+  closeCarouselDetail,
+  confirmAddCarousel,
+  copyToClipboard,
+  currentCarousel,
+  currentPushMessageDeliveries,
+  currentPushMessageStats,
+  deleteCarousel,
+  deletePushMessage,
+  editFromDetail,
+  editPushMessage,
+  editingPushMessage,
+  finishEdit,
   formatPushDeliveryActionLabel,
   formatPushDeliveryError,
   formatPushDeliveryTime,
   getPushDeliveryActionTagType,
   getPushDeliveryStatusTagType,
-} from '@infinitech/admin-core';
-import { extractEnvelopeData, extractErrorMessage, resolveUploadAssetUrl } from '@infinitech/contracts';
-import request from '@/utils/request';
-import PageStateAlert from '@/components/PageStateAlert.vue';
-import {
-  createEmptyPushMessageForm,
-  resetPushMessageForm,
-  fillPushMessageForm,
-  createEmptyCarousel,
-  resetCarousel,
-  validateImageFile,
-  compressImageTo1MB
-} from './contentSettingsHelpers';
-
-// 推送消息管理相关
-const pushMessages = ref([]);
-const pushMessageLoading = ref(false);
-const pushMessageDialogVisible = ref(false);
-const editingPushMessage = ref(null);
-const savingPushMessage = ref(false);
-const pushMessageForm = reactive(createEmptyPushMessageForm());
-const pushMessageStatsVisible = ref(false);
-const currentPushMessageStats = ref(null);
-const pushMessageDeliveryLoading = ref(false);
-const currentPushMessageDeliveries = ref([]);
-
-// 移动端检测
-const isMobile = ref(window.innerWidth <= 768);
-
-const handleResize = () => {
-  isMobile.value = window.innerWidth <= 768;
-};
-
-const loading = ref(false);
-const saving = ref(false);
-const carouselLoading = ref(false);
-const loadError = ref('');
-const carouselError = ref('');
-const pageError = computed(() => carouselError.value || loadError.value || '');
-const carouselList = ref([]);
-const carouselSettings = reactive({
-  auto_play_seconds: 5
-});
-const carouselDetailVisible = ref(false);
-const currentCarousel = ref(null);
-const addCarouselVisible = ref(false);
-const newCarousel = reactive(createEmptyCarousel());
-
-onMounted(() => {
-  loadAll();
-  window.addEventListener('resize', handleResize);
+  hidePushMessageStats,
+  insertImageTag,
+  isMobile,
+  loadAll,
+  loadCarouselList,
+  loadPushMessages,
+  loading,
+  newCarousel,
+  pageError,
+  pushMessageDeliveryLoading,
+  pushMessageDialogVisible,
+  pushMessageForm,
+  pushMessageLoading,
+  pushMessageStatsVisible,
+  pushMessages,
+  saveCarouselSettings,
+  savePushMessage,
+  saving,
+  savingPushMessage,
+  showAddCarouselDialog,
+  showAddPushMessageDialog,
+  showCarouselDetail,
+  showPushMessageStats,
+  startEdit,
+  uploadCarouselImage,
+  uploadPushMessageImage,
+} = useContentSettingsPage({
+  request,
+  ElMessage,
+  ElMessageBox,
 });
 
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize);
-});
-
-async function loadAll() {
-  loadError.value = '';
-  carouselError.value = '';
-  loading.value = true;
-  try {
-    const promises = [
-      loadCarouselList(),
-      loadCarouselSettings()
-    ];
-    // 只在移动端加载推送消息
-    if (isMobile.value) {
-      promises.push(loadPushMessages());
-    }
-    await Promise.allSettled(promises);
-  } catch (error) {
-    loadError.value = extractErrorMessage(error, '加载内容设置失败，请稍后重试');
-  } finally {
-    loading.value = false;
-  }
-}
-
-// 轮播图相关函数
-async function loadCarouselList() {
-  carouselError.value = '';
-  carouselLoading.value = true;
-  try {
-    const { data } = await request.get('/api/carousel');
-    carouselList.value = extractAdminCarouselPage(data).items;
-  } catch (error) {
-    carouselList.value = [];
-    carouselError.value = extractErrorMessage(error, '加载轮播图失败，请稍后重试');
-  } finally {
-    carouselLoading.value = false;
-  }
-}
-
-async function loadCarouselSettings() {
-  try {
-    const { data } = await request.get('/api/carousel-settings');
-    const payload = extractEnvelopeData(data) || {};
-    carouselSettings.auto_play_seconds = payload.auto_play_seconds || 5;
-  } catch (error) {
-    loadError.value = extractErrorMessage(error, '加载轮播配置失败，请稍后重试');
-  }
-}
-
-async function saveCarouselSettings() {
-  saving.value = true;
-  try {
-    await request.post('/api/carousel-settings', carouselSettings);
-    ElMessage.success('轮播配置保存成功');
-  } catch (error) {
-    ElMessage.error(extractErrorMessage(error, '保存轮播配置失败'));
-  } finally {
-    saving.value = false;
-  }
-}
-
-function startEdit(row) {
-  carouselList.value.forEach(item => {
-    if (item !== row) {
-      item.editing = false;
-    }
-  });
-
-  row.editing = true;
-  row.editTitle = row.title || '';
-  row.editLinkUrl = row.link_url || '';
-  row.editSortOrder = row.sort_order || 0;
-}
-
-async function finishEdit(row) {
-  try {
-    const data = {
-      title: row.editTitle || '',
-      image_url: row.image_url,
-      link_url: row.editLinkUrl || '',
-      link_type: row.link_type || 'external',
-      sort_order: row.editSortOrder,
-      is_active: row.is_active
-    };
-
-    await request.put(`/api/carousel/${row.id}`, data);
-    ElMessage.success('更新成功');
-
-    row.title = row.editTitle;
-    row.link_url = row.editLinkUrl;
-    row.sort_order = row.editSortOrder;
-    row.editing = false;
-  } catch (error) {
-    ElMessage.error(extractErrorMessage(error, '更新轮播图失败'));
-  }
-}
-
-function cancelEdit(row) {
-  row.editing = false;
-}
-
-async function deleteCarousel(row) {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除轮播图"${row.title || '无标题'}"吗？此操作不可恢复。`,
-      '确认删除',
-      {
-        confirmButtonText: '确定删除',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    );
-
-    await request.delete(`/api/carousel/${row.id}`);
-    ElMessage.success('轮播图删除成功');
-    loadCarouselList();
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error(extractErrorMessage(error, '删除轮播图失败'));
-    }
-  }
-}
-
-function showAddDialog() {
-  resetCarousel(newCarousel);
-  addCarouselVisible.value = true;
-}
-
-function cancelAddCarousel() {
-  addCarouselVisible.value = false;
-  resetCarousel(newCarousel);
-}
-
-async function confirmAddCarousel() {
-  if (!newCarousel.image_url) {
-    ElMessage.warning('请先上传图片');
+function handleCarouselDetailVisibleUpdate(value) {
+  if (!value) {
+    closeCarouselDetail();
     return;
   }
+  carouselDetailVisible.value = value;
+}
 
-  saving.value = true;
-  try {
-    await request.post('/api/carousel', {
-      title: newCarousel.title || '',
-      image_url: newCarousel.image_url,
-      link_url: newCarousel.link_url || '',
-      link_type: newCarousel.link_type,
-      sort_order: newCarousel.sort_order || 0,
-      is_active: newCarousel.is_active ? 1 : 0
-    });
-    ElMessage.success('轮播图添加成功');
-    addCarouselVisible.value = false;
-    loadCarouselList();
+function handleAddCarouselVisibleUpdate(value) {
+  if (!value) {
     cancelAddCarousel();
-  } catch (error) {
-    ElMessage.error(extractErrorMessage(error, '添加轮播图失败'));
-  } finally {
-    saving.value = false;
-  }
-}
-
-async function handleUpload(options) {
-  const formData = new FormData();
-  formData.append('image', options.file);
-  
-  try {
-    const { data } = await request.post('/api/upload-image', formData);
-    const imageUrl = String(resolveUploadAssetUrl(data) || '').trim();
-
-    if (imageUrl) {
-      newCarousel.image_url = imageUrl;
-      ElMessage.success('图片上传成功');
-    } else {
-      ElMessage.error(extractErrorMessage(data, '图片上传失败'));
-    }
-  } catch (error) {
-    ElMessage.error(extractErrorMessage(error, '图片上传失败，请重试'));
-  }
-}
-
-function beforeUpload(file) {
-  const result = validateImageFile(file, 10);
-  if (!result.valid) {
-    ElMessage.error(result.message);
-    return false;
-  }
-  return true;
-}
-
-function showCarouselDetail(row) {
-  currentCarousel.value = { ...row };
-  carouselDetailVisible.value = true;
-}
-
-function editFromDetail() {
-  if (currentCarousel.value) {
-    startEdit(currentCarousel.value);
-    carouselDetailVisible.value = false;
-  }
-}
-
-function copyToClipboard(text) {
-  navigator.clipboard.writeText(text).then(() => {
-    ElMessage.success('已复制到剪贴板');
-  }).catch(() => {
-    ElMessage.error('复制失败');
-  });
-}
-
-// 推送消息管理相关函数
-async function loadPushMessages() {
-  pushMessageLoading.value = true;
-  try {
-    const { data } = await request.get('/api/push-messages');
-    pushMessages.value = extractAdminPushMessagePage(data).items;
-  } catch (error) {
-    loadError.value = extractErrorMessage(error, '加载推送消息失败，请稍后重试');
-    pushMessages.value = [];
-  } finally {
-    pushMessageLoading.value = false;
-  }
-}
-
-function showAddPushMessageDialog() {
-  editingPushMessage.value = null;
-  resetPushMessageForm(pushMessageForm);
-  pushMessageDialogVisible.value = true;
-}
-
-function editPushMessage(message) {
-  editingPushMessage.value = message;
-  fillPushMessageForm(pushMessageForm, message);
-  pushMessageDialogVisible.value = true;
-}
-
-async function savePushMessage() {
-  if (!pushMessageForm.title || !pushMessageForm.content) {
-    ElMessage.warning('请填写标题和内容');
     return;
   }
-
-  savingPushMessage.value = true;
-  try {
-    const data = {
-      title: pushMessageForm.title,
-      content: pushMessageForm.content,
-      image_url: pushMessageForm.image_url || null,
-      is_active: pushMessageForm.is_active,
-      scheduled_start_time: pushMessageForm.scheduled_start_time || null,
-      scheduled_end_time: pushMessageForm.scheduled_end_time || null
-    };
-
-    if (editingPushMessage.value) {
-      await request.put(`/api/push-messages/${editingPushMessage.value.id}`, data);
-      ElMessage.success('推送消息更新成功');
-    } else {
-      await request.post('/api/push-messages', data);
-      ElMessage.success('推送消息创建成功');
-    }
-
-    pushMessageDialogVisible.value = false;
-    loadPushMessages();
-  } catch (error) {
-    ElMessage.error(extractErrorMessage(error, '保存推送消息失败'));
-  } finally {
-    savingPushMessage.value = false;
-  }
+  addCarouselVisible.value = value;
 }
 
-async function deletePushMessage(message) {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除推送消息"${message.title}"吗？此操作不可恢复。`,
-      '确认删除',
-      {
-        confirmButtonText: '确定删除',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    );
-
-    await request.delete(`/api/push-messages/${message.id}`);
-    ElMessage.success('推送消息删除成功');
-    loadPushMessages();
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error(extractErrorMessage(error, '删除推送消息失败'));
-    }
+function handlePushMessageDialogVisibleUpdate(value) {
+  if (!value) {
+    cancelPushMessageDialog();
+    return;
   }
+  pushMessageDialogVisible.value = value;
 }
 
-async function showPushMessageStats(message) {
-  try {
-    pushMessageDeliveryLoading.value = true;
-    const [{ data: stats }, { data: deliveries }] = await Promise.all([
-      request.get(`/api/push-messages/${message.id}/stats`),
-      request.get(`/api/push-messages/${message.id}/deliveries`, {
-        params: { limit: 50 }
-      })
-    ]);
-    const statsPayload = extractEnvelopeData(stats) || {};
-    currentPushMessageStats.value = buildAdminPushMessageStats(message, statsPayload);
-    currentPushMessageDeliveries.value = extractAdminPushDeliveryPage(deliveries).items;
-    pushMessageStatsVisible.value = true;
-  } catch (error) {
-    ElMessage.error(extractErrorMessage(error, '获取统计信息失败'));
-    currentPushMessageDeliveries.value = [];
-  } finally {
-    pushMessageDeliveryLoading.value = false;
+function handlePushMessageStatsVisibleUpdate(value) {
+  if (!value) {
+    hidePushMessageStats();
+    return;
   }
-}
-
-// 推送消息图片上传
-async function handlePushMessageUpload(options) {
-  let fileToUpload = options.file;
-  
-  // 如果选择了压缩，先压缩图片
-  if (pushMessageForm.compress_image) {
-    try {
-      fileToUpload = await compressImageTo1MB(options.file);
-    } catch (error) {
-      console.error('压缩图片失败:', error);
-      ElMessage.error('图片压缩失败，请重试');
-      return;
-    }
-  }
-  
-  const formData = new FormData();
-  formData.append('image', fileToUpload);
-  formData.append('compress', pushMessageForm.compress_image ? 'true' : 'false');
-  
-  try {
-    const { data } = await request.post('/api/upload-image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    const imageUrl = String(resolveUploadAssetUrl(data) || '').trim();
-
-    if (imageUrl) {
-      pushMessageForm.image_url = imageUrl;
-      ElMessage.success('图片上传成功');
-    } else {
-      ElMessage.error(extractErrorMessage(data, '图片上传失败'));
-    }
-  } catch (error) {
-    console.error('上传失败:', error);
-    ElMessage.error(extractErrorMessage(error, '图片上传失败，请重试'));
-  }
-}
-
-function beforePushMessageUpload(file) {
-  const result = validateImageFile(file, 10);
-  if (!result.valid) {
-    ElMessage.error(result.message);
-    return false;
-  }
-  return true;
-}
-
-// 插入图片标记到内容中
-function insertImageTag() {
-  const textarea = document.querySelector('.el-textarea__inner');
-  if (textarea) {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = pushMessageForm.content;
-    const beforeText = text.substring(0, start);
-    const afterText = text.substring(end, text.length);
-    pushMessageForm.content = beforeText + '[图片]' + afterText;
-    
-    // 设置光标位置
-    setTimeout(() => {
-      textarea.focus();
-      const newPosition = start + '[图片]'.length;
-      textarea.setSelectionRange(newPosition, newPosition);
-    }, 0);
-    
-    ElMessage.success('图片标记已插入，可在内容中移动位置');
-  }
+  pushMessageStatsVisible.value = value;
 }
 </script>
-
-<style scoped lang="css" src="./ContentSettings.css"></style>

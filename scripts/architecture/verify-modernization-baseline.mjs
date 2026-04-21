@@ -1483,12 +1483,12 @@ assertContains(
   "@infinitech/domain-core",
 );
 assertContains(
-  "admin-vue/src/views/ContentSettings.vue",
+  "admin-vue/src/views/contentSettingsPageHelpers.js",
   "extractAdminCarouselPage",
 );
 assertContains(
-  "admin-vue/src/views/ContentSettings.vue",
-  "buildAdminPushMessageStats",
+  "admin-vue/src/views/contentSettingsPageHelpers.js",
+  "buildAdminPushMessageStats(message, statsPayload)",
 );
 assertContains(
   "admin-vue/src/views/contentSettingsHelpers.js",
@@ -4643,7 +4643,7 @@ assertContains(
   "extractOperationsCooperationPage(data).items",
 );
 assertContains(
-  "admin-vue/src/views/ContentSettings.vue",
+  "admin-vue/src/views/contentSettingsPageHelpers.js",
   "extractAdminCarouselPage(data).items",
 );
 assertContains(
@@ -5069,6 +5069,21 @@ assertNotContains(
   "admin-vue/src/views/ContentSettings.vue",
   "function extractErrorMessage(error, fallback)",
 );
+assertExists("admin-vue/src/views/contentSettingsPageHelpers.js");
+assertExists("admin-vue/src/views/contentSettingsSections/ContentSettingsHeader.vue");
+assertExists("admin-vue/src/views/contentSettingsSections/ContentSettingsPushMessagesSection.vue");
+assertExists("admin-vue/src/views/contentSettingsSections/ContentSettingsCarouselSection.vue");
+assertExists("admin-vue/src/views/contentSettingsSections/ContentSettingsCarouselDetailDialog.vue");
+assertExists("admin-vue/src/views/contentSettingsSections/ContentSettingsCarouselFormDialog.vue");
+assertExists("admin-vue/src/views/contentSettingsSections/ContentSettingsPushMessageDialog.vue");
+assertExists("admin-vue/src/views/contentSettingsSections/ContentSettingsPushMessageStatsDialog.vue");
+assertContains("admin-vue/src/views/ContentSettings.vue", "useContentSettingsPage({");
+assertContains("admin-vue/src/views/ContentSettings.vue", "ContentSettingsCarouselSection");
+assertContains("admin-vue/src/views/ContentSettings.vue", "ContentSettingsPushMessagesSection");
+assertContains("admin-vue/src/views/ContentSettings.vue", "ContentSettingsPushMessageStatsDialog");
+assertContains("admin-vue/src/views/ContentSettings.vue", "ContentSettings.css");
+assertNotContains("admin-vue/src/views/ContentSettings.vue", "async function loadCarouselList()");
+assertNotContains("admin-vue/src/views/ContentSettings.vue", "const pushMessages = ref([])");
 assertNotContains(
   "admin-vue/src/views/OperationsCenter.vue",
   "function extractErrorMessage(error, fallback)",

@@ -1,53 +1,64 @@
-
-.page {
+.content-settings-page {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-.title-row {
+.content-settings-page .title-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.title {
+.content-settings-page .title {
   font-size: 18px;
   font-weight: 800;
 }
 
-.settings-grid {
+.content-settings-page .settings-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 14px;
 }
 
-.carousel-card,
-.push-message-card {
+.content-settings-page .carousel-card,
+.content-settings-page .push-message-card {
   grid-column: 1 / -1;
 }
 
-.push-message-actions {
+.content-settings-page .push-message-actions {
   display: flex;
   gap: 10px;
   justify-content: flex-start;
   margin-bottom: 16px;
 }
 
+.content-settings-page .action-grow {
+  flex: 1;
+}
+
+.content-settings-page .content-settings-full-width {
+  width: 100%;
+}
+
+.content-settings-page .card-item-actions .el-button {
+  flex: 1;
+}
+
 @media (max-width: 768px) {
-  .push-message-actions {
+  .content-settings-page .push-message-actions {
     gap: 8px;
     margin-bottom: 12px;
   }
 
-  .push-message-actions :deep(.el-button) {
+  .content-settings-page .push-message-actions .el-button {
     padding: 6px 12px;
     font-size: 12px;
     height: 32px;
   }
 }
 
-.push-message-uploader :deep(.el-upload) {
+.push-message-uploader .el-upload {
   border: 1px dashed #d9d9d9;
   border-radius: 6px;
   cursor: pointer;
@@ -61,7 +72,7 @@
   justify-content: center;
 }
 
-.push-message-uploader :deep(.el-upload:hover) {
+.push-message-uploader .el-upload:hover {
   border-color: #409eff;
 }
 
@@ -85,61 +96,44 @@
   color: #8c939d;
 }
 
-.card {
+.content-settings-page .card {
   min-height: 220px;
 }
 
-.card-title {
+.content-settings-page .card-title {
   font-weight: 700;
   margin-bottom: 12px;
 }
 
-.carousel-config-section {
+.content-settings-page .carousel-config-section {
   padding: 12px 0;
   border-bottom: 1px solid #ebeef5;
   margin-bottom: 16px;
 }
 
-.carousel-management-section {
+.content-settings-page .carousel-management-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.carousel-actions {
+.content-settings-page .carousel-actions {
   display: flex;
   gap: 10px;
   justify-content: flex-start;
 }
 
-.carousel-table {
+.content-settings-page .carousel-table {
   width: 100%;
 }
 
-.carousel-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.detail-image {
-  text-align: center;
-  background: #f5f7fa;
-  padding: 20px;
-  border-radius: 4px;
-}
-
-.detail-info {
-  margin-top: 10px;
-}
-
-.form-tip {
+.content-settings-page .form-tip {
   font-size: 12px;
   color: #909399;
   margin-top: 5px;
 }
 
-.carousel-uploader :deep(.el-upload) {
+.carousel-uploader .el-upload {
   border: 1px dashed #d9d9d9;
   border-radius: 6px;
   cursor: pointer;
@@ -153,7 +147,7 @@
   justify-content: center;
 }
 
-.carousel-uploader :deep(.el-upload:hover) {
+.carousel-uploader .el-upload:hover {
   border-color: #409eff;
 }
 
@@ -163,40 +157,40 @@
 }
 
 @media (max-width: 1200px) {
-  .settings-grid {
+  .content-settings-page .settings-grid {
     grid-template-columns: 1fr;
   }
-  
-  .carousel-card {
+
+  .content-settings-page .carousel-card {
     grid-column: 1;
   }
 }
 
 @media (max-width: 768px) {
-  .page {
+  .content-settings-page {
     gap: 12px;
   }
 
-  .title-row {
+  .content-settings-page .title-row {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
   }
 
-  .settings-grid {
+  .content-settings-page .settings-grid {
     grid-template-columns: 1fr;
     gap: 12px;
   }
 
-  .card {
+  .content-settings-page .card {
     padding: 12px;
   }
 
-  .carousel-config-section {
+  .content-settings-page .carousel-config-section {
     padding: 12px 0;
   }
 
-  .carousel-config-section :deep(.el-form) {
+  .content-settings-page .carousel-config-section .el-form {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -204,37 +198,37 @@
     gap: 8px;
   }
 
-  .carousel-config-section :deep(.el-form-item) {
+  .content-settings-page .carousel-config-section .el-form-item {
     margin-right: 0;
     margin-bottom: 0;
     flex: 1;
     min-width: 0;
   }
 
-  .carousel-config-section :deep(.el-form-item:last-child) {
+  .content-settings-page .carousel-config-section .el-form-item:last-child {
     flex: 0 0 auto;
   }
 
-  .mobile-label {
+  .content-settings-page .mobile-label {
     display: block;
     font-size: 12px;
     color: #606266;
     margin-top: 4px;
   }
 
-  .carousel-actions.mobile-actions {
+  .content-settings-page .carousel-actions.mobile-actions {
     display: flex;
     gap: 8px;
     align-items: center;
   }
 
-  .mobile-carousel-list {
+  .content-settings-page .mobile-carousel-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
   }
 
-  .carousel-card-item {
+  .content-settings-page .carousel-card-item {
     background: #fff;
     border: none;
     border-radius: 0;
@@ -243,17 +237,17 @@
     border-bottom: 1px solid #f0f0f0;
   }
 
-  .carousel-card-item:last-child {
+  .content-settings-page .carousel-card-item:last-child {
     border-bottom: none;
   }
 
-  .card-item-header {
+  .content-settings-page .card-item-header {
     display: flex;
     gap: 12px;
     margin-bottom: 12px;
   }
 
-  .card-item-image {
+  .content-settings-page .card-item-image {
     flex-shrink: 0;
     width: 100px;
     height: 60px;
@@ -262,12 +256,12 @@
     cursor: pointer;
   }
 
-  .carousel-image {
+  .content-settings-page .carousel-image {
     width: 100%;
     height: 100%;
   }
 
-  .card-item-info {
+  .content-settings-page .card-item-info {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -275,20 +269,20 @@
     min-width: 0;
   }
 
-  .card-item-title {
+  .content-settings-page .card-item-title {
     display: flex;
     align-items: center;
     gap: 6px;
     font-size: 14px;
   }
 
-  .info-label {
+  .content-settings-page .info-label {
     color: #909399;
     font-size: 15px;
     white-space: nowrap;
   }
 
-  .info-value {
+  .content-settings-page .info-value {
     color: #303133;
     font-weight: 500;
     overflow: hidden;
@@ -297,36 +291,36 @@
     font-size: 16px;
   }
 
-  .card-item-meta {
+  .content-settings-page .card-item-meta {
     display: flex;
     align-items: center;
     gap: 8px;
   }
 
-  .sort-info {
+  .content-settings-page .sort-info {
     font-size: 14px;
     color: #909399;
   }
 
-  .card-item-content {
+  .content-settings-page .card-item-content {
     margin-bottom: 12px;
     padding-top: 12px;
     border-top: 1px solid #f0f0f0;
   }
 
-  .content-row {
+  .content-settings-page .content-row {
     display: flex;
     align-items: center;
     gap: 8px;
     font-size: 15px;
   }
 
-  .content-label {
+  .content-settings-page .content-label {
     color: #909399;
     white-space: nowrap;
   }
 
-  .content-value {
+  .content-settings-page .content-value {
     color: #606266;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -334,12 +328,12 @@
     flex: 1;
   }
 
-  .card-item-actions {
+  .content-settings-page .card-item-actions {
     display: flex;
     gap: 8px;
   }
 
-  .card-item-edit {
+  .content-settings-page .card-item-edit {
     margin-top: 12px;
     padding-top: 12px;
     border-top: 1px solid #f0f0f0;
@@ -348,43 +342,37 @@
     gap: 10px;
   }
 
-  .edit-row {
+  .content-settings-page .edit-row {
     display: flex;
     align-items: center;
     gap: 8px;
   }
 
-  .edit-label {
+  .content-settings-page .edit-label {
     width: 70px;
     font-size: 13px;
     color: #606266;
     white-space: nowrap;
   }
 
-  .empty-state {
+  .content-settings-page .empty-state {
     text-align: center;
     padding: 40px 20px;
     color: #909399;
   }
 
-  :deep(.el-table) {
+  .content-settings-page .el-table {
     font-size: 12px;
   }
 
-  :deep(.el-dialog) {
-    width: 95% !important;
-    margin: 5vh auto !important;
-  }
-
-  /* 移动端推送消息列表 */
-  .mobile-push-message-list {
+  .content-settings-page .mobile-push-message-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
     margin-top: 12px;
   }
 
-  .push-message-card-item {
+  .content-settings-page .push-message-card-item {
     background: #fff;
     border-radius: 8px;
     padding: 12px;
@@ -392,37 +380,37 @@
     border: 1px solid #f0f0f0;
   }
 
-  .push-message-card-item:last-child {
+  .content-settings-page .push-message-card-item:last-child {
     border-bottom: none;
   }
 
-  .push-message-card-item .card-item-header {
+  .content-settings-page .push-message-card-item .card-item-header {
     margin-bottom: 0;
   }
 
-  .push-message-card-item .card-item-info {
+  .content-settings-page .push-message-card-item .card-item-info {
     gap: 4px;
   }
 
-  .push-message-card-item .card-item-title {
+  .content-settings-page .push-message-card-item .card-item-title {
     font-size: 13px;
     gap: 4px;
     margin-bottom: 2px;
   }
 
-  .push-message-card-item .info-label {
+  .content-settings-page .push-message-card-item .info-label {
     font-size: 12px;
     color: #909399;
     min-width: 40px;
   }
 
-  .push-message-card-item .info-value {
+  .content-settings-page .push-message-card-item .info-value {
     font-size: 14px;
     color: #303133;
     font-weight: 500;
   }
 
-  .push-message-card-item .card-item-content {
+  .content-settings-page .push-message-card-item .card-item-content {
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -430,7 +418,7 @@
     margin-bottom: 6px;
   }
 
-  .push-message-card-item .content-text {
+  .content-settings-page .push-message-card-item .content-text {
     max-height: 48px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -444,7 +432,7 @@
     font-size: 13px;
   }
 
-  .push-message-card-item .card-item-meta {
+  .content-settings-page .push-message-card-item .card-item-meta {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -454,7 +442,7 @@
     flex-wrap: wrap;
   }
 
-  .push-message-card-item .time-info {
+  .content-settings-page .push-message-card-item .time-info {
     font-size: 11px;
     color: #909399;
     line-height: 1.4;
@@ -462,7 +450,7 @@
     min-width: 100%;
   }
 
-  .push-message-card-item .card-item-actions {
+  .content-settings-page .push-message-card-item .card-item-actions {
     display: flex;
     gap: 6px;
     margin-top: 8px;
@@ -470,15 +458,21 @@
     border-top: 1px solid #f5f5f5;
   }
 
-  .push-message-card-item .card-item-actions :deep(.el-button) {
+  .content-settings-page .push-message-card-item .card-item-actions .el-button {
     padding: 6px 12px;
     font-size: 12px;
     height: 32px;
     flex: 1;
   }
 
-  .push-message-uploader :deep(.el-upload) {
+  .push-message-uploader .el-upload {
     width: 100% !important;
     max-width: 300px;
   }
+}
+
+.content-settings-page .carousel-table-image {
+  width: 100px;
+  height: 60px;
+  cursor: pointer;
 }
