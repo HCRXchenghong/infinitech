@@ -1,0 +1,23 @@
+.shop-editor {
+  padding: 10px 0;
+}
+
+.shop-editor-actions {
+  margin-top: 20px;
+  text-align: right;
+}
+
+.shop-editor-inline-tip {
+  color: #909399;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.shop-editor-tag {
+  margin-right: 8px;
+  margin-bottom: 8px;
+}
+
+.shop-editor-inline-input {
+  width: 120px;
+}

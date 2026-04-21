@@ -4529,6 +4529,31 @@ assertContains(
   "admin-vue/src/views/merchantProfilePageHelpers.js",
   "extractMerchantShopPage",
 );
+assertExists("admin-vue/src/views/shopEditorHelpers.js");
+assertExists("admin-vue/src/views/ShopEditor.css");
+assertExists("admin-vue/src/views/shopEditorSections/ShopEditorBasicTab.vue");
+assertExists("admin-vue/src/views/shopEditorSections/ShopEditorImagesTab.vue");
+assertExists("admin-vue/src/views/shopEditorSections/ShopEditorTagsTab.vue");
+assertContains("admin-vue/src/views/ShopEditor.vue", "useShopEditor({");
+assertContains("admin-vue/src/views/ShopEditor.vue", "ShopEditorBasicTab");
+assertContains("admin-vue/src/views/ShopEditor.vue", "ShopEditorImagesTab");
+assertContains("admin-vue/src/views/ShopEditor.vue", "ShopEditorTagsTab");
+assertContains(
+  "admin-vue/src/views/shopEditorHelpers.js",
+  "loadMerchantTaxonomySettings",
+);
+assertNotContains(
+  "admin-vue/src/views/ShopEditor.vue",
+  "function normalizeMerchantType(value)",
+);
+assertNotContains(
+  "admin-vue/src/views/ShopEditor.vue",
+  "function handleOrderTypeChange(value)",
+);
+assertNotContains(
+  "admin-vue/src/views/ShopEditor.vue",
+  "const tagInputVisible = ref(false)",
+);
 assertNotContains(
   "admin-vue/src/views/MerchantProfile.vue",
   "const MAX_LICENSE_FILE_SIZE",
