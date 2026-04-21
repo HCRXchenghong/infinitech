@@ -694,6 +694,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "admin-vue/src/views/blankPageSections/BlankPageJourneysPanel.vue",
   "admin-vue/src/views/blankPageSections/BlankPageWithdrawQueuePanel.vue",
   "admin-vue/src/views/blankPageSections/BlankPageQuickActionsPanel.vue",
+  "admin-vue/src/views/HomeCampaigns.css",
+  "admin-vue/src/views/homeCampaignSections/HomeCampaignsListPanel.vue",
+  "admin-vue/src/views/homeCampaignSections/HomeCampaignsPreviewPanel.vue",
+  "admin-vue/src/views/homeCampaignSections/HomeCampaignsDialog.vue",
   "admin-win/src/main.ts",
   "admin-win/vite.config.mts",
   "admin-mac/src/main.ts",
@@ -4498,6 +4502,30 @@ assertContains(
 assertContains(
   "admin-vue/src/views/AfterSales.vue",
   "extractAfterSalesPage(data)",
+);
+assertContains(
+  "admin-vue/src/views/HomeCampaigns.vue",
+  "HomeCampaignsListPanel",
+);
+assertContains(
+  "admin-vue/src/views/HomeCampaigns.vue",
+  "HomeCampaignsPreviewPanel",
+);
+assertContains(
+  "admin-vue/src/views/HomeCampaigns.vue",
+  "HomeCampaignsDialog",
+);
+assertContains(
+  "admin-vue/src/views/HomeCampaigns.vue",
+  "HomeCampaigns.css",
+);
+assertNotContains(
+  "admin-vue/src/views/HomeCampaigns.vue",
+  "<div class=\"home-campaigns-panel\">",
+);
+assertNotContains(
+  "admin-vue/src/views/HomeCampaigns.vue",
+  "<div class=\"home-campaigns-preview-grid\">",
 );
 assertContains(
   "packages/admin-core/src/dining-buddy-governance-resources.js",

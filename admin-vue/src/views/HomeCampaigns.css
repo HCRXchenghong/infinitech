@@ -1,0 +1,62 @@
+.home-campaigns-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home-campaigns-panel {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.home-campaigns-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.home-campaigns-panel-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.home-campaigns-panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.home-campaigns-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.home-campaigns-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.home-campaigns-preview-block {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.home-campaigns-preview-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 1100px) {
+  .home-campaigns-preview-grid {
+    grid-template-columns: 1fr;
+  }
+}
