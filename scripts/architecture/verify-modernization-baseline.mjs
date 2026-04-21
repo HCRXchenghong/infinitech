@@ -4441,8 +4441,24 @@ assertContains(
   "extractWithdrawRequestPage",
 );
 assertContains(
-  "admin-vue/src/views/NotificationEditorPage.vue",
+  "admin-vue/src/views/notificationEditorPageViewHelpers.js",
   "resolveUploadAssetUrl",
+);
+assertExists("admin-vue/src/views/notificationEditorPageViewHelpers.js");
+assertExists("admin-vue/src/views/notificationEditorPageSections/NotificationEditorPageHeader.vue");
+assertExists("admin-vue/src/views/notificationEditorPageSections/NotificationEditorFormCard.vue");
+assertExists("admin-vue/src/views/notificationEditorPageSections/NotificationEditorBlockEditor.vue");
+assertExists("admin-vue/src/views/notificationEditorPageSections/NotificationEditorPreviewCard.vue");
+assertContains("admin-vue/src/views/NotificationEditorPage.vue", "useNotificationEditorPage({");
+assertContains("admin-vue/src/views/NotificationEditorPage.vue", "NotificationEditorFormCard");
+assertContains("admin-vue/src/views/NotificationEditorPage.vue", "NotificationEditorPreviewCard");
+assertContains(
+  "admin-vue/src/views/notificationEditorPageViewHelpers.js",
+  "const payload = extractEnvelopeData(data) || {}",
+);
+assertNotContains(
+  "admin-vue/src/views/NotificationEditorPage.vue",
+  "async function uploadBlockImage(",
 );
 assertContains("admin-vue/src/views/MerchantProfile.vue", "resolveUploadAssetUrl");
 assertContains(
