@@ -1,7 +1,6 @@
 import { extractAuthSessionResult } from "../../contracts/src/http.js";
 import {
   buildAuthPortalPageUrl,
-  buildConsumerAuthUserProfile,
   buildConsumerWechatStartUrl,
   normalizeConsumerAuthExternalUrl,
   normalizeConsumerAuthMode,
@@ -9,6 +8,7 @@ import {
   shouldRedirectRegisteredConsumerToLogin,
   trimAuthPortalValue,
 } from "./auth-portal.js";
+import { persistConsumerAuthSessionResult } from "./consumer-auth-session.js";
 
 function resolveUniApp(uniApp) {
   return uniApp || globalThis.uni || {};
@@ -91,18 +91,16 @@ function persistConsumerAuthSession(options = {}) {
     redirectDelay = 500,
   } = options;
 
-  const session = extractAuthSessionResult(result);
-  if (!session.authenticated) {
+  const persisted = persistConsumerAuthSessionResult({
+    result,
+    fallbackPhone,
+    saveTokenInfo,
+    uniApp,
+  });
+  if (!persisted.persisted) {
     return false;
   }
 
-  saveTokenInfo(session.token, session.refreshToken, session.expiresIn || 7200);
-  uniApp.setStorageSync?.(
-    "userProfile",
-    buildConsumerAuthUserProfile(session.user, fallbackPhone),
-  );
-  uniApp.setStorageSync?.("authMode", "user");
-  uniApp.setStorageSync?.("hasSeenWelcome", true);
   uniApp.showToast?.({ title: successTitle, icon: "success" });
   setTimeoutImpl(() => {
     uniApp.switchTab?.({ url: "/pages/index/index" });

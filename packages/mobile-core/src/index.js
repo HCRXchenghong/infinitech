@@ -13,6 +13,7 @@ export * from "./consumer-app-bridges.js";
 export * from "./consumer-app-runtime.js";
 export * from "./consumer-app-shell.js";
 export * from "./consumer-app-session.js";
+export * from "./consumer-auth-session.js";
 export * from "./consumer-auth-runtime.js";
 export * from "./consumer-app-version.js";
 export * from "./consumer-api.js";

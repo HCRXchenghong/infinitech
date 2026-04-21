@@ -1,3 +1,5 @@
+import { persistConsumerAuthSessionResult } from "./consumer-auth-session.js";
+
 function trimPhoneChangeText(value) {
   return String(value || "").trim();
 }
@@ -122,6 +124,7 @@ export function getNextConsumerPhoneChangeCountdownValue(value) {
 
 export function createProfilePhoneChangePage({
   changeUserPhone = async () => ({}),
+  persistConsumerAuthSessionResultImpl = persistConsumerAuthSessionResult,
   requestSMSCode = async () => ({}),
   saveTokenInfo = () => {},
   verifySMSCodeCheck = async () => ({}),
@@ -316,20 +319,20 @@ export function createProfilePhoneChangePage({
             throw response;
           }
 
-          if (response.token && response.refreshToken) {
-            saveTokenInfo(
-              response.token,
-              response.refreshToken,
-              response.expiresIn || 7200,
-            );
-          }
-
           const nextProfile = normalizeConsumerPhoneChangeProfile(
             uni.getStorageSync("userProfile") || {},
             response.user,
             this.newPhone,
           );
-          uni.setStorageSync("userProfile", nextProfile);
+          const persistedSession = persistConsumerAuthSessionResultImpl({
+            result: response,
+            profile: nextProfile,
+            saveTokenInfo,
+            uniApp: uni,
+          });
+          if (!persistedSession.persisted) {
+            uni.setStorageSync("userProfile", nextProfile);
+          }
 
           uni.showToast({
             title: getConsumerPhoneChangeResponseMessage(response, "修改成功"),
