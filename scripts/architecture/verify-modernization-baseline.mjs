@@ -4115,15 +4115,15 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/RTCCallAudits.vue",
-  "extractRTCCallAuditPage",
+  "useRTCCallAuditsPage({",
 );
 assertContains(
-  "admin-vue/src/views/RTCCallAudits.vue",
-  "createAdminRTCCallReviewAction",
+  "admin-vue/src/views/rtcCallAuditsHelpers.js",
+  "extractRTCCallAuditPage(data)",
 );
 assertContains(
-  "admin-vue/src/views/RTCCallAudits.vue",
-  "mergeAdminRTCCallAuditRecords",
+  "admin-vue/src/views/rtcCallAuditsHelpers.js",
+  "createAdminRTCCallReviewAction(kind)",
 );
 assertContains(
   "admin-vue/src/views/AdminRTCConsole.vue",
