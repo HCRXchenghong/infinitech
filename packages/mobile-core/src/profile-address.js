@@ -1,3 +1,5 @@
+import { readConsumerStoredProfile } from "./consumer-profile-storage.js";
+
 function trimProfileAddressText(value) {
   return String(value || "").trim();
 }
@@ -326,7 +328,7 @@ export function createProfileAddressListPage({
     methods: {
       currentUserId() {
         return resolveConsumerProfileAddressUserId(
-          uni.getStorageSync("userProfile") || {},
+          readConsumerStoredProfile({ uniApp: uni }),
         );
       },
       syncSelectedAddress(addresses = this.addresses) {
@@ -487,7 +489,7 @@ export function createProfileAddressEditPage({
     methods: {
       currentUserId() {
         return resolveConsumerProfileAddressUserId(
-          uni.getStorageSync("userProfile") || {},
+          readConsumerStoredProfile({ uniApp: uni }),
         );
       },
       async loadAddressDetail() {

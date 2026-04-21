@@ -3,6 +3,7 @@ import {
   extractErrorMessage,
   extractPaginatedItems,
 } from "../../contracts/src/http.js";
+import { readConsumerStoredProfile } from "./consumer-profile-storage.js";
 
 function trimProfileReviewText(value) {
   return String(value || "").trim();
@@ -233,7 +234,7 @@ export function createProfileMyReviewsPage({
     methods: {
       resolveUserIds() {
         return resolveConsumerProfileReviewUserIds({
-          profile: uni.getStorageSync("userProfile") || {},
+          profile: readConsumerStoredProfile({ uniApp: uni }),
           storageUserId: uni.getStorageSync("userId"),
         });
       },

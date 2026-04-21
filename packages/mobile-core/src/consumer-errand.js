@@ -1,3 +1,5 @@
+import { readConsumerStoredProfile } from "./consumer-profile-storage.js";
+
 const ERRAND_SERVICE_META = {
   errand_buy: {
     serviceType: "errand_buy",
@@ -104,10 +106,7 @@ function parseJsonObject(value) {
 
 export function getCurrentUserIdentity(options = {}) {
   const uniApp = options.uniApp || globalThis.uni;
-  const profile =
-    uniApp && typeof uniApp.getStorageSync === "function"
-      ? uniApp.getStorageSync("userProfile") || {}
-      : {};
+  const profile = readConsumerStoredProfile({ uniApp });
 
   return {
     userId: pickText(profile.phone, profile.id, profile.userId),

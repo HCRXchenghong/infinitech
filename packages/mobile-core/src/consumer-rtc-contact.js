@@ -1,14 +1,12 @@
 import { createUniRTCContactBridge } from "../../client-sdk/src/rtc-contact.js";
+import { readConsumerStoredProfile } from "./consumer-profile-storage.js";
 
 function trimValue(value) {
   return String(value || "").trim();
 }
 
 export function resolveCurrentConsumerUserId(uniApp = globalThis.uni) {
-  const profile =
-    uniApp && typeof uniApp.getStorageSync === "function"
-      ? uniApp.getStorageSync("userProfile") || {}
-      : {};
+  const profile = readConsumerStoredProfile({ uniApp });
   return trimValue(profile.phone || profile.id || profile.userId);
 }
 

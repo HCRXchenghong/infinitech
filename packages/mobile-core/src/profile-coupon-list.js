@@ -2,6 +2,7 @@ import {
   extractErrorMessage,
   extractPaginatedItems,
 } from "../../contracts/src/http.js";
+import { readConsumerStoredProfile } from "./consumer-profile-storage.js";
 
 function trimProfileCouponText(value) {
   return String(value || "").trim();
@@ -194,7 +195,7 @@ export function createProfileCouponListPage({
         void this.loadCoupons();
       },
       initUserAndLoad() {
-        const profile = uni.getStorageSync("userProfile") || {};
+        const profile = readConsumerStoredProfile({ uniApp: uni });
         this.userId = resolveConsumerProfileCouponUserId({
           profile,
           storagePhone: uni.getStorageSync("phone"),

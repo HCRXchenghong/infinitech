@@ -1,3 +1,5 @@
+import { readConsumerStoredProfile } from "./consumer-profile-storage.js";
+
 function trimProfileSettingsText(value) {
   return String(value || "").trim();
 }
@@ -108,7 +110,7 @@ function createBaseProfileSettingsPage({
     data() {
       const legalRuntime = getCachedLegalRuntimeSettings();
       const userInfo = buildProfileSettingsUserInfo(
-        uni.getStorageSync("userProfile") || {},
+        readConsumerStoredProfile({ uniApp: uni }),
       );
       return {
         nickname: userInfo.nickname,
@@ -138,7 +140,7 @@ function createBaseProfileSettingsPage({
       },
       loadUserInfo() {
         const userInfo = buildProfileSettingsUserInfo(
-          uni.getStorageSync("userProfile") || {},
+          readConsumerStoredProfile({ uniApp: uni }),
         );
         this.nickname = userInfo.nickname;
         this.phone = userInfo.phone;

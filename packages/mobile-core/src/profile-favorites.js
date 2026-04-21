@@ -2,6 +2,7 @@ import {
   extractErrorMessage,
   extractPaginatedItems,
 } from "../../contracts/src/http.js";
+import { readConsumerStoredProfile } from "./consumer-profile-storage.js";
 
 function trimProfileFavoritesText(value) {
   return String(value || "").trim();
@@ -103,7 +104,7 @@ export function createProfileFavoritesPage({
     methods: {
       resolveUserId() {
         return resolveConsumerProfileFavoritesUserId(
-          uni.getStorageSync("userProfile") || {},
+          readConsumerStoredProfile({ uniApp: uni }),
         );
       },
       initData() {

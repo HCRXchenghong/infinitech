@@ -2,6 +2,7 @@ import {
   extractEnvelopeData,
   extractErrorMessage,
 } from "../../contracts/src/http.js";
+import { readConsumerStoredProfile } from "./consumer-profile-storage.js";
 import {
   DEFAULT_VIP_CENTER_SETTINGS,
   mapVIPPointRewardList,
@@ -158,7 +159,7 @@ export function createProfilePointsMallPage({
         uni.navigateBack();
       },
       loadPoints() {
-        const profile = uni.getStorageSync("userProfile") || {};
+        const profile = readConsumerStoredProfile({ uniApp: uni });
         const userId = resolveConsumerPointsMallUserId(profile);
         if (!userId) return;
 
@@ -186,7 +187,7 @@ export function createProfilePointsMallPage({
           return;
         }
 
-        const profile = uni.getStorageSync("userProfile") || {};
+        const profile = readConsumerStoredProfile({ uniApp: uni });
         const payload = buildConsumerPointsMallRedeemPayload({ profile, item });
 
         if (!payload.userId) {
