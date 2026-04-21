@@ -670,6 +670,12 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "admin-vue/src/views/paymentCenterHelpers/callbacks.js",
   "admin-vue/src/views/paymentCenterHelpers/settlement.js",
   "admin-vue/src/views/paymentCenterHelpers/withdrawals.js",
+  "admin-vue/src/views/settingsSections/SettingsCoreConfigSection.vue",
+  "admin-vue/src/views/settingsSections/SettingsServiceExperienceSection.vue",
+  "admin-vue/src/views/settingsSections/SettingsGrowthAndCharitySection.vue",
+  "admin-vue/src/views/settingsSections/SettingsDistributionSection.vue",
+  "admin-vue/src/views/settingsSections/SettingsOperationsSection.vue",
+  "admin-vue/src/views/settingsSections/SettingsClearAllDialog.vue",
   "admin-win/src/main.ts",
   "admin-win/vite.config.mts",
   "admin-mac/src/main.ts",
@@ -4526,6 +4532,30 @@ assertContains(
   "useAppDownloadSettings({",
 );
 assertContains(
+  "admin-vue/src/views/Settings.vue",
+  "SettingsCoreConfigSection",
+);
+assertContains(
+  "admin-vue/src/views/Settings.vue",
+  "SettingsServiceExperienceSection",
+);
+assertContains(
+  "admin-vue/src/views/Settings.vue",
+  "SettingsGrowthAndCharitySection",
+);
+assertContains(
+  "admin-vue/src/views/Settings.vue",
+  "SettingsDistributionSection",
+);
+assertContains(
+  "admin-vue/src/views/Settings.vue",
+  "SettingsOperationsSection",
+);
+assertContains(
+  "admin-vue/src/views/Settings.vue",
+  "SettingsClearAllDialog",
+);
+assertContains(
   "admin-vue/src/views/settingsHelpers.js",
   "useServiceSettings({",
 );
@@ -4596,6 +4626,14 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/settingsHelpers.js",
   "const reasons = normalizeServiceStringList(serviceSettings.value.rider_exception_report_reasons, [], 20);",
+);
+assertNotContains(
+  "admin-vue/src/views/Settings.vue",
+  "骑手履约配置",
+);
+assertNotContains(
+  "admin-vue/src/views/Settings.vue",
+  "会员中心配置",
 );
 assertContains(
   "admin-vue/src/views/Dashboard.vue",
