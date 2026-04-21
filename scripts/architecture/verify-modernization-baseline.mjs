@@ -733,6 +733,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "admin-vue/src/views/diningBuddyGovernanceSections/DiningBuddyMessageDrawer.vue",
   "admin-vue/src/views/diningBuddyGovernanceSections/DiningBuddySensitiveDialog.vue",
   "admin-vue/src/views/diningBuddyGovernanceSections/DiningBuddyRestrictionDialog.vue",
+  "admin-vue/src/views/OfficialSiteLayout.css",
+  "admin-vue/src/views/officialSiteLayoutHelpers.js",
+  "admin-vue/src/views/officialSiteLayoutSections/OfficialSiteShellHeader.vue",
+  "admin-vue/src/views/officialSiteLayoutSections/OfficialSiteShellFooter.vue",
   "admin-win/src/main.ts",
   "admin-win/vite.config.mts",
   "admin-mac/src/main.ts",
@@ -1377,6 +1381,38 @@ assertContains(
 assertContains(
   "admin-vue/src/views/OfficialSiteCenter.vue",
   "OfficialSiteCenterExposureDialog",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteLayout.vue",
+  "useOfficialSiteLayout",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteLayout.vue",
+  "OfficialSiteShellHeader",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteLayout.vue",
+  "OfficialSiteShellFooter",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteLayout.vue",
+  "OfficialSiteLayout.css",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteLayoutHelpers.js",
+  "data-site-header-theme",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteLayoutHelpers.js",
+  "ResizeObserver",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteLayout.vue",
+  "<footer class=\"bg-white border-t border-slate-200 pt-8 pb-6 mt-auto relative z-10\">",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteLayout.vue",
+  "@import url('https://fonts.googleapis.com",
 );
 assertContains(
   "admin-vue/src/views/OfficialSiteCenter.vue",
