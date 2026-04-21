@@ -1164,7 +1164,7 @@ assertContains(
   "@infinitech/admin-core/menu-groups",
 );
 assertContains(
-  "admin-vue/src/views/InviteLanding.vue",
+  "admin-vue/src/views/inviteLandingPageHelpers.js",
   "createOnboardingInviteApi",
 );
 assertContains("admin-vue/src/views/usersPageHelpers.js", "createOnboardingInviteApi");
@@ -4330,7 +4330,7 @@ assertNotContains(
   "<el-table :data=\"merchants\"",
 );
 assertContains(
-  "admin-vue/src/views/InviteLanding.vue",
+  "admin-vue/src/views/inviteLandingPageHelpers.js",
   "createOnboardingInviteApi",
 );
 assertContains(
@@ -5371,17 +5371,29 @@ assertContains(
   "buildApiDocumentationRequestExamples(apiBaseUrl.value)",
 );
 assertContains(
-  "admin-vue/src/views/InviteLanding.vue",
+  "admin-vue/src/views/inviteLandingPageHelpers.js",
   "@infinitech/domain-core",
 );
 assertContains(
-  "admin-vue/src/views/InviteLanding.vue",
+  "admin-vue/src/views/inviteLandingPageHelpers.js",
   "validateOnboardingInviteSubmission(inviteType.value, form)",
 );
 assertContains(
-  "admin-vue/src/views/InviteLanding.vue",
+  "admin-vue/src/views/inviteLandingPageHelpers.js",
   "buildOnboardingInviteSubmitPayload(inviteType.value, form)",
 );
+assertExists("admin-vue/src/views/inviteLandingPageHelpers.js");
+assertExists("admin-vue/src/views/inviteLandingSections/InviteLandingStatePanel.vue");
+assertExists("admin-vue/src/views/inviteLandingSections/InviteLandingEnvelopeSection.vue");
+assertExists("admin-vue/src/views/inviteLandingSections/InviteLandingLetterSection.vue");
+assertExists("admin-vue/src/views/inviteLandingSections/InviteLandingFormSection.vue");
+assertExists("admin-vue/src/views/inviteLandingSections/InviteLandingSuccessSection.vue");
+assertContains("admin-vue/src/views/InviteLanding.vue", "useInviteLandingPage({");
+assertContains("admin-vue/src/views/InviteLanding.vue", "InviteLandingStatePanel");
+assertContains("admin-vue/src/views/InviteLanding.vue", "InviteLandingEnvelopeSection");
+assertContains("admin-vue/src/views/InviteLanding.vue", "InviteLandingLetterSection");
+assertContains("admin-vue/src/views/InviteLanding.vue", "InviteLandingFormSection");
+assertContains("admin-vue/src/views/InviteLanding.vue", "InviteLandingSuccessSection");
 assertContains(
   "admin-vue/src/views/ErrandSettings.vue",
   "@infinitech/domain-core",
@@ -7152,6 +7164,18 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/InviteLanding.vue",
   "function formatDateTime(value)",
+);
+assertNotContains(
+  "admin-vue/src/views/InviteLanding.vue",
+  "async function loadInvite()",
+);
+assertNotContains(
+  "admin-vue/src/views/InviteLanding.vue",
+  "async function submitInvite()",
+);
+assertNotContains(
+  "admin-vue/src/views/InviteLanding.vue",
+  "async function handleImageChange(field, uploadFile)",
 );
 assertNotContains(
   "admin-vue/src/views/ErrandSettings.vue",
