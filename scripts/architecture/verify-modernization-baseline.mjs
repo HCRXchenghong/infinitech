@@ -1167,7 +1167,7 @@ assertContains(
   "admin-vue/src/views/InviteLanding.vue",
   "createOnboardingInviteApi",
 );
-assertContains("admin-vue/src/views/Users.vue", "createOnboardingInviteApi");
+assertContains("admin-vue/src/views/usersPageHelpers.js", "createOnboardingInviteApi");
 assertContains(
   "admin-vue/src/views/merchantsPageHelpers.js",
   "createOnboardingInviteApi",
@@ -1210,7 +1210,7 @@ assertContains(
   "rider-app/components/dispatch-popup-logic.ts",
   "extractRiderPreferenceSettings",
 );
-assertContains("admin-vue/src/views/Users.vue", "extractTemporaryCredential(");
+assertContains("admin-vue/src/views/usersPageHelpers.js", "extractTemporaryCredential(");
 assertContains(
   "admin-vue/src/views/PaymentCenter.vue",
   "usePaymentCenterPage",
@@ -4297,8 +4297,12 @@ assertContains(
   "admin-app/utils/socketService.js",
   "return await resolveSocketToken({",
 );
-assertContains("admin-vue/src/views/Users.vue", "extractAdminUserPage");
-assertContains("admin-vue/src/views/Users.vue", "createAdminUserListParams");
+assertExists("admin-vue/src/views/usersPageHelpers.js");
+assertContains("admin-vue/src/views/Users.vue", "useUsersPage({");
+assertContains("admin-vue/src/views/usersPageHelpers.js", "extractAdminUserPage");
+assertContains("admin-vue/src/views/usersPageHelpers.js", "createAdminUserListParams");
+assertNotContains("admin-vue/src/views/Users.vue", "const loading = ref(false)");
+assertNotContains("admin-vue/src/views/Users.vue", "async function loadUsers(");
 assertContains(
   "admin-vue/src/views/Users.template.html",
   "vipLabel(row.vip_level)",

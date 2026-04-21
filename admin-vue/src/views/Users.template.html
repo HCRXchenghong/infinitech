@@ -230,7 +230,13 @@
     </el-dialog>
 
     <!-- 新增用户对话框 -->
-    <el-dialog v-model="addDialogVisible" title="新增用户" width="500px" :close-on-click-modal="false">
+    <el-dialog
+      v-model="addDialogVisible"
+      title="新增用户"
+      width="500px"
+      :close-on-click-modal="false"
+      @closed="handleAddDialogClosed"
+    >
       <el-form :model="newUser" label-width="100px">
         <el-form-item label="手机号" required>
           <el-input v-model="newUser.phone" placeholder="请输入手机号" />
@@ -248,7 +254,13 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="inviteDialogVisible" title="老用户邀请链接" width="620px" :close-on-click-modal="false">
+    <el-dialog
+      v-model="inviteDialogVisible"
+      title="老用户邀请链接"
+      width="620px"
+      :close-on-click-modal="false"
+      @closed="handleInviteDialogClosed"
+    >
       <el-form :model="inviteForm" label-width="110px">
         <el-form-item label="有效期(小时)">
           <el-input-number v-model="inviteForm.expires_hours" :min="1" :max="720" />
