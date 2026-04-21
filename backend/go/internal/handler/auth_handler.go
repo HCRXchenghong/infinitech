@@ -90,13 +90,14 @@ func authFailureStatus(data interface{}, err error, fallback int) int {
 }
 
 func respondAuthPayload(c *gin.Context, status int, message string, data interface{}) {
+	normalizedData := buildAuthSessionPayload(data)
 	respondEnvelope(
 		c,
 		status,
 		authResponseCodeForStatus(status),
 		message,
-		data,
-		mirroredEnvelopeFields(data),
+		normalizedData,
+		mirroredEnvelopeFields(normalizedData),
 	)
 }
 
@@ -127,6 +128,178 @@ func buildVerifiedAuthIdentityPayload(identity *service.VerifiedTokenIdentity) g
 		"sessionId":     identity.SessionID,
 		"phone":         identity.Phone,
 		"scope":         identity.Scope,
+	}
+}
+
+func cloneAuthMap(source map[string]interface{}) gin.H {
+	if len(source) == 0 {
+		return nil
+	}
+
+	clone := gin.H{}
+	for key, value := range source {
+		clone[key] = value
+	}
+	return clone
+}
+
+func buildAuthSessionObject(token, refreshToken string, expiresIn int64) gin.H {
+	session := gin.H{}
+	if normalized := strings.TrimSpace(token); normalized != "" {
+		session["token"] = normalized
+	}
+	if normalized := strings.TrimSpace(refreshToken); normalized != "" {
+		session["refreshToken"] = normalized
+	}
+	if expiresIn > 0 {
+		session["expiresIn"] = expiresIn
+	}
+	if len(session) == 0 {
+		return nil
+	}
+	return session
+}
+
+func buildAuthBindingObject(bindToken, nickname, avatarURL string) gin.H {
+	binding := gin.H{}
+	if normalized := strings.TrimSpace(bindToken); normalized != "" {
+		binding["bindToken"] = normalized
+	}
+	if normalized := strings.TrimSpace(nickname); normalized != "" {
+		binding["nickname"] = normalized
+	}
+	if normalized := strings.TrimSpace(avatarURL); normalized != "" {
+		binding["avatarUrl"] = normalized
+	}
+	if len(binding) == 0 {
+		return nil
+	}
+	return binding
+}
+
+func buildAuthCredentialPayload(success bool, token, refreshToken string, expiresIn int64, user map[string]interface{}, errorText string, needRegister bool) gin.H {
+	authenticated := success && strings.TrimSpace(token) != ""
+	payload := gin.H{
+		"success":       success,
+		"authenticated": authenticated,
+	}
+
+	if session := buildAuthSessionObject(token, refreshToken, expiresIn); session != nil {
+		payload["session"] = session
+		payload["token"] = session["token"]
+		if value, ok := session["refreshToken"]; ok {
+			payload["refreshToken"] = value
+		}
+		if value, ok := session["expiresIn"]; ok {
+			payload["expiresIn"] = value
+		}
+	}
+
+	if normalizedUser := cloneAuthMap(user); normalizedUser != nil {
+		payload["user"] = normalizedUser
+	}
+	if normalizedError := strings.TrimSpace(errorText); normalizedError != "" {
+		payload["error"] = normalizedError
+	}
+	if needRegister {
+		payload["needRegister"] = true
+	}
+
+	return payload
+}
+
+func buildWechatSessionPayload(result *service.WechatSessionResult) gin.H {
+	if result == nil {
+		return nil
+	}
+
+	payload := gin.H{
+		"type":          strings.TrimSpace(result.Type),
+		"success":       true,
+		"authenticated": strings.TrimSpace(result.Token) != "",
+	}
+	if message := strings.TrimSpace(result.Message); message != "" {
+		payload["message"] = message
+	}
+
+	if session := buildAuthSessionObject(result.Token, result.RefreshToken, result.ExpiresIn); session != nil {
+		payload["session"] = session
+		payload["token"] = session["token"]
+		if value, ok := session["refreshToken"]; ok {
+			payload["refreshToken"] = value
+		}
+		if value, ok := session["expiresIn"]; ok {
+			payload["expiresIn"] = value
+		}
+	}
+	if normalizedUser := cloneAuthMap(result.User); normalizedUser != nil {
+		payload["user"] = normalizedUser
+	}
+	if binding := buildAuthBindingObject(result.BindToken, result.Nickname, result.AvatarURL); binding != nil {
+		payload["binding"] = binding
+		if value, ok := binding["bindToken"]; ok {
+			payload["bindToken"] = value
+		}
+		if value, ok := binding["nickname"]; ok {
+			payload["nickname"] = value
+		}
+		if value, ok := binding["avatarUrl"]; ok {
+			payload["avatarUrl"] = value
+		}
+	}
+
+	return payload
+}
+
+func buildAuthSessionPayload(data interface{}) interface{} {
+	switch typed := data.(type) {
+	case *service.LoginResponse:
+		return buildAuthCredentialPayload(
+			typed.Success,
+			typed.Token,
+			typed.RefreshToken,
+			typed.ExpiresIn,
+			typed.User,
+			typed.Error,
+			typed.NeedRegister,
+		)
+	case service.LoginResponse:
+		return buildAuthCredentialPayload(
+			typed.Success,
+			typed.Token,
+			typed.RefreshToken,
+			typed.ExpiresIn,
+			typed.User,
+			typed.Error,
+			typed.NeedRegister,
+		)
+	case *service.RegisterResponse:
+		return buildAuthCredentialPayload(
+			typed.Success,
+			typed.Token,
+			typed.RefreshToken,
+			typed.ExpiresIn,
+			typed.User,
+			typed.Error,
+			false,
+		)
+	case service.RegisterResponse:
+		return buildAuthCredentialPayload(
+			typed.Success,
+			typed.Token,
+			typed.RefreshToken,
+			typed.ExpiresIn,
+			typed.User,
+			typed.Error,
+			false,
+		)
+	case *service.WechatSessionResult:
+		return buildWechatSessionPayload(typed)
+	case service.WechatSessionResult:
+		copy := typed
+		return buildWechatSessionPayload(&copy)
+	default:
+		return data
 	}
 }
 

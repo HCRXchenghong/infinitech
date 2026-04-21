@@ -443,18 +443,45 @@ export function extractAuthSessionResult(payload) {
 
   const data = extractEnvelopeData(payload);
   const source = normalizePlainObject(data) || normalizePlainObject(payload) || {};
+  const sessionSource =
+    normalizePlainObject(source.session) ||
+    normalizePlainObject(source.authSession) ||
+    null;
+  const bindingSource =
+    normalizePlainObject(source.binding) ||
+    normalizePlainObject(source.bind) ||
+    null;
   const token = trimText(
-    source.token || source.accessToken || source.access_token,
+    sessionSource?.token ||
+      sessionSource?.accessToken ||
+      sessionSource?.access_token ||
+      source.token ||
+      source.accessToken ||
+      source.access_token,
   );
   const refreshToken = trimText(
-    source.refreshToken || source.refresh_token,
+    sessionSource?.refreshToken ||
+      sessionSource?.refresh_token ||
+      source.refreshToken ||
+      source.refresh_token,
   );
   const type = trimText(source.type);
-  const bindToken = trimText(source.bindToken || source.bind_token);
+  const bindToken = trimText(
+    bindingSource?.bindToken ||
+      bindingSource?.bind_token ||
+      source.bindToken ||
+      source.bind_token,
+  );
   const needRegister =
     normalizeBooleanFlag(source.needRegister ?? source.need_register) === true;
   const explicitSuccess = normalizeBooleanFlag(source.success ?? payload.success);
-  const authenticated = Boolean(token);
+  const explicitAuthenticated = normalizeBooleanFlag(
+    source.authenticated ?? source.isAuthenticated,
+  );
+  const authenticated =
+    explicitAuthenticated !== undefined
+      ? explicitAuthenticated
+      : Boolean(token);
   const success =
     explicitSuccess !== undefined
       ? explicitSuccess
@@ -476,16 +503,24 @@ export function extractAuthSessionResult(payload) {
     token,
     refreshToken,
     expiresIn: normalizeNumberValue(
-      source.expiresIn ?? source.expires_in,
+      sessionSource?.expiresIn ??
+        sessionSource?.expires_in ??
+        source.expiresIn ??
+        source.expires_in,
       0,
     ),
-    user: normalizeAuthSessionUser(source),
+    user: normalizeAuthSessionUser(source) || normalizeAuthSessionUser(sessionSource),
     error: trimText(source.error || (success ? "" : message)),
     needRegister,
     type,
     bindToken,
-    nickname: trimText(source.nickname),
-    avatarUrl: trimText(source.avatarUrl || source.avatar_url),
+    nickname: trimText(bindingSource?.nickname || source.nickname),
+    avatarUrl: trimText(
+      bindingSource?.avatarUrl ||
+        bindingSource?.avatar_url ||
+        source.avatarUrl ||
+        source.avatar_url,
+    ),
   };
 }
 

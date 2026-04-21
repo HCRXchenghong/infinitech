@@ -283,9 +283,12 @@ test("extractAuthSessionResult normalizes authenticated and bind-required payloa
       message: "登录成功",
       success: true,
       data: {
-        token: "token-1",
-        refreshToken: "refresh-1",
-        expiresIn: 7200,
+        authenticated: true,
+        session: {
+          token: "token-1",
+          refreshToken: "refresh-1",
+          expiresIn: 7200,
+        },
         user: {
           id: "user-1",
           nickname: "测试用户",
@@ -319,9 +322,11 @@ test("extractAuthSessionResult normalizes authenticated and bind-required payloa
       success: true,
       data: {
         type: "bind_required",
-        bindToken: "bind-token-1",
-        nickname: "微信用户",
-        avatarUrl: "https://example.com/avatar.png",
+        binding: {
+          bindToken: "bind-token-1",
+          nickname: "微信用户",
+          avatarUrl: "https://example.com/avatar.png",
+        },
         message: "请继续绑定手机号",
       },
     }),

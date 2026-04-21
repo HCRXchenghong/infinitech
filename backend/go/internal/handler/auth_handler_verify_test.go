@@ -34,8 +34,8 @@ func newAuthHandlerForVerifyTest(t *testing.T) (*AuthHandler, *service.AuthServi
 		_ = sqlDB.Close()
 	})
 
-	if err := db.AutoMigrate(&repository.User{}); err != nil {
-		t.Fatalf("auto migrate user failed: %v", err)
+	if err := db.AutoMigrate(&repository.User{}, &repository.ExternalAuthSession{}); err != nil {
+		t.Fatalf("auto migrate auth models failed: %v", err)
 	}
 
 	cfg := &config.Config{
