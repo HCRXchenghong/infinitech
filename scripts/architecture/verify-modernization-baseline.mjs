@@ -4545,21 +4545,59 @@ assertContains(
   "admin-vue/src/views/ridersActionHelpers.js",
   "extractEnvelopeData(data)",
 );
+assertExists("admin-vue/src/views/homeEntrySettingsPageHelpers.js");
+assertExists("admin-vue/src/views/HomeEntrySettings.css");
+assertExists(
+  "admin-vue/src/views/homeEntrySettingsSections/HomeEntrySettingsHeader.vue",
+);
+assertExists(
+  "admin-vue/src/views/homeEntrySettingsSections/HomeEntrySettingsEditorPanel.vue",
+);
+assertExists(
+  "admin-vue/src/views/homeEntrySettingsSections/HomeEntrySettingsEntryCard.vue",
+);
+assertExists(
+  "admin-vue/src/views/homeEntrySettingsSections/HomeEntrySettingsPreviewPanel.vue",
+);
 assertContains(
   "admin-vue/src/views/HomeEntrySettings.vue",
+  "useHomeEntrySettingsPage({",
+);
+assertContains(
+  "admin-vue/src/views/HomeEntrySettings.vue",
+  "HomeEntrySettingsEditorPanel",
+);
+assertContains(
+  "admin-vue/src/views/HomeEntrySettings.vue",
+  "HomeEntrySettingsPreviewPanel",
+);
+assertContains(
+  "admin-vue/src/views/homeEntrySettingsPageHelpers.js",
   "extractEnvelopeData(data)",
 );
 assertContains(
-  "admin-vue/src/views/HomeEntrySettings.vue",
+  "admin-vue/src/views/homeEntrySettingsPageHelpers.js",
   "buildAdminHomeEntryPreviewEntries",
 );
 assertContains(
-  "admin-vue/src/views/HomeEntrySettings.vue",
+  "admin-vue/src/views/homeEntrySettingsPageHelpers.js",
   "validateAdminHomeEntries",
 );
 assertNotContains(
   "admin-vue/src/views/HomeEntrySettings.vue",
-  "function createEntry(source = {})",
+  "async function loadSettings(forceRefresh = false)",
+);
+assertNotContains(
+  "admin-vue/src/views/HomeEntrySettings.vue",
+  "async function saveSettings()",
+);
+assertNotContains(
+  "admin-vue/src/views/HomeEntrySettings.vue",
+  "function addEntry()",
+);
+assertNotContains(
+  "admin-vue/src/views/HomeEntrySettings.vue",
+  "function moveEntry(index, delta)",
 );
 assertNotContains(
   "admin-vue/src/views/ContactPhoneAudits.vue",
