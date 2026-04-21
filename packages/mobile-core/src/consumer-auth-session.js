@@ -1,5 +1,6 @@
 import { extractAuthSessionResult } from "../../contracts/src/http.js";
 import { buildConsumerAuthUserProfile } from "./auth-portal.js";
+import { replaceConsumerStoredProfile } from "./consumer-profile-storage.js";
 
 function normalizePlainObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -32,7 +33,10 @@ export function persistConsumerAuthSessionResult(options = {}) {
       : buildConsumerAuthUserProfile(session.user, fallbackPhone);
 
   saveTokenInfo(session.token, session.refreshToken, session.expiresIn || 7200);
-  uniApp.setStorageSync?.("userProfile", nextProfile);
+  replaceConsumerStoredProfile({
+    profile: nextProfile,
+    uniApp,
+  });
   if (persistAuthMode) {
     uniApp.setStorageSync?.("authMode", "user");
   }

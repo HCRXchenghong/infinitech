@@ -1,3 +1,8 @@
+import {
+  mergeConsumerStoredProfilePatch,
+  readConsumerStoredProfile,
+} from "./consumer-profile-storage.js";
+
 function trimProfileText(value) {
   return String(value || "").trim();
 }
@@ -184,10 +189,9 @@ export function createProfileHomePage({ fetchUser = async () => ({}) } = {}) {
         this.isVip = next.isVip;
       },
       syncLocalProfile(patch = {}) {
-        const current = uni.getStorageSync("userProfile") || {};
-        uni.setStorageSync("userProfile", {
-          ...current,
-          ...patch,
+        return mergeConsumerStoredProfilePatch({
+          patch,
+          uniApp: uni,
         });
       },
       async bootstrap() {
@@ -196,7 +200,7 @@ export function createProfileHomePage({ fetchUser = async () => ({}) } = {}) {
           return;
         }
 
-        const localProfile = uni.getStorageSync("userProfile") || {};
+        const localProfile = readConsumerStoredProfile({ uniApp: uni });
         this.applyProfile(localProfile);
 
         const userId = resolveConsumerProfileUserId(localProfile);

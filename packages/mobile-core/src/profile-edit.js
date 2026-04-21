@@ -1,6 +1,10 @@
 import { resolveUploadAssetUrl } from "../../contracts/src/http.js";
 import { UPLOAD_DOMAINS } from "../../contracts/src/upload.js";
 import {
+  mergeConsumerStoredProfilePatch,
+  readConsumerStoredProfile,
+} from "./consumer-profile-storage.js";
+import {
   DEFAULT_CONSUMER_PROFILE_NAME,
   extractConsumerProfilePayload,
   resolveConsumerProfileUserId,
@@ -116,14 +120,13 @@ export function createProfileEditPage({
         this.headerBg = next.headerBg;
       },
       syncLocalProfile(nextProfile = {}) {
-        const current = uni.getStorageSync("userProfile") || {};
-        uni.setStorageSync("userProfile", {
-          ...current,
-          ...nextProfile,
+        return mergeConsumerStoredProfilePatch({
+          patch: nextProfile,
+          uniApp: uni,
         });
       },
       async loadProfile() {
-        const localProfile = uni.getStorageSync("userProfile") || {};
+        const localProfile = readConsumerStoredProfile({ uniApp: uni });
         const userId = resolveConsumerProfileUserId(localProfile);
         this.profileId = userId;
         this.applyProfile(localProfile);

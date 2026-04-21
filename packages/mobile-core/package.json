@@ -18,6 +18,7 @@
     "./consumer-auth-session": "./src/consumer-auth-session.js",
     "./consumer-app-version": "./src/consumer-app-version.js",
     "./consumer-api": "./src/consumer-api.js",
+    "./consumer-profile-storage": "./src/consumer-profile-storage.js",
     "./consumer-legal-runtime": "./src/consumer-legal-runtime.js",
     "./consumer-notification-sound": "./src/consumer-notification-sound.js",
     "./consumer-order-store": "./src/consumer-order-store.js",

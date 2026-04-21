@@ -1,4 +1,8 @@
 import { persistConsumerAuthSessionResult } from "./consumer-auth-session.js";
+import {
+  readConsumerStoredProfile,
+  replaceConsumerStoredProfile,
+} from "./consumer-profile-storage.js";
 
 function trimPhoneChangeText(value) {
   return String(value || "").trim();
@@ -160,7 +164,7 @@ export function createProfilePhoneChangePage({
     },
     onLoad() {
       this.oldPhone = resolveConsumerPhoneChangeOldPhone(
-        uni.getStorageSync("userProfile") || {},
+        readConsumerStoredProfile({ uniApp: uni }),
       );
     },
     onUnload() {
@@ -206,7 +210,7 @@ export function createProfilePhoneChangePage({
       },
       resolveUserId() {
         return resolveConsumerPhoneChangeUserId(
-          uni.getStorageSync("userProfile") || {},
+          readConsumerStoredProfile({ uniApp: uni }),
         );
       },
       resolveErrorMessage(error, fallback = "操作失败，请稍后重试") {
@@ -320,7 +324,7 @@ export function createProfilePhoneChangePage({
           }
 
           const nextProfile = normalizeConsumerPhoneChangeProfile(
-            uni.getStorageSync("userProfile") || {},
+            readConsumerStoredProfile({ uniApp: uni }),
             response.user,
             this.newPhone,
           );
@@ -331,7 +335,10 @@ export function createProfilePhoneChangePage({
             uniApp: uni,
           });
           if (!persistedSession.persisted) {
-            uni.setStorageSync("userProfile", nextProfile);
+            replaceConsumerStoredProfile({
+              profile: nextProfile,
+              uniApp: uni,
+            });
           }
 
           uni.showToast({

@@ -17,6 +17,7 @@ export * from "./consumer-auth-session.js";
 export * from "./consumer-auth-runtime.js";
 export * from "./consumer-app-version.js";
 export * from "./consumer-api.js";
+export * from "./consumer-profile-storage.js";
 export * from "./consumer-legal-runtime.js";
 export * from "./consumer-notification-sound.js";
 export * from "./consumer-order-store.js";
