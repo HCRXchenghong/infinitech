@@ -4643,10 +4643,14 @@ assertContains(
   "admin-vue/src/views/dashboardPageHelpers.js",
   "extractDashboardRankItems(weekUserRes.value?.data)",
 );
-assertContains(
-  "admin-vue/src/views/AfterSales.vue",
-  "extractAfterSalesPage(data)",
-);
+assertExists("admin-vue/src/views/afterSalesHelpers.js");
+assertExists("admin-vue/src/views/afterSalesSections/AfterSalesToolbar.vue");
+assertExists("admin-vue/src/views/afterSalesSections/AfterSalesTableSection.vue");
+assertExists("admin-vue/src/views/afterSalesSections/AfterSalesDetailDialog.vue");
+assertExists("admin-vue/src/views/afterSalesSections/AfterSalesProcessDialog.vue");
+assertContains("admin-vue/src/views/AfterSales.vue", "useAfterSalesPage({");
+assertContains("admin-vue/src/views/AfterSales.vue", "AfterSalesTableSection");
+assertContains("admin-vue/src/views/afterSalesHelpers.js", "extractAfterSalesPage(data)");
 assertContains(
   "admin-vue/src/views/HomeCampaigns.vue",
   "HomeCampaignsListPanel",
