@@ -12,6 +12,10 @@ import {
   clearCachedSocketToken as clearCachedSocketTokenCache,
   resolveSocketToken,
 } from "../../client-sdk/src/realtime-token.js";
+import {
+  readConsumerStoredProfile,
+  resolveConsumerStoredProfileUserId,
+} from "./consumer-profile-storage.js";
 
 const SOCKET_TOKEN_KEY = "socket_token";
 const SOCKET_TOKEN_ACCOUNT_KEY = "socket_token_account_key";
@@ -69,10 +73,13 @@ export function createCustomerServicePage({
         this.chatId = this.userId;
       }
 
-      const profile = uni.getStorageSync("userProfile");
-      if (profile) {
-        if (!this.userId && (profile.id || profile.userId || profile.phone)) {
-          this.userId = String(profile.id || profile.userId || profile.phone);
+      const profile = readConsumerStoredProfile({ uniApp: uni });
+      if (Object.keys(profile).length > 0) {
+        if (!this.userId) {
+          this.userId = resolveConsumerStoredProfileUserId({
+            profile,
+            identityKeys: ["id", "userId", "phone"],
+          });
           this.chatId = this.userId;
         }
         if (profile.nickname) this.userName = profile.nickname;
@@ -146,12 +153,12 @@ export function createCustomerServicePage({
           return;
         }
         if (!this.userId) {
-          const profile = uni.getStorageSync("userProfile") || {};
+          const profile = readConsumerStoredProfile({ uniApp: uni });
           const fallbackUserId =
-            profile.id ||
-            profile.userId ||
-            profile.phone ||
-            uni.getStorageSync("phone");
+            resolveConsumerStoredProfileUserId({
+              profile,
+              identityKeys: ["id", "userId", "phone"],
+            }) || uni.getStorageSync("phone");
           if (fallbackUserId) {
             this.userId = String(fallbackUserId);
             this.chatId = this.userId;

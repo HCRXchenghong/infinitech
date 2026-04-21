@@ -1,4 +1,5 @@
 import {
+  hasConsumerStoredAuthMode,
   mergeConsumerStoredProfilePatch,
   readConsumerStoredProfile,
 } from "./consumer-profile-storage.js";
@@ -195,7 +196,7 @@ export function createProfileHomePage({ fetchUser = async () => ({}) } = {}) {
         });
       },
       async bootstrap() {
-        if (uni.getStorageSync("authMode") !== "user") {
+        if (!hasConsumerStoredAuthMode({ uniApp: uni })) {
           uni.reLaunch({ url: "/pages/auth/login/index" });
           return;
         }

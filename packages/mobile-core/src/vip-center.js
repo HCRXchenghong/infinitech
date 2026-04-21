@@ -1,4 +1,8 @@
 import { extractEnvelopeData } from "../../contracts/src/http.js";
+import {
+  readConsumerStoredProfile,
+  resolveConsumerStoredProfileUserId,
+} from "./consumer-profile-storage.js";
 
 const VIP_POINT_REWARD_COLORS = [
   "red-bg",
@@ -532,7 +536,7 @@ export function createProfileVipCenterPageOptions({
 
     methods: {
       loadProfile() {
-        const profile = uni.getStorageSync("userProfile") || {};
+        const profile = readConsumerStoredProfile({ uniApp: uni });
         if (profile.nickname) this.nickname = profile.nickname;
         if (profile.avatarUrl) this.avatarUrl = profile.avatarUrl;
       },
@@ -561,8 +565,10 @@ export function createProfileVipCenterPageOptions({
         return summarizeVIPBenefits(benefits);
       },
       loadPoints() {
-        const profile = uni.getStorageSync("userProfile") || {};
-        const userId = resolveVipCenterUserId(profile);
+        const profile = readConsumerStoredProfile({ uniApp: uni });
+        const userId =
+          resolveVipCenterUserId(profile) ||
+          resolveConsumerStoredProfileUserId({ profile });
         if (!userId) return;
 
         fetchPointsBalance(userId)

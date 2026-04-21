@@ -1,4 +1,8 @@
 import { extractEnvelopeData } from "../../contracts/src/http.js";
+import {
+  readConsumerStoredProfile,
+  resolveConsumerStoredProfileUserId,
+} from "./consumer-profile-storage.js";
 import { createPhoneContactHelper } from "./phone-contact.js";
 
 export function buildShopPhoneAuditPayload(shop = {}) {
@@ -242,9 +246,10 @@ export function createShopDetailMethods({
 
   return {
     getCurrentUserId() {
-      const profile = uni.getStorageSync("userProfile") || {};
-      const raw = profile.id || profile.userId;
-      return String(raw || "").trim();
+      return resolveConsumerStoredProfileUserId({
+        uniApp: uni,
+        identityKeys: ["id", "userId"],
+      });
     },
     async loadFavoriteStatus(shopId) {
       const userId = this.getCurrentUserId();
@@ -385,8 +390,11 @@ export function createShopDetailMethods({
       }
 
       try {
-        const profile = uni.getStorageSync("userProfile") || {};
-        const userId = profile.phone || profile.id || profile.userId;
+        const profile = readConsumerStoredProfile({ uniApp: uni });
+        const userId = resolveConsumerStoredProfileUserId({
+          profile,
+          identityKeys: ["phone", "id", "userId"],
+        });
         if (!userId) {
           uni.showToast({ title: "请先登录", icon: "none" });
           return;

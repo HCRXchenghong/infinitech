@@ -4,6 +4,10 @@ import {
   clearCachedSocketToken as clearCachedSocketTokenCache,
   resolveSocketToken,
 } from "../../client-sdk/src/realtime-token.js";
+import {
+  readConsumerStoredProfile,
+  resolveConsumerStoredProfileUserId,
+} from "./consumer-profile-storage.js";
 
 const DEFAULT_SELF_AVATAR = "/static/images/my-avatar.svg";
 const DEFAULT_OTHER_AVATAR = "/static/images/default-avatar.svg";
@@ -356,11 +360,12 @@ export function createMessageChatPage({
       },
 
       bootstrapProfile() {
-        const profile = uni.getStorageSync("userProfile") || {};
+        const profile = readConsumerStoredProfile({ uniApp: uni });
         const uid =
-          profile.id ||
-          profile.userId ||
-          profile.phone ||
+          resolveConsumerStoredProfileUserId({
+            profile,
+            identityKeys: ["id", "userId", "phone"],
+          }) ||
           uni.getStorageSync("userId") ||
           uni.getStorageSync("phone");
 

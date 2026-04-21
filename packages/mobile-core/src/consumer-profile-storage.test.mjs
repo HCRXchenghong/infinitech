@@ -2,10 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  DEFAULT_CONSUMER_AUTH_MODE_STORAGE_KEY,
   DEFAULT_CONSUMER_PROFILE_STORAGE_KEY,
+  hasConsumerStoredAuthMode,
   mergeConsumerStoredProfilePatch,
+  readConsumerStoredAuthMode,
   readConsumerStoredProfile,
   replaceConsumerStoredProfile,
+  resolveConsumerStoredProfileUserId,
 } from "./consumer-profile-storage.js";
 
 test("consumer profile storage helpers normalize read and replace flows", () => {
@@ -72,4 +76,35 @@ test("consumer profile storage helpers merge patches onto cached profile snapsho
     phone: "13812345678",
   });
   assert.deepEqual(storage.userProfile, nextProfile);
+});
+
+test("consumer profile storage helpers normalize auth mode and identity reads", () => {
+  const storage = {
+    authMode: " user ",
+    userProfile: {
+      id: "user-1",
+      userId: "user-fallback",
+      phone: "13812345678",
+    },
+  };
+  const uniApp = {
+    getStorageSync(key) {
+      return storage[key];
+    },
+  };
+
+  assert.equal(DEFAULT_CONSUMER_AUTH_MODE_STORAGE_KEY, "authMode");
+  assert.equal(readConsumerStoredAuthMode({ uniApp }), "user");
+  assert.equal(hasConsumerStoredAuthMode({ uniApp }), true);
+  assert.equal(
+    resolveConsumerStoredProfileUserId({ uniApp }),
+    "user-1",
+  );
+  assert.equal(
+    resolveConsumerStoredProfileUserId({
+      uniApp,
+      identityKeys: ["phone", "id"],
+    }),
+    "13812345678",
+  );
 });

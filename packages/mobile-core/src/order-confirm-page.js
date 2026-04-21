@@ -2,7 +2,10 @@ import {
   extractConsumerAvailableOrderCoupons,
   resolveConsumerOrderCouponUserId,
 } from "./order-coupon.js";
-import { readConsumerStoredProfile } from "./consumer-profile-storage.js";
+import {
+  hasConsumerStoredAuthMode,
+  readConsumerStoredProfile,
+} from "./consumer-profile-storage.js";
 import { getMobileRuntimePlatform } from "./mobile-client-context.js";
 import {
   fallbackOrderPayMethods,
@@ -216,7 +219,7 @@ export function createOrderConfirmPage(options = {}) {
       },
     },
     async onLoad(query) {
-      if (uni.getStorageSync("authMode") !== "user") {
+      if (!hasConsumerStoredAuthMode({ uniApp: uni })) {
         uni.redirectTo({ url: "/pages/auth/login/index" });
         return;
       }
