@@ -42,8 +42,10 @@ import { changePhone, requestSMSCode, verifySMSCodeCheck } from '../../shared-ui
 import {
   clearRiderAuthSession,
   persistRiderAuthSession,
+  readRiderAuthIdentity,
   readRiderAuthSession,
 } from '../../shared-ui/auth-session.js'
+import { persistRoleAuthSessionFromAuthResult } from '../../../packages/client-sdk/src/role-auth-response.js'
 
 const OLD_SCENE = 'change_phone_verify'
 const NEW_SCENE = 'change_phone_new'
@@ -201,25 +203,30 @@ export default Vue.extend({
         })
 
         if (res.token) {
-          const nextTokenExpiresAt = Number(res.expiresIn || 0) > 0
-            ? Date.now() + Number(res.expiresIn) * 1000
-            : currentSession.tokenExpiresAt || null
-          persistRiderAuthSession({
+          persistRoleAuthSessionFromAuthResult({
             uniApp: uni,
-            token: res.token,
-            refreshToken: res.refreshToken || currentSession.refreshToken || null,
-            tokenExpiresAt: nextTokenExpiresAt,
+            persistRoleAuthSession: persistRiderAuthSession,
+            response: res,
+            currentSession,
             profile: nextProfile,
-            extraStorageValues: {
-              riderId: res.user?.id != null
-                ? String(res.user.id)
-                : currentSession.accountId || null,
-              riderName:
-                res.user?.name
-                || res.user?.nickname
-                || currentSession.profile?.name
-                || currentSession.profile?.nickname
-                || '骑手',
+            extraStorageValues({ responseUser, profile, currentSession: previousSession, pickFirstText }) {
+              return {
+                riderId:
+                  responseUser.id != null
+                    ? String(responseUser.id)
+                    : previousSession.accountId || null,
+                riderName: pickFirstText(
+                  [
+                    responseUser.name,
+                    responseUser.nickname,
+                    previousSession.profile?.name,
+                    previousSession.profile?.nickname,
+                    profile.name,
+                    profile.nickname,
+                  ],
+                  '骑手',
+                ),
+              }
             },
           })
         } else {

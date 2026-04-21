@@ -46,6 +46,7 @@
 import Vue from 'vue'
 import { requestSMSCode, riderLogin } from '../../shared-ui/api'
 import { persistRiderAuthSession } from '../../shared-ui/auth-session.js'
+import { persistRoleAuthSessionFromAuthResult } from '../../../packages/client-sdk/src/role-auth-response.js'
 import {
   getCachedRiderPortalRuntimeSettings,
   loadRiderPortalRuntimeSettings,
@@ -76,16 +77,16 @@ export default Vue.extend({
     },
 
     saveRiderSession(payload: any, phone: string) {
-      const expiresIn = Number(payload?.expiresIn || 0)
-      persistRiderAuthSession({
+      persistRoleAuthSessionFromAuthResult({
         uniApp: uni,
-        token: payload?.token,
-        refreshToken: payload?.refreshToken || null,
-        tokenExpiresAt: expiresIn > 0 ? Date.now() + expiresIn * 1000 : null,
-        profile: payload?.user || { phone, nickname: '骑手' },
-        extraStorageValues: {
-          riderId: payload?.user?.id != null ? String(payload.user.id) : null,
-          riderName: payload?.user?.name || payload?.user?.nickname || '骑手',
+        persistRoleAuthSession: persistRiderAuthSession,
+        response: payload,
+        profileFallback: { phone, nickname: '骑手' },
+        extraStorageValues({ responseUser, profile }) {
+          return {
+            riderId: responseUser.id != null ? String(responseUser.id) : null,
+            riderName: responseUser.name || responseUser.nickname || profile.nickname || '骑手',
+          }
         },
       })
     },

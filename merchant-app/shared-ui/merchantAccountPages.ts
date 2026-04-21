@@ -17,6 +17,7 @@ import {
   readMerchantAuthIdentity,
   readMerchantAuthSession,
 } from '@/shared-ui/auth-session.js'
+import { persistRoleAuthSessionFromAuthResult } from '../../packages/client-sdk/src/role-auth-response.js'
 
 export function useMerchantLoginPage() {
   const loginType = ref<'code' | 'password'>('password')
@@ -120,15 +121,11 @@ export function useMerchantLoginPage() {
         throw new Error(response?.error || '登录失败')
       }
 
-      persistMerchantAuthSession({
+      persistRoleAuthSessionFromAuthResult({
         uniApp: uni,
-        token: response.token,
-        refreshToken: response.refreshToken || null,
-        tokenExpiresAt:
-          Number(response.expiresIn || 0) > 0
-            ? Date.now() + Number(response.expiresIn) * 1000
-            : null,
-        profile: response.user || { phone: normalizedPhone },
+        persistRoleAuthSession: persistMerchantAuthSession,
+        response,
+        profileFallback: { phone: normalizedPhone },
       })
       clearMerchantContext()
 
