@@ -27,6 +27,7 @@ import {
   officialSiteExposureProcessTagType,
   officialSiteExposureReviewLabel,
   officialSiteExposureReviewTagType,
+  reconcileOfficialSiteSupportSelection,
   officialSiteSupportMessageKey,
   upsertOfficialSiteSupportSessions,
 } from "./official-site-resources.js";
@@ -222,6 +223,54 @@ test("support session helpers merge and sort by latest activity", () => {
       last_message_at: "2026-04-16T10:00:00Z",
     },
   ]);
+});
+
+test("support session selection helper keeps fallback and merge semantics stable", () => {
+  assert.deepEqual(
+    reconcileOfficialSiteSupportSelection(
+      [{ id: "session-1", nickname: "Alice" }],
+      "",
+      null,
+    ),
+    {
+      selectedId: "session-1",
+      selectedSession: { id: "session-1", nickname: "Alice" },
+      shouldLoadMessages: true,
+      shouldClearMessages: false,
+    },
+  );
+
+  assert.deepEqual(
+    reconcileOfficialSiteSupportSelection(
+      [{ id: "session-1", nickname: "Alice Latest" }],
+      "session-1",
+      { id: "session-1", status: "open" },
+    ),
+    {
+      selectedId: "session-1",
+      selectedSession: {
+        id: "session-1",
+        status: "open",
+        nickname: "Alice Latest",
+      },
+      shouldLoadMessages: false,
+      shouldClearMessages: false,
+    },
+  );
+
+  assert.deepEqual(
+    reconcileOfficialSiteSupportSelection(
+      [{ id: "session-2", nickname: "Bob" }],
+      "session-1",
+      { id: "session-1", nickname: "Alice" },
+    ),
+    {
+      selectedId: "session-2",
+      selectedSession: { id: "session-2", nickname: "Bob" },
+      shouldLoadMessages: true,
+      shouldClearMessages: true,
+    },
+  );
 });
 
 test("support message helpers dedupe and keep chronological order", () => {

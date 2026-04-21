@@ -242,6 +242,43 @@ export function upsertOfficialSiteSupportSessions(records, payload) {
   return nextRecords;
 }
 
+export function reconcileOfficialSiteSupportSelection(
+  records,
+  selectedId = "",
+  selectedSession = null,
+) {
+  const sessions = asArray(records);
+  const currentId = normalizeText(selectedId);
+
+  if (!currentId) {
+    const first = sessions[0] || null;
+    return {
+      selectedId: first?.id || "",
+      selectedSession: first,
+      shouldLoadMessages: Boolean(first?.id),
+      shouldClearMessages: false,
+    };
+  }
+
+  const matched = sessions.find((item) => item?.id === currentId) || null;
+  if (!matched) {
+    const first = sessions[0] || null;
+    return {
+      selectedId: first?.id || "",
+      selectedSession: first,
+      shouldLoadMessages: Boolean(first?.id),
+      shouldClearMessages: true,
+    };
+  }
+
+  return {
+    selectedId: currentId,
+    selectedSession: mergeOfficialSiteSupportSession(selectedSession, matched),
+    shouldLoadMessages: false,
+    shouldClearMessages: false,
+  };
+}
+
 export function officialSiteSupportMessageKey(message) {
   if (message?.id) {
     return `id:${message.id}`;

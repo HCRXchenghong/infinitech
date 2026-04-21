@@ -1219,22 +1219,26 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/OfficialSiteCenter.vue",
+  "useOfficialSiteCenterPage",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteCenterHelpers.js",
   "buildAdminOfficialSiteSupportSummaryCards",
 );
 assertContains(
-  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "admin-vue/src/views/officialSiteCenterHelpers.js",
   "createAdminOfficialSiteSupportFilters",
 );
 assertContains(
-  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "admin-vue/src/views/officialSiteCenterHelpers.js",
   "buildAdminOfficialSiteSupportListQuery",
 );
 assertContains(
-  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "admin-vue/src/views/officialSiteCenterHelpers.js",
   "buildAdminOfficialSiteExposureUpdatePayload",
 );
 assertContains(
-  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "admin-vue/src/views/officialSiteCenterHelpers.js",
   "buildAdminOfficialSiteCooperationUpdatePayload",
 );
 assertContains(
