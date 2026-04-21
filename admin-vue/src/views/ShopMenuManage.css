@@ -1,29 +1,28 @@
-
-.menu-manage {
+.shop-menu-manage-page {
   display: flex;
   flex-direction: column;
   gap: 14px;
   height: 100%;
 }
 
-.page-header {
+.shop-menu-manage-page .page-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
 }
 
-.page-title {
+.shop-menu-manage-page .page-title {
   font-size: 20px;
   font-weight: 700;
 }
 
-.page-subtitle {
+.shop-menu-manage-page .page-subtitle {
   margin-top: 6px;
   color: #909399;
   font-size: 13px;
 }
 
-.menu-content {
+.shop-menu-manage-page .menu-content {
   display: grid;
   grid-template-columns: 300px 1fr;
   gap: 14px;
@@ -31,8 +30,8 @@
   overflow: hidden;
 }
 
-.category-panel,
-.product-panel {
+.shop-menu-manage-page .category-panel,
+.shop-menu-manage-page .product-panel {
   background: #fff;
   border-radius: 12px;
   border: 1px solid #f2f3f5;
@@ -41,7 +40,7 @@
   overflow: hidden;
 }
 
-.panel-header {
+.shop-menu-manage-page .panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -51,13 +50,13 @@
   font-weight: 700;
 }
 
-.category-list {
+.shop-menu-manage-page .category-list {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
 }
 
-.category-item {
+.shop-menu-manage-page .category-item {
   padding: 12px;
   border-radius: 8px;
   margin-bottom: 8px;
@@ -66,46 +65,46 @@
   border: 1px solid transparent;
 }
 
-.category-item:hover {
+.shop-menu-manage-page .category-item:hover {
   background: #f5f7fa;
 }
 
-.category-item.active {
+.shop-menu-manage-page .category-item.active {
   background: #ecf5ff;
   border-color: #409eff;
 }
 
-.cat-info {
+.shop-menu-manage-page .cat-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
 }
 
-.cat-name {
+.shop-menu-manage-page .cat-name {
   font-size: 14px;
   font-weight: 600;
 }
 
-.cat-actions {
+.shop-menu-manage-page .cat-actions {
   display: flex;
   gap: 8px;
 }
 
-.product-list {
+.shop-menu-manage-page .product-list {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
 }
 
-.product-thumb {
+.shop-menu-manage-page .product-thumb {
   width: 60px;
   height: 60px;
   border-radius: 8px;
   object-fit: cover;
 }
 
-.product-thumb-empty {
+.shop-menu-manage-page .product-thumb-empty {
   width: 60px;
   height: 60px;
   border-radius: 8px;
@@ -117,12 +116,12 @@
   font-size: 12px;
 }
 
-.price-text {
+.shop-menu-manage-page .price-text {
   color: #f56c6c;
   font-weight: 600;
 }
 
-.empty-tip {
+.shop-menu-manage-page .empty-tip {
   text-align: center;
   color: #909399;
   padding: 40px 0;

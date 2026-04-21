@@ -4647,7 +4647,7 @@ assertContains(
   "extractAdminCarouselPage(data).items",
 );
 assertContains(
-  "admin-vue/src/views/ShopMenuManage.vue",
+  "admin-vue/src/views/shopMenuManagePageHelpers.js",
   "extractPaginatedItems(data).items",
 );
 assertContains(
@@ -5084,6 +5084,20 @@ assertContains("admin-vue/src/views/ContentSettings.vue", "ContentSettingsPushMe
 assertContains("admin-vue/src/views/ContentSettings.vue", "ContentSettings.css");
 assertNotContains("admin-vue/src/views/ContentSettings.vue", "async function loadCarouselList()");
 assertNotContains("admin-vue/src/views/ContentSettings.vue", "const pushMessages = ref([])");
+assertExists("admin-vue/src/views/shopMenuManagePageHelpers.js");
+assertExists("admin-vue/src/views/shopMenuManageSections/ShopMenuManageHeader.vue");
+assertExists("admin-vue/src/views/shopMenuManageSections/ShopMenuManageCategoryPanel.vue");
+assertExists("admin-vue/src/views/shopMenuManageSections/ShopMenuManageProductPanel.vue");
+assertExists("admin-vue/src/views/shopMenuManageSections/ShopMenuManageCategoryDialog.vue");
+assertExists("admin-vue/src/views/shopMenuManageSections/ShopMenuManageProductDialog.vue");
+assertContains("admin-vue/src/views/ShopMenuManage.vue", "useShopMenuManagePage({");
+assertContains("admin-vue/src/views/ShopMenuManage.vue", "ShopMenuManageHeader");
+assertContains("admin-vue/src/views/ShopMenuManage.vue", "ShopMenuManageProductDialog");
+assertContains("admin-vue/src/views/ShopMenuManage.vue", "ShopMenuManage.css");
+assertContains("admin-vue/src/views/shopMenuHelpers.js", "normalizeProductRecord");
+assertContains("admin-vue/src/views/shopMenuHelpers.js", "buildCategoryPayload");
+assertNotContains("admin-vue/src/views/ShopMenuManage.vue", "async function loadProducts()");
+assertNotContains("admin-vue/src/views/ShopMenuManage.vue", "const categories = ref([])");
 assertNotContains(
   "admin-vue/src/views/OperationsCenter.vue",
   "function extractErrorMessage(error, fallback)",
