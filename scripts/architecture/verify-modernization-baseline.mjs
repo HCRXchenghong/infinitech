@@ -1479,8 +1479,8 @@ assertContains(
   "@infinitech/domain-core",
 );
 assertContains(
-  "admin-vue/src/views/notificationEditorHelpers.js",
-  "@infinitech/domain-core",
+  "admin-vue/src/views/NotificationEditor.vue",
+  "NotificationEditorPage",
 );
 assertContains(
   "admin-vue/src/views/contentSettingsPageHelpers.js",
@@ -4486,6 +4486,7 @@ assertExists("admin-vue/src/views/notificationEditorPageSections/NotificationEdi
 assertContains("admin-vue/src/views/NotificationEditorPage.vue", "useNotificationEditorPage({");
 assertContains("admin-vue/src/views/NotificationEditorPage.vue", "NotificationEditorFormCard");
 assertContains("admin-vue/src/views/NotificationEditorPage.vue", "NotificationEditorPreviewCard");
+assertContains("admin-vue/src/views/NotificationEditor.vue", "NotificationEditorPage");
 assertContains(
   "admin-vue/src/views/notificationEditorPageViewHelpers.js",
   "const payload = extractEnvelopeData(data) || {}",
@@ -4494,6 +4495,8 @@ assertNotContains(
   "admin-vue/src/views/NotificationEditorPage.vue",
   "async function uploadBlockImage(",
 );
+assertNotContains("admin-vue/src/views/NotificationEditor.vue", "axios.get(`/api/notifications/admin/${id}`)");
+assertNotContains("admin-vue/src/views/NotificationEditor.vue", "buildNotificationPayload(form.value, true)");
 assertExists("admin-vue/src/views/merchantProfilePageHelpers.js");
 assertExists("admin-vue/src/views/MerchantProfile.css");
 assertExists("admin-vue/src/views/merchantProfileSections/MerchantProfileHeader.vue");
