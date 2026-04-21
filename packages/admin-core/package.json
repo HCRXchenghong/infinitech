@@ -12,6 +12,8 @@
     "./menu-groups": "./src/menu-groups.js",
     "./temporary-credential": "./src/temporary-credential.js",
     "./desktop-shell": "./src/desktop-shell.js",
+    "./desktop-shell-bootstrap": "./src/desktop-shell-bootstrap.js",
+    "./desktop-shell-vite": "./src/desktop-shell-vite.js",
     "./upload": "./src/upload.js",
     "./paginated-resources": "./src/paginated-resources.js",
     "./system-log-resources": "./src/system-log-resources.js",

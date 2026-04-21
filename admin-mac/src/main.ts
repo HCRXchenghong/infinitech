@@ -1,5 +1,4 @@
-import { createApp } from "vue";
-import App from "./App.vue";
-import "./styles.css";
+import "../../packages/admin-core/src/desktop-shell-base.css";
+import { mountAdminDesktopShell } from "../../packages/admin-core/src/desktop-shell-bootstrap.js";
 
-createApp(App).mount("#app");
+mountAdminDesktopShell("mac");
