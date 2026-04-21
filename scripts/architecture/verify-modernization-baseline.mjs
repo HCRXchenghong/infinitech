@@ -1169,7 +1169,7 @@ assertContains(
 );
 assertContains("admin-vue/src/views/Users.vue", "createOnboardingInviteApi");
 assertContains(
-  "admin-vue/src/views/Merchants.vue",
+  "admin-vue/src/views/merchantsPageHelpers.js",
   "createOnboardingInviteApi",
 );
 assertContains(
@@ -2316,7 +2316,7 @@ assertContains(
   "from '../../packages/mobile-core/src/role-runtime-support.js'",
 );
 assertContains(
-  "admin-vue/src/views/Merchants.vue",
+  "admin-vue/src/views/merchantsPageHelpers.js",
   "extractTemporaryCredential(",
 );
 assertContains(
@@ -4303,7 +4303,28 @@ assertContains(
   "admin-vue/src/views/Users.template.html",
   "vipLabel(row.vip_level)",
 );
-assertContains("admin-vue/src/views/Merchants.vue", "extractAdminMerchantPage");
+assertExists("admin-vue/src/views/merchantsPageHelpers.js");
+assertExists("admin-vue/src/views/Merchants.css");
+assertExists("admin-vue/src/views/merchantsSections/MerchantsListPanel.vue");
+assertExists("admin-vue/src/views/merchantsSections/MerchantsCreateDialog.vue");
+assertExists("admin-vue/src/views/merchantsSections/MerchantsInviteDialog.vue");
+assertContains("admin-vue/src/views/Merchants.vue", "useMerchantsPage({");
+assertContains("admin-vue/src/views/Merchants.vue", "MerchantsListPanel");
+assertContains("admin-vue/src/views/Merchants.vue", "MerchantsCreateDialog");
+assertContains("admin-vue/src/views/Merchants.vue", "MerchantsInviteDialog");
+assertContains("admin-vue/src/views/Merchants.vue", "Merchants.css");
+assertContains(
+  "admin-vue/src/views/merchantsPageHelpers.js",
+  "extractAdminMerchantPage",
+);
+assertNotContains(
+  "admin-vue/src/views/Merchants.vue",
+  "async function loadMerchants(",
+);
+assertNotContains(
+  "admin-vue/src/views/Merchants.vue",
+  "<el-table :data=\"merchants\"",
+);
 assertContains(
   "admin-vue/src/views/InviteLanding.vue",
   "createOnboardingInviteApi",
@@ -4752,7 +4773,7 @@ assertContains(
   "extractFinancialTransactionLogPage(res.data)",
 );
 assertContains(
-  "admin-vue/src/views/Merchants.vue",
+  "admin-vue/src/views/merchantsPageHelpers.js",
   "extractMerchantShopPage(shopsRes.data)",
 );
 assertContains(

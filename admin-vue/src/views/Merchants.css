@@ -1,0 +1,76 @@
+.merchants-page {
+  min-height: calc(100vh - 170px);
+}
+
+.merchants-page .merchants-panel {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.merchants-page .merchants-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.merchants-page .merchants-panel-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.merchants-page .merchants-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.merchants-page .merchants-search {
+  width: 260px;
+}
+
+.merchants-page .merchants-pagination {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.merchants-page .merchant-id-text {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  word-break: normal;
+}
+
+.merchants-page .merchant-shop-count {
+  font-weight: 700;
+  color: #409eff;
+}
+
+.merchants-page .merchants-invite-meta {
+  color: #606266;
+  font-size: 13px;
+}
+
+@media (max-width: 960px) {
+  .merchants-page .merchants-panel-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .merchants-page .merchants-panel-actions {
+    justify-content: flex-start;
+  }
+
+  .merchants-page .merchants-search {
+    width: 100%;
+  }
+
+  .merchants-page .merchants-pagination {
+    overflow-x: auto;
+  }
+}
