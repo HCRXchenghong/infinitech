@@ -1463,7 +1463,7 @@ assertContains(
   "buildFinanceOverviewKpiCards",
 );
 assertContains(
-  "admin-vue/src/views/TransactionLogs.vue",
+  "admin-vue/src/views/transactionLogsPageHelpers.js",
   "formatFinancialTransactionType",
 );
 assertContains(
@@ -4783,9 +4783,23 @@ assertContains(
   "clearAdminSessionStorage();",
 );
 assertContains(
-  "admin-vue/src/views/TransactionLogs.vue",
+  "admin-vue/src/views/transactionLogsPageHelpers.js",
   "extractFinancialTransactionLogPage(res.data)",
 );
+assertExists("admin-vue/src/views/transactionLogsPageHelpers.js");
+assertExists("admin-vue/src/views/TransactionLogs.css");
+assertExists("admin-vue/src/views/transactionLogsSections/TransactionLogsToolbar.vue");
+assertExists("admin-vue/src/views/transactionLogsSections/TransactionLogsTableCard.vue");
+assertExists("admin-vue/src/views/transactionLogsSections/TransactionLogsDetailDialog.vue");
+assertExists("admin-vue/src/views/transactionLogsSections/TransactionLogsDeleteDialog.vue");
+assertExists("admin-vue/src/views/transactionLogsSections/TransactionLogsClearDialog.vue");
+assertContains("admin-vue/src/views/TransactionLogs.vue", "useTransactionLogsPage({");
+assertContains("admin-vue/src/views/TransactionLogs.vue", "TransactionLogsToolbar");
+assertContains("admin-vue/src/views/TransactionLogs.vue", "TransactionLogsTableCard");
+assertContains("admin-vue/src/views/TransactionLogs.vue", "TransactionLogsDetailDialog");
+assertContains("admin-vue/src/views/TransactionLogs.vue", "TransactionLogsDeleteDialog");
+assertContains("admin-vue/src/views/TransactionLogs.vue", "TransactionLogsClearDialog");
+assertContains("admin-vue/src/views/TransactionLogs.vue", "TransactionLogs.css");
 assertContains(
   "admin-vue/src/views/merchantsPageHelpers.js",
   "extractMerchantShopPage(shopsRes.data)",
@@ -5255,6 +5269,18 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/FinanceCenter.vue",
   "error?.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/TransactionLogs.vue",
+  "async function loadTransactionLogs(",
+);
+assertNotContains(
+  "admin-vue/src/views/TransactionLogs.vue",
+  "extractFinancialTransactionLogPage(res.data)",
+);
+assertNotContains(
+  "admin-vue/src/views/TransactionLogs.vue",
+  "<el-card class=\"card\">",
 );
 assertNotContains(
   "admin-vue/src/views/TransactionLogs.vue",

@@ -1,0 +1,112 @@
+.transaction-logs-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.transaction-logs-page .transaction-logs-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.transaction-logs-page .transaction-logs-title {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.transaction-logs-page .transaction-logs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.transaction-logs-page .transaction-logs-card {
+  border-radius: 12px;
+}
+
+.transaction-logs-page .transaction-logs-user {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.transaction-logs-page .transaction-logs-user-type {
+  font-size: 12px;
+  color: #909399;
+}
+
+.transaction-logs-page .transaction-logs-user-id {
+  font-size: 13px;
+  color: #303133;
+}
+
+.transaction-logs-page .transaction-logs-amount {
+  font-weight: 600;
+}
+
+.transaction-logs-page .transaction-logs-amount.income {
+  color: #67c23a;
+}
+
+.transaction-logs-page .transaction-logs-amount.expense {
+  color: #f56c6c;
+}
+
+.transaction-logs-page .transaction-logs-balance-before {
+  color: #909399;
+  font-size: 12px;
+}
+
+.transaction-logs-page .transaction-logs-balance-arrow {
+  margin: 0 6px;
+  color: #909399;
+}
+
+.transaction-logs-page .transaction-logs-balance-after {
+  color: #303133;
+  font-weight: 600;
+}
+
+.transaction-logs-page .transaction-logs-operator {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.transaction-logs-page .transaction-logs-operator-name {
+  font-size: 13px;
+}
+
+.transaction-logs-page .transaction-logs-operator-id {
+  font-size: 11px;
+  color: #909399;
+}
+
+.transaction-logs-page .transaction-logs-operator-empty {
+  color: #c0c4cc;
+}
+
+.transaction-logs-page .transaction-logs-pagination {
+  margin-top: 20px;
+  justify-content: center;
+}
+
+.transaction-logs-page .transaction-logs-delete-tip {
+  color: #f56c6c;
+  font-size: 13px;
+}
+
+@media (max-width: 1100px) {
+  .transaction-logs-page .transaction-logs-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .transaction-logs-page .transaction-logs-actions {
+    justify-content: flex-start;
+  }
+}
