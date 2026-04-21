@@ -423,3 +423,13 @@ export function extractSystemLogPage(payload = {}) {
     },
   };
 }
+
+export function extractSystemLogViewState(payload = {}) {
+  const page = extractSystemLogPage(payload);
+  return {
+    items: page.items,
+    total: page.total,
+    summary: normalizeSystemLogSummary(page.summary),
+    serviceStatus: normalizeServiceHealthStatus(page.serviceStatus),
+  };
+}

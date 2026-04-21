@@ -1170,25 +1170,31 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/SystemLogs.vue",
-  "normalizeServiceHealthStatus",
+  "useSystemLogsPage({",
 );
-assertContains("admin-vue/src/views/SystemLogs.vue", "createSystemLogFilters");
-assertContains("admin-vue/src/views/SystemLogs.vue", "buildSystemLogListQuery");
 assertContains(
-  "admin-vue/src/views/SystemLogs.vue",
+  "admin-vue/src/views/systemLogsHelpers.js",
+  "extractSystemLogViewState(",
+);
+assertContains(
+  "admin-vue/src/views/systemLogsHelpers.js",
+  "buildSystemLogListQuery(",
+);
+assertContains(
+  "admin-vue/src/views/systemLogsHelpers.js",
   "getSystemLogServiceSignals",
 );
-assertContains(
+assertNotContains(
   "admin-vue/src/views/SystemLogs.vue",
-  "SYSTEM_LOG_SOURCE_OPTIONS",
+  "function actionTagType(actionType)",
 );
-assertContains(
+assertNotContains(
   "admin-vue/src/views/SystemLogs.vue",
   "buildSystemLogDeletePayload",
 );
 assertNotContains(
   "admin-vue/src/views/SystemLogs.vue",
-  "function actionTagType(actionType)",
+  "createSystemLogFilters",
 );
 
 [
@@ -4412,8 +4418,8 @@ assertContains(
   "searchAdminRTCTargets(searchForm.keyword)",
 );
 assertContains(
-  "admin-vue/src/views/SystemLogs.vue",
-  "extractSystemLogPage(payload)",
+  "admin-vue/src/views/systemLogsHelpers.js",
+  "extractSystemLogViewState(",
 );
 assertContains(
   "admin-vue/src/utils/adminRtc.js",
@@ -4422,6 +4428,10 @@ assertContains(
 assertContains(
   "packages/admin-core/src/system-log-resources.js",
   "export function extractSystemLogPage(payload = {})",
+);
+assertContains(
+  "packages/admin-core/src/system-log-resources.js",
+  "export function extractSystemLogViewState(payload = {})",
 );
 assertContains(
   "packages/admin-core/src/paginated-resources.js",

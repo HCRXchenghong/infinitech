@@ -10,6 +10,7 @@ import {
   createSystemLogPagination,
   createSystemLogVerifyForm,
   extractSystemLogPage,
+  extractSystemLogViewState,
   formatSystemLogAgeMs,
   formatSystemLogAgeSeconds,
   formatSystemLogMethodPath,
@@ -118,6 +119,45 @@ test("extractSystemLogPage supports legacy root payloads and fills defaults", ()
         total: 1,
         page: 0,
         limit: 0,
+      },
+    },
+  );
+});
+
+test("extractSystemLogViewState keeps list, summary and service state normalized", () => {
+  assert.deepEqual(
+    extractSystemLogViewState({
+      data: {
+        items: [{ id: "log-3", actionType: "system" }],
+        pagination: {
+          total: 7,
+        },
+        summary: {
+          system: 7,
+        },
+        serviceStatus: {
+          checked_at: "2026-04-21 10:00:00",
+          overall: "degraded",
+          services: [{ key: "socket", status: "degraded" }],
+        },
+      },
+    }),
+    {
+      items: [{ id: "log-3", actionType: "system" }],
+      total: 7,
+      summary: {
+        create: 0,
+        delete: 0,
+        update: 0,
+        read: 0,
+        system: 7,
+        error: 0,
+      },
+      serviceStatus: {
+        checkedAt: "2026-04-21 10:00:00",
+        overall: "degraded",
+        services: [{ key: "socket", status: "degraded" }],
+        journeys: [],
       },
     },
   );
