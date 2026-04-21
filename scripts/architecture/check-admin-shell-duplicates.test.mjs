@@ -7,6 +7,7 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import {
   ADMIN_DESKTOP_DUPLICATE_NAME_HINT,
   assertNoUnexpectedAdminDesktopShellDuplicates,
+  buildAdminDesktopDuplicateRenameSuggestion,
   collectAdminDesktopShellFiles,
 } from "./check-admin-shell-duplicates.mjs";
 
@@ -69,10 +70,25 @@ test("admin desktop duplicate guard reports unexpected duplicate business filena
       (error) => {
         assert.match(error.message, /PaymentCenter\.vue/);
         assert.match(error.message, new RegExp(ADMIN_DESKTOP_DUPLICATE_NAME_HINT));
+        assert.match(
+          error.message,
+          new RegExp(buildAdminDesktopDuplicateRenameSuggestion("PaymentCenter.vue")),
+        );
         return true;
       },
     );
   } finally {
     await rm(fixtureRoot, { recursive: true, force: true });
   }
+});
+
+test("duplicate rename suggestion keeps extension and surfaces win/mac examples", () => {
+  assert.equal(
+    buildAdminDesktopDuplicateRenameSuggestion("PaymentCenter.vue"),
+    "建议改成 PaymentCenterWin.vue / PaymentCenterMac.vue，或改成更明确的业务名",
+  );
+  assert.equal(
+    buildAdminDesktopDuplicateRenameSuggestion("SettingsDialog.ts"),
+    "建议改成 SettingsDialogWin.ts / SettingsDialogMac.ts，或改成更明确的业务名",
+  );
 });

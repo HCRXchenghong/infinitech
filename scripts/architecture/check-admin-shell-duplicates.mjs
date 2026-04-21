@@ -85,6 +85,13 @@ export function findUnexpectedDuplicateBasenames(filePaths = [], options = {}) {
     }));
 }
 
+export function buildAdminDesktopDuplicateRenameSuggestion(basename = "") {
+  const parsed = path.parse(String(basename || "").trim());
+  const stem = parsed.name || "BusinessView";
+  const ext = parsed.ext || "";
+  return `建议改成 ${stem}Win${ext} / ${stem}Mac${ext}，或改成更明确的业务名`;
+}
+
 export async function assertNoUnexpectedAdminDesktopShellDuplicates(options = {}) {
   const filePaths = Array.isArray(options.filePaths)
     ? options.filePaths.map((filePath) => path.resolve(filePath))
@@ -93,7 +100,8 @@ export async function assertNoUnexpectedAdminDesktopShellDuplicates(options = {}
 
   if (duplicates.length > 0) {
     const duplicateLines = duplicates.map(
-      ({ basename, paths }) => `- ${basename}: ${paths.join(", ")}`,
+      ({ basename, paths }) =>
+        `- ${basename}: ${paths.join(", ")}\n  ${buildAdminDesktopDuplicateRenameSuggestion(basename)}`,
     );
     throw new Error(
       [
