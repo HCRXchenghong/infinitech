@@ -717,6 +717,11 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "admin-vue/src/views/adminRTCConsoleSections/AdminRTCConsoleComposePanel.vue",
   "admin-vue/src/views/adminRTCConsoleSections/AdminRTCConsoleStatusPanel.vue",
   "admin-vue/src/views/adminRTCConsoleSections/AdminRTCConsoleHistoryPanel.vue",
+  "admin-vue/src/views/dashboardPageHelpers.js",
+  "admin-vue/src/views/dashboardSections/DashboardOverviewSection.vue",
+  "admin-vue/src/views/dashboardSections/DashboardImStatusRow.vue",
+  "admin-vue/src/views/dashboardSections/DashboardPresencePanel.vue",
+  "admin-vue/src/views/dashboardSections/DashboardRankSection.vue",
   "admin-win/src/main.ts",
   "admin-win/vite.config.mts",
   "admin-mac/src/main.ts",
@@ -1335,7 +1340,7 @@ assertNotContains(
   "function parseServiceDetail(detail)",
 );
 assertContains(
-  "admin-vue/src/views/Dashboard.vue",
+  "admin-vue/src/views/dashboardPageHelpers.js",
   "extractServiceHealthStatus",
 );
 assertContains(
@@ -1450,7 +1455,12 @@ assertContains(
   "admin-vue/src/views/OperationsCenter.vue",
   "createOperationsGoodFormState",
 );
-assertContains("admin-vue/src/views/Dashboard.vue", "buildDashboardStatsCards");
+assertContains("admin-vue/src/views/Dashboard.vue", "DashboardOverviewSection");
+assertContains("admin-vue/src/views/Dashboard.vue", "DashboardImStatusRow");
+assertContains("admin-vue/src/views/Dashboard.vue", "DashboardPresencePanel");
+assertContains("admin-vue/src/views/Dashboard.vue", "DashboardRankSection");
+assertContains("admin-vue/src/views/Dashboard.vue", "useDashboardPage");
+assertContains("admin-vue/src/views/dashboardPageHelpers.js", "buildDashboardStatsCards");
 assertContains(
   "admin-vue/src/views/RiderRanks.vue",
   "extractDashboardRankItems",
@@ -4197,7 +4207,7 @@ assertContains(
   "resolveSocketToken({",
 );
 assertContains(
-  "admin-vue/src/views/Dashboard.vue",
+  "admin-vue/src/views/dashboardPageHelpers.js",
   "request.get('/api/realtime/stats')",
 );
 assertNotContains(
@@ -4559,7 +4569,7 @@ assertContains(
 assertContains("admin-vue/src/views/Orders.vue", "extractAdminOrderPage(data)");
 assertContains("admin-vue/src/views/Orders.vue", "buildAdminOrderDetail(row)");
 assertContains(
-  "admin-vue/src/views/Dashboard.vue",
+  "admin-vue/src/views/dashboardPageHelpers.js",
   "extractDashboardRankItems(weekUserRes.value?.data)",
 );
 assertContains(
@@ -4827,7 +4837,7 @@ assertNotContains(
   "会员中心配置",
 );
 assertContains(
-  "admin-vue/src/views/Dashboard.vue",
+  "admin-vue/src/views/dashboardPageHelpers.js",
   "const payload = extractEnvelopeData(data) || {}",
 );
 assertContains(
@@ -4867,8 +4877,16 @@ assertContains(
   "normalizeSoundRuntime(extractEnvelopeData(data) || data || {})",
 );
 assertContains(
-  "admin-vue/src/views/Dashboard.vue",
+  "admin-vue/src/views/dashboardPageHelpers.js",
   "weatherData.value = extractEnvelopeData(data) || data || { available: false }",
+);
+assertNotContains(
+  "admin-vue/src/views/Dashboard.vue",
+  "<div class=\"im-status-row\">",
+);
+assertNotContains(
+  "admin-vue/src/views/Dashboard.vue",
+  "<div v-if=\"weatherData.available\" class=\"weather-card\">",
 );
 assertContains(
   "admin-vue/src/views/dataManagementHelpers.js",
