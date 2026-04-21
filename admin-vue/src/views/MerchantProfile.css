@@ -1,0 +1,94 @@
+.merchant-profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.merchant-profile-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.merchant-profile-page .page-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.merchant-profile-page .page-subtitle {
+  margin-top: 6px;
+  color: #909399;
+  font-size: 13px;
+}
+
+.merchant-profile-page .header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.merchant-profile-page .panel {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.merchant-profile-page .upload-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.merchant-profile-page .license-image {
+  width: 220px;
+  height: 132px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.merchant-profile-page .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.merchant-profile-page .panel-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.merchant-profile-page .panel-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.merchant-profile-page .shop-base {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.merchant-profile-page .shop-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid #ebeef5;
+}
+
+.merchant-profile-page .shop-logo.placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f2f6fc;
+  color: #909399;
+  font-size: 10px;
+}
+
+.merchant-profile-page .shop-name {
+  font-weight: 600;
+}
+
+.merchant-profile-page .rating {
+  color: #e6a23c;
+}

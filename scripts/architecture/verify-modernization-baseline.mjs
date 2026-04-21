@@ -4469,22 +4469,49 @@ assertNotContains(
   "admin-vue/src/views/NotificationEditorPage.vue",
   "async function uploadBlockImage(",
 );
-assertContains("admin-vue/src/views/MerchantProfile.vue", "resolveUploadAssetUrl");
+assertExists("admin-vue/src/views/merchantProfilePageHelpers.js");
+assertExists("admin-vue/src/views/MerchantProfile.css");
+assertExists("admin-vue/src/views/merchantProfileSections/MerchantProfileHeader.vue");
+assertExists("admin-vue/src/views/merchantProfileSections/MerchantProfileSummaryPanel.vue");
+assertExists("admin-vue/src/views/merchantProfileSections/MerchantProfileOnboardingPanel.vue");
+assertExists("admin-vue/src/views/merchantProfileSections/MerchantProfileShopsPanel.vue");
+assertExists("admin-vue/src/views/merchantProfileSections/MerchantProfileEditDialog.vue");
+assertExists("admin-vue/src/views/merchantProfileSections/MerchantProfileShopDialog.vue");
+assertContains("admin-vue/src/views/MerchantProfile.vue", "useMerchantProfilePage({");
+assertContains("admin-vue/src/views/MerchantProfile.vue", "MerchantProfileHeader");
+assertContains("admin-vue/src/views/MerchantProfile.vue", "MerchantProfileSummaryPanel");
+assertContains("admin-vue/src/views/MerchantProfile.vue", "MerchantProfileOnboardingPanel");
+assertContains("admin-vue/src/views/MerchantProfile.vue", "MerchantProfileShopsPanel");
+assertContains("admin-vue/src/views/MerchantProfile.vue", "MerchantProfileEditDialog");
+assertContains("admin-vue/src/views/MerchantProfile.vue", "MerchantProfileShopDialog");
+assertContains("admin-vue/src/views/MerchantProfile.vue", "MerchantProfile.css");
 assertContains(
-  "admin-vue/src/views/MerchantProfile.vue",
+  "admin-vue/src/views/merchantProfilePageHelpers.js",
+  "resolveUploadAssetUrl",
+);
+assertContains(
+  "admin-vue/src/views/merchantProfilePageHelpers.js",
   "createAdminMerchantEditFormState",
 );
 assertContains(
-  "admin-vue/src/views/MerchantProfile.vue",
+  "admin-vue/src/views/merchantProfilePageHelpers.js",
   "validateAdminMerchantLicenseFile",
 );
 assertContains(
-  "admin-vue/src/views/MerchantProfile.vue",
+  "admin-vue/src/views/merchantProfilePageHelpers.js",
   "extractMerchantShopPage",
 );
 assertNotContains(
   "admin-vue/src/views/MerchantProfile.vue",
   "const MAX_LICENSE_FILE_SIZE",
+);
+assertNotContains(
+  "admin-vue/src/views/MerchantProfile.vue",
+  "async function loadMerchant(",
+);
+assertNotContains(
+  "admin-vue/src/views/MerchantProfile.vue",
+  "const shops = ref([])",
 );
 assertContains(
   "admin-vue/src/views/ridersActionHelpers.js",
@@ -4651,7 +4678,7 @@ assertContains(
   "extractPaginatedItems(data).items",
 );
 assertContains(
-  "admin-vue/src/views/MerchantProfile.vue",
+  "admin-vue/src/views/merchantProfilePageHelpers.js",
   "extractMerchantShopPage(data)",
 );
 assertContains(
