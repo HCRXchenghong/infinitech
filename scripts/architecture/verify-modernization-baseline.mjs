@@ -7671,6 +7671,27 @@ assertNotContains(
   "admin-vue/src/views/ridersActionHelpers.js",
   "e.response?.data?.error",
 );
+assertExists("admin-vue/src/views/featuredProductsPageHelpers.js");
+assertExists("admin-vue/src/views/FeaturedProducts.css");
+assertExists("admin-vue/src/views/featuredProductsSections/FeaturedProductsHeader.vue");
+assertExists("admin-vue/src/views/featuredProductsSections/FeaturedProductsTableCard.vue");
+assertExists("admin-vue/src/views/featuredProductsSections/FeaturedProductsAddDialog.vue");
+assertContains(
+  "admin-vue/src/views/featuredProductsPageHelpers.js",
+  "normalizeFeaturedProductRecord",
+);
+assertContains(
+  "admin-vue/src/views/featuredProductsPageHelpers.js",
+  "buildProductSearchParams",
+);
+assertContains("admin-vue/src/views/FeaturedProducts.vue", "useFeaturedProductsPage({");
+assertContains("admin-vue/src/views/FeaturedProducts.vue", "FeaturedProductsHeader");
+assertContains("admin-vue/src/views/FeaturedProducts.vue", "FeaturedProductsTableCard");
+assertContains("admin-vue/src/views/FeaturedProducts.vue", "FeaturedProductsAddDialog");
+assertContains("admin-vue/src/views/FeaturedProducts.vue", "FeaturedProducts.css");
+assertNotContains("admin-vue/src/views/FeaturedProducts.vue", "async function load()");
+assertNotContains("admin-vue/src/views/FeaturedProducts.vue", "const featuredProducts = ref([])");
+assertNotContains("admin-vue/src/views/FeaturedProducts.vue", "<el-dialog");
 assertNotContains(
   "admin-vue/src/views/FeaturedProducts.vue",
   "e.response?.data?.error",
