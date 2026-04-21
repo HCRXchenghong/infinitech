@@ -306,6 +306,7 @@ export function usePaymentCenterWithdrawals({
     openWithdrawHistory,
     pendingBankWithdrawRequests,
     retryWithdrawPayout,
+    resetWithdrawHistory,
     submitBankPayoutComplete,
     submitWithdrawAction,
     supplementWithdraw,

@@ -114,6 +114,7 @@ export function usePaymentCenterPage({ request, ElMessage, ElMessageBox }) {
   }
 
   function removeRow(list, index) {
+    removePaymentCenterRow(list, index)
   }
 
   async function saveAll() {

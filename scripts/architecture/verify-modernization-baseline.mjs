@@ -698,6 +698,19 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "admin-vue/src/views/homeCampaignSections/HomeCampaignsListPanel.vue",
   "admin-vue/src/views/homeCampaignSections/HomeCampaignsPreviewPanel.vue",
   "admin-vue/src/views/homeCampaignSections/HomeCampaignsDialog.vue",
+  "admin-vue/src/views/PaymentCenter.css",
+  "admin-vue/src/views/paymentCenterSections/PaymentCenterHeroOverview.vue",
+  "admin-vue/src/views/paymentCenterSections/PaymentCenterBasicTab.vue",
+  "admin-vue/src/views/paymentCenterSections/PaymentCenterChannelsTab.vue",
+  "admin-vue/src/views/paymentCenterSections/PaymentCenterFeesTab.vue",
+  "admin-vue/src/views/paymentCenterSections/PaymentCenterSettlementTab.vue",
+  "admin-vue/src/views/paymentCenterSections/PaymentCenterDepositTab.vue",
+  "admin-vue/src/views/paymentCenterSections/PaymentCenterWithdrawTab.vue",
+  "admin-vue/src/views/paymentCenterSections/PaymentCenterBankWithdrawTab.vue",
+  "admin-vue/src/views/paymentCenterSections/PaymentCenterCallbackLogsTab.vue",
+  "admin-vue/src/views/paymentCenterSections/PaymentCenterBankPayoutDialog.vue",
+  "admin-vue/src/views/paymentCenterSections/PaymentCenterWithdrawHistoryDialog.vue",
+  "admin-vue/src/views/paymentCenterSections/PaymentCenterCallbackDetailDrawer.vue",
   "admin-win/src/main.ts",
   "admin-win/vite.config.mts",
   "admin-mac/src/main.ts",
@@ -4305,24 +4318,40 @@ assertContains(
   "addPaymentChannelRow",
 );
 assertContains(
+  "admin-vue/src/views/paymentCenterHelpers.js",
+  "removePaymentCenterRow(list, index)",
+);
+assertContains(
   "admin-vue/src/views/PaymentCenter.vue",
-  "formatAdminWalletOperationActor",
+  "PaymentCenterHeroOverview",
+);
+assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "PaymentCenterBasicTab",
+);
+assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "PaymentCenterSettlementTab",
+);
+assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "PaymentCenterWithdrawTab",
+);
+assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "PaymentCenterCallbackDetailDrawer",
+);
+assertContains(
+  "admin-vue/src/views/PaymentCenter.vue",
+  "PaymentCenter.css",
 );
 assertNotContains(
   "admin-vue/src/views/PaymentCenter.vue",
-  "function canReplayPaymentCallback(row)",
+  "<div class=\"payment-center-hero\">",
 );
 assertNotContains(
   "admin-vue/src/views/PaymentCenter.vue",
-  "function canWithdrawAction(row, action)",
-);
-assertNotContains(
-  "admin-vue/src/views/PaymentCenter.vue",
-  "function isWithdrawGatewaySubmitted(row)",
-);
-assertNotContains(
-  "admin-vue/src/views/PaymentCenter.vue",
-  "resetBankPayoutForm",
+  "<span>提现处理队列</span>",
 );
 assertContains(
   "admin-vue/src/views/BlankPage.vue",
@@ -6703,7 +6732,7 @@ assertNotContains(
 );
 assertContains("admin-vue/src/views/Login.vue", "extractSMSResult(data)");
 assertContains(
-  "admin-vue/src/views/PaymentCenter.vue",
+  "admin-vue/src/views/paymentCenterSections/PaymentCenterCallbackLogsTab.vue",
   "paymentCallbackStatusTag",
 );
 assertContains(
