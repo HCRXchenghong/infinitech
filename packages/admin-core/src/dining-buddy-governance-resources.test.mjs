@@ -16,6 +16,14 @@ import {
   createDiningBuddyRuntimeForm,
   createDiningBuddyRuntimeQuestion,
   createDiningBuddySensitiveForm,
+  extractDiningBuddyAuditLogList,
+  extractDiningBuddyMessageList,
+  extractDiningBuddyPartyDetail,
+  extractDiningBuddyPartyList,
+  extractDiningBuddyReportList,
+  extractDiningBuddyRestrictionList,
+  extractDiningBuddyRuntimeSettings,
+  extractDiningBuddySensitiveWordList,
   DINING_BUDDY_PARTY_CATEGORY_OPTIONS,
   DINING_BUDDY_PARTY_STATUS_OPTIONS,
   DINING_BUDDY_REPORT_STATUS_OPTIONS,
@@ -177,4 +185,57 @@ test("dining buddy moderation forms keep dialog and payload semantics stable", (
   assert.deepEqual(buildDiningBuddyMessageDeletePayload("  删除违规内容  "), {
     reason: "删除违规内容",
   });
+});
+
+test("dining buddy extract helpers unwrap runtime, list and detail payloads safely", () => {
+  assert.equal(
+    extractDiningBuddyRuntimeSettings({
+      data: { welcome_title: "  同频饭友欢迎你  " },
+    }).welcome_title,
+    "同频饭友欢迎你",
+  );
+
+  assert.deepEqual(
+    extractDiningBuddyPartyList({
+      data: {
+        parties: [{ id: "party-1", title: "一起晚餐" }],
+        pagination: { total: 1 },
+      },
+    }),
+    [{ id: "party-1", title: "一起晚餐" }],
+  );
+
+  assert.deepEqual(
+    extractDiningBuddyPartyDetail(
+      { data: { id: "party-2", title: "学习搭子" } },
+      { id: "fallback" },
+    ),
+    { id: "party-2", title: "学习搭子" },
+  );
+
+  assert.deepEqual(
+    extractDiningBuddyPartyDetail(null, { id: "fallback", title: "回退详情" }),
+    { id: "fallback", title: "回退详情" },
+  );
+
+  assert.deepEqual(
+    extractDiningBuddyMessageList({ data: { messages: [{ id: "msg-1" }] } }),
+    [{ id: "msg-1" }],
+  );
+  assert.deepEqual(
+    extractDiningBuddyReportList({ data: { reports: [{ id: "report-1" }] } }),
+    [{ id: "report-1" }],
+  );
+  assert.deepEqual(
+    extractDiningBuddySensitiveWordList({ data: { items: [{ id: "word-1" }] } }),
+    [{ id: "word-1" }],
+  );
+  assert.deepEqual(
+    extractDiningBuddyRestrictionList({ data: { items: [{ id: "restriction-1" }] } }),
+    [{ id: "restriction-1" }],
+  );
+  assert.deepEqual(
+    extractDiningBuddyAuditLogList({ data: { items: [{ id: "audit-1" }] } }),
+    [{ id: "audit-1" }],
+  );
 });

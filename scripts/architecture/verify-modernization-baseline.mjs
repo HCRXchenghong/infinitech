@@ -4265,31 +4265,35 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/DiningBuddyGovernance.vue",
-  "extractEnvelopeData(data)",
+  "useDiningBuddyGovernancePage({",
 );
 assertContains(
-  "admin-vue/src/views/DiningBuddyGovernance.vue",
-  "createDiningBuddyRuntimeForm",
+  "admin-vue/src/views/diningBuddyGovernanceHelpers.js",
+  "extractDiningBuddyRuntimeSettings(data)",
 );
 assertContains(
-  "admin-vue/src/views/DiningBuddyGovernance.vue",
-  "buildDiningBuddyRuntimePayload",
+  "admin-vue/src/views/diningBuddyGovernanceHelpers.js",
+  "buildDiningBuddyRuntimePayload(runtimeForm)",
 );
 assertContains(
-  "admin-vue/src/views/DiningBuddyGovernance.vue",
-  "buildDiningBuddyPartyListQuery",
+  "admin-vue/src/views/diningBuddyGovernanceHelpers.js",
+  "buildDiningBuddyPartyListQuery(partyFilters)",
 );
 assertContains(
-  "admin-vue/src/views/DiningBuddyGovernance.vue",
-  "buildDiningBuddyReportActionPayload",
+  "admin-vue/src/views/diningBuddyGovernanceHelpers.js",
+  "buildDiningBuddyReportActionPayload(action, {",
 );
 assertContains(
-  "admin-vue/src/views/DiningBuddyGovernance.vue",
-  "buildDiningBuddyRestrictionPayload",
+  "admin-vue/src/views/diningBuddyGovernanceHelpers.js",
+  "buildDiningBuddyRestrictionPayload(restrictionForm)",
 );
 assertContains(
   "admin-vue/src/views/DiningBuddyGovernance.vue",
   "DINING_BUDDY_PARTY_STATUS_OPTIONS",
+);
+assertNotContains(
+  "admin-vue/src/views/DiningBuddyGovernance.vue",
+  "extractPaginatedItems(data, { listKeys: ['parties', 'items'] }).items",
 );
 assertNotContains(
   "admin-vue/src/views/DiningBuddyGovernance.vue",
@@ -4366,8 +4370,12 @@ assertContains(
   "extractAfterSalesPage(data)",
 );
 assertContains(
-  "admin-vue/src/views/DiningBuddyGovernance.vue",
-  "extractPaginatedItems(data, { listKeys: ['parties', 'items'] }).items",
+  "packages/admin-core/src/dining-buddy-governance-resources.js",
+  "export function extractDiningBuddyPartyList(payload = {})",
+);
+assertContains(
+  "packages/admin-core/src/dining-buddy-governance-resources.js",
+  "export function extractDiningBuddyRuntimeSettings(payload = {})",
 );
 assertContains(
   "admin-vue/src/views/NotificationPreviewPage.vue",

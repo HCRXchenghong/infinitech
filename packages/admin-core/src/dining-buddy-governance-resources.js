@@ -1,3 +1,5 @@
+import { extractEnvelopeData, extractPaginatedItems } from "../../contracts/src/http.js";
+
 export const DINING_BUDDY_PARTY_STATUS_OPTIONS = [
   { label: "开放中", value: "open" },
   { label: "满员", value: "full" },
@@ -338,4 +340,44 @@ export function buildDiningBuddyMessageDeletePayload(reason = "") {
   return {
     reason: normalizeText(reason),
   };
+}
+
+export function extractDiningBuddyRuntimeSettings(payload = {}) {
+  const data = extractEnvelopeData(payload);
+  return createDiningBuddyRuntimeForm(data && typeof data === "object" ? data : {});
+}
+
+export function extractDiningBuddyPartyList(payload = {}) {
+  return extractPaginatedItems(payload, { listKeys: ["parties", "items"] }).items;
+}
+
+export function extractDiningBuddyPartyDetail(payload = {}, fallback = {}) {
+  const data = extractEnvelopeData(payload);
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    return data;
+  }
+  if (fallback && typeof fallback === "object" && !Array.isArray(fallback)) {
+    return fallback;
+  }
+  return {};
+}
+
+export function extractDiningBuddyMessageList(payload = {}) {
+  return extractPaginatedItems(payload, { listKeys: ["messages", "items"] }).items;
+}
+
+export function extractDiningBuddyReportList(payload = {}) {
+  return extractPaginatedItems(payload, { listKeys: ["reports", "items"] }).items;
+}
+
+export function extractDiningBuddySensitiveWordList(payload = {}) {
+  return extractPaginatedItems(payload).items;
+}
+
+export function extractDiningBuddyRestrictionList(payload = {}) {
+  return extractPaginatedItems(payload).items;
+}
+
+export function extractDiningBuddyAuditLogList(payload = {}) {
+  return extractPaginatedItems(payload).items;
 }
