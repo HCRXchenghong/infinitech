@@ -680,6 +680,12 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "admin-vue/src/views/loginSections/LoginHeroPanel.vue",
   "admin-vue/src/views/loginSections/LoginAccessCard.vue",
   "admin-vue/src/views/loginSections/LoginBootstrapDialog.vue",
+  "admin-vue/src/views/OfficialSiteCenter.css",
+  "admin-vue/src/views/officialSiteCenterSections/OfficialSiteCenterHero.vue",
+  "admin-vue/src/views/officialSiteCenterSections/OfficialSiteCenterSupportTab.vue",
+  "admin-vue/src/views/officialSiteCenterSections/OfficialSiteCenterExposuresTab.vue",
+  "admin-vue/src/views/officialSiteCenterSections/OfficialSiteCenterCooperationTab.vue",
+  "admin-vue/src/views/officialSiteCenterSections/OfficialSiteCenterExposureDialog.vue",
   "admin-win/src/main.ts",
   "admin-win/vite.config.mts",
   "admin-mac/src/main.ts",
@@ -1266,6 +1272,42 @@ assertContains(
   "useOfficialSiteCenterPage",
 );
 assertContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "OfficialSiteCenterHero",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "OfficialSiteCenterSupportTab",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "OfficialSiteCenterExposuresTab",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "OfficialSiteCenterCooperationTab",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "OfficialSiteCenterExposureDialog",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "OfficialSiteCenter.css",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "<section class=\"official-site-center-hero\">",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "<div class=\"support-console\">",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteCenter.vue",
+  "OFFICIAL_SITE_SUPPORT_STATUS_OPTIONS",
+);
+assertContains(
   "admin-vue/src/views/officialSiteCenterHelpers.js",
   "buildAdminOfficialSiteSupportSummaryCards",
 );
@@ -1285,9 +1327,9 @@ assertContains(
   "admin-vue/src/views/officialSiteCenterHelpers.js",
   "buildAdminOfficialSiteCooperationUpdatePayload",
 );
-assertContains(
-  "admin-vue/src/views/OfficialSiteCenter.vue",
-  "OFFICIAL_SITE_SUPPORT_STATUS_OPTIONS",
+assertNotContains(
+  "admin-vue/src/views/officialSiteCenterHelpers.js",
+  "adminMessageListRef",
 );
 assertContains(
   "admin-vue/src/utils/officialSiteApi.js",

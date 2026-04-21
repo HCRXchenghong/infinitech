@@ -1,6 +1,5 @@
 import {
   computed,
-  nextTick,
   onBeforeUnmount,
   onMounted,
   reactive,
@@ -61,7 +60,6 @@ export function useOfficialSiteCenterPage() {
   const selectedSupportSession = ref(null);
   const supportMessages = ref([]);
   const supportReply = ref('');
-  const adminMessageListRef = ref(null);
   const supportFilters = reactive(createAdminOfficialSiteSupportFilters());
 
   const exposureLoading = ref(false);
@@ -108,13 +106,6 @@ export function useOfficialSiteCenterPage() {
       return;
     }
     stopSupportPolling();
-  });
-
-  watch(supportMessages, async () => {
-    await nextTick();
-    if (adminMessageListRef.value) {
-      adminMessageListRef.value.scrollTop = adminMessageListRef.value.scrollHeight;
-    }
   });
 
   function notifyError(error, fallback) {
@@ -466,7 +457,6 @@ export function useOfficialSiteCenterPage() {
 
   return {
     activeTab,
-    adminMessageListRef,
     cooperationFilters,
     cooperationLoading,
     cooperations,
