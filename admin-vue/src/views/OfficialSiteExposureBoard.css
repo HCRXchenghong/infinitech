@@ -1,0 +1,13 @@
+.official-site-exposure-board-page {
+  padding: 3rem 1.5rem;
+  max-width: 64rem;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+.official-site-exposure-board-page .official-site-exposure-board-empty-check {
+  color: #cbd5e1;
+  font-size: 2.25rem;
+  line-height: 1;
+  margin-bottom: 1rem;
+}

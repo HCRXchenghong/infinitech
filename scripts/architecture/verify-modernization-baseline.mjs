@@ -1600,6 +1600,57 @@ assertNotContains(
   "admin-vue/src/views/OfficialSiteHome.vue",
   "listPublicOfficialSiteNews",
 );
+assertExists("admin-vue/src/views/officialSiteExposureBoardPageHelpers.js");
+assertExists("admin-vue/src/views/OfficialSiteExposureBoard.css");
+assertExists(
+  "admin-vue/src/views/officialSiteExposureBoardSections/OfficialSiteExposureBoardHeader.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteExposureBoardSections/OfficialSiteExposureBoardRecords.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteExposureBoardSections/OfficialSiteExposureBoardDialog.vue",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteExposureBoard.vue",
+  "useOfficialSiteExposureBoardPage({",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteExposureBoard.vue",
+  "OfficialSiteExposureBoardHeader",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteExposureBoard.vue",
+  "OfficialSiteExposureBoardRecords",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteExposureBoard.vue",
+  "OfficialSiteExposureBoardDialog",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteExposureBoard.vue",
+  "import './OfficialSiteExposureBoard.css';",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteExposureBoardPageHelpers.js",
+  "listPublicOfficialSiteExposures",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteExposureBoardPageHelpers.js",
+  "createOfficialSiteExposure",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteExposureBoardPageHelpers.js",
+  "officialSiteExposureProcessTagType",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteExposureBoard.vue",
+  "const loading = ref(false)",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteExposureBoard.vue",
+  "createOfficialSiteExposure",
+);
 assertContains(
   "admin-vue/src/views/NotificationPreviewPage.vue",
   "parseNotificationDisplayBlocks",
