@@ -1,0 +1,232 @@
+.app-download-page {
+  position: relative;
+  min-height: calc(100vh - 72px);
+  overflow: hidden;
+  background: linear-gradient(135deg, #1976d2 0%, #1976d2 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 24px 36px;
+}
+
+.app-download-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+.app-download-halo {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.app-download-halo-a {
+  width: 420px;
+  height: 420px;
+  left: 10%;
+  top: 10%;
+  background: rgb(255 255 255 / 0.18);
+}
+
+.app-download-halo-b {
+  width: 420px;
+  height: 420px;
+  right: 8%;
+  bottom: 8%;
+  background: rgb(255 255 255 / 0.14);
+}
+
+.app-download-main {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  z-index: 1;
+}
+
+.app-download-icon {
+  width: 130px;
+  height: 130px;
+  margin: 0 auto 28px;
+  border-radius: 36px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(239, 246, 255, 0.92));
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  padding: 6px;
+}
+
+.app-download-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 30px;
+}
+
+.app-download-title {
+  margin: 0;
+  font-size: 44px;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+}
+
+.app-download-tagline {
+  margin: 14px 0 36px;
+  font-size: 18px;
+  color: rgb(219 234 254 / 0.96);
+}
+
+.app-download-button-group {
+  display: grid;
+  gap: 12px;
+}
+
+.app-download-button {
+  border: none;
+  border-radius: 18px;
+  padding: 16px 20px;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.app-download-button:active {
+  transform: scale(0.98);
+}
+
+.app-download-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.app-download-button-ios {
+  background: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+}
+
+.app-download-button-android {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 30px rgba(148, 163, 184, 0.25);
+}
+
+.app-download-button-mini-program {
+  background: rgb(255 255 255 / 0.12);
+  color: #ffffff;
+  border: 1px solid rgb(255 255 255 / 0.28);
+  box-shadow: 0 16px 36px rgb(12 32 71 / 0.18);
+  backdrop-filter: blur(10px);
+}
+
+.app-download-button-title {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.app-download-version-tip {
+  margin-top: 28px;
+  color: rgb(219 234 254 / 0.9);
+  font-size: 13px;
+}
+
+.app-download-qr-modal {
+  text-align: center;
+  padding: 8px 6px 4px;
+}
+
+.app-download-qr-kicker {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #1976d2;
+  text-transform: uppercase;
+}
+
+.app-download-qr-title {
+  margin: 8px 0 0;
+  font-size: 22px;
+  line-height: 1.2;
+  color: #0f172a;
+}
+
+.app-download-qr-shell {
+  margin-top: 18px;
+  width: 100%;
+  border-radius: 22px;
+  background: #ffffff;
+  border: 1px solid #dbe7ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.app-download-qr-image {
+  width: 100%;
+  max-width: 220px;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+}
+
+.app-download-qr-placeholder {
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.app-download-qr-dialog {
+  border-radius: 28px;
+  overflow: hidden;
+}
+
+.app-download-qr-dialog .el-dialog__header {
+  padding: 14px 16px 0;
+}
+
+.app-download-qr-dialog .el-dialog__body {
+  padding: 0 18px 18px;
+}
+
+@media (max-width: 640px) {
+  .app-download-page {
+    padding: 20px 18px 28px;
+  }
+
+  .app-download-title {
+    font-size: 36px;
+  }
+
+  .app-download-tagline {
+    font-size: 16px;
+  }
+
+  .app-download-button-title {
+    font-size: 20px;
+  }
+
+  .app-download-icon {
+    width: 104px;
+    height: 104px;
+    border-radius: 28px;
+    margin-bottom: 20px;
+  }
+
+  .app-download-logo {
+    border-radius: 22px;
+  }
+}

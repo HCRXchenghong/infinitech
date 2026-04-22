@@ -1513,6 +1513,46 @@ assertNotContains(
   "admin-vue/src/views/OfficialNotificationsPage.vue",
   "const loading = ref(false)",
 );
+assertExists("admin-vue/src/views/appDownloadLandingPageHelpers.js");
+assertExists("admin-vue/src/views/AppDownloadLanding.css");
+assertExists(
+  "admin-vue/src/views/appDownloadLandingSections/AppDownloadLandingHero.vue",
+);
+assertExists(
+  "admin-vue/src/views/appDownloadLandingSections/AppDownloadLandingQrDialog.vue",
+);
+assertContains(
+  "admin-vue/src/views/AppDownloadLanding.vue",
+  "useAppDownloadLandingPage({",
+);
+assertContains(
+  "admin-vue/src/views/AppDownloadLanding.vue",
+  "AppDownloadLandingHero",
+);
+assertContains(
+  "admin-vue/src/views/AppDownloadLanding.vue",
+  "AppDownloadLandingQrDialog",
+);
+assertContains(
+  "admin-vue/src/views/AppDownloadLanding.vue",
+  "import './AppDownloadLanding.css';",
+);
+assertContains(
+  "admin-vue/src/views/appDownloadLandingPageHelpers.js",
+  "normalizeAppDownloadConfig",
+);
+assertContains(
+  "admin-vue/src/views/appDownloadLandingPageHelpers.js",
+  "getPublicAppDownloadConfig",
+);
+assertNotContains(
+  "admin-vue/src/views/AppDownloadLanding.vue",
+  "const downloading = ref('')",
+);
+assertNotContains(
+  "admin-vue/src/views/AppDownloadLanding.vue",
+  "getPublicAppDownloadConfig",
+);
 assertContains(
   "admin-vue/src/views/NotificationPreviewPage.vue",
   "parseNotificationDisplayBlocks",
