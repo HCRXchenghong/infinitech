@@ -1113,7 +1113,6 @@ func main() {
 		api.PUT("/public-apis/:id", handlers.AdminSettings.UpdatePublicAPI)
 		api.DELETE("/public-apis/:id", handlers.AdminSettings.DeletePublicAPI)
 
-		api.POST("/upload-image", handlers.AdminSettings.UploadImage)
 		api.GET("/app-download-config", handlers.AdminSettings.GetAppDownloadConfig)
 		api.GET("/weather", handlers.AdminSettings.GetWeather)
 		api.GET("/public/runtime-settings", handlers.AdminSettings.GetPublicRuntimeSettings)
@@ -1133,7 +1132,6 @@ func main() {
 		appDownloadAdmin.Use(middleware.RequireAdmin(services.Admin))
 		{
 			appDownloadAdmin.POST("/app-download-config", handlers.AdminSettings.UpdateAppDownloadConfig)
-			appDownloadAdmin.POST("/upload/package", handlers.AdminSettings.UploadPackage)
 		}
 
 		// 认证相关
@@ -1724,9 +1722,6 @@ func main() {
 		api.POST("/home-campaigns/:id/:action", handlers.HomeFeed.ChangeCampaignStatus)
 		api.GET("/home-slots", handlers.HomeFeed.GetHomeSlots)
 		api.PUT("/home-slots", handlers.HomeFeed.UpsertLockedSlot)
-
-		// 文件上传
-		api.POST("/upload/image", handlers.Upload.UploadImage)
 
 		// 同步相关（用于本地 SQLite 缓存）
 		api.GET("/sync/state", handlers.Sync.GetSyncState)

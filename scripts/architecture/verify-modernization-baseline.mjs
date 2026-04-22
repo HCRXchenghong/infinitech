@@ -2288,10 +2288,6 @@ assertContains(
   "uploadDomainServiceSound",
 );
 assertContains(
-  "backend/go/internal/handler/upload_handler.go",
-  "resolveLegacyEditorImageUploadDomain",
-);
-assertContains(
   "backend/bff/src/controllers/uploadController.js",
   'forwardFields: ["upload_domain"]',
 );
@@ -2355,10 +2351,6 @@ assertContains(
 assertContains(
   "backend/bff/src/services/adminSettings/proxyClient.js",
   "buildRejectedProxyErrorPayload(",
-);
-assertContains(
-  "backend/bff/src/services/adminSettingsService.js",
-  'return respondSettingsError(req, res, 400, "没有上传文件");',
 );
 assertContains(
   "backend/bff/src/services/adminSettingsService.js",
@@ -3446,10 +3438,6 @@ assertContains(
   'respondSuccessEnvelope(c, "开放 API 列表加载成功", items, nil)',
 );
 assertContains(
-  "backend/go/internal/handler/admin_settings_handler.go",
-  'respondAdminSettingsMirroredSuccess(c, "图片上传成功", payload)',
-);
-assertContains(
   "user-vue/pages/order/coupon/index.vue",
   "../../../../packages/mobile-core/src/order-coupon-page.js",
 );
@@ -3632,10 +3620,6 @@ assertContains(
 assertContains(
   "rider-app/shared-ui/api.ts",
   "listKeys: ['conversations', 'items', 'records', 'list']",
-);
-assertContains(
-  "backend/go/internal/handler/admin_settings_handler.go",
-  'respondAdminSettingsMirroredSuccess(c, "安装包上传成功", payload)',
 );
 assertContains(
   "backend/go/internal/handler/admin_settings_export_handler.go",
@@ -6168,10 +6152,6 @@ assertContains(
 assertContains(
   "backend/bff/src/services/adminSettingsService.js",
   'assetFields: ["ios_url", "android_url", "mini_program_qr_url"]',
-);
-assertContains(
-  "backend/bff/src/services/adminSettingsService.js",
-  'assetFields: ["imageUrl", "image_url", "url", "asset_url"]',
 );
 assertContains(
   "admin-vue/src/views/ridersActionHelpers.js",
@@ -9161,23 +9141,29 @@ assertContains(
 assertContains("packages/contracts/src/upload.js", 'APP_PACKAGE: "app_package"');
 assertContains("backend/go/internal/handler/file_upload_handler.go", 'uploadDomainAppPackage         = "app_package"');
 assertContains("backend/go/internal/handler/file_upload_handler.go", "resolveFixedGeneralUploadPolicy");
-assertContains("backend/go/internal/handler/admin_settings_handler.go", "buildGeneralUploadPayload(c, \"image\", policy, \"\")");
-assertContains("backend/go/internal/handler/admin_settings_handler.go", "buildGeneralUploadPayload(c, \"file\", policy, \"\")");
 assertNotContains("backend/go/internal/handler/admin_settings_handler.go", 'filepath.Join("data", "uploads", "packages")');
 assertNotContains("backend/go/internal/handler/admin_settings_handler.go", 'utils.CompressImage(savePath, 500*1024)');
-assertContains("backend/bff/src/services/adminSettingsService.js", 'form.append("upload_domain", SETTINGS_UPLOAD_DOMAINS.IMAGE);');
-assertContains("backend/bff/src/services/adminSettingsService.js", 'form.append("upload_domain", SETTINGS_UPLOAD_DOMAINS.PACKAGE);');
 assertNotContains("backend/bff/src/services/adminSettingsService.js", '"/api/upload/image"');
 assertContains("backend/bff/src/routes/upload.js", "requireUploadAuth");
 assertContains("backend/bff/src/middleware/requireUploadAuth.js", "extractVerifiedAdminIdentity");
 assertContains("backend/bff/src/middleware/requireUploadAuth.js", "extractVerifiedAuthIdentity");
-assertContains("backend/go/internal/handler/upload_handler.go", "resolveLegacyEditorImageUploadDomain");
-assertNotContains("backend/go/internal/handler/upload_handler.go", "merchant_or_admin_image");
 assertNotContains("admin-vue/src/views/contentSettingsPageHelpers.js", "request.post('/api/upload-image'");
 assertNotContains("admin-vue/src/views/settingsHelpers/appDownload.js", "request.post('/api/upload-package'");
 assertNotContains("admin-vue/src/views/notificationEditorPageViewHelpers.js", "request.post('/api/upload/image'");
 assertContains("admin-vue/src/views/contentSettingsPageHelpers.js", "appendAdminUploadDomain(formData, UPLOAD_DOMAINS.ADMIN_ASSET);");
 assertContains("admin-vue/src/views/settingsHelpers/appDownload.js", "appendAdminUploadDomain(formData, UPLOAD_DOMAINS.APP_PACKAGE);");
 assertContains("admin-vue/src/views/notificationEditorPageViewHelpers.js", "appendAdminUploadDomain(formData, UPLOAD_DOMAINS.ADMIN_ASSET)");
+assertNotContains("backend/bff/src/routes/admin.js", "router.post('/upload-package'");
+assertNotContains("backend/bff/src/routes/admin.js", "router.post('/upload-image'");
+assertNotContains("backend/bff/src/routes/upload.js", '"/image"');
+assertNotContains("backend/go/cmd/main.go", 'api.POST("/upload-image"');
+assertNotContains("backend/go/cmd/main.go", 'appDownloadAdmin.POST("/upload/package"');
+assertNotContains("backend/go/cmd/main.go", 'api.POST("/upload/image"');
+assertNotContains("backend/go/internal/middleware/route_guard.go", '{path: "/api/upload-image"');
+assertNotContains("backend/go/internal/middleware/route_guard.go", '{path: "/api/upload/package"');
+assertNotContains("backend/go/internal/middleware/route_guard.go", '{path: "/api/upload/image"');
+assertNotExists("backend/go/internal/handler/upload_handler.go");
+assertNotExists("backend/go/internal/handler/upload_handler_test.go");
+assertNotExists("backend/go/internal/handler/admin_settings_upload_handler_test.go");
 
 console.log("modernization baseline checks passed");

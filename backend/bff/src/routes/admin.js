@@ -20,10 +20,8 @@ const {
   buildErrorEnvelopePayload,
   buildSuccessEnvelopePayload,
 } = require('../utils/apiEnvelope');
-const { createSharedUpload } = require('./sharedUpload');
 
 const router = express.Router();
-const upload = createSharedUpload();
 
 function createRateLimitHandler(message, legacy = {}) {
   return function rateLimitHandler(req, res, _next, options = {}) {
@@ -253,7 +251,6 @@ router.post('/data-imports/payment-config', adminSettingsController.importPaymen
 router.post('/settings/clear-all-data', adminSettingsController.clearAllData);
 router.get('/app-download-config', adminSettingsController.getAppDownloadConfig);
 router.post('/app-download-config', adminSettingsController.updateAppDownloadConfig);
-router.post('/upload-package', upload.single('file'), adminSettingsController.uploadPackage);
 router.get('/system-logs', systemLogsController.listSystemLogs);
 router.get('/system-health', systemLogsController.getSystemHealth);
 router.post('/system-logs/delete', systemLogsController.deleteSystemLog);
@@ -265,8 +262,6 @@ router.get('/pay-config/wxpay', adminSettingsController.getWxpayConfig);
 router.post('/pay-config/wxpay', adminSettingsController.updateWxpayConfig);
 router.get('/pay-config/alipay', adminSettingsController.getAlipayConfig);
 router.post('/pay-config/alipay', adminSettingsController.updateAlipayConfig);
-
-router.post('/upload-image', upload.single('image'), adminSettingsController.uploadImage);
 router.get('/weather', adminSettingsController.getWeather);
 
 router.get('/coin-ratio', adminSettingsController.getCoinRatio);

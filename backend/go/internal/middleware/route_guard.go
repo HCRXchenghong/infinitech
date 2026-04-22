@@ -95,9 +95,7 @@ var routeGuardRules = []routeGuardRule{
 	{path: "/api/public-apis", prefix: true, guard: guardAdminOnly},
 	{path: "/api/data-exports", prefix: true, guard: guardAdminOnly},
 	{path: "/api/data-imports", prefix: true, guard: guardAdminOnly},
-	{path: "/api/upload-image", guard: guardAdminOnly},
 	{path: "/api/app-download-config", methods: methods("POST"), guard: guardAdminOnly},
-	{path: "/api/upload/package", methods: methods("POST"), guard: guardAdminOnly},
 	{path: "/api/system-logs", prefix: true, guard: guardAdminOnly},
 	{path: "/api/recharge", guard: guardAdminOnly},
 	{path: "/api/notifications/admin", prefix: true, guard: guardAdminOnly},
@@ -155,7 +153,6 @@ var routeGuardRules = []routeGuardRule{
 	{path: "/api/after-sales", methods: methods("GET"), guard: guardMerchantOrAdmin},
 	{path: "/api/after-sales/:id/status", methods: methods("PUT"), guard: guardMerchantOrAdmin},
 	{path: "/api/upload", methods: methods("POST"), guard: guardAnyAuth},
-	{path: "/api/upload/image", methods: methods("POST"), guard: guardMerchantOrAdmin},
 
 	// 骑手写操作
 	{path: "/api/orders/:id/accept", methods: methods("POST"), guard: guardRiderOrAdmin},

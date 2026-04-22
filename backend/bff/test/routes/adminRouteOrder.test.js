@@ -2,14 +2,16 @@ const fs = require('fs');
 const path = require('path');
 
 describe('admin route order', () => {
-  it('uses shared upload limits for admin upload endpoints', () => {
+  it('retires legacy admin upload compatibility endpoints', () => {
     const source = fs.readFileSync(
       path.join(__dirname, '../../src/routes/admin.js'),
       'utf8'
     );
 
-    expect(source).toContain("const { createSharedUpload } = require('./sharedUpload');");
-    expect(source).toContain('const upload = createSharedUpload();');
+    expect(source).not.toContain("const { createSharedUpload } = require('./sharedUpload');");
+    expect(source).not.toContain('const upload = createSharedUpload();');
+    expect(source).not.toContain("router.post('/upload-package'");
+    expect(source).not.toContain("router.post('/upload-image'");
   });
 
   it('registers static export routes before dynamic user and rider detail routes', () => {

@@ -1,7 +1,3 @@
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-
 jest.mock('../../src/services/adminSettings/proxyClient', () => ({
   normalizePublicAssetUrl: jest.fn((_req, url) => `https://cdn.example.com${url}`),
   normalizeSettingsProxyPayload: jest.fn((_req, response) => response.data),
@@ -23,7 +19,6 @@ jest.mock('../../src/utils/criticalActionVerify', () => ({
 }));
 
 jest.mock('../../src/services/adminSettings/fileOps', () => ({
-  safeUnlinkTempFile: jest.fn(),
   clearLogFile: jest.fn(() => ({ cleared: 0 })),
 }));
 
@@ -31,25 +26,12 @@ const {
   clearAllData,
   getAppDownloadConfig,
   normalizeAssetUrlFields,
-  uploadEditorImage,
-  uploadImage,
-  uploadPackage,
 } = require('../../src/services/adminSettingsService');
 const {
   normalizeSettingsProxyPayload,
   requestSettingsRaw,
 } = require('../../src/services/adminSettings/proxyClient');
 const { verifyCriticalCredential } = require('../../src/utils/criticalActionVerify');
-const { safeUnlinkTempFile } = require('../../src/services/adminSettings/fileOps');
-
-function createTempUploadFile(name, contents = 'upload-test') {
-  const tempFilePath = path.join(
-    os.tmpdir(),
-    `${Date.now()}-${Math.random().toString(36).slice(2)}-${name}`,
-  );
-  fs.writeFileSync(tempFilePath, contents);
-  return tempFilePath;
-}
 
 describe('adminSettingsService asset normalization', () => {
   const originalClearAllVerifyAccount = process.env.CLEAR_ALL_DATA_VERIFY_ACCOUNT;
@@ -240,126 +222,4 @@ describe('adminSettingsService asset normalization', () => {
     );
   });
 
-  it('routes legacy admin image uploads through the unified upload domain gateway', async () => {
-    const tempFilePath = createTempUploadFile('banner.png');
-    requestSettingsRaw.mockResolvedValue({
-      status: 200,
-      data: {
-        request_id: 'req-upload-image',
-        code: 'OK',
-        message: '图片上传成功',
-        data: {
-          asset_url: '/uploads/admin_asset/banner.png',
-          url: '/uploads/admin_asset/banner.png',
-        },
-      },
-    });
-
-    const req = {
-      file: {
-        path: tempFilePath,
-        originalname: 'banner.png',
-      },
-    };
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    };
-
-    await uploadImage(req, res);
-
-    const [, method, requestPath, options] =
-      requestSettingsRaw.mock.calls[requestSettingsRaw.mock.calls.length - 1];
-    const serializedFields = options.body._streams.filter((chunk) => typeof chunk === 'string').join('');
-
-    expect(method).toBe('post');
-    expect(requestPath).toBe('/api/upload');
-    expect(serializedFields).toContain('name="upload_domain"');
-    expect(serializedFields).toContain('admin_asset');
-    expect(safeUnlinkTempFile).toHaveBeenCalledWith(tempFilePath);
-
-    fs.rmSync(tempFilePath, { force: true });
-  });
-
-  it('routes legacy app package uploads through the unified upload domain gateway', async () => {
-    const tempFilePath = createTempUploadFile('app.apk');
-    requestSettingsRaw.mockResolvedValue({
-      status: 200,
-      data: {
-        request_id: 'req-upload-package',
-        code: 'OK',
-        message: '安装包上传成功',
-        data: {
-          asset_url: '/uploads/app_package/app.apk',
-          url: '/uploads/app_package/app.apk',
-        },
-      },
-    });
-
-    const req = {
-      file: {
-        path: tempFilePath,
-        originalname: 'app.apk',
-      },
-    };
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    };
-
-    await uploadPackage(req, res);
-
-    const [, method, requestPath, options] =
-      requestSettingsRaw.mock.calls[requestSettingsRaw.mock.calls.length - 1];
-    const serializedFields = options.body._streams.filter((chunk) => typeof chunk === 'string').join('');
-
-    expect(method).toBe('post');
-    expect(requestPath).toBe('/api/upload');
-    expect(serializedFields).toContain('name="upload_domain"');
-    expect(serializedFields).toContain('app_package');
-    expect(safeUnlinkTempFile).toHaveBeenCalledWith(tempFilePath);
-
-    fs.rmSync(tempFilePath, { force: true });
-  });
-
-  it('routes legacy editor image uploads through the unified upload domain gateway', async () => {
-    const tempFilePath = createTempUploadFile('editor.png');
-    requestSettingsRaw.mockResolvedValue({
-      status: 200,
-      data: {
-        request_id: 'req-upload-editor-image',
-        code: 'OK',
-        message: '编辑器图片上传成功',
-        data: {
-          asset_url: '/uploads/admin_asset/editor.png',
-          url: '/uploads/admin_asset/editor.png',
-        },
-      },
-    });
-
-    const req = {
-      file: {
-        path: tempFilePath,
-        originalname: 'editor.png',
-      },
-    };
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    };
-
-    await uploadEditorImage(req, res);
-
-    const [, method, requestPath, options] =
-      requestSettingsRaw.mock.calls[requestSettingsRaw.mock.calls.length - 1];
-    const serializedFields = options.body._streams.filter((chunk) => typeof chunk === 'string').join('');
-
-    expect(method).toBe('post');
-    expect(requestPath).toBe('/api/upload');
-    expect(serializedFields).toContain('name="upload_domain"');
-    expect(serializedFields).toContain('admin_asset');
-    expect(safeUnlinkTempFile).toHaveBeenCalledWith(tempFilePath);
-
-    fs.rmSync(tempFilePath, { force: true });
-  });
 });

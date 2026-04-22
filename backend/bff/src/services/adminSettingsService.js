@@ -3,8 +3,6 @@
  * 处理轮播图、推送消息、系统设置等
  */
 
-const FormData = require("form-data");
-const fs = require("fs");
 const { logger } = require("../utils/logger");
 const { verifyCriticalCredential } = require("../utils/criticalActionVerify");
 const {
@@ -22,16 +20,11 @@ const {
   requestSettingsRaw,
   proxySettingsRequest,
 } = require("./adminSettings/proxyClient");
-const { safeUnlinkTempFile, clearLogFile } = require("./adminSettings/fileOps");
+const { clearLogFile } = require("./adminSettings/fileOps");
 const {
   buildErrorEnvelopePayload,
   buildSuccessEnvelopePayload,
 } = require("../utils/apiEnvelope");
-
-const SETTINGS_UPLOAD_DOMAINS = Object.freeze({
-  IMAGE: "admin_asset",
-  PACKAGE: "app_package",
-});
 
 function createProxyHandler(method, pathResolver, optionsResolver) {
   return async function proxyHandler(req, res) {
@@ -195,90 +188,6 @@ async function updateAppDownloadConfig(req, res) {
   }
 }
 
-async function uploadImage(req, res) {
-  if (!req.file) {
-    return respondSettingsError(req, res, 400, "没有上传文件");
-  }
-
-  const tempFilePath = req.file.path;
-  try {
-    const form = new FormData();
-    form.append("file", fs.createReadStream(tempFilePath), req.file.originalname);
-    form.append("upload_domain", SETTINGS_UPLOAD_DOMAINS.IMAGE);
-    const response = await requestSettingsRaw(req, "post", "/api/upload", {
-      body: form,
-      headers: form.getHeaders(),
-      validateStatus(status) {
-        return status < 500;
-      }
-    });
-    return respondSettingsProxyResponse(req, res, response, {
-      assetFields: ["imageUrl", "image_url", "url", "asset_url"],
-      defaultErrorMessage: "图片上传失败",
-    });
-  } catch (error) {
-    return handleProxyError(req, res, error, "uploadImage", { success: false, error: error.message });
-  } finally {
-    safeUnlinkTempFile(tempFilePath);
-  }
-}
-
-async function uploadEditorImage(req, res) {
-  if (!req.file) {
-    return respondSettingsError(req, res, 400, "没有上传文件");
-  }
-
-  const tempFilePath = req.file.path;
-  try {
-    const form = new FormData();
-    form.append("file", fs.createReadStream(tempFilePath), req.file.originalname);
-    form.append("upload_domain", SETTINGS_UPLOAD_DOMAINS.IMAGE);
-    const response = await requestSettingsRaw(req, "post", "/api/upload", {
-      body: form,
-      headers: form.getHeaders(),
-      validateStatus(status) {
-        return status < 500;
-      }
-    });
-    return respondSettingsProxyResponse(req, res, response, {
-      assetFields: ["url", "asset_url"],
-      defaultErrorMessage: "编辑器图片上传失败",
-    });
-  } catch (error) {
-    return handleProxyError(req, res, error, "uploadEditorImage", { success: false, error: error.message });
-  } finally {
-    safeUnlinkTempFile(tempFilePath);
-  }
-}
-
-async function uploadPackage(req, res) {
-  if (!req.file) {
-    return respondSettingsError(req, res, 400, "没有上传文件");
-  }
-
-  const tempFilePath = req.file.path;
-  try {
-    const form = new FormData();
-    form.append("file", fs.createReadStream(tempFilePath), req.file.originalname);
-    form.append("upload_domain", SETTINGS_UPLOAD_DOMAINS.PACKAGE);
-    const response = await requestSettingsRaw(req, "post", "/api/upload", {
-      body: form,
-      headers: form.getHeaders(),
-      validateStatus(status) {
-        return status < 500;
-      }
-    });
-    return respondSettingsProxyResponse(req, res, response, {
-      assetFields: ["url", "asset_url"],
-      defaultErrorMessage: "安装包上传失败",
-    });
-  } catch (error) {
-    return handleProxyError(req, res, error, "uploadPackage", { success: false, error: error.message });
-  } finally {
-    safeUnlinkTempFile(tempFilePath);
-  }
-}
-
 async function clearAllData(req, res) {
   const verifyCredential = resolveClearAllVerifyCredential();
   if (!isClearAllVerifyConfigured()) {
@@ -428,9 +337,6 @@ module.exports = {
   updateWxpayConfig,
   getAlipayConfig,
   updateAlipayConfig,
-  uploadImage,
-  uploadEditorImage,
-  uploadPackage,
   getWeather,
   getCoinRatio,
   updateCoinRatio,

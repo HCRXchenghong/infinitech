@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -636,31 +635,6 @@ func (h *AdminSettingsHandler) DeletePublicAPI(c *gin.Context) {
 	respondSuccessEnvelope(c, "开放 API 删除成功", gin.H{"id": id, "deleted": true}, nil)
 }
 
-// Upload image
-func (h *AdminSettingsHandler) UploadImage(c *gin.Context) {
-	policy, status, policyErr := resolveFixedGeneralUploadPolicy(c, uploadDomainAdminAsset)
-	if status != http.StatusOK {
-		respondAdminSettingsStatusError(c, status, policyErr)
-		return
-	}
-
-	payload, status, uploadErr := buildGeneralUploadPayload(c, "image", policy, "")
-	if status != http.StatusOK {
-		if uploadErr == "没有找到上传文件" {
-			respondAdminSettingsInvalidRequest(c, "未找到图片")
-			return
-		}
-		respondAdminSettingsStatusError(c, status, uploadErr)
-		return
-	}
-
-	assetURL := parseString(payload["asset_url"])
-	payload["imageUrl"] = assetURL
-	payload["image_url"] = assetURL
-	payload["url"] = assetURL
-	respondAdminSettingsMirroredSuccess(c, "图片上传成功", payload)
-}
-
 func (h *AdminSettingsHandler) GetAppDownloadConfig(c *gin.Context) {
 	data := map[string]interface{}{
 		"ios_url":             "",
@@ -728,33 +702,6 @@ func (h *AdminSettingsHandler) UpdateAppDownloadConfig(c *gin.Context) {
 		return
 	}
 	respondAdminSettingsSuccess(c, "APP 下载配置保存成功", data)
-}
-
-func (h *AdminSettingsHandler) UploadPackage(c *gin.Context) {
-	originalFile, err := c.FormFile("file")
-	if err != nil {
-		respondAdminSettingsInvalidRequest(c, "未找到安装包文件")
-		return
-	}
-	if originalFile.Size <= 0 {
-		respondAdminSettingsInvalidRequest(c, "文件为空")
-		return
-	}
-
-	policy, status, policyErr := resolveFixedGeneralUploadPolicy(c, uploadDomainAppPackage)
-	if status != http.StatusOK {
-		respondAdminSettingsStatusError(c, status, policyErr)
-		return
-	}
-
-	payload, status, uploadErr := buildGeneralUploadPayload(c, "file", policy, "")
-	if status != http.StatusOK {
-		respondAdminSettingsStatusError(c, status, uploadErr)
-		return
-	}
-
-	payload["original_name"] = filepath.Base(originalFile.Filename)
-	respondAdminSettingsMirroredSuccess(c, "安装包上传成功", payload)
 }
 
 func (h *AdminSettingsHandler) GetWeather(c *gin.Context) {
