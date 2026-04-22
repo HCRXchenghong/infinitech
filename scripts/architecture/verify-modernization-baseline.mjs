@@ -1934,6 +1934,18 @@ assertContains(
   "OfficialSitePrivacyPolicy.css",
 );
 assertContains(
+  "admin-vue/src/views/AccessDenied.vue",
+  "useAccessDeniedPage({",
+);
+assertContains(
+  "admin-vue/src/views/AccessDenied.vue",
+  "AccessDeniedResultCard",
+);
+assertContains(
+  "admin-vue/src/views/AccessDenied.vue",
+  "AccessDenied.css",
+);
+assertContains(
   "admin-vue/src/views/OfficialSiteDisclaimer.vue",
   "useOfficialSiteDisclaimerPage()",
 );
@@ -1958,6 +1970,10 @@ assertContains(
   "const policySections = [",
 );
 assertContains(
+  "admin-vue/src/views/accessDeniedPageHelpers.js",
+  "resolveMode(route?.query?.mode)",
+);
+assertContains(
   "admin-vue/src/views/officialSiteDisclaimerPageHelpers.js",
   "const disclaimerSections = [",
 );
@@ -1972,6 +1988,12 @@ assertExists(
 );
 assertExists(
   "admin-vue/src/views/OfficialSitePrivacyPolicy.css",
+);
+assertExists(
+  "admin-vue/src/views/accessDeniedPageHelpers.js",
+);
+assertExists(
+  "admin-vue/src/views/AccessDenied.css",
 );
 assertExists(
   "admin-vue/src/views/officialSiteDisclaimerPageHelpers.js",
@@ -1990,6 +2012,9 @@ assertExists(
 );
 assertExists(
   "admin-vue/src/views/officialSitePrivacyPolicySections/OfficialSitePrivacyPolicyArticle.vue",
+);
+assertExists(
+  "admin-vue/src/views/accessDeniedSections/AccessDeniedResultCard.vue",
 );
 assertExists(
   "admin-vue/src/views/officialSiteDisclaimerSections/OfficialSiteDisclaimerHero.vue",
@@ -6373,6 +6398,18 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/OfficialSitePrivacyPolicy.vue",
   "Privacy Policy",
+);
+assertNotContains(
+  "admin-vue/src/views/AccessDenied.vue",
+  "<style scoped>",
+);
+assertNotContains(
+  "admin-vue/src/views/AccessDenied.vue",
+  "const mode = computed(() => {",
+);
+assertNotContains(
+  "admin-vue/src/views/AccessDenied.vue",
+  "window.open(buildRuntimeUrl('admin', '/login')",
 );
 assertNotContains(
   "admin-vue/src/views/OfficialSiteDisclaimer.vue",
