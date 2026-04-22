@@ -13,35 +13,35 @@ test('bank runtime requires an explicit sidecar api secret', () => {
   )
 })
 
-test('bank runtime only enables stub mode from environment flags', () => {
+test('bank runtime only becomes ready for configured provider adapters', () => {
   const runtime = createBankPayoutRuntime({
     ENV: 'development',
     BANK_PAYOUT_SIDECAR_API_SECRET: 'bank-secret',
-    BANK_PAYOUT_ALLOW_STUB: 'true',
   })
 
-  assert.equal(runtime.allowStubRequested, true)
-  assert.equal(runtime.allowStub, true)
-  assert.equal(runtime.currentMode({ allowStub: false }), 'stub')
-  assert.equal(runtime.currentMode({ allowStub: true }), 'stub')
-
-  const summary = runtime.configSummary({ allowStub: true })
-  assert.equal(summary.allowStubRequested, true)
-  assert.equal(summary.allowStub, true)
-  assert.equal(summary.allowStubBlocked, false)
-})
-
-test('bank runtime blocks stub mode in production-like environments', () => {
-  const runtime = createBankPayoutRuntime({
-    ENV: 'production',
-    BANK_PAYOUT_SIDECAR_API_SECRET: 'bank-secret',
-    BANK_PAYOUT_ALLOW_STUB: 'true',
-  })
-
-  assert.equal(runtime.allowStubRequested, true)
-  assert.equal(runtime.allowStub, false)
   assert.equal(runtime.currentMode({}), 'unconfigured')
-  assert.equal(runtime.configSummary({}).allowStubBlocked, true)
+  assert.equal(
+    runtime.currentMode({
+      providerUrl: 'https://bank.example.com/payouts',
+      merchantId: 'merchant-1',
+      apiKey: 'provider-api-key',
+      notifyUrl: 'https://example.com/payouts/notify',
+    }),
+    'configured-adapter',
+  )
+
+  const summary = runtime.configSummary({
+    providerUrl: 'https://bank.example.com/payouts',
+    merchantId: 'merchant-1',
+    apiKey: 'provider-api-key',
+    notifyUrl: 'https://example.com/payouts/notify',
+  })
+  assert.equal(summary.sidecarMode, 'configured-adapter')
+  assert.equal(summary.providerUrlConfigured, true)
+  assert.equal(summary.merchantIdConfigured, true)
+  assert.equal(summary.apiKeyConfigured, true)
+  assert.equal(summary.notifyUrlConfigured, true)
+  assert.equal('allowStub' in summary, false)
 })
 
 test('bank runtime verifies authenticated sidecar requests', () => {

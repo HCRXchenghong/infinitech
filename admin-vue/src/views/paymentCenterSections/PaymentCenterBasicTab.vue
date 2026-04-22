@@ -33,7 +33,7 @@
           </el-form-item>
           <div class="payment-center-hint">仅商户端和骑手端开放银行卡提现，用户端不展示该选项。</div>
           <div class="payment-center-hint">推荐银行卡回调地址：`/api/payment/callback/bank-card/payout`，第三方出款回调与后台补单统一走这条链路。</div>
-          <div class="payment-center-hint">如果暂时无法直连真实出款渠道，可先走管理端人工打款流程；只有在开发环境显式设置 `BANK_PAYOUT_ALLOW_STUB=true` 时，才允许启用 Stub 链路。</div>
+          <div class="payment-center-hint">如果暂时无法直连真实出款渠道，统一走管理端人工打款流程；银行卡 sidecar 只接受完整供应商适配配置，不再提供 Stub 成功链路。</div>
         </el-form>
       </el-card>
     </div>

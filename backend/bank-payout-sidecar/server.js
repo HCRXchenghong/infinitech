@@ -217,7 +217,7 @@ function buildCreateResponse(body = {}) {
       gatewayStatus: record.status,
       config: configSummary(body),
     },
-    message: mode === 'stub' ? 'Bank payout sidecar accepted payout in stub mode.' : 'Bank payout sidecar accepted payout request.',
+    message: 'Bank payout sidecar accepted payout request.',
   })
 }
 
@@ -227,9 +227,7 @@ function buildQueryResponse(body = {}) {
   const requestId = requireText(body.requestId || record?.requestId, 'requestId')
   const transactionId = normalizeText(body.transactionId || record?.transactionId)
   const thirdPartyOrderId = normalizeText(body.thirdPartyOrderId || record?.thirdPartyOrderId) || `BANKPAYOUT-${requestId}`
-  const forcedStatus = normalizeLifecycleStatus(
-    process.env.BANK_PAYOUT_STUB_QUERY_STATUS || record?.status,
-  )
+  const forcedStatus = normalizeLifecycleStatus(record?.status)
   const transferResult =
     normalizeText(record?.transferResult) ||
     (forcedStatus === 'success'
@@ -360,7 +358,7 @@ const server = http.createServer(async (req, res) => {
       status: 'ok',
       service: 'bank-payout-sidecar',
       ready: runtime.sharedSecretConfigured,
-      mode: runtime.allowStub ? 'stub-enabled' : 'dynamic-config-required',
+      mode: 'configured-adapter-only',
       config: runtime.configSummary(),
       storedPayouts: payouts.size,
       timestamp: new Date().toISOString(),

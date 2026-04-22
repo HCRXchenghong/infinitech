@@ -56,31 +56,30 @@ async function startServer(t, envOverrides = {}) {
   return { baseUrl }
 }
 
-test('bank payout notify verify rejects stub mode callbacks', async (t) => {
-  const { baseUrl } = await startServer(t, {
-    BANK_PAYOUT_ALLOW_STUB: 'true',
-  })
+test('bank payout create rejects requests without a configured adapter', async (t) => {
+  const { baseUrl } = await startServer(t)
 
-  const response = await fetch(`${baseUrl}/v1/notify/verify`, {
+  const response = await fetch(`${baseUrl}/v1/payouts/create`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json; charset=utf-8',
       'x-sidecar-secret': 'bank-sidecar-secret',
     },
     body: JSON.stringify({
-      params: {
-        requestId: 'WITHDRAW-REQ-STUB',
-        status: 'success',
-      },
+      requestId: 'WITHDRAW-REQ-STUB',
+      transactionId: 'WITHDRAW-TXN-STUB',
+      withdrawAccount: '6222020000000000000',
+      amount: 1888,
+      actualAmount: 1888,
     }),
   })
 
-  assert.equal(response.status, 400)
+  assert.equal(response.status, 503)
   const payload = await response.json()
   assert.equal(payload.success, false)
   assert.equal(
     payload.error,
-    'bank payout callback verification requires configured adapter',
+    'bank payout sidecar is not fully configured',
   )
 })
 

@@ -40,15 +40,13 @@ type alipayRuntimeConfig struct {
 }
 
 type bankCardPayoutRuntimeConfig struct {
-	ArrivalText        string `json:"arrivalText"`
-	SidecarURL         string `json:"sidecarUrl"`
-	SidecarAPISecret   string `json:"-"`
-	ProviderURL        string `json:"providerUrl"`
-	MerchantID         string `json:"merchantId"`
-	APIKey             string `json:"apiKey"`
-	NotifyURL          string `json:"notifyUrl"`
-	AllowStub          bool   `json:"allowStub"`
-	AllowStubRequested bool   `json:"-"`
+	ArrivalText      string `json:"arrivalText"`
+	SidecarURL       string `json:"sidecarUrl"`
+	SidecarAPISecret string `json:"-"`
+	ProviderURL      string `json:"providerUrl"`
+	MerchantID       string `json:"merchantId"`
+	APIKey           string `json:"apiKey"`
+	NotifyURL        string `json:"notifyUrl"`
 }
 
 type paymentGatewayRuntimeConfig struct {
@@ -103,7 +101,7 @@ func bankCardProviderConfigured(cfg bankCardPayoutRuntimeConfig) bool {
 func bankCardSidecarExecutionEnabled(cfg bankCardPayoutRuntimeConfig) bool {
 	return strings.TrimSpace(cfg.SidecarURL) != "" &&
 		strings.TrimSpace(cfg.SidecarAPISecret) != "" &&
-		(bankCardProviderConfigured(cfg) || cfg.AllowStub)
+		bankCardProviderConfigured(cfg)
 }
 
 func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.WalletRepository) (paymentGatewayRuntimeConfig, error) {
@@ -140,7 +138,6 @@ func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.Wallet
 			MerchantID:       "",
 			APIKey:           "",
 			NotifyURL:        "",
-			AllowStub:        false,
 		},
 	}
 
@@ -202,13 +199,6 @@ func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.Wallet
 	cfg.BankCard.MerchantID = firstTrimmed(stringConfigValue(bankCard["merchant_id"]), stringConfigValue(bankCard["merchantId"]), os.Getenv("BANK_PAYOUT_MERCHANT_ID"))
 	cfg.BankCard.APIKey = firstTrimmed(stringConfigValue(bankCard["api_key"]), stringConfigValue(bankCard["apiKey"]), os.Getenv("BANK_PAYOUT_API_KEY"))
 	cfg.BankCard.NotifyURL = firstTrimmed(stringConfigValue(bankCard["notify_url"]), stringConfigValue(bankCard["notifyUrl"]), os.Getenv("BANK_PAYOUT_NOTIFY_URL"))
-	if envValue, ok := boolStringValue(os.Getenv("BANK_PAYOUT_ALLOW_STUB")); ok {
-		cfg.BankCard.AllowStub = envValue
-		cfg.BankCard.AllowStubRequested = envValue
-	}
-	if runtimeEnvProductionLike() {
-		cfg.BankCard.AllowStub = false
-	}
 
 	return cfg, nil
 }
@@ -305,9 +295,6 @@ func buildPaymentGatewaySummary(cfg paymentGatewayRuntimeConfig) map[string]inte
 			"merchantIdConfigured":  cfg.BankCard.MerchantID != "",
 			"apiKeyConfigured":      cfg.BankCard.APIKey != "",
 			"notifyUrlConfigured":   cfg.BankCard.NotifyURL != "",
-			"allowStub":             cfg.BankCard.AllowStub,
-			"allowStubRequested":    cfg.BankCard.AllowStubRequested,
-			"allowStubBlocked":      cfg.BankCard.AllowStubRequested && !cfg.BankCard.AllowStub,
 			"manualFallbackEnabled": true,
 			"integrationTarget":     "bank-payout-sidecar",
 		},

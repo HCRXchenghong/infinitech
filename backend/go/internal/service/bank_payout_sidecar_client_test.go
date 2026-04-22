@@ -128,7 +128,7 @@ func TestVerifyBankPayoutSidecarCallbackParsesVerifiedEnvelope(t *testing.T) {
 	}
 }
 
-func TestCreateBankPayoutSidecarDoesNotForwardAllowStubInRequestBody(t *testing.T) {
+func TestCreateBankPayoutSidecarDoesNotForwardLegacyStubToggleInRequestBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var payload map[string]interface{}
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -157,7 +157,6 @@ func TestCreateBankPayoutSidecarDoesNotForwardAllowStubInRequestBody(t *testing.
 			MerchantID:       "merchant-1",
 			APIKey:           "api-key-1",
 			NotifyURL:        "https://example.com/bank/notify",
-			AllowStub:        true,
 			ArrivalText:      "24小时-48小时",
 		},
 	}, &repository.WithdrawRequest{

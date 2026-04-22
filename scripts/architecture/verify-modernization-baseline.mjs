@@ -3021,7 +3021,7 @@ assertContains(
   "backend/go/internal/service/payment_runtime.go",
   `"allowStubBlocked"`,
 );
-assertContains(
+assertNotContains(
   "backend/go/internal/service/payment_runtime.go",
   `BANK_PAYOUT_ALLOW_STUB`,
 );
@@ -3717,7 +3717,11 @@ assertNotContains(
 );
 assertNotContains(
   "backend/docker/docker-compose.yml",
-  "BANK_PAYOUT_ALLOW_STUB: ${BANK_PAYOUT_ALLOW_STUB:-true}",
+  "BANK_PAYOUT_ALLOW_STUB:",
+);
+assertNotContains(
+  "backend/docker/docker-compose.yml",
+  "BANK_PAYOUT_STUB_QUERY_STATUS:",
 );
 assertContains(
   "backend/docker/docker-compose.yml",
@@ -3765,6 +3769,10 @@ assertNotContains(
 assertNotContains("packages/contracts/src/http.js", "payload?.newPassword");
 assertNotContains("backend/bank-payout-sidecar/server.js", "body.allowStub");
 assertNotContains("backend/bank-payout-sidecar/server.js", "body.mockStatus");
+assertNotContains("backend/bank-payout-sidecar/server.js", "stub mode");
+assertNotContains("backend/bank-payout-sidecar/server.js", "BANK_PAYOUT_STUB_QUERY_STATUS");
+assertNotContains("backend/bank-payout-sidecar/runtime.js", "BANK_PAYOUT_ALLOW_STUB");
+assertNotContains("backend/bank-payout-sidecar/runtime.js", "allowStub");
 assertNotContains(
   "backend/docker/docker-compose.yml",
   "RABBITMQ_DEFAULT_PASS: admin_password",

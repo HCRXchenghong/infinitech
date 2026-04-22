@@ -10,7 +10,6 @@ import (
 
 func TestLoadPaymentGatewayRuntimeConfigDisablesBankStubInProduction(t *testing.T) {
 	t.Setenv("ENV", "production")
-	t.Setenv("BANK_PAYOUT_ALLOW_STUB", "true")
 	t.Setenv("BANK_PAYOUT_SIDECAR_API_SECRET", "bank-sidecar-secret")
 
 	svc, db := newWalletServiceForSettlementTest(t)
@@ -32,11 +31,8 @@ func TestLoadPaymentGatewayRuntimeConfigDisablesBankStubInProduction(t *testing.
 	if err != nil {
 		t.Fatalf("load runtime config failed: %v", err)
 	}
-	if cfg.BankCard.AllowStub {
-		t.Fatal("expected bank card stub to be disabled in production")
-	}
-	if !cfg.BankCard.AllowStubRequested {
-		t.Fatal("expected bank card stub request to be retained for summary visibility")
+	if bankCardSidecarExecutionEnabled(cfg.BankCard) {
+		t.Fatal("expected bank card sidecar to stay disabled without provider adapter config")
 	}
 
 	summary := buildPaymentGatewaySummary(cfg)
@@ -44,26 +40,29 @@ func TestLoadPaymentGatewayRuntimeConfigDisablesBankStubInProduction(t *testing.
 	if !ok {
 		t.Fatalf("expected bankCard summary map, got %#v", summary["bankCard"])
 	}
-	if bankCard["allowStub"] != false {
-		t.Fatalf("expected allowStub false in summary, got %#v", bankCard["allowStub"])
+	if _, exists := bankCard["allowStub"]; exists {
+		t.Fatalf("expected allowStub to disappear from summary, got %#v", bankCard["allowStub"])
 	}
-	if bankCard["allowStubBlocked"] != true {
-		t.Fatalf("expected allowStubBlocked true in summary, got %#v", bankCard["allowStubBlocked"])
+	if _, exists := bankCard["allowStubBlocked"]; exists {
+		t.Fatalf("expected allowStubBlocked to disappear from summary, got %#v", bankCard["allowStubBlocked"])
 	}
 	if bankCard["ready"] != false {
 		t.Fatalf("expected bank card sidecar to stay not ready without provider config, got %#v", bankCard["ready"])
 	}
 }
 
-func TestLoadPaymentGatewayRuntimeConfigAllowsBankStubInDevelopmentWhenExplicitlyEnabled(t *testing.T) {
+func TestLoadPaymentGatewayRuntimeConfigRequiresConfiguredBankProviderAdapter(t *testing.T) {
 	t.Setenv("ENV", "development")
-	t.Setenv("BANK_PAYOUT_ALLOW_STUB", "true")
 	t.Setenv("BANK_PAYOUT_SIDECAR_API_SECRET", "bank-sidecar-secret")
 
 	svc, db := newWalletServiceForSettlementTest(t)
 	payload, err := json.Marshal(map[string]interface{}{
 		"arrival_text": "24小时-48小时",
 		"sidecar_url":  "http://bank-sidecar.local",
+		"provider_url": "https://bank.example.com/payouts",
+		"merchant_id":  "merchant-1",
+		"api_key":      "provider-api-key",
+		"notify_url":   "https://example.com/payouts/notify",
 	})
 	if err != nil {
 		t.Fatalf("marshal bank config failed: %v", err)
@@ -79,11 +78,8 @@ func TestLoadPaymentGatewayRuntimeConfigAllowsBankStubInDevelopmentWhenExplicitl
 	if err != nil {
 		t.Fatalf("load runtime config failed: %v", err)
 	}
-	if !cfg.BankCard.AllowStub {
-		t.Fatal("expected bank card stub to remain enabled in development when explicitly requested")
-	}
 	if !bankCardSidecarExecutionEnabled(cfg.BankCard) {
-		t.Fatal("expected development bank card stub to enable sidecar execution")
+		t.Fatal("expected configured bank provider adapter to enable sidecar execution")
 	}
 }
 
@@ -112,11 +108,17 @@ func TestLoadPaymentGatewayRuntimeConfigIgnoresPersistedBankStubToggle(t *testin
 	if err != nil {
 		t.Fatalf("load runtime config failed: %v", err)
 	}
-	if cfg.BankCard.AllowStub {
-		t.Fatal("expected persisted bank card stub toggle to be ignored")
+	if bankCardSidecarExecutionEnabled(cfg.BankCard) {
+		t.Fatal("expected persisted bank card stub toggle to stay ignored without provider config")
 	}
-	if cfg.BankCard.AllowStubRequested {
-		t.Fatal("expected persisted bank card stub toggle to stay invisible in runtime summary")
+
+	summary := buildPaymentGatewaySummary(cfg)
+	bankCard, ok := summary["bankCard"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected bankCard summary map, got %#v", summary["bankCard"])
+	}
+	if _, exists := bankCard["allowStub"]; exists {
+		t.Fatalf("expected allowStub to stay invisible in runtime summary, got %#v", bankCard["allowStub"])
 	}
 }
 

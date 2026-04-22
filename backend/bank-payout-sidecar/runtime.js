@@ -4,14 +4,6 @@ export function normalizeText(value) {
   return String(value == null ? '' : value).trim()
 }
 
-export function boolFromValue(value, fallback = false) {
-  const normalized = normalizeText(value).toLowerCase()
-  if (!normalized) return fallback
-  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) return true
-  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) return false
-  return fallback
-}
-
 function safeEqualText(left, right) {
   const normalizedLeft = normalizeText(left)
   const normalizedRight = normalizeText(right)
@@ -68,16 +60,10 @@ export function createBankPayoutRuntime(env = process.env) {
     throw new Error('BANK_PAYOUT_SIDECAR_API_SECRET is required')
   }
 
-  const allowStubRequested = boolFromValue(env.BANK_PAYOUT_ALLOW_STUB, false)
-  const allowStub = !productionLikeEnv(env) && allowStubRequested
-
   return {
     sharedSecretConfigured: true,
-    allowStubRequested,
-    allowStub,
     currentMode(body = {}) {
       if (bankPayoutConfiguredAdapter(body)) return 'configured-adapter'
-      if (allowStub) return 'stub'
       return 'unconfigured'
     },
     configSummary(body = {}) {
@@ -88,9 +74,6 @@ export function createBankPayoutRuntime(env = process.env) {
         merchantIdConfigured: Boolean(normalizeText(body.merchantId)),
         apiKeyConfigured: Boolean(normalizeText(body.apiKey)),
         notifyUrlConfigured: Boolean(normalizeText(body.notifyUrl)),
-        allowStubRequested,
-        allowStub,
-        allowStubBlocked: allowStubRequested && !allowStub,
       }
     },
     verifySidecarRequest(headers = {}) {
