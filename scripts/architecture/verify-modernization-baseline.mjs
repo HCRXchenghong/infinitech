@@ -5219,6 +5219,26 @@ assertContains(
   "admin-vue/src/views/useChatConsole.js",
   "from '@infinitech/admin-core'",
 );
+assertExists("admin-vue/src/views/chatConsolePageHelpers.js");
+assertExists("admin-vue/src/views/monitorChatPageHelpers.js");
+assertExists("admin-vue/src/views/supportChatPageHelpers.js");
+assertExists("admin-vue/src/views/ChatConsolePage.css");
+assertExists("admin-vue/src/views/chatConsoleSections/ChatConsoleSidebar.vue");
+assertExists("admin-vue/src/views/chatConsoleSections/ChatConsoleContextMenu.vue");
+assertExists("admin-vue/src/views/chatConsoleSections/ChatConsoleConversationPanel.vue");
+assertExists("admin-vue/src/views/chatConsoleSections/ChatConsoleDialogs.vue");
+assertContains("admin-vue/src/views/MonitorChat.vue", "useMonitorChatPage({");
+assertContains("admin-vue/src/views/MonitorChat.vue", "ChatConsoleSidebar");
+assertContains("admin-vue/src/views/MonitorChat.vue", "ChatConsoleConversationPanel");
+assertContains("admin-vue/src/views/MonitorChat.vue", "ChatConsoleDialogs");
+assertContains("admin-vue/src/views/MonitorChat.vue", "ChatConsolePage.css");
+assertNotContains("admin-vue/src/views/MonitorChat.vue", "<div class=\"chat-list\">");
+assertContains("admin-vue/src/views/SupportChat.vue", "useSupportChatPage({");
+assertContains("admin-vue/src/views/SupportChat.vue", "ChatConsoleSidebar");
+assertContains("admin-vue/src/views/SupportChat.vue", "ChatConsoleConversationPanel");
+assertContains("admin-vue/src/views/SupportChat.vue", "ChatConsoleDialogs");
+assertContains("admin-vue/src/views/SupportChat.vue", "ChatConsolePage.css");
+assertNotContains("admin-vue/src/views/SupportChat.vue", "<div class=\"chat-list\">");
 assertNotContains(
   "admin-vue/src/views/useChatConsole.js",
   "./chatConsoleHelpers",
