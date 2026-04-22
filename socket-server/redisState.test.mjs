@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const REDIS_ENV_KEYS = [
+  'NODE_ENV',
+  'ENV',
+  'GO_API_URL',
+  'ALLOWED_ORIGINS',
+  'SOCKET_SERVER_API_SECRET',
   'SOCKET_REDIS_ENABLED',
   'REDIS_ENABLED',
   'SOCKET_REDIS_HOST',
@@ -19,7 +24,9 @@ async function importRedisStateForTest(envOverrides) {
   for (const key of REDIS_ENV_KEYS) {
     delete process.env[key];
   }
-  Object.assign(process.env, envOverrides);
+  Object.assign(process.env, {
+    NODE_ENV: 'test',
+  }, envOverrides);
 
   try {
     return await import(`./redisState.js?test=${Date.now()}-${Math.random()}`);

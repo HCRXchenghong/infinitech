@@ -8,9 +8,10 @@ import {
   buildRuntimePrincipalIdentity,
   resolveSocketSubjectId,
 } from '../packages/domain-core/src/identity.js';
+import { resolveSocketRuntimeConfig } from './runtimeConfig.js';
 
-const DEFAULT_GO_API_URL = 'http://127.0.0.1:1029';
-const REQUEST_TIMEOUT_MS = Number(process.env.SOCKET_AUTH_TIMEOUT_MS || 8000);
+const runtimeConfig = resolveSocketRuntimeConfig(process.env);
+const REQUEST_TIMEOUT_MS = runtimeConfig.authTimeoutMs;
 const SOURCE_SERVICE_HEADER = 'X-Source-Service';
 
 function stripBearerToken(value) {
@@ -18,7 +19,7 @@ function stripBearerToken(value) {
 }
 
 function buildBackendUrl(pathname) {
-  const baseUrl = String(process.env.GO_API_URL || DEFAULT_GO_API_URL).replace(/\/+$/, '');
+  const baseUrl = String(runtimeConfig.goApiUrl || '').replace(/\/+$/, '');
   const normalizedPath = String(pathname || '').startsWith('/') ? pathname : `/${pathname}`;
   return `${baseUrl}${normalizedPath}`;
 }

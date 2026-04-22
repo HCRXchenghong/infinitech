@@ -33,8 +33,28 @@ describe("bff config hardening", () => {
   test("production requires explicit socket secret", () => {
     process.env.NODE_ENV = "production";
     process.env.BFF_CORS_ORIGINS = "https://admin.example.com";
+    process.env.GO_API_URL = "https://go.internal.example.com";
+    process.env.SOCKET_SERVER_URL = "https://socket.internal.example.com";
 
     expect(() => loadConfig()).toThrow(/SOCKET_SERVER_API_SECRET/);
+  });
+
+  test("production requires explicit go api url", () => {
+    process.env.NODE_ENV = "production";
+    process.env.BFF_CORS_ORIGINS = "https://admin.example.com";
+    process.env.SOCKET_SERVER_API_SECRET = "socket-secret";
+    process.env.SOCKET_SERVER_URL = "https://socket.internal.example.com";
+
+    expect(() => loadConfig()).toThrow(/GO_API_URL/);
+  });
+
+  test("production requires explicit socket server url", () => {
+    process.env.NODE_ENV = "production";
+    process.env.BFF_CORS_ORIGINS = "https://admin.example.com";
+    process.env.SOCKET_SERVER_API_SECRET = "socket-secret";
+    process.env.GO_API_URL = "https://go.internal.example.com";
+
+    expect(() => loadConfig()).toThrow(/SOCKET_SERVER_URL/);
   });
 
   test("startup requires explicit business jwt secret", () => {
@@ -58,6 +78,8 @@ describe("bff config hardening", () => {
   test("production requires explicit cors origins", () => {
     process.env.NODE_ENV = "production";
     process.env.SOCKET_SERVER_API_SECRET = "socket-secret";
+    process.env.GO_API_URL = "https://go.internal.example.com";
+    process.env.SOCKET_SERVER_URL = "https://socket.internal.example.com";
 
     expect(() => loadConfig()).toThrow(/BFF_CORS_ORIGINS|ADMIN_WEB_BASE_URL|SITE_WEB_BASE_URL/);
   });
@@ -66,9 +88,13 @@ describe("bff config hardening", () => {
     process.env.NODE_ENV = "production";
     process.env.SOCKET_SERVER_API_SECRET = "socket-secret";
     process.env.BFF_CORS_ORIGINS = "https://admin.example.com,https://ops.example.com";
+    process.env.GO_API_URL = "https://go.internal.example.com/";
+    process.env.SOCKET_SERVER_URL = "https://socket.internal.example.com/";
 
     const config = loadConfig();
     expect(config.productionLike).toBe(true);
+    expect(config.goApiUrl).toBe("https://go.internal.example.com");
+    expect(config.socketServerUrl).toBe("https://socket.internal.example.com");
     expect(config.corsOrigins).toEqual([
       "https://admin.example.com",
       "https://ops.example.com",

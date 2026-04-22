@@ -5,9 +5,15 @@ import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from './logger.js';
+import { resolveSocketRuntimeConfig } from './runtimeConfig.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SOCKET_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function toPositiveInt(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 function loadLocalEnvFile() {
   const envPath = join(__dirname, '.env');
@@ -34,29 +40,11 @@ function loadLocalEnvFile() {
   }
 }
 
-function toPositiveInt(value, fallback) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function toBoolean(value, fallback) {
-  if (value === undefined || value === null || value === '') return fallback;
-  const normalized = String(value).trim().toLowerCase();
-  if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
-  if (['false', '0', 'no', 'off'].includes(normalized)) return false;
-  return fallback;
-}
-
 loadLocalEnvFile();
 
-const redisEnabled = toBoolean(process.env.SOCKET_REDIS_ENABLED ?? process.env.REDIS_ENABLED, true);
-const redisConfig = {
-  host: String(process.env.SOCKET_REDIS_HOST || process.env.REDIS_HOST || '127.0.0.1').trim(),
-  port: toPositiveInt(process.env.SOCKET_REDIS_PORT || process.env.REDIS_PORT, 2550),
-  password: String(process.env.SOCKET_REDIS_PASSWORD || '').trim(),
-  database: toPositiveInt(process.env.SOCKET_REDIS_DB || process.env.REDIS_DB, 0),
-  connectTimeout: toPositiveInt(process.env.SOCKET_REDIS_CONNECT_TIMEOUT_MS, 1000)
-};
+const runtimeConfig = resolveSocketRuntimeConfig(process.env);
+const redisEnabled = runtimeConfig.redis.enabled;
+const redisConfig = runtimeConfig.redis;
 const SOCKET_ONLINE_TTL_MS = toPositiveInt(process.env.SOCKET_ONLINE_TTL_MS, 120_000);
 
 const localSessionStore = new Map();

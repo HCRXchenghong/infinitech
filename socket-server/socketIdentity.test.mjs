@@ -9,7 +9,14 @@ function encodeBase64Url(value) {
     .replace(/=+$/g, "");
 }
 
+const previousNodeEnv = process.env.NODE_ENV;
+process.env.NODE_ENV = "test";
 const { validateSocketIdentity } = await import(`./socketIdentity.js?test=${Date.now()}`);
+if (previousNodeEnv === undefined) {
+  delete process.env.NODE_ENV;
+} else {
+  process.env.NODE_ENV = previousNodeEnv;
+}
 
 test("validateSocketIdentity accepts standardized auth verify envelopes", async () => {
   const originalFetch = globalThis.fetch;

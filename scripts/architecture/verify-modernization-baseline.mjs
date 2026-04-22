@@ -9081,12 +9081,25 @@ assertNotContains(
 );
 assertContains(
   "socket-server/index.js",
-  "ALLOWED_ORIGINS is required for socket-server in production-like environments",
+  "resolveSocketRuntimeConfig(process.env)",
 );
 assertContains("socket-server/.env.example", "SOCKET_SERVER_API_SECRET=");
+assertContains("socket-server/.env.example", "GO_API_URL=");
 assertContains(
   "socket-server/trustedApi.js",
   "SOCKET_SERVER_API_SECRET is required for socket-server in production-like environments",
+);
+assertContains(
+  "socket-server/runtimeConfig.js",
+  "GO_API_URL is required for socket-server in production-like environments",
+);
+assertContains(
+  "socket-server/runtimeConfig.js",
+  "SOCKET_REDIS_HOST is required when socket-server redis is enabled in production-like environments",
+);
+assertContains(
+  "socket-server/runtimeConfig.js",
+  "ALLOWED_ORIGINS is required for socket-server in production-like environments",
 );
 assertContains("socket-server/trustedApi.js", "x-socket-server-secret");
 assertNotContains("socket-server/trustedApi.js", "TOKEN_API_SECRET");
@@ -9100,6 +9113,8 @@ assertNotContains("socket-server/index.js", "X-Token-Api-Secret");
 assertNotContains("socket-server/index.js", "X-Api-Secret");
 assertContains("socket-server/index.js", "validateTrustedSocketTokenRequest");
 assertContains("socket-server/index.js", "validateTrustedSocketStatsRequest");
+assertNotContains("socket-server/socketIdentity.js", "DEFAULT_GO_API_URL");
+assertNotContains("socket-server/redisState.js", "process.env.REDIS_HOST");
 assertContains("socket-server/auth.js", "verifyUnifiedSocketToken");
 assertContains("socket-server/auth.js", "principal_type: normalizedRole");
 assertContains("socket-server/auth.js", "SOCKET_ACCESS_TOKEN_KIND = 'socket_access'");
@@ -9122,6 +9137,7 @@ assertContains("backend/bff/src/controllers/adminDataController.js", "getRealtim
 assertContains("backend/bff/src/routes/admin.js", "router.get('/realtime/stats', adminDataController.getRealtimeStats);");
 assertNotContains("backend/bff/src/config/index.js", "TOKEN_API_SECRET");
 assertContains("backend/bff/src/config/index.js", "BFF requires SOCKET_SERVER_API_SECRET in production-like environments");
+assertContains("backend/bff/src/config/index.js", 'throw new Error(`BFF requires ${name} in production-like environments`);');
 assertNotContains("backend/go/internal/config/config.go", 'getEnv("TOKEN_API_SECRET"');
 assertNotContains("backend/docker/Caddyfile", "/api/stats*");
 assertNotContains("backend/docker/nginx.admin.conf", "location = /api/stats");

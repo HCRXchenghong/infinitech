@@ -36,6 +36,26 @@ function normalizeOrigin(raw) {
   }
 }
 
+function normalizeBaseUrl(raw) {
+  const value = String(raw || "").trim();
+  if (!value) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return "";
+    }
+    const pathname = parsed.pathname === "/"
+      ? ""
+      : parsed.pathname.replace(/\/+$/, "");
+    return `${parsed.protocol}//${parsed.host}${pathname}`;
+  } catch (_error) {
+    return "";
+  }
+}
+
 function uniqueValues(values) {
   return Array.from(new Set(values.filter(Boolean)));
 }
@@ -46,6 +66,17 @@ function requireSecret(name) {
     throw new Error(`BFF requires ${name}`);
   }
   return secret;
+}
+
+function requireBaseUrl(name, fallback, productionLike) {
+  const explicit = normalizeBaseUrl(process.env[name] || "");
+  if (explicit) {
+    return explicit;
+  }
+  if (productionLike) {
+    throw new Error(`BFF requires ${name} in production-like environments`);
+  }
+  return normalizeBaseUrl(fallback);
 }
 
 function buildCorsOrigins(productionLike) {
@@ -82,6 +113,8 @@ const env = process.env.NODE_ENV || process.env.ENV || "development";
 const productionLike = ["production", "prod", "staging"].includes(String(env).trim().toLowerCase());
 const corsOrigins = buildCorsOrigins(productionLike);
 const socketServerApiSecret = String(process.env.SOCKET_SERVER_API_SECRET || "").trim();
+const goApiUrl = requireBaseUrl("GO_API_URL", "http://127.0.0.1:1029", productionLike);
+const socketServerUrl = requireBaseUrl("SOCKET_SERVER_URL", "http://127.0.0.1:9898", productionLike);
 
 if (productionLike && !socketServerApiSecret) {
   throw new Error("BFF requires SOCKET_SERVER_API_SECRET in production-like environments");
@@ -92,8 +125,8 @@ if (productionLike && corsOrigins.length === 0) {
 
 module.exports = {
   port: process.env.BFF_PORT || 25500,
-  goApiUrl: process.env.GO_API_URL || "http://127.0.0.1:1029",
-  socketServerUrl: process.env.SOCKET_SERVER_URL || "http://127.0.0.1:9898",
+  goApiUrl,
+  socketServerUrl,
   socketServerApiSecret,
 
   db: {

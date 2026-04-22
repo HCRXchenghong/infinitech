@@ -23,36 +23,36 @@ import {
 } from '../packages/contracts/src/http.js';
 import {
   isTrustedSocketApiRequest,
-  validateTrustedSocketApiConfig,
   validateTrustedSocketStatsRequest,
   validateTrustedSocketTokenRequest,
 } from './trustedApi.js';
+import { resolveSocketRuntimeConfig } from './runtimeConfig.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const PORT = process.env.SOCKET_PORT || 9898;
+const runtimeConfig = resolveSocketRuntimeConfig(process.env);
 const {
-  env: ENV,
-  productionLike: PRODUCTION_LIKE,
+  port: PORT,
   trustedSocketApiSecret: TRUSTED_SOCKET_API_SECRET,
-} = validateTrustedSocketApiConfig(process.env);
-
-function toPositiveInt(value, fallback) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-const SOCKET_HTTP_REQUEST_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_HTTP_REQUEST_TIMEOUT_MS, 30_000);
-const SOCKET_HTTP_HEADERS_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_HTTP_HEADERS_TIMEOUT_MS, 35_000);
-const SOCKET_HTTP_KEEP_ALIVE_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_HTTP_KEEP_ALIVE_TIMEOUT_MS, 5_000);
-const SOCKET_JSON_BODY_LIMIT_BYTES = toPositiveInt(process.env.SOCKET_JSON_BODY_LIMIT_BYTES, 1024 * 1024);
-const SOCKET_HTTP_RATE_LIMIT_WINDOW_MS = toPositiveInt(process.env.SOCKET_HTTP_RATE_LIMIT_WINDOW_MS, 60_000);
-const SOCKET_HTTP_RATE_LIMIT_MAX = toPositiveInt(process.env.SOCKET_HTTP_RATE_LIMIT_MAX, 300);
-const SOCKET_PING_TIMEOUT_MS = toPositiveInt(process.env.SOCKET_PING_TIMEOUT_MS, 20_000);
-const SOCKET_PING_INTERVAL_MS = toPositiveInt(process.env.SOCKET_PING_INTERVAL_MS, 25_000);
-const SOCKET_MAX_HTTP_BUFFER_BYTES = toPositiveInt(process.env.SOCKET_MAX_HTTP_BUFFER_BYTES, 4 * 1024 * 1024);
-const SOCKET_HTTP_SLOW_REQUEST_WARN_MS = toPositiveInt(process.env.SOCKET_HTTP_SLOW_REQUEST_WARN_MS, 1_500);
-const SOCKET_RTC_RING_TIMEOUT_SECONDS = toPositiveInt(process.env.SOCKET_RTC_RING_TIMEOUT_SECONDS, 35);
+  allowedOrigins: ALLOWED_ORIGINS,
+  http: {
+    requestTimeoutMs: SOCKET_HTTP_REQUEST_TIMEOUT_MS,
+    headersTimeoutMs: SOCKET_HTTP_HEADERS_TIMEOUT_MS,
+    keepAliveTimeoutMs: SOCKET_HTTP_KEEP_ALIVE_TIMEOUT_MS,
+    jsonBodyLimitBytes: SOCKET_JSON_BODY_LIMIT_BYTES,
+    rateLimitWindowMs: SOCKET_HTTP_RATE_LIMIT_WINDOW_MS,
+    rateLimitMax: SOCKET_HTTP_RATE_LIMIT_MAX,
+    maxHttpBufferBytes: SOCKET_MAX_HTTP_BUFFER_BYTES,
+    slowRequestWarnMs: SOCKET_HTTP_SLOW_REQUEST_WARN_MS,
+  },
+  socketIo: {
+    pingTimeoutMs: SOCKET_PING_TIMEOUT_MS,
+    pingIntervalMs: SOCKET_PING_INTERVAL_MS,
+  },
+  rtc: {
+    ringTimeoutSeconds: SOCKET_RTC_RING_TIMEOUT_SECONDS,
+  },
+} = runtimeConfig;
 
 let monitorNamespace;
 let supportNamespace;
@@ -63,29 +63,6 @@ function createPayloadTooLargeError(limitBytes) {
   const error = new Error(`Payload too large (max ${limitBytes} bytes)`);
   error.statusCode = 413;
   return error;
-}
-
-const DEFAULT_ALLOWED_ORIGINS = PRODUCTION_LIKE
-  ? []
-  : [
-    'http://127.0.0.1:8888',
-    'http://localhost:8888',
-    'http://127.0.0.1:1788',
-    'http://localhost:1788',
-    'http://127.0.0.1:1798',
-    'http://localhost:1798'
-  ];
-
-const ALLOWED_ORIGINS = Array.from(new Set(
-  (process.env.ALLOWED_ORIGINS || '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .concat(DEFAULT_ALLOWED_ORIGINS)
-));
-
-if (PRODUCTION_LIKE && ALLOWED_ORIGINS.length === 0) {
-  throw new Error('ALLOWED_ORIGINS is required for socket-server in production-like environments');
 }
 
 function getCorsOrigin(reqOrigin) {
