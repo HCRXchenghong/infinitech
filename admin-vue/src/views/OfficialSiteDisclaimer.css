@@ -1,0 +1,69 @@
+.official-site-disclaimer-page {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding: 56px 24px;
+}
+
+.official-site-disclaimer-container {
+  margin: 0 auto;
+  max-width: 80rem;
+}
+
+.official-site-disclaimer-shell {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgb(15 23 42 / 0.08);
+}
+
+.official-site-disclaimer-hero {
+  padding: 34px 36px 30px;
+  background: linear-gradient(135deg, #1976d2 0%, #0f5ea8 100%);
+  color: #ffffff;
+}
+
+.official-site-disclaimer-kicker {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgb(191 219 254);
+}
+
+.official-site-disclaimer-title {
+  margin: 14px 0 0;
+  font-size: clamp(2rem, 4vw, 2.9rem);
+  line-height: 1.15;
+  font-weight: 800;
+}
+
+.official-site-disclaimer-introduction {
+  margin: 18px 0 0;
+  max-width: 860px;
+  font-size: 16px;
+  line-height: 1.9;
+  color: rgb(219 234 254);
+}
+
+.official-site-disclaimer-meta {
+  margin-top: 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgb(191 219 254);
+}
+
+.official-site-disclaimer-article {
+  padding: 34px 36px 38px;
+}
+
+@media (max-width: 768px) {
+  .official-site-disclaimer-page {
+    padding: 40px 16px;
+  }
+
+  .official-site-disclaimer-hero,
+  .official-site-disclaimer-article {
+    padding: 24px 20px;
+  }
+}

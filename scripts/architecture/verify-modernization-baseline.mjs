@@ -1934,12 +1934,32 @@ assertContains(
   "OfficialSitePrivacyPolicy.css",
 );
 assertContains(
+  "admin-vue/src/views/OfficialSiteDisclaimer.vue",
+  "useOfficialSiteDisclaimerPage()",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteDisclaimer.vue",
+  "OfficialSiteDisclaimerHero",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteDisclaimer.vue",
+  "OfficialSiteDisclaimerArticle",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteDisclaimer.vue",
+  "OfficialSiteDisclaimer.css",
+);
+assertContains(
   "admin-vue/src/views/officialSiteCookieRequiredPageHelpers.js",
   "setSiteCookieConsent('accepted')",
 );
 assertContains(
   "admin-vue/src/views/officialSitePrivacyPolicyPageHelpers.js",
   "const policySections = [",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteDisclaimerPageHelpers.js",
+  "const disclaimerSections = [",
 );
 assertExists(
   "admin-vue/src/views/officialSiteCookieRequiredPageHelpers.js",
@@ -1954,6 +1974,12 @@ assertExists(
   "admin-vue/src/views/OfficialSitePrivacyPolicy.css",
 );
 assertExists(
+  "admin-vue/src/views/officialSiteDisclaimerPageHelpers.js",
+);
+assertExists(
+  "admin-vue/src/views/OfficialSiteDisclaimer.css",
+);
+assertExists(
   "admin-vue/src/views/officialSiteCookieRequiredSections/OfficialSiteCookieRequiredHero.vue",
 );
 assertExists(
@@ -1964,6 +1990,12 @@ assertExists(
 );
 assertExists(
   "admin-vue/src/views/officialSitePrivacyPolicySections/OfficialSitePrivacyPolicyArticle.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteDisclaimerSections/OfficialSiteDisclaimerHero.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteDisclaimerSections/OfficialSiteDisclaimerArticle.vue",
 );
 assertContains(
   "admin-vue/src/views/officialSiteAboutPageHelpers.js",
@@ -6290,6 +6322,18 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/OfficialSitePrivacyPolicy.vue",
   "Privacy Policy",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteDisclaimer.vue",
+  "<style scoped>",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteDisclaimer.vue",
+  "悦享e食官网主要用于信息展示、公告发布、校园消费治理协助",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteDisclaimer.vue",
+  "Service Notice",
 );
 assertNotContains(
   "admin-vue/src/views/settingsActionHelpers.js",

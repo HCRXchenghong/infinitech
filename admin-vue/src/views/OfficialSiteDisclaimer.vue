@@ -1,134 +1,30 @@
 <template>
-  <div class="bg-slate-50 min-h-screen py-14 px-6">
-    <div class="max-w-5xl mx-auto">
-      <section class="policy-shell">
-        <div class="policy-hero site-screen-section site-screen-center">
-          <div class="policy-kicker">Service Notice</div>
-          <h1>悦享e食官网免责声明与服务说明</h1>
-          <p>
-            本页面用于说明官网公开信息展示、曝光提交、商务合作申请、在线客服等功能的服务边界与使用规则。
-            本说明不排除或限制法律法规规定平台应承担的法定义务与责任。
-          </p>
-          <p>
-            如本说明与适用法律、监管要求或有权机关的强制性规则存在不一致之处，以相关强制性规定为准。
-          </p>
-          <div class="policy-meta">最近更新：2026 年 4 月 13 日</div>
-        </div>
-
-        <article class="official-site-article policy-article">
-          <h2 class="h2-block">一、官网性质与服务边界</h2>
-          <p class="p-block">
-            悦享e食官网主要用于信息展示、公告发布、校园消费治理协助、商户合作线索收集和在线客服接待。
-            官网页面中的介绍、公告、展示素材与交互功能，均以届时页面实际展示及平台审核结果为准。
-          </p>
-
-          <h2 class="h2-block">二、用户提交内容的责任</h2>
-          <ul class="ul-block">
-            <li>你应保证提交的曝光、投诉、咨询、合作信息真实、合法、必要，不得捏造事实、侮辱诽谤、侵犯他人合法权益或发布违法违规内容。</li>
-            <li>若你提交的内容包含图片、文字、联系方式、证据材料等，应确认你具有合法权利或已获得必要授权。</li>
-            <li>因你提交内容失实、侵权、违法违规或违反约定所引起的争议、投诉、索赔或监管责任，应由相应提交方依法承担。</li>
-          </ul>
-
-          <h2 class="h2-block">三、平台审核与处置说明</h2>
-          <p class="p-block">
-            平台可根据运营规则、投诉情况、证据充分性、法律法规要求或风险控制需要，
-            对提交内容进行人工审核、暂缓展示、删除、下架、隐藏、限制访问、留存证据或移交处理。
-          </p>
-          <p class="p-block">
-            平台提供审核、协助与治理能力，并不当然意味着平台对全部用户提交内容进行事前实质性背书。
-            对于需要进一步核验的事实争议，仍应结合证据、行政处理、司法裁判或其他有权机关认定结果综合判断。
-          </p>
-
-          <h2 class="h2-block">四、第三方信息与外部依赖</h2>
-          <p class="p-block">
-            官网展示中如包含第三方图片、素材、链接、接口能力或外部服务，其内容、可用性与更新状态可能受第三方影响。
-            对于非因平台故意或重大过失导致的第三方服务中断、内容变化、网络异常等情形，平台将在合理范围内协助处理，但不就第三方单方行为作无限责任承诺。
-          </p>
-
-          <h2 class="h2-block">五、服务可用性说明</h2>
-          <p class="p-block">
-            因系统维护、网络故障、攻击防护、监管要求、不可抗力或其他客观原因，官网部分页面、接口或客服功能可能出现延迟、
-            中断、降级、改版或暂停。平台会在合理范围内尽力保障服务稳定，但不对任何绝对无中断、绝对无错误的运行状态作保证。
-          </p>
-
-          <h2 class="h2-block">六、关于在线客服与历史记录</h2>
-          <p class="p-block">
-            在线客服历史记录依赖浏览器端 Cookie 与本地存储中的会话 token。若你拒绝相关存储、主动清除浏览器数据、
-            更换设备/浏览器，或会话 token 失效，则历史记录可能无法继续展示或恢复。
-          </p>
-
-          <h2 class="h2-block">七、法律适用与争议处理</h2>
-          <p class="p-block">
-            官网服务说明、隐私政策及相关页面内容的订立、效力、解释、履行和争议处理，
-            在不违反强制性法律法规的前提下，适用中华人民共和国现行有效法律法规。若发生争议，双方应优先通过沟通协商解决；
-            协商不成的，可依法向有管辖权的人民法院或其他有权机关寻求处理。
-          </p>
-
-          <div class="quote-block">
-            本页面旨在合理说明官网服务边界，不构成对法定责任的免除、减轻或排除；
-            用户依据适用法律享有的法定权利不受本页面当然限制。
-          </div>
-        </article>
+  <div class="official-site-disclaimer-page">
+    <div class="official-site-disclaimer-container">
+      <section class="official-site-disclaimer-shell">
+        <OfficialSiteDisclaimerHero
+          :hero-introduction="heroIntroduction"
+          :hero-updated-at="heroUpdatedAt"
+        />
+        <OfficialSiteDisclaimerArticle
+          :disclaimer-notice="disclaimerNotice"
+          :disclaimer-sections="disclaimerSections"
+        />
       </section>
     </div>
   </div>
 </template>
 
-<style scoped>
-.policy-shell {
-  border-radius: 24px;
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  box-shadow: 0 24px 60px rgb(15 23 42 / 0.08);
-}
+<script setup>
+import './OfficialSiteDisclaimer.css'
+import OfficialSiteDisclaimerArticle from './officialSiteDisclaimerSections/OfficialSiteDisclaimerArticle.vue'
+import OfficialSiteDisclaimerHero from './officialSiteDisclaimerSections/OfficialSiteDisclaimerHero.vue'
+import { useOfficialSiteDisclaimerPage } from './officialSiteDisclaimerPageHelpers'
 
-.policy-hero {
-  padding: 34px 36px 30px;
-  background: linear-gradient(135deg, #1976d2 0%, #0f5ea8 100%);
-  color: #ffffff;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.policy-kicker {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgb(191 219 254);
-}
-
-.policy-hero h1 {
-  margin: 14px 0 0;
-  font-size: clamp(2rem, 4vw, 2.9rem);
-  line-height: 1.15;
-  font-weight: 800;
-}
-
-.policy-hero p {
-  margin: 18px 0 0;
-  max-width: 860px;
-  font-size: 16px;
-  line-height: 1.9;
-  color: rgb(219 234 254);
-}
-
-.policy-meta {
-  margin-top: 18px;
-  font-size: 13px;
-  font-weight: 600;
-  color: rgb(191 219 254);
-}
-
-.policy-article {
-  padding: 34px 36px 38px;
-}
-
-@media (max-width: 768px) {
-  .policy-hero,
-  .policy-article {
-    padding: 24px 20px;
-  }
-}
-</style>
+const {
+  disclaimerNotice,
+  disclaimerSections,
+  heroIntroduction,
+  heroUpdatedAt,
+} = useOfficialSiteDisclaimerPage()
+</script>
