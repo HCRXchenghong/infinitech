@@ -3818,11 +3818,35 @@ assertContains(
 );
 assertContains(
   "backend/bff/.env.example",
+  "SOCKET_SERVER_API_SECRET=replace-with-a-long-random-socket-server-api-secret",
+);
+assertContains(
+  "backend/bff/.env.example",
+  "REDIS_PASSWORD=replace-with-local-redis-password",
+);
+assertContains(
+  "backend/bff/.env.example",
   "# CLEAR_ALL_DATA_VERIFY_ACCOUNT=replace-with-dedicated-clear-all-operator-account",
 );
 assertContains(
   "backend/bff/.env.example",
   "# CLEAR_ALL_DATA_VERIFY_PASSWORD=replace-with-dedicated-clear-all-secondary-secret",
+);
+assertContains(
+  "backend/go/.env.example",
+  "SOCKET_SERVER_API_SECRET=replace-with-a-long-random-socket-server-api-secret",
+);
+assertContains(
+  "backend/go/.env.example",
+  "REDIS_PASSWORD=replace-with-local-redis-password",
+);
+assertContains(
+  "socket-server/.env.example",
+  "SOCKET_SERVER_API_SECRET=replace-with-a-long-random-socket-server-api-secret",
+);
+assertContains(
+  "socket-server/.env.example",
+  "SOCKET_REDIS_PASSWORD=replace-with-local-redis-password",
 );
 assertContains(
   "backend/bff/src/config/index.js",
