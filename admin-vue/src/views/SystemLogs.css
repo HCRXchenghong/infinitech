@@ -1,31 +1,31 @@
-.page {
+.system-logs-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.title-row {
+.system-logs-page .title-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.title-actions {
+.system-logs-page .title-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.title {
+.system-logs-page .title {
   font-size: 18px;
   font-weight: 800;
 }
 
-.status-card {
+.system-logs-page .status-card {
   border-radius: 12px;
 }
 
-.status-header {
+.system-logs-page .status-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -33,57 +33,57 @@
   margin-bottom: 10px;
 }
 
-.status-title-row {
+.system-logs-page .status-title-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.status-title {
+.system-logs-page .status-title {
   font-size: 14px;
   font-weight: 700;
   color: #303133;
 }
 
-.status-time {
+.system-logs-page .status-time {
   font-size: 12px;
   color: #909399;
 }
 
-.status-grid {
+.system-logs-page .status-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
-.status-item {
+.system-logs-page .status-item {
   border: 1px solid #ebeef5;
   border-radius: 10px;
   padding: 10px 12px;
   background: #fff;
 }
 
-.status-item-top {
+.system-logs-page .status-item-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.service-name {
+.system-logs-page .service-name {
   font-size: 13px;
   font-weight: 700;
   color: #303133;
 }
 
-.service-target {
+.system-logs-page .service-target {
   margin-top: 6px;
   font-size: 12px;
   color: #606266;
   word-break: break-all;
 }
 
-.service-probe {
+.system-logs-page .service-probe {
   display: inline-flex;
   align-items: center;
   margin-left: 8px;
@@ -95,7 +95,7 @@
   font-weight: 600;
 }
 
-.service-meta {
+.system-logs-page .service-meta {
   margin-top: 6px;
   display: flex;
   flex-wrap: wrap;
@@ -104,11 +104,11 @@
   color: #909399;
 }
 
-.service-error {
+.system-logs-page .service-error {
   color: #f56c6c;
 }
 
-.service-signals {
+.system-logs-page .service-signals {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
@@ -117,7 +117,7 @@
   min-width: 0;
 }
 
-.service-signal {
+.system-logs-page .service-signal {
   display: inline-flex;
   align-items: flex-start;
   flex: 1 1 260px;
@@ -130,13 +130,13 @@
   white-space: normal;
 }
 
-.service-signal :deep(.el-tag__content) {
+.system-logs-page .service-signal .el-tag__content {
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
-.service-detail {
+.system-logs-page .service-detail {
   margin-top: 6px;
   font-size: 12px;
   color: #606266;
@@ -144,100 +144,100 @@
   word-break: break-word;
 }
 
-.summary-card {
+.system-logs-page .summary-card {
   border-radius: 12px;
 }
 
-.summary-grid {
+.system-logs-page .summary-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
 }
 
-.summary-item {
+.system-logs-page .summary-item {
   border: 1px solid #ebeef5;
   border-radius: 10px;
   padding: 10px 12px;
   background: #fff;
 }
 
-.summary-label {
+.system-logs-page .summary-label {
   font-size: 12px;
   color: #909399;
 }
 
-.summary-value {
+.system-logs-page .summary-value {
   margin-top: 6px;
   font-size: 22px;
   font-weight: 700;
 }
 
-.summary-value.create {
+.system-logs-page .summary-value.create {
   color: #67c23a;
 }
 
-.summary-value.delete {
+.system-logs-page .summary-value.delete {
   color: #f56c6c;
 }
 
-.summary-value.update {
+.system-logs-page .summary-value.update {
   color: #e6a23c;
 }
 
-.summary-value.read {
+.system-logs-page .summary-value.read {
   color: #409eff;
 }
 
-.summary-value.system {
+.system-logs-page .summary-value.system {
   color: #606266;
 }
 
-.summary-value.error {
+.system-logs-page .summary-value.error {
   color: #f56c6c;
 }
 
-.card {
+.system-logs-page .card {
   border-radius: 12px;
 }
 
-.toolbar {
+.system-logs-page .toolbar {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
 }
 
-.muted-text {
+.system-logs-page .muted-text {
   color: #909399;
 }
 
-.empty-tip {
+.system-logs-page .empty-tip {
   padding: 36px 0;
 }
 
-.raw-title {
+.system-logs-page .raw-title {
   margin: 16px 0 8px;
   font-size: 13px;
   color: #606266;
   font-weight: 600;
 }
 
-.delete-tip {
+.system-logs-page .delete-tip {
   margin-top: 4px;
   color: #909399;
   font-size: 12px;
 }
 
 @media (max-width: 1100px) {
-  .status-grid {
+  .system-logs-page .status-grid {
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 
-  .summary-grid {
+  .system-logs-page .summary-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .toolbar {
+  .system-logs-page .toolbar {
     flex-wrap: wrap;
   }
 }

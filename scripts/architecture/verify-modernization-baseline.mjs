@@ -1315,6 +1315,59 @@ assertContains(
   "useSystemLogsPage({",
 );
 assertContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "SystemLogsHeader",
+);
+assertContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "SystemLogsStatusCard",
+);
+assertContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "SystemLogsSummaryCard",
+);
+assertContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "SystemLogsTableCard",
+);
+assertContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "SystemLogsDetailDialog",
+);
+assertContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "SystemLogsDeleteDialog",
+);
+assertContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "SystemLogsClearDialog",
+);
+assertContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "SystemLogs.css",
+);
+assertExists(
+  "admin-vue/src/views/systemLogsSections/SystemLogsHeader.vue",
+);
+assertExists(
+  "admin-vue/src/views/systemLogsSections/SystemLogsStatusCard.vue",
+);
+assertExists(
+  "admin-vue/src/views/systemLogsSections/SystemLogsSummaryCard.vue",
+);
+assertExists(
+  "admin-vue/src/views/systemLogsSections/SystemLogsTableCard.vue",
+);
+assertExists(
+  "admin-vue/src/views/systemLogsSections/SystemLogsDetailDialog.vue",
+);
+assertExists(
+  "admin-vue/src/views/systemLogsSections/SystemLogsDeleteDialog.vue",
+);
+assertExists(
+  "admin-vue/src/views/systemLogsSections/SystemLogsClearDialog.vue",
+);
+assertContains(
   "admin-vue/src/views/systemLogsHelpers.js",
   "extractSystemLogViewState(",
 );
@@ -1337,6 +1390,10 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/SystemLogs.vue",
   "createSystemLogFilters",
+);
+assertNotContains(
+  "admin-vue/src/views/SystemLogs.vue",
+  "<el-card class=\"status-card\">",
 );
 
 [
