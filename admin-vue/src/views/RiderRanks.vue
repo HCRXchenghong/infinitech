@@ -1,144 +1,56 @@
 <template>
-  <div class="page">
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          <el-button type="primary" link style="margin-right: 10px" @click="goBack">返回</el-button>
-          <span>骑手配送排名</span>
-        </div>
-        <div class="panel-actions">
-          <el-radio-group v-model="period" size="small" @change="handlePeriodChange">
-            <el-radio-button value="week">周榜</el-radio-button>
-            <el-radio-button value="month">月榜</el-radio-button>
-          </el-radio-group>
-          <el-button size="small" :loading="loading" @click="loadRanks(true)">刷新</el-button>
-        </div>
-      </div>
+  <div class="rider-ranks-page">
+    <div class="rider-ranks-panel">
+      <RiderRanksHeader
+        v-model:period="period"
+        :loading="loading"
+        :go-back="goBack"
+        :handle-period-change="handlePeriodChange"
+        :refresh-ranks="refreshRanks"
+      />
 
       <PageStateAlert :message="loadError" />
 
-      <el-table :data="ranks" stripe size="small" v-loading="loading">
-        <el-table-column type="index" label="排名" width="80" :index="indexMethod" />
-        <el-table-column prop="name" label="骑手姓名" />
-        <el-table-column prop="level" label="段位" width="120">
-          <template #default="{ row }">
-            <el-tag :type="getRankType(row.level)" size="small">{{ getRankName(row.level, riderRankLevels) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="value" label="配送次数" width="120" align="right">
-          <template #default="{ row }">
-            <strong>{{ row.value }}</strong>
-          </template>
-        </el-table-column>
-        <template #empty>
-          <el-empty :description="loadError ? '加载失败，暂无可显示数据' : '暂无骑手排名数据'" :image-size="90" />
-        </template>
-      </el-table>
+      <RiderRanksTable
+        :loading="loading"
+        :ranks="ranks"
+        :load-error="loadError"
+        :index-method="indexMethod"
+        :get-rank-type="getRankType"
+        :get-rank-name="getRankName"
+        :rider-rank-levels="riderRankLevels"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import './RiderRanks.css'
 import { useRoute, useRouter } from 'vue-router'
-import { extractErrorMessage } from '@infinitech/contracts'
-import { extractDashboardRankItems, getRankName, getRankType } from '@infinitech/admin-core'
 import request from '@/utils/request'
-import { getCachedRiderRankSettings, loadRiderRankSettings } from '@/utils/platform-settings'
 import PageStateAlert from '@/components/PageStateAlert.vue'
+import RiderRanksHeader from './riderRanksSections/RiderRanksHeader.vue'
+import RiderRanksTable from './riderRanksSections/RiderRanksTable.vue'
+import { useRiderRanksPage } from './riderRanksPageHelpers'
 
 const router = useRouter()
 const route = useRoute()
 
-const loading = ref(false)
-const ranks = ref([])
-const period = ref(String(route.query.period || 'week'))
-const loadError = ref('')
-const dataCache = ref(new Map())
-const riderRankSettings = ref(getCachedRiderRankSettings())
-const riderRankLevels = ref(riderRankSettings.value?.levels || [])
-
-function goBack() {
-  router.push('/dashboard')
-}
-
-function indexMethod(index) {
-  return index + 1
-}
-
-function handlePeriodChange() {
-  dataCache.value.clear()
-  void loadRanks()
-}
-
-async function loadRanks(forceRefresh = false) {
-  if (forceRefresh) {
-    await loadRiderRankDictionary(true)
-  }
-  const cacheKey = period.value
-  loadError.value = ''
-
-  if (!forceRefresh && dataCache.value.has(cacheKey)) {
-    ranks.value = dataCache.value.get(cacheKey)
-    return
-  }
-
-  loading.value = true
-  try {
-    const { data } = await request.get(`/api/rider-ranks?period=${period.value}`)
-    ranks.value = extractDashboardRankItems(data)
-    dataCache.value.set(cacheKey, [...ranks.value])
-  } catch (error) {
-    ranks.value = []
-    loadError.value = extractErrorMessage(error, '加载骑手排名失败，请稍后重试')
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadRiderRankDictionary(forceRefresh = false) {
-  riderRankSettings.value = await loadRiderRankSettings(forceRefresh)
-  riderRankLevels.value = riderRankSettings.value?.levels || []
-}
-
-onMounted(() => {
-  void loadRiderRankDictionary()
-  void loadRanks()
+const {
+  getRankName,
+  getRankType,
+  goBack,
+  handlePeriodChange,
+  indexMethod,
+  loadError,
+  loading,
+  period,
+  ranks,
+  refreshRanks,
+  riderRankLevels,
+} = useRiderRanksPage({
+  request,
+  route,
+  router,
 })
 </script>
-
-<style scoped>
-.page {
-  padding: 0;
-}
-
-.panel {
-  background: #ffffff;
-  border-radius: 14px;
-  border: 1px solid #e6ebf5;
-  padding: 20px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
-}
-
-.panel-header {
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.panel-title {
-  font-weight: 700;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-}
-
-.panel-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-</style>

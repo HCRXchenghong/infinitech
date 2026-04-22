@@ -1,0 +1,37 @@
+.rider-ranks-page {
+  padding: 0;
+}
+
+.rider-ranks-panel {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e6ebf5;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+}
+
+.rider-ranks-panel-header {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.rider-ranks-panel-title {
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.rider-ranks-back-button {
+  margin-right: 10px;
+}
+
+.rider-ranks-panel-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}

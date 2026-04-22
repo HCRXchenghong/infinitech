@@ -2126,9 +2126,21 @@ assertContains("admin-vue/src/views/Dashboard.vue", "DashboardPresencePanel");
 assertContains("admin-vue/src/views/Dashboard.vue", "DashboardRankSection");
 assertContains("admin-vue/src/views/Dashboard.vue", "useDashboardPage");
 assertContains("admin-vue/src/views/dashboardPageHelpers.js", "buildDashboardStatsCards");
+assertContains("admin-vue/src/views/RiderRanks.vue", "useRiderRanksPage({");
+assertContains("admin-vue/src/views/RiderRanks.vue", "RiderRanksHeader");
+assertContains("admin-vue/src/views/RiderRanks.vue", "RiderRanksTable");
+assertContains("admin-vue/src/views/RiderRanks.vue", "RiderRanks.css");
 assertContains(
-  "admin-vue/src/views/RiderRanks.vue",
+  "admin-vue/src/views/riderRanksPageHelpers.js",
   "extractDashboardRankItems",
+);
+assertExists("admin-vue/src/views/riderRanksPageHelpers.js");
+assertExists("admin-vue/src/views/RiderRanks.css");
+assertExists(
+  "admin-vue/src/views/riderRanksSections/RiderRanksHeader.vue",
+);
+assertExists(
+  "admin-vue/src/views/riderRanksSections/RiderRanksTable.vue",
 );
 assertContains(
   "admin-vue/src/views/dashboardHelpers.js",
@@ -5635,8 +5647,20 @@ assertContains(
   "extractPaginatedItems(data, { listKeys: ['messages', 'items', 'records', 'list'] }).items",
 );
 assertContains(
-  "admin-vue/src/views/RiderRanks.vue",
+  "admin-vue/src/views/riderRanksPageHelpers.js",
   "extractDashboardRankItems(data)",
+);
+assertNotContains(
+  "admin-vue/src/views/RiderRanks.vue",
+  "<style scoped>",
+);
+assertNotContains(
+  "admin-vue/src/views/RiderRanks.vue",
+  "const loading = ref(false)",
+);
+assertNotContains(
+  "admin-vue/src/views/RiderRanks.vue",
+  "async function loadRanks(forceRefresh = false)",
 );
 assertContains(
   "admin-vue/src/views/dashboardPageHelpers.js",
