@@ -1,0 +1,35 @@
+.official-site-news-page {
+  min-height: 100vh;
+}
+
+.official-site-news-page .official-site-news-shell {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+.official-site-news-page .news-header {
+  margin-bottom: 2.5rem;
+}
+
+.official-site-news-page .news-empty-state {
+  padding: 3rem;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.official-site-news-page .news-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .official-site-news-page .official-site-news-shell {
+    padding: 2rem 1rem;
+  }
+
+  .official-site-news-page .news-empty-state {
+    padding: 2rem 1.25rem;
+  }
+}

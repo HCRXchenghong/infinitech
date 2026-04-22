@@ -1861,6 +1861,42 @@ assertContains(
   "admin-vue/src/views/officialSiteExposureDetailSections/OfficialSiteExposureDetailPanel.vue",
   "resolveOfficialSiteExposureStatusClass",
 );
+assertContains(
+  "admin-vue/src/views/OfficialSiteNews.vue",
+  "useOfficialSiteNewsPage({",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteNews.vue",
+  "OfficialSiteNewsHeader",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteNews.vue",
+  "OfficialSiteNewsList",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteNews.vue",
+  "OfficialSiteNews.css",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteNewsPageHelpers.js",
+  "listPublicOfficialSiteNews",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteNewsPageHelpers.js",
+);
+assertExists(
+  "admin-vue/src/views/OfficialSiteNews.css",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteNewsSections/OfficialSiteNewsHeader.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteNewsSections/OfficialSiteNewsList.vue",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteNewsSections/OfficialSiteNewsList.vue",
+  "biz-card-hover",
+);
 assertExists(
   "admin-vue/src/views/notificationPreviewPageHelpers.js",
 );
@@ -6096,6 +6132,18 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/OfficialSiteExposureDetail.vue",
   "function statusLabel(status)",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteNews.vue",
+  "const fallbackCovers = [",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteNews.vue",
+  "async function loadNews()",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteNews.vue",
+  "function resolveTagType(source)",
 );
 assertNotContains(
   "admin-vue/src/views/settingsActionHelpers.js",
