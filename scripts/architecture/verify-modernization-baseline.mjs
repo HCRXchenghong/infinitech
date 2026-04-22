@@ -10,6 +10,13 @@ function assertExists(relativePath) {
   }
 }
 
+function assertNotExists(relativePath) {
+  const absolutePath = path.join(repoRoot, relativePath);
+  if (fs.existsSync(absolutePath)) {
+    throw new Error(`unexpected existing path: ${relativePath}`);
+  }
+}
+
 function assertContains(relativePath, expectedText) {
   const absolutePath = path.join(repoRoot, relativePath);
   const source = fs.readFileSync(absolutePath, "utf8");
@@ -4406,21 +4413,55 @@ assertContains(
 assertContains("admin-vue/src/views/Login.vue", "extractEnvelopeData(data)");
 assertNotContains("admin-vue/src/views/Login.vue", "扫码登录</h3>");
 assertNotContains("admin-vue/src/views/Login.vue", "完成首次管理员初始化");
+assertExists("admin-vue/src/views/shopManageDetailPageHelpers.js");
+assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailHeader.vue");
+assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailBasicCard.vue");
+assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailImageCard.vue");
+assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailTagsCard.vue");
+assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailMenuCard.vue");
+assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailStaffCard.vue");
+assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailReviewsCard.vue");
+assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailBasicDialog.vue");
+assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailImageDialog.vue");
+assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailTagDialog.vue");
+assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailMenuDialog.vue");
+assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailStaffDialog.vue");
+assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailReviewDialog.vue");
+assertContains("admin-vue/src/views/ShopManageDetail.vue", "useShopManageDetailPage({");
+assertContains("admin-vue/src/views/ShopManageDetail.vue", "ShopManageDetailBasicCard");
+assertContains("admin-vue/src/views/ShopManageDetail.vue", "ShopManageDetailReviewsCard");
 assertContains(
-  "admin-vue/src/views/ShopManageDetail.vue",
+  "admin-vue/src/views/shopManageDetailPageHelpers.js",
   "extractShopReviewPage",
 );
 assertContains(
-  "admin-vue/src/views/ShopManageDetail.vue",
+  "admin-vue/src/views/shopManageDetailPageHelpers.js",
   "createAdminShopBasicFormState",
 );
 assertContains(
-  "admin-vue/src/views/ShopManageDetail.vue",
+  "admin-vue/src/views/shopManageDetailPageHelpers.js",
   "buildAdminShopReviewPayload",
+);
+assertNotExists("admin-vue/src/views/ShopManageDetail.template.html");
+assertNotContains(
+  "admin-vue/src/views/ShopManageDetail.vue",
+  "<template src=\"./ShopManageDetail.template.html\"></template>",
 );
 assertNotContains(
   "admin-vue/src/views/ShopManageDetail.vue",
   "./shopManageDetailHelpers",
+);
+assertNotContains(
+  "admin-vue/src/views/ShopManageDetail.vue",
+  "extractShopReviewPage",
+);
+assertNotContains(
+  "admin-vue/src/views/ShopManageDetail.vue",
+  "createAdminShopBasicFormState",
+);
+assertNotContains(
+  "admin-vue/src/views/ShopManageDetail.vue",
+  "buildAdminShopReviewPayload",
 );
 assertContains(
   "admin-vue/src/views/ridersReviewActionHelpers.js",
