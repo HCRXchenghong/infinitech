@@ -1757,7 +1757,38 @@ assertNotContains(
 );
 assertContains(
   "admin-vue/src/views/NotificationPreviewPage.vue",
+  "useNotificationPreviewPage({",
+);
+assertContains(
+  "admin-vue/src/views/NotificationPreviewPage.vue",
+  "NotificationPreviewTopbar",
+);
+assertContains(
+  "admin-vue/src/views/NotificationPreviewPage.vue",
+  "NotificationPreviewCard",
+);
+assertContains(
+  "admin-vue/src/views/NotificationPreviewPage.vue",
+  "NotificationPreviewPage.css",
+);
+assertContains(
+  "admin-vue/src/views/notificationPreviewSections/NotificationPreviewArticle.vue",
   "parseNotificationDisplayBlocks",
+);
+assertExists(
+  "admin-vue/src/views/notificationPreviewPageHelpers.js",
+);
+assertExists(
+  "admin-vue/src/views/NotificationPreviewPage.css",
+);
+assertExists(
+  "admin-vue/src/views/notificationPreviewSections/NotificationPreviewTopbar.vue",
+);
+assertExists(
+  "admin-vue/src/views/notificationPreviewSections/NotificationPreviewCard.vue",
+);
+assertExists(
+  "admin-vue/src/views/notificationPreviewSections/NotificationPreviewArticle.vue",
 );
 assertContains(
   "admin-vue/src/views/notificationEditorPageHelpers.js",
@@ -5323,8 +5354,20 @@ assertContains(
   "export function extractDiningBuddyRuntimeSettings(payload = {})",
 );
 assertContains(
-  "admin-vue/src/views/NotificationPreviewPage.vue",
+  "admin-vue/src/views/notificationPreviewPageHelpers.js",
   "extractEnvelopeData(data) || {}",
+);
+assertNotContains(
+  "admin-vue/src/views/NotificationPreviewPage.vue",
+  "const blocks = computed(() => {",
+);
+assertNotContains(
+  "admin-vue/src/views/NotificationPreviewPage.vue",
+  "async function loadNotification()",
+);
+assertNotContains(
+  "admin-vue/src/views/NotificationPreviewPage.vue",
+  "<article v-else class=\"article\">",
 );
 assertContains(
   "admin-vue/src/views/settingsActionHelpers.js",
