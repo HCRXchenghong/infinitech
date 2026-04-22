@@ -1,0 +1,83 @@
+.official-notifications-page {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.official-notifications-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.official-notifications-page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.official-notifications-page-subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.official-notifications-header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.official-notifications-filter-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.official-notifications-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) 180px;
+  gap: 10px;
+}
+
+.official-notifications-filter-input,
+.official-notifications-filter-select {
+  width: 100%;
+}
+
+.official-notifications-stats-row {
+  display: flex;
+  gap: 8px;
+}
+
+.official-notifications-cover {
+  width: 64px;
+  height: 40px;
+  border-radius: 6px;
+}
+
+.official-notifications-pagination-wrap {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.official-notifications-muted {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+@media (max-width: 960px) {
+  .official-notifications-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .official-notifications-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .official-notifications-pagination-wrap {
+    justify-content: flex-start;
+  }
+}

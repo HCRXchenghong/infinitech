@@ -1473,9 +1473,45 @@ assertContains(
   "admin-vue/src/views/transactionLogsPageHelpers.js",
   "formatFinancialTransactionType",
 );
+assertExists("admin-vue/src/views/officialNotificationsPageHelpers.js");
+assertExists("admin-vue/src/views/OfficialNotificationsPage.css");
+assertExists(
+  "admin-vue/src/views/officialNotificationsSections/OfficialNotificationsHeader.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialNotificationsSections/OfficialNotificationsTableSection.vue",
+);
 assertContains(
   "admin-vue/src/views/OfficialNotificationsPage.vue",
-  "extractAdminNotificationPage",
+  "useOfficialNotificationsPage({",
+);
+assertContains(
+  "admin-vue/src/views/OfficialNotificationsPage.vue",
+  "OfficialNotificationsHeader",
+);
+assertContains(
+  "admin-vue/src/views/OfficialNotificationsPage.vue",
+  "OfficialNotificationsTableSection",
+);
+assertContains(
+  "admin-vue/src/views/OfficialNotificationsPage.vue",
+  "import './OfficialNotificationsPage.css';",
+);
+assertContains(
+  "admin-vue/src/views/officialNotificationsPageHelpers.js",
+  "extractAdminNotificationPage(data).items",
+);
+assertContains(
+  "admin-vue/src/views/officialNotificationsPageHelpers.js",
+  "buildAdminNotificationSummary",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialNotificationsPage.vue",
+  "extractAdminNotificationPage(data).items",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialNotificationsPage.vue",
+  "const loading = ref(false)",
 );
 assertContains(
   "admin-vue/src/views/NotificationPreviewPage.vue",
@@ -4866,10 +4902,6 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/OfficialNotifications.vue",
-  "extractAdminNotificationPage(data).items",
-);
-assertContains(
-  "admin-vue/src/views/OfficialNotificationsPage.vue",
   "extractAdminNotificationPage(data).items",
 );
 assertContains(
