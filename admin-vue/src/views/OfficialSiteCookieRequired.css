@@ -1,0 +1,65 @@
+.official-site-cookie-required-page {
+  min-height: 100vh;
+  padding: 4rem 1.5rem;
+  background: #f8fafc;
+}
+
+.official-site-cookie-required-page .official-site-cookie-required-shell {
+  max-width: 56rem;
+  margin: 0 auto;
+}
+
+.official-site-cookie-required-page .cookie-required-card {
+  padding: 2.375rem;
+  border-radius: 1.5rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 24px 60px rgb(15 23 42 / 8%);
+}
+
+.official-site-cookie-required-page .cookie-required-grid {
+  margin-top: 1.875rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.125rem;
+}
+
+.official-site-cookie-required-page .cookie-required-panel {
+  padding: 1.5rem;
+  border-radius: 1.125rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.official-site-cookie-required-page .cookie-required-panel h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.4;
+  color: #0f172a;
+}
+
+.official-site-cookie-required-page .cookie-required-panel ul {
+  margin: 0.875rem 0 0;
+  padding-left: 1.2rem;
+  color: #475569;
+}
+
+.official-site-cookie-required-page .cookie-required-panel li {
+  margin-bottom: 0.625rem;
+  line-height: 1.8;
+}
+
+@media (max-width: 768px) {
+  .official-site-cookie-required-page {
+    padding: 2rem 1rem;
+  }
+
+  .official-site-cookie-required-page .cookie-required-card {
+    padding: 1.5rem 1.25rem;
+    border-radius: 1.25rem;
+  }
+
+  .official-site-cookie-required-page .cookie-required-grid {
+    grid-template-columns: 1fr;
+  }
+}

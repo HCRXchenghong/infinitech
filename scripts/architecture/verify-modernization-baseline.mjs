@@ -1902,6 +1902,38 @@ assertContains(
   "OfficialSiteAbout.css",
 );
 assertContains(
+  "admin-vue/src/views/OfficialSiteCookieRequired.vue",
+  "useOfficialSiteCookieRequiredPage({",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCookieRequired.vue",
+  "OfficialSiteCookieRequiredHero",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCookieRequired.vue",
+  "OfficialSiteCookieRequiredPanels",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCookieRequired.vue",
+  "OfficialSiteCookieRequired.css",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteCookieRequiredPageHelpers.js",
+  "setSiteCookieConsent('accepted')",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteCookieRequiredPageHelpers.js",
+);
+assertExists(
+  "admin-vue/src/views/OfficialSiteCookieRequired.css",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteCookieRequiredSections/OfficialSiteCookieRequiredHero.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteCookieRequiredSections/OfficialSiteCookieRequiredPanels.vue",
+);
+assertContains(
   "admin-vue/src/views/officialSiteAboutPageHelpers.js",
   "const heroMetrics = [",
 );
@@ -6202,6 +6234,18 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/OfficialSiteAbout.vue",
   "燧石创想工作室",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteCookieRequired.vue",
+  "function acceptAndContinue()",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteCookieRequired.vue",
+  "<style scoped>",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteCookieRequired.vue",
+  "当前浏览器尚未允许官网 Cookie 与本地存储",
 );
 assertNotContains(
   "admin-vue/src/views/settingsActionHelpers.js",
