@@ -5527,7 +5527,19 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/OfficialNotifications.vue",
+  "OfficialNotificationsPage",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialNotifications.vue",
   "extractAdminNotificationPage(data).items",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialNotifications.vue",
+  "const loading = ref(false)",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialNotifications.vue",
+  "<style scoped",
 );
 assertContains(
   "admin-vue/src/views/operationsCenterPageHelpers.js",
