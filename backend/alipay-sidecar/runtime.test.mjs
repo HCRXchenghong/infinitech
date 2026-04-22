@@ -10,30 +10,14 @@ test('alipay runtime requires an explicit sidecar api secret', () => {
   )
 })
 
-test('alipay runtime enters stub mode only when explicitly enabled outside production', () => {
+test('alipay runtime stays unconfigured until official env config is complete', () => {
   const runtime = createAlipayRuntime({
     ENV: 'development',
     ALIPAY_SIDECAR_API_SECRET: 'alipay-secret',
-    ALIPAY_SIDECAR_ALLOW_STUB: 'true',
   })
 
-  assert.equal(runtime.allowStubRequested, true)
-  assert.equal(runtime.allowStub, true)
-  assert.equal(runtime.currentMode(), 'stub')
-  assert.equal(runtime.configSummary().allowStubBlocked, false)
-})
-
-test('alipay runtime blocks stub mode in production-like environments', () => {
-  const runtime = createAlipayRuntime({
-    ENV: 'staging',
-    ALIPAY_SIDECAR_API_SECRET: 'alipay-secret',
-    ALIPAY_SIDECAR_ALLOW_STUB: 'true',
-  })
-
-  assert.equal(runtime.allowStubRequested, true)
-  assert.equal(runtime.allowStub, false)
   assert.equal(runtime.currentMode(), 'unconfigured')
-  assert.equal(runtime.configSummary().allowStubBlocked, true)
+  assert.equal('allowStub' in runtime.configSummary(), false)
 })
 
 test('alipay runtime becomes official-sdk when official env config is complete', () => {

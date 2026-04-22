@@ -55,18 +55,12 @@ export function createAlipayRuntime(env = process.env) {
     throw new Error('ALIPAY_SIDECAR_API_SECRET is required')
   }
 
-  const allowStubRequested = boolFromEnv(env.ALIPAY_SIDECAR_ALLOW_STUB, false)
-  const allowStub = !productionLikeEnv(env) && allowStubRequested
-
   const config = {
     appIdConfigured: Boolean(normalizeText(env.ALIPAY_APP_ID)),
     privateKeyConfigured: Boolean(normalizeText(env.ALIPAY_PRIVATE_KEY)),
     publicKeyConfigured: Boolean(normalizeText(env.ALIPAY_PUBLIC_KEY)),
     notifyUrlConfigured: Boolean(normalizeText(env.ALIPAY_NOTIFY_URL)),
     sandbox: normalizeText(env.ALIPAY_SANDBOX || 'true').toLowerCase() !== 'false',
-    allowStubRequested,
-    allowStub,
-    allowStubBlocked: allowStubRequested && !allowStub,
     sidecarAuthConfigured: true,
   }
 
@@ -82,7 +76,6 @@ export function createAlipayRuntime(env = process.env) {
     },
     currentMode() {
       if (this.isReady()) return 'official-sdk'
-      if (allowStub) return 'stub'
       return 'unconfigured'
     },
     configSummary() {

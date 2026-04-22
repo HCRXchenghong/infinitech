@@ -3017,13 +3017,17 @@ assertContains(
   "backend/go/internal/service/auth_service.go",
   "VerifyTokenIdentity(",
 );
-assertContains(
+assertNotContains(
   "backend/go/internal/service/payment_runtime.go",
   `"allowStubBlocked"`,
 );
 assertNotContains(
   "backend/go/internal/service/payment_runtime.go",
   `BANK_PAYOUT_ALLOW_STUB`,
+);
+assertNotContains(
+  "backend/go/internal/service/payment_runtime.go",
+  `ALIPAY_SIDECAR_ALLOW_STUB`,
 );
 assertNotContains(
   "backend/go/internal/service/payment_runtime.go",
@@ -3735,9 +3739,9 @@ assertContains(
   "backend/docker/docker-compose.yml",
   "SOCKET_SERVER_API_SECRET: ${SOCKET_SERVER_API_SECRET:?SOCKET_SERVER_API_SECRET is required}",
 );
-assertContains(
+assertNotContains(
   "backend/docker/docker-compose.yml",
-  "ALIPAY_SIDECAR_ALLOW_STUB: ${ALIPAY_SIDECAR_ALLOW_STUB:-false}",
+  "ALIPAY_SIDECAR_ALLOW_STUB:",
 );
 assertContains("package.json", '"verify:sidecar-tests":');
 assertContains("package.json", '"verify:socket-tests":');
@@ -3773,6 +3777,9 @@ assertNotContains("backend/bank-payout-sidecar/server.js", "stub mode");
 assertNotContains("backend/bank-payout-sidecar/server.js", "BANK_PAYOUT_STUB_QUERY_STATUS");
 assertNotContains("backend/bank-payout-sidecar/runtime.js", "BANK_PAYOUT_ALLOW_STUB");
 assertNotContains("backend/bank-payout-sidecar/runtime.js", "allowStub");
+assertNotContains("backend/alipay-sidecar/runtime.js", "ALIPAY_SIDECAR_ALLOW_STUB");
+assertNotContains("backend/alipay-sidecar/runtime.js", "allowStub");
+assertNotContains("backend/alipay-sidecar/server.js", "stub");
 assertNotContains(
   "backend/docker/docker-compose.yml",
   "RABBITMQ_DEFAULT_PASS: admin_password",

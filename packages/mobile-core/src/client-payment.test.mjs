@@ -81,7 +81,7 @@ test("invokeClientPayment builds wechat mini program payloads", async () => {
   }
 });
 
-test("invokeClientPayment rejects unsupported platforms and stub alipay payloads", async () => {
+test("invokeClientPayment rejects unsupported platforms and invalid alipay payloads", async () => {
   await assert.rejects(
     () =>
       invokeClientPayment(
@@ -107,13 +107,12 @@ test("invokeClientPayment rejects unsupported platforms and stub alipay payloads
           paymentPayload: {
             gateway: "alipay",
             platform: "app",
-            sidecarMode: "stub",
           },
         },
         "",
       ),
     (error) => {
-      assert.equal(error.code, "PAYMENT_STUB_MODE");
+      assert.equal(error.code, "PAYMENT_PAYLOAD_INVALID");
       return true;
     },
   );

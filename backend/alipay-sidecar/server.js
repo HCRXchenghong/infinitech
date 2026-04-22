@@ -1,5 +1,4 @@
 import http from 'node:http'
-import * as AlipaySdkModule from 'alipay-sdk'
 
 import {
   boolFromEnv,
@@ -8,10 +7,6 @@ import {
 } from './runtime.js'
 
 const port = Number(process.env.ALIPAY_SIDECAR_PORT || 10301)
-const AlipaySdkCtor =
-  AlipaySdkModule?.default ||
-  AlipaySdkModule?.AlipaySdk ||
-  AlipaySdkModule
 const runtime = createAlipayRuntime(process.env)
 
 function json(res, statusCode, payload) {
@@ -111,10 +106,21 @@ function normalizeTransferLifecycleStatus(value) {
 }
 
 let cachedSdk = null
+let cachedSdkCtor = null
 
-function getAlipaySdk() {
+async function resolveAlipaySdkCtor() {
+  if (cachedSdkCtor) {
+    return cachedSdkCtor
+  }
+  const module = await import('alipay-sdk')
+  cachedSdkCtor = module?.default || module?.AlipaySdk || module
+  return cachedSdkCtor
+}
+
+async function getAlipaySdk() {
   if (!isReady()) return null
   if (cachedSdk) return cachedSdk
+  const AlipaySdkCtor = await resolveAlipaySdkCtor()
   if (typeof AlipaySdkCtor !== 'function') {
     throw new Error('alipay-sdk constructor is unavailable in current module format')
   }
@@ -129,42 +135,8 @@ function getAlipaySdk() {
   return cachedSdk
 }
 
-function buildStubPaymentResponse(body) {
-  const outTradeNo = requireText(body.outTradeNo, 'outTradeNo')
-  const scene = requireText(body.scene, 'scene')
-  const amount = requireAmount(body.amount, 'amount')
-  const description = requireText(body.description || '平台支付', 'description')
-  const clientPayload = {
-    gateway: 'alipay',
-    scene,
-    outTradeNo,
-    amount,
-    description,
-    appId: normalizeText(process.env.ALIPAY_APP_ID),
-    notifyUrl: requireText(body.notifyUrl || process.env.ALIPAY_NOTIFY_URL, 'notifyUrl'),
-    sidecarMode: 'stub',
-  }
-  return buildEnvelope({
-    status: 'awaiting_client_pay',
-    thirdPartyOrderId: outTradeNo,
-    clientPayload,
-    responseData: {
-      status: 'awaiting_client_pay',
-      gateway: 'alipay',
-      integrationTarget: 'official-sidecar-sdk',
-      scene,
-      outTradeNo,
-      amount,
-      description,
-      clientPayload,
-      sidecarMode: 'stub',
-    },
-    message: 'Alipay sidecar stub accepted payment intent.',
-  })
-}
-
 async function buildOfficialPaymentResponse(body) {
-  const sdk = getAlipaySdk()
+  const sdk = await getAlipaySdk()
   if (!sdk) {
     throw new Error('alipay sidecar is not fully configured')
   }
@@ -217,7 +189,7 @@ async function buildRefundResponse(body) {
   if (currentMode() !== 'official-sdk') {
     throw new Error('alipay refund requires official sidecar configuration')
   }
-  const sdk = getAlipaySdk()
+  const sdk = await getAlipaySdk()
   const outTradeNo = requireText(body.outTradeNo || body.transactionId, 'outTradeNo')
   const refundNo = requireText(body.refundNo || `${outTradeNo}-refund`, 'refundNo')
   const amount = requireAmount(body.amount, 'amount')
@@ -255,7 +227,7 @@ async function buildPayoutResponse(body) {
   if (currentMode() !== 'official-sdk') {
     throw new Error('alipay payout requires official sidecar configuration')
   }
-  const sdk = getAlipaySdk()
+  const sdk = await getAlipaySdk()
   const requestId = requireText(body.requestId, 'requestId')
   const transactionId = requireText(body.transactionId, 'transactionId')
   const withdrawAccount = requireText(body.withdrawAccount, 'withdrawAccount')
@@ -319,7 +291,7 @@ async function buildPayoutQueryResponse(body) {
   if (currentMode() !== 'official-sdk') {
     throw new Error('alipay payout query requires official sidecar configuration')
   }
-  const sdk = getAlipaySdk()
+  const sdk = await getAlipaySdk()
   const requestId = requireText(body.requestId, 'requestId')
   const result = await sdk.exec('alipay.fund.trans.common.query', {
     bizContent: {
@@ -351,7 +323,7 @@ async function buildNotifyVerifyResponse(body) {
   if (currentMode() !== 'official-sdk') {
     throw new Error('alipay notify verification requires official sidecar configuration')
   }
-  const sdk = getAlipaySdk()
+  const sdk = await getAlipaySdk()
   const params = body && typeof body.params === 'object' && body.params ? body.params : {}
   if (!Object.keys(params).length) {
     throw new Error('params is required')
@@ -423,10 +395,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && url.pathname === '/v1/payments/create') {
-    await handleJsonPost(req, res, async (body, mode) => {
-      if (mode === 'stub') return buildStubPaymentResponse(body)
-      return buildOfficialPaymentResponse(body)
-    })
+    await handleJsonPost(req, res, buildOfficialPaymentResponse)
     return
   }
 

@@ -35,8 +35,6 @@ type alipayRuntimeConfig struct {
 	Sandbox          bool   `json:"sandbox"`
 	SidecarURL       string `json:"sidecarUrl"`
 	SidecarAPISecret string `json:"-"`
-	AllowStub        bool   `json:"allowStub"`
-	StubRequested    bool   `json:"-"`
 }
 
 type bankCardPayoutRuntimeConfig struct {
@@ -128,7 +126,6 @@ func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.Wallet
 			Sandbox:          true,
 			SidecarURL:       "",
 			SidecarAPISecret: "",
-			AllowStub:        false,
 		},
 		BankCard: bankCardPayoutRuntimeConfig{
 			ArrivalText:      defaultBankCardConfig().ArrivalText,
@@ -179,13 +176,6 @@ func loadPaymentGatewayRuntimeConfig(ctx context.Context, repo repository.Wallet
 		cfg.Alipay.Sandbox = raw
 	} else if strings.EqualFold(strings.TrimSpace(os.Getenv("ALIPAY_SANDBOX")), "false") {
 		cfg.Alipay.Sandbox = false
-	}
-	if stubValue, ok := boolStringValue(os.Getenv("ALIPAY_SIDECAR_ALLOW_STUB")); ok {
-		cfg.Alipay.AllowStub = stubValue
-		cfg.Alipay.StubRequested = true
-	}
-	if runtimeEnvProductionLike() {
-		cfg.Alipay.AllowStub = false
 	}
 
 	var bankCard map[string]interface{}
@@ -281,9 +271,6 @@ func buildPaymentGatewaySummary(cfg paymentGatewayRuntimeConfig) map[string]inte
 			"sidecarUrlConfigured":   cfg.Alipay.SidecarURL != "",
 			"sidecarAuthConfigured":  cfg.Alipay.SidecarAPISecret != "",
 			"sandbox":                cfg.Alipay.Sandbox,
-			"allowStub":              cfg.Alipay.AllowStub,
-			"allowStubRequested":     cfg.Alipay.StubRequested,
-			"allowStubBlocked":       cfg.Alipay.StubRequested && !cfg.Alipay.AllowStub,
 			"integrationTarget":      "official-sidecar-sdk",
 		},
 		"bankCard": map[string]interface{}{

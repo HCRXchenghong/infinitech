@@ -101,9 +101,6 @@ function buildWechatAppOrderInfo(payload) {
 function buildAlipayOrderString(payload) {
   const orderString = normalizeText(payload.orderString || payload.orderStr || payload.orderInfo);
   if (!orderString) {
-    if (normalizeLower(payload.sidecarMode) === "stub") {
-      throw createPaymentError("当前支付宝仍是 Stub 模式，无法拉起真实支付", "PAYMENT_STUB_MODE");
-    }
     throw createPaymentError("支付宝支付参数不完整，请检查支付配置", "PAYMENT_PAYLOAD_INVALID");
   }
   return orderString;

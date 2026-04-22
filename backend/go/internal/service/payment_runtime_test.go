@@ -122,9 +122,8 @@ func TestLoadPaymentGatewayRuntimeConfigIgnoresPersistedBankStubToggle(t *testin
 	}
 }
 
-func TestLoadPaymentGatewayRuntimeConfigDisablesAlipayStubInProduction(t *testing.T) {
+func TestLoadPaymentGatewayRuntimeConfigKeepsAlipayUnconfiguredWithoutOfficialConfig(t *testing.T) {
 	t.Setenv("ENV", "production")
-	t.Setenv("ALIPAY_SIDECAR_ALLOW_STUB", "true")
 	t.Setenv("ALIPAY_SIDECAR_API_SECRET", "alipay-sidecar-secret")
 
 	svc, _ := newWalletServiceForSettlementTest(t)
@@ -132,22 +131,19 @@ func TestLoadPaymentGatewayRuntimeConfigDisablesAlipayStubInProduction(t *testin
 	if err != nil {
 		t.Fatalf("load runtime config failed: %v", err)
 	}
-	if cfg.Alipay.AllowStub {
-		t.Fatal("expected alipay stub to be disabled in production")
-	}
-	if !cfg.Alipay.StubRequested {
-		t.Fatal("expected alipay stub request to remain visible in summary")
-	}
 
 	summary := buildPaymentGatewaySummary(cfg)
 	alipay, ok := summary["alipay"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected alipay summary map, got %#v", summary["alipay"])
 	}
-	if alipay["allowStub"] != false {
-		t.Fatalf("expected allowStub false in summary, got %#v", alipay["allowStub"])
+	if _, exists := alipay["allowStub"]; exists {
+		t.Fatalf("expected allowStub to disappear from summary, got %#v", alipay["allowStub"])
 	}
-	if alipay["allowStubBlocked"] != true {
-		t.Fatalf("expected allowStubBlocked true in summary, got %#v", alipay["allowStubBlocked"])
+	if _, exists := alipay["allowStubBlocked"]; exists {
+		t.Fatalf("expected allowStubBlocked to disappear from summary, got %#v", alipay["allowStubBlocked"])
+	}
+	if alipay["ready"] != false {
+		t.Fatalf("expected alipay sidecar to stay not ready without official config, got %#v", alipay["ready"])
 	}
 }
