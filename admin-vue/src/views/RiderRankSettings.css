@@ -1,0 +1,115 @@
+.rider-rank-settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rider-rank-settings-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.rider-rank-settings-page .page-title {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+
+.rider-rank-settings-page .page-subtitle,
+.rider-rank-settings-page .card-tip,
+.rider-rank-settings-page .level-key {
+  margin: 0;
+  color: #6b7280;
+}
+
+.rider-rank-settings-page .page-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.rider-rank-settings-page .card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.rider-rank-settings-page .level-card {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid #ebeef5;
+  border-radius: 12px;
+}
+
+.rider-rank-settings-page .level-card:last-child {
+  margin-bottom: 0;
+}
+
+.rider-rank-settings-page .level-card-header {
+  margin-bottom: 12px;
+}
+
+.rider-rank-settings-page .level-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rider-rank-settings-page .level-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 12px;
+}
+
+.rider-rank-settings-page .preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rider-rank-settings-page .preview-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #ebeef5;
+  border-radius: 12px;
+}
+
+.rider-rank-settings-page .preview-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  font-size: 22px;
+}
+
+.rider-rank-settings-page .preview-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rider-rank-settings-page .preview-content span,
+.rider-rank-settings-page .preview-content small {
+  color: #6b7280;
+}
+
+@media (max-width: 1100px) {
+  .rider-rank-settings-page .page-header {
+    flex-direction: column;
+  }
+
+  .rider-rank-settings-page .page-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}

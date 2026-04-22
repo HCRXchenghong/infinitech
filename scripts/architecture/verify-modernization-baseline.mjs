@@ -5042,7 +5042,51 @@ assertContains(
 );
 assertContains(
   "admin-vue/src/views/RiderRankSettings.vue",
+  "useRiderRankSettingsPage({",
+);
+assertContains(
+  "admin-vue/src/views/RiderRankSettings.vue",
+  "RiderRankSettingsHeader",
+);
+assertContains(
+  "admin-vue/src/views/RiderRankSettings.vue",
+  "RiderRankSettingsLevelsSection",
+);
+assertContains(
+  "admin-vue/src/views/RiderRankSettings.vue",
+  "RiderRankSettingsPreviewSection",
+);
+assertContains(
+  "admin-vue/src/views/RiderRankSettings.vue",
+  "RiderRankSettings.css",
+);
+assertContains(
+  "admin-vue/src/views/riderRankSettingsPageHelpers.js",
   "extractEnvelopeData(data)",
+);
+assertExists(
+  "admin-vue/src/views/riderRankSettingsPageHelpers.js",
+);
+assertExists(
+  "admin-vue/src/views/riderRankSettingsSections/RiderRankSettingsHeader.vue",
+);
+assertExists(
+  "admin-vue/src/views/riderRankSettingsSections/RiderRankSettingsLevelsSection.vue",
+);
+assertExists(
+  "admin-vue/src/views/riderRankSettingsSections/RiderRankSettingsPreviewSection.vue",
+);
+assertNotContains(
+  "admin-vue/src/views/RiderRankSettings.vue",
+  "function createLevel(source = {})",
+);
+assertNotContains(
+  "admin-vue/src/views/RiderRankSettings.vue",
+  "function validateLevels()",
+);
+assertNotContains(
+  "admin-vue/src/views/RiderRankSettings.vue",
+  "<div v-for=\"level in sortedLevels\"",
 );
 assertContains(
   "admin-vue/src/views/errandSettingsPageHelpers.js",
