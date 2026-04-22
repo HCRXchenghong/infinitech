@@ -1979,6 +1979,43 @@ assertContains(
   "setSiteCookieConsent('accepted')",
 );
 assertContains(
+  "admin-vue/src/views/OfficialSiteCooperation.vue",
+  "useOfficialSiteCooperationPage({",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCooperation.vue",
+  "OfficialSiteCooperationHero",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCooperation.vue",
+  "OfficialSiteCooperationBenefits",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCooperation.vue",
+  "OfficialSiteCooperationFormCard",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteCooperation.vue",
+  "OfficialSiteCooperation.css",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteCooperationPageHelpers.js",
+  "createOfficialSiteCooperation(",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteCooperationPageHelpers.js",
+);
+assertExists("admin-vue/src/views/OfficialSiteCooperation.css");
+assertExists(
+  "admin-vue/src/views/officialSiteCooperationSections/OfficialSiteCooperationHero.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteCooperationSections/OfficialSiteCooperationBenefits.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteCooperationSections/OfficialSiteCooperationFormCard.vue",
+);
+assertContains(
   "admin-vue/src/views/officialSitePrivacyPolicyPageHelpers.js",
   "const policySections = [",
 );
@@ -6436,6 +6473,18 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/OfficialSitePrivacyPolicy.vue",
   "Privacy Policy",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteCooperation.vue",
+  "const submitting = ref(false)",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteCooperation.vue",
+  "async function submit()",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteCooperation.vue",
+  "<div class=\"bg-white min-h-screen\">",
 );
 assertNotContains(
   "admin-vue/src/views/AccessDenied.vue",
