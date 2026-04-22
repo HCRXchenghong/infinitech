@@ -5508,6 +5508,20 @@ assertContains(
   "admin-vue/src/views/dataManagementHelpers.js",
   "buildDataManagementSummaryCards(exportSummary.value, summaryLoaded.value)",
 );
+assertExists("admin-vue/src/views/dataManagementPageHelpers.js");
+assertExists("admin-vue/src/views/dataManagementSections/DataManagementHeader.vue");
+assertExists("admin-vue/src/views/dataManagementSections/DataManagementOverviewSection.vue");
+assertExists("admin-vue/src/views/dataManagementSections/DataManagementBusinessSection.vue");
+assertExists("admin-vue/src/views/dataManagementSections/DataManagementConfigSection.vue");
+assertExists("admin-vue/src/views/dataManagementSections/DataManagementBundleSection.vue");
+assertContains("admin-vue/src/views/DataManagement.vue", "useDataManagementPage()");
+assertContains("admin-vue/src/views/DataManagement.vue", "DataManagementHeader");
+assertContains("admin-vue/src/views/DataManagement.vue", "DataManagementOverviewSection");
+assertContains("admin-vue/src/views/DataManagement.vue", "DataManagementBusinessSection");
+assertContains("admin-vue/src/views/DataManagement.vue", "DataManagementConfigSection");
+assertContains("admin-vue/src/views/DataManagement.vue", "DataManagementBundleSection");
+assertContains("admin-vue/src/views/DataManagement.vue", "DataManagement.css");
+assertNotContains("admin-vue/src/views/DataManagement.vue", "<el-card class=\"overview-panel\">");
 assertContains(
   "admin-vue/src/views/dataManagementBundleHelpers.js",
   "DATA_MANAGEMENT_BUSINESS_TYPES.map(async (item) => [",
