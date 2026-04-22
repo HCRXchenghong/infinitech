@@ -5601,6 +5601,23 @@ assertContains(
   "admin-vue/src/views/HomeCampaigns.vue",
   "HomeCampaigns.css",
 );
+assertContains(
+  "admin-vue/src/views/HomeCampaigns.vue",
+  "useHomeCampaignsPage({",
+);
+assertExists("admin-vue/src/views/homeCampaignsPageHelpers.js");
+assertContains(
+  "admin-vue/src/views/homeCampaignsPageHelpers.js",
+  "extractAdminHomeCampaignPage(data).items",
+);
+assertContains(
+  "admin-vue/src/views/homeCampaignsPageHelpers.js",
+  "createAdminHomeCampaignForm()",
+);
+assertContains(
+  "admin-vue/src/views/homeCampaignsPageHelpers.js",
+  "buildAdminHomeCampaignPayload(form)",
+);
 assertNotContains(
   "admin-vue/src/views/HomeCampaigns.vue",
   "<div class=\"home-campaigns-panel\">",
@@ -5695,17 +5712,25 @@ assertNotContains(
   "admin-vue/src/views/useChatConsole.js",
   "./chatConsoleHelpers",
 );
-assertContains(
+assertNotContains(
   "admin-vue/src/views/HomeCampaigns.vue",
   "extractAdminHomeCampaignPage(data).items",
 );
-assertContains(
+assertNotContains(
   "admin-vue/src/views/HomeCampaigns.vue",
   "createAdminHomeCampaignForm",
 );
-assertContains(
+assertNotContains(
   "admin-vue/src/views/HomeCampaigns.vue",
   "buildAdminHomeCampaignPayload(form)",
+);
+assertNotContains(
+  "admin-vue/src/views/HomeCampaigns.vue",
+  "const loading = ref(false)",
+);
+assertNotContains(
+  "admin-vue/src/views/HomeCampaigns.vue",
+  "async function loadAll()",
 );
 assertContains(
   "admin-vue/src/utils/platform-settings.js",
