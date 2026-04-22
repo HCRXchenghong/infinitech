@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -17,7 +16,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yuexiang/go-api/internal/repository"
 	"github.com/yuexiang/go-api/internal/service"
-	"github.com/yuexiang/go-api/internal/utils"
 )
 
 // AdminSettingsHandler handles settings and content endpoints.
@@ -640,49 +638,26 @@ func (h *AdminSettingsHandler) DeletePublicAPI(c *gin.Context) {
 
 // Upload image
 func (h *AdminSettingsHandler) UploadImage(c *gin.Context) {
-	file, err := c.FormFile("image")
-	if err != nil {
-		respondAdminSettingsInvalidRequest(c, "未找到图片")
+	policy, status, policyErr := resolveFixedGeneralUploadPolicy(c, uploadDomainAdminAsset)
+	if status != http.StatusOK {
+		respondAdminSettingsStatusError(c, status, policyErr)
 		return
 	}
 
-	// 验证文件类型（支持常见图片格式 + HEIC/HEIF）
-	ext := strings.ToLower(filepath.Ext(file.Filename))
-	allowedExts := map[string]bool{
-		".jpg": true, ".jpeg": true, ".png": true, ".gif": true,
-		".webp": true, ".bmp": true, ".heic": true, ".heif": true,
-	}
-	if !allowedExts[ext] {
-		respondAdminSettingsInvalidRequest(c, "不支持的图片格式")
+	payload, status, uploadErr := buildGeneralUploadPayload(c, "image", policy, "")
+	if status != http.StatusOK {
+		if uploadErr == "没有找到上传文件" {
+			respondAdminSettingsInvalidRequest(c, "未找到图片")
+			return
+		}
+		respondAdminSettingsStatusError(c, status, uploadErr)
 		return
 	}
 
-	uploadDir := filepath.Join("data", "uploads")
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		respondAdminSettingsStatusError(c, http.StatusInternalServerError, "创建目录失败")
-		return
-	}
-
-	filename := strconv.FormatInt(time.Now().UnixNano(), 10) + "_" + filepath.Base(file.Filename)
-	savePath := filepath.Join(uploadDir, filename)
-
-	if err := c.SaveUploadedFile(file, savePath); err != nil {
-		respondAdminSettingsStatusError(c, http.StatusInternalServerError, "保存失败")
-		return
-	}
-
-	// 压缩图片到500KB以下，返回最终文件名（可能格式已转换）
-	finalFilename, err := utils.CompressImage(savePath, 500*1024)
-	if err != nil {
-		os.Remove(savePath)
-		respondAdminSettingsStatusError(c, http.StatusInternalServerError, "图片处理失败")
-		return
-	}
-
-	imageURL := "/uploads/" + finalFilename
-	payload := buildPublicAssetPayload(imageURL, finalFilename, "admin_settings_image", file.Size)
-	payload["imageUrl"] = imageURL
-	payload["url"] = imageURL
+	assetURL := parseString(payload["asset_url"])
+	payload["imageUrl"] = assetURL
+	payload["image_url"] = assetURL
+	payload["url"] = assetURL
 	respondAdminSettingsMirroredSuccess(c, "图片上传成功", payload)
 }
 
@@ -756,48 +731,29 @@ func (h *AdminSettingsHandler) UpdateAppDownloadConfig(c *gin.Context) {
 }
 
 func (h *AdminSettingsHandler) UploadPackage(c *gin.Context) {
-	file, err := c.FormFile("file")
+	originalFile, err := c.FormFile("file")
 	if err != nil {
 		respondAdminSettingsInvalidRequest(c, "未找到安装包文件")
 		return
 	}
-	if file.Size <= 0 {
+	if originalFile.Size <= 0 {
 		respondAdminSettingsInvalidRequest(c, "文件为空")
 		return
 	}
-	if file.Size > maxPackageUploadSize {
-		respondAdminSettingsInvalidRequest(c, "安装包大小不能超过300MB")
+
+	policy, status, policyErr := resolveFixedGeneralUploadPolicy(c, uploadDomainAppPackage)
+	if status != http.StatusOK {
+		respondAdminSettingsStatusError(c, status, policyErr)
 		return
 	}
 
-	ext := strings.ToLower(filepath.Ext(file.Filename))
-	allowedExts := map[string]bool{
-		".ipa": true,
-		".apk": true,
-		".aab": true,
-	}
-	if !allowedExts[ext] {
-		respondAdminSettingsInvalidRequest(c, "仅支持 .ipa / .apk / .aab 安装包")
+	payload, status, uploadErr := buildGeneralUploadPayload(c, "file", policy, "")
+	if status != http.StatusOK {
+		respondAdminSettingsStatusError(c, status, uploadErr)
 		return
 	}
 
-	uploadDir := filepath.Join("data", "uploads", "packages")
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		respondAdminSettingsStatusError(c, http.StatusInternalServerError, "创建安装包目录失败")
-		return
-	}
-
-	filename := strconv.FormatInt(time.Now().UnixNano(), 10) + ext
-	savePath := filepath.Join(uploadDir, filename)
-	if err := c.SaveUploadedFile(file, savePath); err != nil {
-		respondAdminSettingsStatusError(c, http.StatusInternalServerError, "安装包保存失败")
-		return
-	}
-
-	packageURL := "/uploads/packages/" + filename
-	payload := buildPublicAssetPayload(packageURL, filename, "app_package", file.Size)
-	payload["url"] = packageURL
-	payload["original_name"] = filepath.Base(file.Filename)
+	payload["original_name"] = filepath.Base(originalFile.Filename)
 	respondAdminSettingsMirroredSuccess(c, "安装包上传成功", payload)
 }
 

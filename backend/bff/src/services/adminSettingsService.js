@@ -28,6 +28,11 @@ const {
   buildSuccessEnvelopePayload,
 } = require("../utils/apiEnvelope");
 
+const SETTINGS_UPLOAD_DOMAINS = Object.freeze({
+  IMAGE: "admin_asset",
+  PACKAGE: "app_package",
+});
+
 function createProxyHandler(method, pathResolver, optionsResolver) {
   return async function proxyHandler(req, res) {
     const path = typeof pathResolver === "function" ? pathResolver(req) : pathResolver;
@@ -198,8 +203,9 @@ async function uploadImage(req, res) {
   const tempFilePath = req.file.path;
   try {
     const form = new FormData();
-    form.append("image", fs.createReadStream(tempFilePath), req.file.originalname);
-    const response = await requestSettingsRaw(req, "post", "/api/upload-image", {
+    form.append("file", fs.createReadStream(tempFilePath), req.file.originalname);
+    form.append("upload_domain", SETTINGS_UPLOAD_DOMAINS.IMAGE);
+    const response = await requestSettingsRaw(req, "post", "/api/upload", {
       body: form,
       headers: form.getHeaders(),
       validateStatus(status) {
@@ -253,7 +259,8 @@ async function uploadPackage(req, res) {
   try {
     const form = new FormData();
     form.append("file", fs.createReadStream(tempFilePath), req.file.originalname);
-    const response = await requestSettingsRaw(req, "post", "/api/upload/package", {
+    form.append("upload_domain", SETTINGS_UPLOAD_DOMAINS.PACKAGE);
+    const response = await requestSettingsRaw(req, "post", "/api/upload", {
       body: form,
       headers: form.getHeaders(),
       validateStatus(status) {

@@ -9158,5 +9158,14 @@ assertContains(
   "backend/bff/src/config/index.js",
   "BFF requires BFF_CORS_ORIGINS or explicit ADMIN_WEB_BASE_URL/SITE_WEB_BASE_URL in production-like environments",
 );
+assertContains("packages/contracts/src/upload.js", 'APP_PACKAGE: "app_package"');
+assertContains("backend/go/internal/handler/file_upload_handler.go", 'uploadDomainAppPackage         = "app_package"');
+assertContains("backend/go/internal/handler/file_upload_handler.go", "resolveFixedGeneralUploadPolicy");
+assertContains("backend/go/internal/handler/admin_settings_handler.go", "buildGeneralUploadPayload(c, \"image\", policy, \"\")");
+assertContains("backend/go/internal/handler/admin_settings_handler.go", "buildGeneralUploadPayload(c, \"file\", policy, \"\")");
+assertNotContains("backend/go/internal/handler/admin_settings_handler.go", 'filepath.Join("data", "uploads", "packages")');
+assertNotContains("backend/go/internal/handler/admin_settings_handler.go", 'utils.CompressImage(savePath, 500*1024)');
+assertContains("backend/bff/src/services/adminSettingsService.js", 'form.append("upload_domain", SETTINGS_UPLOAD_DOMAINS.IMAGE);');
+assertContains("backend/bff/src/services/adminSettingsService.js", 'form.append("upload_domain", SETTINGS_UPLOAD_DOMAINS.PACKAGE);');
 
 console.log("modernization baseline checks passed");

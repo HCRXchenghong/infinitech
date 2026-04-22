@@ -32,6 +32,7 @@ const (
 	uploadDomainReviewMedia        = "review_media"
 	uploadDomainServiceSound       = "service_sound"
 	uploadDomainAppDownloadQR      = "app_download_qr"
+	uploadDomainAppPackage         = "app_package"
 	uploadDomainMerchantDocument   = "merchant_document"
 	uploadDomainMedicalDocument    = "medical_document"
 	uploadDomainOnboardingDocument = "onboarding_document"
@@ -69,6 +70,12 @@ var audioUploadAllowedExts = map[string]bool{
 	".wav": true,
 	".ogg": true,
 	".amr": true,
+}
+
+var packageUploadAllowedExts = map[string]bool{
+	".ipa": true,
+	".apk": true,
+	".aab": true,
 }
 
 var publicImageUploadAllowedExts = map[string]bool{
@@ -144,6 +151,14 @@ var generalUploadPolicies = map[string]generalUploadPolicy{
 		domain:      uploadDomainAppDownloadQR,
 		maxBytes:    generalUploadMaxBytes,
 		allowedExts: publicImageUploadAllowedExts,
+		allowedRoles: map[string]bool{
+			"admin": true,
+		},
+	},
+	uploadDomainAppPackage: {
+		domain:      uploadDomainAppPackage,
+		maxBytes:    maxPackageUploadSize,
+		allowedExts: packageUploadAllowedExts,
 		allowedRoles: map[string]bool{
 			"admin": true,
 		},
@@ -328,12 +343,8 @@ func respondUploadSuccess(c *gin.Context, message string, payload gin.H) {
 	respondMirroredSuccessEnvelope(c, message, payload)
 }
 
-func resolveGeneralUploadPolicy(c *gin.Context) (generalUploadPolicy, int, string) {
-	if c == nil {
-		return generalUploadPolicy{}, http.StatusUnauthorized, "鉴权失败"
-	}
-
-	uploadDomain := strings.ToLower(strings.TrimSpace(c.PostForm("upload_domain")))
+func resolveGeneralUploadPolicyByRole(uploadDomain, operatorRole string) (generalUploadPolicy, int, string) {
+	uploadDomain = strings.ToLower(strings.TrimSpace(uploadDomain))
 	if uploadDomain == "" {
 		return generalUploadPolicy{}, http.StatusBadRequest, "upload_domain 不能为空"
 	}
@@ -343,7 +354,7 @@ func resolveGeneralUploadPolicy(c *gin.Context) (generalUploadPolicy, int, strin
 		return generalUploadPolicy{}, http.StatusBadRequest, "不支持的上传业务域"
 	}
 
-	operatorRole := strings.ToLower(strings.TrimSpace(c.GetString("operator_role")))
+	operatorRole = strings.ToLower(strings.TrimSpace(operatorRole))
 	if operatorRole == "" {
 		return generalUploadPolicy{}, http.StatusUnauthorized, "鉴权失败"
 	}
@@ -352,6 +363,23 @@ func resolveGeneralUploadPolicy(c *gin.Context) (generalUploadPolicy, int, strin
 	}
 
 	return policy, http.StatusOK, ""
+}
+
+func resolveGeneralUploadPolicy(c *gin.Context) (generalUploadPolicy, int, string) {
+	if c == nil {
+		return generalUploadPolicy{}, http.StatusUnauthorized, "鉴权失败"
+	}
+	return resolveGeneralUploadPolicyByRole(
+		c.PostForm("upload_domain"),
+		c.GetString("operator_role"),
+	)
+}
+
+func resolveFixedGeneralUploadPolicy(c *gin.Context, uploadDomain string) (generalUploadPolicy, int, string) {
+	if c == nil {
+		return generalUploadPolicy{}, http.StatusUnauthorized, "鉴权失败"
+	}
+	return resolveGeneralUploadPolicyByRole(uploadDomain, c.GetString("operator_role"))
 }
 
 func uploadActorID(c *gin.Context, operatorRole string) string {
@@ -393,30 +421,21 @@ func resolveGeneralUploadActor(c *gin.Context) (string, string) {
 	return operatorRole, uploadActorID(c, operatorRole)
 }
 
-func (h *FileUploadHandler) Upload(c *gin.Context) {
-	policy, status, policyErr := resolveGeneralUploadPolicy(c)
-	if status != http.StatusOK {
-		respondUploadError(c, status, policyErr)
-		return
-	}
-
-	file, err := c.FormFile("file")
+func buildGeneralUploadPayload(c *gin.Context, fieldName string, policy generalUploadPolicy, privateAssetSecret string) (gin.H, int, string) {
+	file, err := c.FormFile(fieldName)
 	if err != nil {
-		respondUploadError(c, http.StatusBadRequest, "没有找到上传文件")
-		return
+		return nil, http.StatusBadRequest, "没有找到上传文件"
 	}
 
 	ownerScope := buildGeneralUploadOwnerScope(c, policy.domain)
 	if privateGeneralUploadDomains[policy.domain] {
-		if h == nil || strings.TrimSpace(h.privateAssetSecret) == "" {
-			respondUploadError(c, http.StatusInternalServerError, "私有资源签名配置缺失")
-			return
+		if strings.TrimSpace(privateAssetSecret) == "" {
+			return nil, http.StatusInternalServerError, "私有资源签名配置缺失"
 		}
 
 		operatorRole, actorID := resolveGeneralUploadActor(c)
 		if operatorRole == "" || actorID == "" || actorID == "0" {
-			respondUploadError(c, http.StatusUnauthorized, "鉴权失败")
-			return
+			return nil, http.StatusUnauthorized, "鉴权失败"
 		}
 
 		finalFilename, assetRef, saveErr := savePrivateUploadFile(
@@ -433,28 +452,21 @@ func (h *FileUploadHandler) Upload(c *gin.Context) {
 			if isUploadInternalError(saveErr) || strings.Contains(saveErr.Error(), "私有资源引用生成失败") {
 				saveStatus = http.StatusInternalServerError
 			}
-			respondUploadError(c, saveStatus, saveErr.Error())
-			return
+			return nil, saveStatus, saveErr.Error()
 		}
 
-		previewURL := uploadasset.BuildPreviewURL(assetRef, h.privateAssetSecret, time.Now(), uploadasset.DefaultPreviewTTL)
+		previewURL := uploadasset.BuildPreviewURL(assetRef, privateAssetSecret, time.Now(), uploadasset.DefaultPreviewTTL)
 		if previewURL == "" || previewURL == assetRef {
-			respondUploadError(c, http.StatusInternalServerError, "私有资源预览地址生成失败")
-			return
+			return nil, http.StatusInternalServerError, "私有资源预览地址生成失败"
 		}
 
-		respondUploadSuccess(
-			c,
-			"文件上传成功",
-			buildPrivateAssetPayload(
-				assetRef,
-				previewURL,
-				finalFilename,
-				ownerScope,
-				file.Size,
-			),
-		)
-		return
+		return buildPrivateAssetPayload(
+			assetRef,
+			previewURL,
+			finalFilename,
+			ownerScope,
+			file.Size,
+		), http.StatusOK, ""
 	}
 
 	finalFilename, url, err := saveUploadFile(
@@ -469,19 +481,34 @@ func (h *FileUploadHandler) Upload(c *gin.Context) {
 		if isUploadInternalError(err) {
 			status = http.StatusInternalServerError
 		}
-		respondUploadError(c, status, err.Error())
+		return nil, status, err.Error()
+	}
+
+	return buildMirroredPublicAssetPayload(
+		url,
+		finalFilename,
+		ownerScope,
+		file.Size,
+	), http.StatusOK, ""
+}
+
+func (h *FileUploadHandler) Upload(c *gin.Context) {
+	policy, status, policyErr := resolveGeneralUploadPolicy(c)
+	if status != http.StatusOK {
+		respondUploadError(c, status, policyErr)
+		return
+	}
+
+	payload, status, uploadErr := buildGeneralUploadPayload(c, "file", policy, h.privateAssetSecret)
+	if status != http.StatusOK {
+		respondUploadError(c, status, uploadErr)
 		return
 	}
 
 	respondUploadSuccess(
 		c,
 		"文件上传成功",
-		buildMirroredPublicAssetPayload(
-			url,
-			finalFilename,
-			ownerScope,
-			file.Size,
-		),
+		payload,
 	)
 }
 

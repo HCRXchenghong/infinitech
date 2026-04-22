@@ -6,6 +6,7 @@ export const UPLOAD_DOMAINS = Object.freeze({
   REVIEW_MEDIA: "review_media",
   SERVICE_SOUND: "service_sound",
   APP_DOWNLOAD_QR: "app_download_qr",
+  APP_PACKAGE: "app_package",
   MERCHANT_DOCUMENT: "merchant_document",
   MEDICAL_DOCUMENT: "medical_document",
   ADMIN_ASSET: "admin_asset",

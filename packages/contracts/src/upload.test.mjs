@@ -10,6 +10,7 @@ import {
 test("upload domains expose shared normalized values", () => {
   assert.equal(UPLOAD_DOMAINS.AFTER_SALES_EVIDENCE, "after_sales_evidence");
   assert.equal(UPLOAD_DOMAINS.CHAT_ATTACHMENT, "chat_attachment");
+  assert.equal(UPLOAD_DOMAINS.APP_PACKAGE, "app_package");
   assert.equal(UPLOAD_DOMAINS.ADMIN_ASSET, "admin_asset");
 });
 
