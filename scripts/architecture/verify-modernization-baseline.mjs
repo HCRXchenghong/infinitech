@@ -1262,12 +1262,13 @@ assertContains(
   "admin-vue/src/views/paymentCenterHelpers/settlement.js",
   "/api/settlement/rule-preview",
 );
+assertContains("admin-vue/src/views/blankPageHelpers.js", "useBlankPage({");
 assertContains(
-  "admin-vue/src/views/BlankPage.vue",
+  "admin-vue/src/views/blankPageHelpers.js",
   "createDefaultPaymentGatewaySummary",
 );
 assertContains(
-  "admin-vue/src/views/BlankPage.vue",
+  "admin-vue/src/views/blankPageHelpers.js",
   "createDefaultServiceHealthStatus",
 );
 assertContains(
@@ -1302,6 +1303,10 @@ assertContains(
   "admin-vue/src/views/BlankPage.vue",
   "BlankPage.css",
 );
+assertContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "useBlankPage({",
+);
 assertNotContains(
   "admin-vue/src/views/BlankPage.vue",
   "<div class=\"workbench-hero\">",
@@ -1309,6 +1314,14 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/BlankPage.vue",
   "<div class=\"workbench-summary-grid\">",
+);
+assertNotContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "const loading = ref(false)",
+);
+assertNotContains(
+  "admin-vue/src/views/BlankPage.vue",
+  "async function loadWorkbench()",
 );
 assertContains(
   "admin-vue/src/views/SystemLogs.vue",
@@ -5144,9 +5157,10 @@ assertNotContains(
   "<span>提现处理队列</span>",
 );
 assertContains(
-  "admin-vue/src/views/BlankPage.vue",
+  "admin-vue/src/views/blankPageHelpers.js",
   "extractWithdrawRequestPage",
 );
+assertExists("admin-vue/src/views/blankPageHelpers.js");
 assertContains(
   "admin-vue/src/views/notificationEditorPageViewHelpers.js",
   "resolveUploadAssetUrl",
