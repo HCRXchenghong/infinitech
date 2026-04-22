@@ -135,6 +135,7 @@ var routeGuardRules = []routeGuardRule{
 	{path: "/api/riders/export", guard: guardAdminOnly},
 	{path: "/api/riders/import", guard: guardAdminOnly},
 	{path: "/api/cooperations", methods: methods("GET", "PUT"), guard: guardAdminOnly},
+	{path: "/api/cooperations/:id", methods: methods("PUT"), guard: guardAdminOnly},
 
 	// 商户写操作
 	{path: "/api/shops", methods: methods("POST"), guard: guardMerchantOrAdmin},
