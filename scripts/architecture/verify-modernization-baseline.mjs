@@ -1775,6 +1775,49 @@ assertContains(
   "admin-vue/src/views/notificationPreviewSections/NotificationPreviewArticle.vue",
   "parseNotificationDisplayBlocks",
 );
+assertContains(
+  "admin-vue/src/views/OfficialSiteNewsDetail.vue",
+  "useOfficialSiteNewsDetailPage({",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteNewsDetail.vue",
+  "OfficialSiteNewsDetailTopbar",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteNewsDetail.vue",
+  "OfficialSiteNewsDetailContent",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteNewsDetail.vue",
+  "OfficialSiteNewsDetail.css",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteNewsDetailPageHelpers.js",
+  "parseNotificationDisplayBlocks",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteNewsDetailPageHelpers.js",
+);
+assertExists(
+  "admin-vue/src/views/OfficialSiteNewsDetail.css",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteNewsDetailSections/OfficialSiteNewsDetailTopbar.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteNewsDetailSections/OfficialSiteNewsDetailContent.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteNewsDetailSections/OfficialSiteNewsDetailArticle.vue",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteNewsDetailSections/OfficialSiteNewsDetailContent.vue",
+  "PageStateAlert",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteNewsDetailSections/OfficialSiteNewsDetailArticle.vue",
+  "official-site-article",
+);
 assertExists(
   "admin-vue/src/views/notificationPreviewPageHelpers.js",
 );
@@ -5986,6 +6029,18 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/NotificationPreviewPage.vue",
   "error?.response?.data?.error",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteNewsDetail.vue",
+  "const blocks = computed(() => {",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteNewsDetail.vue",
+  "async function loadDetail()",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteNewsDetail.vue",
+  "function syncSeo()",
 );
 assertNotContains(
   "admin-vue/src/views/settingsActionHelpers.js",
