@@ -1878,6 +1878,52 @@ assertContains(
   "OfficialSiteNews.css",
 );
 assertContains(
+  "admin-vue/src/views/OfficialSiteAbout.vue",
+  "useOfficialSiteAboutPage()",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteAbout.vue",
+  "OfficialSiteAboutHero",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteAbout.vue",
+  "OfficialSiteAboutFounders",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteAbout.vue",
+  "OfficialSiteAboutPartners",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteAbout.vue",
+  "OfficialSiteAboutCompliance",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteAbout.vue",
+  "OfficialSiteAbout.css",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteAboutPageHelpers.js",
+  "const heroMetrics = [",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteAboutPageHelpers.js",
+);
+assertExists(
+  "admin-vue/src/views/OfficialSiteAbout.css",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteAboutSections/OfficialSiteAboutHero.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteAboutSections/OfficialSiteAboutFounders.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteAboutSections/OfficialSiteAboutPartners.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteAboutSections/OfficialSiteAboutCompliance.vue",
+);
+assertContains(
   "admin-vue/src/views/officialSiteNewsPageHelpers.js",
   "listPublicOfficialSiteNews",
 );
@@ -6144,6 +6190,18 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/OfficialSiteNews.vue",
   "function resolveTagType(source)",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteAbout.vue",
+  "合法合规 · 资质认证",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteAbout.vue",
+  "烟台英菲尼信息科技有限公司",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteAbout.vue",
+  "燧石创想工作室",
 );
 assertNotContains(
   "admin-vue/src/views/settingsActionHelpers.js",

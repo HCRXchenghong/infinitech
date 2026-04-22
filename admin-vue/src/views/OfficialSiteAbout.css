@@ -1,0 +1,27 @@
+.official-site-about-page {
+  min-height: 100vh;
+  padding-bottom: 5rem;
+  background: #fff;
+}
+
+.official-site-about-page .official-site-about-shell {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.official-site-about-page .about-section-title {
+  padding: 0 1rem;
+}
+
+.official-site-about-page .about-compliance-divider {
+  width: 1px;
+  height: 3rem;
+  background: #e2e8f0;
+}
+
+@media (max-width: 768px) {
+  .official-site-about-page .official-site-about-shell {
+    padding: 0 1rem;
+  }
+}
