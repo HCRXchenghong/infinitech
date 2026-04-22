@@ -5802,15 +5802,15 @@ assertContains(
   "getCouponClaimBlockedText(coupon.value)",
 );
 assertContains(
-  "admin-vue/src/views/ApiDocumentation.vue",
+  "admin-vue/src/views/apiDocumentationPageHelpers.js",
   "@infinitech/admin-core",
 );
 assertContains(
-  "admin-vue/src/views/ApiDocumentation.vue",
+  "admin-vue/src/views/apiDocumentationPageHelpers.js",
   "buildApiDocumentationQuickStartCurl(apiBaseUrl.value)",
 );
 assertContains(
-  "admin-vue/src/views/ApiDocumentation.vue",
+  "admin-vue/src/views/apiDocumentationPageHelpers.js",
   "buildApiDocumentationRequestExamples(apiBaseUrl.value)",
 );
 assertContains(
