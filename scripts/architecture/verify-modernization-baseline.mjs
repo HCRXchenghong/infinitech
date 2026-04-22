@@ -1553,6 +1553,53 @@ assertNotContains(
   "admin-vue/src/views/AppDownloadLanding.vue",
   "getPublicAppDownloadConfig",
 );
+assertExists("admin-vue/src/views/officialSiteHomePageHelpers.js");
+assertExists("admin-vue/src/views/OfficialSiteHome.css");
+assertExists(
+  "admin-vue/src/views/officialSiteHomeSections/OfficialSiteHomeHero.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteHomeSections/OfficialSiteHomeServices.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteHomeSections/OfficialSiteHomeNews.vue",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteHome.vue",
+  "useOfficialSiteHomePage({",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteHome.vue",
+  "OfficialSiteHomeHero",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteHome.vue",
+  "OfficialSiteHomeServices",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteHome.vue",
+  "OfficialSiteHomeNews",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteHome.vue",
+  "import './OfficialSiteHome.css';",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteHomePageHelpers.js",
+  "listPublicOfficialSiteNews",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteHomePageHelpers.js",
+  "getPublicAppDownloadConfig",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteHome.vue",
+  "const loading = ref(false)",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteHome.vue",
+  "listPublicOfficialSiteNews",
+);
 assertContains(
   "admin-vue/src/views/NotificationPreviewPage.vue",
   "parseNotificationDisplayBlocks",

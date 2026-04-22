@@ -1,0 +1,80 @@
+.official-site-home-page {
+  padding-bottom: 4rem;
+  background: #ffffff;
+}
+
+.official-site-home-page .official-site-home-hero-phone-shell {
+  background: #000000;
+}
+
+.official-site-home-page .official-site-home-hero-phone-cta {
+  width: 100%;
+  height: 100%;
+  padding: 62px 24px 28px;
+  background:
+    radial-gradient(circle at top, rgba(96, 165, 250, 0.22), transparent 34%),
+    linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.official-site-home-page .official-site-home-hero-phone-kicker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #1976d2;
+}
+
+.official-site-home-page .official-site-home-hero-phone-title {
+  margin: 12px 0 0;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.official-site-home-page .official-site-home-hero-phone-qr-shell {
+  margin-top: 24px;
+  width: 188px;
+  height: 188px;
+  padding: 10px;
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.official-site-home-page .official-site-home-hero-phone-qr {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.official-site-home-page .official-site-home-hero-phone-qr-placeholder {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.official-site-home-page .official-site-home-hero-phone-button {
+  margin-top: 24px;
+  width: 100%;
+  height: 48px;
+  border-radius: 16px;
+  font-weight: 700;
+}
+
+.official-site-home-phone-panel-enter-active,
+.official-site-home-phone-panel-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.official-site-home-phone-panel-enter-from,
+.official-site-home-phone-panel-leave-to {
+  opacity: 0;
+  transform: scale(0.98);
+}
