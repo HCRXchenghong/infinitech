@@ -5982,15 +5982,73 @@ assertContains("admin-vue/src/views/CouponManagement.vue", "CouponManagement.css
 assertNotContains("admin-vue/src/views/CouponManagement.vue", "<el-table :data=\"coupons\"");
 assertContains(
   "admin-vue/src/views/CouponLanding.vue",
+  "useCouponLandingPage({",
+);
+assertContains(
+  "admin-vue/src/views/CouponLanding.vue",
+  "CouponLandingLoadingState",
+);
+assertContains(
+  "admin-vue/src/views/CouponLanding.vue",
+  "CouponLandingErrorState",
+);
+assertContains(
+  "admin-vue/src/views/CouponLanding.vue",
+  "CouponLandingGiftStage",
+);
+assertContains(
+  "admin-vue/src/views/CouponLanding.vue",
+  "CouponLandingResultStage",
+);
+assertContains(
+  "admin-vue/src/views/CouponLanding.vue",
+  "CouponLandingToast",
+);
+assertContains(
+  "admin-vue/src/views/CouponLanding.vue",
+  "CouponLanding.css",
+);
+assertContains(
+  "admin-vue/src/views/couponLandingPageHelpers.js",
   "extractEnvelopeData(data)",
 );
 assertContains(
-  "admin-vue/src/views/CouponLanding.vue",
+  "admin-vue/src/views/couponLandingPageHelpers.js",
   "formatCouponDisplayAmount(coupon.value)",
 );
 assertContains(
-  "admin-vue/src/views/CouponLanding.vue",
+  "admin-vue/src/views/couponLandingPageHelpers.js",
   "getCouponClaimBlockedText(coupon.value)",
+);
+assertExists(
+  "admin-vue/src/views/couponLandingPageHelpers.js",
+);
+assertExists(
+  "admin-vue/src/views/couponLandingSections/CouponLandingLoadingState.vue",
+);
+assertExists(
+  "admin-vue/src/views/couponLandingSections/CouponLandingErrorState.vue",
+);
+assertExists(
+  "admin-vue/src/views/couponLandingSections/CouponLandingGiftStage.vue",
+);
+assertExists(
+  "admin-vue/src/views/couponLandingSections/CouponLandingResultStage.vue",
+);
+assertExists(
+  "admin-vue/src/views/couponLandingSections/CouponLandingToast.vue",
+);
+assertNotContains(
+  "admin-vue/src/views/CouponLanding.vue",
+  "const displayAmount = computed(() =>",
+);
+assertNotContains(
+  "admin-vue/src/views/CouponLanding.vue",
+  "watch(token, () => {",
+);
+assertNotContains(
+  "admin-vue/src/views/CouponLanding.vue",
+  "<section v-if=\"view === 'gift' || view === 'opening'\"",
 );
 assertContains(
   "admin-vue/src/views/apiDocumentationPageHelpers.js",
