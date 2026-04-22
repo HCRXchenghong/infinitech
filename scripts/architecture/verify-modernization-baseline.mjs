@@ -1651,6 +1651,53 @@ assertNotContains(
   "admin-vue/src/views/OfficialSiteExposureBoard.vue",
   "createOfficialSiteExposure",
 );
+assertExists("admin-vue/src/views/errandSettingsPageHelpers.js");
+assertExists("admin-vue/src/views/ErrandSettings.css");
+assertExists(
+  "admin-vue/src/views/errandSettingsSections/ErrandSettingsHeader.vue",
+);
+assertExists(
+  "admin-vue/src/views/errandSettingsSections/ErrandSettingsContentSection.vue",
+);
+assertExists(
+  "admin-vue/src/views/errandSettingsSections/ErrandSettingsPreviewSection.vue",
+);
+assertContains(
+  "admin-vue/src/views/ErrandSettings.vue",
+  "useErrandSettingsPage({",
+);
+assertContains(
+  "admin-vue/src/views/ErrandSettings.vue",
+  "ErrandSettingsHeader",
+);
+assertContains(
+  "admin-vue/src/views/ErrandSettings.vue",
+  "ErrandSettingsContentSection",
+);
+assertContains(
+  "admin-vue/src/views/ErrandSettings.vue",
+  "ErrandSettingsPreviewSection",
+);
+assertContains(
+  "admin-vue/src/views/ErrandSettings.vue",
+  "import './ErrandSettings.css';",
+);
+assertContains(
+  "admin-vue/src/views/errandSettingsPageHelpers.js",
+  "buildErrandHomeViewModel",
+);
+assertContains(
+  "admin-vue/src/views/errandSettingsPageHelpers.js",
+  "validateErrandSettings",
+);
+assertNotContains(
+  "admin-vue/src/views/ErrandSettings.vue",
+  "createDefaultErrandSettings()",
+);
+assertNotContains(
+  "admin-vue/src/views/ErrandSettings.vue",
+  "validateErrandSettings(form)",
+);
 assertContains(
   "admin-vue/src/views/NotificationPreviewPage.vue",
   "parseNotificationDisplayBlocks",
@@ -4941,7 +4988,7 @@ assertContains(
   "extractEnvelopeData(data)",
 );
 assertContains(
-  "admin-vue/src/views/ErrandSettings.vue",
+  "admin-vue/src/views/errandSettingsPageHelpers.js",
   "extractEnvelopeData(data)",
 );
 assertContains(
@@ -5735,15 +5782,15 @@ assertContains("admin-vue/src/views/InviteLanding.vue", "InviteLandingLetterSect
 assertContains("admin-vue/src/views/InviteLanding.vue", "InviteLandingFormSection");
 assertContains("admin-vue/src/views/InviteLanding.vue", "InviteLandingSuccessSection");
 assertContains(
-  "admin-vue/src/views/ErrandSettings.vue",
+  "admin-vue/src/views/errandSettingsPageHelpers.js",
   "@infinitech/domain-core",
 );
 assertContains(
-  "admin-vue/src/views/ErrandSettings.vue",
+  "admin-vue/src/views/errandSettingsPageHelpers.js",
   "validateErrandSettings(form)",
 );
 assertContains(
-  "admin-vue/src/views/ErrandSettings.vue",
+  "admin-vue/src/views/errandSettingsPageHelpers.js",
   "buildErrandSettingsPayload(form)",
 );
 assertContains(

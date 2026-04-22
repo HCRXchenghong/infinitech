@@ -1,0 +1,116 @@
+.errand-settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.errand-settings-page .errand-settings-page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.errand-settings-page .errand-settings-page-header h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+
+.errand-settings-page .errand-settings-page-header p,
+.errand-settings-page .errand-settings-card-tip {
+  margin: 0;
+  color: #6b7280;
+}
+
+.errand-settings-page .errand-settings-page-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.errand-settings-page .errand-settings-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.errand-settings-page .errand-settings-services-card {
+  margin-top: 16px;
+}
+
+.errand-settings-page .errand-settings-service-card {
+  padding: 16px;
+  border: 1px solid #ebeef5;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.errand-settings-page .errand-settings-service-card:last-child {
+  margin-bottom: 0;
+}
+
+.errand-settings-page .errand-settings-service-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.errand-settings-page .errand-settings-sort-input {
+  width: 100%;
+}
+
+.errand-settings-page .errand-settings-preview-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.errand-settings-page .errand-settings-hero-card {
+  padding: 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #009bf5 0%, #4ec5ff 100%);
+  color: #ffffff;
+}
+
+.errand-settings-page .errand-settings-hero-card p {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.errand-settings-page .errand-settings-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.errand-settings-page .errand-settings-preview-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #ebeef5;
+  border-radius: 12px;
+}
+
+.errand-settings-page .errand-settings-preview-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.errand-settings-page .errand-settings-preview-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.errand-settings-page .errand-settings-preview-content span,
+.errand-settings-page .errand-settings-preview-content small {
+  color: #6b7280;
+}
