@@ -52,13 +52,15 @@ services:
     image: ${REDIS_IMAGE:-redis:7-alpine}
     container_name: yuexiang-redis
     restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     ports:
       - '${REDIS_HOST_PORT:-2550}:2550'
     volumes:
       - redis_data:/data
-    command: redis-server --port 2550 --appendonly yes
+    command: sh -c 'exec redis-server --port 2550 --appendonly yes --requirepass "$$REDIS_PASSWORD"'
     healthcheck:
-      test: ['CMD', 'redis-cli', '-p', '2550', 'ping']
+      test: ['CMD-SHELL', 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli -p 2550 ping | grep PONG >/dev/null']
       interval: 10s
       timeout: 5s
       retries: 10
@@ -106,7 +108,7 @@ services:
       REDIS_REQUIRED: ${REDIS_REQUIRED:-true}
       REDIS_HOST: redis
       REDIS_PORT: 2550
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       REDIS_DB: ${REDIS_DB:-0}
       BOOTSTRAP_ADMIN_PHONE: ${BOOTSTRAP_ADMIN_PHONE:-13800138000}
       BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-Bootstrap Admin}
@@ -236,12 +238,12 @@ services:
       REDIS_ENABLED: 'true'
       REDIS_HOST: redis
       REDIS_PORT: 2550
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       REDIS_DB: ${REDIS_DB:-0}
       SOCKET_REDIS_ENABLED: 'true'
       SOCKET_REDIS_HOST: redis
       SOCKET_REDIS_PORT: 2550
-      SOCKET_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      SOCKET_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       SOCKET_REDIS_DB: ${REDIS_DB:-0}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://127.0.0.1:8888,http://localhost:8888,http://127.0.0.1:1888,http://localhost:1888,http://127.0.0.1:1788,http://localhost:1788}
       SOCKET_HTTP_REQUEST_TIMEOUT_MS: ${SOCKET_HTTP_REQUEST_TIMEOUT_MS:-30000}
@@ -298,7 +300,7 @@ services:
       REDIS_ENABLED: 'true'
       REDIS_HOST: redis
       REDIS_PORT: 2550
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       REDIS_DB: ${REDIS_DB:-0}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
@@ -318,7 +320,7 @@ services:
       BFF_SLOW_REQUEST_WARN_MS: ${BFF_SLOW_REQUEST_WARN_MS:-1500}
       BFF_READY_REQUIRE_SOCKET: ${BFF_READY_REQUIRE_SOCKET:-true}
       ADMIN_TOKEN_SECRET: ${ADMIN_TOKEN_SECRET:?ADMIN_TOKEN_SECRET is required}
-      ADMIN_QR_LOGIN_SECRET: ${ADMIN_QR_LOGIN_SECRET:-}
+      ADMIN_QR_LOGIN_SECRET: ${ADMIN_QR_LOGIN_SECRET:?ADMIN_QR_LOGIN_SECRET is required}
       ADMIN_WEB_BASE_URL: ${ADMIN_WEB_BASE_URL:-http://127.0.0.1:8888}
       SITE_WEB_BASE_URL: ${SITE_WEB_BASE_URL:-http://127.0.0.1:1888}
       SYSTEM_LOG_DELETE_ACCOUNT: ${SYSTEM_LOG_DELETE_ACCOUNT:-}

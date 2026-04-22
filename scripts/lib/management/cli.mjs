@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { generateDeploymentCredentials, generateSecurePassword } from './credentials.mjs'
+import { buildRuntimeSecurityReceiptRows, generateDeploymentCredentials, generateRuntimeSecurityValues, generateSecurePassword } from './credentials.mjs'
 import { runDoctor } from './doctor.mjs'
 import { installGlobalLaunchers } from './launcher-install.mjs'
 import { resolveRepoContext } from './install-manifest.mjs'
@@ -73,7 +73,7 @@ function printHelp() {
   infinitech menu
   infinitech overview
   infinitech stack up|up-core|up-all|down|restart|logs|errors|ps|config
-  infinitech security show-bootstrap|rotate-bootstrap|show-verify|rotate-verify
+  infinitech security show-bootstrap|rotate-bootstrap|show-verify|rotate-verify|show-runtime
   infinitech reset init|factory
   infinitech admin list|show|create|update|reset-password|delete
   infinitech proxy configure|disable
@@ -212,6 +212,7 @@ async function rotateVerifyCredentials(repoRoot, options = {}) {
 async function resetInit(repoRoot) {
   const existingPhones = getExistingAdminPhones(repoRoot)
   const generated = generateDeploymentCredentials({ existingPhones })
+  const state = getRuntimeState(repoRoot)
   const result = await applyEnvChanges(repoRoot, {
     changes: {
       BOOTSTRAP_ADMIN_PHONE: generated.bootstrapAdminPhone,
@@ -221,6 +222,7 @@ async function resetInit(repoRoot) {
       SYSTEM_LOG_DELETE_PASSWORD: generated.systemLogDeletePassword,
       CLEAR_ALL_DATA_VERIFY_ACCOUNT: generated.clearAllDataVerifyAccount,
       CLEAR_ALL_DATA_VERIFY_PASSWORD: generated.clearAllDataVerifyPassword,
+      ...generateRuntimeSecurityValues(state.envValues),
     },
     apply: true,
   })
@@ -238,6 +240,7 @@ async function resetFactory(repoRoot) {
     SYSTEM_LOG_DELETE_PASSWORD: generated.systemLogDeletePassword,
     CLEAR_ALL_DATA_VERIFY_ACCOUNT: generated.clearAllDataVerifyAccount,
     CLEAR_ALL_DATA_VERIFY_PASSWORD: generated.clearAllDataVerifyPassword,
+    ...generateRuntimeSecurityValues(state.envValues),
   }
 
   const backupPath = backupEnvFile(repoRoot, state.runtimeEnvPath)
@@ -771,6 +774,20 @@ export async function runCli(argv, repoRoot) {
           ])
           console.log(`新系统日志验证账号：${maskSecret(result.generated.systemLogDeleteAccount)}`)
           console.log(`新全量清空验证账号：${maskSecret(result.generated.clearAllDataVerifyAccount)}`)
+          return
+        }
+        case 'show-runtime': {
+          const state = getRuntimeState(context.repoRoot)
+          const rows = buildRuntimeSecurityReceiptRows(state.envValues)
+          if (rows.length === 0) {
+            console.log('当前未检测到核心运行密钥。')
+            return
+          }
+          printSensitiveReceipt(context.repoRoot, 'runtime-security', '核心运行密钥回执已导出。', rows)
+          console.log(formatKeyValues(rows.map((row) => ({
+            label: row.label,
+            value: maskSecret(row.value),
+          }))))
           return
         }
         default:

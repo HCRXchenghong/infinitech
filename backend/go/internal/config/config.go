@@ -267,6 +267,9 @@ func (c *Config) Validate() error {
 	if c.Redis.Required && !c.Redis.Enabled {
 		return fmt.Errorf("Redis is required but REDIS_ENABLED=false")
 	}
+	if isProductionLikeEnv(c.Env) && c.Redis.Enabled && strings.TrimSpace(c.Redis.Password) == "" {
+		return fmt.Errorf("REDIS_PASSWORD is required in %s environment when redis is enabled", c.Env)
+	}
 
 	if c.Database.MaxOpenConns <= 0 {
 		return fmt.Errorf("DB_MAX_OPEN_CONNS must be greater than 0")

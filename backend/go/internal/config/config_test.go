@@ -75,6 +75,7 @@ func prepareProductionConfigTest(t *testing.T, cfg *Config) {
 	t.Helper()
 	cfg.Env = "production"
 	cfg.Redis.Required = true
+	cfg.Redis.Password = "ProdRedisPass123!"
 	cfg.Database.Password = "ProdDBPass123!"
 	cfg.Socket.APISecret = "socket-secret"
 	t.Setenv("BOOTSTRAP_ADMIN_PASSWORD", "StrongBootstrap123!")
@@ -209,6 +210,16 @@ func TestValidateRejectsRequiredRedisWhenDisabled(t *testing.T) {
 
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("expected required redis disabled to be rejected")
+	}
+}
+
+func TestValidateRejectsProductionMissingRedisPassword(t *testing.T) {
+	cfg := newValidConfigForTest()
+	prepareProductionConfigTest(t, cfg)
+	cfg.Redis.Password = ""
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected production missing redis password to be rejected")
 	}
 }
 

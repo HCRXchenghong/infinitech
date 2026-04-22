@@ -27,6 +27,20 @@ test('resolveSocketRuntimeConfig requires dedicated socket redis host in product
   );
 });
 
+test('resolveSocketRuntimeConfig requires socket redis password in production-like environments', () => {
+  assert.throws(
+    () => resolveSocketRuntimeConfig({
+      NODE_ENV: 'production',
+      SOCKET_SERVER_API_SECRET: 'socket-secret',
+      ALLOWED_ORIGINS: 'https://admin.example.com',
+      GO_API_URL: 'https://go.internal.example.com',
+      SOCKET_REDIS_ENABLED: 'true',
+      SOCKET_REDIS_HOST: 'redis.socket.internal',
+    }),
+    /SOCKET_REDIS_PASSWORD is required when socket-server redis is enabled in production-like environments/,
+  );
+});
+
 test('resolveSocketRuntimeConfig accepts explicit production socket runtime config', () => {
   const config = resolveSocketRuntimeConfig({
     NODE_ENV: 'production',

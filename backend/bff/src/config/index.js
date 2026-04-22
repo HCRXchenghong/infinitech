@@ -113,11 +113,16 @@ const env = process.env.NODE_ENV || process.env.ENV || "development";
 const productionLike = ["production", "prod", "staging"].includes(String(env).trim().toLowerCase());
 const corsOrigins = buildCorsOrigins(productionLike);
 const socketServerApiSecret = String(process.env.SOCKET_SERVER_API_SECRET || "").trim();
+const redisEnabled = toBoolean(process.env.REDIS_ENABLED, true);
+const redisPassword = String(process.env.REDIS_PASSWORD || "").trim();
 const goApiUrl = requireBaseUrl("GO_API_URL", "http://127.0.0.1:1029", productionLike);
 const socketServerUrl = requireBaseUrl("SOCKET_SERVER_URL", "http://127.0.0.1:9898", productionLike);
 
 if (productionLike && !socketServerApiSecret) {
   throw new Error("BFF requires SOCKET_SERVER_API_SECRET in production-like environments");
+}
+if (productionLike && redisEnabled && !redisPassword) {
+  throw new Error("BFF requires REDIS_PASSWORD when redis is enabled in production-like environments");
 }
 if (productionLike && corsOrigins.length === 0) {
   throw new Error("BFF requires BFF_CORS_ORIGINS or explicit ADMIN_WEB_BASE_URL/SITE_WEB_BASE_URL in production-like environments");
@@ -140,10 +145,10 @@ module.exports = {
   },
 
   redis: {
-    enabled: toBoolean(process.env.REDIS_ENABLED, true),
+    enabled: redisEnabled,
     host: process.env.REDIS_HOST || "127.0.0.1",
     port: process.env.REDIS_PORT || 2550,
-    password: process.env.REDIS_PASSWORD || "",
+    password: redisPassword,
     db: process.env.REDIS_DB || 0
   },
 
@@ -181,7 +186,7 @@ module.exports = {
   rateLimit: {
     windowMs: toPositiveInt(process.env.BFF_API_RATE_LIMIT_WINDOW_MS, 60 * 1000),
     max: toPositiveInt(process.env.BFF_API_RATE_LIMIT_MAX, productionLike ? 600 : 3000),
-    redisEnabled: toBoolean(process.env.BFF_REDIS_RATE_LIMIT_ENABLED, productionLike && toBoolean(process.env.REDIS_ENABLED, true)),
+    redisEnabled: toBoolean(process.env.BFF_REDIS_RATE_LIMIT_ENABLED, productionLike && redisEnabled),
     redisPrefix: String(process.env.BFF_REDIS_RATE_LIMIT_PREFIX || "ratelimit:bff:api").trim() || "ratelimit:bff:api",
     redisConnectTimeoutMs: toPositiveInt(process.env.BFF_REDIS_RATE_LIMIT_CONNECT_TIMEOUT_MS, 1000)
   },

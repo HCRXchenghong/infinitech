@@ -1,5 +1,6 @@
 import { getConfigMeta, getKnownHostPortKeys } from './config-schema.mjs'
 import { runAdminMaintenance } from './admin-maintenance.mjs'
+import { collectSecurityBaselineIssues } from './credentials.mjs'
 import { buildAllowedOrigins, buildSystemEndpoints, checkHttpReady, detectComposeCommand, getComposeStatus, getProxyCertificateStatus, isProxyConfigured, probeDockerReady, repairDockerCompatibility, resolveProfilesForMode } from './orchestrator.mjs'
 import { resolveRepoContext } from './install-manifest.mjs'
 import { listEnvBackups, readEnvFile } from './runtime-env.mjs'
@@ -73,16 +74,17 @@ function checkEnvCompleteness(repoRoot, envValues = {}) {
     'SOCKET_HOST_PORT',
     'POSTGRES_HOST_PORT',
     'REDIS_HOST_PORT',
-  ]
-  const warningKeys = [
     'JWT_SECRET',
     'ADMIN_TOKEN_SECRET',
     'ADMIN_QR_LOGIN_SECRET',
     'SOCKET_SERVER_API_SECRET',
+    'POSTGRES_PASSWORD',
+    'REDIS_PASSWORD',
+    'ALIPAY_SIDECAR_API_SECRET',
+    'BANK_PAYOUT_SIDECAR_API_SECRET',
   ]
 
   const blockers = []
-  const warnings = []
   for (const key of hardRequiredKeys) {
     const meta = getConfigMeta(key, repoRoot)
     const value = String(envValues[key] || '').trim()
@@ -90,15 +92,12 @@ function checkEnvCompleteness(repoRoot, envValues = {}) {
       blockers.push(key)
     }
   }
-  for (const key of warningKeys) {
-    const meta = getConfigMeta(key, repoRoot)
-    const value = String(envValues[key] || '').trim()
-    if (!value && !String(meta?.defaultHint || '').trim()) {
-      warnings.push(key)
-    }
-  }
 
-  return { blockers, warnings }
+  return { blockers, warnings: [] }
+}
+
+export function checkSecurityBaseline(envValues = {}) {
+  return collectSecurityBaselineIssues(envValues)
 }
 
 export function checkEnvConsistency(repoRoot, envValues = {}) {
@@ -271,10 +270,15 @@ export async function runDoctor(repoRoot) {
   const envCompleteness = checkEnvCompleteness(context.repoRoot, envValues)
   if (envCompleteness.blockers.length > 0) {
     checks.push(makeCheck('blocker', 'env 完整性', `缺少关键变量：${envCompleteness.blockers.join(', ')}`))
-  } else if (envCompleteness.warnings.length > 0) {
-    checks.push(makeCheck('warning', 'env 完整性', `建议补齐安全关键变量：${envCompleteness.warnings.join(', ')}`))
   } else {
     checks.push(makeCheck('ok', 'env 完整性', '关键运行时变量已具备。'))
+  }
+
+  const securityBaseline = checkSecurityBaseline(envValues)
+  if (securityBaseline.blockers.length > 0) {
+    checks.push(makeCheck('blocker', '安全密钥基线', securityBaseline.blockers.join('；')))
+  } else {
+    checks.push(makeCheck('ok', '安全密钥基线', '核心运行密钥与敏感口令均已达到基线要求。'))
   }
 
   const envConsistency = checkEnvConsistency(context.repoRoot, envValues)

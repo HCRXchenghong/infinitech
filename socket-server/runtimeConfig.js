@@ -142,6 +142,12 @@ function resolveRedisConfig(env, productionLike) {
       'SOCKET_REDIS_HOST is required when socket-server redis is enabled in production-like environments',
     );
   }
+  const password = String(env.SOCKET_REDIS_PASSWORD || '').trim();
+  if (productionLike && enabled && !password) {
+    throw new Error(
+      'SOCKET_REDIS_PASSWORD is required when socket-server redis is enabled in production-like environments',
+    );
+  }
 
   return {
     enabled,
@@ -150,7 +156,7 @@ function resolveRedisConfig(env, productionLike) {
       env.SOCKET_REDIS_PORT || (productionLike ? undefined : env.REDIS_PORT),
       2550,
     ),
-    password: String(env.SOCKET_REDIS_PASSWORD || '').trim(),
+    password,
     database: toPositiveInt(
       env.SOCKET_REDIS_DB || (productionLike ? undefined : env.REDIS_DB),
       0,

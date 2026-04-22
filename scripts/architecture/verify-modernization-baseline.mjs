@@ -3739,6 +3739,30 @@ assertContains(
   "backend/docker/docker-compose.yml",
   "SOCKET_SERVER_API_SECRET: ${SOCKET_SERVER_API_SECRET:?SOCKET_SERVER_API_SECRET is required}",
 );
+assertContains(
+  "backend/docker/docker-compose.yml",
+  "ADMIN_QR_LOGIN_SECRET: ${ADMIN_QR_LOGIN_SECRET:?ADMIN_QR_LOGIN_SECRET is required}",
+);
+assertContains(
+  "backend/docker/docker-compose.yml",
+  "REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}",
+);
+assertContains(
+  "backend/docker/docker-compose.yml",
+  'redis-server --port 2550 --appendonly yes --requirepass "$$REDIS_PASSWORD"',
+);
+assertNotContains(
+  "backend/docker/docker-compose.yml",
+  "REDIS_PASSWORD: ${REDIS_PASSWORD:-}",
+);
+assertNotContains(
+  "backend/docker/docker-compose.yml",
+  "SOCKET_REDIS_PASSWORD: ${REDIS_PASSWORD:-}",
+);
+assertNotContains(
+  "backend/docker/docker-compose.yml",
+  "ADMIN_QR_LOGIN_SECRET: ${ADMIN_QR_LOGIN_SECRET:-}",
+);
 assertNotContains(
   "backend/docker/docker-compose.yml",
   "ALIPAY_SIDECAR_ALLOW_STUB:",
@@ -9134,6 +9158,7 @@ assertContains("backend/bff/src/controllers/adminDataController.js", "getRealtim
 assertContains("backend/bff/src/routes/admin.js", "router.get('/realtime/stats', adminDataController.getRealtimeStats);");
 assertNotContains("backend/bff/src/config/index.js", "TOKEN_API_SECRET");
 assertContains("backend/bff/src/config/index.js", "BFF requires SOCKET_SERVER_API_SECRET in production-like environments");
+assertContains("backend/bff/src/config/index.js", "BFF requires REDIS_PASSWORD when redis is enabled in production-like environments");
 assertContains("backend/bff/src/config/index.js", 'throw new Error(`BFF requires ${name} in production-like environments`);');
 assertContains("backend/bff/src/config/index.js", "adminDebugModeSettingsEnabled");
 assertContains("backend/bff/src/routes/admin.js", "if (config.adminDebugModeSettingsEnabled) {");
@@ -9144,6 +9169,8 @@ assertContains("backend/go/.env.example", "# ENABLE_ADMIN_DEBUG_MODE_SETTINGS=tr
 assertContains("admin-vue/src/views/settingsHelpers/paymentAndDebug.js", "debugModeFeatureEnabled");
 assertContains("admin-vue/src/views/settingsSections/SettingsCoreConfigSection.vue", "调试模式入口已按安全基线默认关闭");
 assertNotContains("backend/go/internal/config/config.go", 'getEnv("TOKEN_API_SECRET"');
+assertContains("backend/go/internal/config/config.go", "REDIS_PASSWORD is required in %s environment when redis is enabled");
+assertContains("socket-server/runtimeConfig.js", "SOCKET_REDIS_PASSWORD is required when socket-server redis is enabled in production-like environments");
 assertNotContains("backend/docker/Caddyfile", "/api/stats*");
 assertNotContains("backend/docker/nginx.admin.conf", "location = /api/stats");
 assertContains("backend/go/internal/handler/rider_handler.go", "骑手不能自行修改认证状态");

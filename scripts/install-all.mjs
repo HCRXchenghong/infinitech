@@ -1,7 +1,7 @@
 import os from 'node:os'
 import { runAdminMaintenance } from './lib/management/admin-maintenance.mjs'
 import { buildMirrorEnv, MIRROR_PROFILES } from './lib/management/mirror-profiles.mjs'
-import { generateDeploymentCredentials } from './lib/management/credentials.mjs'
+import { buildRuntimeSecurityReceiptRows, generateDeploymentCredentials, generateRuntimeSecurityValues } from './lib/management/credentials.mjs'
 import { installGlobalLaunchers } from './lib/management/launcher-install.mjs'
 import { getManagementPaths, repoRootFallback } from './lib/management/paths.mjs'
 import { buildAllowedOrigins, composeDown, composeUp, removeManagedVolumes, resolveProfilesForMode } from './lib/management/orchestrator.mjs'
@@ -236,6 +236,8 @@ function buildNextRuntimeValues(currentValues, mirrorProfile, deployMode, resetM
     nextValues.CLEAR_ALL_DATA_VERIFY_PASSWORD = generated.clearAllDataVerifyPassword
   }
 
+  Object.assign(nextValues, generateRuntimeSecurityValues(nextValues))
+
   return nextValues
 }
 
@@ -248,6 +250,7 @@ function printSummary(envFile, runtimeValues, launcherInfo) {
     { label: '系统日志验证口令', value: runtimeValues.SYSTEM_LOG_DELETE_PASSWORD },
     { label: '全量清空验证账号', value: runtimeValues.CLEAR_ALL_DATA_VERIFY_ACCOUNT },
     { label: '全量清空验证口令', value: runtimeValues.CLEAR_ALL_DATA_VERIFY_PASSWORD },
+    ...buildRuntimeSecurityReceiptRows(runtimeValues),
   ])
   console.log('\n运行时环境文件已写入：')
   console.log(`  ${envFile}`)

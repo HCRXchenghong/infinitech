@@ -3,9 +3,9 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { generateDeploymentCredentials, generateSecurePassword } from './credentials.mjs'
+import { buildRuntimeSecurityReceiptRows, collectSecurityBaselineIssues, generateDeploymentCredentials, generateRuntimeSecurityValues, generateSecurePassword } from './credentials.mjs'
 import { getConfigMeta, validateConfigValue } from './config-schema.mjs'
-import { checkEnvConsistency, checkProxyConsistency, isContainerHealthyEnough } from './doctor.mjs'
+import { checkEnvConsistency, checkProxyConsistency, checkSecurityBaseline, isContainerHealthyEnough } from './doctor.mjs'
 import { resolveRepoContext } from './install-manifest.mjs'
 import { pickPosixBinDir } from './launcher-install.mjs'
 import { normalizeAdminMaintenancePayload } from './admin-maintenance.mjs'
@@ -49,6 +49,60 @@ test('generateDeploymentCredentials avoids existing bootstrap phone collisions',
   assert.match(first.bootstrapAdminPhone, /^1\d{10}$/)
   assert.match(second.systemLogDeleteAccount, /^(verify|sec|ops|audit)_[a-f0-9]+$/)
   assert.match(second.clearAllDataVerifyAccount, /^(verify|sec|ops|audit)_[a-f0-9]+$/)
+})
+
+test('generateRuntimeSecurityValues backfills missing or weak core runtime secrets', () => {
+  const generated = generateRuntimeSecurityValues({
+    JWT_SECRET: 'short-secret',
+    ADMIN_TOKEN_SECRET: 'replace-with-a-long-random-admin-token-secret',
+    ADMIN_QR_LOGIN_SECRET: '',
+    SOCKET_SERVER_API_SECRET: '',
+    ALIPAY_SIDECAR_API_SECRET: '',
+    BANK_PAYOUT_SIDECAR_API_SECRET: '',
+    POSTGRES_PASSWORD: 'yuexiang_password',
+    REDIS_ENABLED: 'true',
+    REDIS_PASSWORD: '',
+  })
+
+  assert.match(generated.JWT_SECRET, /^[A-Za-z0-9]{32,}$/)
+  assert.match(generated.ADMIN_TOKEN_SECRET, /^[A-Za-z0-9]{32,}$/)
+  assert.match(generated.ADMIN_QR_LOGIN_SECRET, /^[A-Za-z0-9]{32,}$/)
+  assert.match(generated.SOCKET_SERVER_API_SECRET, /^[A-Za-z0-9]{32,}$/)
+  assert.match(generated.POSTGRES_PASSWORD, /^[A-Za-z0-9]{32}$/)
+  assert.match(generated.REDIS_PASSWORD, /^[A-Za-z0-9]{32}$/)
+})
+
+test('collectSecurityBaselineIssues reports missing runtime secrets and weak passwords', () => {
+  const result = collectSecurityBaselineIssues({
+    JWT_SECRET: 'short-secret',
+    ADMIN_TOKEN_SECRET: '',
+    ADMIN_QR_LOGIN_SECRET: '',
+    SOCKET_SERVER_API_SECRET: '',
+    ALIPAY_SIDECAR_API_SECRET: '',
+    BANK_PAYOUT_SIDECAR_API_SECRET: '',
+    POSTGRES_PASSWORD: 'yuexiang_password',
+    REDIS_ENABLED: 'true',
+    REDIS_PASSWORD: '',
+    BOOTSTRAP_ADMIN_PASSWORD: '123456',
+    SYSTEM_LOG_DELETE_PASSWORD: '',
+    CLEAR_ALL_DATA_VERIFY_PASSWORD: '',
+  })
+
+  assert.ok(result.blockers.some((item) => /JWT_SECRET/.test(item)))
+  assert.ok(result.blockers.some((item) => /POSTGRES_PASSWORD/.test(item)))
+  assert.ok(result.blockers.some((item) => /REDIS_PASSWORD/.test(item)))
+  assert.ok(result.blockers.some((item) => /BOOTSTRAP_ADMIN_PASSWORD/.test(item)))
+})
+
+test('buildRuntimeSecurityReceiptRows only includes relevant populated secrets', () => {
+  const rows = buildRuntimeSecurityReceiptRows({
+    JWT_SECRET: 'JwtSecretValue1234567890JwtSecretValue',
+    REDIS_ENABLED: 'false',
+    REDIS_PASSWORD: '',
+  })
+
+  assert.ok(rows.some((row) => row.key === 'JWT_SECRET'))
+  assert.equal(rows.some((row) => row.key === 'REDIS_PASSWORD'), false)
 })
 
 test('config schema exposes initialization and security metadata', () => {
@@ -110,6 +164,27 @@ test('checkEnvConsistency warns when derived admin URL no longer matches edited 
   assert.equal(result.warnings.length, 1)
   assert.match(result.warnings[0], /后台 Web Base URL/)
   assert.match(result.warnings[0], /9999/)
+})
+
+test('checkSecurityBaseline surfaces weak runtime secret issues', () => {
+  const result = checkSecurityBaseline({
+    JWT_SECRET: '',
+    ADMIN_TOKEN_SECRET: '',
+    ADMIN_QR_LOGIN_SECRET: '',
+    SOCKET_SERVER_API_SECRET: '',
+    ALIPAY_SIDECAR_API_SECRET: '',
+    BANK_PAYOUT_SIDECAR_API_SECRET: '',
+    POSTGRES_PASSWORD: '',
+    REDIS_ENABLED: 'true',
+    REDIS_PASSWORD: '',
+    BOOTSTRAP_ADMIN_PASSWORD: '123456',
+    SYSTEM_LOG_DELETE_PASSWORD: '',
+    CLEAR_ALL_DATA_VERIFY_PASSWORD: '',
+  })
+
+  assert.ok(result.blockers.some((item) => /JWT_SECRET/.test(item)))
+  assert.ok(result.blockers.some((item) => /REDIS_PASSWORD/.test(item)))
+  assert.ok(result.blockers.some((item) => /BOOTSTRAP_ADMIN_PASSWORD/.test(item)))
 })
 
 test('checkEnvConsistency warns on partially configured reverse proxy variables', () => {

@@ -13,9 +13,11 @@ describe("bff config hardening", () => {
     delete process.env.ADMIN_WEB_BASE_URL;
     delete process.env.SITE_WEB_BASE_URL;
     delete process.env.SOCKET_SERVER_API_SECRET;
+    delete process.env.REDIS_ENABLED;
     process.env.JWT_SECRET = "test-request-secret-key-for-jest-1234567890";
     process.env.ADMIN_TOKEN_SECRET = "test-admin-secret-key-for-jest-1234567890";
     process.env.ADMIN_QR_LOGIN_SECRET = "test-admin-qr-login-secret-key-for-jest-1234567890";
+    process.env.REDIS_PASSWORD = "test-redis-secret-key-for-jest-1234567890";
   });
 
   afterAll(() => {
@@ -95,6 +97,17 @@ describe("bff config hardening", () => {
     process.env.SOCKET_SERVER_URL = "https://socket.internal.example.com";
 
     expect(() => loadConfig()).toThrow(/BFF_CORS_ORIGINS|ADMIN_WEB_BASE_URL|SITE_WEB_BASE_URL/);
+  });
+
+  test("production requires explicit redis password when redis is enabled", () => {
+    process.env.NODE_ENV = "production";
+    process.env.SOCKET_SERVER_API_SECRET = "socket-secret";
+    process.env.BFF_CORS_ORIGINS = "https://admin.example.com";
+    process.env.GO_API_URL = "https://go.internal.example.com";
+    process.env.SOCKET_SERVER_URL = "https://socket.internal.example.com";
+    delete process.env.REDIS_PASSWORD;
+
+    expect(() => loadConfig()).toThrow(/REDIS_PASSWORD/);
   });
 
   test("production accepts explicit cors origins and socket secret", () => {
