@@ -1,338 +1,96 @@
-<template src="./Orders.template.html"></template>
+<template>
+  <div class="orders-page">
+    <OrdersListPanel
+      :biz-type-filter="bizTypeFilter"
+      :can-quick-dispatch="canQuickDispatch"
+      :clearing="clearing"
+      :current-page="currentPage"
+      :dispatching-order-id="dispatchingOrderId"
+      :format-time="formatTime"
+      :get-order-type-icon="getOrderTypeIcon"
+      :get-order-type-text="getOrderTypeText"
+      :get-status-tag-type="getStatusTagType"
+      :get-status-text="getStatusText"
+      :handle-clear-all-orders="handleClearAllOrders"
+      :handle-page-change="handlePageChange"
+      :handle-quick-dispatch="handleQuickDispatch"
+      :handle-search="handleSearch"
+      :handle-size-change="handleSizeChange"
+      :is-mobile="isMobile"
+      :load-error="loadError"
+      :loading="loading"
+      :load-orders="loadOrders"
+      :open-detail="openDetail"
+      :orders="orders"
+      :page-size="pageSize"
+      :search-keyword="searchKeyword"
+      :status-filter="statusFilter"
+      :total="total"
+      :update-biz-type-filter="setBizTypeFilter"
+      :update-search-keyword="setSearchKeyword"
+      :update-status-filter="setStatusFilter"
+    />
+
+    <OrdersDetailDialog
+      :can-quick-dispatch="canQuickDispatch"
+      :detail="detail"
+      :dispatching-order-id="dispatchingOrderId"
+      :get-order-type-text="getOrderTypeText"
+      :get-status-tag-type="getStatusTagType"
+      :get-status-text="getStatusText"
+      :handle-quick-dispatch="handleQuickDispatch"
+      :visible="detailVisible"
+      @update:visible="handleDetailVisibleUpdate"
+    />
+  </div>
+</template>
 <script setup>
-import { ref, onMounted, watch, onUnmounted } from 'vue';
-import request from '@/utils/request';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Search, Refresh, More, Delete } from '@element-plus/icons-vue';
-import { extractErrorMessage } from '@infinitech/contracts';
-import {
-  buildAdminOrderDetail,
-  canAdminOrderQuickDispatch,
-  extractAdminOrderPage,
-  formatAdminOrderTime,
-  getAdminOrderStatusTagType,
-  getAdminOrderStatusText,
-  getAdminOrderTypeIcon,
-  getAdminOrderTypeText,
-  normalizeAdminOrderBizType,
-} from '@infinitech/admin-core';
-import PageStateAlert from '@/components/PageStateAlert.vue';
-import ResponsiveActions from '@/components/ResponsiveActions.vue';
-import { useResponsiveListPage } from '@/composables/useResponsiveListPage';
+import request from '@/utils/request';
+import './Orders.css';
+import OrdersDetailDialog from './ordersSections/OrdersDetailDialog.vue';
+import OrdersListPanel from './ordersSections/OrdersListPanel.vue';
+import { useOrdersPage } from './ordersPageHelpers';
 
-// 移动端检测
-const loading = ref(false);
-const loadError = ref('');
-const orders = ref([]);
-const currentPage = ref(1);
-const { isMobile, pageSize } = useResponsiveListPage({
-  onModeChange: () => {
-    currentPage.value = 1;
-    loadOrders();
-  }
-});
-const total = ref(0);
-const searchKeyword = ref('');
-const statusFilter = ref('');
-const bizTypeFilter = ref('');
-const detailVisible = ref(false);
-const detail = ref({});
-const clearing = ref(false);
-const dispatchingOrderId = ref(null);
-let refreshInterval = null;
-
-// 数据缓存：使用localStorage持久化缓存
-const CACHE_KEY_PREFIX = 'admin_orders_cache_';
-const CACHE_DURATION = 30000; // 30秒缓存有效期
-
-const cacheKey = () => {
-  return `${currentPage.value}-${pageSize.value}-${statusFilter.value || 'all'}-${bizTypeFilter.value || 'all'}-${searchKeyword.value || ''}`;
-};
-
-// 获取缓存
-function getCachedOrders(key) {
-  try {
-    const cached = localStorage.getItem(CACHE_KEY_PREFIX + key);
-    if (cached) {
-      const { data, timestamp } = JSON.parse(cached);
-      const now = Date.now();
-      if (now - timestamp < CACHE_DURATION) {
-        return data;
-      }
-      localStorage.removeItem(CACHE_KEY_PREFIX + key);
-    }
-  } catch (error) {
-    console.error('读取缓存失败:', error);
-    localStorage.removeItem(CACHE_KEY_PREFIX + key);
-  }
-  return null;
-}
-
-// 设置缓存
-function setCachedOrders(key, ordersData, totalData) {
-  try {
-    const cacheData = {
-      data: {
-        orders: ordersData,
-        total: totalData
-      },
-      timestamp: Date.now()
-    };
-    localStorage.setItem(CACHE_KEY_PREFIX + key, JSON.stringify(cacheData));
-    
-    // 限制缓存数量，最多保留50个缓存项
-    const allKeys = Object.keys(localStorage).filter(k => k.startsWith(CACHE_KEY_PREFIX));
-    if (allKeys.length > 50) {
-      // 删除最旧的缓存
-      const sortedKeys = allKeys.map(k => ({
-        key: k,
-        timestamp: JSON.parse(localStorage.getItem(k)).timestamp
-      })).sort((a, b) => a.timestamp - b.timestamp);
-      
-      for (let i = 0; i < sortedKeys.length - 50; i++) {
-        localStorage.removeItem(sortedKeys[i].key);
-      }
-    }
-  } catch (error) {
-    console.error('保存缓存失败:', error);
-  }
-}
-
-// 清除所有缓存
-function clearAllCache() {
-  const allKeys = Object.keys(localStorage).filter(k => k.startsWith(CACHE_KEY_PREFIX));
-  allKeys.forEach(k => localStorage.removeItem(k));
-}
-
-onMounted(async () => {
-  // 先尝试从缓存加载
-  const key = cacheKey();
-  const cached = getCachedOrders(key);
-  if (cached) {
-    orders.value = cached.orders;
-    total.value = cached.total;
-    loading.value = false;
-  }
-
-  await loadOrders(true);
-
-  // 每5秒自动刷新订单状态（静默刷新）
-  refreshInterval = setInterval(() => {
-    loadOrders(false); // 不显示loading，避免闪烁
-  }, 5000);
+const {
+  bizTypeFilter,
+  canQuickDispatch,
+  clearing,
+  currentPage,
+  detail,
+  detailVisible,
+  dispatchingOrderId,
+  formatTime,
+  getOrderTypeIcon,
+  getOrderTypeText,
+  getStatusTagType,
+  getStatusText,
+  handleClearAllOrders,
+  handlePageChange,
+  handleQuickDispatch,
+  handleSearch,
+  handleSizeChange,
+  isMobile,
+  loadError,
+  loading,
+  loadOrders,
+  openDetail,
+  orders,
+  pageSize,
+  searchKeyword,
+  setBizTypeFilter,
+  setDetailVisible,
+  setSearchKeyword,
+  setStatusFilter,
+  statusFilter,
+  total,
+} = useOrdersPage({
+  request,
+  ElMessage,
+  ElMessageBox,
 });
 
-onUnmounted(() => {
-  if (refreshInterval) {
-    clearInterval(refreshInterval);
-  }
-});
-
-watch([statusFilter, bizTypeFilter], () => {
-  currentPage.value = 1;
-  // 不需要清空缓存，让缓存自然过期，切换回来时还能使用
-  loadOrders();
-});
-
-async function loadOrders(forceRefresh = false) {
-  const key = cacheKey();
-  loadError.value = '';
-  
-  // 如果不是强制刷新，先尝试从缓存加载
-  if (!forceRefresh) {
-    const cached = getCachedOrders(key);
-    if (cached) {
-    orders.value = cached.orders;
-    total.value = cached.total;
-      // 如果有缓存，后台静默更新
-      if (loading.value) {
-        loading.value = false;
-  }
-    }
-  }
-  
-  // 如果强制刷新或没有缓存，显示loading
-  if (forceRefresh || !getCachedOrders(key)) {
-  loading.value = true;
-  }
-  
-  try {
-    const params = {
-      page: currentPage.value,
-      limit: pageSize.value
-    };
-    
-    if (searchKeyword.value) {
-      params.search = searchKeyword.value;
-    }
-    
-    if (statusFilter.value) {
-      params.status = statusFilter.value;
-    }
-    if (bizTypeFilter.value) {
-      params.bizType = bizTypeFilter.value;
-    }
-    
-    const { data } = await request.get('/api/orders', { params });
-    const page = extractAdminOrderPage(data);
-
-    if (page.items.length > 0) {
-      orders.value = page.items;
-      total.value = page.total || 0;
-      // 保存到缓存
-      setCachedOrders(key, [...page.items], page.total || 0);
-    } else {
-      orders.value = [];
-      total.value = page.total || 0;
-    }
-  } catch (e) {
-    console.error('加载订单失败:', e);
-    loadError.value = extractErrorMessage(e, '加载订单失败，请稍后重试');
-    // 如果请求失败且没有缓存数据，才清空显示
-    if (!getCachedOrders(key)) {
-    orders.value = [];
-    total.value = 0;
-    }
-  } finally {
-    loading.value = false;
-  }
-}
-
-function handleSearch() {
-  currentPage.value = 1;
-  // 不需要清空缓存，让缓存自然过期，切换回来时还能使用
-  loadOrders();
-}
-
-function handlePageChange(page) {
-  currentPage.value = page;
-  // 先尝试从缓存加载
-  const key = cacheKey();
-  const cached = getCachedOrders(key);
-  if (cached) {
-    orders.value = cached.orders;
-    total.value = cached.total;
-  }
-  loadOrders(); // 后台更新数据
-}
-
-function handleSizeChange(size) {
-  pageSize.value = size;
-  currentPage.value = 1;
-  // 不需要清空缓存，让缓存自然过期
-  loadOrders();
-}
-
-async function handleClearAllOrders() {
-  try {
-    await ElMessageBox.confirm(
-      '确定要清空所有订单吗？此操作不可恢复！',
-      '确认清空',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    );
-
-    clearing.value = true;
-    try {
-      const { data } = await request.post('/api/orders/delete-all');
-      if (data.success) {
-        ElMessage.success(`成功清空 ${data.deleted || 0} 条订单`);
-        clearAllCache(); // 清空订单后清空所有缓存
-        await loadOrders(true);
-      }
-    } catch (e) {
-      console.error('清空订单失败:', e);
-      ElMessage.error(extractErrorMessage(e, '清空订单失败'));
-    } finally {
-      clearing.value = false;
-    }
-  } catch (e) {
-    // 用户取消操作
-  }
-}
-
-function canQuickDispatch(order) {
-  return canAdminOrderQuickDispatch(order);
-}
-
-function normalizeBizType(order) {
-  return normalizeAdminOrderBizType(order);
-}
-
-async function handleQuickDispatch(order) {
-  if (!order || !order.id) return;
-
-  try {
-    await ElMessageBox.confirm(
-      `确认对订单 #${order.daily_order_id || order.id} 执行一键派单？`,
-      '一键派单',
-      {
-        confirmButtonText: '确认派单',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    );
-  } catch (err) {
-    return;
-  }
-
-  dispatchingOrderId.value = order.id;
-  try {
-    const { data } = await request.post(`/api/orders/${order.id}/dispatch`);
-    const riderName = data?.rider?.name || data?.rider?.phone || '骑手';
-    ElMessage.success(`派单成功，已分配给 ${riderName}`);
-
-    clearAllCache();
-    await loadOrders(true);
-
-    if (detailVisible.value && detail.value?.id === order.id && data?.order) {
-      detail.value = { ...detail.value, ...data.order };
-    }
-  } catch (e) {
-    console.error('一键派单失败:', e);
-    ElMessage.error(extractErrorMessage(e, '一键派单失败'));
-  } finally {
-    dispatchingOrderId.value = null;
-  }
-}
-
-function getStatusText(status, order) {
-  return getAdminOrderStatusText(status, order);
-}
-
-function getStatusTagType(status) {
-  return getAdminOrderStatusTagType(status);
-}
-
-function getOrderTypeText(order) {
-  return getAdminOrderTypeText(order);
-}
-
-function getOrderTypeIcon(order) {
-  return getAdminOrderTypeIcon(order);
-}
-
-function formatTime(timeStr) {
-  return formatAdminOrderTime(timeStr);
-}
-
-function openDetail(row) {
-  detail.value = buildAdminOrderDetail(row);
-  detailVisible.value = true;
-}
-
-function handleRowClick(row) {
-  openDetail(row);
-}
-
-function handleMobileAction(command) {
-  if (command === 'clear') {
-    handleClearAllOrders();
-  }
+function handleDetailVisibleUpdate(value) {
+  setDetailVisible(value);
 }
 </script>
-
-<style scoped lang="css" src="./Orders.css"></style>

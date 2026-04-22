@@ -1,8 +1,8 @@
-.page {
+.orders-page {
   padding: 0;
 }
 
-.panel {
+.orders-panel {
   background: #ffffff;
   border-radius: 14px;
   border: 1px solid #e6ebf5;
@@ -10,7 +10,7 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
 }
 
-.panel-header {
+.orders-panel-header {
   margin-bottom: 16px;
   display: flex;
   align-items: center;
@@ -19,170 +19,60 @@
   gap: 12px;
 }
 
-.panel-title {
+.orders-panel-title {
   font-weight: 700;
   font-size: 18px;
 }
 
-.panel-actions {
+.orders-panel .panel-actions {
   display: flex;
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
 }
 
-.order-content {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-  max-width: 280px;
-}
-
-/* 服务订单样式 */
-.service-order {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-}
-
-.service-icon {
-  font-size: 16px;
-  flex-shrink: 0;
-}
-
-.service-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.service-name {
-  font-weight: 500;
-  color: #333;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.service-price {
-  font-size: 12px;
-  color: #e74c3c;
-  font-weight: 600;
-  margin-top: 2px;
-}
-
-/* 订单项样式 */
-.order-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 4px 0;
-}
-
-.item-icon {
-  font-size: 14px;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.item-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.item-text {
-  color: #333;
-  line-height: 1.4;
-  word-break: break-word;
-}
-
-.item-sub {
-  font-size: 11px;
-  color: #666;
-  margin-top: 2px;
-  line-height: 1.3;
-}
-
-/* 订单信息样式 */
-.order-info {
-  font-size: 11px;
-  color: #666;
-  padding: 2px 0;
-  margin-top: 2px;
-  border-top: 1px solid #f0f0f0;
-  padding-top: 4px;
-}
-
-.info-label {
-  font-weight: 500;
-  color: #333;
-}
-
-.pagination-container {
+.orders-pagination-container {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
 }
 
-.detail-container {
+.orders-see-detail-text {
+  color: #909399;
+  font-size: 12px;
+}
+
+.orders-detail-container {
   max-height: 70vh;
   overflow-y: auto;
 }
 
-.detail-section {
+.orders-detail-section {
   margin-top: 16px;
 }
 
-.detail-title {
+.orders-detail-price {
+  color: #f56c6c;
   font-weight: 700;
-  font-size: 16px;
-  margin-bottom: 12px;
-  color: #303133;
 }
 
-.detail-card {
-  padding: 16px;
-  background: #f8f9fa;
+.orders-detail-media {
+  max-width: 200px;
+  display: block;
+  border-radius: 8px;
 }
 
-.order-item {
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #e4e7ed;
+.orders-detail-muted {
+  color: #909399;
 }
 
-.order-item:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-}
-
-.item-label {
-  font-weight: 600;
-  color: #606266;
-  margin-right: 8px;
-}
-
-.item-value {
-  color: #303133;
-  margin-top: 4px;
-  line-height: 1.6;
-}
-
-.item-row {
-  margin-top: 8px;
-  color: #606266;
-  line-height: 1.6;
-}
-
-/* 移动端样式 */
 @media (max-width: 768px) {
-  .panel {
+  .orders-panel {
     padding: 12px;
     position: relative;
   }
 
-  .panel-header {
+  .orders-panel-header {
     position: sticky;
     top: 0;
     z-index: 100;
@@ -195,24 +85,24 @@
     align-items: stretch;
   }
 
-  .panel-actions {
+  .orders-panel .panel-actions {
     width: 100%;
     display: flex;
     flex-direction: column;
     gap: 10px;
   }
 
-  .mobile-search-row {
+  .orders-mobile-search-row {
     display: flex;
     gap: 8px;
     width: 100%;
   }
 
-  .mobile-search-row :deep(.el-input) {
+  .orders-mobile-search-row .el-input {
     flex: 1;
   }
 
-  .mobile-filter-row {
+  .orders-mobile-filter-row {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
@@ -220,22 +110,21 @@
     align-items: center;
   }
 
-  .mobile-filter-row :deep(.el-select) {
+  .orders-mobile-filter-row .el-select {
     flex: 1;
   }
 
-  .mobile-filter-row :deep(.el-button) {
+  .orders-mobile-filter-row .el-button {
     flex-shrink: 0;
   }
 
-  /* 移动端卡片列表 */
-  .mobile-orders-list {
+  .orders-mobile-list {
     display: flex;
     flex-direction: column;
     gap: 0;
   }
 
-  .mobile-order-card {
+  .orders-mobile-card {
     background: #ffffff;
     border: none;
     border-radius: 0;
@@ -246,15 +135,15 @@
     cursor: pointer;
   }
 
-  .mobile-order-card:active {
+  .orders-mobile-card:active {
     background-color: #f5f7fa;
   }
 
-  .mobile-order-card:last-child {
+  .orders-mobile-card:last-child {
     border-bottom: none;
   }
 
-  .mobile-order-header {
+  .orders-mobile-card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -263,13 +152,13 @@
     border-bottom: 1px solid #f0f0f0;
   }
 
-  .mobile-order-id {
+  .orders-mobile-card-id {
     font-weight: 600;
     font-size: 18px;
     color: #303133;
   }
 
-  .mobile-order-type {
+  .orders-mobile-card-type {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -278,22 +167,22 @@
     color: #606266;
   }
 
-  .type-icon {
+  .orders-mobile-type-icon {
     font-size: 18px;
   }
 
-  .type-text {
+  .orders-mobile-type-text {
     font-weight: 500;
   }
 
-  .mobile-order-content {
+  .orders-mobile-card-content {
     margin-bottom: 12px;
     padding: 10px;
     background: #f8f9fa;
     border-radius: 8px;
   }
 
-  .mobile-order-item {
+  .orders-mobile-card-item {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
@@ -303,54 +192,54 @@
     line-height: 1.6;
   }
 
-  .mobile-order-item:last-child {
+  .orders-mobile-card-item:last-child {
     margin-bottom: 0;
   }
 
-  .item-label {
+  .orders-mobile-card-item-label {
     font-weight: 500;
     color: #606266;
     flex-shrink: 0;
   }
 
-  .item-value {
+  .orders-mobile-card-item-value {
     color: #303133;
     flex: 1;
     word-break: break-word;
   }
 
-  .mobile-order-footer {
+  .orders-mobile-card-footer {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
     gap: 12px;
   }
 
-  .mobile-order-info {
+  .orders-mobile-card-info {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 4px;
   }
 
-  .info-item {
+  .orders-mobile-card-info-item {
     display: flex;
     align-items: center;
     gap: 4px;
     font-size: 12px;
   }
 
-  .info-label {
+  .orders-mobile-card-info-label {
     color: #909399;
     flex-shrink: 0;
   }
 
-  .info-value {
+  .orders-mobile-card-info-value {
     color: #606266;
     word-break: break-word;
   }
 
-  .mobile-order-meta {
+  .orders-mobile-card-meta {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -358,64 +247,62 @@
     flex-shrink: 0;
   }
 
-  .meta-price {
+  .orders-mobile-card-price {
     font-size: 16px;
     font-weight: 600;
     color: #e74c3c;
   }
 
-  .meta-time {
+  .orders-mobile-card-time {
     font-size: 11px;
     color: #909399;
   }
 
-  .mobile-order-actions {
+  .orders-mobile-card-actions {
     margin-top: 12px;
     display: flex;
     justify-content: flex-end;
   }
 
-  .mobile-empty-state {
+  .orders-mobile-empty-state {
     text-align: center;
     padding: 60px 20px;
   }
 
-  .empty-icon {
+  .orders-mobile-empty-icon {
     font-size: 48px;
     margin-bottom: 12px;
   }
 
-  .empty-text {
+  .orders-mobile-empty-text {
     color: #909399;
     font-size: 14px;
   }
 
-  /* 移动端分页 */
-  .pagination-container {
+  .orders-pagination-container {
     padding: 10px 0;
     overflow-x: auto;
   }
 
-  :deep(.el-pagination) {
+  .orders-pagination-container .el-pagination {
     flex-wrap: wrap;
     justify-content: center;
   }
 
-  /* 移动端对话框 */
-  :deep(.el-dialog) {
+  .orders-detail-dialog {
     width: 95% !important;
     margin: 5vh auto !important;
   }
 
-  :deep(.el-descriptions) {
+  .orders-detail-dialog .el-descriptions {
     font-size: 12px;
   }
 
-  :deep(.el-descriptions__label) {
+  .orders-detail-dialog .el-descriptions__label {
     width: 80px !important;
   }
 
-  :deep(.el-descriptions__content) {
+  .orders-detail-dialog .el-descriptions__content {
     word-break: break-word;
   }
 }

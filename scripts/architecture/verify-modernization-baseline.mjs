@@ -4463,6 +4463,26 @@ assertNotContains(
   "admin-vue/src/views/ShopManageDetail.vue",
   "buildAdminShopReviewPayload",
 );
+assertExists("admin-vue/src/views/ordersPageHelpers.js");
+assertExists("admin-vue/src/views/ordersSections/OrdersListPanel.vue");
+assertExists("admin-vue/src/views/ordersSections/OrdersFilterBar.vue");
+assertExists("admin-vue/src/views/ordersSections/OrdersDesktopTable.vue");
+assertExists("admin-vue/src/views/ordersSections/OrdersMobileList.vue");
+assertExists("admin-vue/src/views/ordersSections/OrdersDetailDialog.vue");
+assertContains("admin-vue/src/views/Orders.vue", "useOrdersPage({");
+assertContains("admin-vue/src/views/Orders.vue", "OrdersListPanel");
+assertContains("admin-vue/src/views/Orders.vue", "OrdersDetailDialog");
+assertContains("admin-vue/src/views/Orders.vue", "import './Orders.css';");
+assertContains("admin-vue/src/views/ordersPageHelpers.js", "extractAdminOrderPage");
+assertContains("admin-vue/src/views/ordersPageHelpers.js", "extractEnvelopeData");
+assertContains("admin-vue/src/views/ordersPageHelpers.js", "buildAdminOrderDetail");
+assertNotExists("admin-vue/src/views/Orders.template.html");
+assertNotContains(
+  "admin-vue/src/views/Orders.vue",
+  "<template src=\"./Orders.template.html\"></template>",
+);
+assertNotContains("admin-vue/src/views/Orders.vue", "const loading = ref(false)");
+assertNotContains("admin-vue/src/views/Orders.vue", "async function loadOrders(");
 assertContains(
   "admin-vue/src/views/ridersReviewActionHelpers.js",
   "extractRiderReviewPage",
@@ -4896,8 +4916,6 @@ assertContains(
   "admin-vue/src/views/RiderRanks.vue",
   "extractDashboardRankItems(data)",
 );
-assertContains("admin-vue/src/views/Orders.vue", "extractAdminOrderPage(data)");
-assertContains("admin-vue/src/views/Orders.vue", "buildAdminOrderDetail(row)");
 assertContains(
   "admin-vue/src/views/dashboardPageHelpers.js",
   "extractDashboardRankItems(weekUserRes.value?.data)",
