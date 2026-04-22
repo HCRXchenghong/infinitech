@@ -5809,6 +5809,18 @@ assertContains(
   "admin-vue/src/views/couponManagementHelpers.js",
   "validateCouponCreateDraft(createForm)",
 );
+assertExists("admin-vue/src/views/couponManagementSections/CouponManagementHeader.vue");
+assertExists("admin-vue/src/views/couponManagementSections/CouponManagementTableCard.vue");
+assertExists("admin-vue/src/views/couponManagementSections/CouponCreateDialog.vue");
+assertExists("admin-vue/src/views/couponManagementSections/CouponIssueDialog.vue");
+assertExists("admin-vue/src/views/couponManagementSections/CouponIssueLogDialog.vue");
+assertContains("admin-vue/src/views/CouponManagement.vue", "CouponManagementHeader");
+assertContains("admin-vue/src/views/CouponManagement.vue", "CouponManagementTableCard");
+assertContains("admin-vue/src/views/CouponManagement.vue", "CouponCreateDialog");
+assertContains("admin-vue/src/views/CouponManagement.vue", "CouponIssueDialog");
+assertContains("admin-vue/src/views/CouponManagement.vue", "CouponIssueLogDialog");
+assertContains("admin-vue/src/views/CouponManagement.vue", "CouponManagement.css");
+assertNotContains("admin-vue/src/views/CouponManagement.vue", "<el-table :data=\"coupons\"");
 assertContains(
   "admin-vue/src/views/CouponLanding.vue",
   "extractEnvelopeData(data)",
