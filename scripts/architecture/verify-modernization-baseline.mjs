@@ -5038,7 +5038,51 @@ assertNotContains(
 );
 assertContains(
   "admin-vue/src/views/MerchantTaxonomySettings.vue",
+  "useMerchantTaxonomySettingsPage({",
+);
+assertContains(
+  "admin-vue/src/views/MerchantTaxonomySettings.vue",
+  "MerchantTaxonomySettingsHeader",
+);
+assertContains(
+  "admin-vue/src/views/MerchantTaxonomySettings.vue",
+  "MerchantTaxonomySettingsTypesSection",
+);
+assertContains(
+  "admin-vue/src/views/MerchantTaxonomySettings.vue",
+  "MerchantTaxonomySettingsCategoriesSection",
+);
+assertContains(
+  "admin-vue/src/views/MerchantTaxonomySettings.vue",
+  "MerchantTaxonomySettings.css",
+);
+assertContains(
+  "admin-vue/src/views/merchantTaxonomySettingsPageHelpers.js",
   "extractEnvelopeData(data)",
+);
+assertExists(
+  "admin-vue/src/views/merchantTaxonomySettingsPageHelpers.js",
+);
+assertExists(
+  "admin-vue/src/views/merchantTaxonomySettingsSections/MerchantTaxonomySettingsHeader.vue",
+);
+assertExists(
+  "admin-vue/src/views/merchantTaxonomySettingsSections/MerchantTaxonomySettingsTypesSection.vue",
+);
+assertExists(
+  "admin-vue/src/views/merchantTaxonomySettingsSections/MerchantTaxonomySettingsCategoriesSection.vue",
+);
+assertNotContains(
+  "admin-vue/src/views/MerchantTaxonomySettings.vue",
+  "function createOption(source = {})",
+);
+assertNotContains(
+  "admin-vue/src/views/MerchantTaxonomySettings.vue",
+  "function validateOptions(items, label)",
+);
+assertNotContains(
+  "admin-vue/src/views/MerchantTaxonomySettings.vue",
+  "<el-table :data=\"merchantTypes\"",
 );
 assertContains(
   "admin-vue/src/views/RiderRankSettings.vue",
