@@ -1,0 +1,18 @@
+.merchant-detail-page {
+  min-height: 400px;
+}
+
+.merchant-detail-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 16px;
+}
+
+.merchant-detail-rating {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.merchant-detail-shop-dialog {
+  max-width: 1200px;
+}

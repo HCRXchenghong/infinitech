@@ -8892,6 +8892,57 @@ assertNotContains(
   "e.response?.data?.error",
 );
 assertNotContains("admin-vue/src/views/Orders.vue", "e.response?.data?.error");
+assertContains(
+  "admin-vue/src/views/MerchantDetail.vue",
+  "useMerchantDetailPage({",
+);
+assertContains(
+  "admin-vue/src/views/MerchantDetail.vue",
+  "MerchantDetailBasicTab",
+);
+assertContains(
+  "admin-vue/src/views/MerchantDetail.vue",
+  "MerchantDetailShopsTab",
+);
+assertContains(
+  "admin-vue/src/views/MerchantDetail.vue",
+  "MerchantDetailShopDialog",
+);
+assertContains(
+  "admin-vue/src/views/MerchantDetail.vue",
+  "MerchantDetail.css",
+);
+assertContains(
+  "admin-vue/src/views/merchantDetailPageHelpers.js",
+  "buildAdminMerchantShopCreatePayload",
+);
+assertExists("admin-vue/src/views/merchantDetailPageHelpers.js");
+assertExists("admin-vue/src/views/MerchantDetail.css");
+assertExists(
+  "admin-vue/src/views/merchantDetailSections/MerchantDetailBasicTab.vue",
+);
+assertExists(
+  "admin-vue/src/views/merchantDetailSections/MerchantDetailShopsTab.vue",
+);
+assertExists(
+  "admin-vue/src/views/merchantDetailSections/MerchantDetailShopDialog.vue",
+);
+assertNotContains(
+  "admin-vue/src/views/MerchantDetail.vue",
+  "<style scoped>",
+);
+assertNotContains(
+  "admin-vue/src/views/MerchantDetail.vue",
+  "function addShop()",
+);
+assertNotContains(
+  "admin-vue/src/views/MerchantDetail.vue",
+  "async function handleShopSave(shopData)",
+);
+assertNotContains(
+  "admin-vue/src/views/MerchantDetail.vue",
+  "style=\"margin-bottom: 16px;\"",
+);
 assertNotContains(
   "admin-vue/src/views/MerchantDetail.vue",
   "e.response?.data?.error",
