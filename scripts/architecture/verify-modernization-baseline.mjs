@@ -9138,6 +9138,14 @@ assertContains("backend/bff/src/routes/admin.js", "router.get('/realtime/stats',
 assertNotContains("backend/bff/src/config/index.js", "TOKEN_API_SECRET");
 assertContains("backend/bff/src/config/index.js", "BFF requires SOCKET_SERVER_API_SECRET in production-like environments");
 assertContains("backend/bff/src/config/index.js", 'throw new Error(`BFF requires ${name} in production-like environments`);');
+assertContains("backend/bff/src/config/index.js", "adminDebugModeSettingsEnabled");
+assertContains("backend/bff/src/routes/admin.js", "if (config.adminDebugModeSettingsEnabled) {");
+assertContains("backend/bff/.env.example", "# ENABLE_ADMIN_DEBUG_MODE_SETTINGS=true");
+assertContains("backend/go/cmd/main.go", "if adminDebugModeSettingsEnabled() {");
+assertContains("backend/go/internal/middleware/route_guard.go", 'os.Getenv("ENABLE_ADMIN_DEBUG_MODE_SETTINGS")');
+assertContains("backend/go/.env.example", "# ENABLE_ADMIN_DEBUG_MODE_SETTINGS=true");
+assertContains("admin-vue/src/views/settingsHelpers/paymentAndDebug.js", "debugModeFeatureEnabled");
+assertContains("admin-vue/src/views/settingsSections/SettingsCoreConfigSection.vue", "调试模式入口已按安全基线默认关闭");
 assertNotContains("backend/go/internal/config/config.go", 'getEnv("TOKEN_API_SECRET"');
 assertNotContains("backend/docker/Caddyfile", "/api/stats*");
 assertNotContains("backend/docker/nginx.admin.conf", "location = /api/stats");

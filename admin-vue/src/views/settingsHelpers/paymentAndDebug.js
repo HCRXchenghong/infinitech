@@ -19,6 +19,11 @@ function formatSaveError(error) {
   return '保存失败: ' + extractErrorMessage(error, '未知错误');
 }
 
+function isDebugModeFeatureDisabled(error) {
+  const status = Number(error?.response?.status || error?.status || 0);
+  return status === 404 || status === 410;
+}
+
 export function usePaymentAndDebugSettings({
   request,
   ElMessage,
@@ -49,6 +54,7 @@ export function usePaymentAndDebugSettings({
   const savingPayMode = savingPayModeRef || ref(false);
   const savingWx = savingWxRef || ref(false);
   const savingAli = savingAliRef || ref(false);
+  const debugModeFeatureEnabled = ref(false);
 
   const loading = ref(false);
   const error = ref('');
@@ -80,8 +86,14 @@ export function usePaymentAndDebugSettings({
       if (response?.data) {
         applyDebugMode(extractEnvelopeData(response.data) || {});
       }
+      debugModeFeatureEnabled.value = true;
       return debugMode.value;
     } catch (err) {
+      if (isDebugModeFeatureDisabled(err)) {
+        debugModeFeatureEnabled.value = false;
+        applyDebugMode(DEFAULT_DEBUG_MODE);
+        return null;
+      }
       if (throwOnError) {
         throw err;
       }
@@ -197,6 +209,13 @@ export function usePaymentAndDebugSettings({
   }
 
   async function saveDebugMode() {
+    if (!debugModeFeatureEnabled.value) {
+      ElMessage?.warning?.(
+        '调试模式入口已默认关闭，如需启用请显式配置 ENABLE_ADMIN_DEBUG_MODE_SETTINGS=true',
+      );
+      return false;
+    }
+
     savingDebugMode.value = true;
     try {
       const payload = buildDebugModePayload(debugMode.value);
@@ -253,6 +272,7 @@ export function usePaymentAndDebugSettings({
     DEFAULT_WXPAY_CONFIG,
     DEFAULT_ALIPAY_CONFIG,
     debugMode,
+    debugModeFeatureEnabled,
     payMode,
     wxpay,
     alipay,

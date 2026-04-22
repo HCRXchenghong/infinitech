@@ -16,7 +16,7 @@
 
   <el-card class="card">
     <div class="card-title">调试模式</div>
-    <el-form label-width="100px" size="small">
+    <el-form v-if="debugModeFeatureEnabled" label-width="100px" size="small">
       <el-form-item label="全局调试">
         <el-switch
           v-model="debugMode.enabled"
@@ -55,6 +55,15 @@
         />
       </el-form-item>
     </el-form>
+    <div v-else style="display:grid;gap:12px;">
+      <div style="font-size:14px;font-weight:600;color:#1f2937;">
+        调试模式入口已按安全基线默认关闭。
+      </div>
+      <div class="form-tip">
+        如需在受控环境临时启用，请为 Go API 与 BFF 同时显式配置
+        <code>ENABLE_ADMIN_DEBUG_MODE_SETTINGS=true</code>，未开启时该入口不会暴露路由。
+      </div>
+    </div>
   </el-card>
 
   <el-card class="card">
@@ -169,6 +178,10 @@ defineProps({
   debugMode: {
     type: Object,
     required: true,
+  },
+  debugModeFeatureEnabled: {
+    type: Boolean,
+    default: false,
   },
   savingDebugMode: {
     type: Boolean,

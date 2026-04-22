@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -46,6 +47,10 @@ func methods(vals ...string) map[string]struct{} {
 	return result
 }
 
+func adminDebugModeSettingsEnabled() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("ENABLE_ADMIN_DEBUG_MODE_SETTINGS")), "true")
+}
+
 func (r routeGuardRule) match(method, fullPath string) bool {
 	if len(r.methods) > 0 {
 		if _, ok := r.methods[strings.ToUpper(method)]; !ok {
@@ -75,7 +80,6 @@ var routeGuardRules = []routeGuardRule{
 	{path: "/api/stats", guard: guardAdminOnly},
 	{path: "/api/user-ranks", guard: guardAdminOnly},
 	{path: "/api/rider-ranks", guard: guardAdminOnly},
-	{path: "/api/debug-mode", guard: guardAdminOnly},
 	{path: "/api/sms-config", guard: guardAdminOnly},
 	{path: "/api/sms/codes", methods: methods("GET"), guard: guardAdminOnly},
 	{path: "/api/weather-config", guard: guardAdminOnly},
@@ -225,6 +229,15 @@ var routeGuardRules = []routeGuardRule{
 	{path: "/api/points/goods", methods: methods("POST"), guard: guardAdminOnly},
 	{path: "/api/points/goods/:id", methods: methods("PUT", "DELETE"), guard: guardAdminOnly},
 	{path: "/api/points/redemptions/:id", methods: methods("PUT"), guard: guardAdminOnly},
+}
+
+func init() {
+	if adminDebugModeSettingsEnabled() {
+		routeGuardRules = append(routeGuardRules, routeGuardRule{
+			path:  "/api/debug-mode",
+			guard: guardAdminOnly,
+		})
+	}
 }
 
 // RequireRouteGuards 为敏感路由提供统一鉴权保护，避免遗漏。

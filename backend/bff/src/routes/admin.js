@@ -1,6 +1,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 
+const config = require('../config');
 const { requireAdminAuth } = require('../middleware/requireAdminAuth');
 const adminController = require('../controllers/adminController');
 const adminDataController = require('../controllers/adminDataController');
@@ -215,8 +216,10 @@ router.post('/public-apis', adminSettingsController.createPublicAPI);
 router.put('/public-apis/:id', adminSettingsController.updatePublicAPI);
 router.delete('/public-apis/:id', adminSettingsController.deletePublicAPI);
 
-router.get('/debug-mode', adminSettingsController.getDebugMode);
-router.post('/debug-mode', adminSettingsController.updateDebugMode);
+if (config.adminDebugModeSettingsEnabled) {
+  router.get('/debug-mode', adminSettingsController.getDebugMode);
+  router.post('/debug-mode', adminSettingsController.updateDebugMode);
+}
 router.get('/sms-config', adminSettingsController.getSMSConfig);
 router.post('/sms-config', adminSettingsController.updateSMSConfig);
 router.get('/weather-config', adminSettingsController.getWeatherConfig);

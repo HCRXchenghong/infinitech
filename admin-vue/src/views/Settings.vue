@@ -13,6 +13,7 @@
       <SettingsCoreConfigSection
         :router="router"
         :debug-mode="debugMode"
+        :debug-mode-feature-enabled="debugModeFeatureEnabled"
         :saving-debug-mode="savingDebugMode"
         :save-debug-mode="saveDebugMode"
         :sms="sms"
@@ -123,6 +124,7 @@ const {
   uploadingPackage,
   dataMgmtItems,
   debugMode,
+  debugModeFeatureEnabled,
   savingDebugMode,
   clearAllDialogVisible,
   clearingAllData,

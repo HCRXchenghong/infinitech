@@ -83,6 +83,7 @@ export function useSettingsPage() {
     ElMessage,
   });
   const debugMode = paymentAndDebugSettings.debugMode;
+  const debugModeFeatureEnabled = paymentAndDebugSettings.debugModeFeatureEnabled;
   const savingDebugMode = paymentAndDebugSettings.savingDebugMode;
   const payMode = paymentAndDebugSettings.payMode;
   const savingPayMode = paymentAndDebugSettings.savingPayMode;
@@ -302,6 +303,7 @@ export function useSettingsPage() {
     importingAll,
     dataMgmtItems,
     debugMode,
+    debugModeFeatureEnabled,
     savingDebugMode,
     payMode,
     savingPayMode,

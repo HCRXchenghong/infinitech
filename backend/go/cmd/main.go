@@ -43,6 +43,10 @@ const (
 	riderOnlineTTL            = 90 * time.Second
 )
 
+func adminDebugModeSettingsEnabled() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("ENABLE_ADMIN_DEBUG_MODE_SETTINGS")), "true")
+}
+
 var errOrderNotDelivering = errors.New("order is not in delivering status")
 
 type migrationTarget struct {
@@ -1053,8 +1057,10 @@ func main() {
 		api.GET("/rider-ranks", handlers.Admin.GetRiderRanks)
 
 		// 管理端设置与内容
-		api.GET("/debug-mode", handlers.AdminSettings.GetDebugMode)
-		api.POST("/debug-mode", handlers.AdminSettings.UpdateDebugMode)
+		if adminDebugModeSettingsEnabled() {
+			api.GET("/debug-mode", handlers.AdminSettings.GetDebugMode)
+			api.POST("/debug-mode", handlers.AdminSettings.UpdateDebugMode)
+		}
 		api.GET("/sms-config", handlers.AdminSettings.GetSMSConfig)
 		api.POST("/sms-config", handlers.AdminSettings.UpdateSMSConfig)
 		api.GET("/weather-config", handlers.AdminSettings.GetWeatherConfig)

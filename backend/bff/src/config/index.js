@@ -128,6 +128,7 @@ module.exports = {
   goApiUrl,
   socketServerUrl,
   socketServerApiSecret,
+  adminDebugModeSettingsEnabled: toBoolean(process.env.ENABLE_ADMIN_DEBUG_MODE_SETTINGS, false),
 
   db: {
     host: process.env.DB_HOST || "127.0.0.1",

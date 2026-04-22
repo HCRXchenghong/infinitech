@@ -30,6 +30,19 @@ describe("bff config hardening", () => {
     expect(config.corsOrigins).toContain("http://localhost:1888");
   });
 
+  test("admin debug mode settings stay disabled by default", () => {
+    const config = loadConfig();
+
+    expect(config.adminDebugModeSettingsEnabled).toBe(false);
+  });
+
+  test("admin debug mode settings require explicit opt in", () => {
+    process.env.ENABLE_ADMIN_DEBUG_MODE_SETTINGS = "true";
+
+    const config = loadConfig();
+    expect(config.adminDebugModeSettingsEnabled).toBe(true);
+  });
+
   test("production requires explicit socket secret", () => {
     process.env.NODE_ENV = "production";
     process.env.BFF_CORS_ORIGINS = "https://admin.example.com";
