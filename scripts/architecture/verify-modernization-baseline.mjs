@@ -1918,8 +1918,28 @@ assertContains(
   "OfficialSiteCookieRequired.css",
 );
 assertContains(
+  "admin-vue/src/views/OfficialSitePrivacyPolicy.vue",
+  "useOfficialSitePrivacyPolicyPage()",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSitePrivacyPolicy.vue",
+  "OfficialSitePrivacyPolicyHero",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSitePrivacyPolicy.vue",
+  "OfficialSitePrivacyPolicyArticle",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSitePrivacyPolicy.vue",
+  "OfficialSitePrivacyPolicy.css",
+);
+assertContains(
   "admin-vue/src/views/officialSiteCookieRequiredPageHelpers.js",
   "setSiteCookieConsent('accepted')",
+);
+assertContains(
+  "admin-vue/src/views/officialSitePrivacyPolicyPageHelpers.js",
+  "const policySections = [",
 );
 assertExists(
   "admin-vue/src/views/officialSiteCookieRequiredPageHelpers.js",
@@ -1928,10 +1948,22 @@ assertExists(
   "admin-vue/src/views/OfficialSiteCookieRequired.css",
 );
 assertExists(
+  "admin-vue/src/views/officialSitePrivacyPolicyPageHelpers.js",
+);
+assertExists(
+  "admin-vue/src/views/OfficialSitePrivacyPolicy.css",
+);
+assertExists(
   "admin-vue/src/views/officialSiteCookieRequiredSections/OfficialSiteCookieRequiredHero.vue",
 );
 assertExists(
   "admin-vue/src/views/officialSiteCookieRequiredSections/OfficialSiteCookieRequiredPanels.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSitePrivacyPolicySections/OfficialSitePrivacyPolicyHero.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSitePrivacyPolicySections/OfficialSitePrivacyPolicyArticle.vue",
 );
 assertContains(
   "admin-vue/src/views/officialSiteAboutPageHelpers.js",
@@ -6246,6 +6278,18 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/OfficialSiteCookieRequired.vue",
   "当前浏览器尚未允许官网 Cookie 与本地存储",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSitePrivacyPolicy.vue",
+  "<style scoped>",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSitePrivacyPolicy.vue",
+  "本政策适用于悦享e食官网及其官网子页面",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSitePrivacyPolicy.vue",
+  "Privacy Policy",
 );
 assertNotContains(
   "admin-vue/src/views/settingsActionHelpers.js",
