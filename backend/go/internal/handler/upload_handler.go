@@ -2,8 +2,7 @@ package handler
 
 import (
 	"net/http"
-	"path/filepath"
-	"time"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,30 +13,34 @@ func NewUploadHandler() *UploadHandler {
 	return &UploadHandler{}
 }
 
+func resolveLegacyEditorImageUploadDomain(c *gin.Context) string {
+	if c == nil {
+		return uploadDomainAdminAsset
+	}
+
+	switch strings.ToLower(strings.TrimSpace(c.GetString("operator_role"))) {
+	case "merchant":
+		return uploadDomainShopMedia
+	default:
+		return uploadDomainAdminAsset
+	}
+}
+
 func (h *UploadHandler) UploadImage(c *gin.Context) {
-	file, err := c.FormFile("file")
-	if err != nil {
-		respondUploadError(c, http.StatusBadRequest, "文件上传失败")
-		return
-	}
-
-	dateDir := time.Now().Format("2006-01-02")
-	finalFilename, url, err := saveUploadFile(
+	policy, status, policyErr := resolveFixedGeneralUploadPolicy(
 		c,
-		file,
-		5*1024*1024,
-		publicImageUploadAllowedExts,
-		"images",
-		filepath.Clean(dateDir),
+		resolveLegacyEditorImageUploadDomain(c),
 	)
-	if err != nil {
-		status := http.StatusBadRequest
-		if isUploadInternalError(err) {
-			status = http.StatusInternalServerError
-		}
-		respondUploadError(c, status, err.Error())
+	if status != http.StatusOK {
+		respondUploadError(c, status, policyErr)
 		return
 	}
 
-	respondUploadSuccess(c, "图片上传成功", buildMirroredPublicAssetPayload(url, finalFilename, "merchant_or_admin_image", file.Size))
+	payload, status, uploadErr := buildGeneralUploadPayload(c, "file", policy, "")
+	if status != http.StatusOK {
+		respondUploadError(c, status, uploadErr)
+		return
+	}
+
+	respondUploadSuccess(c, "图片上传成功", payload)
 }

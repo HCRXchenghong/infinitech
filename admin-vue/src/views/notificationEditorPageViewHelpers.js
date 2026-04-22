@@ -1,5 +1,6 @@
 import { computed, onMounted, ref } from 'vue'
-import { extractEnvelopeData, extractErrorMessage, resolveUploadAssetUrl } from '@infinitech/contracts'
+import { appendAdminUploadDomain } from '@infinitech/admin-core'
+import { extractEnvelopeData, extractErrorMessage, resolveUploadAssetUrl, UPLOAD_DOMAINS } from '@infinitech/contracts'
 import {
   buildPayload,
   createBlock,
@@ -97,8 +98,9 @@ export function useNotificationEditorPage({ route, router, request, ElMessage })
 
   async function uploadNotificationImage(file) {
     const formData = new FormData()
-    formData.append('image', file)
-    const { data } = await request.post('/api/upload/image', formData, {
+    formData.append('file', file)
+    appendAdminUploadDomain(formData, UPLOAD_DOMAINS.ADMIN_ASSET)
+    const { data } = await request.post('/api/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     const imageUrl = String(resolveUploadAssetUrl(data) || '').trim()

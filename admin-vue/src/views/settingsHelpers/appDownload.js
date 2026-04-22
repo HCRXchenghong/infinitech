@@ -112,7 +112,8 @@ export function useAppDownloadSettings({ request, ElMessage } = {}) {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const { data } = await request.post('/api/upload-package', formData, {
+      appendAdminUploadDomain(formData, UPLOAD_DOMAINS.APP_PACKAGE);
+      const { data } = await request.post('/api/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       const nextUrl = String(resolveUploadAssetUrl(data) || '').trim();

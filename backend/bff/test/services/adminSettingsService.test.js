@@ -31,6 +31,7 @@ const {
   clearAllData,
   getAppDownloadConfig,
   normalizeAssetUrlFields,
+  uploadEditorImage,
   uploadImage,
   uploadPackage,
 } = require('../../src/services/adminSettingsService');
@@ -316,6 +317,47 @@ describe('adminSettingsService asset normalization', () => {
     expect(requestPath).toBe('/api/upload');
     expect(serializedFields).toContain('name="upload_domain"');
     expect(serializedFields).toContain('app_package');
+    expect(safeUnlinkTempFile).toHaveBeenCalledWith(tempFilePath);
+
+    fs.rmSync(tempFilePath, { force: true });
+  });
+
+  it('routes legacy editor image uploads through the unified upload domain gateway', async () => {
+    const tempFilePath = createTempUploadFile('editor.png');
+    requestSettingsRaw.mockResolvedValue({
+      status: 200,
+      data: {
+        request_id: 'req-upload-editor-image',
+        code: 'OK',
+        message: '编辑器图片上传成功',
+        data: {
+          asset_url: '/uploads/admin_asset/editor.png',
+          url: '/uploads/admin_asset/editor.png',
+        },
+      },
+    });
+
+    const req = {
+      file: {
+        path: tempFilePath,
+        originalname: 'editor.png',
+      },
+    };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+
+    await uploadEditorImage(req, res);
+
+    const [, method, requestPath, options] =
+      requestSettingsRaw.mock.calls[requestSettingsRaw.mock.calls.length - 1];
+    const serializedFields = options.body._streams.filter((chunk) => typeof chunk === 'string').join('');
+
+    expect(method).toBe('post');
+    expect(requestPath).toBe('/api/upload');
+    expect(serializedFields).toContain('name="upload_domain"');
+    expect(serializedFields).toContain('admin_asset');
     expect(safeUnlinkTempFile).toHaveBeenCalledWith(tempFilePath);
 
     fs.rmSync(tempFilePath, { force: true });

@@ -232,7 +232,8 @@ async function uploadEditorImage(req, res) {
   try {
     const form = new FormData();
     form.append("file", fs.createReadStream(tempFilePath), req.file.originalname);
-    const response = await requestSettingsRaw(req, "post", "/api/upload/image", {
+    form.append("upload_domain", SETTINGS_UPLOAD_DOMAINS.IMAGE);
+    const response = await requestSettingsRaw(req, "post", "/api/upload", {
       body: form,
       headers: form.getHeaders(),
       validateStatus(status) {

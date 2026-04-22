@@ -2289,7 +2289,7 @@ assertContains(
 );
 assertContains(
   "backend/go/internal/handler/upload_handler.go",
-  'buildMirroredPublicAssetPayload(url, finalFilename, "merchant_or_admin_image"',
+  "resolveLegacyEditorImageUploadDomain",
 );
 assertContains(
   "backend/bff/src/controllers/uploadController.js",
@@ -9167,5 +9167,17 @@ assertNotContains("backend/go/internal/handler/admin_settings_handler.go", 'file
 assertNotContains("backend/go/internal/handler/admin_settings_handler.go", 'utils.CompressImage(savePath, 500*1024)');
 assertContains("backend/bff/src/services/adminSettingsService.js", 'form.append("upload_domain", SETTINGS_UPLOAD_DOMAINS.IMAGE);');
 assertContains("backend/bff/src/services/adminSettingsService.js", 'form.append("upload_domain", SETTINGS_UPLOAD_DOMAINS.PACKAGE);');
+assertNotContains("backend/bff/src/services/adminSettingsService.js", '"/api/upload/image"');
+assertContains("backend/bff/src/routes/upload.js", "requireUploadAuth");
+assertContains("backend/bff/src/middleware/requireUploadAuth.js", "extractVerifiedAdminIdentity");
+assertContains("backend/bff/src/middleware/requireUploadAuth.js", "extractVerifiedAuthIdentity");
+assertContains("backend/go/internal/handler/upload_handler.go", "resolveLegacyEditorImageUploadDomain");
+assertNotContains("backend/go/internal/handler/upload_handler.go", "merchant_or_admin_image");
+assertNotContains("admin-vue/src/views/contentSettingsPageHelpers.js", "request.post('/api/upload-image'");
+assertNotContains("admin-vue/src/views/settingsHelpers/appDownload.js", "request.post('/api/upload-package'");
+assertNotContains("admin-vue/src/views/notificationEditorPageViewHelpers.js", "request.post('/api/upload/image'");
+assertContains("admin-vue/src/views/contentSettingsPageHelpers.js", "appendAdminUploadDomain(formData, UPLOAD_DOMAINS.ADMIN_ASSET);");
+assertContains("admin-vue/src/views/settingsHelpers/appDownload.js", "appendAdminUploadDomain(formData, UPLOAD_DOMAINS.APP_PACKAGE);");
+assertContains("admin-vue/src/views/notificationEditorPageViewHelpers.js", "appendAdminUploadDomain(formData, UPLOAD_DOMAINS.ADMIN_ASSET)");
 
 console.log("modernization baseline checks passed");

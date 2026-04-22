@@ -1,6 +1,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import {
   buildAdminPushMessageStats,
+  appendAdminUploadDomain,
   extractAdminCarouselPage,
   extractAdminPushDeliveryPage,
   extractAdminPushMessagePage,
@@ -10,7 +11,7 @@ import {
   getPushDeliveryActionTagType,
   getPushDeliveryStatusTagType,
 } from '@infinitech/admin-core';
-import { extractEnvelopeData, extractErrorMessage, resolveUploadAssetUrl } from '@infinitech/contracts';
+import { extractEnvelopeData, extractErrorMessage, resolveUploadAssetUrl, UPLOAD_DOMAINS } from '@infinitech/contracts';
 import {
   compressImageTo1MB,
   createEmptyCarousel,
@@ -253,10 +254,15 @@ export function useContentSettingsPage({ request, ElMessage, ElMessageBox }) {
 
   async function uploadCarouselImage(options) {
     const formData = new FormData();
-    formData.append('image', options.file);
+    formData.append('file', options.file);
+    appendAdminUploadDomain(formData, UPLOAD_DOMAINS.ADMIN_ASSET);
 
     try {
-      const { data } = await request.post('/api/upload-image', formData);
+      const { data } = await request.post('/api/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       const imageUrl = String(resolveUploadAssetUrl(data) || '').trim();
 
       if (!imageUrl) {
@@ -457,11 +463,11 @@ export function useContentSettingsPage({ request, ElMessage, ElMessageBox }) {
     }
 
     const formData = new FormData();
-    formData.append('image', fileToUpload);
-    formData.append('compress', pushMessageForm.compress_image ? 'true' : 'false');
+    formData.append('file', fileToUpload);
+    appendAdminUploadDomain(formData, UPLOAD_DOMAINS.ADMIN_ASSET);
 
     try {
-      const { data } = await request.post('/api/upload-image', formData, {
+      const { data } = await request.post('/api/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
