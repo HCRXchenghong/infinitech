@@ -1,46 +1,46 @@
-.page {
+.api-permissions-page {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-.title-row {
+.api-permissions-page .title-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.title {
+.api-permissions-page .title {
   font-size: 18px;
   font-weight: 800;
   color: #303133;
 }
 
-.title-subtitle {
+.api-permissions-page .title-subtitle {
   margin-top: 6px;
   color: #606266;
   font-size: 13px;
   line-height: 1.6;
 }
 
-.title-actions {
+.api-permissions-page .title-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.summary-grid {
+.api-permissions-page .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
 
-.summary-card {
+.api-permissions-page .summary-card {
   border-radius: 12px;
 }
 
-.summary-card strong {
+.api-permissions-page .summary-card strong {
   display: block;
   margin-top: 8px;
   font-size: 28px;
@@ -48,57 +48,57 @@
   color: #303133;
 }
 
-.summary-card small {
+.api-permissions-page .summary-card small {
   display: block;
   margin-top: 8px;
   color: #909399;
   line-height: 1.5;
 }
 
-.summary-label {
+.api-permissions-page .summary-label {
   font-size: 12px;
   color: #909399;
 }
 
-.content-grid {
+.api-permissions-page .content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.8fr) minmax(320px, 1fr);
   gap: 14px;
 }
 
-.card {
+.api-permissions-page .card {
   min-width: 0;
 }
 
-.card-header {
+.api-permissions-page .card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.table-wrap {
+.api-permissions-page .table-wrap {
   min-width: 0;
 }
 
-.mono-text {
+.api-permissions-page .mono-text {
   font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
 }
 
-.permission-tags {
+.api-permissions-page .permission-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.key-cell {
+.api-permissions-page .key-cell {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
 
-.key-text {
+.api-permissions-page .key-text {
   display: inline-block;
   max-width: 100%;
   word-break: break-all;
@@ -106,44 +106,44 @@
   color: #303133;
 }
 
-.row-actions {
+.api-permissions-page .row-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.guide-intro {
+.api-permissions-page .guide-intro {
   color: #606266;
   line-height: 1.7;
 }
 
-.permission-guide-list {
+.api-permissions-page .permission-guide-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-top: 14px;
 }
 
-.permission-guide-item {
+.api-permissions-page .permission-guide-item {
   border: 1px solid #ebeef5;
   border-radius: 12px;
   padding: 14px;
   background: #fff;
 }
 
-.permission-guide-top {
+.api-permissions-page .permission-guide-top {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
 }
 
-.permission-guide-desc {
+.api-permissions-page .permission-guide-desc {
   color: #303133;
   line-height: 1.6;
 }
 
-.permission-guide-example {
+.api-permissions-page .permission-guide-example {
   margin-top: 8px;
   color: #909399;
   font-size: 12px;
@@ -151,113 +151,113 @@
   word-break: break-word;
 }
 
-.mobile-list {
+.api-permissions-page .mobile-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.mobile-card {
+.api-permissions-page .mobile-card {
   border: 1px solid #ebeef5;
   border-radius: 12px;
   padding: 14px;
   background: #fff;
 }
 
-.mobile-card-header {
+.api-permissions-page .mobile-card-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.mobile-card-title {
+.api-permissions-page .mobile-card-title {
   font-size: 16px;
   font-weight: 700;
   color: #303133;
 }
 
-.mobile-card-subtitle {
+.api-permissions-page .mobile-card-subtitle {
   margin-top: 6px;
   color: #606266;
   line-height: 1.6;
   word-break: break-all;
 }
 
-.mobile-card-body {
+.api-permissions-page .mobile-card-body {
   margin-top: 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.mobile-label {
+.api-permissions-page .mobile-label {
   font-size: 12px;
   color: #909399;
 }
 
-.mobile-value {
+.api-permissions-page .mobile-value {
   color: #303133;
   line-height: 1.6;
 }
 
-.mobile-key-wrap {
+.api-permissions-page .mobile-key-wrap {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
 }
 
-.mobile-card-actions {
+.api-permissions-page .mobile-card-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 14px;
 }
 
-.mobile-empty {
+.api-permissions-page .mobile-empty {
   padding: 16px 0;
 }
 
-.form-tip {
+.api-permissions-page .form-tip {
   margin-top: 6px;
   color: #909399;
   font-size: 12px;
   line-height: 1.5;
 }
 
-.switch-text {
+.api-permissions-page .switch-text {
   margin-left: 10px;
   color: #909399;
   font-size: 12px;
 }
 
 @media (max-width: 1200px) {
-  .summary-grid {
+  .api-permissions-page .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .content-grid {
+  .api-permissions-page .content-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 768px) {
-  .page {
+  .api-permissions-page {
     gap: 12px;
     padding: 12px;
   }
 
-  .title-row {
+  .api-permissions-page .title-row {
     flex-direction: column;
   }
 
-  .summary-grid {
+  .api-permissions-page .summary-grid {
     grid-template-columns: 1fr;
     gap: 12px;
   }
 
-  .card-header {
+  .api-permissions-page .card-header {
     align-items: flex-start;
     flex-direction: column;
   }

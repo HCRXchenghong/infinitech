@@ -5597,21 +5597,77 @@ assertNotContains(
   "admin-vue/src/views/ApiPermissions.vue",
   "function extractErrorMessage(error, fallback)",
 );
+assertExists("admin-vue/src/views/apiPermissionsPageHelpers.js");
+assertExists(
+  "admin-vue/src/views/apiPermissionsSections/ApiPermissionsHeader.vue",
+);
+assertExists(
+  "admin-vue/src/views/apiPermissionsSections/ApiPermissionsSummaryCards.vue",
+);
+assertExists(
+  "admin-vue/src/views/apiPermissionsSections/ApiPermissionsManagementSection.vue",
+);
+assertExists(
+  "admin-vue/src/views/apiPermissionsSections/ApiPermissionsGuideSection.vue",
+);
+assertExists(
+  "admin-vue/src/views/apiPermissionsSections/ApiPermissionsDialog.vue",
+);
 assertContains(
-  "admin-vue/src/views/ApiPermissions.vue",
+  "admin-vue/src/views/apiPermissionsPageHelpers.js",
   "buildPublicApiSummary(apiList.value)",
 );
 assertContains(
-  "admin-vue/src/views/ApiPermissions.vue",
+  "admin-vue/src/views/apiPermissionsSections/ApiPermissionsManagementSection.vue",
   "normalizePublicApiPermissionList(row.permissions)",
 );
 assertContains(
   "admin-vue/src/views/ApiPermissions.vue",
+  "useApiPermissionsPage({",
+);
+assertContains(
+  "admin-vue/src/views/ApiPermissions.vue",
+  "ApiPermissionsHeader",
+);
+assertContains(
+  "admin-vue/src/views/ApiPermissions.vue",
+  "ApiPermissionsSummaryCards",
+);
+assertContains(
+  "admin-vue/src/views/ApiPermissions.vue",
+  "ApiPermissionsManagementSection",
+);
+assertContains(
+  "admin-vue/src/views/ApiPermissions.vue",
+  "ApiPermissionsGuideSection",
+);
+assertContains(
+  "admin-vue/src/views/ApiPermissions.vue",
+  "ApiPermissionsDialog",
+);
+assertContains(
+  "admin-vue/src/views/ApiPermissions.vue",
+  "import './ApiPermissions.css';",
+);
+assertContains(
+  "admin-vue/src/views/apiPermissionsPageHelpers.js",
   "PUBLIC_API_PERMISSION_OPTIONS",
 );
 assertNotContains(
   "admin-vue/src/views/ApiPermissions.vue",
   "function normalizePermissions(value)",
+);
+assertNotContains(
+  "admin-vue/src/views/ApiPermissions.vue",
+  "buildPublicApiSummary(apiList.value)",
+);
+assertNotContains(
+  "admin-vue/src/views/ApiPermissions.vue",
+  "normalizePublicApiPermissionList(row.permissions)",
+);
+assertNotContains(
+  "admin-vue/src/views/ApiPermissions.vue",
+  "PUBLIC_API_PERMISSION_OPTIONS",
 );
 assertNotContains(
   "admin-vue/src/views/settingsHelpers.js",
