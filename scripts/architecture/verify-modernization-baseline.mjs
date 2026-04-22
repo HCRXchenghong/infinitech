@@ -1818,6 +1818,49 @@ assertContains(
   "admin-vue/src/views/officialSiteNewsDetailSections/OfficialSiteNewsDetailArticle.vue",
   "official-site-article",
 );
+assertContains(
+  "admin-vue/src/views/OfficialSiteExposureDetail.vue",
+  "useOfficialSiteExposureDetailPage({",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteExposureDetail.vue",
+  "OfficialSiteExposureDetailTopbar",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteExposureDetail.vue",
+  "OfficialSiteExposureDetailContent",
+);
+assertContains(
+  "admin-vue/src/views/OfficialSiteExposureDetail.vue",
+  "OfficialSiteExposureDetail.css",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteExposureDetailPageHelpers.js",
+  "getPublicOfficialSiteExposureDetail",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteExposureDetailPageHelpers.js",
+);
+assertExists(
+  "admin-vue/src/views/OfficialSiteExposureDetail.css",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteExposureDetailSections/OfficialSiteExposureDetailTopbar.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteExposureDetailSections/OfficialSiteExposureDetailContent.vue",
+);
+assertExists(
+  "admin-vue/src/views/officialSiteExposureDetailSections/OfficialSiteExposureDetailPanel.vue",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteExposureDetailSections/OfficialSiteExposureDetailContent.vue",
+  "PageStateAlert",
+);
+assertContains(
+  "admin-vue/src/views/officialSiteExposureDetailSections/OfficialSiteExposureDetailPanel.vue",
+  "resolveOfficialSiteExposureStatusClass",
+);
 assertExists(
   "admin-vue/src/views/notificationPreviewPageHelpers.js",
 );
@@ -6041,6 +6084,18 @@ assertNotContains(
 assertNotContains(
   "admin-vue/src/views/OfficialSiteNewsDetail.vue",
   "function syncSeo()",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteExposureDetail.vue",
+  "async function loadDetail()",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteExposureDetail.vue",
+  "function syncSeo()",
+);
+assertNotContains(
+  "admin-vue/src/views/OfficialSiteExposureDetail.vue",
+  "function statusLabel(status)",
 );
 assertNotContains(
   "admin-vue/src/views/settingsActionHelpers.js",

@@ -1,0 +1,71 @@
+.official-site-exposure-detail-page {
+  min-height: 100vh;
+}
+
+.official-site-exposure-detail-page .exposure-detail-shell {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.official-site-exposure-detail-page .exposure-detail-topbar {
+  margin-bottom: 1.5rem;
+}
+
+.official-site-exposure-detail-page .exposure-detail-state {
+  margin-top: 1.5rem;
+}
+
+.official-site-exposure-detail-page .exposure-detail-empty {
+  margin-top: 1.5rem;
+  padding: 4rem;
+  text-align: center;
+}
+
+.official-site-exposure-detail-page .exposure-detail-panel {
+  overflow: hidden;
+}
+
+.official-site-exposure-detail-page .exposure-detail-body {
+  padding: 1.5rem 2rem 2rem;
+}
+
+.official-site-exposure-detail-page .exposure-detail-gallery {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.official-site-exposure-detail-page .exposure-detail-sidebar {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .official-site-exposure-detail-page .exposure-detail-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .official-site-exposure-detail-page .exposure-detail-body {
+    padding: 1.5rem 2rem 2rem;
+  }
+
+  .official-site-exposure-detail-page .exposure-detail-sidebar {
+    width: 16rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .official-site-exposure-detail-page .exposure-detail-shell {
+    padding: 1.5rem 1rem 2rem;
+  }
+
+  .official-site-exposure-detail-page .exposure-detail-empty {
+    padding: 2.5rem 1.5rem;
+  }
+
+  .official-site-exposure-detail-page .exposure-detail-body {
+    padding: 1.5rem;
+  }
+}
