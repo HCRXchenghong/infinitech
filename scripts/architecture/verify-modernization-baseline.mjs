@@ -2110,11 +2110,24 @@ assertContains(
 );
 assertContains("admin-vue/src/App.vue", "getStoredAdminUser");
 assertContains("admin-vue/src/views/AfterSales.vue", "getStoredAdminUser");
-assertContains("admin-vue/src/views/Login.vue", "getStoredAdminUser");
+assertContains("admin-vue/src/views/Login.vue", "useLoginPage({");
 assertContains("admin-vue/src/views/Login.vue", "LoginAccessCard");
 assertContains("admin-vue/src/views/Login.vue", "LoginBootstrapDialog");
 assertContains("admin-vue/src/views/Login.vue", "LoginHeroPanel");
 assertContains("admin-vue/src/views/Login.vue", "LoginIntroSplash");
+assertExists("admin-vue/src/views/loginPageHelpers.js");
+assertContains(
+  "admin-vue/src/views/loginPageHelpers.js",
+  "getStoredAdminUser",
+);
+assertContains(
+  "admin-vue/src/views/loginPageHelpers.js",
+  "extractEnvelopeData(data)",
+);
+assertContains(
+  "admin-vue/src/views/loginPageHelpers.js",
+  "extractSMSResult(data)",
+);
 assertContains(
   "packages/admin-core/src/index.js",
   'export * from "./admin-auth-response.js";',
@@ -4983,9 +4996,10 @@ assertContains(
   "admin-vue/src/views/AdminRTCConsole.vue",
   "AdminRTCConsole.css",
 );
-assertContains("admin-vue/src/views/Login.vue", "extractEnvelopeData(data)");
+assertNotContains("admin-vue/src/views/Login.vue", "extractEnvelopeData(data)");
 assertNotContains("admin-vue/src/views/Login.vue", "扫码登录</h3>");
 assertNotContains("admin-vue/src/views/Login.vue", "完成首次管理员初始化");
+assertNotContains("admin-vue/src/views/Login.vue", "const loading = ref(false)");
 assertExists("admin-vue/src/views/shopManageDetailPageHelpers.js");
 assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailHeader.vue");
 assertExists("admin-vue/src/views/shopManageDetailSections/ShopManageDetailBasicCard.vue");
@@ -8188,7 +8202,7 @@ assertNotContains(
   "admin-vue/src/views/FinanceCenter.vue",
   "const periodType = ref('daily')",
 );
-assertContains("admin-vue/src/views/Login.vue", "extractSMSResult(data)");
+assertNotContains("admin-vue/src/views/Login.vue", "extractSMSResult(data)");
 assertContains(
   "admin-vue/src/views/paymentCenterSections/PaymentCenterCallbackLogsTab.vue",
   "paymentCallbackStatusTag",
