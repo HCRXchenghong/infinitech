@@ -38,7 +38,7 @@
       <div class="field-group">
         <label>新的管理员密码</label>
         <input
-          v-model="bootstrapForm.newPassword"
+          v-model="bootstrapForm.nextPassword"
           class="glass-input"
           type="password"
           placeholder="请输入新的管理员密码"

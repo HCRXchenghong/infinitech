@@ -263,14 +263,14 @@ func (h *AdminHandler) CompleteBootstrapSetup(c *gin.Context) {
 	var req struct {
 		Phone           string `json:"phone"`
 		Name            string `json:"name"`
-		NewPassword     string `json:"newPassword"`
+		NextPassword    string `json:"nextPassword"`
 		ConfirmPassword string `json:"confirmPassword"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondAdminInvalidRequest(c, "请求参数错误")
 		return
 	}
-	if strings.TrimSpace(req.NewPassword) == "" {
+	if strings.TrimSpace(req.NextPassword) == "" {
 		respondAdminInvalidRequest(c, "请输入新的管理员密码")
 		return
 	}
@@ -278,7 +278,7 @@ func (h *AdminHandler) CompleteBootstrapSetup(c *gin.Context) {
 		respondAdminInvalidRequest(c, "请再次确认新的管理员密码")
 		return
 	}
-	if req.NewPassword != req.ConfirmPassword {
+	if req.NextPassword != req.ConfirmPassword {
 		respondAdminInvalidRequest(c, "两次输入的新密码不一致")
 		return
 	}
@@ -288,7 +288,7 @@ func (h *AdminHandler) CompleteBootstrapSetup(c *gin.Context) {
 		adminID,
 		req.Phone,
 		req.Name,
-		req.NewPassword,
+		req.NextPassword,
 	)
 	if err != nil {
 		respondAdminPayload(c, code, adminPayloadMessage(resp, err, "首次管理员初始化失败"), resp)
@@ -306,7 +306,7 @@ func (h *AdminHandler) ChangeOwnPassword(c *gin.Context) {
 
 	var req struct {
 		CurrentPassword string `json:"currentPassword"`
-		NewPassword     string `json:"newPassword"`
+		NextPassword    string `json:"nextPassword"`
 		ConfirmPassword string `json:"confirmPassword"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -317,16 +317,16 @@ func (h *AdminHandler) ChangeOwnPassword(c *gin.Context) {
 		respondAdminInvalidRequest(c, "请输入当前密码")
 		return
 	}
-	if strings.TrimSpace(req.NewPassword) == "" {
+	if strings.TrimSpace(req.NextPassword) == "" {
 		respondAdminInvalidRequest(c, "请输入新密码")
 		return
 	}
-	if req.ConfirmPassword != "" && req.NewPassword != req.ConfirmPassword {
+	if req.ConfirmPassword != "" && req.NextPassword != req.ConfirmPassword {
 		respondAdminInvalidRequest(c, "两次输入的新密码不一致")
 		return
 	}
 
-	if err := h.admin.ChangeOwnPassword(c.Request.Context(), adminID, req.CurrentPassword, req.NewPassword); err != nil {
+	if err := h.admin.ChangeOwnPassword(c.Request.Context(), adminID, req.CurrentPassword, req.NextPassword); err != nil {
 		if errors.Is(err, service.ErrUnauthorized) {
 			respondAdminStatusError(c, http.StatusUnauthorized, "登录状态已失效，请重新登录")
 			return

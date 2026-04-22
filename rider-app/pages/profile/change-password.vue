@@ -24,7 +24,7 @@
         </view>
       </view>
 
-      <input v-model="newPassword" class="input" placeholder="新密码（6-20位）" password maxlength="20" />
+      <input v-model="nextPassword" class="input" placeholder="新密码（6-20位）" password maxlength="20" />
       <input v-model="confirmPassword" class="input" placeholder="确认新密码" password maxlength="20" />
 
       <button class="btn" @tap="submitChangePassword">确认修改</button>
@@ -44,7 +44,7 @@ export default Vue.extend({
       oldPassword: '',
       phone: '',
       code: '',
-      newPassword: '',
+      nextPassword: '',
       confirmPassword: '',
       codeCooldown: 0
     }
@@ -76,12 +76,12 @@ export default Vue.extend({
       }
     },
     async submitChangePassword() {
-      if (this.newPassword.length < 6) {
+      if (this.nextPassword.length < 6) {
         uni.showToast({ title: '密码至少6位', icon: 'none' })
         return
       }
 
-      if (this.newPassword !== this.confirmPassword) {
+      if (this.nextPassword !== this.confirmPassword) {
         uni.showToast({ title: '两次密码不一致', icon: 'none' })
         return
       }
@@ -92,7 +92,7 @@ export default Vue.extend({
           oldPassword: this.oldPassword,
           phone: this.phone,
           code: this.code,
-          newPassword: this.newPassword
+          nextPassword: this.nextPassword
         })
 
         uni.showToast({ title: '密码修改成功', icon: 'success' })

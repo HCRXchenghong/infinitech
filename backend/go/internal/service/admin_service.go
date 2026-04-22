@@ -415,14 +415,14 @@ func (s *AdminService) ResetAdminPassword(ctx context.Context, id string) (strin
 	return newPassword, nil
 }
 
-func (s *AdminService) ChangeOwnPassword(ctx context.Context, adminID uint, currentPassword, newPassword string) error {
+func (s *AdminService) ChangeOwnPassword(ctx context.Context, adminID uint, currentPassword, nextPassword string) error {
 	if adminID == 0 {
 		return fmt.Errorf("%w: admin identity is missing", ErrUnauthorized)
 	}
 	if strings.TrimSpace(currentPassword) == "" {
 		return fmt.Errorf("当前密码不能为空")
 	}
-	if err := validatePrivilegedPassword(strings.TrimSpace(newPassword)); err != nil {
+	if err := validatePrivilegedPassword(strings.TrimSpace(nextPassword)); err != nil {
 		return err
 	}
 
@@ -437,11 +437,11 @@ func (s *AdminService) ChangeOwnPassword(ctx context.Context, adminID uint, curr
 	if !checkPassword(admin.PasswordHash, currentPassword) {
 		return fmt.Errorf("当前密码不正确")
 	}
-	if checkPassword(admin.PasswordHash, newPassword) {
+	if checkPassword(admin.PasswordHash, nextPassword) {
 		return fmt.Errorf("新密码不能与当前密码相同")
 	}
 
-	hash, err := hashPassword(newPassword)
+	hash, err := hashPassword(nextPassword)
 	if err != nil {
 		return err
 	}

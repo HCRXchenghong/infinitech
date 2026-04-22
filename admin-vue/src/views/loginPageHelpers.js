@@ -18,7 +18,7 @@ function createBootstrapFormState() {
   return {
     phone: '',
     name: '',
-    newPassword: '',
+    nextPassword: '',
     confirmPassword: '',
   }
 }
@@ -132,7 +132,7 @@ export function useLoginPage({ router, request, ElMessage, QRCode }) {
   function openBootstrapDialog(user = {}) {
     bootstrapForm.value.phone = String(user?.phone || '')
     bootstrapForm.value.name = String(user?.name || '')
-    bootstrapForm.value.newPassword = ''
+    bootstrapForm.value.nextPassword = ''
     bootstrapForm.value.confirmPassword = ''
     bootstrapDialogVisible.value = true
     showLogin.value = true
@@ -192,15 +192,15 @@ export function useLoginPage({ router, request, ElMessage, QRCode }) {
       ElMessage.error('请输入正确的管理员手机号')
       return
     }
-    if (!bootstrapForm.value.newPassword) {
+    if (!bootstrapForm.value.nextPassword) {
       ElMessage.error('请输入新的管理员密码')
       return
     }
-    if (bootstrapForm.value.newPassword.length < 6) {
+    if (bootstrapForm.value.nextPassword.length < 6) {
       ElMessage.error('新密码至少需要 6 位')
       return
     }
-    if (bootstrapForm.value.newPassword !== bootstrapForm.value.confirmPassword) {
+    if (bootstrapForm.value.nextPassword !== bootstrapForm.value.confirmPassword) {
       ElMessage.error('两次输入的新密码不一致')
       return
     }
@@ -210,7 +210,7 @@ export function useLoginPage({ router, request, ElMessage, QRCode }) {
       const { data } = await request.post('/api/admins/complete-bootstrap', {
         phone: bootstrapForm.value.phone,
         name: bootstrapForm.value.name,
-        newPassword: bootstrapForm.value.newPassword,
+        nextPassword: bootstrapForm.value.nextPassword,
         confirmPassword: bootstrapForm.value.confirmPassword,
       })
       const persistedResult = saveLoginSession(data, 'password')

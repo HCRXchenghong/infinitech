@@ -74,14 +74,14 @@ func (s *AdminService) EnsureBootstrapAdmin(ctx context.Context) (*repository.Ad
 	return &admin, true, nil
 }
 
-func (s *AdminService) CompleteBootstrapSetup(ctx context.Context, adminID uint, phone, name, newPassword string) (*AdminLoginResponse, int, error) {
+func (s *AdminService) CompleteBootstrapSetup(ctx context.Context, adminID uint, phone, name, nextPassword string) (*AdminLoginResponse, int, error) {
 	if adminID == 0 {
 		return &AdminLoginResponse{Success: false, Error: "登录状态已失效，请重新登录"}, 401, ErrUnauthorized
 	}
 
 	phone = strings.TrimSpace(phone)
 	name = strings.TrimSpace(name)
-	newPassword = strings.TrimSpace(newPassword)
+	nextPassword = strings.TrimSpace(nextPassword)
 
 	if !isValidPhone(phone) {
 		return &AdminLoginResponse{Success: false, Error: "请输入有效的管理员手机号"}, 400, fmt.Errorf("invalid admin phone")
@@ -94,10 +94,10 @@ func (s *AdminService) CompleteBootstrapSetup(ctx context.Context, adminID uint,
 	if name == "" {
 		return &AdminLoginResponse{Success: false, Error: "请输入真实的管理员名称"}, 400, fmt.Errorf("admin name is required")
 	}
-	if err := validatePrivilegedPassword(newPassword); err != nil {
+	if err := validatePrivilegedPassword(nextPassword); err != nil {
 		return &AdminLoginResponse{Success: false, Error: err.Error()}, 400, err
 	}
-	if bootstrapPassword != "" && newPassword == bootstrapPassword {
+	if bootstrapPassword != "" && nextPassword == bootstrapPassword {
 		return &AdminLoginResponse{Success: false, Error: "新密码不能继续使用默认初始密码"}, 400, fmt.Errorf("new password must not equal default password")
 	}
 
@@ -123,7 +123,7 @@ func (s *AdminService) CompleteBootstrapSetup(ctx context.Context, adminID uint,
 		return &AdminLoginResponse{Success: false, Error: "该手机号已被其他管理员使用"}, 400, fmt.Errorf("admin phone already exists")
 	}
 
-	hash, err := hashPassword(newPassword)
+	hash, err := hashPassword(nextPassword)
 	if err != nil {
 		return &AdminLoginResponse{Success: false, Error: "生成新密码失败"}, 500, err
 	}

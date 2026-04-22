@@ -550,11 +550,11 @@ func (h *RiderHandler) ChangePassword(c *gin.Context) {
 	}
 
 	var req struct {
-		VerifyType  string `json:"verifyType"`  // password 或 code
-		OldPassword string `json:"oldPassword"` // 原密码验证
-		Phone       string `json:"phone"`       // 验证码验证
-		Code        string `json:"code"`        // 验证码验证
-		NewPassword string `json:"newPassword"`
+		VerifyType   string `json:"verifyType"`  // password 或 code
+		OldPassword  string `json:"oldPassword"` // 原密码验证
+		Phone        string `json:"phone"`       // 验证码验证
+		Code         string `json:"code"`        // 验证码验证
+		NextPassword string `json:"nextPassword"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -563,7 +563,7 @@ func (h *RiderHandler) ChangePassword(c *gin.Context) {
 	}
 
 	// 验证新密码长度
-	if len(req.NewPassword) < 6 {
+	if len(req.NextPassword) < 6 {
 		respondRiderInvalidRequest(c, "密码至少6位")
 		return
 	}
@@ -598,7 +598,7 @@ func (h *RiderHandler) ChangePassword(c *gin.Context) {
 	}
 
 	// 加密新密码
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NextPassword), bcrypt.DefaultCost)
 	if err != nil {
 		respondRiderInternalError(c, "密码处理失败")
 		return
