@@ -2,7 +2,7 @@
   <view class="auth-page">
     <view class="header">
       <text class="title">找回商户密码</text>
-      <text class="subtitle">验证码验证后重置登录密码</text>
+      <text class="subtitle">{{ portalRuntime.subtitle || '验证码验证后重置登录密码' }}</text>
     </view>
 
     <view class="panel">

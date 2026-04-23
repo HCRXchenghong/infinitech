@@ -32,6 +32,12 @@ import {
   getCachedRiderPortalRuntimeSettings,
   loadRiderPortalRuntimeSettings,
 } from '../../shared-ui/portal-runtime'
+import {
+  buildPasswordResetSetPasswordPageUrl,
+  createPasswordResetCooldownController,
+  requestPasswordResetCode,
+  verifyPasswordResetCode,
+} from '../../packages/mobile-core/src/password-reset-portal.js'
 
 export default Vue.extend({
   data() {
@@ -41,14 +47,38 @@ export default Vue.extend({
       codeCooldown: 0,
       loading: false,
       timer: null as any,
+      cooldownController: null as any,
       portalRuntime: getCachedRiderPortalRuntimeSettings(),
     }
   },
   onLoad() {
+    this.cooldownController = createPasswordResetCooldownController({
+      setValue: (nextValue: number) => {
+        this.codeCooldown = nextValue
+      },
+      createInterval: (callback: () => void, delay: number) => {
+        this.timer = setInterval(callback, delay)
+        return this.timer
+      },
+      clearIntervalFn: (timer: any) => {
+        clearInterval(timer)
+        if (this.timer === timer) {
+          this.timer = null
+        }
+      },
+    })
     void this.loadPortalRuntime()
   },
   onUnload() {
-    if (this.timer) clearInterval(this.timer)
+    if (this.cooldownController?.clear) {
+      this.cooldownController.clear()
+      return
+    }
+
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = null
+    }
   },
   methods: {
     async loadPortalRuntime() {
@@ -59,73 +89,47 @@ export default Vue.extend({
       uni.redirectTo({ url: '/pages/login/index' })
     },
 
-    validatePhone() {
-      const phone = String(this.phone || '').trim()
-      if (!/^1\d{10}$/.test(phone)) {
-        uni.showToast({ title: '请输入正确手机号', icon: 'none' })
-        return ''
-      }
-      return phone
-    },
-
     async sendCode() {
       if (this.codeCooldown > 0 || this.loading) return
-      const phone = this.validatePhone()
-      if (!phone) return
 
       this.loading = true
       try {
-        const res: any = await requestSMSCode(phone, 'rider_reset')
-        if (res.success !== false) {
-          uni.showToast({ title: res.message || '验证码已发送', icon: 'success' })
-          this.codeCooldown = 60
-          if (this.timer) {
-            clearInterval(this.timer)
-            this.timer = null
-          }
-          this.timer = setInterval(() => {
-            this.codeCooldown -= 1
-            if (this.codeCooldown <= 0) {
-              clearInterval(this.timer)
-              this.timer = null
-            }
-          }, 1000)
-        } else {
-          uni.showToast({ title: res.error || res.message || '发送验证码失败', icon: 'none' })
-        }
-      } catch (err: any) {
-        uni.showToast({
-          title: err.data?.error || err.error || err.message || '发送验证码失败',
-          icon: 'none',
+        const result = await requestPasswordResetCode({
+          phoneValue: this.phone,
+          scene: 'rider_reset',
+          requestSMSCode,
+          cooldownController: this.cooldownController,
         })
+        if (!result.ok) {
+          uni.showToast({ title: result.message, icon: 'none' })
+          return
+        }
+
+        uni.showToast({ title: result.message, icon: 'success' })
       } finally {
         this.loading = false
       }
     },
 
     async submit() {
-      const phone = this.validatePhone()
-      const code = String(this.code || '').trim()
-
-      if (!phone) return
-      if (!code) {
-        uni.showToast({ title: '请输入验证码', icon: 'none' })
-        return
-      }
-
       this.loading = true
       try {
-        const verifyRes: any = await verifySMSCodeCheck(phone, 'rider_reset', code)
-        if (!verifyRes.success) {
-          throw new Error(verifyRes.error || '验证码错误')
+        const result = await verifyPasswordResetCode({
+          phoneValue: this.phone,
+          codeValue: this.code,
+          scene: 'rider_reset',
+          storage: uni,
+          verifySMSCodeCheck: ({ phone, scene, code }) =>
+            verifySMSCodeCheck(phone, scene || 'rider_reset', code),
+          buildSetPasswordUrl: (phone, code) =>
+            buildPasswordResetSetPasswordPageUrl('/pages/set-password/index', phone, code),
+        })
+        if (!result.ok) {
+          uni.showToast({ title: result.message, icon: 'none' })
+          return
         }
 
-        uni.setStorageSync('reset_password_data', { phone, code })
-        uni.redirectTo({
-          url: `/pages/set-password/index?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(code)}`,
-        })
-      } catch (err: any) {
-        uni.showToast({ title: err.error || err.message || '验证失败', icon: 'none' })
+        uni.redirectTo({ url: result.redirectUrl })
       } finally {
         this.loading = false
       }

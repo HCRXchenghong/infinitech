@@ -69,6 +69,7 @@
     "./order-list-page": "./src/order-list-page.js",
     "./order-payment-options": "./src/order-payment-options.js",
     "./order-support-pages": "./src/order-support-pages.js",
+    "./password-reset-portal": "./src/password-reset-portal.js",
     "./phone-contact": "./src/phone-contact.js",
     "./push-event-route": "./src/push-event-route.js",
     "./profile-address": "./src/profile-address.js",

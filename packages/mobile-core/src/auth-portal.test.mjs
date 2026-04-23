@@ -19,6 +19,15 @@ import {
   trimAuthPortalValue,
   validateConsumerNewPasswordForm,
 } from "./auth-portal.js";
+import {
+  buildPasswordResetSetPasswordPageUrl,
+  createPasswordResetCooldownController,
+  requestPasswordResetCode,
+  resolvePasswordResetTicket,
+  submitPasswordResetNextPassword,
+  validatePasswordResetNextPasswordForm,
+  verifyPasswordResetCode,
+} from "./password-reset-portal.js";
 
 test("auth portal helpers normalize values, modes and invite codes", () => {
   assert.equal(trimAuthPortalValue(" 13800138000 "), "13800138000");
@@ -121,6 +130,188 @@ test("auth portal helpers validate new password form consistently", () => {
   assert.deepEqual(validateConsumerNewPasswordForm(" 123456 ", "123456"), {
     password: "123456",
     error: "",
+  });
+});
+
+test("password reset helpers normalize routes, tickets and password validation", () => {
+  assert.equal(
+    buildPasswordResetSetPasswordPageUrl(
+      "/pages/set-password/index",
+      " 13800138000 ",
+      " abc123 ",
+    ),
+    "/pages/set-password/index?phone=13800138000&code=abc123",
+  );
+  assert.deepEqual(
+    resolvePasswordResetTicket(
+      { phone: "13800138001", code: "abc%20123" },
+      { phone: "13800138002", code: "777777" },
+    ),
+    { phone: "13800138001", code: "abc 123" },
+  );
+  assert.deepEqual(
+    resolvePasswordResetTicket({}, { phone: "13800138002", code: "777777" }),
+    { phone: "13800138002", code: "777777" },
+  );
+  assert.deepEqual(validatePasswordResetNextPasswordForm("", ""), {
+    password: "",
+    error: "请输入新密码",
+  });
+  assert.deepEqual(
+    validatePasswordResetNextPasswordForm("123456", "654321", {
+      mismatchPasswordMessage: "两次输入密码不一致",
+    }),
+    {
+      password: "",
+      error: "两次输入密码不一致",
+    },
+  );
+  assert.deepEqual(validatePasswordResetNextPasswordForm(" 123456 ", "123456"), {
+    password: "123456",
+    error: "",
+  });
+});
+
+test("password reset helpers manage cooldowns, request codes and verify tickets", async () => {
+  const cooldownValues = [];
+  const clearedTimers = [];
+  let cooldownTick = null;
+  const cooldownController = createPasswordResetCooldownController({
+    setValue(value) {
+      cooldownValues.push(value);
+    },
+    createInterval(callback) {
+      cooldownTick = callback;
+      return "timer-1";
+    },
+    clearIntervalFn(timer) {
+      clearedTimers.push(timer);
+    },
+  });
+
+  cooldownController.start(2);
+  assert.equal(cooldownController.isRunning(), true);
+  assert.deepEqual(cooldownValues, [2]);
+  cooldownTick();
+  cooldownTick();
+  assert.deepEqual(cooldownValues, [2, 1, 0]);
+  assert.equal(cooldownController.isRunning(), false);
+  assert.deepEqual(clearedTimers, ["timer-1"]);
+
+  const invalidPhoneResult = await requestPasswordResetCode({
+    phoneValue: "123",
+  });
+  assert.deepEqual(invalidPhoneResult, {
+    ok: false,
+    reason: "invalid_phone",
+    phone: "",
+    message: "请输入正确手机号",
+  });
+
+  let requestedPayload = null;
+  let cooldownStarts = 0;
+  const requestResult = await requestPasswordResetCode({
+    phoneValue: " 13800138000 ",
+    scene: "merchant_reset",
+    requestSMSCode: async (phone, scene) => {
+      requestedPayload = { phone, scene };
+      return { success: true, message: "验证码已发送" };
+    },
+    cooldownController: {
+      start() {
+        cooldownStarts += 1;
+      },
+    },
+  });
+  assert.deepEqual(requestedPayload, {
+    phone: "13800138000",
+    scene: "merchant_reset",
+  });
+  assert.equal(cooldownStarts, 1);
+  assert.equal(requestResult.ok, true);
+  assert.equal(requestResult.phone, "13800138000");
+  assert.equal(requestResult.message, "验证码已发送");
+
+  const storedResetTickets = [];
+  let verifyPayload = null;
+  const verifyResult = await verifyPasswordResetCode({
+    phoneValue: "13800138000",
+    codeValue: "123456",
+    scene: "merchant_reset",
+    storage: {
+      setStorageSync(key, value) {
+        storedResetTickets.push({ key, value });
+      },
+    },
+    verifySMSCodeCheck: async (payload) => {
+      verifyPayload = payload;
+      return { success: true };
+    },
+    buildSetPasswordUrl: (phone, code) =>
+      buildPasswordResetSetPasswordPageUrl("/pages/set-password/index", phone, code),
+  });
+  assert.deepEqual(verifyPayload, {
+    phone: "13800138000",
+    code: "123456",
+    scene: "merchant_reset",
+  });
+  assert.deepEqual(storedResetTickets, [{
+    key: "reset_password_data",
+    value: {
+      phone: "13800138000",
+      code: "123456",
+    },
+  }]);
+  assert.equal(verifyResult.ok, true);
+  assert.equal(
+    verifyResult.redirectUrl,
+    "/pages/set-password/index?phone=13800138000&code=123456",
+  );
+});
+
+test("password reset helpers submit next password consistently", async () => {
+  const removedKeys = [];
+  let submitPayload = null;
+  const successResult = await submitPasswordResetNextPassword({
+    phoneValue: "13800138000",
+    codeValue: "123456",
+    passwordValue: "123456",
+    confirmPasswordValue: "123456",
+    loginUrl: "/pages/login/index",
+    storage: {
+      removeStorageSync(key) {
+        removedKeys.push(key);
+      },
+    },
+    submitSetNewPassword: async (payload) => {
+      submitPayload = payload;
+      return { success: true, message: "密码设置成功" };
+    },
+  });
+  assert.deepEqual(submitPayload, {
+    phone: "13800138000",
+    code: "123456",
+    nextPassword: "123456",
+  });
+  assert.deepEqual(removedKeys, ["reset_password_data"]);
+  assert.equal(successResult.ok, true);
+  assert.equal(successResult.redirectUrl, "/pages/login/index");
+  assert.equal(successResult.nextPassword, "123456");
+
+  const missingTicketResult = await submitPasswordResetNextPassword({
+    phoneValue: "",
+    codeValue: "",
+    passwordValue: "123456",
+    confirmPasswordValue: "123456",
+    resetPasswordUrl: "/pages/reset-password/index",
+  });
+  assert.deepEqual(missingTicketResult, {
+    ok: false,
+    reason: "missing_ticket",
+    phone: "",
+    code: "",
+    redirectUrl: "/pages/reset-password/index",
+    message: "校验信息已失效，请重新验证",
   });
 });
 

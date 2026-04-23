@@ -239,6 +239,7 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/auth-portal.test.mjs",
   "packages/mobile-core/src/auth-portal-pages.js",
   "packages/mobile-core/src/auth-portal-pages.test.mjs",
+  "packages/mobile-core/src/password-reset-portal.js",
   "packages/mobile-core/src/AuthLoginPage.vue",
   "packages/mobile-core/src/auth-login-page.scss",
   "packages/mobile-core/src/AuthRegisterPage.vue",
@@ -3960,10 +3961,48 @@ assertContains("admin-app/pages/settings/settings.vue", "passwordForm.nextPasswo
 assertContains("admin-app/pages/settings/settings.vue", "nextPassword,");
 assertNotContains("rider-app/pages/profile/change-password.vue", "newPassword:");
 assertContains("rider-app/pages/profile/change-password.vue", "nextPassword:");
-assertContains("rider-app/pages/set-password/index.vue", "nextPassword: password");
 assertContains("merchant-app/shared-ui/api.ts", "nextPassword: string;");
-assertContains("merchant-app/shared-ui/merchantAccountPages.ts", "nextPassword: normalizedPassword");
 assertContains("packages/mobile-core/src/auth-portal.js", "nextPassword: validation.password");
+assertContains(
+  "merchant-app/shared-ui/merchantAccountPages.ts",
+  "from '../../packages/mobile-core/src/password-reset-portal.js'",
+);
+assertContains(
+  "merchant-app/shared-ui/merchantAccountPages.ts",
+  "const result = await requestPasswordResetCode({",
+);
+assertContains(
+  "merchant-app/shared-ui/merchantAccountPages.ts",
+  "const result = await verifyPasswordResetCode({",
+);
+assertContains(
+  "merchant-app/shared-ui/merchantAccountPages.ts",
+  "const result = await submitPasswordResetNextPassword({",
+);
+assertContains(
+  "rider-app/pages/reset-password/index.vue",
+  "from '../../packages/mobile-core/src/password-reset-portal.js'",
+);
+assertContains(
+  "rider-app/pages/reset-password/index.vue",
+  "const result = await requestPasswordResetCode({",
+);
+assertContains(
+  "rider-app/pages/reset-password/index.vue",
+  "const result = await verifyPasswordResetCode({",
+);
+assertContains(
+  "rider-app/pages/set-password/index.vue",
+  "from '../../packages/mobile-core/src/password-reset-portal.js'",
+);
+assertContains(
+  "rider-app/pages/set-password/index.vue",
+  "const result = await submitPasswordResetNextPassword({",
+);
+assertContains(
+  "packages/mobile-core/src/auth-portal.test.mjs",
+  'from "./password-reset-portal.js";',
+);
 assertContains(
   "android-user-app/core/data/src/main/java/com/user/infinite/core/data/repository/AuthRepositoryImpl.kt",
   '"nextPassword" to nextPassword',
@@ -6796,6 +6835,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./password-reset-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./category-pages.js";',
 );
 assertContains(
@@ -7089,6 +7132,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./auth-portal-pages": "./src/auth-portal-pages.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./password-reset-portal": "./src/password-reset-portal.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

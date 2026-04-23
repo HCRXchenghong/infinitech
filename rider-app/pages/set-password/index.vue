@@ -39,6 +39,10 @@ import {
   getCachedRiderPortalRuntimeSettings,
   loadRiderPortalRuntimeSettings,
 } from '../../shared-ui/portal-runtime'
+import {
+  resolvePasswordResetTicket,
+  submitPasswordResetNextPassword,
+} from '../../packages/mobile-core/src/password-reset-portal.js'
 
 export default Vue.extend({
   data() {
@@ -54,20 +58,12 @@ export default Vue.extend({
   onLoad(options: any) {
     void this.loadPortalRuntime()
 
-    if (options.phone) {
-      this.phone = decodeURIComponent(options.phone)
-    }
-    if (options.code) {
-      this.code = decodeURIComponent(options.code)
-    }
-
-    if (!this.phone || !this.code) {
-      const resetData = uni.getStorageSync('reset_password_data')
-      if (resetData) {
-        this.phone = resetData.phone || ''
-        this.code = resetData.code || ''
-      }
-    }
+    const resetTicket = resolvePasswordResetTicket(
+      options,
+      uni.getStorageSync('reset_password_data'),
+    )
+    this.phone = resetTicket.phone
+    this.code = resetTicket.code
 
     if (!this.phone || !this.code) {
       uni.showToast({ title: '请先完成验证码校验', icon: 'none' })
@@ -86,51 +82,37 @@ export default Vue.extend({
     },
 
     async submit() {
-      const password = String(this.password || '').trim()
-      const confirmPassword = String(this.confirmPassword || '').trim()
-
-      if (!password) {
-        uni.showToast({ title: '请输入新密码', icon: 'none' })
-        return
-      }
-      if (password.length < 6) {
-        uni.showToast({ title: '密码至少 6 位', icon: 'none' })
-        return
-      }
-      if (password !== confirmPassword) {
-        uni.showToast({ title: '两次密码不一致', icon: 'none' })
-        return
-      }
-
-      if (!this.phone || !this.code) {
-        uni.showToast({ title: '校验信息已失效，请重新验证', icon: 'none' })
-        setTimeout(() => {
-          uni.redirectTo({ url: '/pages/reset-password/index' })
-        }, 1500)
-        return
-      }
-
       this.loading = true
       try {
-        const res: any = await request({
-          url: '/api/auth/rider/set-new-password',
-          method: 'POST',
-          data: {
-            phone: this.phone,
-            code: this.code,
-            nextPassword: password,
-          },
+        const result = await submitPasswordResetNextPassword({
+          phoneValue: this.phone,
+          codeValue: this.code,
+          passwordValue: this.password,
+          confirmPasswordValue: this.confirmPassword,
+          storage: uni,
+          loginUrl: '/pages/login/index',
+          resetPasswordUrl: '/pages/reset-password/index',
+          submitSetNewPassword: (payload) =>
+            request({
+              url: '/api/auth/rider/set-new-password',
+              method: 'POST',
+              data: payload,
+            }),
         })
-
-        if (res.success) {
-          uni.removeStorageSync('reset_password_data')
-          uni.showToast({ title: '密码设置成功', icon: 'success' })
-          setTimeout(() => {
-            uni.redirectTo({ url: '/pages/login/index' })
-          }, 1500)
+        if (!result.ok) {
+          uni.showToast({ title: result.message, icon: 'none' })
+          if (result.reason === 'missing_ticket' && result.redirectUrl) {
+            setTimeout(() => {
+              uni.redirectTo({ url: result.redirectUrl })
+            }, 1500)
+          }
+          return
         }
-      } catch (err: any) {
-        uni.showToast({ title: err.error || err.message || '设置失败', icon: 'none' })
+
+        uni.showToast({ title: result.message, icon: 'success' })
+        setTimeout(() => {
+          uni.redirectTo({ url: result.redirectUrl || '/pages/login/index' })
+        }, 1500)
       } finally {
         this.loading = false
       }

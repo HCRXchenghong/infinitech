@@ -1,9 +1,18 @@
+import {
+  buildPasswordResetSetPasswordPageUrl,
+  decodePasswordResetPortalValue,
+  pickPasswordResetErrorMessage,
+  resolvePasswordResetTicket,
+  trimPasswordResetPortalValue,
+  validatePasswordResetNextPasswordForm,
+} from "./password-reset-portal.js";
+
 const SAFE_CONSUMER_AUTH_PROTOCOLS = new Set(["http:", "https:"]);
 
 export const DEFAULT_CONSUMER_AUTH_NICKNAME = "悦享e食用户";
 
 export function trimAuthPortalValue(value) {
-  return String(value || "").trim();
+  return trimPasswordResetPortalValue(value);
 }
 
 export function normalizeConsumerAuthMode(value) {
@@ -20,16 +29,7 @@ export function normalizeConsumerAuthPhone(value) {
 }
 
 function decodeConsumerAuthQueryValue(value) {
-  const raw = trimAuthPortalValue(value);
-  if (!raw) {
-    return "";
-  }
-
-  try {
-    return decodeURIComponent(raw);
-  } catch (_error) {
-    return raw;
-  }
+  return decodePasswordResetPortalValue(value);
 }
 
 function buildAuthPortalQuery(params = {}) {
@@ -50,10 +50,11 @@ export function buildAuthPortalPageUrl(path, params = {}) {
 }
 
 export function buildConsumerSetPasswordPageUrl(phone, code) {
-  return buildAuthPortalPageUrl("/pages/auth/set-password/index", {
+  return buildPasswordResetSetPasswordPageUrl(
+    "/pages/auth/set-password/index",
     phone,
     code,
-  });
+  );
 }
 
 export function normalizeConsumerAuthExternalUrl(url) {
@@ -157,45 +158,17 @@ export function resolveConsumerPasswordResetTicket(
   options = {},
   cachedResetData = {},
 ) {
-  const rawOptions =
-    options && typeof options === "object" && !Array.isArray(options)
-      ? options
-      : {};
-  const rawCachedResetData =
-    cachedResetData &&
-    typeof cachedResetData === "object" &&
-    !Array.isArray(cachedResetData)
-      ? cachedResetData
-      : {};
-
-  return {
-    phone:
-      decodeConsumerAuthQueryValue(rawOptions.phone) ||
-      trimAuthPortalValue(rawCachedResetData.phone),
-    code:
-      decodeConsumerAuthQueryValue(rawOptions.code) ||
-      trimAuthPortalValue(rawCachedResetData.code),
-  };
+  return resolvePasswordResetTicket(options, cachedResetData);
 }
 
 export function validateConsumerNewPasswordForm(
   passwordValue,
   confirmPasswordValue,
 ) {
-  const password = trimAuthPortalValue(passwordValue);
-  const confirmPassword = trimAuthPortalValue(confirmPasswordValue);
-
-  if (!password) {
-    return { password: "", error: "请输入新密码" };
-  }
-  if (password.length < 6) {
-    return { password: "", error: "密码至少 6 位" };
-  }
-  if (password !== confirmPassword) {
-    return { password: "", error: "两次密码不一致" };
-  }
-
-  return { password, error: "" };
+  return validatePasswordResetNextPasswordForm(
+    passwordValue,
+    confirmPasswordValue,
+  );
 }
 
 function pickConsumerAuthErrorMessage(
@@ -203,7 +176,7 @@ function pickConsumerAuthErrorMessage(
   fallback,
   normalizeErrorMessage = (_error, message) => message,
 ) {
-  return normalizeErrorMessage(error, fallback);
+  return pickPasswordResetErrorMessage(error, fallback, normalizeErrorMessage);
 }
 
 export function createResetPasswordPage(options = {}) {

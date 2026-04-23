@@ -1,6 +1,12 @@
 import { onMounted, onUnmounted, reactive, ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { merchantLogin, requestSMSCode, deleteShop, verifySMSCodeCheck, merchantSetNewPassword } from '@/shared-ui/api'
+import {
+  merchantLogin,
+  requestSMSCode,
+  deleteShop,
+  verifySMSCodeCheck,
+  merchantSetNewPassword,
+} from '@/shared-ui/api'
 import {
   clearMerchantContext,
   ensureMerchantShops,
@@ -18,6 +24,14 @@ import {
   readMerchantAuthSession,
 } from '@/shared-ui/auth-session.js'
 import { persistRoleAuthSessionFromAuthResult } from '../../packages/client-sdk/src/role-auth-response.js'
+import {
+  createPasswordResetCooldownController,
+  requestPasswordResetCode,
+  resolvePasswordResetTicket,
+  buildPasswordResetSetPasswordPageUrl,
+  submitPasswordResetNextPassword,
+  verifyPasswordResetCode,
+} from '../../packages/mobile-core/src/password-reset-portal.js'
 
 export function useMerchantLoginPage() {
   const loginType = ref<'code' | 'password'>('password')
@@ -178,45 +192,30 @@ export function useMerchantResetPasswordPage() {
   const sendingCode = ref(false)
   const submitting = ref(false)
   const codeCooldown = ref(0)
-
-  let timer: any = null
-
-  function validatePhone() {
-    const normalizedPhone = String(phone.value || '').trim()
-    if (!/^1\d{10}$/.test(normalizedPhone)) {
-      uni.showToast({ title: '请输入正确手机号', icon: 'none' })
-      return ''
-    }
-    return normalizedPhone
-  }
-
-  function startCooldown() {
-    codeCooldown.value = 60
-    if (timer) clearInterval(timer)
-    timer = setInterval(() => {
-      codeCooldown.value -= 1
-      if (codeCooldown.value <= 0) {
-        clearInterval(timer)
-        timer = null
-      }
-    }, 1000)
-  }
+  const portalRuntime = reactive(getCachedMerchantPortalRuntimeSettings())
+  const cooldownController = createPasswordResetCooldownController({
+    setValue(nextValue) {
+      codeCooldown.value = nextValue
+    },
+  })
 
   async function handleSendCode() {
     if (sendingCode.value || codeCooldown.value > 0) return
-    const normalizedPhone = validatePhone()
-    if (!normalizedPhone) return
 
     sendingCode.value = true
     try {
-      const response: any = await requestSMSCode(normalizedPhone, 'merchant_reset')
-      if (response?.success === false) {
-        throw new Error(response?.error || response?.message || '验证码发送失败')
+      const result = await requestPasswordResetCode({
+        phoneValue: phone.value,
+        scene: 'merchant_reset',
+        requestSMSCode,
+        cooldownController,
+      })
+      if (!result.ok) {
+        uni.showToast({ title: result.message, icon: 'none' })
+        return
       }
-      uni.showToast({ title: response?.message || '验证码已发送', icon: 'success' })
-      startCooldown()
-    } catch (error: any) {
-      uni.showToast({ title: error?.error || error?.message || '验证码发送失败', icon: 'none' })
+
+      uni.showToast({ title: result.message, icon: 'success' })
     } finally {
       sendingCode.value = false
     }
@@ -224,32 +223,29 @@ export function useMerchantResetPasswordPage() {
 
   async function handleNext() {
     if (submitting.value) return
-    const normalizedPhone = validatePhone()
-    if (!normalizedPhone) return
-
-    const normalizedCode = String(code.value || '').trim()
-    if (!normalizedCode) {
-      uni.showToast({ title: '请输入验证码', icon: 'none' })
-      return
-    }
 
     submitting.value = true
     try {
-      const response: any = await verifySMSCodeCheck({
-        phone: normalizedPhone,
-        code: normalizedCode,
+      const result = await verifyPasswordResetCode({
+        phoneValue: phone.value,
+        codeValue: code.value,
         scene: 'merchant_reset',
+        storage: uni,
+        verifySMSCodeCheck,
+        buildSetPasswordUrl(phoneValue, codeValue) {
+          return buildPasswordResetSetPasswordPageUrl(
+            '/pages/set-password/index',
+            phoneValue,
+            codeValue,
+          )
+        },
       })
-      if (response?.success === false) {
-        throw new Error(response?.error || response?.message || '验证码校验失败')
+      if (!result.ok) {
+        uni.showToast({ title: result.message, icon: 'none' })
+        return
       }
 
-      uni.setStorageSync('reset_password_data', { phone: normalizedPhone, code: normalizedCode })
-      uni.redirectTo({
-        url: `/pages/set-password/index?phone=${encodeURIComponent(normalizedPhone)}&code=${encodeURIComponent(normalizedCode)}`,
-      })
-    } catch (error: any) {
-      uni.showToast({ title: error?.error || error?.message || '验证码错误', icon: 'none' })
+      uni.redirectTo({ url: result.redirectUrl })
     } finally {
       submitting.value = false
     }
@@ -259,11 +255,14 @@ export function useMerchantResetPasswordPage() {
     uni.redirectTo({ url: '/pages/login/index' })
   }
 
+  onMounted(() => {
+    void loadMerchantPortalRuntimeSettings().then((runtime) => {
+      Object.assign(portalRuntime, runtime)
+    })
+  })
+
   onUnmounted(() => {
-    if (timer) {
-      clearInterval(timer)
-      timer = null
-    }
+    cooldownController.clear()
   })
 
   return {
@@ -272,6 +271,7 @@ export function useMerchantResetPasswordPage() {
     sendingCode,
     submitting,
     codeCooldown,
+    portalRuntime,
     handleSendCode,
     handleNext,
     goLogin,
@@ -284,22 +284,22 @@ export function useMerchantSetPasswordPage() {
   const password = ref('')
   const confirmPassword = ref('')
   const submitting = ref(false)
+  const portalRuntime = reactive(getCachedMerchantPortalRuntimeSettings())
 
   onMounted(() => {
+    void loadMerchantPortalRuntimeSettings().then((runtime) => {
+      Object.assign(portalRuntime, runtime)
+    })
+
     const pages = getCurrentPages()
     const currentPage: any = pages[pages.length - 1] || {}
     const options = currentPage?.options || {}
-
-    if (options?.phone) phone.value = decodeURIComponent(options.phone)
-    if (options?.code) code.value = decodeURIComponent(options.code)
-
-    if (!phone.value || !code.value) {
-      const cache = uni.getStorageSync('reset_password_data')
-      if (cache) {
-        phone.value = cache.phone || ''
-        code.value = cache.code || ''
-      }
-    }
+    const resetTicket = resolvePasswordResetTicket(
+      options,
+      uni.getStorageSync('reset_password_data'),
+    )
+    phone.value = resetTicket.phone
+    code.value = resetTicket.code
 
     if (!phone.value || !code.value) {
       uni.showToast({ title: '验证信息已失效，请重新获取验证码', icon: 'none' })
@@ -312,36 +312,38 @@ export function useMerchantSetPasswordPage() {
   async function handleSubmit() {
     if (submitting.value) return
 
-    const normalizedPassword = String(password.value || '').trim()
-    const normalizedConfirmPassword = String(confirmPassword.value || '').trim()
-
-    if (!normalizedPassword || normalizedPassword.length < 6) {
-      uni.showToast({ title: '密码至少 6 位', icon: 'none' })
-      return
-    }
-    if (normalizedPassword !== normalizedConfirmPassword) {
-      uni.showToast({ title: '两次输入密码不一致', icon: 'none' })
-      return
-    }
-
     submitting.value = true
     try {
-      const response: any = await merchantSetNewPassword({
-        phone: phone.value,
-        code: code.value,
-        nextPassword: normalizedPassword,
+      const result = await submitPasswordResetNextPassword({
+        phoneValue: phone.value,
+        codeValue: code.value,
+        passwordValue: password.value,
+        confirmPasswordValue: confirmPassword.value,
+        storage: uni,
+        resetPasswordUrl: '/pages/reset-password/index',
+        loginUrl: '/pages/login/index',
+        successMessage: '密码重置成功',
+        failureMessage: '密码重置失败',
+        missingTicketMessage: '验证信息已失效，请重新获取验证码',
+        submitSetNewPassword: merchantSetNewPassword,
+        passwordValidation: {
+          mismatchPasswordMessage: '两次输入密码不一致',
+        },
       })
-      if (response?.success === false) {
-        throw new Error(response?.error || response?.message || '密码重置失败')
+      if (!result.ok) {
+        uni.showToast({ title: result.message, icon: 'none' })
+        if (result.reason === 'missing_ticket' && result.redirectUrl) {
+          setTimeout(() => {
+            uni.redirectTo({ url: result.redirectUrl })
+          }, 500)
+        }
+        return
       }
 
-      uni.removeStorageSync('reset_password_data')
-      uni.showToast({ title: '密码重置成功', icon: 'success' })
+      uni.showToast({ title: result.message, icon: 'success' })
       setTimeout(() => {
-        uni.redirectTo({ url: '/pages/login/index' })
+        uni.redirectTo({ url: result.redirectUrl || '/pages/login/index' })
       }, 500)
-    } catch (error: any) {
-      uni.showToast({ title: error?.error || error?.message || '密码重置失败', icon: 'none' })
     } finally {
       submitting.value = false
     }
@@ -355,6 +357,7 @@ export function useMerchantSetPasswordPage() {
     password,
     confirmPassword,
     submitting,
+    portalRuntime,
     handleSubmit,
     goLogin,
   }

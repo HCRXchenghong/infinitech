@@ -69,6 +69,7 @@ export * from "./order-list-page.js";
 export * from "./order-payment-options.js";
 export * from "./order-support-pages.js";
 export * from "./phone-contact.js";
+export * from "./password-reset-portal.js";
 export * from "./profile-address.js";
 export * from "./profile-favorites.js";
 export * from "./profile-my-reviews.js";

@@ -2,7 +2,7 @@
   <view class="auth-page">
     <view class="header">
       <text class="title">设置新密码</text>
-      <text class="subtitle">密码长度不少于 6 位</text>
+      <text class="subtitle">{{ portalRuntime.subtitle || '密码长度不少于 6 位' }}</text>
     </view>
 
     <view class="panel">
