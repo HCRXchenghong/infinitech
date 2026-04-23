@@ -86,6 +86,7 @@ export * from "./profile-phone-change.js";
 export * from "./rider-api.js";
 export * from "./rider-deposit-wallet-page.js";
 export * from "./rider-personal-info-page.js";
+export * from "./rider-profile-settings-page.js";
 export * from "./role-chat-navigation.js";
 export * from "./role-chat-portal.js";
 export * from "./role-message-api.js";

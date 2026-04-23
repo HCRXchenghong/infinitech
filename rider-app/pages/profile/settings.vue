@@ -107,218 +107,23 @@ import {
   persistRiderAuthSession,
   readRiderAuthSession,
 } from '../../shared-ui/auth-session.js'
-import {
-  formatRoleSettingsCacheSize,
-  maskRoleSettingsPhone,
-  readRoleSettingsStorageEntries,
-  restoreRoleSettingsStorageEntries,
-} from '../../../packages/mobile-core/src/role-settings-portal.js'
 import notification from '../../utils/notification'
+import { createRiderProfileSettingsPageLogic } from '../../../packages/mobile-core/src/rider-profile-settings-page.js'
 
-declare const uni: any
-
-const RIDER_CACHE_PRESERVED_STORAGE_KEYS = [
-  'access_token',
-  'socket_token',
-  'socket_token_account_key',
-  'notification_settings',
-]
-
-function readRiderSession() {
-  return readRiderAuthSession({ uniApp: uni })
-}
-
-export default Vue.extend({
-  data() {
-    const supportRuntime = getCachedSupportRuntimeSettings()
-    return {
-      avatarUrl: '/static/images/logo.png',
-      riderName: '骑手',
-      phone: '',
-      appVersionLabel: getAppVersionLabel(),
-      cacheSize: '--',
-      supportChatTitle: supportRuntime.title,
-      aboutSummary: supportRuntime.aboutSummary,
-      settings: {
-        messageNotice: true,
-        orderNotice: true,
-        vibrateNotice: false,
-      } as { [key: string]: boolean },
-    }
-  },
-  computed: {
-    maskedPhone(): string {
-      return maskRoleSettingsPhone(String(this.phone || '').trim())
-    },
-  },
-  onLoad() {
-    this.loadNotificationSettings()
-    this.calculateCacheSize()
-    void this.loadRuntimeConfig()
-    void this.loadRiderInfo()
-  },
-  onShow() {
-    void this.loadRuntimeConfig()
-    void this.loadRiderInfo()
-    this.calculateCacheSize()
-  },
-  methods: {
-    async loadRiderInfo() {
-      try {
-        const res: any = await fetchRiderInfo()
-        if (!res) return
-        this.avatarUrl = res.avatar || '/static/images/logo.png'
-        this.riderName = res.name || res.nickname || '骑手'
-        this.phone = res.phone || ''
-      } catch (err) {
-        console.error('[RiderSettings] 加载骑手信息失败:', err)
-      }
-    },
-
-    async loadRuntimeConfig() {
-      const runtime = await loadSupportRuntimeSettings()
-      this.supportChatTitle = runtime.title
-      this.aboutSummary = runtime.aboutSummary
-    },
-
-    loadNotificationSettings() {
-      const currentSettings = notification.getSettings()
-      this.settings = {
-        ...this.settings,
-        ...currentSettings,
-      }
-    },
-
-    calculateCacheSize() {
-      uni.getStorageInfo({
-        success: (res: any) => {
-          this.cacheSize = formatRoleSettingsCacheSize(res.currentSize)
-        },
-        fail: () => {
-          this.cacheSize = formatRoleSettingsCacheSize(Number.NaN)
-        },
-      })
-    },
-
-    changeAvatar() {
-      uni.navigateTo({ url: '/pages/profile/avatar-upload' })
-    },
-
-    editProfile() {
-      uni.navigateTo({ url: '/pages/profile/personal-info' })
-    },
-
-    changePhone() {
-      uni.navigateTo({ url: '/pages/profile/change-phone' })
-    },
-
-    changePassword() {
-      uni.navigateTo({ url: '/pages/profile/change-password' })
-    },
-
-    toggleSetting(key: string) {
-      this.settings[key] = !this.settings[key]
-      notification.updateSettings(key as any, this.settings[key])
-
-      const settingName: Record<string, string> = {
-        messageNotice: '消息通知',
-        orderNotice: '新订单提醒',
-        vibrateNotice: '震动提醒',
-      }
-
-      uni.showToast({
-        title: `${this.settings[key] ? '已开启' : '已关闭'}${settingName[key] || '设置'}`,
-        icon: 'none',
-        duration: 1500,
-      })
-    },
-
-    goToDeveloper() {
-      uni.navigateTo({ url: '/pages/profile/developer' })
-    },
-
-    clearCache() {
-      uni.showModal({
-        title: '清除缓存',
-        content: '将清理本地缓存数据，并保留登录态与通知设置，是否继续？',
-        success: (res: any) => {
-          if (!res.confirm) return
-
-          const session = readRiderSession()
-          const preservedEntries = readRoleSettingsStorageEntries(
-            uni,
-            RIDER_CACHE_PRESERVED_STORAGE_KEYS,
-          )
-          uni.clearStorageSync()
-          if (session.token) {
-            persistRiderAuthSession({
-              uniApp: uni,
-              token: session.token,
-              refreshToken: session.refreshToken || null,
-              tokenExpiresAt: session.tokenExpiresAt || null,
-              profile: session.profile,
-              extraStorageValues: {
-                riderId: session.accountId || null,
-                riderName: session.profile?.name || session.profile?.nickname || null,
-              },
-            })
-          }
-          restoreRoleSettingsStorageEntries(uni, preservedEntries)
-          this.loadNotificationSettings()
-          this.calculateCacheSize()
-          uni.showToast({ title: '缓存已清除', icon: 'success' })
-        },
-      })
-    },
-
-    showAbout() {
-      uni.showModal({
-        title: '关于骑手端',
-        content: this.aboutSummary || `${this.supportChatTitle}正在为骑手提供履约和服务支持。`,
-        showCancel: false,
-      })
-    },
-
-    handleLogout() {
-      uni.showModal({
-        title: '退出登录',
-        content: '确认退出当前骑手账号？',
-        success: async (res: any) => {
-          if (!res.confirm) return
-
-          try {
-            await updateRiderStatus(false)
-          } catch (_err) {}
-
-          try {
-            await unregisterCurrentPushDevice()
-          } catch (_err) {
-            clearPushRegistrationState()
-          }
-
-          clearRiderAuthSession({
-            uniApp: uni,
-            extraStorageKeys: [
-              'socket_token',
-              'socket_token_account_key',
-              'notification_settings',
-              'rider_push_registration',
-            ],
-          })
-          clearPushRegistrationState()
-          uni.showToast({
-            title: '已退出登录',
-            icon: 'success',
-          })
-
-          setTimeout(() => {
-            uni.reLaunch({ url: '/pages/login/index' })
-          }, 500)
-        },
-      })
-    },
-  },
-})
+export default Vue.extend(createRiderProfileSettingsPageLogic({
+  fetchRiderInfo,
+  updateRiderStatus,
+  getAppVersionLabel,
+  getCachedSupportRuntimeSettings,
+  loadSupportRuntimeSettings,
+  unregisterCurrentPushDevice,
+  clearPushRegistrationState,
+  readRiderAuthSession,
+  persistRiderAuthSession,
+  clearRiderAuthSession,
+  notificationRuntime: notification,
+  uniApp: uni,
+}) as any)
 </script>
 
 <style lang="scss" scoped>

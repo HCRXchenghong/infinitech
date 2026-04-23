@@ -416,6 +416,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/merchant-wallet.test.mjs",
   "packages/mobile-core/src/rider-personal-info-page.js",
   "packages/mobile-core/src/rider-personal-info-page.test.mjs",
+  "packages/mobile-core/src/rider-profile-settings-page.js",
+  "packages/mobile-core/src/rider-profile-settings-page.test.mjs",
   "packages/mobile-core/src/push-event-route.js",
   "packages/mobile-core/src/push-event-route.test.mjs",
   "packages/mobile-core/src/support-runtime.js",
@@ -1165,6 +1167,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   [
     "rider-app/pages/profile/wallet.vue",
     "../../../packages/mobile-core/src/rider-deposit-wallet-page.js",
+  ],
+  [
+    "rider-app/pages/profile/settings.vue",
+    "../../../packages/mobile-core/src/rider-profile-settings-page.js",
   ],
 ].forEach(([relativePath, sharedImport]) => {
   assertContains(relativePath, sharedImport);
@@ -2355,11 +2361,12 @@ assertContains("rider-app/pages/service/service-data-methods.ts", "resolveRoleCh
 assertContains("rider-app/pages/service/service-data-methods.ts", "normalizeRoleChatOrder(order)");
 assertContains(
   "rider-app/pages/profile/settings.vue",
-  "from '../../../packages/mobile-core/src/role-settings-portal.js'",
+  "from '../../../packages/mobile-core/src/rider-profile-settings-page.js'",
 );
-assertContains("rider-app/pages/profile/settings.vue", "maskRoleSettingsPhone(");
-assertContains("rider-app/pages/profile/settings.vue", "readRoleSettingsStorageEntries(");
-assertContains("rider-app/pages/profile/settings.vue", "restoreRoleSettingsStorageEntries(");
+assertContains("rider-app/pages/profile/settings.vue", "createRiderProfileSettingsPageLogic");
+assertNotContains("rider-app/pages/profile/settings.vue", "maskRoleSettingsPhone(");
+assertNotContains("rider-app/pages/profile/settings.vue", "readRoleSettingsStorageEntries(");
+assertNotContains("rider-app/pages/profile/settings.vue", "restoreRoleSettingsStorageEntries(");
 assertNotContains("rider-app/pages/profile/settings.vue", "function maskPhone(");
 assertContains("rider-app/pages/profile/change-phone.vue", "persistRiderAuthSession");
 assertContains("rider-app/shared-ui/auth-session.js", "readRiderAuthIdentity");
@@ -7397,6 +7404,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-profile-settings-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./dining-buddy.js";',
 );
 assertContains(
@@ -7482,6 +7493,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rider-personal-info-page": "./src/rider-personal-info-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-profile-settings-page": "./src/rider-profile-settings-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -9696,6 +9711,9 @@ assertContains("backend/go/internal/handler/rider_handler.go", "verification_res
 assertNotContains("rider-app/pages/profile/personal-info.vue", "updateRiderProfile({ is_verified: true })");
 assertContains("rider-app/pages/profile/personal-info.vue", "createRiderPersonalInfoPageLogic");
 assertContains("packages/mobile-core/src/rider-personal-info-page.js", "资料已保存，待平台审核");
+assertContains("rider-app/pages/profile/settings.vue", "createRiderProfileSettingsPageLogic");
+assertContains("packages/mobile-core/src/rider-profile-settings-page.js", "缓存已清除");
+assertContains("packages/mobile-core/src/rider-profile-settings-page.js", "确认退出当前骑手账号？");
 assertExists("backend/go/internal/handler/rider_handler_profile_security_test.go");
 assertContains(
   "backend/bff/src/config/index.js",
