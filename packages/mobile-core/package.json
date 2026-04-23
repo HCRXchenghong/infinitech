@@ -84,6 +84,7 @@
     "./medicine-home": "./src/medicine-home.js",
     "./profile-home": "./src/profile-home.js",
     "./profile-phone-change": "./src/profile-phone-change.js",
+    "./rider-api": "./src/rider-api.js",
     "./profile-outreach": "./src/profile-outreach.js",
     "./role-chat-navigation": "./src/role-chat-navigation.js",
     "./role-chat-portal": "./src/role-chat-portal.js",

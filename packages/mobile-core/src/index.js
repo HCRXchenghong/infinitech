@@ -82,6 +82,7 @@ export * from "./profile-home.js";
 export * from "./profile-coupon-list.js";
 export * from "./profile-outreach.js";
 export * from "./profile-phone-change.js";
+export * from "./rider-api.js";
 export * from "./role-chat-navigation.js";
 export * from "./role-chat-portal.js";
 export * from "./role-message-api.js";

@@ -588,6 +588,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/role-chat-portal.test.mjs",
   "packages/mobile-core/src/role-message-api.js",
   "packages/mobile-core/src/role-message-api.test.mjs",
+  "packages/mobile-core/src/rider-api.js",
+  "packages/mobile-core/src/rider-api.test.mjs",
   "packages/mobile-core/src/role-phone-change-portal.js",
   "packages/mobile-core/src/role-settings-portal.js",
   "packages/mobile-core/src/role-settings-portal.test.mjs",
@@ -1206,6 +1208,7 @@ assertContains("merchant-app/shared-ui/api.ts", "extractSMSResult");
 assertContains("rider-app/shared-ui/api.ts", "createRoleApiRuntimeBindings");
 assertContains("rider-app/shared-ui/api.ts", "extractSMSResult");
 assertContains("rider-app/shared-ui/api.ts", "createRiderPreferenceApi");
+assertContains("rider-app/shared-ui/api.ts", "createRiderBusinessApi");
 assertContains(
   "packages/mobile-core/src/consumer-api.js",
   "createMobilePushApiImpl({",
@@ -2287,8 +2290,15 @@ assertContains(
   "rider-app/shared-ui/api.ts",
   "from '../../packages/mobile-core/src/role-message-api.js'",
 );
+assertContains(
+  "rider-app/shared-ui/api.ts",
+  "from '../../packages/mobile-core/src/rider-api.js'",
+);
 assertContains("rider-app/shared-ui/api.ts", "const riderSMSApi = createRoleSMSApi({");
 assertContains("rider-app/shared-ui/api.ts", "const riderMessageApi = createRoleMessageApi({");
+assertContains("rider-app/shared-ui/api.ts", "const riderBusinessApi = createRiderBusinessApi({");
+assertNotContains("rider-app/shared-ui/api.ts", "`/api/riders/${riderId}/orders`");
+assertNotContains("rider-app/shared-ui/api.ts", "`/api/orders/${orderId}/accept`");
 assertContains(
   "rider-app/shared-ui/taskActions.ts",
   "from '../../packages/mobile-core/src/role-chat-navigation.js'",
@@ -4174,6 +4184,14 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/role-message-api.test.mjs",
   'from "./role-message-api.js";',
+);
+assertContains(
+  "packages/mobile-core/src/rider-api.js",
+  'from "../../contracts/src/http.js";',
+);
+assertContains(
+  "packages/mobile-core/src/rider-api.test.mjs",
+  'from "./rider-api.js";',
 );
 assertContains(
   "packages/mobile-core/src/role-settings-portal.test.mjs",
@@ -7247,6 +7265,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-api.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./role-chat-navigation.js";',
 );
 assertContains(
@@ -7392,6 +7414,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./profile-phone-change": "./src/profile-phone-change.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-api": "./src/rider-api.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

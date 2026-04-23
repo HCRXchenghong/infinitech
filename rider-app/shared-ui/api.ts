@@ -7,8 +7,6 @@ import { buildUniNetworkErrorMessage } from '../../packages/client-sdk/src/uni-r
 import { createRiderPreferenceApi } from '../../packages/client-sdk/src/mobile-capabilities.js'
 import {
   extractAuthSessionResult,
-  extractEnvelopeData,
-  extractPaginatedItems,
   extractSMSResult,
 } from '../../packages/contracts/src/http.js'
 import { UPLOAD_DOMAINS } from '../../packages/contracts/src/upload.js'
@@ -17,6 +15,7 @@ import {
   createRoleMessageApi,
   createRoleSMSApi,
 } from '../../packages/mobile-core/src/role-message-api.js'
+import { createRiderBusinessApi } from '../../packages/mobile-core/src/rider-api.js'
 import { readRiderAuthIdentity } from './auth-session.js'
 
 declare const uni: any
@@ -84,6 +83,13 @@ const riderMessageApi = createRoleMessageApi({
   request,
 })
 
+const riderBusinessApi = createRiderBusinessApi({
+  request,
+  readPrincipalId() {
+    return String(readRiderAuthIdentity({ uniApp: uni }).riderId || '')
+  },
+})
+
 const riderPreferenceApi = createRiderPreferenceApi({
   get(url: string) {
     return request({
@@ -126,181 +132,24 @@ export const markConversationRead = (chatId: string) =>
 
 export const fetchHistory = (roomId: string) => riderMessageApi.fetchHistory(roomId)
 
-function readRiderPrincipalId(): string {
-  return String(readRiderAuthIdentity({ uniApp: uni }).riderId || '')
-}
-
-// 获取骑手信息
-export const fetchRiderInfo = () => {
-  const riderId = readRiderPrincipalId()
-  if (!riderId) return Promise.resolve(null)
-  return request({ url: `/api/riders/${riderId}` })
-}
-
-// 获取订单列表
-export const fetchRiderOrders = (status?: string) => {
-  const riderId = readRiderPrincipalId()
-  if (!riderId) return Promise.resolve([])
-  return request({
-    url: status === 'available' ? '/api/riders/orders/available' : `/api/riders/${riderId}/orders`,
-    method: 'GET',
-    data: status && status !== 'available' ? { status } : {}
-  })
-}
-
 export const { fetchRiderPreferences, saveRiderPreferences } = riderPreferenceApi
-
-const riderPayload = () => {
-  const riderId = readRiderPrincipalId()
-  if (!riderId) return {}
-  return { rider_id: String(riderId) }
-}
-
-// 接单
-export const acceptOrder = (orderId: string) => request({
-  url: `/api/orders/${orderId}/accept`,
-  method: 'POST',
-  data: riderPayload()
-})
-
-// 取货
-export const pickupOrder = (orderId: string) => request({
-  url: `/api/orders/${orderId}/pickup`,
-  method: 'POST',
-  data: riderPayload()
-})
-
-// 送达
-export const deliverOrder = (orderId: string) => request({
-  url: `/api/orders/${orderId}/deliver`,
-  method: 'POST',
-  data: riderPayload()
-})
-
-export const reportOrderException = (orderId: string, data: any) => request({
-  url: `/api/orders/${orderId}/exception-report`,
-  method: 'POST',
-  data
-})
-
-// 获取收入明细
-export const fetchEarnings = (params?: any) => {
-  const riderId = readRiderPrincipalId()
-  if (!riderId) {
-    return Promise.resolve({
-      success: true,
-      summary: { totalIncome: 0, settledIncome: 0, pendingIncome: 0, orderCount: 0 },
-      items: []
-    })
-  }
-  return request({ url: `/api/riders/${riderId}/earnings`, data: params })
-}
-
-// 获取数据统计
-export const fetchRiderStats = () => {
-  const riderId = readRiderPrincipalId()
-  if (!riderId) return Promise.resolve({ todayEarnings: '0', completedCount: 0 })
-  return request({ url: `/api/riders/${riderId}/stats` })
-}
-
-// 更新骑手在线状态
-export const updateRiderStatus = (isOnline: boolean) => {
-  const riderId = readRiderPrincipalId()
-  if (!riderId) {
-    return Promise.resolve(null)
-  }
-  return request({
-    url: `/api/riders/${riderId}/online-status`,
-    method: 'PUT',
-    data: { is_online: isOnline }
-  })
-}
-
-// 骑手在线心跳
-export const heartbeatRiderStatus = () => {
-  const riderId = readRiderPrincipalId()
-  if (!riderId) return Promise.resolve(null)
-  return request({
-    url: `/api/riders/${riderId}/heartbeat`,
-    method: 'POST'
-  })
-}
-
-// 更新头像
-export const updateAvatar = (avatar: string) => {
-  const riderId = readRiderPrincipalId()
-  if (!riderId) return Promise.resolve(null)
-  return request({
-    url: `/api/riders/${riderId}/avatar`,
-    method: 'PUT',
-    data: { avatar }
-  })
-}
-
-// 获取骑手资料
-export const getRiderProfile = () => {
-  const riderId = readRiderPrincipalId()
-  if (!riderId) return Promise.resolve(null)
-  return request({ url: `/api/riders/${riderId}/profile` })
-}
-
-// 更新骑手资料
-export const updateRiderProfile = (data: any) => {
-  const riderId = readRiderPrincipalId()
-  if (!riderId) return Promise.resolve(null)
-  return request({
-    url: `/api/riders/${riderId}/profile`,
-    method: 'PUT',
-    data
-  })
-}
-
-// 修改手机号
-export const changePhone = (data: any) => {
-  const riderId = readRiderPrincipalId()
-  if (!riderId) return Promise.resolve(null)
-  return request({
-    url: `/api/riders/${riderId}/change-phone`,
-    method: 'POST',
-    data
-  }).then((response: any) => extractAuthSessionResult(response))
-}
-
-// 修改密码
-export const changePassword = (data: any) => {
-  const riderId = readRiderPrincipalId()
-  if (!riderId) return Promise.resolve(null)
-  return request({
-    url: `/api/riders/${riderId}/change-password`,
-    method: 'POST',
-    data
-  })
-}
-
-// 获取骑手段位信息
-export const getRiderRank = () => {
-  const riderId = readRiderPrincipalId()
-  if (!riderId) return Promise.resolve(null)
-  return request({
-    url: `/api/riders/${riderId}/rank`,
-    method: 'GET'
-  })
-}
-
-// 获取骑手评分摘要
-export const getRiderRating = () => {
-  const riderId = readRiderPrincipalId()
-  if (!riderId) return Promise.resolve(null)
-  return request({
-    url: `/api/riders/${riderId}/rating`,
-    method: 'GET'
-  })
-}
-
-// 获取排行榜
-export const getRankList = (type: string) => {
-  return request({
-    url: `/api/riders/rank-list?type=${type}`,
-    method: 'GET'
-  })
-}
+export const {
+  acceptOrder,
+  changePassword,
+  changePhone,
+  deliverOrder,
+  fetchEarnings,
+  fetchRiderInfo,
+  fetchRiderOrders,
+  fetchRiderStats,
+  getRankList,
+  getRiderProfile,
+  getRiderRank,
+  getRiderRating,
+  heartbeatRiderStatus,
+  pickupOrder,
+  reportOrderException,
+  updateAvatar,
+  updateRiderProfile,
+  updateRiderStatus,
+} = riderBusinessApi
