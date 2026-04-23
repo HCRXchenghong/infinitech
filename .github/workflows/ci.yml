@@ -6,6 +6,13 @@ on:
       - main
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 20
+
 jobs:
   repo-scripts:
     runs-on: ubuntu-latest
@@ -13,12 +20,58 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
       - run: node --check scripts/http-load-smoke.mjs
       - run: node --check scripts/release-preflight.mjs
 
-  go-backend:
+  modernization:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            merchant-app/package-lock.json
+            rider-app/package-lock.json
+            user-vue/package-lock.json
+            app-mobile/package-lock.json
+            admin-vue/package-lock.json
+            backend/bff/package-lock.json
+            socket-server/package-lock.json
+            backend/alipay-sidecar/package-lock.json
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go/go.mod
+          cache-dependency-path: backend/go/go.sum
+      - run: npm ci
+      - run: npm --prefix merchant-app ci
+      - run: npm --prefix rider-app ci
+      - run: npm --prefix user-vue ci
+      - run: npm --prefix app-mobile ci
+      - run: npm --prefix backend/bff ci
+      - run: npm --prefix socket-server ci
+      - run: npm --prefix backend/alipay-sidecar ci
+      - run: npm run verify:modernization
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: node scripts/security/check-committed-secrets.mjs
+
+  go-vulncheck:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: backend/go
@@ -27,51 +80,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: backend/go/go.mod
-      - run: go test ./...
-      - run: go build ./cmd
-
-  bff:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend/bff
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: backend/bff/package-lock.json
-      - run: npm ci
-      - run: npm test -- --runInBand
-      - run: npm run lint
-
-  admin-vue:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: admin-vue
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: admin-vue/package-lock.json
-      - run: npm ci
-      - run: npm run build
-
-  socket-server:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: socket-server
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: socket-server/package-lock.json
-      - run: npm ci
-      - run: npm run check
+          cache-dependency-path: backend/go/go.sum
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run: $(go env GOPATH)/bin/govulncheck ./...

@@ -191,6 +191,9 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/client-sdk/src/support-socket-shell.test.mjs",
   "packages/client-sdk/src/uni-request.js",
   "packages/client-sdk/src/uni-request.test.mjs",
+  "scripts/security/check-committed-secrets.mjs",
+  "scripts/security/verify-backend-audits.mjs",
+  "scripts/security/security-gates.test.mjs",
   "packages/admin-core/src/admin-auth-response.js",
   "packages/admin-core/src/admin-auth-response.test.mjs",
   "packages/admin-core/src/admin-auth-session.js",
@@ -4272,7 +4275,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && node scripts/architecture/check-admin-desktop-shell-scope.mjs && node scripts/architecture/check-admin-shell-duplicates.mjs && node scripts/architecture/check-consumer-shared-shells.mjs && node scripts/architecture/check-go-route-guard-coverage.mjs && npm run verify:architecture-tests && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:admin-vue-tests && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"',
+  '"verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && node scripts/architecture/check-admin-desktop-shell-scope.mjs && node scripts/architecture/check-admin-shell-duplicates.mjs && node scripts/architecture/check-consumer-shared-shells.mjs && node scripts/architecture/check-go-route-guard-coverage.mjs && npm run verify:architecture-tests && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:admin-vue-tests && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:security-tests && npm run verify:backend-security && npm run verify:backend-runtime && npm run verify:management-tests"',
 );
 assertExists("scripts/architecture/check-admin-desktop-shell-scope.mjs");
 assertExists("scripts/architecture/check-go-route-guard-coverage.mjs");
@@ -7144,6 +7147,46 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./category-pages": "./src/category-pages.js"',
+);
+assertContains(
+  "package.json",
+  '"verify:security-tests": "node --test scripts/security/security-gates.test.mjs"',
+);
+assertContains(
+  "package.json",
+  '"verify:backend-security": "node scripts/security/check-committed-secrets.mjs && node scripts/security/verify-backend-audits.mjs"',
+);
+assertContains(
+  "package.json",
+  "npm run verify:security-tests && npm run verify:backend-security && npm run verify:backend-runtime",
+);
+assertContains(
+  ".github/workflows/ci.yml",
+  "npm run verify:modernization",
+);
+assertContains(
+  ".github/workflows/ci.yml",
+  "node scripts/security/check-committed-secrets.mjs",
+);
+assertContains(
+  ".github/workflows/ci.yml",
+  "govulncheck ./...",
+);
+assertContains(
+  ".github/workflows/ci.yml",
+  "npm --prefix merchant-app ci",
+);
+assertContains(
+  ".github/workflows/ci.yml",
+  "npm --prefix backend/bff ci",
+);
+assertContains(
+  "scripts/security/verify-backend-audits.mjs",
+  "https://registry.npmjs.org",
+);
+assertContains(
+  "scripts/security/check-committed-secrets.mjs",
+  "committed secret scan passed",
 );
 assertContains(
   "packages/mobile-core/package.json",
