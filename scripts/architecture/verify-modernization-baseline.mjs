@@ -244,6 +244,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/auth-portal-pages.test.mjs",
   "packages/mobile-core/src/password-reset-portal.js",
   "packages/mobile-core/src/role-login-portal.js",
+  "packages/mobile-core/src/role-password-change-portal.js",
+  "packages/mobile-core/src/role-password-change-portal.test.mjs",
   "packages/mobile-core/src/AuthLoginPage.vue",
   "packages/mobile-core/src/auth-login-page.scss",
   "packages/mobile-core/src/AuthRegisterPage.vue",
@@ -2291,6 +2293,22 @@ assertNotContains("rider-app/pages/profile/change-phone.vue", "oldTimer:");
 assertNotContains("rider-app/pages/profile/change-phone.vue", "newTimer:");
 assertNotContains("rider-app/pages/profile/change-phone.vue", "loading: false");
 assertContains(
+  "rider-app/pages/profile/change-password.vue",
+  "from '../../../packages/mobile-core/src/role-password-change-portal.js'",
+);
+assertContains(
+  "rider-app/pages/profile/change-password.vue",
+  "const result = await requestRolePasswordChangeCode({",
+);
+assertContains(
+  "rider-app/pages/profile/change-password.vue",
+  "const result = await submitRolePasswordChange({",
+);
+assertContains("rider-app/pages/profile/change-password.vue", "sendingCode: false");
+assertContains("rider-app/pages/profile/change-password.vue", "submitting: false");
+assertNotContains("rider-app/pages/profile/change-password.vue", "setInterval(");
+assertNotContains("rider-app/pages/profile/change-password.vue", "loading: false");
+assertContains(
   "socket-server/socketIdentity.js",
   "../packages/domain-core/src/identity.js",
 );
@@ -4051,6 +4069,14 @@ assertContains(
   'from "./role-login-portal.js";',
 );
 assertContains(
+  "packages/mobile-core/src/role-password-change-portal.js",
+  'from "./password-reset-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/role-password-change-portal.test.mjs",
+  'from "./role-password-change-portal.js";',
+);
+assertContains(
   "packages/mobile-core/src/profile-phone-change.js",
   'from "./role-phone-change-portal.js";',
 );
@@ -4346,7 +4372,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:mobile-core-tests": "node --test packages/mobile-core/src/upload.test.mjs packages/mobile-core/src/vip-center.test.mjs packages/mobile-core/src/medicine-home.test.mjs packages/mobile-core/src/medicine-order.test.mjs packages/mobile-core/src/mobile-client-context.test.mjs packages/mobile-core/src/charity-page.test.mjs packages/mobile-core/src/dining-buddy.test.mjs packages/mobile-core/src/auth-portal.test.mjs packages/mobile-core/src/auth-portal-pages.test.mjs packages/mobile-core/src/cart-popup-page.test.mjs packages/mobile-core/src/category-pages.test.mjs packages/mobile-core/src/consumer-app-bootstrap.test.mjs packages/mobile-core/src/consumer-app-bridges.test.mjs packages/mobile-core/src/consumer-app-runtime.test.mjs packages/mobile-core/src/consumer-app-shell.test.mjs packages/mobile-core/src/consumer-app-session.test.mjs packages/mobile-core/src/consumer-auth-session.test.mjs packages/mobile-core/src/consumer-profile-storage.test.mjs packages/mobile-core/src/consumer-app-version.test.mjs packages/mobile-core/src/consumer-api.test.mjs packages/mobile-core/src/consumer-auth-runtime.test.mjs packages/mobile-core/src/consumer-cache.test.mjs packages/mobile-core/src/consumer-errand.test.mjs packages/mobile-core/src/consumer-errand-home.test.mjs packages/mobile-core/src/consumer-errand-pages.test.mjs packages/mobile-core/src/consumer-errand-runtime.test.mjs packages/mobile-core/src/consumer-home-categories.test.mjs packages/mobile-core/src/consumer-legal-runtime.test.mjs packages/mobile-core/src/consumer-modal-components.test.mjs packages/mobile-core/src/consumer-notification-sound.test.mjs packages/mobile-core/src/consumer-order-store.test.mjs packages/mobile-core/src/consumer-runtime-support.test.mjs packages/mobile-core/src/consumer-service-runtime.test.mjs packages/mobile-core/src/consumer-service-shell.test.mjs packages/mobile-core/src/consumer-shop-components.test.mjs packages/mobile-core/src/shop-detail-page.test.mjs packages/mobile-core/src/product-pages.test.mjs packages/mobile-core/src/featured-page.test.mjs packages/mobile-core/src/consumer-notify-bridges.test.mjs packages/mobile-core/src/consumer-request-interceptor.test.mjs packages/mobile-core/src/consumer-rtc-contact.test.mjs packages/mobile-core/src/home-index.test.mjs packages/mobile-core/src/home-shell-components.test.mjs packages/mobile-core/src/home-weather-modal.test.mjs packages/mobile-core/src/location.test.mjs packages/mobile-core/src/location-select-page.test.mjs packages/mobile-core/src/platform-runtime.test.mjs packages/mobile-core/src/platform-schema.test.mjs packages/mobile-core/src/portal-runtime.test.mjs packages/mobile-core/src/role-api-shell.test.mjs packages/mobile-core/src/role-portal-runtime-shell.test.mjs packages/mobile-core/src/role-runtime-support.test.mjs packages/mobile-core/src/rtc-call-page.test.mjs packages/mobile-core/src/search-page.test.mjs packages/mobile-core/src/support-runtime.test.mjs packages/mobile-core/src/profile-home.test.mjs packages/mobile-core/src/profile-settings.test.mjs packages/mobile-core/src/profile-address.test.mjs packages/mobile-core/src/profile-favorites.test.mjs packages/mobile-core/src/profile-my-reviews.test.mjs packages/mobile-core/src/profile-points-mall.test.mjs packages/mobile-core/src/profile-edit.test.mjs packages/mobile-core/src/profile-outreach.test.mjs packages/mobile-core/src/profile-coupon-list.test.mjs packages/mobile-core/src/profile-phone-change.test.mjs packages/mobile-core/src/message-center.test.mjs packages/mobile-core/src/notification-detail.test.mjs packages/mobile-core/src/message-chat-page.test.mjs packages/mobile-core/src/customer-service-page.test.mjs packages/mobile-core/src/client-payment.test.mjs packages/mobile-core/src/push-event-route.test.mjs packages/mobile-core/src/order-after-sales.test.mjs packages/mobile-core/src/order-confirm-page.test.mjs packages/mobile-core/src/order-contact.test.mjs packages/mobile-core/src/order-coupon.test.mjs packages/mobile-core/src/order-detail-page.test.mjs packages/mobile-core/src/order-list-page.test.mjs packages/mobile-core/src/order-payment-options.test.mjs packages/mobile-core/src/order-support-pages.test.mjs packages/mobile-core/src/phone-contact.test.mjs packages/mobile-core/src/role-sync-shell.test.mjs packages/mobile-core/src/sync-service.test.mjs packages/mobile-core/src/wallet-overview-page.test.mjs packages/mobile-core/src/wallet-bills-page.test.mjs packages/mobile-core/src/wallet-recharge-page.test.mjs packages/mobile-core/src/wallet-withdraw-page.test.mjs"',
+  "packages/mobile-core/src/role-password-change-portal.test.mjs",
 );
 assertContains(
   "packages/client-sdk/src/index.js",
@@ -6898,6 +6924,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./role-password-change-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./category-pages.js";',
 );
 assertContains(
@@ -7207,6 +7237,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./role-login-portal": "./src/role-login-portal.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./role-password-change-portal": "./src/role-password-change-portal.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

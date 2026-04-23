@@ -73,6 +73,7 @@
     "./password-reset-portal": "./src/password-reset-portal.js",
     "./phone-contact": "./src/phone-contact.js",
     "./push-event-route": "./src/push-event-route.js",
+    "./role-password-change-portal": "./src/role-password-change-portal.js",
     "./profile-address": "./src/profile-address.js",
     "./profile-favorites": "./src/profile-favorites.js",
     "./profile-my-reviews": "./src/profile-my-reviews.js",
