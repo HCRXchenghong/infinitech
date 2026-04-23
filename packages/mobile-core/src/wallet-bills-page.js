@@ -12,7 +12,7 @@ import {
   hideWalletLoading,
 } from "./wallet-shared.js";
 
-const DEFAULT_FILTER_OPTIONS = [
+export const DEFAULT_WALLET_BILLS_FILTER_OPTIONS = [
   { key: "all", label: "全部", value: "" },
   { key: "payment", label: "支付", value: "payment" },
   { key: "recharge", label: "充值", value: "recharge" },
@@ -20,7 +20,7 @@ const DEFAULT_FILTER_OPTIONS = [
   { key: "withdraw", label: "提现", value: "withdraw" },
 ];
 
-const DEFAULT_TX_TYPE_LABEL_MAP = {
+export const DEFAULT_WALLET_BILLS_TX_TYPE_LABELS = {
   payment: "订单支付",
   refund: "订单退款",
   recharge: "余额充值",
@@ -30,7 +30,7 @@ const DEFAULT_TX_TYPE_LABEL_MAP = {
   admin_deduct_balance: "系统扣款",
 };
 
-const DEFAULT_TX_TYPE_ICON_MAP = {
+export const DEFAULT_WALLET_BILLS_TX_TYPE_ICONS = {
   payment: "支",
   refund: "退",
   recharge: "充",
@@ -69,7 +69,7 @@ export function createWalletBillsPageLogic(options = {}) {
         };
   const resolvedFilterOptions = cloneWalletItems(
     filterOptions,
-    DEFAULT_FILTER_OPTIONS,
+    DEFAULT_WALLET_BILLS_FILTER_OPTIONS,
   );
   const customTxTypeLabelMap =
     txTypeLabels && typeof txTypeLabels === "object" ? txTypeLabels : null;
@@ -314,7 +314,7 @@ export function createWalletBillsPageLogic(options = {}) {
         const normalized = String(type || "").toLowerCase();
         return (
           (customTxTypeLabelMap && customTxTypeLabelMap[normalized]) ||
-          DEFAULT_TX_TYPE_LABEL_MAP[normalized] ||
+          DEFAULT_WALLET_BILLS_TX_TYPE_LABELS[normalized] ||
           type ||
           "资产变动"
         );
@@ -323,7 +323,7 @@ export function createWalletBillsPageLogic(options = {}) {
         const normalized = String(type || "").toLowerCase();
         return (
           (customTxTypeIconMap && customTxTypeIconMap[normalized]) ||
-          DEFAULT_TX_TYPE_ICON_MAP[normalized] ||
+          DEFAULT_WALLET_BILLS_TX_TYPE_ICONS[normalized] ||
           "资"
         );
       },

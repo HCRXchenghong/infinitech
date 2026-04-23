@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createWalletBillsPageLogic } from "./wallet-bills-page.js";
+import {
+  createWalletBillsPageLogic,
+  DEFAULT_WALLET_BILLS_FILTER_OPTIONS,
+  DEFAULT_WALLET_BILLS_TX_TYPE_ICONS,
+  DEFAULT_WALLET_BILLS_TX_TYPE_LABELS,
+} from "./wallet-bills-page.js";
 
 function instantiatePage(component) {
   const instance = {
@@ -22,6 +27,18 @@ function instantiatePage(component) {
 
   return instance;
 }
+
+test("wallet bills page exports stable default display config", () => {
+  assert.deepEqual(DEFAULT_WALLET_BILLS_FILTER_OPTIONS, [
+    { key: "all", label: "全部", value: "" },
+    { key: "payment", label: "支付", value: "payment" },
+    { key: "recharge", label: "充值", value: "recharge" },
+    { key: "refund", label: "退款", value: "refund" },
+    { key: "withdraw", label: "提现", value: "withdraw" },
+  ]);
+  assert.equal(DEFAULT_WALLET_BILLS_TX_TYPE_LABELS.withdraw, "余额提现");
+  assert.equal(DEFAULT_WALLET_BILLS_TX_TYPE_ICONS.admin_deduct_balance, "扣");
+});
 
 test("wallet bills page summarizes transactions and merges detail payloads", async () => {
   const loadingTitles = [];

@@ -1167,6 +1167,18 @@ assertContains(
 assertContains("merchant-app/shared-ui/merchantWallet.ts", "createWalletIdempotencyKey(");
 assertContains("merchant-app/shared-ui/merchantWallet.ts", "normalizeWalletFlowStatus(");
 assertContains("merchant-app/shared-ui/merchantWallet.ts", "walletFlowStatusLabel(");
+assertContains(
+  "rider-app/pages/profile/wallet-bills/index-logic.ts",
+  "DEFAULT_WALLET_BILLS_FILTER_OPTIONS",
+);
+assertContains(
+  "rider-app/pages/profile/wallet-bills/index-logic.ts",
+  "DEFAULT_WALLET_BILLS_TX_TYPE_LABELS",
+);
+assertContains(
+  "rider-app/pages/profile/wallet-bills/index-logic.ts",
+  "DEFAULT_WALLET_BILLS_TX_TYPE_ICONS",
+);
 
 assertMatches(
   "backend/bff/src/utils/requestMeta.js",
