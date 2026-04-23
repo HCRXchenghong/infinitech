@@ -18,10 +18,23 @@ import {
   shouldLaunchClientPayment,
 } from '@/shared-ui/client-payment'
 import { readMerchantAuthIdentity } from '@/shared-ui/auth-session.js'
+import {
+  createWalletIdempotencyKey,
+  extractWalletItems,
+  fenToWalletYuan,
+  isWalletFailureStatus,
+  isWalletRechargeSuccessStatus,
+  isWalletWithdrawSuccessStatus,
+  normalizeWalletArrivalText,
+  normalizeWalletFlowStatus,
+  normalizeWalletOptions,
+  normalizeWalletText,
+  normalizeWalletWithdrawFailureReason,
+  sortWalletTransactions,
+  walletFlowStatusLabel,
+} from '../../packages/mobile-core/src/wallet-shared.js'
 
-function toText(value: any) {
-  return String(value ?? '').trim()
-}
+const toText = normalizeWalletText
 
 export function getMerchantWalletIdentity() {
   const auth = readMerchantAuthIdentity({ uniApp: uni })
@@ -34,9 +47,7 @@ export function getMerchantWalletIdentity() {
 }
 
 export function formatWalletFen(value: any) {
-  const amount = Number(value || 0)
-  if (!Number.isFinite(amount)) return '0.00'
-  return (Math.abs(amount) / 100).toFixed(2)
+  return fenToWalletYuan(value)
 }
 
 export async function fetchMerchantWalletSnapshot() {
@@ -55,56 +66,6 @@ export async function fetchMerchantWalletSnapshot() {
     balance: Number(response?.balance || 0),
     frozenBalance: Number(response?.frozenBalance || 0),
   }
-}
-
-function normalizeArray(payload: any, candidates: string[] = ['items', 'list', 'data']) {
-  if (Array.isArray(payload)) return payload
-  for (const key of candidates) {
-    if (Array.isArray(payload?.[key])) return payload[key]
-  }
-  if (Array.isArray(payload?.data?.list)) return payload.data.list
-  if (Array.isArray(payload?.data?.items)) return payload.data.items
-  if (Array.isArray(payload?.data)) return payload.data
-  return []
-}
-
-function normalizeOptions(payload: any) {
-  if (Array.isArray(payload?.options)) return payload.options
-  return normalizeArray(payload, ['options', 'items', 'list', 'data'])
-}
-
-function normalizeFlowStatus(payload: any, nestedKey: string) {
-  return toText(payload?.status || payload?.[nestedKey]?.status || payload?.transactionStatus).toLowerCase()
-}
-
-function normalizeArrivalText(payload: any, nestedKey: string) {
-  return toText(payload?.arrivalText || payload?.[nestedKey]?.arrivalText)
-}
-
-function normalizeWithdrawFailureReason(payload: any, nestedKey: string) {
-  return toText(
-    payload?.rejectReason ||
-      payload?.reason ||
-      payload?.transferResult ||
-      payload?.[nestedKey]?.rejectReason ||
-      payload?.[nestedKey]?.reason ||
-      payload?.[nestedKey]?.transferResult ||
-      payload?.[nestedKey]?.responseData?.rejectReason ||
-      payload?.[nestedKey]?.responseData?.reason ||
-      payload?.[nestedKey]?.responseData?.transferResult
-  )
-}
-
-function sortTransactions(items: any[]) {
-  return items.slice().sort((left: any, right: any) => {
-    const leftTime = new Date(left?.created_at || left?.createdAt || 0).getTime()
-    const rightTime = new Date(right?.created_at || right?.createdAt || 0).getTime()
-    return rightTime - leftTime
-  })
-}
-
-function createIdempotencyKey(prefix: string, walletUserId: string) {
-  return `${prefix}_${walletUserId}_${Date.now()}_${Math.floor(Math.random() * 100000)}`
 }
 
 function sleep(ms: number) {
@@ -202,9 +163,6 @@ export function useMerchantWalletPage() {
   const withdrawOptions = ref<any[]>([])
 
   const activeType = ref('')
-  const rechargeFinalStatuses = new Set(['success', 'completed', 'paid'])
-  const flowFailureStatuses = new Set(['failed', 'rejected', 'cancelled', 'closed'])
-  const withdrawFinalStatuses = new Set(['success', 'completed'])
 
   const typeFilters = [
     { label: '全部', value: '' },
@@ -282,23 +240,7 @@ export function useMerchantWalletPage() {
   }
 
   function flowStatusText(status: string) {
-    const normalized = toText(status).toLowerCase()
-    const map: Record<string, string> = {
-      awaiting_client_pay: '待支付',
-      pending: '处理中',
-      pending_review: '待审核',
-      pending_transfer: '待打款',
-      processing: '处理中',
-      transferring: '转账中',
-      success: '成功',
-      completed: '成功',
-      paid: '已支付',
-      failed: '失败',
-      rejected: '已驳回',
-      cancelled: '已取消',
-      closed: '已关闭',
-    }
-    return map[normalized] || normalized || '处理中'
+    return walletFlowStatusLabel(status)
   }
 
   async function pollRechargeResult(rechargeOrderId: string, transactionId: string) {
@@ -310,8 +252,8 @@ export function useMerchantWalletPage() {
         rechargeOrderId,
         transactionId,
       })
-      const status = normalizeFlowStatus(latest, 'recharge')
-      if (rechargeFinalStatuses.has(status) || flowFailureStatuses.has(status)) {
+      const status = normalizeWalletFlowStatus(latest, 'recharge')
+      if (isWalletRechargeSuccessStatus(status) || isWalletFailureStatus(status)) {
         return latest
       }
       await sleep(1500)
@@ -328,8 +270,8 @@ export function useMerchantWalletPage() {
         requestId: withdrawRequestId,
         transactionId,
       })
-      const status = normalizeFlowStatus(latest, 'withdraw')
-      if (withdrawFinalStatuses.has(status) || flowFailureStatuses.has(status)) {
+      const status = normalizeWalletFlowStatus(latest, 'withdraw')
+      if (isWalletWithdrawSuccessStatus(status) || isWalletFailureStatus(status)) {
         return latest
       }
       await sleep(1500)
@@ -371,9 +313,9 @@ export function useMerchantWalletPage() {
 
       balance.value = Number(snapshot?.balance || 0)
       frozenBalance.value = Number(snapshot?.frozenBalance || 0)
-      rechargeOptions.value = normalizeOptions(rechargeRes)
-      withdrawOptions.value = normalizeOptions(withdrawRes)
-      transactions.value = sortTransactions(normalizeArray(txRes))
+      rechargeOptions.value = normalizeWalletOptions(rechargeRes)
+      withdrawOptions.value = normalizeWalletOptions(withdrawRes)
+      transactions.value = sortWalletTransactions(extractWalletItems(txRes))
     } catch (error: any) {
       uni.showToast({ title: error?.error || error?.message || '加载失败', icon: 'none' })
     } finally {
@@ -411,7 +353,7 @@ export function useMerchantWalletPage() {
         platform: 'app',
         paymentMethod: channel.channel,
         paymentChannel: channel.channel,
-        idempotencyKey: createIdempotencyKey('merchant_recharge', walletUserId.value),
+        idempotencyKey: createWalletIdempotencyKey('merchant_recharge', walletUserId.value),
         description: '商户端余额充值',
       })
 
@@ -425,20 +367,20 @@ export function useMerchantWalletPage() {
       }
 
       let latest = result
-      let status = normalizeFlowStatus(latest, 'recharge')
-      if (!rechargeFinalStatuses.has(status) && !flowFailureStatuses.has(status) && (result?.rechargeOrderId || result?.transactionId)) {
+      let status = normalizeWalletFlowStatus(latest, 'recharge')
+      if (!isWalletRechargeSuccessStatus(status) && !isWalletFailureStatus(status) && (result?.rechargeOrderId || result?.transactionId)) {
         uni.showLoading({ title: '正在确认充值状态', mask: true })
         try {
           latest = await pollRechargeResult(toText(result?.rechargeOrderId), toText(result?.transactionId))
         } finally {
           uni.hideLoading()
         }
-        status = normalizeFlowStatus(latest, 'recharge')
+        status = normalizeWalletFlowStatus(latest, 'recharge')
       }
 
-      if (rechargeFinalStatuses.has(status)) {
+      if (isWalletRechargeSuccessStatus(status)) {
         uni.showToast({ title: '充值成功', icon: 'success' })
-      } else if (flowFailureStatuses.has(status)) {
+      } else if (isWalletFailureStatus(status)) {
         uni.showToast({ title: `充值失败：${flowStatusText(status)}`, icon: 'none' })
       } else {
         uni.showToast({ title: '充值请求已提交，可在钱包流水查看状态', icon: 'none' })
@@ -498,25 +440,25 @@ export function useMerchantWalletPage() {
         bankName: accountPayload.bankName,
         bankBranch: accountPayload.bankBranch,
         remark: '商户端提现申请',
-        idempotencyKey: createIdempotencyKey('merchant_withdraw', walletUserId.value),
+        idempotencyKey: createWalletIdempotencyKey('merchant_withdraw', walletUserId.value),
       })
 
       let latest = result
-      let status = normalizeFlowStatus(latest, 'withdraw')
-      if (!withdrawFinalStatuses.has(status) && !flowFailureStatuses.has(status) && (result?.withdrawRequestId || result?.transactionId)) {
+      let status = normalizeWalletFlowStatus(latest, 'withdraw')
+      if (!isWalletWithdrawSuccessStatus(status) && !isWalletFailureStatus(status) && (result?.withdrawRequestId || result?.transactionId)) {
         uni.showLoading({ title: '正在确认提现状态', mask: true })
         try {
           latest = await pollWithdrawResult(toText(result?.withdrawRequestId), toText(result?.transactionId))
         } finally {
           uni.hideLoading()
         }
-        status = normalizeFlowStatus(latest, 'withdraw')
+        status = normalizeWalletFlowStatus(latest, 'withdraw')
       }
 
-      if (withdrawFinalStatuses.has(status)) {
+      if (isWalletWithdrawSuccessStatus(status)) {
         uni.showToast({ title: '提现成功', icon: 'success' })
-      } else if (flowFailureStatuses.has(status)) {
-        const reason = normalizeWithdrawFailureReason(latest, 'withdraw')
+      } else if (isWalletFailureStatus(status)) {
+        const reason = normalizeWalletWithdrawFailureReason(latest, 'withdraw')
         if (status === 'rejected') {
           await new Promise<boolean>((resolve) => {
             uni.showModal({
@@ -531,7 +473,7 @@ export function useMerchantWalletPage() {
           uni.showToast({ title: reason ? `提现失败：${reason}` : `提现失败：${flowStatusText(status)}`, icon: 'none' })
         }
       } else {
-        const arrivalText = normalizeArrivalText(latest, 'withdraw')
+        const arrivalText = normalizeWalletArrivalText(latest, 'withdraw')
         uni.showToast({
           title: arrivalText ? `提现处理中，${arrivalText}` : `提现已提交，当前状态：${flowStatusText(status)}`,
           icon: 'none',

@@ -4,8 +4,13 @@ import {
   createWalletIdempotencyKey,
   fenToWalletYuan,
   getWalletStatusBarHeight,
+  isWalletFailureStatus,
+  isWalletWithdrawSuccessStatus,
+  normalizeWalletArrivalText,
+  normalizeWalletFlowStatus,
   normalizeWalletOptions,
   normalizeWalletText,
+  normalizeWalletWithdrawFailureReason,
   navigateWalletBack,
   readConsumerWalletAuth,
   resolveWalletField,
@@ -14,6 +19,7 @@ import {
   showWalletModal,
   showWalletToast,
   hideWalletLoading,
+  walletFlowStatusLabel,
 } from "./wallet-shared.js";
 
 export function createWalletWithdrawPageLogic(options = {}) {
@@ -274,65 +280,22 @@ export function createWalletWithdrawPageLogic(options = {}) {
         return waitFor(ms);
       },
       normalizeFlowStatus(payload, nestedKey) {
-        return String(
-          (payload && payload.status) ||
-            (payload && payload[nestedKey] && payload[nestedKey].status) ||
-            "",
-        )
-          .trim()
-          .toLowerCase();
+        return normalizeWalletFlowStatus(payload, nestedKey);
       },
       normalizeArrivalText(payload, nestedKey) {
-        return String(
-          (payload && payload.arrivalText) ||
-            (payload && payload[nestedKey] && payload[nestedKey].arrivalText) ||
-            "",
-        ).trim();
+        return normalizeWalletArrivalText(payload, nestedKey);
       },
       normalizeWithdrawFailureReason(payload, nestedKey) {
-        return String(
-          (payload && payload.rejectReason) ||
-            (payload && payload.reason) ||
-            (payload && payload.transferResult) ||
-            (payload &&
-              payload[nestedKey] &&
-              (payload[nestedKey].rejectReason ||
-                payload[nestedKey].reason ||
-                payload[nestedKey].transferResult ||
-                (payload[nestedKey].responseData &&
-                  (payload[nestedKey].responseData.rejectReason ||
-                    payload[nestedKey].responseData.reason ||
-                    payload[nestedKey].responseData.transferResult)))) ||
-            "",
-        ).trim();
+        return normalizeWalletWithdrawFailureReason(payload, nestedKey);
       },
       isWithdrawSuccessStatus(status) {
-        return ["success", "completed"].includes(
-          String(status || "").trim().toLowerCase(),
-        );
+        return isWalletWithdrawSuccessStatus(status);
       },
       isWithdrawFailureStatus(status) {
-        return ["failed", "rejected", "cancelled", "closed"].includes(
-          String(status || "").trim().toLowerCase(),
-        );
+        return isWalletFailureStatus(status);
       },
       flowStatusLabel(status) {
-        const normalized = String(status || "").trim().toLowerCase();
-        return (
-          {
-            pending: "处理中",
-            pending_review: "待审核",
-            pending_transfer: "待打款",
-            processing: "处理中",
-            transferring: "转账中",
-            success: "成功",
-            completed: "成功",
-            failed: "失败",
-            rejected: "已驳回",
-            cancelled: "已取消",
-            closed: "已关闭",
-          }[normalized] || "处理中"
-        );
+        return walletFlowStatusLabel(status);
       },
       async pollWithdrawStatus(requestId, transactionId, token) {
         const { userId } = this.getAuth();

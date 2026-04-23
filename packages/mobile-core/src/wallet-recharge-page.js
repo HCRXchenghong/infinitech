@@ -4,6 +4,9 @@ import {
   createWalletIdempotencyKey,
   fenToWalletYuan,
   getWalletStatusBarHeight,
+  isWalletFailureStatus,
+  isWalletRechargeSuccessStatus,
+  normalizeWalletFlowStatus,
   normalizeWalletOptions,
   normalizeWalletText,
   navigateWalletBack,
@@ -220,23 +223,13 @@ export function createWalletRechargePageLogic(options = {}) {
         return waitFor(ms);
       },
       normalizeFlowStatus(payload, nestedKey) {
-        return String(
-          (payload && payload.status) ||
-            (payload && payload[nestedKey] && payload[nestedKey].status) ||
-            "",
-        )
-          .trim()
-          .toLowerCase();
+        return normalizeWalletFlowStatus(payload, nestedKey);
       },
       isRechargeSuccessStatus(status) {
-        return ["success", "completed", "paid"].includes(
-          String(status || "").trim().toLowerCase(),
-        );
+        return isWalletRechargeSuccessStatus(status);
       },
       isRechargeFailureStatus(status) {
-        return ["failed", "rejected", "cancelled", "closed"].includes(
-          String(status || "").trim().toLowerCase(),
-        );
+        return isWalletFailureStatus(status);
       },
       async pollRechargeStatus(rechargeOrderId, transactionId, token) {
         const { userId } = this.getAuth();

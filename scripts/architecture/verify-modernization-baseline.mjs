@@ -590,6 +590,7 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/role-message-api.test.mjs",
   "packages/mobile-core/src/rider-api.js",
   "packages/mobile-core/src/rider-api.test.mjs",
+  "packages/mobile-core/src/wallet-shared.test.mjs",
   "packages/mobile-core/src/role-phone-change-portal.js",
   "packages/mobile-core/src/role-settings-portal.js",
   "packages/mobile-core/src/role-settings-portal.test.mjs",
@@ -1158,6 +1159,14 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
 ].forEach(([relativePath, sharedImport]) => {
   assertContains(relativePath, sharedImport);
 });
+
+assertContains(
+  "merchant-app/shared-ui/merchantWallet.ts",
+  "from '../../packages/mobile-core/src/wallet-shared.js'",
+);
+assertContains("merchant-app/shared-ui/merchantWallet.ts", "createWalletIdempotencyKey(");
+assertContains("merchant-app/shared-ui/merchantWallet.ts", "normalizeWalletFlowStatus(");
+assertContains("merchant-app/shared-ui/merchantWallet.ts", "walletFlowStatusLabel(");
 
 assertMatches(
   "backend/bff/src/utils/requestMeta.js",
@@ -4192,6 +4201,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/rider-api.test.mjs",
   'from "./rider-api.js";',
+);
+assertContains(
+  "packages/mobile-core/src/wallet-shared.test.mjs",
+  'from "./wallet-shared.js";',
 );
 assertContains(
   "packages/mobile-core/src/role-settings-portal.test.mjs",

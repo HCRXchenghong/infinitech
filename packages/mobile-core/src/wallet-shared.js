@@ -13,6 +13,34 @@ export function cloneWalletItems(items, fallback = []) {
   );
 }
 
+export function extractWalletItems(payload, candidates = ["items", "list", "records", "data"]) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  const keys = Array.isArray(candidates) && candidates.length > 0
+    ? candidates
+    : ["items", "list", "records", "data"];
+  const sources = [
+    payload,
+    payload && payload.data,
+    payload && payload.data && payload.data.data,
+  ].filter((source) => source && typeof source === "object");
+
+  for (const source of sources) {
+    if (Array.isArray(source)) {
+      return source;
+    }
+    for (const key of keys) {
+      if (Array.isArray(source[key])) {
+        return source[key];
+      }
+    }
+  }
+
+  return [];
+}
+
 export function getWalletStorageValue(uniApp, key) {
   if (!uniApp || typeof uniApp.getStorageSync !== "function") {
     return "";
@@ -72,16 +100,7 @@ export function resolveWalletField(data, key, fallback = 0) {
 }
 
 export function normalizeWalletOptions(payload) {
-  if (Array.isArray(payload)) {
-    return payload;
-  }
-  if (Array.isArray(payload && payload.options)) {
-    return payload.options;
-  }
-  if (Array.isArray(payload && payload.data && payload.data.options)) {
-    return payload.data.options;
-  }
-  return [];
+  return extractWalletItems(payload, ["options", "items", "list", "records", "data"]);
 }
 
 export function fenToWalletYuan(fen) {
@@ -98,6 +117,99 @@ export function createWalletIdempotencyKey(
 ) {
   const seed = `${nowFn()}${Math.floor(randomFn() * 1000000)}`;
   return `${prefix}_${String(userId || "guest")}_${seed}`;
+}
+
+export function normalizeWalletFlowStatus(payload, nestedKey) {
+  const nested =
+    nestedKey && payload && typeof payload === "object"
+      ? payload[nestedKey]
+      : null;
+  return normalizeWalletText(
+    (payload && payload.status) ||
+      (nested && nested.status) ||
+      (payload && payload.transactionStatus),
+  ).toLowerCase();
+}
+
+export function normalizeWalletArrivalText(payload, nestedKey) {
+  const nested =
+    nestedKey && payload && typeof payload === "object"
+      ? payload[nestedKey]
+      : null;
+  return normalizeWalletText(
+    (payload && payload.arrivalText) ||
+      (nested && nested.arrivalText),
+  );
+}
+
+export function normalizeWalletWithdrawFailureReason(payload, nestedKey) {
+  const nested =
+    nestedKey && payload && typeof payload === "object"
+      ? payload[nestedKey]
+      : null;
+  const responseData = nested && nested.responseData;
+  return normalizeWalletText(
+    (payload && payload.rejectReason) ||
+      (payload && payload.reason) ||
+      (payload && payload.transferResult) ||
+      (nested &&
+        (nested.rejectReason ||
+          nested.reason ||
+          nested.transferResult ||
+          (responseData &&
+            (responseData.rejectReason ||
+              responseData.reason ||
+              responseData.transferResult)))),
+  );
+}
+
+export function isWalletRechargeSuccessStatus(status) {
+  return ["success", "completed", "paid"].includes(
+    normalizeWalletText(status).toLowerCase(),
+  );
+}
+
+export function isWalletWithdrawSuccessStatus(status) {
+  return ["success", "completed"].includes(
+    normalizeWalletText(status).toLowerCase(),
+  );
+}
+
+export function isWalletFailureStatus(status) {
+  return ["failed", "rejected", "cancelled", "closed"].includes(
+    normalizeWalletText(status).toLowerCase(),
+  );
+}
+
+export function walletFlowStatusLabel(status, fallback = "处理中") {
+  const normalized = normalizeWalletText(status).toLowerCase();
+  return (
+    {
+      awaiting_client_pay: "待支付",
+      pending: "处理中",
+      pending_review: "待审核",
+      pending_transfer: "待打款",
+      processing: "处理中",
+      transferring: "转账中",
+      success: "成功",
+      completed: "成功",
+      paid: "已支付",
+      failed: "失败",
+      rejected: "已驳回",
+      cancelled: "已取消",
+      closed: "已关闭",
+    }[normalized] ||
+    normalized ||
+    fallback
+  );
+}
+
+export function sortWalletTransactions(items) {
+  return extractWalletItems(items).slice().sort((left, right) => {
+    const leftTime = new Date(left?.created_at || left?.createdAt || 0).getTime();
+    const rightTime = new Date(right?.created_at || right?.createdAt || 0).getTime();
+    return rightTime - leftTime;
+  });
 }
 
 export function getWalletStatusBarHeight(uniApp, fallback = 44) {
