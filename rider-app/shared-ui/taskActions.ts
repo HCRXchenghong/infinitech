@@ -1,5 +1,9 @@
 import { recordPhoneContactClick, reportOrderException } from './api'
 import { createPhoneContactHelper } from '../../packages/mobile-core/src/phone-contact.js'
+import {
+  navigateToRoleChat,
+  resolveRoleChatOrderId,
+} from '../../packages/mobile-core/src/role-chat-navigation.js'
 
 declare const uni: any
 
@@ -63,10 +67,6 @@ function buildTaskPhoneAuditPayload(task: any, phoneNumber: string, targetRole: 
   }
 }
 
-function buildServiceUrl(chatId: string, role: string, name: string) {
-  return `/pages/service/index?chatId=${encodeURIComponent(chatId)}&role=${encodeURIComponent(role)}&name=${encodeURIComponent(name)}`
-}
-
 function fallbackCopyAddress(address: string, fallbackText: string) {
   const content = pickString(address, fallbackText)
   if (!content) {
@@ -102,9 +102,7 @@ async function callPhoneNumber(phone: string, fallbackText: string, auditPayload
 }
 
 export function resolveTaskId(task: any): string {
-  if (!task) return ''
-  const value = task.id || task.orderId || task.order_id || task.daily_order_id
-  return value === undefined || value === null ? '' : String(value).trim()
+  return resolveRoleChatOrderId(task)
 }
 
 export function openCustomerChat(task: any) {
@@ -114,8 +112,13 @@ export function openCustomerChat(task: any) {
     return
   }
 
-  uni.navigateTo({
-    url: buildServiceUrl(`rider_${orderId}`, 'user', '顾客会话'),
+  navigateToRoleChat(uni, {
+    baseUrl: '/pages/service/index',
+    chatId: `rider_${orderId}`,
+    role: 'user',
+    name: '顾客会话',
+    targetId: resolveTaskContactTargetId(task, 'user'),
+    orderId,
   })
 }
 
@@ -127,8 +130,13 @@ export function openMerchantChat(task: any) {
   }
 
   const shopName = pickString(task?.shopName, '商家会话')
-  uni.navigateTo({
-    url: buildServiceUrl(`rs_${orderId}`, 'merchant', shopName),
+  navigateToRoleChat(uni, {
+    baseUrl: '/pages/service/index',
+    chatId: `rs_${orderId}`,
+    role: 'merchant',
+    name: shopName,
+    targetId: resolveTaskContactTargetId(task, 'merchant'),
+    orderId,
   })
 }
 

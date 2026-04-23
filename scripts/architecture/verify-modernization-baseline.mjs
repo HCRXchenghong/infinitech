@@ -582,6 +582,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/profile-home.test.mjs",
   "packages/mobile-core/src/profile-phone-change.js",
   "packages/mobile-core/src/profile-phone-change.test.mjs",
+  "packages/mobile-core/src/role-chat-navigation.js",
+  "packages/mobile-core/src/role-chat-navigation.test.mjs",
   "packages/mobile-core/src/role-chat-portal.js",
   "packages/mobile-core/src/role-chat-portal.test.mjs",
   "packages/mobile-core/src/role-phone-change-portal.js",
@@ -2254,6 +2256,11 @@ assertContains(
 assertContains("merchant-app/shared-ui/push-registration.ts", "MERCHANT_STORED_AUTH_RESOLVER_OPTIONS");
 assertContains("merchant-app/shared-ui/realtime-notify.ts", "MERCHANT_STORED_AUTH_RESOLVER_OPTIONS");
 assertContains(
+  "merchant-app/shared-ui/chatNavigation.ts",
+  "from '../../packages/mobile-core/src/role-chat-navigation.js'",
+);
+assertContains("merchant-app/shared-ui/chatNavigation.ts", "navigateToRoleChat(uni, {");
+assertContains(
   "merchant-app/shared-ui/merchantChatPage.ts",
   "from '../../packages/mobile-core/src/role-chat-portal.js'",
 );
@@ -2268,6 +2275,12 @@ assertContains("merchant-app/shared-ui/merchantAccountPages.ts", "readRoleSettin
 assertContains("rider-app/App-logic.ts", "ensureRiderAuthSession");
 assertContains("rider-app/pages/login/index.vue", "persistRiderAuthSession");
 assertContains("rider-app/pages/profile/settings.vue", "clearRiderAuthSession");
+assertContains(
+  "rider-app/shared-ui/taskActions.ts",
+  "from '../../packages/mobile-core/src/role-chat-navigation.js'",
+);
+assertContains("rider-app/shared-ui/taskActions.ts", "navigateToRoleChat(uni, {");
+assertContains("rider-app/shared-ui/taskActions.ts", "resolveRoleChatOrderId(task)");
 assertContains(
   "rider-app/pages/service/index-logic.ts",
   "from \"../../../packages/mobile-core/src/role-chat-portal.js\"",
@@ -4133,6 +4146,14 @@ assertContains(
   'from "./profile-settings.js";',
 );
 assertContains(
+  "packages/mobile-core/src/role-chat-navigation.js",
+  'from "./role-chat-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/role-chat-navigation.test.mjs",
+  'from "./role-chat-navigation.js";',
+);
+assertContains(
   "packages/mobile-core/src/role-chat-portal.js",
   'from "./customer-service-chat-utils.js";',
 );
@@ -4449,6 +4470,10 @@ assertContains(
 assertContains(
   "package.json",
   "packages/mobile-core/src/role-settings-portal.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/role-chat-navigation.test.mjs",
 );
 assertContains(
   "package.json",
@@ -7204,6 +7229,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./role-chat-navigation.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./role-chat-portal.js";',
 );
 assertContains(
@@ -7341,6 +7370,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./profile-phone-change": "./src/profile-phone-change.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./role-chat-navigation": "./src/role-chat-navigation.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
