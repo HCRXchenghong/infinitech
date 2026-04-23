@@ -2,9 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildRiderPreferencePayload,
+  clampRiderPreferenceDistance,
   createMobilePushApi,
   createRiderPreferenceApi,
+  DEFAULT_RIDER_PREFERENCE_SETTINGS,
   extractRiderPreferenceSettings,
+  RIDER_PREFERENCE_DISTANCE_RANGE,
 } from "./mobile-capabilities.js";
 
 test("createMobilePushApi binds standard push endpoints", async () => {
@@ -84,6 +88,37 @@ test("extractRiderPreferenceSettings supports enveloped and legacy payloads", ()
       preferRoute: true,
       preferHighPrice: true,
       preferNearby: false,
+    },
+  );
+
+  assert.deepEqual(DEFAULT_RIDER_PREFERENCE_SETTINGS, {
+    maxDistanceKm: 3,
+    autoAcceptEnabled: false,
+    preferRoute: true,
+    preferHighPrice: true,
+    preferNearby: false,
+  });
+  assert.deepEqual(RIDER_PREFERENCE_DISTANCE_RANGE, {
+    min: 1,
+    max: 20,
+    step: 0.5,
+  });
+  assert.equal(clampRiderPreferenceDistance(0), 3);
+  assert.equal(clampRiderPreferenceDistance(30), 20);
+  assert.deepEqual(
+    buildRiderPreferencePayload({
+      maxDistanceKm: 8,
+      autoAcceptEnabled: true,
+      preferRoute: false,
+      preferHighPrice: false,
+      preferNearby: true,
+    }),
+    {
+      max_distance_km: 8,
+      auto_accept_enabled: true,
+      prefer_route: false,
+      prefer_high_price: false,
+      prefer_nearby: true,
     },
   );
 });

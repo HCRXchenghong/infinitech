@@ -412,6 +412,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/wallet-withdraw-page.test.mjs",
   "packages/mobile-core/src/rider-deposit-wallet-page.js",
   "packages/mobile-core/src/rider-deposit-wallet-page.test.mjs",
+  "packages/mobile-core/src/rider-order-settings-page.js",
+  "packages/mobile-core/src/rider-order-settings-page.test.mjs",
   "packages/mobile-core/src/merchant-wallet.js",
   "packages/mobile-core/src/merchant-wallet.test.mjs",
   "packages/mobile-core/src/rider-personal-info-page.js",
@@ -1169,6 +1171,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
     "../../../packages/mobile-core/src/rider-deposit-wallet-page.js",
   ],
   [
+    "rider-app/pages/profile/order-settings.vue",
+    "../../../packages/mobile-core/src/rider-order-settings-page.js",
+  ],
+  [
     "rider-app/pages/profile/settings.vue",
     "../../../packages/mobile-core/src/rider-profile-settings-page.js",
   ],
@@ -1274,7 +1280,7 @@ assertContains(
 );
 assertContains(
   "rider-app/pages/profile/order-settings.vue",
-  "extractRiderPreferenceSettings",
+  "createRiderOrderSettingsPageLogic",
 );
 assertContains(
   "rider-app/components/dispatch-popup-logic.ts",
@@ -7400,6 +7406,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-order-settings-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./rider-personal-info-page.js";',
 );
 assertContains(
@@ -7489,6 +7499,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rider-deposit-wallet-page": "./src/rider-deposit-wallet-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-order-settings-page": "./src/rider-order-settings-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -9711,6 +9725,9 @@ assertContains("backend/go/internal/handler/rider_handler.go", "verification_res
 assertNotContains("rider-app/pages/profile/personal-info.vue", "updateRiderProfile({ is_verified: true })");
 assertContains("rider-app/pages/profile/personal-info.vue", "createRiderPersonalInfoPageLogic");
 assertContains("packages/mobile-core/src/rider-personal-info-page.js", "资料已保存，待平台审核");
+assertContains("rider-app/pages/profile/order-settings.vue", "createRiderOrderSettingsPageLogic");
+assertContains("packages/mobile-core/src/rider-order-settings-page.js", "保存成功");
+assertContains("packages/mobile-core/src/rider-order-settings-page.js", "开启自动接单");
 assertContains("rider-app/pages/profile/settings.vue", "createRiderProfileSettingsPageLogic");
 assertContains("packages/mobile-core/src/rider-profile-settings-page.js", "缓存已清除");
 assertContains("packages/mobile-core/src/rider-profile-settings-page.js", "确认退出当前骑手账号？");

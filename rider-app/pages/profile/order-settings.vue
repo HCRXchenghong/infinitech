@@ -63,92 +63,14 @@
 
 <script lang="ts">
 import Vue from 'vue'
-import { extractRiderPreferenceSettings } from '../../../packages/client-sdk/src/mobile-capabilities.js'
 import { fetchRiderPreferences, saveRiderPreferences } from '../../shared-ui/api'
+import { createRiderOrderSettingsPageLogic } from '../../../packages/mobile-core/src/rider-order-settings-page.js'
 
-export default Vue.extend({
-  data() {
-    return {
-      loading: false,
-      saving: false,
-      orderSettings: {
-        maxDistanceKm: 3,
-        autoAcceptEnabled: false,
-        preferRoute: true,
-        preferHighPrice: true,
-        preferNearby: false
-      },
-      tipText: '合理设置接单偏好，可提升候选单排序质量与自动接单命中率'
-    }
-  },
-  onLoad() {
-    this.loadPreferences()
-  },
-  onShow() {
-    this.loadPreferences()
-  },
-  methods: {
-    normalizePreferences(raw: any = {}) {
-      return extractRiderPreferenceSettings(raw)
-    },
-    async loadPreferences() {
-      this.loading = true
-      try {
-        const response: any = await fetchRiderPreferences()
-        const payload = response?.data || response || {}
-        this.orderSettings = this.normalizePreferences(payload)
-      } catch (error) {
-        this.orderSettings = this.normalizePreferences()
-        uni.showToast({ title: error?.error || error?.message || '加载设置失败', icon: 'none' })
-      } finally {
-        this.loading = false
-      }
-    },
-    handleDistanceChange(event: any) {
-      const value = Number(event?.detail?.value || 3)
-      this.orderSettings.maxDistanceKm = Math.max(1, Math.min(20, value))
-    },
-    handleSwitchChange(field: 'preferRoute' | 'preferHighPrice' | 'preferNearby', event: any) {
-      this.orderSettings[field] = !!event?.detail?.value
-    },
-    toggleAuto() {
-      const nextValue = !this.orderSettings.autoAcceptEnabled
-
-      if (nextValue) {
-        uni.showModal({
-          title: '开启自动接单',
-          content: '开启后将自动接受符合条件的订单，确定开启吗？',
-          success: (res) => {
-            this.orderSettings.autoAcceptEnabled = !!res.confirm
-          }
-        })
-        return
-      }
-
-      this.orderSettings.autoAcceptEnabled = false
-    },
-    async savePreferences() {
-      if (this.saving || this.loading) return
-      this.saving = true
-      try {
-        const response: any = await saveRiderPreferences({
-          max_distance_km: this.orderSettings.maxDistanceKm,
-          auto_accept_enabled: this.orderSettings.autoAcceptEnabled,
-          prefer_route: this.orderSettings.preferRoute,
-          prefer_high_price: this.orderSettings.preferHighPrice,
-          prefer_nearby: this.orderSettings.preferNearby
-        })
-        const payload = response?.data || response || {}
-        this.orderSettings = this.normalizePreferences(payload)
-        uni.showToast({ title: '保存成功', icon: 'success' })
-      } catch (error) {
-        uni.showToast({ title: error?.error || error?.message || '保存失败', icon: 'none' })
-      } finally {
-        this.saving = false
-      }
-    }
-  }
-})
+export default Vue.extend(createRiderOrderSettingsPageLogic({
+  fetchRiderPreferences,
+  saveRiderPreferences,
+  uniApp: uni,
+}) as any)
 </script>
 
 <style lang="scss" scoped>
