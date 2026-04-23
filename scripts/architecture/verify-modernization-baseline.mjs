@@ -418,6 +418,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/rider-avatar-upload-page.test.mjs",
   "packages/mobile-core/src/rider-history-orders-page.js",
   "packages/mobile-core/src/rider-history-orders-page.test.mjs",
+  "packages/mobile-core/src/rider-insurance-page.js",
+  "packages/mobile-core/src/rider-insurance-page.test.mjs",
   "packages/mobile-core/src/rider-order-settings-page.js",
   "packages/mobile-core/src/rider-order-settings-page.test.mjs",
   "packages/mobile-core/src/merchant-wallet.js",
@@ -1187,6 +1189,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   [
     "rider-app/pages/profile/history.vue",
     "../../../packages/mobile-core/src/rider-history-orders-page.js",
+  ],
+  [
+    "rider-app/pages/profile/insurance.vue",
+    "../../../packages/mobile-core/src/rider-insurance-page.js",
   ],
   [
     "rider-app/pages/profile/order-settings.vue",
@@ -2394,6 +2400,14 @@ assertContains(
 assertNotContains("rider-app/pages/profile/avatar-upload.vue", "resolveUploadAssetUrl(");
 assertNotContains("rider-app/pages/profile/avatar-upload.vue", "UPLOAD_DOMAINS.PROFILE_IMAGE");
 assertNotContains("rider-app/pages/profile/avatar-upload.vue", "persistRiderAuthSession({");
+assertContains(
+  "rider-app/pages/profile/insurance.vue",
+  "from '../../../packages/mobile-core/src/rider-insurance-page.js'",
+);
+assertContains("rider-app/pages/profile/insurance.vue", "createRiderInsurancePageLogic");
+assertNotContains("rider-app/pages/profile/insurance.vue", "DEFAULT_INSURANCE_SETTINGS");
+assertNotContains("rider-app/pages/profile/insurance.vue", "function buildInsuranceSettings");
+assertNotContains("rider-app/pages/profile/insurance.vue", "function normalizeSteps");
 assertContains(
   "rider-app/pages/profile/settings.vue",
   "from '../../../packages/mobile-core/src/rider-profile-settings-page.js'",
@@ -7447,6 +7461,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-insurance-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./rider-order-settings-page.js";',
 );
 assertContains(
@@ -7552,6 +7570,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rider-history-orders-page": "./src/rider-history-orders-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-insurance-page": "./src/rider-insurance-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -9787,6 +9809,9 @@ assertContains("packages/mobile-core/src/rider-earnings-page.js", "冻结中，2
 assertContains("rider-app/pages/profile/history.vue", "createRiderHistoryOrdersPageLogic");
 assertContains("packages/mobile-core/src/rider-history-orders-page.js", "历史订单加载失败");
 assertContains("packages/mobile-core/src/rider-history-orders-page.js", "已完成");
+assertContains("rider-app/pages/profile/insurance.vue", "createRiderInsurancePageLogic");
+assertContains("packages/mobile-core/src/rider-insurance-page.js", "理赔入口暂未开放");
+assertContains("packages/mobile-core/src/rider-insurance-page.js", "链接已复制，请在浏览器打开");
 assertContains("rider-app/pages/profile/order-settings.vue", "createRiderOrderSettingsPageLogic");
 assertContains("packages/mobile-core/src/rider-order-settings-page.js", "保存成功");
 assertContains("packages/mobile-core/src/rider-order-settings-page.js", "开启自动接单");

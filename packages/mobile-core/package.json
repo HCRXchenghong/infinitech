@@ -90,6 +90,7 @@
     "./rider-deposit-wallet-page": "./src/rider-deposit-wallet-page.js",
     "./rider-earnings-page": "./src/rider-earnings-page.js",
     "./rider-history-orders-page": "./src/rider-history-orders-page.js",
+    "./rider-insurance-page": "./src/rider-insurance-page.js",
     "./rider-order-settings-page": "./src/rider-order-settings-page.js",
     "./rider-personal-info-page": "./src/rider-personal-info-page.js",
     "./rider-profile-settings-page": "./src/rider-profile-settings-page.js",
