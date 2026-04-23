@@ -4225,7 +4225,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:architecture-tests": "node --test scripts/architecture/check-admin-shell-duplicates.test.mjs scripts/architecture/check-go-route-guard-coverage.test.mjs"',
+  '"verify:architecture-tests": "node --test scripts/architecture/check-admin-shell-duplicates.test.mjs scripts/architecture/check-consumer-shared-shells.test.mjs scripts/architecture/check-go-route-guard-coverage.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -4233,7 +4233,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && node scripts/architecture/check-admin-shell-duplicates.mjs && node scripts/architecture/check-go-route-guard-coverage.mjs && npm run verify:architecture-tests && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:admin-vue-tests && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"',
+  '"verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && node scripts/architecture/check-admin-shell-duplicates.mjs && node scripts/architecture/check-consumer-shared-shells.mjs && node scripts/architecture/check-go-route-guard-coverage.mjs && npm run verify:architecture-tests && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:admin-vue-tests && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:backend-runtime && npm run verify:management-tests"',
 );
 assertExists("scripts/architecture/check-go-route-guard-coverage.mjs");
 assertExists("scripts/architecture/check-go-route-guard-coverage.test.mjs");
