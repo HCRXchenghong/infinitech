@@ -13,6 +13,10 @@ import {
 } from '../../packages/contracts/src/http.js'
 import { UPLOAD_DOMAINS } from '../../packages/contracts/src/upload.js'
 import { createRoleApiRuntimeBindings } from '../../packages/mobile-core/src/role-api-shell.js'
+import {
+  createRoleMessageApi,
+  createRoleSMSApi,
+} from '../../packages/mobile-core/src/role-message-api.js'
 import { readRiderAuthIdentity } from './auth-session.js'
 
 declare const uni: any
@@ -71,6 +75,15 @@ export function readAuthorizationHeader(): Record<string, string> {
   return riderApiRuntime.readAuthorizationHeader() as Record<string, string>
 }
 
+const riderSMSApi = createRoleSMSApi({
+  request,
+  defaultScene: 'rider_login',
+})
+
+const riderMessageApi = createRoleMessageApi({
+  request,
+})
+
 const riderPreferenceApi = createRiderPreferenceApi({
   get(url: string) {
     return request({
@@ -97,42 +110,21 @@ export const riderLogin = (credentials: any) => request({
 }).then((response: any) => extractAuthSessionResult(response))
 
 // 发送验证码
-export const requestSMSCode = (phone: string, scene: string = 'rider_login', extra: Record<string, unknown> = {}) => request({
-  url: '/api/request-sms-code',
-  method: 'POST',
-  data: { phone, scene, ...extra }
-}).then((response: any) => extractSMSResult(response))
+export const requestSMSCode = (phone: string, scene: string = 'rider_login', extra: Record<string, unknown> = {}) =>
+  riderSMSApi.requestSMSCode(phone, scene, extra)
 
-export const verifySMSCodeCheck = (phone: string, scene: string, code: string) => request({
-  url: '/api/verify-sms-code-check',
-  method: 'POST',
-  data: { phone, scene, code }
-}).then((response: any) => extractSMSResult(response))
+export const verifySMSCodeCheck = (phone: string, scene: string, code: string) =>
+  riderSMSApi.verifySMSCodeCheck(phone, scene, code)
 
-export const fetchConversations = () => request({
-  url: '/api/messages/conversations',
-  method: 'GET'
-}).then((payload: any) => extractPaginatedItems(payload, {
-  listKeys: ['conversations', 'items', 'records', 'list'],
-}).items)
+export const fetchConversations = () => riderMessageApi.fetchConversations()
 
-export const upsertConversation = (payload: Record<string, any>) => request({
-  url: '/api/messages/conversations/upsert',
-  method: 'POST',
-  data: payload
-}).then((response: any) => extractEnvelopeData(response) || {})
+export const upsertConversation = (payload: Record<string, any>) =>
+  riderMessageApi.upsertConversation(payload)
 
-export const markConversationRead = (chatId: string) => request({
-  url: `/api/messages/conversations/${encodeURIComponent(chatId)}/read`,
-  method: 'POST'
-})
+export const markConversationRead = (chatId: string) =>
+  riderMessageApi.markConversationRead(chatId)
 
-export const fetchHistory = (roomId: string) => request({
-  url: `/api/messages/${encodeURIComponent(roomId)}`,
-  method: 'GET'
-}).then((payload: any) => extractPaginatedItems(payload, {
-  listKeys: ['messages', 'items', 'records', 'list'],
-}).items)
+export const fetchHistory = (roomId: string) => riderMessageApi.fetchHistory(roomId)
 
 function readRiderPrincipalId(): string {
   return String(readRiderAuthIdentity({ uniApp: uni }).riderId || '')

@@ -586,6 +586,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/role-chat-navigation.test.mjs",
   "packages/mobile-core/src/role-chat-portal.js",
   "packages/mobile-core/src/role-chat-portal.test.mjs",
+  "packages/mobile-core/src/role-message-api.js",
+  "packages/mobile-core/src/role-message-api.test.mjs",
   "packages/mobile-core/src/role-phone-change-portal.js",
   "packages/mobile-core/src/role-settings-portal.js",
   "packages/mobile-core/src/role-settings-portal.test.mjs",
@@ -2256,6 +2258,12 @@ assertContains(
 assertContains("merchant-app/shared-ui/push-registration.ts", "MERCHANT_STORED_AUTH_RESOLVER_OPTIONS");
 assertContains("merchant-app/shared-ui/realtime-notify.ts", "MERCHANT_STORED_AUTH_RESOLVER_OPTIONS");
 assertContains(
+  "merchant-app/shared-ui/api.ts",
+  "from \"../../packages/mobile-core/src/role-message-api.js\"",
+);
+assertContains("merchant-app/shared-ui/api.ts", "const merchantSMSApi = createRoleSMSApi({");
+assertContains("merchant-app/shared-ui/api.ts", "const merchantMessageApi = createRoleMessageApi({");
+assertContains(
   "merchant-app/shared-ui/chatNavigation.ts",
   "from '../../packages/mobile-core/src/role-chat-navigation.js'",
 );
@@ -2275,6 +2283,12 @@ assertContains("merchant-app/shared-ui/merchantAccountPages.ts", "readRoleSettin
 assertContains("rider-app/App-logic.ts", "ensureRiderAuthSession");
 assertContains("rider-app/pages/login/index.vue", "persistRiderAuthSession");
 assertContains("rider-app/pages/profile/settings.vue", "clearRiderAuthSession");
+assertContains(
+  "rider-app/shared-ui/api.ts",
+  "from '../../packages/mobile-core/src/role-message-api.js'",
+);
+assertContains("rider-app/shared-ui/api.ts", "const riderSMSApi = createRoleSMSApi({");
+assertContains("rider-app/shared-ui/api.ts", "const riderMessageApi = createRoleMessageApi({");
 assertContains(
   "rider-app/shared-ui/taskActions.ts",
   "from '../../packages/mobile-core/src/role-chat-navigation.js'",
@@ -3688,10 +3702,6 @@ assertContains(
 );
 assertContains(
   "merchant-app/shared-ui/api.ts",
-  'listKeys: ["conversations", "items", "records", "list"]',
-);
-assertContains(
-  "merchant-app/shared-ui/api.ts",
   'listKeys: ["products", "items", "records", "list"]',
 );
 assertContains(
@@ -3725,10 +3735,6 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/consumer-api.js",
   'listKeys: ["banners", "items", "records", "list"]',
-);
-assertContains(
-  "rider-app/shared-ui/api.ts",
-  "listKeys: ['conversations', 'items', 'records', 'list']",
 );
 assertContains(
   "backend/go/internal/handler/admin_settings_export_handler.go",
@@ -4162,6 +4168,14 @@ assertContains(
   'from "./role-chat-portal.js";',
 );
 assertContains(
+  "packages/mobile-core/src/role-message-api.js",
+  'from "../../contracts/src/http.js";',
+);
+assertContains(
+  "packages/mobile-core/src/role-message-api.test.mjs",
+  'from "./role-message-api.js";',
+);
+assertContains(
   "packages/mobile-core/src/role-settings-portal.test.mjs",
   'from "./role-settings-portal.js";',
 );
@@ -4474,6 +4488,10 @@ assertContains(
 assertContains(
   "package.json",
   "packages/mobile-core/src/role-chat-navigation.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/role-message-api.test.mjs",
 );
 assertContains(
   "package.json",
@@ -7237,6 +7255,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./role-message-api.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./role-phone-change-portal.js";',
 );
 assertContains(
@@ -7378,6 +7400,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./role-chat-portal": "./src/role-chat-portal.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./role-message-api": "./src/role-message-api.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

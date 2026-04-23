@@ -87,6 +87,7 @@
     "./profile-outreach": "./src/profile-outreach.js",
     "./role-chat-navigation": "./src/role-chat-navigation.js",
     "./role-chat-portal": "./src/role-chat-portal.js",
+    "./role-message-api": "./src/role-message-api.js",
     "./role-phone-change-portal": "./src/role-phone-change-portal.js",
     "./role-settings-portal": "./src/role-settings-portal.js",
     "./profile-settings": "./src/profile-settings.js",

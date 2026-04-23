@@ -9,6 +9,10 @@ import {
 import { UPLOAD_DOMAINS } from "../../packages/contracts/src/upload.js";
 import { createRoleApiRuntimeBindings } from "../../packages/mobile-core/src/role-api-shell.js";
 import {
+  createRoleMessageApi,
+  createRoleSMSApi,
+} from "../../packages/mobile-core/src/role-message-api.js";
+import {
   clearMerchantAuthSession,
   ensureMerchantAuthSession,
 } from "./auth-session.js";
@@ -119,6 +123,15 @@ export function request<T = any>(options: RequestOptions): Promise<T> {
   return merchantApiRuntime.request(options) as Promise<T>;
 }
 
+const merchantSMSApi = createRoleSMSApi({
+  request,
+  defaultScene: "merchant_login",
+});
+
+const merchantMessageApi = createRoleMessageApi({
+  request,
+});
+
 function apiGet<T = any>(url: string, data?: Record<string, any>, auth = true) {
   return request<T>({ url, method: "GET", data, auth });
 }
@@ -156,17 +169,13 @@ export const merchantLogin = (credentials: {
 export const requestSMSCode = (
   phone: string,
   scene: string = "merchant_login",
-) => apiPost("/api/request-sms-code", { phone, scene }, false).then((response) =>
-  extractSMSResult(response),
-);
+) => merchantSMSApi.requestSMSCode(phone, scene);
 
 export const verifySMSCodeCheck = (payload: {
   phone: string;
   code: string;
   scene?: string;
-}) => apiPost("/api/verify-sms-code-check", payload, false).then((response) =>
-  extractSMSResult(response),
-);
+}) => merchantSMSApi.verifySMSCodeCheck(payload);
 
 export const merchantSetNewPassword = (payload: {
   phone: string;
@@ -426,26 +435,16 @@ export const fetchWalletWithdrawStatus = (params: Record<string, any> = {}) => {
 
 // Message (Go 目前返回空数组，占位直连)
 export const fetchConversations = () =>
-  apiGet("/api/messages/conversations").then((payload) =>
-    extractPaginatedItems(payload, {
-      listKeys: ["conversations", "items", "records", "list"],
-    }).items,
-  );
+  merchantMessageApi.fetchConversations();
 
 export const fetchHistory = (roomId: string) =>
-  apiGet(`/api/messages/${roomId}`).then((payload) =>
-    extractPaginatedItems(payload, {
-      listKeys: ["messages", "items", "records", "list"],
-    }).items,
-  );
+  merchantMessageApi.fetchHistory(roomId);
 
 export const upsertConversation = (payload: Record<string, any>) =>
-  apiPost("/api/messages/conversations/upsert", payload).then(
-    (response) => extractEnvelopeData(response) || {},
-  );
+  merchantMessageApi.upsertConversation(payload);
 
 export const markConversationRead = (chatId: string) =>
-  apiPost(`/api/messages/conversations/${encodeURIComponent(chatId)}/read`, {});
+  merchantMessageApi.markConversationRead(chatId);
 
 export const fetchPublicRuntimeSettings = () =>
   apiGet("/api/public/runtime-settings");
