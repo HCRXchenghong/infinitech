@@ -19,6 +19,14 @@ import {
   resolveConsumerPhoneChangeOldPhone,
   resolveConsumerPhoneChangeUserId,
 } from "./profile-phone-change.js";
+import {
+  buildRolePhoneChangePayload,
+  createRolePhoneChangeCountdownController,
+  getNextRolePhoneChangeCountdownValue,
+  requestRolePhoneChangeCode,
+  validateRolePhoneChangeNewPhoneInput,
+  verifyRolePhoneChangeCode,
+} from "./role-phone-change-portal.js";
 
 test("profile phone change helpers expose stable validation semantics", () => {
   assert.equal(CONSUMER_PHONE_CHANGE_OLD_SCENE, "change_phone_verify");
@@ -154,4 +162,116 @@ test("profile phone change page updates stored identity after submit", async () 
     globalThis.uni = originalUni;
     globalThis.setTimeout = originalSetTimeout;
   }
+});
+
+test("role phone change helpers validate phones, countdowns and payloads", () => {
+  assert.deepEqual(validateRolePhoneChangeNewPhoneInput("123", "13812345678"), {
+    phone: "",
+    error: "请输入正确手机号",
+  });
+  assert.deepEqual(
+    validateRolePhoneChangeNewPhoneInput("13812345678", "13812345678"),
+    {
+      phone: "",
+      error: "新手机号不能与原手机号相同",
+    },
+  );
+  assert.deepEqual(
+    validateRolePhoneChangeNewPhoneInput("13912345678", "13812345678"),
+    {
+      phone: "13912345678",
+      error: "",
+    },
+  );
+  assert.deepEqual(
+    buildRolePhoneChangePayload({
+      oldPhone: " 13812345678 ",
+      oldCode: " 123456 ",
+      newPhone: " 13912345678 ",
+      newCode: " 654321 ",
+    }),
+    {
+      oldPhone: "13812345678",
+      oldCode: "123456",
+      newPhone: "13912345678",
+      newCode: "654321",
+    },
+  );
+  assert.equal(getNextRolePhoneChangeCountdownValue(60), 59);
+  assert.equal(getNextRolePhoneChangeCountdownValue(1), 0);
+
+  const countdownValues = [];
+  let countdownTick = null;
+  const controller = createRolePhoneChangeCountdownController({
+    setValue(value) {
+      countdownValues.push(value);
+    },
+    createInterval(callback) {
+      countdownTick = callback;
+      return "phone-change-timer";
+    },
+    clearIntervalFn() {},
+  });
+  controller.start(2);
+  countdownTick();
+  countdownTick();
+  assert.deepEqual(countdownValues, [2, 1, 0]);
+});
+
+test("role phone change helpers send and verify sms codes consistently", async () => {
+  const oldInvalidResult = await requestRolePhoneChangeCode({
+    step: "old",
+    phoneValue: "123",
+  });
+  assert.deepEqual(oldInvalidResult, {
+    ok: false,
+    reason: "invalid_phone",
+    phone: "",
+    message: "请输入正确手机号",
+  });
+
+  const requestedPayloads = [];
+  let cooldownStarts = 0;
+  const sendResult = await requestRolePhoneChangeCode({
+    step: "new",
+    phoneValue: "13912345678",
+    oldPhoneValue: "13812345678",
+    scene: CONSUMER_PHONE_CHANGE_NEW_SCENE,
+    extra: { targetType: "rider" },
+    requestSMSCode: async (phone, scene, extra) => {
+      requestedPayloads.push({ phone, scene, extra });
+      return { success: true, message: "验证码已发送" };
+    },
+    cooldownController: {
+      start() {
+        cooldownStarts += 1;
+      },
+    },
+  });
+  assert.deepEqual(requestedPayloads, [{
+    phone: "13912345678",
+    scene: "change_phone_new",
+    extra: { targetType: "rider" },
+  }]);
+  assert.equal(cooldownStarts, 1);
+  assert.equal(sendResult.ok, true);
+  assert.equal(sendResult.message, "验证码已发送");
+
+  const verifyPayloads = [];
+  const verifyResult = await verifyRolePhoneChangeCode({
+    phoneValue: "13812345678",
+    codeValue: "123456",
+    scene: CONSUMER_PHONE_CHANGE_OLD_SCENE,
+    verifySMSCodeCheck: async (phone, scene, code) => {
+      verifyPayloads.push({ phone, scene, code });
+      return { success: true, message: "验证通过" };
+    },
+  });
+  assert.deepEqual(verifyPayloads, [{
+    phone: "13812345678",
+    scene: "change_phone_verify",
+    code: "123456",
+  }]);
+  assert.equal(verifyResult.ok, true);
+  assert.equal(verifyResult.message, "验证通过");
 });

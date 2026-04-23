@@ -3,78 +3,74 @@ import {
   readConsumerStoredProfile,
   replaceConsumerStoredProfile,
 } from "./consumer-profile-storage.js";
+import {
+  buildRolePhoneChangePayload,
+  createRolePhoneChangeCountdownController,
+  DEFAULT_ROLE_PHONE_CHANGE_COUNTDOWN_SECONDS,
+  getNextRolePhoneChangeCountdownValue,
+  getRolePhoneChangeResponseMessage,
+  isRolePhoneChangeCodeValid,
+  isRolePhoneChangeNewPhoneValid,
+  isRolePhoneChangePhoneValid,
+  maskRolePhoneChangePhone,
+  normalizeRolePhoneChangeCode,
+  normalizeRolePhoneChangeErrorMessage,
+  normalizeRolePhoneChangePhone,
+  normalizeRolePhoneChangeProfile,
+  requestRolePhoneChangeCode,
+  resolveRolePhoneChangeProfileId,
+  resolveRolePhoneChangeProfilePhone,
+  ROLE_PHONE_CHANGE_NEW_SCENE,
+  ROLE_PHONE_CHANGE_OLD_SCENE,
+  verifyRolePhoneChangeCode,
+} from "./role-phone-change-portal.js";
 
-function trimPhoneChangeText(value) {
-  return String(value || "").trim();
-}
-
-function normalizePhoneChangeObject(value) {
-  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
-}
-
-export const CONSUMER_PHONE_CHANGE_OLD_SCENE = "change_phone_verify";
-export const CONSUMER_PHONE_CHANGE_NEW_SCENE = "change_phone_new";
-export const DEFAULT_CONSUMER_PHONE_CHANGE_COUNTDOWN_SECONDS = 60;
+export const CONSUMER_PHONE_CHANGE_OLD_SCENE = ROLE_PHONE_CHANGE_OLD_SCENE;
+export const CONSUMER_PHONE_CHANGE_NEW_SCENE = ROLE_PHONE_CHANGE_NEW_SCENE;
+export const DEFAULT_CONSUMER_PHONE_CHANGE_COUNTDOWN_SECONDS =
+  DEFAULT_ROLE_PHONE_CHANGE_COUNTDOWN_SECONDS;
 
 export function normalizeConsumerPhoneChangePhone(value) {
-  return trimPhoneChangeText(value);
+  return normalizeRolePhoneChangePhone(value);
 }
 
 export function maskConsumerPhoneChangePhone(value, fallback = "--") {
-  const phone = normalizeConsumerPhoneChangePhone(value);
-  if (/^1\d{10}$/.test(phone)) {
-    return phone.replace(/^(\d{3})\d{4}(\d{4})$/, "$1****$2");
-  }
-  return phone || fallback;
+  return maskRolePhoneChangePhone(value, fallback);
 }
 
 export function normalizeConsumerPhoneChangeCode(value, length = 6) {
-  return trimPhoneChangeText(value).slice(0, length);
+  return normalizeRolePhoneChangeCode(value, length);
 }
 
 export function isConsumerPhoneChangePhoneValid(value) {
-  return /^1\d{10}$/.test(normalizeConsumerPhoneChangePhone(value));
+  return isRolePhoneChangePhoneValid(value);
 }
 
 export function isConsumerPhoneChangeCodeValid(value, length = 6) {
-  return normalizeConsumerPhoneChangeCode(value, length).length === length;
+  return isRolePhoneChangeCodeValid(value, length);
 }
 
 export function isConsumerPhoneChangeNewPhoneValid(newPhone, oldPhone) {
-  const normalizedNewPhone = normalizeConsumerPhoneChangePhone(newPhone);
-  return (
-    isConsumerPhoneChangePhoneValid(normalizedNewPhone) &&
-    normalizedNewPhone !== normalizeConsumerPhoneChangePhone(oldPhone)
-  );
+  return isRolePhoneChangeNewPhoneValid(newPhone, oldPhone);
 }
 
 export function resolveConsumerPhoneChangeOldPhone(profile = {}) {
-  return normalizeConsumerPhoneChangePhone(profile?.phone);
+  return resolveRolePhoneChangeProfilePhone(profile);
 }
 
 export function resolveConsumerPhoneChangeUserId(profile = {}) {
-  return trimPhoneChangeText(profile?.id || profile?.userId || profile?.phone);
+  return resolveRolePhoneChangeProfileId(profile);
 }
 
 export function normalizeConsumerPhoneChangeErrorMessage(
   error,
   fallback = "操作失败，请稍后重试",
 ) {
-  const source = normalizePhoneChangeObject(error);
-  const data = normalizePhoneChangeObject(source.data);
-  return (
-    trimPhoneChangeText(data.error) ||
-    trimPhoneChangeText(data.message) ||
-    trimPhoneChangeText(source.error) ||
-    trimPhoneChangeText(source.message) ||
-    trimPhoneChangeText(source.errMsg) ||
-    fallback
-  );
+  return normalizeRolePhoneChangeErrorMessage(error, fallback);
 }
 
 export function getConsumerPhoneChangeResponseMessage(response, fallback) {
-  const source = normalizePhoneChangeObject(response);
-  return trimPhoneChangeText(source.message) || fallback;
+  return getRolePhoneChangeResponseMessage(response, fallback);
 }
 
 export function buildConsumerPhoneChangePayload({
@@ -83,12 +79,12 @@ export function buildConsumerPhoneChangePayload({
   newPhone = "",
   newCode = "",
 } = {}) {
-  return {
-    oldPhone: normalizeConsumerPhoneChangePhone(oldPhone),
-    oldCode: normalizeConsumerPhoneChangeCode(oldCode),
-    newPhone: normalizeConsumerPhoneChangePhone(newPhone),
-    newCode: normalizeConsumerPhoneChangeCode(newCode),
-  };
+  return buildRolePhoneChangePayload({
+    oldPhone,
+    oldCode,
+    newPhone,
+    newCode,
+  });
 }
 
 export function normalizeConsumerPhoneChangeProfile(
@@ -96,34 +92,11 @@ export function normalizeConsumerPhoneChangeProfile(
   responseUser = {},
   newPhone = "",
 ) {
-  const current = normalizePhoneChangeObject(profile);
-  const user = normalizePhoneChangeObject(responseUser);
-  const normalizedPhone =
-    normalizeConsumerPhoneChangePhone(newPhone) ||
-    normalizeConsumerPhoneChangePhone(user.phone) ||
-    normalizeConsumerPhoneChangePhone(current.phone);
-
-  const nextProfile = {
-    ...current,
-    ...user,
-    phone: normalizedPhone,
-  };
-
-  if (nextProfile.id || nextProfile.userId) {
-    nextProfile.userId = trimPhoneChangeText(
-      nextProfile.userId || nextProfile.id,
-    );
-  }
-
-  return nextProfile;
+  return normalizeRolePhoneChangeProfile(profile, responseUser, newPhone);
 }
 
 export function getNextConsumerPhoneChangeCountdownValue(value) {
-  const current = Number(value);
-  if (!Number.isFinite(current) || current <= 1) {
-    return 0;
-  }
-  return current - 1;
+  return getNextRolePhoneChangeCountdownValue(value);
 }
 
 export function createProfilePhoneChangePage({
@@ -140,11 +113,11 @@ export function createProfilePhoneChangePage({
         oldPhone: "",
         oldCode: "",
         oldCountdown: 0,
-        oldTimer: null,
+        oldCountdownController: null,
         newPhone: "",
         newCode: "",
         newCountdown: 0,
-        newTimer: null,
+        newCountdownController: null,
         loading: false,
       };
     },
@@ -166,6 +139,16 @@ export function createProfilePhoneChangePage({
       this.oldPhone = resolveConsumerPhoneChangeOldPhone(
         readConsumerStoredProfile({ uniApp: uni }),
       );
+      this.oldCountdownController = createRolePhoneChangeCountdownController({
+        setValue: (value) => {
+          this.oldCountdown = value;
+        },
+      });
+      this.newCountdownController = createRolePhoneChangeCountdownController({
+        setValue: (value) => {
+          this.newCountdown = value;
+        },
+      });
     },
     onUnload() {
       this.clearTimer("old");
@@ -173,40 +156,40 @@ export function createProfilePhoneChangePage({
     },
     methods: {
       clearTimer(which) {
-        if (which === "old" && this.oldTimer) {
-          clearInterval(this.oldTimer);
-          this.oldTimer = null;
+        if (which === "old" && this.oldCountdownController?.clear) {
+          this.oldCountdownController.clear();
+          this.oldCountdownController = null;
         }
-        if (which === "new" && this.newTimer) {
-          clearInterval(this.newTimer);
-          this.newTimer = null;
+        if (which === "new" && this.newCountdownController?.clear) {
+          this.newCountdownController.clear();
+          this.newCountdownController = null;
         }
       },
       startCountdown(which) {
         if (which === "old") {
-          this.oldCountdown = DEFAULT_CONSUMER_PHONE_CHANGE_COUNTDOWN_SECONDS;
-          this.clearTimer("old");
-          this.oldTimer = setInterval(() => {
-            this.oldCountdown = getNextConsumerPhoneChangeCountdownValue(
-              this.oldCountdown,
-            );
-            if (this.oldCountdown === 0) {
-              this.clearTimer("old");
-            }
-          }, 1000);
+          if (!this.oldCountdownController) {
+            this.oldCountdownController = createRolePhoneChangeCountdownController({
+              setValue: (value) => {
+                this.oldCountdown = value;
+              },
+            });
+          }
+          this.oldCountdownController.start(
+            DEFAULT_CONSUMER_PHONE_CHANGE_COUNTDOWN_SECONDS,
+          );
           return;
         }
 
-        this.newCountdown = DEFAULT_CONSUMER_PHONE_CHANGE_COUNTDOWN_SECONDS;
-        this.clearTimer("new");
-        this.newTimer = setInterval(() => {
-          this.newCountdown = getNextConsumerPhoneChangeCountdownValue(
-            this.newCountdown,
-          );
-          if (this.newCountdown === 0) {
-            this.clearTimer("new");
-          }
-        }, 1000);
+        if (!this.newCountdownController) {
+          this.newCountdownController = createRolePhoneChangeCountdownController({
+            setValue: (value) => {
+              this.newCountdown = value;
+            },
+          });
+        }
+        this.newCountdownController.start(
+          DEFAULT_CONSUMER_PHONE_CHANGE_COUNTDOWN_SECONDS,
+        );
       },
       resolveUserId() {
         return resolveConsumerPhoneChangeUserId(
@@ -218,28 +201,27 @@ export function createProfilePhoneChangePage({
       },
       async sendOldCode() {
         if (this.oldCountdown > 0 || this.loading) return;
-        if (!isConsumerPhoneChangePhoneValid(this.oldPhone)) {
-          uni.showToast({ title: "当前手机号无效，请重新登录", icon: "none" });
-          return;
-        }
 
         this.loading = true;
         try {
-          const response = await requestSMSCode(
-            this.oldPhone,
-            CONSUMER_PHONE_CHANGE_OLD_SCENE,
-            { targetType: "user" },
-          );
-          uni.showToast({
-            title: getConsumerPhoneChangeResponseMessage(response, "验证码已发送"),
-            icon: "success",
+          const result = await requestRolePhoneChangeCode({
+            step: "old",
+            phoneValue: this.oldPhone,
+            scene: CONSUMER_PHONE_CHANGE_OLD_SCENE,
+            requestSMSCode,
+            extra: { targetType: "user" },
+            cooldownController: {
+              start: () => this.startCountdown("old"),
+            },
+            invalidPhoneMessage: "当前手机号无效，请重新登录",
+            failureMessage: "发送验证码失败",
           });
-          this.startCountdown("old");
-        } catch (error) {
-          uni.showToast({
-            title: this.resolveErrorMessage(error, "发送验证码失败"),
-            icon: "none",
-          });
+          if (!result.ok) {
+            uni.showToast({ title: result.message, icon: "none" });
+            return;
+          }
+
+          uni.showToast({ title: result.message, icon: "success" });
         } finally {
           this.loading = false;
         }
@@ -249,52 +231,51 @@ export function createProfilePhoneChangePage({
 
         this.loading = true;
         try {
-          const response = await verifySMSCodeCheck(
-            this.oldPhone,
-            CONSUMER_PHONE_CHANGE_OLD_SCENE,
-            normalizeConsumerPhoneChangeCode(this.oldCode),
-          );
-          if (response.success === false) {
-            throw response;
+          const result = await verifyRolePhoneChangeCode({
+            phoneValue: this.oldPhone,
+            codeValue: this.oldCode,
+            scene: CONSUMER_PHONE_CHANGE_OLD_SCENE,
+            verifySMSCodeCheck,
+            invalidPhoneMessage: "当前手机号无效，请重新登录",
+            invalidCodeMessage: "请输入6位验证码",
+            failureMessage: "原手机号验证失败",
+            successMessage: "验证通过",
+          });
+          if (!result.ok) {
+            uni.showToast({ title: result.message, icon: "none" });
+            return;
           }
           this.step = 2;
-          uni.showToast({
-            title: getConsumerPhoneChangeResponseMessage(response, "验证通过"),
-            icon: "success",
-          });
-        } catch (error) {
-          uni.showToast({
-            title: this.resolveErrorMessage(error, "原手机号验证失败"),
-            icon: "none",
-          });
+          uni.showToast({ title: result.message, icon: "success" });
         } finally {
           this.loading = false;
         }
       },
       async sendNewCode() {
         if (this.newCountdown > 0 || this.loading) return;
-        if (!this.newPhoneValid) {
-          uni.showToast({ title: "请输入未注册的新手机号", icon: "none" });
-          return;
-        }
 
         this.loading = true;
         try {
-          const response = await requestSMSCode(
-            this.newPhone,
-            CONSUMER_PHONE_CHANGE_NEW_SCENE,
-            { targetType: "user" },
-          );
-          uni.showToast({
-            title: getConsumerPhoneChangeResponseMessage(response, "验证码已发送"),
-            icon: "success",
+          const result = await requestRolePhoneChangeCode({
+            step: "new",
+            phoneValue: this.newPhone,
+            oldPhoneValue: this.oldPhone,
+            scene: CONSUMER_PHONE_CHANGE_NEW_SCENE,
+            requestSMSCode,
+            extra: { targetType: "user" },
+            cooldownController: {
+              start: () => this.startCountdown("new"),
+            },
+            invalidPhoneMessage: "请输入未注册的新手机号",
+            samePhoneMessage: "请输入未注册的新手机号",
+            failureMessage: "发送验证码失败",
           });
-          this.startCountdown("new");
-        } catch (error) {
-          uni.showToast({
-            title: this.resolveErrorMessage(error, "发送验证码失败"),
-            icon: "none",
-          });
+          if (!result.ok) {
+            uni.showToast({ title: result.message, icon: "none" });
+            return;
+          }
+
+          uni.showToast({ title: result.message, icon: "success" });
         } finally {
           this.loading = false;
         }

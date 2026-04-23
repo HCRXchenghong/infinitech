@@ -9,11 +9,13 @@
         <input v-model="oldPhone" class="input" placeholder="原手机号" type="number" maxlength="11" />
         <view class="code-row">
           <input v-model="oldCode" class="input" placeholder="验证码" type="number" maxlength="6" />
-          <text class="code-btn" :class="{ off: oldCodeCooldown > 0 || loading }" @tap="sendOldCode">
-            {{ oldCodeCooldown > 0 ? oldCodeCooldown + 's' : '获取验证码' }}
+          <text class="code-btn" :class="{ off: oldCodeCooldown > 0 || sendingOldCode }" @tap="sendOldCode">
+            {{ sendingOldCode ? '发送中...' : oldCodeCooldown > 0 ? oldCodeCooldown + 's' : '获取验证码' }}
           </text>
         </view>
-        <button class="btn" :disabled="loading" @tap="verifyOldPhone">下一步</button>
+        <button class="btn" :disabled="verifyingOldPhone" @tap="verifyOldPhone">
+          {{ verifyingOldPhone ? '校验中...' : '下一步' }}
+        </button>
       </view>
     </view>
 
@@ -26,11 +28,13 @@
         <input v-model="newPhone" class="input" placeholder="新手机号" type="number" maxlength="11" />
         <view class="code-row">
           <input v-model="newCode" class="input" placeholder="验证码" type="number" maxlength="6" />
-          <text class="code-btn" :class="{ off: newCodeCooldown > 0 || loading }" @tap="sendNewCode">
-            {{ newCodeCooldown > 0 ? newCodeCooldown + 's' : '获取验证码' }}
+          <text class="code-btn" :class="{ off: newCodeCooldown > 0 || sendingNewCode }" @tap="sendNewCode">
+            {{ sendingNewCode ? '发送中...' : newCodeCooldown > 0 ? newCodeCooldown + 's' : '获取验证码' }}
           </text>
         </view>
-        <button class="btn" :disabled="loading" @tap="submitChangePhone">确认换绑</button>
+        <button class="btn" :disabled="submitting" @tap="submitChangePhone">
+          {{ submitting ? '提交中...' : '确认换绑' }}
+        </button>
       </view>
     </view>
   </view>
@@ -46,6 +50,14 @@ import {
   readRiderAuthSession,
 } from '../../shared-ui/auth-session.js'
 import { persistRoleAuthSessionFromAuthResult } from '../../../packages/client-sdk/src/role-auth-response.js'
+import {
+  buildRolePhoneChangePayload,
+  createRolePhoneChangeCountdownController,
+  normalizeRolePhoneChangeErrorMessage,
+  requestRolePhoneChangeCode,
+  validateRolePhoneChangeNewPhoneInput,
+  verifyRolePhoneChangeCode,
+} from '../../../packages/mobile-core/src/role-phone-change-portal.js'
 
 const OLD_SCENE = 'change_phone_verify'
 const NEW_SCENE = 'change_phone_new'
@@ -60,9 +72,12 @@ export default Vue.extend({
       newCode: '',
       oldCodeCooldown: 0,
       newCodeCooldown: 0,
-      oldTimer: null as ReturnType<typeof setInterval> | null,
-      newTimer: null as ReturnType<typeof setInterval> | null,
-      loading: false
+      oldCooldownController: null as any,
+      newCooldownController: null as any,
+      sendingOldCode: false,
+      verifyingOldPhone: false,
+      sendingNewCode: false,
+      submitting: false,
     }
   },
   onLoad() {
@@ -70,128 +85,163 @@ export default Vue.extend({
     if (riderAuth.riderPhone) {
       this.oldPhone = String(riderAuth.riderPhone).trim()
     }
+    this.oldCooldownController = this.createCountdownController('old')
+    this.newCooldownController = this.createCountdownController('new')
   },
   onUnload() {
     this.clearTimer('old')
     this.clearTimer('new')
   },
   methods: {
+    createCountdownController(which: 'old' | 'new') {
+      return createRolePhoneChangeCountdownController({
+        setValue: (value: number) => {
+          if (which === 'old') {
+            this.oldCodeCooldown = value
+            return
+          }
+          this.newCodeCooldown = value
+        },
+      })
+    },
     clearTimer(which: 'old' | 'new') {
-      if (which === 'old' && this.oldTimer) {
-        clearInterval(this.oldTimer)
-        this.oldTimer = null
+      if (which === 'old' && this.oldCooldownController?.clear) {
+        this.oldCooldownController.clear()
+        this.oldCooldownController = null
       }
-      if (which === 'new' && this.newTimer) {
-        clearInterval(this.newTimer)
-        this.newTimer = null
+      if (which === 'new' && this.newCooldownController?.clear) {
+        this.newCooldownController.clear()
+        this.newCooldownController = null
       }
     },
     startCountdown(which: 'old' | 'new') {
       if (which === 'old') {
-        this.oldCodeCooldown = 60
-        this.clearTimer('old')
-        this.oldTimer = setInterval(() => {
-          if (this.oldCodeCooldown <= 1) {
-            this.oldCodeCooldown = 0
-            this.clearTimer('old')
-            return
-          }
-          this.oldCodeCooldown -= 1
-        }, 1000)
+        if (!this.oldCooldownController) {
+          this.oldCooldownController = this.createCountdownController('old')
+        }
+        this.oldCooldownController.start()
         return
       }
 
-      this.newCodeCooldown = 60
-      this.clearTimer('new')
-      this.newTimer = setInterval(() => {
-        if (this.newCodeCooldown <= 1) {
-          this.newCodeCooldown = 0
-          this.clearTimer('new')
-          return
-        }
-        this.newCodeCooldown -= 1
-      }, 1000)
+      if (!this.newCooldownController) {
+        this.newCooldownController = this.createCountdownController('new')
+      }
+      this.newCooldownController.start()
     },
     resolveErrorMessage(err: any, fallback = '操作失败，请稍后重试') {
-      return err?.data?.error || err?.data?.message || err?.error || err?.message || fallback
+      return normalizeRolePhoneChangeErrorMessage(err, fallback)
     },
     async sendOldCode() {
-      if (this.oldCodeCooldown > 0 || this.loading) return
-      if (!/^1\d{10}$/.test(String(this.oldPhone || '').trim())) {
-        uni.showToast({ title: '请输入正确手机号', icon: 'none' })
-        return
-      }
+      if (this.oldCodeCooldown > 0 || this.sendingOldCode) return
 
-      this.loading = true
+      this.sendingOldCode = true
       try {
-        const res: any = await requestSMSCode(String(this.oldPhone || '').trim(), OLD_SCENE, { targetType: 'rider' })
-        uni.showToast({ title: res.message || '验证码已发送', icon: 'success' })
-        this.startCountdown('old')
-      } catch (err: any) {
-        uni.showToast({ title: this.resolveErrorMessage(err, '发送失败'), icon: 'none' })
+        const result = await requestRolePhoneChangeCode({
+          step: 'old',
+          phoneValue: this.oldPhone,
+          scene: OLD_SCENE,
+          requestSMSCode,
+          extra: { targetType: 'rider' },
+          cooldownController: {
+            start: () => this.startCountdown('old'),
+          },
+          invalidPhoneMessage: '请输入正确手机号',
+          failureMessage: '发送失败',
+        })
+        if (!result.ok) {
+          uni.showToast({ title: result.message, icon: 'none' })
+          return
+        }
+
+        uni.showToast({ title: result.message, icon: 'success' })
       } finally {
-        this.loading = false
+        this.sendingOldCode = false
       }
     },
     async verifyOldPhone() {
-      const code = String(this.oldCode || '').trim()
-      if (code.length !== 6) {
-        uni.showToast({ title: '请输入6位验证码', icon: 'none' })
-        return
-      }
+      if (this.verifyingOldPhone) return
 
-      this.loading = true
+      this.verifyingOldPhone = true
       try {
-        const res: any = await verifySMSCodeCheck(String(this.oldPhone || '').trim(), OLD_SCENE, code)
-        if (res.success === false) {
-          throw res
+        const result = await verifyRolePhoneChangeCode({
+          phoneValue: this.oldPhone,
+          codeValue: this.oldCode,
+          scene: OLD_SCENE,
+          verifySMSCodeCheck,
+          invalidPhoneMessage: '请输入正确手机号',
+          invalidCodeMessage: '请输入6位验证码',
+          failureMessage: '原手机号验证失败',
+          successMessage: '验证通过',
+        })
+        if (!result.ok) {
+          uni.showToast({ title: result.message, icon: 'none' })
+          return
         }
+
         this.step = 2
-        uni.showToast({ title: res.message || '验证通过', icon: 'success' })
-      } catch (err: any) {
-        uni.showToast({ title: this.resolveErrorMessage(err, '原手机号验证失败'), icon: 'none' })
+        uni.showToast({ title: result.message, icon: 'success' })
       } finally {
-        this.loading = false
+        this.verifyingOldPhone = false
       }
     },
     async sendNewCode() {
-      if (this.newCodeCooldown > 0 || this.loading) return
-      const nextPhone = String(this.newPhone || '').trim()
-      if (!/^1\d{10}$/.test(nextPhone)) {
-        uni.showToast({ title: '请输入正确手机号', icon: 'none' })
-        return
-      }
-      if (nextPhone === String(this.oldPhone || '').trim()) {
-        uni.showToast({ title: '新手机号不能与原手机号相同', icon: 'none' })
-        return
-      }
+      if (this.newCodeCooldown > 0 || this.sendingNewCode) return
 
-      this.loading = true
+      this.sendingNewCode = true
       try {
-        const res: any = await requestSMSCode(nextPhone, NEW_SCENE, { targetType: 'rider' })
-        uni.showToast({ title: res.message || '验证码已发送', icon: 'success' })
-        this.startCountdown('new')
-      } catch (err: any) {
-        uni.showToast({ title: this.resolveErrorMessage(err, '发送失败'), icon: 'none' })
+        const result = await requestRolePhoneChangeCode({
+          step: 'new',
+          phoneValue: this.newPhone,
+          oldPhoneValue: this.oldPhone,
+          scene: NEW_SCENE,
+          requestSMSCode,
+          extra: { targetType: 'rider' },
+          cooldownController: {
+            start: () => this.startCountdown('new'),
+          },
+          invalidPhoneMessage: '请输入正确手机号',
+          samePhoneMessage: '新手机号不能与原手机号相同',
+          failureMessage: '发送失败',
+        })
+        if (!result.ok) {
+          uni.showToast({ title: result.message, icon: 'none' })
+          return
+        }
+
+        uni.showToast({ title: result.message, icon: 'success' })
       } finally {
-        this.loading = false
+        this.sendingNewCode = false
       }
     },
     async submitChangePhone() {
-      const newCode = String(this.newCode || '').trim()
-      if (newCode.length !== 6) {
+      if (this.submitting) return
+
+      const phoneValidation = validateRolePhoneChangeNewPhoneInput(this.newPhone, this.oldPhone, {
+        invalidPhoneMessage: '请输入正确手机号',
+        samePhoneMessage: '新手机号不能与原手机号相同',
+      })
+      if (!phoneValidation.phone) {
+        uni.showToast({ title: phoneValidation.error, icon: 'none' })
+        return
+      }
+
+      const payload = buildRolePhoneChangePayload({
+        oldPhone: this.oldPhone,
+        oldCode: this.oldCode,
+        newPhone: this.newPhone,
+        newCode: this.newCode,
+      })
+      if (payload.newCode.length !== 6) {
         uni.showToast({ title: '请输入6位验证码', icon: 'none' })
         return
       }
 
-      this.loading = true
+      this.submitting = true
       try {
-        const res: any = await changePhone({
-          oldPhone: String(this.oldPhone || '').trim(),
-          oldCode: String(this.oldCode || '').trim(),
-          newPhone: String(this.newPhone || '').trim(),
-          newCode
-        })
+        const res: any = await changePhone(payload)
+        if (!res) {
+          throw new Error('登录状态已失效，请重新登录')
+        }
 
         if (res.success === false) {
           throw res
@@ -199,7 +249,7 @@ export default Vue.extend({
 
         const currentSession = readRiderAuthSession({ uniApp: uni })
         const nextProfile = Object.assign({}, currentSession.profile, res.user || {}, {
-          phone: String(this.newPhone || '').trim()
+          phone: payload.newPhone,
         })
 
         if (res.token) {
@@ -253,7 +303,7 @@ export default Vue.extend({
       } catch (err: any) {
         uni.showToast({ title: this.resolveErrorMessage(err, '修改失败'), icon: 'none' })
       } finally {
-        this.loading = false
+        this.submitting = false
       }
     }
   }

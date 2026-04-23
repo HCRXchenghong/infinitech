@@ -578,6 +578,7 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/profile-home.test.mjs",
   "packages/mobile-core/src/profile-phone-change.js",
   "packages/mobile-core/src/profile-phone-change.test.mjs",
+  "packages/mobile-core/src/role-phone-change-portal.js",
   "packages/mobile-core/src/profile-outreach.js",
   "packages/mobile-core/src/profile-outreach.test.mjs",
   "packages/mobile-core/src/profile-settings.js",
@@ -2270,6 +2271,25 @@ assertContains(
 assertContains("rider-app/pages/login/index.vue", "sendingCode: false");
 assertContains("rider-app/pages/login/index.vue", "submitting: false");
 assertNotContains("rider-app/pages/login/index.vue", "loading: false");
+assertContains(
+  "rider-app/pages/profile/change-phone.vue",
+  "from '../../../packages/mobile-core/src/role-phone-change-portal.js'",
+);
+assertContains(
+  "rider-app/pages/profile/change-phone.vue",
+  "const result = await requestRolePhoneChangeCode({",
+);
+assertContains(
+  "rider-app/pages/profile/change-phone.vue",
+  "const result = await verifyRolePhoneChangeCode({",
+);
+assertContains("rider-app/pages/profile/change-phone.vue", "sendingOldCode: false");
+assertContains("rider-app/pages/profile/change-phone.vue", "verifyingOldPhone: false");
+assertContains("rider-app/pages/profile/change-phone.vue", "sendingNewCode: false");
+assertContains("rider-app/pages/profile/change-phone.vue", "submitting: false");
+assertNotContains("rider-app/pages/profile/change-phone.vue", "oldTimer:");
+assertNotContains("rider-app/pages/profile/change-phone.vue", "newTimer:");
+assertNotContains("rider-app/pages/profile/change-phone.vue", "loading: false");
 assertContains(
   "socket-server/socketIdentity.js",
   "../packages/domain-core/src/identity.js",
@@ -4029,6 +4049,14 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/auth-portal.test.mjs",
   'from "./role-login-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/profile-phone-change.js",
+  'from "./role-phone-change-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/profile-phone-change.test.mjs",
+  'from "./role-phone-change-portal.js";',
 );
 assertContains(
   "android-user-app/core/data/src/main/java/com/user/infinite/core/data/repository/AuthRepositoryImpl.kt",
@@ -7058,6 +7086,14 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./profile-phone-change.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./role-phone-change-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./order-after-sales-pages.js";',
 );
 assertContains(
@@ -7171,6 +7207,14 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./role-login-portal": "./src/role-login-portal.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./profile-phone-change": "./src/profile-phone-change.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./role-phone-change-portal": "./src/role-phone-change-portal.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

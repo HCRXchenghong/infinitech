@@ -59,13 +59,20 @@ export function runBackendAuditProject(project) {
 
   const result = spawnSync(
     "npm",
-    ["audit", "--audit-level=high", "--omit=dev", "--json"],
+    [
+      "audit",
+      "--audit-level=high",
+      "--omit=dev",
+      "--json",
+      `--registry=${NPM_AUDIT_REGISTRY}`,
+    ],
     {
       cwd: absolutePath,
       encoding: "utf8",
       env: {
         ...process.env,
         npm_config_registry: NPM_AUDIT_REGISTRY,
+        npm_config_audit_registry: NPM_AUDIT_REGISTRY,
       },
     },
   );
