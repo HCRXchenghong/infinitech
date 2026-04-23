@@ -38,6 +38,12 @@ import {
   requestRoleLoginCode,
   validateRoleLoginPhoneInput,
 } from '../../packages/mobile-core/src/role-login-portal.js'
+import {
+  maskRoleSettingsPhone,
+  mergeRoleSettings,
+  normalizeRoleSettingsSwitchValue,
+  readRoleSettingsCacheSizeSync,
+} from '../../packages/mobile-core/src/role-settings-portal.js'
 
 export function useMerchantLoginPage() {
   const loginType = ref<'code' | 'password'>('password')
@@ -365,11 +371,12 @@ export function useMerchantSetPasswordPage() {
 
 export function useMerchantAppSettingsPage() {
   const storageKey = 'merchantAppSettings'
-  const settings = reactive({
+  const settingsDefaults = {
     notification: true,
     sound: true,
     vibrate: true,
-  })
+  }
+  const settings = reactive({ ...settingsDefaults })
   const portalRuntime = reactive(getCachedMerchantPortalRuntimeSettings())
   const appVersionLabel = ref(getAppVersionLabel())
   const cacheSize = ref('0 MB')
@@ -377,22 +384,14 @@ export function useMerchantAppSettingsPage() {
   const merchantAuth = readMerchantAuthIdentity({ uniApp: uni })
   const phone = String(merchantAuth.merchantPhone || '')
 
-  const phoneMasked = computed(() => {
-    if (/^1\d{10}$/.test(phone)) {
-      return phone.replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2')
-    }
-    return phone || '未绑定'
-  })
+  const phoneMasked = computed(() => maskRoleSettingsPhone(phone))
 
   function back() {
     uni.navigateBack()
   }
 
   function loadSettings() {
-    const saved: any = uni.getStorageSync(storageKey) || {}
-    settings.notification = saved.notification !== false
-    settings.sound = saved.sound !== false
-    settings.vibrate = saved.vibrate !== false
+    Object.assign(settings, mergeRoleSettings(uni.getStorageSync(storageKey), settingsDefaults))
   }
 
   function saveSettings() {
@@ -404,7 +403,7 @@ export function useMerchantAppSettingsPage() {
   }
 
   function toggleSwitch(key: 'notification' | 'sound' | 'vibrate', event: any) {
-    settings[key] = !!event?.detail?.value
+    settings[key] = normalizeRoleSettingsSwitchValue(event, settings[key])
     saveSettings()
   }
 
@@ -425,17 +424,10 @@ export function useMerchantAppSettingsPage() {
   }
 
   function calcCacheSize() {
-    try {
-      const info = uni.getStorageInfoSync()
-      const sizeKB = Number(info.currentSize || 0)
-      if (sizeKB < 1024) {
-        cacheSize.value = `${sizeKB.toFixed(0)} KB`
-        return
-      }
-      cacheSize.value = `${(sizeKB / 1024).toFixed(1)} MB`
-    } catch (_error) {
-      cacheSize.value = '0 MB'
-    }
+    cacheSize.value = readRoleSettingsCacheSizeSync(uni, {
+      emptyLabel: '0 MB',
+      mbDigits: 1,
+    })
   }
 
   function clearCache() {

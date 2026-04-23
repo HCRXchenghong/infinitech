@@ -107,6 +107,12 @@ import {
   persistRiderAuthSession,
   readRiderAuthSession,
 } from '../../shared-ui/auth-session.js'
+import {
+  formatRoleSettingsCacheSize,
+  maskRoleSettingsPhone,
+  readRoleSettingsStorageEntries,
+  restoreRoleSettingsStorageEntries,
+} from '../../../packages/mobile-core/src/role-settings-portal.js'
 import notification from '../../utils/notification'
 
 declare const uni: any
@@ -117,30 +123,6 @@ const RIDER_CACHE_PRESERVED_STORAGE_KEYS = [
   'socket_token_account_key',
   'notification_settings',
 ]
-
-function maskPhone(phone: string): string {
-  if (/^1\d{10}$/.test(phone)) {
-    return phone.replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2')
-  }
-  return phone ? phone : '未绑定'
-}
-
-function readPreservedStorage() {
-  const entries: Array<{ key: string; value: any }> = []
-  RIDER_CACHE_PRESERVED_STORAGE_KEYS.forEach((key) => {
-    const value = uni.getStorageSync(key)
-    if (value !== '' && value !== null && value !== undefined) {
-      entries.push({ key, value })
-    }
-  })
-  return entries
-}
-
-function restorePreservedStorage(entries: Array<{ key: string; value: any }>) {
-  entries.forEach(({ key, value }) => {
-    uni.setStorageSync(key, value)
-  })
-}
 
 function readRiderSession() {
   return readRiderAuthSession({ uniApp: uni })
@@ -166,7 +148,7 @@ export default Vue.extend({
   },
   computed: {
     maskedPhone(): string {
-      return maskPhone(String(this.phone || '').trim())
+      return maskRoleSettingsPhone(String(this.phone || '').trim())
     },
   },
   onLoad() {
@@ -210,15 +192,10 @@ export default Vue.extend({
     calculateCacheSize() {
       uni.getStorageInfo({
         success: (res: any) => {
-          const sizeKb = Number(res.currentSize || 0)
-          if (sizeKb < 1024) {
-            this.cacheSize = `${sizeKb} KB`
-            return
-          }
-          this.cacheSize = `${(sizeKb / 1024).toFixed(2)} MB`
+          this.cacheSize = formatRoleSettingsCacheSize(res.currentSize)
         },
         fail: () => {
-          this.cacheSize = '--'
+          this.cacheSize = formatRoleSettingsCacheSize(Number.NaN)
         },
       })
     },
@@ -268,7 +245,10 @@ export default Vue.extend({
           if (!res.confirm) return
 
           const session = readRiderSession()
-          const preservedEntries = readPreservedStorage()
+          const preservedEntries = readRoleSettingsStorageEntries(
+            uni,
+            RIDER_CACHE_PRESERVED_STORAGE_KEYS,
+          )
           uni.clearStorageSync()
           if (session.token) {
             persistRiderAuthSession({
@@ -283,7 +263,7 @@ export default Vue.extend({
               },
             })
           }
-          restorePreservedStorage(preservedEntries)
+          restoreRoleSettingsStorageEntries(uni, preservedEntries)
           this.loadNotificationSettings()
           this.calculateCacheSize()
           uni.showToast({ title: '缓存已清除', icon: 'success' })

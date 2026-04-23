@@ -583,6 +583,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/profile-phone-change.js",
   "packages/mobile-core/src/profile-phone-change.test.mjs",
   "packages/mobile-core/src/role-phone-change-portal.js",
+  "packages/mobile-core/src/role-settings-portal.js",
+  "packages/mobile-core/src/role-settings-portal.test.mjs",
   "packages/mobile-core/src/profile-outreach.js",
   "packages/mobile-core/src/profile-outreach.test.mjs",
   "packages/mobile-core/src/profile-settings.js",
@@ -2249,9 +2251,23 @@ assertContains(
 );
 assertContains("merchant-app/shared-ui/push-registration.ts", "MERCHANT_STORED_AUTH_RESOLVER_OPTIONS");
 assertContains("merchant-app/shared-ui/realtime-notify.ts", "MERCHANT_STORED_AUTH_RESOLVER_OPTIONS");
+assertContains(
+  "merchant-app/shared-ui/merchantAccountPages.ts",
+  "from '../../packages/mobile-core/src/role-settings-portal.js'",
+);
+assertContains("merchant-app/shared-ui/merchantAccountPages.ts", "maskRoleSettingsPhone(phone)");
+assertContains("merchant-app/shared-ui/merchantAccountPages.ts", "readRoleSettingsCacheSizeSync(uni");
 assertContains("rider-app/App-logic.ts", "ensureRiderAuthSession");
 assertContains("rider-app/pages/login/index.vue", "persistRiderAuthSession");
 assertContains("rider-app/pages/profile/settings.vue", "clearRiderAuthSession");
+assertContains(
+  "rider-app/pages/profile/settings.vue",
+  "from '../../../packages/mobile-core/src/role-settings-portal.js'",
+);
+assertContains("rider-app/pages/profile/settings.vue", "maskRoleSettingsPhone(");
+assertContains("rider-app/pages/profile/settings.vue", "readRoleSettingsStorageEntries(");
+assertContains("rider-app/pages/profile/settings.vue", "restoreRoleSettingsStorageEntries(");
+assertNotContains("rider-app/pages/profile/settings.vue", "function maskPhone(");
 assertContains("rider-app/pages/profile/change-phone.vue", "persistRiderAuthSession");
 assertContains("rider-app/shared-ui/auth-session.js", "readRiderAuthIdentity");
 assertContains(
@@ -4093,6 +4109,14 @@ assertContains(
   'from "./role-password-change-portal.js";',
 );
 assertContains(
+  "packages/mobile-core/src/role-settings-portal.js",
+  'from "./profile-settings.js";',
+);
+assertContains(
+  "packages/mobile-core/src/role-settings-portal.test.mjs",
+  'from "./role-settings-portal.js";',
+);
+assertContains(
   "packages/mobile-core/src/profile-phone-change.js",
   'from "./role-phone-change-portal.js";',
 );
@@ -4393,6 +4417,10 @@ assertContains(
 assertContains(
   "package.json",
   "packages/mobile-core/src/role-password-change-portal.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/role-settings-portal.test.mjs",
 );
 assertContains(
   "packages/client-sdk/src/index.js",
@@ -7148,6 +7176,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./role-settings-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./order-after-sales-pages.js";',
 );
 assertContains(
@@ -7277,6 +7309,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./role-phone-change-portal": "./src/role-phone-change-portal.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./role-settings-portal": "./src/role-settings-portal.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

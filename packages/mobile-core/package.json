@@ -86,6 +86,7 @@
     "./profile-phone-change": "./src/profile-phone-change.js",
     "./profile-outreach": "./src/profile-outreach.js",
     "./role-phone-change-portal": "./src/role-phone-change-portal.js",
+    "./role-settings-portal": "./src/role-settings-portal.js",
     "./profile-settings": "./src/profile-settings.js",
     "./role-sync-shell": "./src/role-sync-shell.js",
     "./sync-service": "./src/sync-service.js",
