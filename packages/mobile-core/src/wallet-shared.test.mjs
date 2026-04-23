@@ -5,6 +5,7 @@ import {
   createWalletIdempotencyKey,
   extractWalletItems,
   fenToWalletYuan,
+  formatWalletDateTime,
   isWalletFailureStatus,
   isWalletRechargeSuccessStatus,
   isWalletWithdrawSuccessStatus,
@@ -12,6 +13,7 @@ import {
   normalizeWalletFlowStatus,
   normalizeWalletOptions,
   normalizeWalletWithdrawFailureReason,
+  showWalletActionSheet,
   sortWalletTransactions,
   walletFlowStatusLabel,
 } from "./wallet-shared.js";
@@ -29,6 +31,7 @@ test("wallet shared helpers normalize collections, options, money and idempotenc
     }),
     "wallet_user_1_1700000000000123456",
   );
+  assert.equal(formatWalletDateTime("2026-04-23 08:09:00"), "04-23 08:09");
 });
 
 test("wallet shared helpers normalize flow statuses and labels", () => {
@@ -60,4 +63,24 @@ test("wallet shared helpers sort wallet transactions by created time descending"
     ]).map((item) => item.id),
     ["new", "old"],
   );
+});
+
+test("wallet shared helpers wrap action sheet runtime safely", async () => {
+  const actionSheetResult = await showWalletActionSheet(
+    {
+      showActionSheet(payload) {
+        payload.success({ tapIndex: 1 });
+      },
+    },
+    {
+      itemList: ["A", "B"],
+    },
+  );
+
+  const fallbackResult = await showWalletActionSheet(null, {
+    itemList: ["A"],
+  });
+
+  assert.deepEqual(actionSheetResult, { tapIndex: 1 });
+  assert.deepEqual(fallbackResult, { tapIndex: -1, cancel: true });
 });

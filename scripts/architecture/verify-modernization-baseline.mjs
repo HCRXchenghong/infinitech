@@ -410,6 +410,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/wallet-recharge-page.test.mjs",
   "packages/mobile-core/src/wallet-withdraw-page.js",
   "packages/mobile-core/src/wallet-withdraw-page.test.mjs",
+  "packages/mobile-core/src/rider-deposit-wallet-page.js",
+  "packages/mobile-core/src/rider-deposit-wallet-page.test.mjs",
   "packages/mobile-core/src/push-event-route.js",
   "packages/mobile-core/src/push-event-route.test.mjs",
   "packages/mobile-core/src/support-runtime.js",
@@ -1155,6 +1157,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   [
     "rider-app/pages/profile/wallet-withdraw/index.vue",
     "../../../../packages/mobile-core/src/wallet-withdraw-page.js",
+  ],
+  [
+    "rider-app/pages/profile/wallet.vue",
+    "../../../packages/mobile-core/src/rider-deposit-wallet-page.js",
   ],
 ].forEach(([relativePath, sharedImport]) => {
   assertContains(relativePath, sharedImport);
@@ -7370,6 +7376,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-deposit-wallet-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./dining-buddy.js";',
 );
 assertContains(
@@ -7443,6 +7453,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rider-api": "./src/rider-api.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-deposit-wallet-page": "./src/rider-deposit-wallet-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

@@ -107,6 +107,23 @@ export function fenToWalletYuan(fen) {
   return (Math.abs(Number(fen || 0)) / 100).toFixed(2);
 }
 
+export function formatWalletDateTime(value, fallback = "--") {
+  if (!value) {
+    return fallback;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return fallback;
+  }
+
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${month}-${day} ${hour}:${minute}`;
+}
+
 export function createWalletIdempotencyKey(
   prefix,
   userId,
@@ -265,6 +282,21 @@ export function showWalletModal(uniApp, payload) {
       ...payload,
       success: (result) => resolve(result || { confirm: false, cancel: true }),
       fail: () => resolve({ confirm: false, cancel: true }),
+    });
+  });
+}
+
+export function showWalletActionSheet(uniApp, payload) {
+  return new Promise((resolve) => {
+    if (!uniApp || typeof uniApp.showActionSheet !== "function") {
+      resolve({ tapIndex: -1, cancel: true });
+      return;
+    }
+
+    uniApp.showActionSheet({
+      ...payload,
+      success: (result) => resolve(result || { tapIndex: -1, cancel: true }),
+      fail: () => resolve({ tapIndex: -1, cancel: true }),
     });
   });
 }
