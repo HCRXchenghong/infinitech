@@ -6,6 +6,16 @@ import {
   clearCachedSocketToken as clearCachedSocketTokenCache,
   resolveSocketToken,
 } from '../../packages/client-sdk/src/realtime-token.js'
+import {
+  buildRoleChatConversationPayload,
+  buildRoleChatOutgoingPayload,
+  createRoleChatLocalMessageId,
+  formatRoleChatClockTime,
+  normalizeRoleChatRole,
+  resolveRoleChatMessageId,
+  resolveRoleChatMessageTimestamp,
+  safeDecodeRoleChatValue,
+} from '../../packages/mobile-core/src/role-chat-portal.js'
 import createSocket from '@/utils/socket-io'
 import config from '@/shared-ui/config'
 import {
@@ -41,39 +51,6 @@ interface ViewMessage {
   interventionLabel: string
 }
 
-function safeDecode(value: unknown) {
-  try {
-    return decodeURIComponent(String(value || ''))
-  } catch (_error) {
-    return String(value || '')
-  }
-}
-
-function nowClock() {
-  const current = new Date()
-  const hours = String(current.getHours()).padStart(2, '0')
-  const minutes = String(current.getMinutes()).padStart(2, '0')
-  return `${hours}:${minutes}`
-}
-
-function resolveMessageTimestamp(rawValue: unknown, fallback = Date.now()) {
-  const numericValue = Number(rawValue)
-  if (Number.isFinite(numericValue) && numericValue > 0) return numericValue
-
-  const text = String(rawValue || '').trim()
-  if (!text) return fallback
-
-  const parsed = Date.parse(text.replace(' ', 'T'))
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
-}
-
-function normalizeRole(raw: unknown): ChatRole {
-  const role = String(raw || '').toLowerCase()
-  if (role === 'rider') return 'rider'
-  if (role === 'admin' || role === 'support' || role === 'cs') return 'admin'
-  return 'user'
-}
-
 export function useMerchantChatPage() {
   const chatId = ref('')
   const chatRole = ref<ChatRole>('user')
@@ -102,36 +79,14 @@ export function useMerchantChatPage() {
   })
 
   function createLocalMessageId(prefix = 'local', timestamp = Date.now()) {
-    localMessageSeed.value += 1
-    return `${prefix}_${chatId.value || 'chat'}_${timestamp}_${localMessageSeed.value}`
-  }
-
-  function resolveMessageId(raw: any, fallback: string) {
-    const explicitId = raw?.id ?? raw?.uid ?? raw?.tsid ?? raw?.messageId ?? raw?.mid
-    if (explicitId !== undefined && explicitId !== null && String(explicitId).trim()) {
-      return String(explicitId)
-    }
-
-    const timestamp = resolveMessageTimestamp(raw?.timestamp || raw?.createdAt, Date.now())
-    const senderRole = String(raw?.senderRole || 'unknown').trim() || 'unknown'
-    const senderId = String(raw?.senderId || 'unknown').trim() || 'unknown'
-    const messageType = String(raw?.messageType || raw?.type || 'text').trim() || 'text'
-    const contentSeed = String(raw?.content || raw?.text || '')
-      .trim()
-      .slice(0, 24)
-      .replace(/\s+/g, '_')
-      .replace(/[^a-zA-Z0-9_\u4e00-\u9fa5-]/g, '')
-
-    return `${fallback}_${senderRole}_${senderId}_${messageType}_${timestamp}_${contentSeed || 'empty'}`
-  }
-
-  function formatClockByTimestamp(timestamp: number) {
-    const safeTimestamp = resolveMessageTimestamp(timestamp, 0)
-    if (!safeTimestamp) return nowClock()
-    const current = new Date(safeTimestamp)
-    const hours = String(current.getHours()).padStart(2, '0')
-    const minutes = String(current.getMinutes()).padStart(2, '0')
-    return `${hours}:${minutes}`
+    const result = createRoleChatLocalMessageId({
+      prefix,
+      timestamp,
+      chatId: chatId.value,
+      seed: localMessageSeed.value,
+    })
+    localMessageSeed.value = result.seed
+    return result.id
   }
 
   function inferTitleByRole(role: ChatRole) {
@@ -147,14 +102,14 @@ export function useMerchantChatPage() {
   }
 
   function buildConversationPayload() {
-    return {
+    return buildRoleChatConversationPayload({
       chatId: chatId.value,
       targetType: normalizeTargetType(),
-      targetId: targetId.value || (chatRole.value === 'admin' ? 'support' : ''),
-      targetPhone: '',
+      role: chatRole.value,
+      targetId: targetId.value,
       targetName: chatTitle.value || inferTitleByRole(chatRole.value),
       targetAvatar: '',
-    }
+    })
   }
 
   async function loadSupportRuntimeConfig(updateChatTitle = false) {
@@ -181,15 +136,15 @@ export function useMerchantChatPage() {
   function toViewMessage(raw: any): ViewMessage {
     const senderId = raw?.senderId != null ? String(raw.senderId) : ''
     const self = raw?.senderRole === 'merchant' && senderId === String(merchantId.value)
-    const timestamp = resolveMessageTimestamp(raw?.timestamp || raw?.createdAt, Date.now())
+    const timestamp = resolveRoleChatMessageTimestamp(raw?.timestamp || raw?.createdAt, Date.now())
 
     return {
-      mid: resolveMessageId(raw, `history_${chatId.value || 'chat'}_${timestamp}`),
+      mid: resolveRoleChatMessageId(raw, `history_${chatId.value || 'chat'}_${timestamp}`),
       self,
       text: String(raw?.content || ''),
       type: String(raw?.messageType || 'text'),
       timestamp,
-      time: String(raw?.time || formatClockByTimestamp(timestamp)),
+      time: String(raw?.time || formatRoleChatClockTime(timestamp)),
       status: self ? 'sent' : 'read',
       officialIntervention: !!raw?.officialIntervention,
       interventionLabel: String(raw?.interventionLabel || '官方介入'),
@@ -237,7 +192,7 @@ export function useMerchantChatPage() {
       text: content,
       type,
       timestamp,
-      time: nowClock(),
+      time: formatRoleChatClockTime(timestamp),
       status,
       officialIntervention: false,
       interventionLabel: '',
@@ -328,11 +283,11 @@ export function useMerchantChatPage() {
       if (index < 0) return
 
       messages.value[index].mid = String(payload?.messageId || messages.value[index].mid)
-      messages.value[index].timestamp = resolveMessageTimestamp(
+      messages.value[index].timestamp = resolveRoleChatMessageTimestamp(
         payload?.timestamp || payload?.createdAt,
         messages.value[index].timestamp || Date.now()
       )
-      messages.value[index].time = String(payload?.time || formatClockByTimestamp(messages.value[index].timestamp))
+      messages.value[index].time = String(payload?.time || formatRoleChatClockTime(messages.value[index].timestamp))
       if (messages.value[index].status !== 'read') {
         messages.value[index].status = 'sent'
       }
@@ -398,21 +353,24 @@ export function useMerchantChatPage() {
 
   function emitMessage(messageType: 'text' | 'image', content: string) {
     const localMessageId = appendLocalMessage(true, content, messageType)
-    socket.value.emit('send_message', {
-      chatId: chatId.value,
-      senderId: merchantId.value,
-      senderRole: 'merchant',
-      sender: merchantName.value,
-      avatar: merchantAvatar.value,
-      messageType,
-      content,
-      targetType: normalizeTargetType(),
-      targetId: targetId.value || (chatRole.value === 'admin' ? 'support' : ''),
-      targetPhone: '',
-      targetName: chatTitle.value || inferTitleByRole(chatRole.value),
-      targetAvatar: '',
-      tempId: localMessageId,
-    })
+    socket.value.emit(
+      'send_message',
+      buildRoleChatOutgoingPayload({
+        chatId: chatId.value,
+        targetType: normalizeTargetType(),
+        role: chatRole.value,
+        targetId: targetId.value,
+        targetName: chatTitle.value || inferTitleByRole(chatRole.value),
+        targetAvatar: '',
+        senderId: merchantId.value,
+        senderRole: 'merchant',
+        sender: merchantName.value,
+        avatar: merchantAvatar.value,
+        messageType,
+        content,
+        tempId: localMessageId,
+      }),
+    )
     queueSendTimeout(localMessageId)
   }
 
@@ -482,17 +440,19 @@ export function useMerchantChatPage() {
     merchantName.value = String(merchantAuth.merchantName || '商户')
     merchantAvatar.value = String(profile.avatar || profile.logo || '')
 
-    chatId.value = safeDecode(options.chatId || options.id || '')
-    chatRole.value = normalizeRole(options.role || 'user')
-    orderId.value = safeDecode(options.orderId || '')
-    targetId.value = safeDecode(options.targetId || '')
+    chatId.value = safeDecodeRoleChatValue(options.chatId || options.id || '')
+    chatRole.value = normalizeRoleChatRole(options.role || 'user', {
+      allowedRoles: ['user', 'rider', 'admin'],
+    }) as ChatRole
+    orderId.value = safeDecodeRoleChatValue(options.orderId || '')
+    targetId.value = safeDecodeRoleChatValue(options.targetId || '')
 
     if (!chatId.value) {
       chatId.value = `merchant_${merchantId.value || 'default'}`
       chatRole.value = 'admin'
     }
 
-    const explicitTitle = safeDecode(options.name || '')
+    const explicitTitle = safeDecodeRoleChatValue(options.name || '')
     chatTitle.value = explicitTitle || inferTitleByRole(chatRole.value)
 
     void loadSupportRuntimeConfig(!explicitTitle).finally(async () => {

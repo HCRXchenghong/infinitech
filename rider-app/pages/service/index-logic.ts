@@ -2,6 +2,13 @@
 import { resolveUploadAssetUrl } from "../../../packages/contracts/src/http.js";
 import { UPLOAD_DOMAINS } from "../../../packages/contracts/src/upload.js";
 import {
+  buildRoleChatConversationPayload,
+  buildRoleChatOutgoingPayload,
+  formatRoleChatClockTime,
+  normalizeRoleChatRole,
+  safeDecodeRoleChatValue,
+} from "../../../packages/mobile-core/src/role-chat-portal.js";
+import {
   fetchHistory,
   markConversationRead,
   upsertConversation,
@@ -16,13 +23,6 @@ import OrderDetailPopup from "../../components/OrderDetailPopup.vue";
 
 const DEFAULT_SUPPORT_CHAT_ID = "rider_default";
 const SEND_TIMEOUT_MS = 5000;
-
-function formatClockTime(timestamp: number) {
-  return new Date(timestamp).toLocaleTimeString("zh-CN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default Vue.extend({
   components: {
@@ -94,7 +94,11 @@ export default Vue.extend({
       this.chatId = this.riderId || DEFAULT_SUPPORT_CHAT_ID;
     }
 
-    const queryRole = options.role ? String(options.role).toLowerCase() : "";
+    const queryRole = options.role
+      ? normalizeRoleChatRole(options.role, {
+          allowedRoles: ["user", "merchant", "admin"],
+        })
+      : "";
     this.chatRole = queryRole || this.inferRoleByChatId(this.chatId);
 
     const queryName = options.name ? this.safeDecode(options.name) : "";
@@ -167,15 +171,15 @@ export default Vue.extend({
     },
 
     buildConversationPayload() {
-      return {
+      return buildRoleChatConversationPayload({
         chatId: this.chatId,
         targetType: this.normalizeTargetType(),
-        targetId: this.targetId || (this.chatRole === "admin" ? "support" : ""),
-        targetPhone: "",
+        role: this.chatRole,
+        targetId: this.targetId,
         targetName: this.chatTitle || this.inferTitleByRole(this.chatRole),
         targetAvatar: this.otherAvatar || "",
         targetOrderId: this.orderId || "",
-      };
+      });
     },
 
     normalizeHistoryMessages(list: any[] = []) {
@@ -321,11 +325,7 @@ export default Vue.extend({
     },
 
     safeDecode(value: any) {
-      try {
-        return decodeURIComponent(String(value || ""));
-      } catch {
-        return String(value || "");
-      }
+      return safeDecodeRoleChatValue(value);
     },
 
     async switchChat(nextChatId: string | number, payload: any = {}) {
@@ -334,7 +334,9 @@ export default Vue.extend({
 
       this.chatId = normalizedChatId;
       this.chatRole = payload.role
-        ? String(payload.role).toLowerCase()
+        ? normalizeRoleChatRole(payload.role, {
+            allowedRoles: ["user", "merchant", "admin"],
+          })
         : this.inferRoleByChatId(this.chatId);
       this.targetId = payload.targetId ? String(payload.targetId).trim() : "";
       this.orderId = payload.orderId ? String(payload.orderId).trim() : "";
@@ -422,7 +424,7 @@ export default Vue.extend({
       if (msg) {
         msg.id = data.messageId || data.tempId;
         msg.timestamp = nextTimestamp;
-        msg.time = data.time || formatClockTime(nextTimestamp);
+        msg.time = data.time || formatRoleChatClockTime(nextTimestamp);
         msg.status = nextStatus;
       }
       this.updateLocalMessage(
@@ -493,19 +495,24 @@ export default Vue.extend({
       tempId: string,
     ) {
       return {
-        chatId: this.chatId,
-        senderId: this.riderId,
-        senderRole: "rider",
-        type: "support",
-        messageType,
-        content,
-        sender: this.riderName,
-        avatar: this.avatarUrl,
-        tempId,
-        targetType: this.normalizeTargetType(),
-        targetId: this.targetId || (this.chatRole === "admin" ? "support" : ""),
-        targetName: this.chatTitle || this.inferTitleByRole(this.chatRole),
-        targetAvatar: this.otherAvatar || "",
+        ...buildRoleChatOutgoingPayload({
+          chatId: this.chatId,
+          targetType: this.normalizeTargetType(),
+          role: this.chatRole,
+          targetId: this.targetId,
+          targetName: this.chatTitle || this.inferTitleByRole(this.chatRole),
+          targetAvatar: this.otherAvatar || "",
+          senderId: this.riderId,
+          senderRole: "rider",
+          sender: this.riderName,
+          avatar: this.avatarUrl,
+          messageType,
+          content,
+          tempId,
+          extraFields: {
+            type: "support",
+          },
+        }),
       };
     },
 
@@ -516,7 +523,7 @@ export default Vue.extend({
       msg.id = tempId;
       msg.status = "sending";
       msg.timestamp = resendTimestamp;
-      msg.time = formatClockTime(resendTimestamp);
+      msg.time = formatRoleChatClockTime(resendTimestamp);
 
       this.updateLocalMessage(
         previousId,
@@ -567,7 +574,7 @@ export default Vue.extend({
         type: "text",
         isSelf: true,
         timestamp: tempTimestamp,
-        time: formatClockTime(tempTimestamp),
+        time: formatRoleChatClockTime(tempTimestamp),
         status: "sending",
       };
       this.messages.push(newMsg);
@@ -644,7 +651,7 @@ export default Vue.extend({
                 type: "image",
                 isSelf: true,
                 timestamp: messageTimestamp,
-                time: formatClockTime(messageTimestamp),
+                time: formatRoleChatClockTime(messageTimestamp),
                 status: "sending",
               };
               this.messages.push(newMsg);
@@ -714,7 +721,7 @@ export default Vue.extend({
         isSelf: true,
         order: normalizedOrder,
         timestamp: tempTimestamp,
-        time: formatClockTime(tempTimestamp),
+        time: formatRoleChatClockTime(tempTimestamp),
         status: "sending",
       };
       this.messages.push(newMsg);
