@@ -414,6 +414,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/rider-deposit-wallet-page.test.mjs",
   "packages/mobile-core/src/merchant-wallet.js",
   "packages/mobile-core/src/merchant-wallet.test.mjs",
+  "packages/mobile-core/src/rider-personal-info-page.js",
+  "packages/mobile-core/src/rider-personal-info-page.test.mjs",
   "packages/mobile-core/src/push-event-route.js",
   "packages/mobile-core/src/push-event-route.test.mjs",
   "packages/mobile-core/src/support-runtime.js",
@@ -7391,6 +7393,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-personal-info-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./dining-buddy.js";',
 );
 assertContains(
@@ -7472,6 +7478,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rider-deposit-wallet-page": "./src/rider-deposit-wallet-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-personal-info-page": "./src/rider-personal-info-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -9684,7 +9694,8 @@ assertNotContains("backend/docker/nginx.admin.conf", "location = /api/stats");
 assertContains("backend/go/internal/handler/rider_handler.go", "骑手不能自行修改认证状态");
 assertContains("backend/go/internal/handler/rider_handler.go", "verification_reset");
 assertNotContains("rider-app/pages/profile/personal-info.vue", "updateRiderProfile({ is_verified: true })");
-assertContains("rider-app/pages/profile/personal-info.vue", "资料已保存，待平台审核");
+assertContains("rider-app/pages/profile/personal-info.vue", "createRiderPersonalInfoPageLogic");
+assertContains("packages/mobile-core/src/rider-personal-info-page.js", "资料已保存，待平台审核");
 assertExists("backend/go/internal/handler/rider_handler_profile_security_test.go");
 assertContains(
   "backend/bff/src/config/index.js",

@@ -87,6 +87,7 @@
     "./profile-phone-change": "./src/profile-phone-change.js",
     "./rider-api": "./src/rider-api.js",
     "./rider-deposit-wallet-page": "./src/rider-deposit-wallet-page.js",
+    "./rider-personal-info-page": "./src/rider-personal-info-page.js",
     "./profile-outreach": "./src/profile-outreach.js",
     "./role-chat-navigation": "./src/role-chat-navigation.js",
     "./role-chat-portal": "./src/role-chat-portal.js",

@@ -52,100 +52,13 @@
 <script lang="ts">
 import Vue from 'vue'
 import { getRiderProfile, updateRiderProfile } from '../../shared-ui/api'
+import { createRiderPersonalInfoPageLogic } from '../../../packages/mobile-core/src/rider-personal-info-page.js'
 
-export default Vue.extend({
-  data() {
-    return {
-      profile: {} as any
-    }
-  },
-  computed: {
-    verificationStatusText(): string {
-      if (this.profile.is_verified) {
-        return '已通过平台审核'
-      }
-      if (this.profile.real_name && this.profile.id_card_number) {
-        return '资料已保存，待平台审核'
-      }
-      return '请先完善实名资料'
-    },
-    verificationStatusHint(): string {
-      if (this.profile.is_verified) {
-        return '如需修改实名或证件资料，系统会自动撤销旧认证并重新进入平台审核。'
-      }
-      return '实名与证件资料修改后会进入平台人工审核，骑手端不再直接修改认证通过状态。'
-    }
-  },
-  onLoad() {
-    this.loadProfile()
-  },
-  methods: {
-    async loadProfile() {
-      try {
-        const res: any = await getRiderProfile()
-        if (res && res.data) {
-          this.profile = res.data
-        }
-      } catch (err) {
-        console.error('加载资料失败:', err)
-      }
-    },
-    editNickname() {
-      uni.showModal({
-        title: '修改昵称',
-        editable: true,
-        placeholderText: this.profile.nickname || '',
-        success: async (res: any) => {
-          if (res.confirm && res.content) {
-            await this.updateProfile({ nickname: res.content })
-          }
-        }
-      })
-    },
-    editRealName() {
-      uni.showModal({
-        title: '真实姓名',
-        editable: true,
-        placeholderText: this.profile.real_name || '',
-        success: async (res: any) => {
-          if (res.confirm && res.content) {
-            await this.updateProfile({ real_name: res.content })
-          }
-        }
-      })
-    },
-    editIDCard() {
-      uni.showModal({
-        title: '身份证号',
-        editable: true,
-        placeholderText: this.profile.id_card_number || '',
-        success: async (res: any) => {
-          if (res.confirm && res.content) {
-            if (!/^\d{17}[\dXx]$/.test(res.content)) {
-              uni.showToast({ title: '身份证号格式错误', icon: 'none' })
-              return
-            }
-            await this.updateProfile({ id_card_number: res.content })
-          }
-        }
-      })
-    },
-    async updateProfile(data: any) {
-      try {
-        await updateRiderProfile(data)
-        uni.showToast({ title: '更新成功', icon: 'success' })
-        this.loadProfile()
-      } catch (err: any) {
-        uni.showToast({ title: err.error || '更新失败', icon: 'none' })
-      }
-    },
-    maskIDCard(idCard: string) {
-      if (!idCard) return '未认证'
-      if (idCard.length < 14) return idCard
-      return idCard.substring(0, 6) + '********' + idCard.substring(14)
-    }
-  }
-})
+export default Vue.extend(createRiderPersonalInfoPageLogic({
+  getRiderProfile,
+  updateRiderProfile,
+  uniApp: uni,
+}) as any)
 </script>
 
 <style lang="scss" scoped>
