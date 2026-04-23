@@ -86,6 +86,7 @@ export * from "./profile-phone-change.js";
 export * from "./rider-api.js";
 export * from "./rider-deposit-wallet-page.js";
 export * from "./rider-earnings-page.js";
+export * from "./rider-history-orders-page.js";
 export * from "./rider-order-settings-page.js";
 export * from "./rider-personal-info-page.js";
 export * from "./rider-profile-settings-page.js";

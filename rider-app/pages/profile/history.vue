@@ -44,151 +44,17 @@ import Vue from 'vue'
 import { fetchRiderOrders } from '../../shared-ui/api'
 import { readRiderAuthIdentity } from '../../shared-ui/auth-session.js'
 import OrderDetailPopup from '../../components/OrderDetailPopup.vue'
+import { createRiderHistoryOrdersPageLogic } from '../../../packages/mobile-core/src/rider-history-orders-page.js'
 
 export default Vue.extend({
   components: {
     OrderDetailPopup
   },
-  data() {
-    return {
-      orders: [] as any[],
-      loading: false,
-      showOrderDetailPopup: false,
-      currentOrderDetail: null as any
-    }
-  },
-  onShow() {
-    this.loadHistoryOrders()
-  },
-  onPullDownRefresh() {
-    this.loadHistoryOrders(true)
-  },
-  methods: {
-    extractOrderList(data: any): any[] {
-      if (Array.isArray(data)) return data
-      if (Array.isArray(data?.orders)) return data.orders
-      if (Array.isArray(data?.data)) return data.data
-      if (Array.isArray(data?.data?.orders)) return data.data.orders
-      return []
-    },
-
-    formatTime(value: any): string {
-      if (!value) return '--'
-      const date = new Date(value)
-      if (Number.isNaN(date.getTime())) return '--'
-      const MM = String(date.getMonth() + 1).padStart(2, '0')
-      const DD = String(date.getDate()).padStart(2, '0')
-      const HH = String(date.getHours()).padStart(2, '0')
-      const mm = String(date.getMinutes()).padStart(2, '0')
-      return `${MM}-${DD} ${HH}:${mm}`
-    },
-
-    formatPrice(order: any): string {
-      const raw = order.rider_income > 0
-        ? Number(order.rider_income) / 100
-        : order.delivery_fee ??
-          order.deliveryFee ??
-          order.rider_quoted_price ??
-          order.riderQuotedPrice ??
-          order.total_price ??
-          order.totalPrice ??
-          order.price
-      const amount = Number(raw)
-      return Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
-    },
-
-    normalizeOrder(order: any) {
-      if (!order || typeof order !== 'object') return null
-      const status = String(order.status || '').toLowerCase()
-      const sourceTime = order.completed_at ||
-        order.completedAt ||
-        order.updated_at ||
-        order.updatedAt ||
-        order.created_at ||
-        order.createdAt
-      const customerPhone = String(
-        order.customer_phone ||
-        order.customerPhone ||
-        order.delivery_phone ||
-        order.deliveryPhone ||
-        ''
-      )
-      return {
-        id: String(order.id || `${status}-${sourceTime || Date.now()}`),
-        orderNo: String(order.daily_order_id || order.dailyOrderId || order.order_num || order.orderNum || order.id || '--'),
-        orderNum: String(order.daily_order_id || order.dailyOrderId || order.order_num || order.orderNum || order.id || '--'),
-        status: status || 'completed',
-        shopName: order.shop_name || order.shopName || order.food_shop || order.merchant_name || order.merchantName || '商家信息缺失',
-        customerAddress: order.address || order.customer_address || order.customerAddress || order.delivery_request || order.deliveryRequest || '配送地址缺失',
-        createTime: this.formatTime(sourceTime),
-        createdAt: this.formatTime(sourceTime),
-        sortAt: Number(new Date(sourceTime || 0).getTime()) || 0,
-        customerName: order.customer_name || order.customerName || '',
-        customerPhone,
-        customer_phone: customerPhone,
-        address: order.address || order.customer_address || order.customerAddress || order.delivery_request || order.deliveryRequest || '配送地址缺失',
-        statusText: this.getStatusText(status || 'completed'),
-        amount: this.formatPrice(order),
-        price: this.formatPrice(order)
-      }
-    },
-
-    mergeAndSetOrders(orderList: any[]) {
-      const uniqueMap: Record<string, any> = {}
-      orderList.forEach((item: any) => {
-        if (!item || !item.id) return
-        uniqueMap[String(item.id)] = item
-      })
-      this.orders = Object.values(uniqueMap).sort((a: any, b: any) => Number(b.sortAt) - Number(a.sortAt))
-    },
-
-    async loadHistoryOrders(fromPullDown = false) {
-      const riderId = readRiderAuthIdentity({ uniApp: uni }).riderId
-      if (!riderId) {
-        this.orders = []
-        if (fromPullDown) uni.stopPullDownRefresh()
-        return
-      }
-
-      this.loading = true
-      try {
-        const [completedRes, cancelledRes] = await Promise.all([
-          fetchRiderOrders('completed'),
-          fetchRiderOrders('cancelled')
-        ])
-
-        const normalizedOrders = [
-          ...this.extractOrderList(completedRes),
-          ...this.extractOrderList(cancelledRes)
-        ]
-          .map((item: any) => this.normalizeOrder(item))
-          .filter((item: any) => item && (item.status === 'completed' || item.status === 'cancelled'))
-
-        this.mergeAndSetOrders(normalizedOrders)
-      } catch (err) {
-        console.error('加载历史订单失败:', err)
-        this.orders = []
-        uni.showToast({ title: '历史订单加载失败', icon: 'none' })
-      } finally {
-        this.loading = false
-        if (fromPullDown) uni.stopPullDownRefresh()
-      }
-    },
-
-    getStatusText(status: string) {
-      const map: any = {
-        completed: '已完成',
-        cancelled: '已取消'
-      }
-      return map[status] || status
-    },
-
-    openOrderDetail(order: any) {
-      if (!order) return
-      this.currentOrderDetail = { ...order }
-      this.showOrderDetailPopup = true
-    }
-  }
+  ...createRiderHistoryOrdersPageLogic({
+    fetchRiderOrders,
+    readRiderAuthIdentity,
+    uniApp: uni,
+  })
 })
 </script>
 
