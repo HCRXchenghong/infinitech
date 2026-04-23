@@ -118,7 +118,7 @@ export default Vue.extend({
           data: {
             phone: this.phone,
             code: this.code,
-            password,
+            nextPassword: password,
           },
         })
 

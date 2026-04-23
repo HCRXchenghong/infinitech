@@ -3946,6 +3946,9 @@ assertContains("backend/go/scripts/admin-maintenance.go", "temporaryCredential")
 assertNotContains("scripts/lib/management/cli.mjs", "revealSensitive: true");
 assertNotContains("backend/go/internal/handler/admin_handler.go", 'json:"newPassword"');
 assertContains("backend/go/internal/handler/admin_handler.go", 'json:"nextPassword"');
+assertContains("backend/go/internal/handler/auth_handler.go", 'json:"nextPassword"');
+assertContains("backend/go/internal/handler/auth_handler.go", "req.NextPassword");
+assertContains("backend/go/internal/service/auth_service.go", "nextPassword string");
 assertNotContains("backend/go/internal/handler/rider_handler.go", 'json:"newPassword"');
 assertContains("backend/go/internal/handler/rider_handler.go", 'json:"nextPassword"');
 assertNotContains("admin-vue/src/views/loginPageHelpers.js", "bootstrapForm.value.newPassword");
@@ -3954,6 +3957,10 @@ assertNotContains("admin-vue/src/views/loginSections/LoginBootstrapDialog.vue", 
 assertContains("admin-vue/src/views/loginSections/LoginBootstrapDialog.vue", "bootstrapForm.nextPassword");
 assertNotContains("rider-app/pages/profile/change-password.vue", "newPassword:");
 assertContains("rider-app/pages/profile/change-password.vue", "nextPassword:");
+assertContains("rider-app/pages/set-password/index.vue", "nextPassword: password");
+assertContains("merchant-app/shared-ui/api.ts", "nextPassword: string;");
+assertContains("merchant-app/shared-ui/merchantAccountPages.ts", "nextPassword: normalizedPassword");
+assertContains("packages/mobile-core/src/auth-portal.js", "nextPassword: validation.password");
 assertNotContains(
   "scripts/lib/management/menu.mjs",
   "输入管理员类型 admin/super_admin', 'super_admin'",

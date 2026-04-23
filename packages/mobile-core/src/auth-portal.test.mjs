@@ -167,6 +167,7 @@ test("auth portal reset password page stores verified ticket and redirects", asy
 test("auth portal set password page clears reset ticket after success", async () => {
   const redirects = [];
   const removedKeys = [];
+  const requestPayloads = [];
   const originalUni = globalThis.uni;
   const originalSetTimeout = globalThis.setTimeout;
 
@@ -193,7 +194,10 @@ test("auth portal set password page clears reset ticket after success", async ()
 
   try {
     const page = createSetPasswordPage({
-      request: async () => ({ success: true }),
+      request: async (payload) => {
+        requestPayloads.push(payload);
+        return { success: true };
+      },
     });
     const instance = {
       ...page.data(),
@@ -205,6 +209,15 @@ test("auth portal set password page clears reset ticket after success", async ()
     page.onLoad.call(instance, {});
     await instance.submit();
 
+    assert.deepEqual(requestPayloads, [{
+      url: "/api/set-new-password",
+      method: "POST",
+      data: {
+        phone: "13800138000",
+        code: "123456",
+        nextPassword: "123456",
+      },
+    }]);
     assert.deepEqual(removedKeys, ["reset_password_data"]);
     assert.deepEqual(redirects, ["/pages/auth/login/index"]);
   } finally {

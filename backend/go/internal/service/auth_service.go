@@ -1088,7 +1088,7 @@ func (s *AuthService) MerchantLogin(ctx context.Context, phone, code, password s
 }
 
 // SetNewPassword resets a consumer password after SMS verification.
-func (s *AuthService) SetNewPassword(ctx context.Context, phone, code, newPassword string) (interface{}, error) {
+func (s *AuthService) SetNewPassword(ctx context.Context, phone, code, nextPassword string) (interface{}, error) {
 	if !isValidPhone(phone) {
 		return map[string]interface{}{"success": false, "error": "invalid phone format"}, fmt.Errorf("invalid phone")
 	}
@@ -1099,7 +1099,7 @@ func (s *AuthService) SetNewPassword(ctx context.Context, phone, code, newPasswo
 	if err != nil {
 		return map[string]interface{}{"success": false, "error": "user not found"}, err
 	}
-	hash, err := hashPassword(newPassword)
+	hash, err := hashPassword(nextPassword)
 	if err != nil {
 		return map[string]interface{}{"success": false, "error": "failed to hash password"}, err
 	}
@@ -1110,7 +1110,7 @@ func (s *AuthService) SetNewPassword(ctx context.Context, phone, code, newPasswo
 }
 
 // RiderSetNewPassword resets a rider password.
-func (s *AuthService) RiderSetNewPassword(ctx context.Context, phone, code, newPassword string) (interface{}, error) {
+func (s *AuthService) RiderSetNewPassword(ctx context.Context, phone, code, nextPassword string) (interface{}, error) {
 	if !isValidPhone(phone) {
 		return map[string]interface{}{"success": false, "error": "invalid phone format"}, fmt.Errorf("invalid phone")
 	}
@@ -1121,7 +1121,7 @@ func (s *AuthService) RiderSetNewPassword(ctx context.Context, phone, code, newP
 	if err := s.db.Where("phone = ?", phone).First(&rider).Error; err != nil {
 		return map[string]interface{}{"success": false, "error": "rider not found"}, err
 	}
-	hash, err := hashPassword(newPassword)
+	hash, err := hashPassword(nextPassword)
 	if err != nil {
 		return map[string]interface{}{"success": false, "error": "failed to hash password"}, err
 	}
@@ -1132,7 +1132,7 @@ func (s *AuthService) RiderSetNewPassword(ctx context.Context, phone, code, newP
 }
 
 // MerchantSetNewPassword resets a merchant password.
-func (s *AuthService) MerchantSetNewPassword(ctx context.Context, phone, code, newPassword string) (interface{}, error) {
+func (s *AuthService) MerchantSetNewPassword(ctx context.Context, phone, code, nextPassword string) (interface{}, error) {
 	if !isValidPhone(phone) {
 		return map[string]interface{}{"success": false, "error": "invalid phone format"}, fmt.Errorf("invalid phone")
 	}
@@ -1143,7 +1143,7 @@ func (s *AuthService) MerchantSetNewPassword(ctx context.Context, phone, code, n
 	if err := s.db.Where("phone = ?", phone).First(&merchant).Error; err != nil {
 		return map[string]interface{}{"success": false, "error": "merchant not found"}, err
 	}
-	hash, err := hashPassword(newPassword)
+	hash, err := hashPassword(nextPassword)
 	if err != nil {
 		return map[string]interface{}{"success": false, "error": "failed to hash password"}, err
 	}

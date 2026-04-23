@@ -412,7 +412,7 @@ export function createSetPasswordPage(options = {}) {
             data: {
               phone: this.phone,
               code: this.code,
-              password: validation.password,
+              nextPassword: validation.password,
             },
           });
 

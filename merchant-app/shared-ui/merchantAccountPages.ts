@@ -329,7 +329,7 @@ export function useMerchantSetPasswordPage() {
       const response: any = await merchantSetNewPassword({
         phone: phone.value,
         code: code.value,
-        password: normalizedPassword,
+        nextPassword: normalizedPassword,
       })
       if (response?.success === false) {
         throw new Error(response?.error || response?.message || '密码重置失败')

@@ -588,15 +588,15 @@ func (h *AuthHandler) MerchantLogin(c *gin.Context) {
 
 func (h *AuthHandler) SetNewPassword(c *gin.Context) {
 	var req struct {
-		Phone    string `json:"phone"`
-		Code     string `json:"code"`
-		Password string `json:"password"`
+		Phone        string `json:"phone"`
+		Code         string `json:"code"`
+		NextPassword string `json:"nextPassword"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondAuthInvalidRequest(c, "请求参数错误", err.Error())
 		return
 	}
-	result, err := h.service.SetNewPassword(c.Request.Context(), req.Phone, req.Code, req.Password)
+	result, err := h.service.SetNewPassword(c.Request.Context(), req.Phone, req.Code, req.NextPassword)
 	if err != nil {
 		respondAuthPayload(c, authFailureStatus(result, err, http.StatusBadRequest), authPayloadMessage(result, err, "密码重置失败"), result)
 		return
@@ -606,15 +606,15 @@ func (h *AuthHandler) SetNewPassword(c *gin.Context) {
 
 func (h *AuthHandler) RiderSetNewPassword(c *gin.Context) {
 	var req struct {
-		Phone    string `json:"phone"`
-		Code     string `json:"code"`
-		Password string `json:"password"`
+		Phone        string `json:"phone"`
+		Code         string `json:"code"`
+		NextPassword string `json:"nextPassword"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondAuthInvalidRequest(c, "请求参数错误", err.Error())
 		return
 	}
-	result, err := h.service.RiderSetNewPassword(c.Request.Context(), req.Phone, req.Code, req.Password)
+	result, err := h.service.RiderSetNewPassword(c.Request.Context(), req.Phone, req.Code, req.NextPassword)
 	if err != nil {
 		respondAuthPayload(c, authFailureStatus(result, err, http.StatusBadRequest), authPayloadMessage(result, err, "骑手密码重置失败"), result)
 		return
@@ -624,15 +624,15 @@ func (h *AuthHandler) RiderSetNewPassword(c *gin.Context) {
 
 func (h *AuthHandler) MerchantSetNewPassword(c *gin.Context) {
 	var req struct {
-		Phone    string `json:"phone"`
-		Code     string `json:"code"`
-		Password string `json:"password"`
+		Phone        string `json:"phone"`
+		Code         string `json:"code"`
+		NextPassword string `json:"nextPassword"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondAuthInvalidRequest(c, "请求参数错误", err.Error())
 		return
 	}
-	result, err := h.service.MerchantSetNewPassword(c.Request.Context(), req.Phone, req.Code, req.Password)
+	result, err := h.service.MerchantSetNewPassword(c.Request.Context(), req.Phone, req.Code, req.NextPassword)
 	if err != nil {
 		respondAuthPayload(c, authFailureStatus(result, err, http.StatusBadRequest), authPayloadMessage(result, err, "商户密码重置失败"), result)
 		return

@@ -171,7 +171,7 @@ export const verifySMSCodeCheck = (payload: {
 export const merchantSetNewPassword = (payload: {
   phone: string;
   code: string;
-  password: string;
+  nextPassword: string;
 }) => apiPost("/api/auth/merchant/set-new-password", payload, false);
 
 // Merchant / Shop
