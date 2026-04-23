@@ -28,6 +28,14 @@ import {
   validatePasswordResetNextPasswordForm,
   verifyPasswordResetCode,
 } from "./password-reset-portal.js";
+import {
+  createRoleLoginCodeCooldownController,
+  normalizeRoleLoginPhone,
+  pickRoleLoginErrorMessage,
+  requestRoleLoginCode,
+  trimRoleLoginPortalValue,
+  validateRoleLoginPhoneInput,
+} from "./role-login-portal.js";
 
 test("auth portal helpers normalize values, modes and invite codes", () => {
   assert.equal(trimAuthPortalValue(" 13800138000 "), "13800138000");
@@ -415,4 +423,94 @@ test("auth portal set password page clears reset ticket after success", async ()
     globalThis.uni = originalUni;
     globalThis.setTimeout = originalSetTimeout;
   }
+});
+
+test("role login helpers normalize phones and reuse password reset cooldown controller", () => {
+  assert.equal(trimRoleLoginPortalValue(" 13800138000 "), "13800138000");
+  assert.equal(normalizeRoleLoginPhone(" 13800138000 "), "13800138000");
+  assert.equal(normalizeRoleLoginPhone("123"), "");
+  assert.deepEqual(validateRoleLoginPhoneInput("123"), {
+    phone: "",
+    error: "请输入正确手机号",
+  });
+  assert.deepEqual(validateRoleLoginPhoneInput(" 13800138000 "), {
+    phone: "13800138000",
+    error: "",
+  });
+
+  const cooldownValues = [];
+  let cooldownTick = null;
+  const cooldownController = createRoleLoginCodeCooldownController({
+    setValue(value) {
+      cooldownValues.push(value);
+    },
+    createInterval(callback) {
+      cooldownTick = callback;
+      return "role-login-timer";
+    },
+    clearIntervalFn() {},
+  });
+
+  cooldownController.start(2);
+  cooldownTick();
+  cooldownTick();
+  assert.deepEqual(cooldownValues, [2, 1, 0]);
+  assert.equal(cooldownController.isRunning(), false);
+});
+
+test("role login helpers request sms code and pick shared error messages", async () => {
+  const invalidPhoneResult = await requestRoleLoginCode({
+    phoneValue: "123",
+  });
+  assert.deepEqual(invalidPhoneResult, {
+    ok: false,
+    reason: "invalid_phone",
+    phone: "",
+    message: "请输入正确手机号",
+  });
+
+  let requestedPayload = null;
+  let cooldownStarts = 0;
+  const requestResult = await requestRoleLoginCode({
+    phoneValue: " 13800138000 ",
+    scene: "merchant_login",
+    requestSMSCode: async (phone, scene) => {
+      requestedPayload = { phone, scene };
+      return { success: true, message: "验证码已发送" };
+    },
+    cooldownController: {
+      start() {
+        cooldownStarts += 1;
+      },
+    },
+  });
+  assert.deepEqual(requestedPayload, {
+    phone: "13800138000",
+    scene: "merchant_login",
+  });
+  assert.equal(cooldownStarts, 1);
+  assert.equal(requestResult.ok, true);
+  assert.equal(requestResult.phone, "13800138000");
+  assert.equal(requestResult.message, "验证码已发送");
+
+  assert.equal(
+    pickRoleLoginErrorMessage(
+      { data: { message: "网络繁忙" } },
+      "登录失败",
+    ),
+    "网络繁忙",
+  );
+  assert.equal(
+    pickRoleLoginErrorMessage(
+      { error: "ignored" },
+      "登录失败",
+      (error, fallback) => {
+        if (error?.error === "ignored") {
+          return "统一错误映射";
+        }
+        return fallback;
+      },
+    ),
+    "统一错误映射",
+  );
 });

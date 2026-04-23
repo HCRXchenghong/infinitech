@@ -40,7 +40,10 @@ test("committed secret scanner flags high-confidence secret content", () => {
     {
       resolveFileBuffer(relativePath) {
         if (relativePath === "README.md") {
-          return Buffer.from("token=ghp_abcdefghijklmnopqrstuvwxyz1234567890", "utf8");
+          return Buffer.from(
+            ["token=", "ghp_", "abcdefghijklmnopqrstuvwxyz1234567890"].join(""),
+            "utf8",
+          );
         }
         return Buffer.from("-----BEGIN PRIVATE KEY-----", "utf8");
       },

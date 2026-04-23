@@ -243,6 +243,7 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/auth-portal-pages.js",
   "packages/mobile-core/src/auth-portal-pages.test.mjs",
   "packages/mobile-core/src/password-reset-portal.js",
+  "packages/mobile-core/src/role-login-portal.js",
   "packages/mobile-core/src/AuthLoginPage.vue",
   "packages/mobile-core/src/auth-login-page.scss",
   "packages/mobile-core/src/AuthRegisterPage.vue",
@@ -2259,6 +2260,17 @@ assertContains(
 assertContains("rider-app/shared-ui/push-registration.ts", "RIDER_STORED_AUTH_RESOLVER_OPTIONS");
 assertContains("rider-app/shared-ui/realtime-notify.ts", "RIDER_STORED_AUTH_RESOLVER_OPTIONS");
 assertContains(
+  "rider-app/pages/login/index.vue",
+  "from '../../../packages/mobile-core/src/role-login-portal.js'",
+);
+assertContains(
+  "rider-app/pages/login/index.vue",
+  "const result = await requestRoleLoginCode({",
+);
+assertContains("rider-app/pages/login/index.vue", "sendingCode: false");
+assertContains("rider-app/pages/login/index.vue", "submitting: false");
+assertNotContains("rider-app/pages/login/index.vue", "loading: false");
+assertContains(
   "socket-server/socketIdentity.js",
   "../packages/domain-core/src/identity.js",
 );
@@ -3983,6 +3995,14 @@ assertContains(
   "const result = await submitPasswordResetNextPassword({",
 );
 assertContains(
+  "merchant-app/shared-ui/merchantAccountPages.ts",
+  "from '../../packages/mobile-core/src/role-login-portal.js'",
+);
+assertContains(
+  "merchant-app/shared-ui/merchantAccountPages.ts",
+  "const result = await requestRoleLoginCode({",
+);
+assertContains(
   "rider-app/pages/reset-password/index.vue",
   "from '../../packages/mobile-core/src/password-reset-portal.js'",
 );
@@ -4005,6 +4025,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/auth-portal.test.mjs",
   'from "./password-reset-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/auth-portal.test.mjs",
+  'from "./role-login-portal.js";',
 );
 assertContains(
   "android-user-app/core/data/src/main/java/com/user/infinite/core/data/repository/AuthRepositoryImpl.kt",
@@ -6842,6 +6866,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./role-login-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./category-pages.js";',
 );
 assertContains(
@@ -7139,6 +7167,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./password-reset-portal": "./src/password-reset-portal.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./role-login-portal": "./src/role-login-portal.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

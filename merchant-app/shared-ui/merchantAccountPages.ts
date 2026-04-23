@@ -32,6 +32,12 @@ import {
   submitPasswordResetNextPassword,
   verifyPasswordResetCode,
 } from '../../packages/mobile-core/src/password-reset-portal.js'
+import {
+  createRoleLoginCodeCooldownController,
+  pickRoleLoginErrorMessage,
+  requestRoleLoginCode,
+  validateRoleLoginPhoneInput,
+} from '../../packages/mobile-core/src/role-login-portal.js'
 
 export function useMerchantLoginPage() {
   const loginType = ref<'code' | 'password'>('password')
@@ -42,63 +48,60 @@ export function useMerchantLoginPage() {
   const sendingCode = ref(false)
   const codeCooldown = ref(0)
   const portalRuntime = reactive(getCachedMerchantPortalRuntimeSettings())
-
-  let timer: any = null
-
-  function startCooldown() {
-    codeCooldown.value = 60
-    if (timer) clearInterval(timer)
-    timer = setInterval(() => {
-      codeCooldown.value -= 1
-      if (codeCooldown.value <= 0) {
-        clearInterval(timer)
-        timer = null
-      }
-    }, 1000)
-  }
+  const cooldownController = createRoleLoginCodeCooldownController({
+    setValue(nextValue) {
+      codeCooldown.value = nextValue
+    },
+  })
 
   function validatePhone() {
-    const normalizedPhone = String(phone.value || '').trim()
-    if (!/^1\d{10}$/.test(normalizedPhone)) {
-      uni.showToast({ title: '请输入正确手机号', icon: 'none' })
+    const result = validateRoleLoginPhoneInput(phone.value)
+    if (!result.phone) {
+      uni.showToast({ title: result.error, icon: 'none' })
       return ''
     }
-    return normalizedPhone
+    return result.phone
   }
 
   function formatLoginError(error: any) {
-    const raw = String(error?.error || error?.message || '').toLowerCase()
-    if (!raw) return '登录失败'
-    if (raw.includes('merchant not found') || raw.includes('商户不存在')) {
-      return '该手机号不是商户账号，请使用商户账号登录'
-    }
-    if (raw.includes('invalid password') || raw.includes('密码错误')) {
-      return '登录密码错误，请重试'
-    }
-    if (raw.includes('invalid code') || raw.includes('验证码')) {
-      return '验证码错误或已过期'
-    }
-    if (raw.includes('unauthorized') || raw.includes('401')) {
-      return '账号或密码错误'
-    }
-    return error?.error || error?.message || '登录失败'
+    return pickRoleLoginErrorMessage(error, '登录失败', (rawError: any, fallback: string) => {
+      const raw = String(
+        rawError?.error || rawError?.message || rawError?.data?.error || rawError?.data?.message || '',
+      ).toLowerCase()
+      if (!raw) return ''
+      if (raw.includes('merchant not found') || raw.includes('商户不存在')) {
+        return '该手机号不是商户账号，请使用商户账号登录'
+      }
+      if (raw.includes('invalid password') || raw.includes('密码错误')) {
+        return '登录密码错误，请重试'
+      }
+      if (raw.includes('invalid code') || raw.includes('验证码')) {
+        return '验证码错误或已过期'
+      }
+      if (raw.includes('unauthorized') || raw.includes('401')) {
+        return '账号或密码错误'
+      }
+      return ''
+    })
   }
 
   async function handleSendCode() {
     if (sendingCode.value || codeCooldown.value > 0) return
-    const normalizedPhone = validatePhone()
-    if (!normalizedPhone) return
 
     sendingCode.value = true
     try {
-      const response: any = await requestSMSCode(normalizedPhone, 'merchant_login')
-      if (response?.success === false) {
-        throw new Error(response?.error || response?.message || '验证码发送失败')
+      const result = await requestRoleLoginCode({
+        phoneValue: phone.value,
+        scene: 'merchant_login',
+        requestSMSCode,
+        cooldownController,
+      })
+      if (!result.ok) {
+        uni.showToast({ title: result.message, icon: 'none' })
+        return
       }
-      uni.showToast({ title: response?.message || '验证码已发送', icon: 'success' })
-      startCooldown()
-    } catch (error: any) {
-      uni.showToast({ title: error?.error || error?.message || '验证码发送失败', icon: 'none' })
+
+      uni.showToast({ title: result.message, icon: 'success' })
     } finally {
       sendingCode.value = false
     }
@@ -165,10 +168,7 @@ export function useMerchantLoginPage() {
   })
 
   onUnmounted(() => {
-    if (timer) {
-      clearInterval(timer)
-      timer = null
-    }
+    cooldownController.clear()
   })
 
   return {

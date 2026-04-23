@@ -19,8 +19,8 @@
 
       <view v-if="loginType === 'code'" class="code-row">
         <input v-model="code" class="input" placeholder="验证码" type="number" maxlength="6" />
-        <text class="code-btn" :class="{ off: codeCooldown > 0 || loading }" @tap="sendCode">
-          {{ loading ? '发送中...' : codeCooldown > 0 ? `${codeCooldown}s` : '获取验证码' }}
+        <text class="code-btn" :class="{ off: codeCooldown > 0 || sendingCode }" @tap="sendCode">
+          {{ sendingCode ? '发送中...' : codeCooldown > 0 ? `${codeCooldown}s` : '获取验证码' }}
         </text>
       </view>
 
@@ -31,8 +31,8 @@
         </view>
       </view>
 
-      <button class="btn" @tap="submit" :disabled="loading">
-        {{ loading ? '登录中...' : '登录' }}
+      <button class="btn" @tap="submit" :disabled="submitting">
+        {{ submitting ? '登录中...' : '登录' }}
       </button>
     </view>
 
@@ -48,6 +48,12 @@ import { requestSMSCode, riderLogin } from '../../shared-ui/api'
 import { persistRiderAuthSession } from '../../shared-ui/auth-session.js'
 import { persistRoleAuthSessionFromAuthResult } from '../../../packages/client-sdk/src/role-auth-response.js'
 import {
+  createRoleLoginCodeCooldownController,
+  pickRoleLoginErrorMessage,
+  requestRoleLoginCode,
+  validateRoleLoginPhoneInput,
+} from '../../../packages/mobile-core/src/role-login-portal.js'
+import {
   getCachedRiderPortalRuntimeSettings,
   loadRiderPortalRuntimeSettings,
 } from '../../shared-ui/portal-runtime'
@@ -60,18 +66,28 @@ export default Vue.extend({
       code: '',
       password: '',
       codeCooldown: 0,
-      loading: false,
-      timer: null as any,
+      sendingCode: false,
+      submitting: false,
+      cooldownController: null as any,
       portalRuntime: getCachedRiderPortalRuntimeSettings(),
     }
   },
   onLoad() {
+    this.cooldownController = this.createCooldownController()
     void this.loadPortalRuntime()
   },
   onUnload() {
-    if (this.timer) clearInterval(this.timer)
+    if (this.cooldownController) this.cooldownController.clear()
   },
   methods: {
+    createCooldownController() {
+      return createRoleLoginCodeCooldownController({
+        setValue: (nextValue: number) => {
+          this.codeCooldown = nextValue
+        },
+      })
+    },
+
     async loadPortalRuntime() {
       this.portalRuntime = await loadRiderPortalRuntimeSettings()
     },
@@ -114,106 +130,98 @@ export default Vue.extend({
     },
 
     validatePhone() {
-      const phone = String(this.phone || '').trim()
-      if (!/^1\d{10}$/.test(phone)) {
-        uni.showToast({ title: '请输入正确手机号', icon: 'none' })
+      const result = validateRoleLoginPhoneInput(this.phone)
+      if (!result.phone) {
+        uni.showToast({ title: result.error, icon: 'none' })
         return ''
       }
-      return phone
+      return result.phone
+    },
+
+    formatLoginError(error: any) {
+      return pickRoleLoginErrorMessage(error, '登录失败', (rawError: any, fallback: string) => {
+        const raw = String(
+          rawError?.error || rawError?.message || rawError?.data?.error || rawError?.data?.message || '',
+        ).toLowerCase()
+        if (!raw) return ''
+        if (raw.includes('rider not found') || raw.includes('骑手不存在')) {
+          return '该手机号不是骑手账号，请使用骑手账号登录'
+        }
+        if (raw.includes('invalid password') || raw.includes('密码错误')) {
+          return '登录密码错误，请重试'
+        }
+        if (raw.includes('invalid code') || raw.includes('验证码')) {
+          return '验证码错误或已过期'
+        }
+        if (raw.includes('unauthorized') || raw.includes('401')) {
+          return '账号或密码错误'
+        }
+        return ''
+      })
     },
 
     async sendCode() {
-      if (this.codeCooldown > 0 || this.loading) return
-      const phone = this.validatePhone()
-      if (!phone) return
+      if (this.codeCooldown > 0 || this.sendingCode) return
 
-      this.loading = true
+      const cooldownController = this.cooldownController || this.createCooldownController()
+      this.cooldownController = cooldownController
+      this.sendingCode = true
       try {
-        const res: any = await requestSMSCode(phone, 'rider_login')
-        if (res.success !== false) {
-          uni.showToast({ title: res.message || '验证码已发送', icon: 'success' })
-          this.codeCooldown = 60
-          if (this.timer) {
-            clearInterval(this.timer)
-            this.timer = null
-          }
-          this.timer = setInterval(() => {
-            this.codeCooldown -= 1
-            if (this.codeCooldown <= 0) {
-              clearInterval(this.timer)
-              this.timer = null
-            }
-          }, 1000)
-        } else {
-          uni.showToast({ title: res.error || res.message || '发送验证码失败', icon: 'none' })
-        }
-      } catch (err: any) {
-        uni.showToast({
-          title: err.data?.error || err.error || err.message || '发送验证码失败',
-          icon: 'none',
+        const result = await requestRoleLoginCode({
+          phoneValue: this.phone,
+          scene: 'rider_login',
+          requestSMSCode,
+          cooldownController,
+          failureMessage: '发送验证码失败',
         })
+        if (!result.ok) {
+          uni.showToast({ title: result.message, icon: 'none' })
+          return
+        }
+
+        uni.showToast({ title: result.message, icon: 'success' })
       } finally {
-        this.loading = false
+        this.sendingCode = false
       }
     },
 
     async submit() {
+      if (this.submitting) return
       const phone = this.validatePhone()
       if (!phone) return
 
+      const payload: { phone: string; code?: string; password?: string } = { phone }
       if (this.loginType === 'code') {
         const code = String(this.code || '').trim()
         if (!code) {
           uni.showToast({ title: '请输入验证码', icon: 'none' })
           return
         }
-
-        this.loading = true
-        try {
-          const res: any = await riderLogin({ phone, code })
-          if (res.success) {
-            this.saveRiderSession(res, phone)
-            this.connectSocketAfterLogin()
-            uni.showToast({ title: '登录成功', icon: 'success' })
-            setTimeout(() => uni.switchTab({ url: '/pages/hall/index' }), 500)
-          } else {
-            uni.showToast({ title: res.error || res.message || '登录失败', icon: 'none' })
-          }
-        } catch (err: any) {
-          uni.showToast({
-            title: err.data?.error || err.error || err.message || '登录失败',
-            icon: 'none',
-          })
-        } finally {
-          this.loading = false
+        payload.code = code
+      } else {
+        const password = String(this.password || '').trim()
+        if (!password) {
+          uni.showToast({ title: '请输入密码', icon: 'none' })
+          return
         }
-        return
+        payload.password = password
       }
 
-      const password = String(this.password || '').trim()
-      if (!password) {
-        uni.showToast({ title: '请输入密码', icon: 'none' })
-        return
-      }
-
-      this.loading = true
+      this.submitting = true
       try {
-        const res: any = await riderLogin({ phone, password })
+        const res: any = await riderLogin(payload)
         if (res.success) {
           this.saveRiderSession(res, phone)
           this.connectSocketAfterLogin()
           uni.showToast({ title: '登录成功', icon: 'success' })
           setTimeout(() => uni.switchTab({ url: '/pages/hall/index' }), 500)
         } else {
-          uni.showToast({ title: res.error || res.message || '登录失败', icon: 'none' })
+          uni.showToast({ title: this.formatLoginError(res), icon: 'none' })
         }
       } catch (err: any) {
-        uni.showToast({
-          title: err.data?.error || err.error || err.message || '登录失败',
-          icon: 'none',
-        })
+        uni.showToast({ title: this.formatLoginError(err), icon: 'none' })
       } finally {
-        this.loading = false
+        this.submitting = false
       }
     },
   },

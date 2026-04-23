@@ -50,6 +50,7 @@
     "./medicine-order": "./src/medicine-order.js",
     "./portal-runtime": "./src/portal-runtime.js",
     "./role-api-shell": "./src/role-api-shell.js",
+    "./role-login-portal": "./src/role-login-portal.js",
     "./role-portal-runtime-shell": "./src/role-portal-runtime-shell.js",
     "./platform-runtime": "./src/platform-runtime.js",
     "./platform-schema": "./src/platform-schema.js",
