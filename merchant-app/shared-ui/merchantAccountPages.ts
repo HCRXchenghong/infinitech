@@ -25,13 +25,13 @@ import {
 } from '@/shared-ui/auth-session.js'
 import { persistRoleAuthSessionFromAuthResult } from '../../packages/client-sdk/src/role-auth-response.js'
 import {
-  createPasswordResetCooldownController,
-  requestPasswordResetCode,
-  resolvePasswordResetTicket,
-  buildPasswordResetSetPasswordPageUrl,
-  submitPasswordResetNextPassword,
-  verifyPasswordResetCode,
-} from '../../packages/mobile-core/src/password-reset-portal.js'
+  createRolePasswordResetCooldownController,
+  requestRolePasswordResetCode,
+  resolveRolePasswordResetTicket,
+  buildRolePasswordResetSetPasswordPageUrl,
+  submitRolePasswordResetNextPassword,
+  verifyRolePasswordResetCode,
+} from '../../packages/mobile-core/src/role-password-reset-portal.js'
 import {
   createRoleLoginCodeCooldownController,
   pickRoleLoginErrorMessage,
@@ -193,7 +193,7 @@ export function useMerchantResetPasswordPage() {
   const submitting = ref(false)
   const codeCooldown = ref(0)
   const portalRuntime = reactive(getCachedMerchantPortalRuntimeSettings())
-  const cooldownController = createPasswordResetCooldownController({
+  const cooldownController = createRolePasswordResetCooldownController({
     setValue(nextValue) {
       codeCooldown.value = nextValue
     },
@@ -204,7 +204,7 @@ export function useMerchantResetPasswordPage() {
 
     sendingCode.value = true
     try {
-      const result = await requestPasswordResetCode({
+      const result = await requestRolePasswordResetCode({
         phoneValue: phone.value,
         scene: 'merchant_reset',
         requestSMSCode,
@@ -226,14 +226,14 @@ export function useMerchantResetPasswordPage() {
 
     submitting.value = true
     try {
-      const result = await verifyPasswordResetCode({
+      const result = await verifyRolePasswordResetCode({
         phoneValue: phone.value,
         codeValue: code.value,
         scene: 'merchant_reset',
         storage: uni,
         verifySMSCodeCheck,
         buildSetPasswordUrl(phoneValue, codeValue) {
-          return buildPasswordResetSetPasswordPageUrl(
+          return buildRolePasswordResetSetPasswordPageUrl(
             '/pages/set-password/index',
             phoneValue,
             codeValue,
@@ -294,7 +294,7 @@ export function useMerchantSetPasswordPage() {
     const pages = getCurrentPages()
     const currentPage: any = pages[pages.length - 1] || {}
     const options = currentPage?.options || {}
-    const resetTicket = resolvePasswordResetTicket(
+    const resetTicket = resolveRolePasswordResetTicket(
       options,
       uni.getStorageSync('reset_password_data'),
     )
@@ -314,7 +314,7 @@ export function useMerchantSetPasswordPage() {
 
     submitting.value = true
     try {
-      const result = await submitPasswordResetNextPassword({
+      const result = await submitRolePasswordResetNextPassword({
         phoneValue: phone.value,
         codeValue: code.value,
         passwordValue: password.value,

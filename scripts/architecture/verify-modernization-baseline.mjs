@@ -244,6 +244,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/auth-portal-pages.test.mjs",
   "packages/mobile-core/src/password-reset-portal.js",
   "packages/mobile-core/src/role-login-portal.js",
+  "packages/mobile-core/src/role-password-reset-portal.js",
+  "packages/mobile-core/src/role-password-reset-portal.test.mjs",
   "packages/mobile-core/src/role-password-change-portal.js",
   "packages/mobile-core/src/role-password-change-portal.test.mjs",
   "packages/mobile-core/src/AuthLoginPage.vue",
@@ -4018,19 +4020,19 @@ assertContains("merchant-app/shared-ui/api.ts", "nextPassword: string;");
 assertContains("packages/mobile-core/src/auth-portal.js", "nextPassword: validation.password");
 assertContains(
   "merchant-app/shared-ui/merchantAccountPages.ts",
-  "from '../../packages/mobile-core/src/password-reset-portal.js'",
+  "from '../../packages/mobile-core/src/role-password-reset-portal.js'",
 );
 assertContains(
   "merchant-app/shared-ui/merchantAccountPages.ts",
-  "const result = await requestPasswordResetCode({",
+  "const result = await requestRolePasswordResetCode({",
 );
 assertContains(
   "merchant-app/shared-ui/merchantAccountPages.ts",
-  "const result = await verifyPasswordResetCode({",
+  "const result = await verifyRolePasswordResetCode({",
 );
 assertContains(
   "merchant-app/shared-ui/merchantAccountPages.ts",
-  "const result = await submitPasswordResetNextPassword({",
+  "const result = await submitRolePasswordResetNextPassword({",
 );
 assertContains(
   "merchant-app/shared-ui/merchantAccountPages.ts",
@@ -4042,24 +4044,30 @@ assertContains(
 );
 assertContains(
   "rider-app/pages/reset-password/index.vue",
-  "from '../../packages/mobile-core/src/password-reset-portal.js'",
+  "from '../../../packages/mobile-core/src/role-password-reset-portal.js'",
 );
 assertContains(
   "rider-app/pages/reset-password/index.vue",
-  "const result = await requestPasswordResetCode({",
+  "const result = await requestRolePasswordResetCode({",
 );
 assertContains(
   "rider-app/pages/reset-password/index.vue",
-  "const result = await verifyPasswordResetCode({",
+  "const result = await verifyRolePasswordResetCode({",
+);
+assertContains("rider-app/pages/reset-password/index.vue", "sendingCode: false");
+assertContains("rider-app/pages/reset-password/index.vue", "submitting: false");
+assertNotContains("rider-app/pages/reset-password/index.vue", "timer:");
+assertNotContains("rider-app/pages/reset-password/index.vue", "loading: false");
+assertContains(
+  "rider-app/pages/set-password/index.vue",
+  "from '../../../packages/mobile-core/src/role-password-reset-portal.js'",
 );
 assertContains(
   "rider-app/pages/set-password/index.vue",
-  "from '../../packages/mobile-core/src/password-reset-portal.js'",
+  "const result = await submitRolePasswordResetNextPassword({",
 );
-assertContains(
-  "rider-app/pages/set-password/index.vue",
-  "const result = await submitPasswordResetNextPassword({",
-);
+assertContains("rider-app/pages/set-password/index.vue", "submitting: false");
+assertNotContains("rider-app/pages/set-password/index.vue", "loading: false");
 assertContains(
   "packages/mobile-core/src/auth-portal.test.mjs",
   'from "./password-reset-portal.js";',
@@ -4067,6 +4075,14 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/auth-portal.test.mjs",
   'from "./role-login-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/role-password-reset-portal.js",
+  'from "./password-reset-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/role-password-reset-portal.test.mjs",
+  'from "./role-password-reset-portal.js";',
 );
 assertContains(
   "packages/mobile-core/src/role-password-change-portal.js",
@@ -4369,6 +4385,10 @@ assertContains(
 assertContains(
   "packages/client-sdk/src/role-push-event-shell.js",
   "export function createDefaultRolePushEventBridgeStarter(options = {}) {",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/role-password-reset-portal.test.mjs",
 );
 assertContains(
   "package.json",
@@ -6924,6 +6944,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./role-password-reset-portal.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./role-password-change-portal.js";',
 );
 assertContains(
@@ -7237,6 +7261,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./role-login-portal": "./src/role-login-portal.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./role-password-reset-portal": "./src/role-password-reset-portal.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

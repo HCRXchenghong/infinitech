@@ -9,12 +9,12 @@
       <input v-model="phone" class="input" placeholder="手机号" type="number" maxlength="11" />
       <view class="code-row">
         <input v-model="code" class="input" placeholder="验证码" type="number" maxlength="6" />
-        <text class="code-btn" :class="{ off: codeCooldown > 0 || loading }" @tap="sendCode">
-          {{ loading ? '发送中...' : codeCooldown > 0 ? `${codeCooldown}s` : '获取验证码' }}
+        <text class="code-btn" :class="{ off: codeCooldown > 0 || sendingCode }" @tap="sendCode">
+          {{ sendingCode ? '发送中...' : codeCooldown > 0 ? `${codeCooldown}s` : '获取验证码' }}
         </text>
       </view>
-      <button class="btn" @tap="submit" :disabled="loading">
-        {{ loading ? '验证中...' : '下一步' }}
+      <button class="btn" @tap="submit" :disabled="submitting">
+        {{ submitting ? '验证中...' : '下一步' }}
       </button>
     </view>
 
@@ -33,11 +33,11 @@ import {
   loadRiderPortalRuntimeSettings,
 } from '../../shared-ui/portal-runtime'
 import {
-  buildPasswordResetSetPasswordPageUrl,
-  createPasswordResetCooldownController,
-  requestPasswordResetCode,
-  verifyPasswordResetCode,
-} from '../../packages/mobile-core/src/password-reset-portal.js'
+  buildRolePasswordResetSetPasswordPageUrl,
+  createRolePasswordResetCooldownController,
+  requestRolePasswordResetCode,
+  verifyRolePasswordResetCode,
+} from '../../../packages/mobile-core/src/role-password-reset-portal.js'
 
 export default Vue.extend({
   data() {
@@ -45,26 +45,16 @@ export default Vue.extend({
       phone: '',
       code: '',
       codeCooldown: 0,
-      loading: false,
-      timer: null as any,
+      sendingCode: false,
+      submitting: false,
       cooldownController: null as any,
       portalRuntime: getCachedRiderPortalRuntimeSettings(),
     }
   },
   onLoad() {
-    this.cooldownController = createPasswordResetCooldownController({
+    this.cooldownController = createRolePasswordResetCooldownController({
       setValue: (nextValue: number) => {
         this.codeCooldown = nextValue
-      },
-      createInterval: (callback: () => void, delay: number) => {
-        this.timer = setInterval(callback, delay)
-        return this.timer
-      },
-      clearIntervalFn: (timer: any) => {
-        clearInterval(timer)
-        if (this.timer === timer) {
-          this.timer = null
-        }
       },
     })
     void this.loadPortalRuntime()
@@ -72,12 +62,7 @@ export default Vue.extend({
   onUnload() {
     if (this.cooldownController?.clear) {
       this.cooldownController.clear()
-      return
-    }
-
-    if (this.timer) {
-      clearInterval(this.timer)
-      this.timer = null
+      this.cooldownController = null
     }
   },
   methods: {
@@ -90,11 +75,11 @@ export default Vue.extend({
     },
 
     async sendCode() {
-      if (this.codeCooldown > 0 || this.loading) return
+      if (this.codeCooldown > 0 || this.sendingCode) return
 
-      this.loading = true
+      this.sendingCode = true
       try {
-        const result = await requestPasswordResetCode({
+        const result = await requestRolePasswordResetCode({
           phoneValue: this.phone,
           scene: 'rider_reset',
           requestSMSCode,
@@ -107,22 +92,23 @@ export default Vue.extend({
 
         uni.showToast({ title: result.message, icon: 'success' })
       } finally {
-        this.loading = false
+        this.sendingCode = false
       }
     },
 
     async submit() {
-      this.loading = true
+      if (this.submitting) return
+
+      this.submitting = true
       try {
-        const result = await verifyPasswordResetCode({
+        const result = await verifyRolePasswordResetCode({
           phoneValue: this.phone,
           codeValue: this.code,
           scene: 'rider_reset',
           storage: uni,
-          verifySMSCodeCheck: ({ phone, scene, code }) =>
-            verifySMSCodeCheck(phone, scene || 'rider_reset', code),
+          verifySMSCodeCheck,
           buildSetPasswordUrl: (phone, code) =>
-            buildPasswordResetSetPasswordPageUrl('/pages/set-password/index', phone, code),
+            buildRolePasswordResetSetPasswordPageUrl('/pages/set-password/index', phone, code),
         })
         if (!result.ok) {
           uni.showToast({ title: result.message, icon: 'none' })
@@ -131,7 +117,7 @@ export default Vue.extend({
 
         uni.redirectTo({ url: result.redirectUrl })
       } finally {
-        this.loading = false
+        this.submitting = false
       }
     },
   },

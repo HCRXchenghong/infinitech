@@ -20,8 +20,8 @@
         :password="true"
         maxlength="20"
       />
-      <button class="btn" @tap="submit" :disabled="loading">
-        {{ loading ? '设置中...' : '完成' }}
+      <button class="btn" @tap="submit" :disabled="submitting">
+        {{ submitting ? '设置中...' : '完成' }}
       </button>
     </view>
 
@@ -40,9 +40,9 @@ import {
   loadRiderPortalRuntimeSettings,
 } from '../../shared-ui/portal-runtime'
 import {
-  resolvePasswordResetTicket,
-  submitPasswordResetNextPassword,
-} from '../../packages/mobile-core/src/password-reset-portal.js'
+  resolveRolePasswordResetTicket,
+  submitRolePasswordResetNextPassword,
+} from '../../../packages/mobile-core/src/role-password-reset-portal.js'
 
 export default Vue.extend({
   data() {
@@ -51,14 +51,14 @@ export default Vue.extend({
       code: '',
       password: '',
       confirmPassword: '',
-      loading: false,
+      submitting: false,
       portalRuntime: getCachedRiderPortalRuntimeSettings(),
     }
   },
   onLoad(options: any) {
     void this.loadPortalRuntime()
 
-    const resetTicket = resolvePasswordResetTicket(
+    const resetTicket = resolveRolePasswordResetTicket(
       options,
       uni.getStorageSync('reset_password_data'),
     )
@@ -82,9 +82,11 @@ export default Vue.extend({
     },
 
     async submit() {
-      this.loading = true
+      if (this.submitting) return
+
+      this.submitting = true
       try {
-        const result = await submitPasswordResetNextPassword({
+        const result = await submitRolePasswordResetNextPassword({
           phoneValue: this.phone,
           codeValue: this.code,
           passwordValue: this.password,
@@ -114,7 +116,7 @@ export default Vue.extend({
           uni.redirectTo({ url: result.redirectUrl || '/pages/login/index' })
         }, 1500)
       } finally {
-        this.loading = false
+        this.submitting = false
       }
     },
   },
