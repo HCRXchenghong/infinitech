@@ -19,9 +19,27 @@ import {
 } from '@/shared-ui/client-payment'
 import { readMerchantAuthIdentity } from '@/shared-ui/auth-session.js'
 import {
-  createWalletIdempotencyKey,
+  buildMerchantRechargePayload,
+  buildMerchantWalletRechargeOptionsQuery,
+  buildMerchantWalletTransactionQuery,
+  buildMerchantWalletWithdrawOptionsQuery,
+  buildMerchantWithdrawConfirmText,
+  buildMerchantWithdrawPayload,
+  buildMerchantWithdrawPreviewPayload,
+  createMerchantWalletTypeFilters,
+  formatMerchantWalletAmountText,
+  formatMerchantWalletFen,
+  formatMerchantWalletTime,
+  getMerchantWalletTransactionStatusText,
+  getMerchantWalletTransactionTypeText,
+  parseMerchantWalletAmountToFen,
+  pollMerchantRechargeStatus,
+  pollMerchantWithdrawStatus,
+  resolveMerchantWalletAmountClass,
+  resolveMerchantWithdrawFailureReason,
+} from '../../packages/mobile-core/src/merchant-wallet.js'
+import {
   extractWalletItems,
-  fenToWalletYuan,
   isWalletFailureStatus,
   isWalletRechargeSuccessStatus,
   isWalletWithdrawSuccessStatus,
@@ -29,9 +47,7 @@ import {
   normalizeWalletFlowStatus,
   normalizeWalletOptions,
   normalizeWalletText,
-  normalizeWalletWithdrawFailureReason,
   sortWalletTransactions,
-  walletFlowStatusLabel,
 } from '../../packages/mobile-core/src/wallet-shared.js'
 
 const toText = normalizeWalletText
@@ -47,7 +63,7 @@ export function getMerchantWalletIdentity() {
 }
 
 export function formatWalletFen(value: any) {
-  return fenToWalletYuan(value)
+  return formatMerchantWalletFen(value)
 }
 
 export async function fetchMerchantWalletSnapshot() {
@@ -164,13 +180,7 @@ export function useMerchantWalletPage() {
 
   const activeType = ref('')
 
-  const typeFilters = [
-    { label: '全部', value: '' },
-    { label: '订单收入', value: 'payment' },
-    { label: '退款扣减', value: 'refund' },
-    { label: '提现', value: 'withdraw' },
-    { label: '充值', value: 'recharge' },
-  ]
+  const typeFilters = createMerchantWalletTypeFilters()
 
   const filteredTransactions = computed(() => {
     if (!activeType.value) return transactions.value
@@ -184,99 +194,47 @@ export function useMerchantWalletPage() {
   }
 
   function amountText(tx: any) {
-    const amount = Number(tx?.amount || 0)
-    const abs = formatWalletFen(amount)
-    if (amount > 0) return `+¥${abs}`
-    if (amount < 0) return `-¥${abs}`
-    return `¥${abs}`
+    return formatMerchantWalletAmountText(tx)
   }
 
   function amountClass(tx: any) {
-    const amount = Number(tx?.amount || 0)
-    if (amount > 0) return 'income'
-    if (amount < 0) return 'expense'
-    return 'flat'
+    return resolveMerchantWalletAmountClass(tx)
   }
 
   function txTypeText(type: string) {
-    const map: Record<string, string> = {
-      payment: '订单收入',
-      refund: '退款扣减',
-      recharge: '余额充值',
-      withdraw: '提现申请',
-      compensation: '赔付',
-      admin_add_balance: '系统加款',
-      admin_deduct_balance: '系统扣款',
-    }
-    return map[type] || type || '交易'
+    return getMerchantWalletTransactionTypeText(type)
   }
 
   function txStatusText(status: string) {
-    const normalized = toText(status).toLowerCase()
-    if (normalized === 'transferring') return '转账中'
-    const map: Record<string, string> = {
-      pending: '处理中',
-      pending_review: '待审核',
-      pending_transfer: '待打款',
-      processing: '处理中',
-      success: '成功',
-      completed: '成功',
-      failed: '失败',
-      cancelled: '已取消',
-      rejected: '已驳回',
-    }
-    return map[normalized] || status || '--'
+    return getMerchantWalletTransactionStatusText(status)
   }
 
   function formatTime(value: any) {
-    if (!value) return '--'
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) return String(value)
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hour = String(date.getHours()).padStart(2, '0')
-    const minute = String(date.getMinutes()).padStart(2, '0')
-    return `${month}-${day} ${hour}:${minute}`
+    return formatMerchantWalletTime(value)
   }
 
   function flowStatusText(status: string) {
-    return walletFlowStatusLabel(status)
+    return getMerchantWalletTransactionStatusText(status)
   }
 
   async function pollRechargeResult(rechargeOrderId: string, transactionId: string) {
-    let latest: any = null
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      latest = await fetchWalletRechargeStatus({
-        userId: walletUserId.value,
-        userType: 'merchant',
-        rechargeOrderId,
-        transactionId,
-      })
-      const status = normalizeWalletFlowStatus(latest, 'recharge')
-      if (isWalletRechargeSuccessStatus(status) || isWalletFailureStatus(status)) {
-        return latest
-      }
-      await sleep(1500)
-    }
-    return latest
+    return pollMerchantRechargeStatus({
+      userId: walletUserId.value,
+      rechargeOrderId,
+      transactionId,
+      loadStatus: fetchWalletRechargeStatus,
+      sleepFn: sleep,
+    })
   }
 
   async function pollWithdrawResult(withdrawRequestId: string, transactionId: string) {
-    let latest: any = null
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      latest = await fetchWalletWithdrawStatus({
-        userId: walletUserId.value,
-        userType: 'merchant',
-        requestId: withdrawRequestId,
-        transactionId,
-      })
-      const status = normalizeWalletFlowStatus(latest, 'withdraw')
-      if (isWalletWithdrawSuccessStatus(status) || isWalletFailureStatus(status)) {
-        return latest
-      }
-      await sleep(1500)
-    }
-    return latest
+    return pollMerchantWithdrawStatus({
+      userId: walletUserId.value,
+      withdrawRequestId,
+      transactionId,
+      loadStatus: fetchWalletWithdrawStatus,
+      sleepFn: sleep,
+    })
   }
 
   async function loadData() {
@@ -294,21 +252,9 @@ export function useMerchantWalletPage() {
     try {
       const [snapshot, txRes, rechargeRes, withdrawRes]: any[] = await Promise.all([
         fetchMerchantWalletSnapshot(),
-        fetchWalletTransactions({
-          userId: walletUserId.value,
-          userType: 'merchant',
-          limit: 100,
-          page: 1,
-        }),
-        fetchWalletPaymentOptions({
-          userType: 'merchant',
-          platform: 'app',
-          scene: 'wallet_recharge',
-        }),
-        fetchWalletWithdrawOptions({
-          userType: 'merchant',
-          platform: 'app',
-        }),
+        fetchWalletTransactions(buildMerchantWalletTransactionQuery({ userId: walletUserId.value })),
+        fetchWalletPaymentOptions(buildMerchantWalletRechargeOptionsQuery({ platform: 'app' })),
+        fetchWalletWithdrawOptions(buildMerchantWalletWithdrawOptionsQuery({ platform: 'app' })),
       ])
 
       balance.value = Number(snapshot?.balance || 0)
@@ -339,23 +285,19 @@ export function useMerchantWalletPage() {
 
     const amountTextValue = await promptText('余额充值', '输入充值金额（元）')
     if (amountTextValue == null) return
-    const amountFen = Math.round(Number(amountTextValue || 0) * 100)
+    const amountFen = parseMerchantWalletAmountToFen(amountTextValue)
     if (!(amountFen > 0)) {
       uni.showToast({ title: '请输入正确金额', icon: 'none' })
       return
     }
 
     try {
-      const result: any = await createRecharge({
+      const result: any = await createRecharge(buildMerchantRechargePayload({
         userId: walletUserId.value,
-        userType: 'merchant',
-        amount: amountFen,
+        amountFen,
+        channel: channel.channel,
         platform: 'app',
-        paymentMethod: channel.channel,
-        paymentChannel: channel.channel,
-        idempotencyKey: createWalletIdempotencyKey('merchant_recharge', walletUserId.value),
-        description: '商户端余额充值',
-      })
+      }))
 
       if (shouldLaunchClientPayment(result)) {
         uni.showLoading({ title: '正在拉起支付', mask: true })
@@ -401,7 +343,7 @@ export function useMerchantWalletPage() {
 
     const amountTextValue = await promptText('申请提现', '输入提现金额（元）')
     if (amountTextValue == null) return
-    const amountFen = Math.round(Number(amountTextValue || 0) * 100)
+    const amountFen = parseMerchantWalletAmountToFen(amountTextValue)
     if (!(amountFen > 0)) {
       uni.showToast({ title: '请输入正确金额', icon: 'none' })
       return
@@ -411,37 +353,32 @@ export function useMerchantWalletPage() {
     if (!accountPayload) return
 
     try {
-      const preview: any = await previewWalletWithdrawFee({
+      const preview: any = await previewWalletWithdrawFee(buildMerchantWithdrawPreviewPayload({
         userId: walletUserId.value,
-        userType: 'merchant',
-        amount: amountFen,
-        withdrawMethod: channel.channel,
+        amountFen,
+        channel: channel.channel,
         platform: 'app',
-      })
+      }))
       const confirmed = await new Promise<boolean>((resolve) => {
-        const notice = optionText(channel, 'reviewNotice')
         uni.showModal({
           title: '确认提现',
-          content: `${notice ? `${notice}\n` : ''}手续费 ¥${formatWalletFen(preview?.fee)}，预计到账 ¥${formatWalletFen(preview?.actualAmount)}，到账时效：${preview?.arrivalText || '以通道处理为准'}`,
+          content: buildMerchantWithdrawConfirmText(preview, channel),
           success: (res: any) => resolve(!!res.confirm),
           fail: () => resolve(false),
         })
       })
       if (!confirmed) return
 
-      const result: any = await createWithdraw({
+      const result: any = await createWithdraw(buildMerchantWithdrawPayload({
         userId: walletUserId.value,
-        userType: 'merchant',
-        amount: amountFen,
+        amountFen,
         platform: 'app',
-        withdrawMethod: channel.channel,
+        channel: channel.channel,
         withdrawAccount: accountPayload.withdrawAccount,
         withdrawName: accountPayload.withdrawName,
         bankName: accountPayload.bankName,
         bankBranch: accountPayload.bankBranch,
-        remark: '商户端提现申请',
-        idempotencyKey: createWalletIdempotencyKey('merchant_withdraw', walletUserId.value),
-      })
+      }))
 
       let latest = result
       let status = normalizeWalletFlowStatus(latest, 'withdraw')
@@ -458,7 +395,7 @@ export function useMerchantWalletPage() {
       if (isWalletWithdrawSuccessStatus(status)) {
         uni.showToast({ title: '提现成功', icon: 'success' })
       } else if (isWalletFailureStatus(status)) {
-        const reason = normalizeWalletWithdrawFailureReason(latest, 'withdraw')
+        const reason = resolveMerchantWithdrawFailureReason(latest)
         if (status === 'rejected') {
           await new Promise<boolean>((resolve) => {
             uni.showModal({

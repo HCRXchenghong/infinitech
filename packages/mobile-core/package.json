@@ -47,6 +47,7 @@
     "./location": "./src/location.js",
     "./location-select-page": "./src/location-select-page.js",
     "./mobile-client-context": "./src/mobile-client-context.js",
+    "./merchant-wallet": "./src/merchant-wallet.js",
     "./medicine-order": "./src/medicine-order.js",
     "./portal-runtime": "./src/portal-runtime.js",
     "./role-api-shell": "./src/role-api-shell.js",

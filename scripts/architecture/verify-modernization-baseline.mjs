@@ -412,6 +412,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/wallet-withdraw-page.test.mjs",
   "packages/mobile-core/src/rider-deposit-wallet-page.js",
   "packages/mobile-core/src/rider-deposit-wallet-page.test.mjs",
+  "packages/mobile-core/src/merchant-wallet.js",
+  "packages/mobile-core/src/merchant-wallet.test.mjs",
   "packages/mobile-core/src/push-event-route.js",
   "packages/mobile-core/src/push-event-route.test.mjs",
   "packages/mobile-core/src/support-runtime.js",
@@ -1168,11 +1170,16 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
 
 assertContains(
   "merchant-app/shared-ui/merchantWallet.ts",
+  "from '../../packages/mobile-core/src/merchant-wallet.js'",
+);
+assertContains(
+  "merchant-app/shared-ui/merchantWallet.ts",
   "from '../../packages/mobile-core/src/wallet-shared.js'",
 );
-assertContains("merchant-app/shared-ui/merchantWallet.ts", "createWalletIdempotencyKey(");
+assertContains("merchant-app/shared-ui/merchantWallet.ts", "buildMerchantRechargePayload(");
+assertContains("merchant-app/shared-ui/merchantWallet.ts", "pollMerchantRechargeStatus(");
 assertContains("merchant-app/shared-ui/merchantWallet.ts", "normalizeWalletFlowStatus(");
-assertContains("merchant-app/shared-ui/merchantWallet.ts", "walletFlowStatusLabel(");
+assertContains("merchant-app/shared-ui/merchantWallet.ts", "resolveMerchantWithdrawFailureReason(");
 assertContains(
   "rider-app/pages/profile/wallet-bills/index-logic.ts",
   "DEFAULT_WALLET_BILLS_FILTER_OPTIONS",
@@ -7368,6 +7375,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./merchant-wallet.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./wallet-recharge-page.js";',
 );
 assertContains(
@@ -7393,6 +7404,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-app-runtime": "./src/consumer-app-runtime.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./merchant-wallet": "./src/merchant-wallet.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
