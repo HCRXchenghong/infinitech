@@ -412,6 +412,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/wallet-withdraw-page.test.mjs",
   "packages/mobile-core/src/rider-deposit-wallet-page.js",
   "packages/mobile-core/src/rider-deposit-wallet-page.test.mjs",
+  "packages/mobile-core/src/rider-earnings-page.js",
+  "packages/mobile-core/src/rider-earnings-page.test.mjs",
   "packages/mobile-core/src/rider-order-settings-page.js",
   "packages/mobile-core/src/rider-order-settings-page.test.mjs",
   "packages/mobile-core/src/merchant-wallet.js",
@@ -1169,6 +1171,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   [
     "rider-app/pages/profile/wallet.vue",
     "../../../packages/mobile-core/src/rider-deposit-wallet-page.js",
+  ],
+  [
+    "rider-app/pages/profile/earnings.vue",
+    "../../../packages/mobile-core/src/rider-earnings-page.js",
   ],
   [
     "rider-app/pages/profile/order-settings.vue",
@@ -7406,6 +7412,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-earnings-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./rider-order-settings-page.js";',
 );
 assertContains(
@@ -7499,6 +7509,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rider-deposit-wallet-page": "./src/rider-deposit-wallet-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-earnings-page": "./src/rider-earnings-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -9725,6 +9739,9 @@ assertContains("backend/go/internal/handler/rider_handler.go", "verification_res
 assertNotContains("rider-app/pages/profile/personal-info.vue", "updateRiderProfile({ is_verified: true })");
 assertContains("rider-app/pages/profile/personal-info.vue", "createRiderPersonalInfoPageLogic");
 assertContains("packages/mobile-core/src/rider-personal-info-page.js", "资料已保存，待平台审核");
+assertContains("rider-app/pages/profile/earnings.vue", "createRiderEarningsPageLogic");
+assertContains("packages/mobile-core/src/rider-earnings-page.js", "收入明细加载失败");
+assertContains("packages/mobile-core/src/rider-earnings-page.js", "冻结中，24小时后自动入账");
 assertContains("rider-app/pages/profile/order-settings.vue", "createRiderOrderSettingsPageLogic");
 assertContains("packages/mobile-core/src/rider-order-settings-page.js", "保存成功");
 assertContains("packages/mobile-core/src/rider-order-settings-page.js", "开启自动接单");
