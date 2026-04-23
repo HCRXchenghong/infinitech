@@ -64,18 +64,18 @@ final class AuthRemoteService {
         )
     }
 
-    func setNewPassword(phone: String, code: String, password: String) async throws -> RegisterResponse {
+    func setNewPassword(phone: String, code: String, nextPassword: String) async throws -> RegisterResponse {
         struct Payload: Codable {
             let phone: String
             let code: String
-            let password: String
+            let nextPassword: String
         }
 
         return try await apiClient.request(
             path: "/auth/set-new-password",
             method: .POST,
             query: [],
-            body: Payload(phone: phone, code: code, password: password)
+            body: Payload(phone: phone, code: code, nextPassword: nextPassword)
         )
     }
 }

@@ -50,7 +50,7 @@ interface AuthRepository {
     ): ApiResult<Boolean>
 
     suspend fun register(phone: String, nickname: String, password: String): ApiResult<Boolean>
-    suspend fun setNewPassword(phone: String, code: String, password: String): ApiResult<Boolean>
+    suspend fun setNewPassword(phone: String, code: String, nextPassword: String): ApiResult<Boolean>
     suspend fun logout()
     fun observeSession(): Flow<AuthSession?>
 }

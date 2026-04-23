@@ -64,7 +64,7 @@ class SetPasswordViewModel(
                 val result = authRepository.setNewPassword(
                     phone = state.phone,
                     code = state.code,
-                    password = state.password,
+                    nextPassword = state.password,
                 )
             ) {
                 is ApiResult.Success -> {

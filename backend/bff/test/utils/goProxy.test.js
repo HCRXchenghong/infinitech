@@ -33,7 +33,13 @@ describe('goProxy response headers', () => {
   test('forwards no-store headers from Go responses', async () => {
     axios.mockResolvedValue({
       status: 200,
-      data: { success: true, newPassword: 'TempPass123!' },
+      data: {
+        success: true,
+        temporaryCredential: {
+          temporaryPassword: 'TempPass123!',
+          deliveryMode: 'operator_receipt',
+        },
+      },
       headers: {
         'cache-control': 'no-store, no-cache, must-revalidate, private',
         pragma: 'no-cache',
@@ -59,7 +65,13 @@ describe('goProxy response headers', () => {
     expect(res.setHeader).toHaveBeenCalledWith('expires', '0');
     expect(res.setHeader).toHaveBeenCalledWith('x-content-type-options', 'nosniff');
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ success: true, newPassword: 'TempPass123!' });
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      temporaryCredential: {
+        temporaryPassword: 'TempPass123!',
+        deliveryMode: 'operator_receipt',
+      },
+    });
     expect(next).not.toHaveBeenCalled();
   });
 

@@ -153,11 +153,11 @@ class AuthRepositoryImpl(
         }
     }
 
-    override suspend fun setNewPassword(phone: String, code: String, password: String): ApiResult<Boolean> {
+    override suspend fun setNewPassword(phone: String, code: String, nextPassword: String): ApiResult<Boolean> {
         val body = mapOf(
             "phone" to phone.trim(),
             "code" to code.trim(),
-            "password" to password,
+            "nextPassword" to nextPassword,
         )
 
         return try {

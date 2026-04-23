@@ -135,7 +135,7 @@
 					<view class="form-item">
 						<text class="form-label" :style="{ color: theme.textSub }">新密码</text>
 						<input
-							v-model="passwordForm.newPassword"
+							v-model="passwordForm.nextPassword"
 							class="form-input"
 							password
 							placeholder="请输入新密码（至少6位）"
@@ -202,7 +202,7 @@ const showPasswordPanel = ref(false);
 const passwordSaving = ref(false);
 const passwordForm = reactive({
 	currentPassword: '',
-	newPassword: '',
+	nextPassword: '',
 	confirmPassword: ''
 });
 
@@ -396,7 +396,7 @@ function goArticle(type) {
 
 function openPasswordPanel() {
 	passwordForm.currentPassword = '';
-	passwordForm.newPassword = '';
+	passwordForm.nextPassword = '';
 	passwordForm.confirmPassword = '';
 	showPasswordPanel.value = true;
 }
@@ -410,26 +410,26 @@ async function submitPasswordChange() {
 	if (passwordSaving.value) return;
 
 	const currentPassword = String(passwordForm.currentPassword || '');
-	const newPassword = String(passwordForm.newPassword || '');
+	const nextPassword = String(passwordForm.nextPassword || '');
 	const confirmPassword = String(passwordForm.confirmPassword || '');
 
 	if (!currentPassword.trim()) {
 		uni.showToast({ title: '请输入当前密码', icon: 'none' });
 		return;
 	}
-	if (!newPassword.trim()) {
+	if (!nextPassword.trim()) {
 		uni.showToast({ title: '请输入新密码', icon: 'none' });
 		return;
 	}
-	if (newPassword.trim().length < 6) {
+	if (nextPassword.trim().length < 6) {
 		uni.showToast({ title: '新密码至少 6 位', icon: 'none' });
 		return;
 	}
-	if (newPassword !== confirmPassword) {
+	if (nextPassword !== confirmPassword) {
 		uni.showToast({ title: '两次输入的新密码不一致', icon: 'none' });
 		return;
 	}
-	if (currentPassword === newPassword) {
+	if (currentPassword === nextPassword) {
 		uni.showToast({ title: '新密码不能与当前密码相同', icon: 'none' });
 		return;
 	}
@@ -438,13 +438,13 @@ async function submitPasswordChange() {
 	try {
 		await http.post(API_CONFIG.API.CHANGE_ADMIN_PASSWORD || '/api/admins/change-password', {
 			currentPassword,
-			newPassword,
+			nextPassword,
 			confirmPassword
 		});
 		uni.showToast({ title: '密码已修改，请重新登录', icon: 'none' });
 		showPasswordPanel.value = false;
 		passwordForm.currentPassword = '';
-		passwordForm.newPassword = '';
+		passwordForm.nextPassword = '';
 		passwordForm.confirmPassword = '';
 		setTimeout(() => {
 			clearAuthSession({ keepBiometric: true });

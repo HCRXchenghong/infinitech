@@ -3955,12 +3955,35 @@ assertNotContains("admin-vue/src/views/loginPageHelpers.js", "bootstrapForm.valu
 assertContains("admin-vue/src/views/loginPageHelpers.js", "bootstrapForm.value.nextPassword");
 assertNotContains("admin-vue/src/views/loginSections/LoginBootstrapDialog.vue", "bootstrapForm.newPassword");
 assertContains("admin-vue/src/views/loginSections/LoginBootstrapDialog.vue", "bootstrapForm.nextPassword");
+assertNotContains("admin-app/pages/settings/settings.vue", "passwordForm.newPassword");
+assertContains("admin-app/pages/settings/settings.vue", "passwordForm.nextPassword");
+assertContains("admin-app/pages/settings/settings.vue", "nextPassword,");
 assertNotContains("rider-app/pages/profile/change-password.vue", "newPassword:");
 assertContains("rider-app/pages/profile/change-password.vue", "nextPassword:");
 assertContains("rider-app/pages/set-password/index.vue", "nextPassword: password");
 assertContains("merchant-app/shared-ui/api.ts", "nextPassword: string;");
 assertContains("merchant-app/shared-ui/merchantAccountPages.ts", "nextPassword: normalizedPassword");
 assertContains("packages/mobile-core/src/auth-portal.js", "nextPassword: validation.password");
+assertContains(
+  "android-user-app/core/data/src/main/java/com/user/infinite/core/data/repository/AuthRepositoryImpl.kt",
+  '"nextPassword" to nextPassword',
+);
+assertContains(
+  "android-user-app/core/model/src/main/java/com/user/infinite/core/model/repository/Repositories.kt",
+  "setNewPassword(phone: String, code: String, nextPassword: String)",
+);
+assertContains(
+  "android-user-app/feature/auth/src/main/java/com/user/infinite/feature/auth/SetPasswordViewModel.kt",
+  "nextPassword = state.password",
+);
+assertContains(
+  "ios-user-app/悦享e食/悦享e食/Data/Services/AuthRemoteService.swift",
+  "let nextPassword: String",
+);
+assertContains(
+  "ios-user-app/悦享e食/悦享e食/Data/Services/AuthRemoteService.swift",
+  "Payload(phone: phone, code: code, nextPassword: nextPassword)",
+);
 assertNotContains(
   "scripts/lib/management/menu.mjs",
   "输入管理员类型 admin/super_admin', 'super_admin'",
