@@ -84,6 +84,7 @@ export * from "./profile-coupon-list.js";
 export * from "./profile-outreach.js";
 export * from "./profile-phone-change.js";
 export * from "./rider-api.js";
+export * from "./rider-avatar-upload-page.js";
 export * from "./rider-deposit-wallet-page.js";
 export * from "./rider-earnings-page.js";
 export * from "./rider-history-orders-page.js";

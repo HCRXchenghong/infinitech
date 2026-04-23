@@ -414,6 +414,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/rider-deposit-wallet-page.test.mjs",
   "packages/mobile-core/src/rider-earnings-page.js",
   "packages/mobile-core/src/rider-earnings-page.test.mjs",
+  "packages/mobile-core/src/rider-avatar-upload-page.js",
+  "packages/mobile-core/src/rider-avatar-upload-page.test.mjs",
   "packages/mobile-core/src/rider-history-orders-page.js",
   "packages/mobile-core/src/rider-history-orders-page.test.mjs",
   "packages/mobile-core/src/rider-order-settings-page.js",
@@ -1169,6 +1171,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   [
     "rider-app/pages/profile/wallet-withdraw/index.vue",
     "../../../../packages/mobile-core/src/wallet-withdraw-page.js",
+  ],
+  [
+    "rider-app/pages/profile/avatar-upload.vue",
+    "../../../packages/mobile-core/src/rider-avatar-upload-page.js",
   ],
   [
     "rider-app/pages/profile/wallet.vue",
@@ -2377,6 +2383,17 @@ assertContains(
 );
 assertContains("rider-app/pages/service/service-data-methods.ts", "resolveRoleChatMessageId(payload, fallback)");
 assertContains("rider-app/pages/service/service-data-methods.ts", "normalizeRoleChatOrder(order)");
+assertContains(
+  "rider-app/pages/profile/avatar-upload.vue",
+  "from '../../../packages/mobile-core/src/rider-avatar-upload-page.js'",
+);
+assertContains(
+  "rider-app/pages/profile/avatar-upload.vue",
+  "createRiderAvatarUploadPageLogic",
+);
+assertNotContains("rider-app/pages/profile/avatar-upload.vue", "resolveUploadAssetUrl(");
+assertNotContains("rider-app/pages/profile/avatar-upload.vue", "UPLOAD_DOMAINS.PROFILE_IMAGE");
+assertNotContains("rider-app/pages/profile/avatar-upload.vue", "persistRiderAuthSession({");
 assertContains(
   "rider-app/pages/profile/settings.vue",
   "from '../../../packages/mobile-core/src/rider-profile-settings-page.js'",
@@ -7418,6 +7435,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-avatar-upload-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./rider-earnings-page.js";',
 );
 assertContains(
@@ -7515,6 +7536,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rider-api": "./src/rider-api.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-avatar-upload-page": "./src/rider-avatar-upload-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -9753,6 +9778,9 @@ assertContains("backend/go/internal/handler/rider_handler.go", "verification_res
 assertNotContains("rider-app/pages/profile/personal-info.vue", "updateRiderProfile({ is_verified: true })");
 assertContains("rider-app/pages/profile/personal-info.vue", "createRiderPersonalInfoPageLogic");
 assertContains("packages/mobile-core/src/rider-personal-info-page.js", "资料已保存，待平台审核");
+assertContains("rider-app/pages/profile/avatar-upload.vue", "createRiderAvatarUploadPageLogic");
+assertContains("packages/mobile-core/src/rider-avatar-upload-page.js", "头像更新成功");
+assertContains("packages/mobile-core/src/rider-avatar-upload-page.js", "上传返回地址为空");
 assertContains("rider-app/pages/profile/earnings.vue", "createRiderEarningsPageLogic");
 assertContains("packages/mobile-core/src/rider-earnings-page.js", "收入明细加载失败");
 assertContains("packages/mobile-core/src/rider-earnings-page.js", "冻结中，24小时后自动入账");

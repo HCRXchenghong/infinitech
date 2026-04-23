@@ -15,99 +15,23 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import { resolveUploadAssetUrl } from "../../../packages/contracts/src/http.js";
-import { UPLOAD_DOMAINS } from "../../../packages/contracts/src/upload.js";
-import { updateAvatar, uploadImage } from "../../shared-ui/api";
+import Vue from 'vue'
+import { createRiderAvatarUploadPageLogic } from '../../../packages/mobile-core/src/rider-avatar-upload-page.js'
+import { updateAvatar, uploadImage } from '../../shared-ui/api'
 import {
   persistRiderAuthSession,
   readRiderAuthIdentity,
   readRiderAuthSession,
-} from "../../shared-ui/auth-session.js";
+} from '../../shared-ui/auth-session.js'
 
-export default Vue.extend({
-  data() {
-    return {
-      avatarUrl: "",
-    };
-  },
-  onLoad() {
-    const riderAuth = readRiderAuthIdentity({ uniApp: uni });
-    if (riderAuth.profile?.avatar) {
-      this.avatarUrl = riderAuth.profile.avatar;
-    }
-  },
-  methods: {
-    chooseFromAlbum() {
-      uni.chooseImage({
-        count: 1,
-        sourceType: ["album"],
-        success: (res: any) => {
-          this.uploadAvatar(res.tempFilePaths[0]);
-        },
-      });
-    },
-    takePhoto() {
-      uni.chooseImage({
-        count: 1,
-        sourceType: ["camera"],
-        success: (res: any) => {
-          this.uploadAvatar(res.tempFilePaths[0]);
-        },
-      });
-    },
-    async uploadAvatar(filePath: string) {
-      uni.showLoading({ title: "上传中..." });
-
-      try {
-        const uploadRes: any = await uploadImage(filePath, {
-          uploadDomain: UPLOAD_DOMAINS.PROFILE_IMAGE,
-        });
-        const imageUrl = String(resolveUploadAssetUrl(uploadRes) || "").trim();
-        if (!imageUrl) {
-          throw new Error("上传返回地址为空");
-        }
-
-        // 更新头像URL到数据库
-        await updateAvatar(imageUrl);
-
-        this.avatarUrl = imageUrl;
-
-        const riderSession = readRiderAuthSession({ uniApp: uni });
-        if (riderSession.token) {
-          persistRiderAuthSession({
-            uniApp: uni,
-            token: riderSession.token,
-            refreshToken: riderSession.refreshToken || null,
-            tokenExpiresAt: riderSession.tokenExpiresAt || null,
-            profile: {
-              ...(riderSession.profile || {}),
-              avatar: imageUrl,
-            },
-            extraStorageValues: {
-              riderId: riderSession.accountId || null,
-              riderName:
-                riderSession.profile?.name
-                || riderSession.profile?.nickname
-                || uni.getStorageSync("riderName")
-                || "骑手",
-            },
-          });
-        }
-
-        uni.hideLoading();
-        uni.showToast({ title: "头像更新成功", icon: "success" });
-
-        setTimeout(() => {
-          uni.navigateBack();
-        }, 1500);
-      } catch (err: any) {
-        uni.hideLoading();
-        uni.showToast({ title: err.message || "上传失败", icon: "none" });
-      }
-    },
-  },
-});
+export default Vue.extend(createRiderAvatarUploadPageLogic({
+  uploadImage,
+  updateAvatar,
+  readRiderAuthIdentity,
+  readRiderAuthSession,
+  persistRiderAuthSession,
+  uniApp: uni,
+}) as any)
 </script>
 
 <style lang="scss" scoped>
