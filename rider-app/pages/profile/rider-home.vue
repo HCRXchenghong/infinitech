@@ -21,7 +21,7 @@
     <scroll-view class="rank-cards" scroll-x>
       <view v-for="(rank, level) in rankConfig" :key="level"
             class="rank-card"
-            :class="{ active: level <= riderData.level, current: level === riderData.level }">
+            :class="{ active: Number(level) <= riderData.level, current: Number(level) === riderData.level }">
         <text class="card-icon">{{ rank.icon }}</text>
         <text class="card-name">{{ rank.name }}</text>
         <text class="card-level">Lv.{{ level }}</text>
@@ -56,149 +56,18 @@
 <script lang="ts">
 import Vue from 'vue'
 import { getRiderRank, getRankList } from '../../shared-ui/api'
-import { getCachedPlatformRuntimeSettings, loadPlatformRuntimeSettings } from '../../shared-ui/platform-runtime'
+import {
+  getCachedPlatformRuntimeSettings,
+  loadPlatformRuntimeSettings,
+} from '../../shared-ui/platform-runtime'
+import { createRiderHomePageLogic } from '../../../packages/mobile-core/src/rider-home-page.js'
 
-const DEFAULT_RANK_CONFIG = {
-  1: { name: '青铜骑士', icon: '🥉', desc: '新手上路', progressTemplate: '累计{{totalOrders}}/100单，升级白银骑士' },
-  2: { name: '白银骑士', icon: '🥈', desc: '稳定履约', progressTemplate: '累计{{totalOrders}}/300单，升级黄金骑士' },
-  3: { name: '黄金骑士', icon: '🥇', desc: '高频骑手', progressTemplate: '本周{{weekOrders}}/100单，升级钻石骑士' },
-  4: { name: '钻石骑士', icon: '💎', desc: '高质量履约', progressTemplate: '本周{{weekOrders}}/150单，升级王者骑士' },
-  5: { name: '王者骑士', icon: '👑', desc: '稳定冲榜', progressTemplate: '保持高评分与连续周表现，升级传奇骑士' },
-  6: { name: '传奇骑士', icon: '🌟', desc: '平台顶尖骑手', progressTemplate: '保持传奇骑士段位' }
-}
-
-function buildRankConfig(levels: any[] = []) {
-  const source = Array.isArray(levels) && levels.length ? levels : []
-  const nextConfig: Record<number, any> = {}
-  source.forEach((item, index) => {
-    const level = Number(item?.level || index + 1)
-    if (!level) return
-    const fallback = DEFAULT_RANK_CONFIG[level] || DEFAULT_RANK_CONFIG[1]
-    nextConfig[level] = {
-      name: String(item?.name || fallback.name),
-      icon: String(item?.icon || fallback.icon),
-      desc: String(item?.desc || fallback.desc),
-      progressTemplate: String(item?.progress_template || fallback.progressTemplate)
-    }
-  })
-  return Object.keys(nextConfig).length ? nextConfig : { ...DEFAULT_RANK_CONFIG }
-}
-
-export default Vue.extend({
-  data() {
-    const cachedRuntime = getCachedPlatformRuntimeSettings()
-    return {
-      activeTab: 'day',
-      riderData: {
-        level: 1,
-        totalOrders: 0,
-        weekOrders: 0,
-        consecutiveWeeks: 0,
-        rating: 5,
-        ratingCount: 0
-      },
-      rankConfig: buildRankConfig(cachedRuntime?.riderRankSettings?.levels),
-      rankList: []
-    }
-  },
-  computed: {
-    currentRank() {
-      const level = Number((this as any).riderData.level || 1)
-      return (this as any).rankConfig[level] || (this as any).rankConfig[1]
-    },
-    progress() {
-      const { level, totalOrders, weekOrders } = this.riderData
-      if (level === 1) return Math.min((totalOrders / 100) * 100, 100)
-      if (level === 2) return Math.min((totalOrders / 100) * 100, 100)
-      if (level === 3) return Math.min((weekOrders / 100) * 100, 100)
-      if (level === 4) return Math.min((weekOrders / 150) * 100, 100)
-      return 100
-    },
-    progressText() {
-      return this.renderProgressText()
-    }
-  },
-  onLoad() {
-    this.loadRuntimeConfig()
-    this.loadRiderData()
-    this.loadRankList()
-  },
-  methods: {
-    toNumber(value: any, fallback = 0) {
-      const n = Number(value)
-      return Number.isFinite(n) ? n : fallback
-    },
-    rankName(level: any) {
-      const key = this.toNumber(level, 1)
-      return (this.rankConfig as any)[key]?.name || (this.rankConfig as any)[1].name
-    },
-    renderProgressText() {
-      const { level, totalOrders, weekOrders } = this.riderData
-      const current = (this.rankConfig as any)[this.toNumber(level, 1)] || (this.rankConfig as any)[1]
-      const template = String(current?.progressTemplate || '').trim()
-      if (template) {
-        return template
-          .replace(/\{\{\s*totalOrders\s*\}\}/g, String(totalOrders || 0))
-          .replace(/\{\{\s*weekOrders\s*\}\}/g, String(weekOrders || 0))
-      }
-      if (level === 1) return `累计${totalOrders}/100单，升级白银骑士`
-      if (level === 2) return `累计${totalOrders}/300单，升级黄金骑士`
-      if (level === 3) return `本周${weekOrders}/100单，升级钻石骑士`
-      if (level === 4) return `本周${weekOrders}/150单，升级王者骑士`
-      if (level === 5) return '保持王者骑士段位'
-      return '保持传奇骑士段位'
-    },
-    async loadRuntimeConfig() {
-      try {
-        const runtime = await loadPlatformRuntimeSettings()
-        this.rankConfig = buildRankConfig(runtime?.riderRankSettings?.levels)
-      } catch (error) {
-        console.error('加载骑手等级 runtime 失败:', error)
-        this.rankConfig = buildRankConfig()
-      }
-    },
-    async loadRiderData() {
-      try {
-        const res: any = await getRiderRank()
-        if (res && res.success) {
-          const data = res.data || {}
-          this.riderData = {
-            level: this.toNumber(data.level, 1),
-            totalOrders: this.toNumber(data.totalOrders ?? data.total_orders, 0),
-            weekOrders: this.toNumber(data.weekOrders ?? data.week_orders, 0),
-            consecutiveWeeks: this.toNumber(data.consecutiveWeeks ?? data.consecutive_weeks, 0),
-            rating: this.toNumber(data.rating, 5),
-            ratingCount: this.toNumber(data.ratingCount ?? data.rating_count, 0)
-          }
-        }
-      } catch (err) {
-        console.error(err)
-      }
-    },
-    async loadRankList() {
-      try {
-        const res: any = await getRankList(this.activeTab)
-        if (res && res.success) {
-          const list = Array.isArray(res.data)
-            ? res.data
-            : (Array.isArray(res.data?.list) ? res.data.list : [])
-          this.rankList = list.map((item: any) => ({
-            ...item,
-            level: this.toNumber(item.level, 1),
-            orders: this.toNumber(item.orders ?? item.orderCount ?? item.order_count, 0),
-            rating: this.toNumber(item.rating, 5)
-          }))
-        }
-      } catch (err) {
-        console.error(err)
-      }
-    },
-    switchTab(tab: string) {
-      this.activeTab = tab
-      this.loadRankList()
-    }
-  }
-})
+export default Vue.extend(createRiderHomePageLogic({
+  getRiderRank,
+  getRankList,
+  getCachedPlatformRuntimeSettings,
+  loadPlatformRuntimeSettings,
+}) as any)
 </script>
 
 <style lang="scss" scoped>
