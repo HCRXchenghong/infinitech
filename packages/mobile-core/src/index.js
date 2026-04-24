@@ -49,6 +49,7 @@ export * from "./platform-runtime.js";
 export * from "./platform-schema.js";
 export * from "./portal-runtime.js";
 export * from "./role-api-shell.js";
+export * from "./role-app-shell.js";
 export * from "./role-portal-runtime-shell.js";
 export * from "./role-runtime-support.js";
 export * from "./search-page.js";

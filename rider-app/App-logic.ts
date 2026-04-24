@@ -7,6 +7,7 @@ import { connectCurrentRealtimeChannel, clearRealtimeState } from './shared-ui/r
 import messageManager from './utils/message-manager'
 import createSocket from './utils/socket-io'
 import config from './shared-ui/config'
+import { createRoleAppRootLifecycle } from '../packages/mobile-core/src/role-app-shell.js'
 import {
   clearCachedSocketToken as clearCachedSocketTokenCache,
   resolveSocketToken,
@@ -15,8 +16,6 @@ import { ensureRiderAuthSession, readRiderAuthIdentity } from './shared-ui/auth-
 import MessagePopup from './components/message-popup.vue'
 import DispatchPopup from './components/dispatch-popup.vue'
 import notification from './utils/notification'
-
-Vue.component('message-popup', MessagePopup)
 
 const RIDER_HEARTBEAT_INTERVAL = 20 * 1000
 const SOCKET_TOKEN_KEY = 'socket_token'
@@ -65,8 +64,23 @@ function normalizeRiderIncomingMessage(payload: any, senderRole: 'merchant' | 'u
   }
 }
 
+const riderRootLifecycle = createRoleAppRootLifecycle({
+  readSession: readRiderSession,
+  startPushEventBridge,
+  uniApp: uni,
+  loggerTag: 'RiderApp',
+  async syncAuthenticatedState() {
+    await registerCurrentPushDevice()
+  },
+  clearUnauthenticatedState() {
+    clearPushRegistrationState()
+    clearRealtimeState()
+  }
+})
+
 export default Vue.extend({
   components: {
+    MessagePopup,
     DispatchPopup
   },
   data() {
@@ -93,11 +107,10 @@ export default Vue.extend({
     }
   },
   onLaunch() {
+    void riderRootLifecycle.onLaunch.call(this)
     notification.init().catch((err) => {
       console.error('[App] Notification init failed:', err)
     })
-    void startPushEventBridge()
-    void this.syncPushRegistration()
     loadRiderData().finally(() => {
       if (this.isRiderOnline) {
         this.startHeartbeatLoop()
@@ -106,7 +119,7 @@ export default Vue.extend({
     setTimeout(() => { this.tryConnectSocket() }, 1500)
   },
   async onShow() {
-    void this.syncPushRegistration()
+    await riderRootLifecycle.onShow.call(this)
     await loadRiderData()
     if (this.isRiderOnline) {
       this.startHeartbeatLoop()
@@ -117,21 +130,9 @@ export default Vue.extend({
       setTimeout(() => { this.tryConnectSocket() }, 500)
     }
   },
+  onHide: riderRootLifecycle.onHide,
   methods: {
-    async syncPushRegistration() {
-      const session = readRiderSession()
-      if (!session.isAuthenticated) {
-        clearPushRegistrationState()
-        clearRealtimeState()
-        return
-      }
-
-      try {
-        await registerCurrentPushDevice()
-      } catch (err) {
-        console.error('[App] Rider push registration failed:', err)
-      }
-    },
+    ...riderRootLifecycle.methods,
 
     startHeartbeatLoop() {
       if (this.heartbeatTimer) return

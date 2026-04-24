@@ -5,84 +5,33 @@ import { startPushEventBridge } from '@/shared-ui/push-events'
 import { connectCurrentRealtimeChannel, clearRealtimeState } from '@/shared-ui/realtime-notify'
 import { bindNotificationSoundBridge } from '@/shared-ui/notification-sound'
 import { ensureMerchantAuthSession } from '@/shared-ui/auth-session.js'
+import { createRoleAppRootLifecycle } from '../packages/mobile-core/src/role-app-shell.js'
 
 function readMerchantSession() {
   return ensureMerchantAuthSession({ uniApp: uni })
 }
 
-export default defineComponent({
-  onLaunch() {
-    void startPushEventBridge()
-    bindNotificationSoundBridge()
-    this.checkAuth()
+export default defineComponent(createRoleAppRootLifecycle({
+  readSession: readMerchantSession,
+  startPushEventBridge,
+  bindNotificationSoundBridge,
+  publicRoutes: [
+    'pages/login/index',
+    'pages/reset-password/index',
+    'pages/set-password/index'
+  ],
+  loginRoute: '/pages/login/index',
+  uniApp: uni,
+  loggerTag: 'MerchantApp',
+  async syncAuthenticatedState() {
+    await registerCurrentPushDevice()
+    await connectCurrentRealtimeChannel()
   },
-  onShow() {
-    bindNotificationSoundBridge()
-    this.checkAuth()
-  },
-  onHide() {
-  },
-  methods: {
-    async syncPushRegistration() {
-      const session = readMerchantSession()
-      if (!session.isAuthenticated) {
-        clearPushRegistrationState()
-        return
-      }
-
-      try {
-        await registerCurrentPushDevice()
-      } catch (err) {
-        console.error('[MerchantApp] 推送设备注册失败:', err)
-      }
-    },
-
-    async syncRealtimeNotifyBridge() {
-      const session = readMerchantSession()
-      if (!session.isAuthenticated) {
-        clearRealtimeState()
-        return
-      }
-      await connectCurrentRealtimeChannel()
-    },
-
-    checkAuth() {
-      const session = readMerchantSession()
-      const publicRoutes = new Set([
-        'pages/login/index',
-        'pages/reset-password/index',
-        'pages/set-password/index'
-      ])
-
-      const pages = getCurrentPages()
-      const currentPage = pages[pages.length - 1]
-      const route = currentPage ? currentPage.route : ''
-
-      if (publicRoutes.has(route)) {
-        if (!session.isAuthenticated) {
-          clearPushRegistrationState()
-          clearRealtimeState()
-        } else {
-          void this.syncPushRegistration()
-          void this.syncRealtimeNotifyBridge()
-        }
-        return
-      }
-
-      if (!session.isAuthenticated) {
-        clearPushRegistrationState()
-        clearRealtimeState()
-        uni.reLaunch({
-          url: '/pages/login/index'
-        })
-        return
-      }
-
-      void this.syncPushRegistration()
-      void this.syncRealtimeNotifyBridge()
-    }
+  clearUnauthenticatedState() {
+    clearPushRegistrationState()
+    clearRealtimeState()
   }
-})
+}))
 </script>
 
 <style lang="scss">

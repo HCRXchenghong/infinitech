@@ -2404,6 +2404,10 @@ assertContains(
   "persistMerchantAuthSession",
 );
 assertContains("merchant-app/App.vue", "ensureMerchantAuthSession");
+assertContains("merchant-app/App.vue", "createRoleAppRootLifecycle");
+assertNotContains("merchant-app/App.vue", "async syncPushRegistration()");
+assertNotContains("merchant-app/App.vue", "async syncRealtimeNotifyBridge()");
+assertNotContains("merchant-app/App.vue", "checkAuth() {");
 assertContains("merchant-app/shared-ui/auth-session.js", "readMerchantAuthIdentity");
 assertContains(
   "merchant-app/shared-ui/auth-session.js",
@@ -2441,6 +2445,10 @@ assertContains(
 assertContains("merchant-app/shared-ui/merchantAccountPages.ts", "maskRoleSettingsPhone(phone)");
 assertContains("merchant-app/shared-ui/merchantAccountPages.ts", "readRoleSettingsCacheSizeSync(uni");
 assertContains("rider-app/App-logic.ts", "ensureRiderAuthSession");
+assertContains("rider-app/App-logic.ts", "createRoleAppRootLifecycle");
+assertContains("rider-app/App-logic.ts", "MessagePopup");
+assertNotContains("rider-app/App-logic.ts", "Vue.component('message-popup'");
+assertNotContains("rider-app/App-logic.ts", "async syncPushRegistration()");
 assertContains("rider-app/pages/login/index.vue", "persistRiderAuthSession");
 assertContains("rider-app/pages/profile/settings.vue", "clearRiderAuthSession");
 assertContains(
@@ -7432,6 +7440,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./role-app-shell.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./role-portal-runtime-shell.js";',
 );
 assertContains(
@@ -7789,6 +7801,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./role-api-shell": "./src/role-api-shell.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./role-app-shell": "./src/role-app-shell.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
