@@ -7,23 +7,23 @@ import {
   readAuthorizationHeader,
   updateRTCCallStatus,
 } from "@/shared-ui/api.js";
-import { createConsumerRTCContactBindings } from "../../packages/mobile-core/src/consumer-rtc-contact.js";
+import { createConsumerUserRTCContactBindings } from "../../packages/mobile-core/src/consumer-rtc-contact-shell.js";
 import {
   getCachedRTCRuntimeSettings,
   loadRTCRuntimeSettings,
 } from "./rtc-runtime.js";
 
 const {
-  canUseCurrentRTCContact,
-  startRTCCall,
-  connectRTCSignalSession,
-  updateRTCCall,
-  fetchRTCCall,
-  fetchRTCCallHistory,
-  ensureRTCInviteBridge,
-  disconnectRTCInviteBridge,
-} = createConsumerRTCContactBindings({
-  uniApp: uni,
+  canUseUserRTCContact,
+  startUserRTCCall,
+  connectUserRTCSignalSession,
+  updateUserRTCCall,
+  fetchUserRTCCall,
+  fetchUserRTCCallHistory,
+  ensureUserRTCInviteBridge,
+  disconnectUserRTCInviteBridge,
+} = createConsumerUserRTCContactBindings({
+  config,
   clientKind: "uni-user",
   readAuthorizationHeader,
   createRTCCall,
@@ -31,17 +31,18 @@ const {
   listRTCCallHistory,
   updateRTCCallStatus,
   createSocket,
-  getSocketUrl: () => config.SOCKET_URL,
   getCachedRTCRuntimeSettings,
   loadRTCRuntimeSettings,
 });
 
-export const canUseUserRTCContact = canUseCurrentRTCContact;
 export { getCachedRTCRuntimeSettings, loadRTCRuntimeSettings };
-export const startUserRTCCall = startRTCCall;
-export const connectUserRTCSignalSession = connectRTCSignalSession;
-export const updateUserRTCCall = updateRTCCall;
-export const fetchUserRTCCall = fetchRTCCall;
-export const fetchUserRTCCallHistory = fetchRTCCallHistory;
-export const ensureUserRTCInviteBridge = ensureRTCInviteBridge;
-export const disconnectUserRTCInviteBridge = disconnectRTCInviteBridge;
+export {
+  canUseUserRTCContact,
+  startUserRTCCall,
+  connectUserRTCSignalSession,
+  updateUserRTCCall,
+  fetchUserRTCCall,
+  fetchUserRTCCallHistory,
+  ensureUserRTCInviteBridge,
+  disconnectUserRTCInviteBridge,
+};
