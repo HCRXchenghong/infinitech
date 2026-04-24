@@ -1,12 +1,10 @@
 import config from "./config";
 import { clearSQLiteCache } from "./cache-cleaner";
-import { createConsumerRequestInterceptor } from "../../packages/mobile-core/src/consumer-request-interceptor.js";
+import { createConsumerUserRequestInterceptorBindings } from "../../packages/mobile-core/src/consumer-request-interceptor-shell.js";
 
-const consumerRequestInterceptor = createConsumerRequestInterceptor({
-  uniApp: uni,
-  baseUrl: config.API_BASE_URL,
+const consumerRequestInterceptor = createConsumerUserRequestInterceptorBindings({
+  config,
   clearLocalCache: clearSQLiteCache,
-  pushRegistrationStorageKey: "user_vue_push_registration",
 });
 
 export const {

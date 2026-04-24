@@ -349,6 +349,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/consumer-errand-home.test.mjs",
   "packages/mobile-core/src/consumer-errand.test.mjs",
   "packages/mobile-core/src/consumer-errand-runtime.js",
+  "packages/mobile-core/src/consumer-errand-runtime-shell.js",
+  "packages/mobile-core/src/consumer-errand-runtime-shell.test.mjs",
   "packages/mobile-core/src/consumer-errand-runtime.test.mjs",
   "packages/mobile-core/src/ErrandHomePage.vue",
   "packages/mobile-core/src/errand-home-page.scss",
@@ -363,6 +365,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/consumer-runtime-support.js",
   "packages/mobile-core/src/consumer-runtime-support.test.mjs",
   "packages/mobile-core/src/consumer-request-interceptor.js",
+  "packages/mobile-core/src/consumer-request-interceptor-shell.js",
+  "packages/mobile-core/src/consumer-request-interceptor-shell.test.mjs",
   "packages/mobile-core/src/consumer-request-interceptor.test.mjs",
   "packages/mobile-core/src/consumer-rtc-contact.js",
   "packages/mobile-core/src/consumer-rtc-contact.test.mjs",
@@ -2972,6 +2976,10 @@ assertContains(
   "export function createConsumerErrandRuntimeBindings(options = {}) {",
 );
 assertContains(
+  "packages/mobile-core/src/consumer-errand-runtime-shell.js",
+  "export function createDefaultConsumerErrandRuntimeBindings(options = {}) {",
+);
+assertContains(
   "packages/mobile-core/src/consumer-home-categories.js",
   "export function buildHomeCategories(remoteCategories = []) {",
 );
@@ -3054,6 +3062,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/consumer-request-interceptor.js",
   "export function createConsumerRequestInterceptor(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-request-interceptor-shell.js",
+  "export function createDefaultConsumerRequestInterceptorBindings(options = {}) {",
 );
 assertContains(
   "packages/mobile-core/src/consumer-rtc-contact.js",
@@ -3242,11 +3254,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/request-interceptor.ts",
-  "createConsumerRequestInterceptor({",
+  "createConsumerUserRequestInterceptorBindings({",
 );
 assertContains(
   "app-mobile/shared-ui/request-interceptor.ts",
-  "createConsumerRequestInterceptor({",
+  "createConsumerAppRequestInterceptorBindings({",
 );
 assertContains(
   "user-vue/shared-ui/errand.js",
@@ -3266,11 +3278,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/errand-runtime.js",
-  "createConsumerErrandRuntimeBindings({",
+  "createConsumerUserErrandRuntimeBindings({",
 );
 assertContains(
   "app-mobile/shared-ui/errand-runtime.js",
-  "createConsumerErrandRuntimeBindings({",
+  "createConsumerAppErrandRuntimeBindings({",
 );
 assertContains(
   "user-vue/shared-ui/push-events.js",
@@ -4734,11 +4746,19 @@ assertContains(
 );
 assertContains(
   "package.json",
+  "packages/mobile-core/src/consumer-errand-runtime-shell.test.mjs",
+);
+assertContains(
+  "package.json",
   "packages/mobile-core/src/consumer-home-categories.test.mjs",
 );
 assertContains(
   "package.json",
   "packages/mobile-core/src/consumer-request-interceptor.test.mjs",
+);
+assertContains(
+  "package.json",
+  "packages/mobile-core/src/consumer-request-interceptor-shell.test.mjs",
 );
 assertContains(
   "package.json",
@@ -5463,19 +5483,19 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/request-interceptor.ts",
-  'from "../../packages/mobile-core/src/consumer-request-interceptor.js"',
+  'from "../../packages/mobile-core/src/consumer-request-interceptor-shell.js"',
 );
 assertContains(
   "user-vue/shared-ui/request-interceptor.ts",
-  'pushRegistrationStorageKey: "user_vue_push_registration"',
+  "createConsumerUserRequestInterceptorBindings({",
 );
 assertContains(
   "app-mobile/shared-ui/request-interceptor.ts",
-  'from "../../packages/mobile-core/src/consumer-request-interceptor.js"',
+  'from "../../packages/mobile-core/src/consumer-request-interceptor-shell.js"',
 );
 assertContains(
   "app-mobile/shared-ui/request-interceptor.ts",
-  'pushRegistrationStorageKey: "app_mobile_push_registration"',
+  "createConsumerAppRequestInterceptorBindings({",
 );
 assertContains("user-vue/App.vue", "createConsumerAppRootLifecycle");
 assertContains("user-vue/App.vue", "bootstrapUserApp");
@@ -5525,19 +5545,19 @@ assertNotContains(
 );
 assertContains(
   "user-vue/shared-ui/errand-runtime.js",
-  'from "../../packages/mobile-core/src/consumer-errand-runtime.js"',
+  'from "../../packages/mobile-core/src/consumer-errand-runtime-shell.js"',
 );
 assertContains(
   "user-vue/shared-ui/errand-runtime.js",
-  'clientScope: "user-vue"',
+  "createConsumerUserErrandRuntimeBindings({",
 );
 assertContains(
   "app-mobile/shared-ui/errand-runtime.js",
-  'from "../../packages/mobile-core/src/consumer-errand-runtime.js"',
+  'from "../../packages/mobile-core/src/consumer-errand-runtime-shell.js"',
 );
 assertContains(
   "app-mobile/shared-ui/errand-runtime.js",
-  'clientScope: "app-mobile"',
+  "createConsumerAppErrandRuntimeBindings({",
 );
 assertContains(
   "user-vue/shared-ui/legal-runtime.js",
@@ -5656,6 +5676,34 @@ assertContains(
   "export function createDefaultConsumerPushEventBridgeStarter(options = {}) {",
 );
 assertContains(
+  "packages/mobile-core/src/consumer-errand-runtime-shell.js",
+  "export function createDefaultConsumerErrandRuntimeBindings(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-errand-runtime-shell.js",
+  "export function createConsumerUserErrandRuntimeBindings(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-errand-runtime-shell.js",
+  "export function createConsumerAppErrandRuntimeBindings(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-request-interceptor-shell.js",
+  "export function createDefaultConsumerRequestInterceptorBindings(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-request-interceptor-shell.js",
+  "export function createScopedConsumerRequestInterceptorBindings(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-request-interceptor-shell.js",
+  "export function createConsumerUserRequestInterceptorBindings(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-request-interceptor-shell.js",
+  "export function createConsumerAppRequestInterceptorBindings(options = {}) {",
+);
+assertContains(
   "packages/mobile-core/src/consumer-rtc-contact-shell.js",
   "export function createDefaultConsumerRTCContactBindings(options = {}) {",
 );
@@ -5686,6 +5734,22 @@ assertNotContains(
 assertNotContains(
   "app-mobile/shared-ui/push-events.js",
   "createConsumerPushEventBridge({",
+);
+assertNotContains(
+  "user-vue/shared-ui/request-interceptor.ts",
+  "createConsumerRequestInterceptor({",
+);
+assertNotContains(
+  "app-mobile/shared-ui/request-interceptor.ts",
+  "createConsumerRequestInterceptor({",
+);
+assertNotContains(
+  "user-vue/shared-ui/errand-runtime.js",
+  "createConsumerErrandRuntimeBindings({",
+);
+assertNotContains(
+  "app-mobile/shared-ui/errand-runtime.js",
+  "createConsumerErrandRuntimeBindings({",
 );
 assertNotContains(
   "user-vue/shared-ui/rtc-contact.js",
@@ -7592,6 +7656,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./consumer-errand-runtime-shell.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./consumer-home-categories.js";',
 );
 assertContains(
@@ -7605,6 +7673,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/index.js",
   'export * from "./consumer-request-interceptor.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./consumer-request-interceptor-shell.js";',
 );
 assertContains(
   "packages/mobile-core/src/index.js",
@@ -8184,6 +8256,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/package.json",
+  '"./consumer-errand-runtime-shell": "./src/consumer-errand-runtime-shell.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
   '"./consumer-home-categories": "./src/consumer-home-categories.js"',
 );
 assertContains(
@@ -8197,6 +8273,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-request-interceptor": "./src/consumer-request-interceptor.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./consumer-request-interceptor-shell": "./src/consumer-request-interceptor-shell.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

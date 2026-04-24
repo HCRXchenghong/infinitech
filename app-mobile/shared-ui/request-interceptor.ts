@@ -1,12 +1,10 @@
 import config from "./config";
 import { clearSQLiteCache } from "./cache-cleaner";
-import { createConsumerRequestInterceptor } from "../../packages/mobile-core/src/consumer-request-interceptor.js";
+import { createConsumerAppRequestInterceptorBindings } from "../../packages/mobile-core/src/consumer-request-interceptor-shell.js";
 
-const consumerRequestInterceptor = createConsumerRequestInterceptor({
-  uniApp: uni,
-  baseUrl: config.API_BASE_URL,
+const consumerRequestInterceptor = createConsumerAppRequestInterceptorBindings({
+  config,
   clearLocalCache: clearSQLiteCache,
-  pushRegistrationStorageKey: "app_mobile_push_registration",
 });
 
 export const {

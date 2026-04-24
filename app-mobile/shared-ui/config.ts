@@ -1,4 +1,3 @@
-// @ts-ignore
 import manifest from '../manifest.json'
 import { createManifestBoundMobileConfig } from '../../packages/client-sdk/src/mobile-config-shell.js'
 

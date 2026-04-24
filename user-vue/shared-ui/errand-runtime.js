@@ -1,12 +1,10 @@
-import { createConsumerErrandRuntimeBindings } from "../../packages/mobile-core/src/consumer-errand-runtime.js";
+import { createConsumerUserErrandRuntimeBindings } from "../../packages/mobile-core/src/consumer-errand-runtime-shell.js";
 import {
   isErrandServiceEnabled,
   loadPlatformRuntimeSettings,
 } from "./platform-runtime.js";
 
-export const { ensureErrandServiceOpen } = createConsumerErrandRuntimeBindings({
-  uniApp: uni,
-  clientScope: "user-vue",
+export const { ensureErrandServiceOpen } = createConsumerUserErrandRuntimeBindings({
   loadPlatformRuntimeSettings,
   isErrandServiceEnabled,
 });
