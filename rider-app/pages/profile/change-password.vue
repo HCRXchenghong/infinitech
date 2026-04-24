@@ -38,126 +38,14 @@
 import Vue from 'vue'
 import { requestSMSCode, changePassword } from '../../shared-ui/api'
 import { readRiderAuthIdentity } from '../../shared-ui/auth-session.js'
-import {
-  createRolePasswordChangeCountdownController,
-  normalizeRolePasswordChangeVerifyType,
-  requestRolePasswordChangeCode,
-  submitRolePasswordChange,
-} from '../../../packages/mobile-core/src/role-password-change-portal.js'
+import { createRiderChangePasswordPageLogic } from '../../../packages/mobile-core/src/rider-change-password-page.js'
 
-export default Vue.extend({
-  data() {
-    return {
-      verifyType: 'password',
-      oldPassword: '',
-      phone: '',
-      code: '',
-      nextPassword: '',
-      confirmPassword: '',
-      codeCooldown: 0,
-      codeCooldownController: null as any,
-      sendingCode: false,
-      submitting: false,
-    }
-  },
-  onLoad() {
-    const riderAuth = readRiderAuthIdentity({ uniApp: uni })
-    if (riderAuth.riderPhone) {
-      this.phone = String(riderAuth.riderPhone).trim()
-    }
-    this.codeCooldownController = this.createCountdownController()
-  },
-  onUnload() {
-    this.clearCooldownController()
-  },
-  methods: {
-    switchVerifyType(type: string) {
-      this.verifyType = normalizeRolePasswordChangeVerifyType(type)
-      if (this.verifyType === 'password') {
-        this.code = ''
-        return
-      }
-      this.oldPassword = ''
-    },
-    createCountdownController() {
-      return createRolePasswordChangeCountdownController({
-        setValue: (value: number) => {
-          this.codeCooldown = value
-        },
-      })
-    },
-    clearCooldownController() {
-      if (this.codeCooldownController?.clear) {
-        this.codeCooldownController.clear()
-        this.codeCooldownController = null
-      }
-    },
-    async sendCode() {
-      if (this.codeCooldown > 0 || this.sendingCode) return
-
-      this.sendingCode = true
-      try {
-        const cooldownController =
-          this.codeCooldownController || this.createCountdownController()
-        this.codeCooldownController = cooldownController
-
-        const result = await requestRolePasswordChangeCode({
-          phoneValue: this.phone,
-          scene: 'rider_change_password',
-          requestSMSCode,
-          cooldownController,
-          extra: { targetType: 'rider' },
-          invalidPhoneMessage: '请输入正确手机号',
-          failureMessage: '发送失败',
-        })
-        if (!result.ok) {
-          uni.showToast({ title: result.message, icon: 'none' })
-          return
-        }
-
-        this.phone = result.phone
-        uni.showToast({ title: result.message, icon: 'success' })
-      } finally {
-        this.sendingCode = false
-      }
-    },
-    async submitChangePassword() {
-      if (this.submitting) return
-
-      this.submitting = true
-      try {
-        const result = await submitRolePasswordChange({
-          verifyTypeValue: this.verifyType,
-          oldPasswordValue: this.oldPassword,
-          phoneValue: this.phone,
-          codeValue: this.code,
-          nextPasswordValue: this.nextPassword,
-          confirmPasswordValue: this.confirmPassword,
-          changePassword,
-          emptyCurrentPasswordMessage: '请输入原密码',
-          invalidPhoneMessage: '请输入正确手机号',
-          invalidCodeMessage: '请输入6位验证码',
-          shortPasswordMessage: '密码至少6位',
-          mismatchPasswordMessage: '两次密码不一致',
-          failureMessage: '修改失败',
-          successMessage: '密码修改成功',
-        })
-        if (!result.ok) {
-          uni.showToast({ title: result.message, icon: 'none' })
-          return
-        }
-
-        if (result.payload?.phone) {
-          this.phone = result.payload.phone
-        }
-        uni.showToast({ title: result.message, icon: 'success' })
-        setTimeout(() => uni.navigateBack(), 1500)
-      } finally {
-        this.submitting = false
-      }
-    }
-  }
-})
+export default Vue.extend(createRiderChangePasswordPageLogic({
+  requestSMSCode,
+  changePassword,
+  readRiderAuthIdentity,
+  uniApp: uni,
+}) as any)
 </script>
 
 <style lang="scss" scoped>

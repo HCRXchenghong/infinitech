@@ -416,6 +416,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/rider-earnings-page.test.mjs",
   "packages/mobile-core/src/rider-avatar-upload-page.js",
   "packages/mobile-core/src/rider-avatar-upload-page.test.mjs",
+  "packages/mobile-core/src/rider-change-password-page.js",
+  "packages/mobile-core/src/rider-change-password-page.test.mjs",
+  "packages/mobile-core/src/rider-change-phone-page.js",
+  "packages/mobile-core/src/rider-change-phone-page.test.mjs",
   "packages/mobile-core/src/rider-developer-page.js",
   "packages/mobile-core/src/rider-developer-page.test.mjs",
   "packages/mobile-core/src/rider-hall-page.js",
@@ -1215,6 +1219,14 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   [
     "rider-app/pages/profile/avatar-upload.vue",
     "../../../packages/mobile-core/src/rider-avatar-upload-page.js",
+  ],
+  [
+    "rider-app/pages/profile/change-phone.vue",
+    "../../../packages/mobile-core/src/rider-change-phone-page.js",
+  ],
+  [
+    "rider-app/pages/profile/change-password.vue",
+    "../../../packages/mobile-core/src/rider-change-password-page.js",
   ],
   [
     "rider-app/pages/profile/wallet.vue",
@@ -2566,7 +2578,6 @@ assertNotContains("rider-app/pages/profile/settings.vue", "maskRoleSettingsPhone
 assertNotContains("rider-app/pages/profile/settings.vue", "readRoleSettingsStorageEntries(");
 assertNotContains("rider-app/pages/profile/settings.vue", "restoreRoleSettingsStorageEntries(");
 assertNotContains("rider-app/pages/profile/settings.vue", "function maskPhone(");
-assertContains("rider-app/pages/profile/change-phone.vue", "persistRiderAuthSession");
 assertContains("rider-app/shared-ui/auth-session.js", "readRiderAuthIdentity");
 assertContains(
   "rider-app/shared-ui/auth-session.js",
@@ -2591,37 +2602,60 @@ assertContains("rider-app/pages/login/index.vue", "submitting: false");
 assertNotContains("rider-app/pages/login/index.vue", "loading: false");
 assertContains(
   "rider-app/pages/profile/change-phone.vue",
-  "from '../../../packages/mobile-core/src/role-phone-change-portal.js'",
+  "from '../../../packages/mobile-core/src/rider-change-phone-page.js'",
 );
 assertContains(
+  "rider-app/pages/profile/change-phone.vue",
+  "createRiderChangePhonePageLogic",
+);
+assertContains(
+  "rider-app/pages/profile/change-phone.vue",
+  "persistRiderAuthSession,",
+);
+assertContains("rider-app/pages/profile/change-phone.vue", "clearRiderAuthSession,");
+assertNotContains(
   "rider-app/pages/profile/change-phone.vue",
   "const result = await requestRolePhoneChangeCode({",
 );
-assertContains(
+assertNotContains(
   "rider-app/pages/profile/change-phone.vue",
   "const result = await verifyRolePhoneChangeCode({",
 );
-assertContains("rider-app/pages/profile/change-phone.vue", "sendingOldCode: false");
-assertContains("rider-app/pages/profile/change-phone.vue", "verifyingOldPhone: false");
-assertContains("rider-app/pages/profile/change-phone.vue", "sendingNewCode: false");
-assertContains("rider-app/pages/profile/change-phone.vue", "submitting: false");
+assertNotContains("rider-app/pages/profile/change-phone.vue", "buildRolePhoneChangePayload({");
+assertNotContains(
+  "rider-app/pages/profile/change-phone.vue",
+  "persistRoleAuthSessionFromAuthResult({",
+);
+assertNotContains("rider-app/pages/profile/change-phone.vue", "sendingOldCode: false");
+assertNotContains("rider-app/pages/profile/change-phone.vue", "verifyingOldPhone: false");
+assertNotContains("rider-app/pages/profile/change-phone.vue", "sendingNewCode: false");
+assertNotContains("rider-app/pages/profile/change-phone.vue", "submitting: false");
 assertNotContains("rider-app/pages/profile/change-phone.vue", "oldTimer:");
 assertNotContains("rider-app/pages/profile/change-phone.vue", "newTimer:");
 assertNotContains("rider-app/pages/profile/change-phone.vue", "loading: false");
 assertContains(
   "rider-app/pages/profile/change-password.vue",
-  "from '../../../packages/mobile-core/src/role-password-change-portal.js'",
+  "from '../../../packages/mobile-core/src/rider-change-password-page.js'",
 );
 assertContains(
+  "rider-app/pages/profile/change-password.vue",
+  "createRiderChangePasswordPageLogic",
+);
+assertContains(
+  "rider-app/pages/profile/change-password.vue",
+  "readRiderAuthIdentity,",
+);
+assertNotContains(
   "rider-app/pages/profile/change-password.vue",
   "const result = await requestRolePasswordChangeCode({",
 );
-assertContains(
+assertNotContains(
   "rider-app/pages/profile/change-password.vue",
   "const result = await submitRolePasswordChange({",
 );
-assertContains("rider-app/pages/profile/change-password.vue", "sendingCode: false");
-assertContains("rider-app/pages/profile/change-password.vue", "submitting: false");
+assertNotContains("rider-app/pages/profile/change-password.vue", "createCountdownController() {");
+assertNotContains("rider-app/pages/profile/change-password.vue", "sendingCode: false");
+assertNotContains("rider-app/pages/profile/change-password.vue", "submitting: false");
 assertNotContains("rider-app/pages/profile/change-password.vue", "setInterval(");
 assertNotContains("rider-app/pages/profile/change-password.vue", "loading: false");
 assertContains(
@@ -4321,7 +4355,8 @@ assertNotContains("admin-app/pages/settings/settings.vue", "passwordForm.newPass
 assertContains("admin-app/pages/settings/settings.vue", "passwordForm.nextPassword");
 assertContains("admin-app/pages/settings/settings.vue", "nextPassword,");
 assertNotContains("rider-app/pages/profile/change-password.vue", "newPassword:");
-assertContains("rider-app/pages/profile/change-password.vue", "nextPassword:");
+assertNotContains("rider-app/pages/profile/change-password.vue", "nextPassword:");
+assertContains("packages/mobile-core/src/rider-change-password-page.js", "nextPasswordValue: this.nextPassword");
 assertContains("merchant-app/shared-ui/api.ts", "nextPassword: string;");
 assertContains("packages/mobile-core/src/auth-portal.js", "nextPassword: validation.password");
 assertContains(
@@ -7606,6 +7641,14 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-change-password-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./rider-change-phone-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./rider-earnings-page.js";',
 );
 assertContains(
@@ -7755,6 +7798,14 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rider-avatar-upload-page": "./src/rider-avatar-upload-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-change-password-page": "./src/rider-change-password-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-change-phone-page": "./src/rider-change-phone-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -10054,6 +10105,12 @@ assertContains("packages/mobile-core/src/rider-earnings-page.js", "冻结中，2
 assertContains("rider-app/pages/profile/history.vue", "createRiderHistoryOrdersPageLogic");
 assertContains("packages/mobile-core/src/rider-history-orders-page.js", "历史订单加载失败");
 assertContains("packages/mobile-core/src/rider-history-orders-page.js", "已完成");
+assertContains("rider-app/pages/profile/change-phone.vue", "createRiderChangePhonePageLogic");
+assertContains("packages/mobile-core/src/rider-change-phone-page.js", "手机号修改成功");
+assertContains("packages/mobile-core/src/rider-change-phone-page.js", "登录状态已失效，请重新登录");
+assertContains("rider-app/pages/profile/change-password.vue", "createRiderChangePasswordPageLogic");
+assertContains("packages/mobile-core/src/rider-change-password-page.js", "密码修改成功");
+assertContains("packages/mobile-core/src/rider-change-password-page.js", "请输入原密码");
 assertContains("rider-app/pages/profile/rider-home.vue", "createRiderHomePageLogic");
 assertContains("packages/mobile-core/src/rider-home-page.js", "加载骑手等级 runtime 失败");
 assertContains("packages/mobile-core/src/rider-home-page.js", "累计0/100单，升级白银骑士");

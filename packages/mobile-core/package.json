@@ -88,6 +88,8 @@
     "./profile-phone-change": "./src/profile-phone-change.js",
     "./rider-api": "./src/rider-api.js",
     "./rider-avatar-upload-page": "./src/rider-avatar-upload-page.js",
+    "./rider-change-password-page": "./src/rider-change-password-page.js",
+    "./rider-change-phone-page": "./src/rider-change-phone-page.js",
     "./rider-developer-page": "./src/rider-developer-page.js",
     "./rider-deposit-wallet-page": "./src/rider-deposit-wallet-page.js",
     "./rider-earnings-page": "./src/rider-earnings-page.js",
