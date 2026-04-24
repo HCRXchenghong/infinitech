@@ -2,12 +2,12 @@
   <view class="container">
     <view class="page-padding">
       <!-- 健康证状态卡片 -->
-      <view class="cert-card" :class="certStatus">
+      <view class="cert-card" :class="certStatusMeta.status">
         <view class="cert-header">
-          <text class="cert-icon">{{ certStatus === 'valid' ? '✓' : '⚠' }}</text>
+          <text class="cert-icon">{{ certStatusMeta.icon }}</text>
           <view class="cert-info">
-            <text class="cert-title">{{ certStatus === 'valid' ? '健康证有效' : '健康证即将过期' }}</text>
-            <text class="cert-desc">{{ certStatus === 'valid' ? '有效期至 2025-06-30' : '请及时更新健康证' }}</text>
+            <text class="cert-title">{{ certStatusMeta.title }}</text>
+            <text class="cert-desc">{{ certStatusMeta.desc }}</text>
           </view>
         </view>
       </view>
@@ -18,7 +18,7 @@
         <view class="image-wrapper">
           <image
             class="cert-image"
-            src="/static/placeholder-cert.jpg"
+            :src="certImageUrl"
             mode="aspectFit"
             @click="previewImage"
           ></image>
@@ -33,32 +33,20 @@
       <view class="info-card">
         <view class="card-title">证件信息</view>
         <view class="info-list">
-          <view class="info-item">
-            <text class="info-label">证件编号</text>
-            <text class="info-value">440300202401001234</text>
-          </view>
-          <view class="divider"></view>
-          <view class="info-item">
-            <text class="info-label">发证机关</text>
-            <text class="info-value">深圳市南山区疾控中心</text>
-          </view>
-          <view class="divider"></view>
-          <view class="info-item">
-            <text class="info-label">发证日期</text>
-            <text class="info-value">2024-06-30</text>
-          </view>
-          <view class="divider"></view>
-          <view class="info-item">
-            <text class="info-label">有效期至</text>
-            <text class="info-value">2025-06-30</text>
-          </view>
+          <block v-for="(item, index) in certInfoRows" :key="item.label">
+            <view class="info-item">
+              <text class="info-label">{{ item.label }}</text>
+              <text class="info-value">{{ item.value }}</text>
+            </view>
+            <view v-if="index < certInfoRows.length - 1" class="divider"></view>
+          </block>
         </view>
       </view>
 
       <!-- 温馨提示 -->
       <view class="tip-box">
         <text class="tip-icon">📢</text>
-        <text class="tip-text">健康证是从事外卖配送的必要条件，请确保健康证在有效期内</text>
+        <text class="tip-text">{{ tipText }}</text>
       </view>
     </view>
   </view>
@@ -66,38 +54,11 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import { createRiderHealthCertPageLogic } from '../../../packages/mobile-core/src/rider-health-cert-page.js'
 
-export default Vue.extend({
-  data() {
-    return {
-      certStatus: 'valid' // valid | expiring | expired
-    }
-  },
-  methods: {
-    previewImage() {
-      uni.previewImage({
-        urls: ['/static/placeholder-cert.jpg']
-      })
-    },
-    
-    uploadImage() {
-      uni.chooseImage({
-        count: 1,
-        success: (res) => {
-          uni.showLoading({ title: '上传中...' })
-          setTimeout(() => {
-            uni.hideLoading()
-            uni.showToast({ title: '上传成功', icon: 'success' })
-          }, 1500)
-        }
-      })
-    },
-    
-    downloadImage() {
-      uni.showToast({ title: '下载成功', icon: 'success' })
-    }
-  }
-})
+export default Vue.extend(createRiderHealthCertPageLogic({
+  uniApp: uni,
+}) as any)
 </script>
 
 <style lang="scss" scoped>

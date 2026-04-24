@@ -430,6 +430,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/rider-task-detail-page.test.mjs",
   "packages/mobile-core/src/rider-profile-home-page.js",
   "packages/mobile-core/src/rider-profile-home-page.test.mjs",
+  "packages/mobile-core/src/rider-health-cert-page.js",
+  "packages/mobile-core/src/rider-health-cert-page.test.mjs",
   "packages/mobile-core/src/rider-insurance-page.js",
   "packages/mobile-core/src/rider-insurance-page.test.mjs",
   "packages/mobile-core/src/rider-order-settings-page.js",
@@ -440,6 +442,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/merchant-wallet.test.mjs",
   "packages/mobile-core/src/rider-personal-info-page.js",
   "packages/mobile-core/src/rider-personal-info-page.test.mjs",
+  "packages/mobile-core/src/rider-appeal-page.js",
+  "packages/mobile-core/src/rider-appeal-page.test.mjs",
+  "packages/mobile-core/src/rider-data-stats-page.js",
+  "packages/mobile-core/src/rider-data-stats-page.test.mjs",
   "packages/mobile-core/src/rider-profile-settings-page.js",
   "packages/mobile-core/src/rider-profile-settings-page.test.mjs",
   "packages/mobile-core/src/rider-tasks-page.js",
@@ -1235,12 +1241,24 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
     "../../../packages/mobile-core/src/rider-developer-page.js",
   ],
   [
+    "rider-app/pages/profile/health-cert.vue",
+    "../../../packages/mobile-core/src/rider-health-cert-page.js",
+  ],
+  [
     "rider-app/pages/profile/insurance.vue",
     "../../../packages/mobile-core/src/rider-insurance-page.js",
   ],
   [
     "rider-app/pages/profile/order-settings.vue",
     "../../../packages/mobile-core/src/rider-order-settings-page.js",
+  ],
+  [
+    "rider-app/pages/profile/appeal.vue",
+    "../../../packages/mobile-core/src/rider-appeal-page.js",
+  ],
+  [
+    "rider-app/pages/profile/data-stats.vue",
+    "../../../packages/mobile-core/src/rider-data-stats-page.js",
   ],
   [
     "rider-app/pages/profile/settings.vue",
@@ -2453,6 +2471,31 @@ assertContains("rider-app/pages/profile/insurance.vue", "createRiderInsurancePag
 assertNotContains("rider-app/pages/profile/insurance.vue", "DEFAULT_INSURANCE_SETTINGS");
 assertNotContains("rider-app/pages/profile/insurance.vue", "function buildInsuranceSettings");
 assertNotContains("rider-app/pages/profile/insurance.vue", "function normalizeSteps");
+assertContains(
+  "rider-app/pages/profile/health-cert.vue",
+  "from '../../../packages/mobile-core/src/rider-health-cert-page.js'",
+);
+assertContains("rider-app/pages/profile/health-cert.vue", "createRiderHealthCertPageLogic");
+assertNotContains("rider-app/pages/profile/health-cert.vue", "certStatus: 'valid'");
+assertNotContains("rider-app/pages/profile/health-cert.vue", "uni.previewImage({");
+assertNotContains("rider-app/pages/profile/health-cert.vue", "uni.chooseImage({");
+assertNotContains("rider-app/pages/profile/health-cert.vue", "setTimeout(() => {");
+assertContains(
+  "rider-app/pages/profile/appeal.vue",
+  "from '../../../packages/mobile-core/src/rider-appeal-page.js'",
+);
+assertContains("rider-app/pages/profile/appeal.vue", "createRiderAppealPageLogic");
+assertNotContains("rider-app/pages/profile/appeal.vue", "getStatusText(status: string)");
+assertNotContains("rider-app/pages/profile/appeal.vue", "配送超时处罚申诉");
+assertNotContains("rider-app/pages/profile/appeal.vue", "发起新申诉',");
+assertContains(
+  "rider-app/pages/profile/data-stats.vue",
+  "from '../../../packages/mobile-core/src/rider-data-stats-page.js'",
+);
+assertContains("rider-app/pages/profile/data-stats.vue", "createRiderDataStatsPageLogic");
+assertContains("rider-app/pages/profile/data-stats.vue", "@click=\"selectTab(index)\"");
+assertNotContains("rider-app/pages/profile/data-stats.vue", "@click=\"currentTab = index\"");
+assertNotContains("rider-app/pages/profile/data-stats.vue", "timeTabs: ['今日', '本周', '本月']");
 assertContains(
   "rider-app/pages/profile/rider-home.vue",
   "from '../../../packages/mobile-core/src/rider-home-page.js'",
@@ -7595,6 +7638,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-health-cert-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./rider-insurance-page.js";',
 );
 assertContains(
@@ -7604,6 +7651,14 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/index.js",
   'export * from "./rider-personal-info-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./rider-appeal-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./rider-data-stats-page.js";',
 );
 assertContains(
   "packages/mobile-core/src/index.js",
@@ -7739,6 +7794,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/package.json",
+  '"./rider-health-cert-page": "./src/rider-health-cert-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
   '"./rider-insurance-page": "./src/rider-insurance-page.js"',
 );
 assertContains(
@@ -7748,6 +7807,14 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rider-personal-info-page": "./src/rider-personal-info-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-appeal-page": "./src/rider-appeal-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-data-stats-page": "./src/rider-data-stats-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -10011,12 +10078,21 @@ assertContains(
   "packages/mobile-core/src/rider-profile-home-page.js",
   'DEFAULT_RIDER_PROFILE_HOME_SUPPORT_TITLE = "平台客服"',
 );
+assertContains("rider-app/pages/profile/health-cert.vue", "createRiderHealthCertPageLogic");
+assertContains("packages/mobile-core/src/rider-health-cert-page.js", "健康证即将过期");
+assertContains("packages/mobile-core/src/rider-health-cert-page.js", "暂无可下载图片");
 assertContains("rider-app/pages/profile/insurance.vue", "createRiderInsurancePageLogic");
 assertContains("packages/mobile-core/src/rider-insurance-page.js", "理赔入口暂未开放");
 assertContains("packages/mobile-core/src/rider-insurance-page.js", "链接已复制，请在浏览器打开");
 assertContains("rider-app/pages/profile/order-settings.vue", "createRiderOrderSettingsPageLogic");
 assertContains("packages/mobile-core/src/rider-order-settings-page.js", "保存成功");
 assertContains("packages/mobile-core/src/rider-order-settings-page.js", "开启自动接单");
+assertContains("rider-app/pages/profile/appeal.vue", "createRiderAppealPageLogic");
+assertContains("packages/mobile-core/src/rider-appeal-page.js", "查看申诉详情");
+assertContains("packages/mobile-core/src/rider-appeal-page.js", "发起新申诉");
+assertContains("rider-app/pages/profile/data-stats.vue", "createRiderDataStatsPageLogic");
+assertContains("packages/mobile-core/src/rider-data-stats-page.js", 'Object.freeze(["今日", "本周", "本月"])');
+assertContains("packages/mobile-core/src/rider-data-stats-page.js", "selectTab(index) {");
 assertContains("rider-app/pages/profile/settings.vue", "createRiderProfileSettingsPageLogic");
 assertContains("packages/mobile-core/src/rider-profile-settings-page.js", "缓存已清除");
 assertContains("packages/mobile-core/src/rider-profile-settings-page.js", "确认退出当前骑手账号？");

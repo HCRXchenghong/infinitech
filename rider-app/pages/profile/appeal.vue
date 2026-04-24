@@ -54,53 +54,11 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import { createRiderAppealPageLogic } from '../../../packages/mobile-core/src/rider-appeal-page.js'
 
-export default Vue.extend({
-  data() {
-    return {
-      appealList: [
-        {
-          id: 1,
-          title: '配送超时处罚申诉',
-          type: '超时处罚',
-          time: '2024-01-18 14:30',
-          status: 'pending' // pending | approved | rejected
-        },
-        {
-          id: 2,
-          title: '客户投诉申诉',
-          type: '服务投诉',
-          time: '2024-01-15 10:20',
-          status: 'approved'
-        }
-      ]
-    }
-  },
-  methods: {
-    getStatusText(status: string) {
-      const map: any = {
-        pending: '审核中',
-        approved: '已通过',
-        rejected: '已拒绝'
-      }
-      return map[status] || '未知'
-    },
-    
-    viewAppeal(appeal: any) {
-      uni.showToast({
-        title: '查看申诉详情',
-        icon: 'none'
-      })
-    },
-    
-    createAppeal() {
-      uni.showToast({
-        title: '发起新申诉',
-        icon: 'none'
-      })
-    }
-  }
-})
+export default Vue.extend(createRiderAppealPageLogic({
+  uniApp: uni,
+}) as any)
 </script>
 
 <style lang="scss" scoped>

@@ -8,7 +8,7 @@
           :key="index"
           class="time-tab"
           :class="{ active: currentTab === index }"
-          @click="currentTab = index"
+          @click="selectTab(index)"
         >
           {{ tab }}
         </view>
@@ -84,35 +84,9 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import { createRiderDataStatsPageLogic } from '../../../packages/mobile-core/src/rider-data-stats-page.js'
 
-export default Vue.extend({
-  data() {
-    return {
-      currentTab: 0,
-      timeTabs: ['今日', '本周', '本月'],
-      stats: {
-        totalEarnings: '2856.50',
-        totalOrders: 186,
-        avgPrice: '15.4',
-        onlineHours: 156.5,
-        hourlyEarnings: '18.2',
-        onTimeRate: 98,
-        goodRate: 100,
-        avgDeliveryTime: 25,
-        timeoutCount: 3
-      },
-      chartData: [
-        { label: '周一', value: 286, percent: 60 },
-        { label: '周二', value: 352, percent: 75 },
-        { label: '周三', value: 428, percent: 90 },
-        { label: '周四', value: 468, percent: 100 },
-        { label: '周五', value: 392, percent: 85 },
-        { label: '周六', value: 520, percent: 100 },
-        { label: '周日', value: 410, percent: 88 }
-      ]
-    }
-  }
-})
+export default Vue.extend(createRiderDataStatsPageLogic() as any)
 </script>
 
 <style lang="scss" scoped>
