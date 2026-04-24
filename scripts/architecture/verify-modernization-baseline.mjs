@@ -420,6 +420,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/rider-history-orders-page.test.mjs",
   "packages/mobile-core/src/rider-home-page.js",
   "packages/mobile-core/src/rider-home-page.test.mjs",
+  "packages/mobile-core/src/rider-profile-home-page.js",
+  "packages/mobile-core/src/rider-profile-home-page.test.mjs",
   "packages/mobile-core/src/rider-insurance-page.js",
   "packages/mobile-core/src/rider-insurance-page.test.mjs",
   "packages/mobile-core/src/rider-order-settings-page.js",
@@ -1195,6 +1197,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   [
     "rider-app/pages/profile/rider-home.vue",
     "../../../packages/mobile-core/src/rider-home-page.js",
+  ],
+  [
+    "rider-app/pages/profile/index-logic.ts",
+    "../../../packages/mobile-core/src/rider-profile-home-page.js",
   ],
   [
     "rider-app/pages/profile/insurance.vue",
@@ -2422,6 +2428,23 @@ assertContains("rider-app/pages/profile/rider-home.vue", "createRiderHomePageLog
 assertNotContains("rider-app/pages/profile/rider-home.vue", "DEFAULT_RANK_CONFIG");
 assertNotContains("rider-app/pages/profile/rider-home.vue", "function buildRankConfig");
 assertNotContains("rider-app/pages/profile/rider-home.vue", "renderProgressText()");
+assertContains(
+  "rider-app/pages/profile/index-logic.ts",
+  "from '../../../packages/mobile-core/src/rider-profile-home-page.js'",
+);
+assertContains(
+  "rider-app/pages/profile/index-logic.ts",
+  "createRiderProfileHomePageLogic",
+);
+assertNotContains("rider-app/pages/profile/index-logic.ts", "const RANK_NAME_MAP");
+assertNotContains(
+  "rider-app/pages/profile/index-logic.ts",
+  "resolveRankName(level: number)",
+);
+assertNotContains(
+  "rider-app/pages/profile/index-logic.ts",
+  "withNavigateLock(callback: () => void)",
+);
 assertContains(
   "rider-app/pages/profile/settings.vue",
   "from '../../../packages/mobile-core/src/rider-profile-settings-page.js'",
@@ -7479,6 +7502,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-profile-home-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./rider-insurance-page.js";',
 );
 assertContains(
@@ -7592,6 +7619,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rider-home-page": "./src/rider-home-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-profile-home-page": "./src/rider-profile-home-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -9834,6 +9865,12 @@ assertContains("packages/mobile-core/src/rider-history-orders-page.js", "已完�
 assertContains("rider-app/pages/profile/rider-home.vue", "createRiderHomePageLogic");
 assertContains("packages/mobile-core/src/rider-home-page.js", "加载骑手等级 runtime 失败");
 assertContains("packages/mobile-core/src/rider-home-page.js", "累计0/100单，升级白银骑士");
+assertContains("rider-app/pages/profile/index-logic.ts", "createRiderProfileHomePageLogic");
+assertContains("packages/mobile-core/src/rider-profile-home-page.js", "加载骑手主页数据失败");
+assertContains(
+  "packages/mobile-core/src/rider-profile-home-page.js",
+  'DEFAULT_RIDER_PROFILE_HOME_SUPPORT_TITLE = "平台客服"',
+);
 assertContains("rider-app/pages/profile/insurance.vue", "createRiderInsurancePageLogic");
 assertContains("packages/mobile-core/src/rider-insurance-page.js", "理赔入口暂未开放");
 assertContains("packages/mobile-core/src/rider-insurance-page.js", "链接已复制，请在浏览器打开");

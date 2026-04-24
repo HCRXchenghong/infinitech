@@ -89,6 +89,7 @@ export * from "./rider-deposit-wallet-page.js";
 export * from "./rider-earnings-page.js";
 export * from "./rider-history-orders-page.js";
 export * from "./rider-home-page.js";
+export * from "./rider-profile-home-page.js";
 export * from "./rider-insurance-page.js";
 export * from "./rider-order-settings-page.js";
 export * from "./rider-personal-info-page.js";

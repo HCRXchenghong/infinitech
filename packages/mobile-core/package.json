@@ -91,6 +91,7 @@
     "./rider-earnings-page": "./src/rider-earnings-page.js",
     "./rider-history-orders-page": "./src/rider-history-orders-page.js",
     "./rider-home-page": "./src/rider-home-page.js",
+    "./rider-profile-home-page": "./src/rider-profile-home-page.js",
     "./rider-insurance-page": "./src/rider-insurance-page.js",
     "./rider-order-settings-page": "./src/rider-order-settings-page.js",
     "./rider-personal-info-page": "./src/rider-personal-info-page.js",
