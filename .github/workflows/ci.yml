@@ -42,6 +42,7 @@ jobs:
             admin-vue/package-lock.json
             backend/bff/package-lock.json
             socket-server/package-lock.json
+            backend/bank-payout-sidecar/package-lock.json
             backend/alipay-sidecar/package-lock.json
       - uses: actions/setup-go@v5
         with:
@@ -67,6 +68,17 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: node scripts/security/check-committed-secrets.mjs
+
+  backend-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: node scripts/security/verify-backend-audits.mjs
 
   go-vulncheck:
     runs-on: ubuntu-latest

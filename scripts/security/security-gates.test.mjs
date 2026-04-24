@@ -1,10 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 
 import { collectCommittedSecretIssues } from "./check-committed-secrets.mjs";
 import {
   runBackendAuditProject,
+  resolveBackendAuditProjectState,
   summarizeAuditMetadata,
+  summarizeManifestDependencyCounts,
 } from "./verify-backend-audits.mjs";
 
 test("committed secret scanner flags tracked runtime env files and private keys", () => {
@@ -122,7 +126,32 @@ test("backend audit metadata summary normalizes missing counters", () => {
   );
 });
 
-test("backend audit runner skips projects without package lock", () => {
+test("backend audit dependency summary normalizes missing manifest fields", () => {
+  assert.deepEqual(summarizeManifestDependencyCounts({}), {
+    dependencies: 0,
+    devDependencies: 0,
+    optionalDependencies: 0,
+    total: 0,
+  });
+  assert.deepEqual(
+    summarizeManifestDependencyCounts({
+      dependencies: {
+        express: "^4.21.0",
+      },
+      devDependencies: {
+        jest: "^29.7.0",
+      },
+    }),
+    {
+      dependencies: 1,
+      devDependencies: 1,
+      optionalDependencies: 0,
+      total: 2,
+    },
+  );
+});
+
+test("backend audit runner skips projects without external dependencies", () => {
   const result = runBackendAuditProject({
     name: "backend/bank-payout-sidecar",
     path: "backend/bank-payout-sidecar",
@@ -132,6 +161,55 @@ test("backend audit runner skips projects without package lock", () => {
     name: "backend/bank-payout-sidecar",
     path: "backend/bank-payout-sidecar",
     skipped: true,
-    reason: "missing package-lock.json",
+    reason: "no external dependencies",
   });
+});
+
+test("backend audit runner rejects dependency manifests without package lock", () => {
+  const tempDir = fs.mkdtempSync(
+    path.join(process.cwd(), ".tmp-backend-audit-project-"),
+  );
+  const relativePath = path.relative(process.cwd(), tempDir);
+
+  try {
+    fs.writeFileSync(
+      path.join(tempDir, "package.json"),
+      JSON.stringify(
+        {
+          name: "tmp-backend-audit-project",
+          private: true,
+          dependencies: {
+            express: "^4.21.0",
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    assert.throws(
+      () =>
+        runBackendAuditProject({
+          name: "tmp-backend-audit-project",
+          path: relativePath,
+        }),
+      /package-lock\.json is required/,
+    );
+
+    assert.deepEqual(
+      resolveBackendAuditProjectState({
+        name: "tmp-backend-audit-project",
+        path: relativePath,
+      }).dependencyCounts,
+      {
+        dependencies: 1,
+        devDependencies: 0,
+        optionalDependencies: 0,
+        total: 1,
+      },
+    );
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 });

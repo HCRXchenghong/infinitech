@@ -8224,6 +8224,10 @@ assertContains(
 );
 assertContains(
   ".github/workflows/ci.yml",
+  "node scripts/security/verify-backend-audits.mjs",
+);
+assertContains(
+  ".github/workflows/ci.yml",
   "govulncheck ./...",
 );
 assertContains(
@@ -8235,8 +8239,24 @@ assertContains(
   "npm --prefix backend/bff ci",
 );
 assertContains(
+  ".github/workflows/ci.yml",
+  "backend/bank-payout-sidecar/package-lock.json",
+);
+assertContains(
   "scripts/security/verify-backend-audits.mjs",
   "https://registry.npmjs.org",
+);
+assertContains(
+  "scripts/security/verify-backend-audits.mjs",
+  "backend/bank-payout-sidecar",
+);
+assertContains(
+  "scripts/security/verify-backend-audits.mjs",
+  "package-lock.json is required when package.json declares dependencies",
+);
+assertContains(
+  "scripts/security/verify-backend-audits.mjs",
+  "no external dependencies",
 );
 assertContains(
   "scripts/security/check-committed-secrets.mjs",

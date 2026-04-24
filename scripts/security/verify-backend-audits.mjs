@@ -5,12 +5,56 @@ import { pathToFileURL } from "url";
 
 const repoRoot = process.cwd();
 const NPM_AUDIT_REGISTRY = "https://registry.npmjs.org";
+const AUDITED_DEPENDENCY_FIELDS = [
+  "dependencies",
+  "devDependencies",
+  "optionalDependencies",
+];
 
 const backendAuditProjects = [
   { name: "backend/bff", path: "backend/bff" },
   { name: "socket-server", path: "socket-server" },
+  { name: "backend/bank-payout-sidecar", path: "backend/bank-payout-sidecar" },
   { name: "backend/alipay-sidecar", path: "backend/alipay-sidecar" },
 ];
+
+function readJsonFile(absolutePath, fallbackValue = {}) {
+  if (!fs.existsSync(absolutePath)) {
+    return fallbackValue;
+  }
+
+  return JSON.parse(fs.readFileSync(absolutePath, "utf8"));
+}
+
+export function summarizeManifestDependencyCounts(manifest = {}) {
+  const byField = Object.fromEntries(
+    AUDITED_DEPENDENCY_FIELDS.map((field) => [
+      field,
+      Object.keys(manifest?.[field] || {}).length,
+    ]),
+  );
+
+  return {
+    ...byField,
+    total: AUDITED_DEPENDENCY_FIELDS.reduce(
+      (count, field) => count + byField[field],
+      0,
+    ),
+  };
+}
+
+export function resolveBackendAuditProjectState(project) {
+  const absolutePath = path.join(repoRoot, project.path);
+  const manifest = readJsonFile(path.join(absolutePath, "package.json"));
+  const dependencyCounts = summarizeManifestDependencyCounts(manifest);
+
+  return {
+    absolutePath,
+    manifest,
+    hasLockfile: fs.existsSync(path.join(absolutePath, "package-lock.json")),
+    dependencyCounts,
+  };
+}
 
 function parseAuditReport(rawOutput) {
   const trimmed = String(rawOutput || "").trim();
@@ -48,15 +92,23 @@ export function summarizeAuditMetadata(report = {}) {
 }
 
 export function runBackendAuditProject(project) {
-  const absolutePath = path.join(repoRoot, project.path);
-  if (!fs.existsSync(path.join(absolutePath, "package-lock.json"))) {
-    return {
-      ...project,
-      skipped: true,
-      reason: "missing package-lock.json",
-    };
+  const projectState = resolveBackendAuditProjectState(project);
+
+  if (!projectState.hasLockfile) {
+    if (projectState.dependencyCounts.total === 0) {
+      return {
+        ...project,
+        skipped: true,
+        reason: "no external dependencies",
+      };
+    }
+
+    throw new Error(
+      `${project.name}: package-lock.json is required when package.json declares dependencies`,
+    );
   }
 
+  const absolutePath = projectState.absolutePath;
   const result = spawnSync(
     "npm",
     [
@@ -95,6 +147,7 @@ export function runBackendAuditProject(project) {
     status: Number(result.status || 0),
     report,
     counts: summarizeAuditMetadata(report),
+    dependencyCounts: projectState.dependencyCounts,
   };
 }
 
