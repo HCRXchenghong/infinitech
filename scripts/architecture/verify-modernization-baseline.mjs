@@ -424,6 +424,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/rider-history-orders-page.test.mjs",
   "packages/mobile-core/src/rider-home-page.js",
   "packages/mobile-core/src/rider-home-page.test.mjs",
+  "packages/mobile-core/src/rider-task-detail-page.js",
+  "packages/mobile-core/src/rider-task-detail-page.test.mjs",
   "packages/mobile-core/src/rider-profile-home-page.js",
   "packages/mobile-core/src/rider-profile-home-page.test.mjs",
   "packages/mobile-core/src/rider-insurance-page.js",
@@ -1179,6 +1181,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   [
     "rider-app/pages/tasks/index-logic.ts",
     "../../../packages/mobile-core/src/rider-tasks-page.js",
+  ],
+  [
+    "rider-app/pages/tasks/detail-logic.ts",
+    "../../../packages/mobile-core/src/rider-task-detail-page.js",
   ],
   [
     "rider-app/pages/profile/wallet-bills/index-logic.ts",
@@ -2488,6 +2494,17 @@ assertContains(
 assertContains("rider-app/pages/tasks/index-logic.ts", "createRiderTasksPageLogic");
 assertNotContains("rider-app/pages/tasks/index-logic.ts", "async handleReport(reason: string)");
 assertNotContains("rider-app/pages/tasks/index-logic.ts", "async handleAdvanceTask(task: any)");
+assertContains(
+  "rider-app/pages/tasks/detail-logic.ts",
+  "from '../../../packages/mobile-core/src/rider-task-detail-page.js'",
+);
+assertContains(
+  "rider-app/pages/tasks/detail-logic.ts",
+  "createRiderTaskDetailPageLogic",
+);
+assertNotContains("rider-app/pages/tasks/detail-logic.ts", "formatTaskDistance(task: any)");
+assertNotContains("rider-app/pages/tasks/detail-logic.ts", "async handleReport(reason: string)");
+assertNotContains("rider-app/pages/tasks/detail-logic.ts", "completeTask()");
 assertContains(
   "rider-app/pages/profile/settings.vue",
   "from '../../../packages/mobile-core/src/rider-profile-settings-page.js'",
@@ -7553,6 +7570,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-task-detail-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./rider-profile-home-page.js";',
 );
 assertContains(
@@ -7682,6 +7703,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rider-home-page": "./src/rider-home-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-task-detail-page": "./src/rider-task-detail-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -9941,6 +9966,9 @@ assertContains("packages/mobile-core/src/rider-hall-page.js", "定位失败");
 assertContains("rider-app/pages/tasks/index-logic.ts", "createRiderTasksPageLogic");
 assertContains("packages/mobile-core/src/rider-tasks-page.js", "订单信息异常");
 assertContains("packages/mobile-core/src/rider-tasks-page.js", "开始配送！");
+assertContains("rider-app/pages/tasks/detail-logic.ts", "createRiderTaskDetailPageLogic");
+assertContains("packages/mobile-core/src/rider-task-detail-page.js", "订单已完成！");
+assertContains("packages/mobile-core/src/rider-task-detail-page.js", "上报成功");
 assertContains("rider-app/pages/profile/index-logic.ts", "createRiderProfileHomePageLogic");
 assertContains("packages/mobile-core/src/rider-profile-home-page.js", "加载骑手主页数据失败");
 assertContains(
