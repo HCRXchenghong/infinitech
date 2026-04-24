@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   createConsumerAppRootLifecycle,
+  createConsumerUserAppRuntimeBindings,
   createDefaultConsumerUserAppRuntime,
 } from "./consumer-app-shell.js";
 
@@ -158,4 +159,58 @@ test("consumer app shell respects explicit runtime overrides", () => {
   assert.equal(receivedOptions.baseUrl, "https://override.example.com");
   assert.equal(receivedOptions.requiredAuthMode, "custom-user");
   assert.equal(receivedOptions.shouldRunConfigWizard, false);
+});
+
+test("consumer app shell exposes stable user runtime bindings aliases", () => {
+  const bindings = createConsumerUserAppRuntimeBindings({
+    config: {
+      API_BASE_URL: "https://api.example.com",
+      isDev: false,
+    },
+    createConsumerAppSessionManagerImpl() {
+      return {
+        getSessionSnapshot() {
+          return { token: "token" };
+        },
+        hasActiveSession() {
+          return true;
+        },
+        clearStoredSession() {
+          return "cleared";
+        },
+        verifySession() {
+          return "verified";
+        },
+      };
+    },
+    createConsumerAppBridgeManagerImpl() {
+      return {
+        syncBridges() {
+          return "synced";
+        },
+        teardownBridges() {
+          return "torn-down";
+        },
+      };
+    },
+    createConsumerAppBootstrapImpl() {
+      return {
+        bootstrapConsumerApp() {
+          return "bootstrapped";
+        },
+        handleConsumerAppShow() {
+          return "showed";
+        },
+      };
+    },
+  });
+
+  assert.equal(bindings.getUserSessionSnapshot().token, "token");
+  assert.equal(bindings.hasActiveUserSession(), true);
+  assert.equal(bindings.clearStoredUserSession(), "cleared");
+  assert.equal(bindings.verifyUserSession(), "verified");
+  assert.equal(bindings.syncUserBridges(), "synced");
+  assert.equal(bindings.teardownUserBridges(), "torn-down");
+  assert.equal(bindings.bootstrapUserApp(), "bootstrapped");
+  assert.equal(bindings.handleUserAppShow(), "showed");
 });

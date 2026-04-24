@@ -51,3 +51,19 @@ export function createDefaultConsumerUserAppRuntime(options = {}) {
     ...rest,
   });
 }
+
+export function createConsumerUserAppRuntimeBindings(options = {}) {
+  const appRuntime = createDefaultConsumerUserAppRuntime(options);
+
+  return {
+    appRuntime,
+    getUserSessionSnapshot: appRuntime.getSessionSnapshot,
+    hasActiveUserSession: appRuntime.hasActiveSession,
+    clearStoredUserSession: appRuntime.clearStoredSession,
+    verifyUserSession: appRuntime.verifySession,
+    syncUserBridges: appRuntime.syncBridges,
+    teardownUserBridges: appRuntime.teardownBridges,
+    bootstrapUserApp: appRuntime.bootstrapConsumerApp,
+    handleUserAppShow: appRuntime.handleConsumerAppShow,
+  };
+}

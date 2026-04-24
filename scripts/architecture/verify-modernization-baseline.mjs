@@ -3190,7 +3190,7 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/app-core/runtime.ts",
-  "createDefaultConsumerUserAppRuntime({",
+  "createConsumerUserAppRuntimeBindings({",
 );
 assertContains(
   "user-vue/shared-ui/app-core/bridges.ts",
@@ -3206,7 +3206,7 @@ assertContains(
 );
 assertContains(
   "app-mobile/shared-ui/app-core/runtime.ts",
-  "createDefaultConsumerUserAppRuntime({",
+  "createConsumerUserAppRuntimeBindings({",
 );
 assertContains(
   "app-mobile/shared-ui/app-core/bridges.ts",
@@ -5499,6 +5499,10 @@ assertContains(
   "user-vue/shared-ui/app-core/runtime.ts",
   'from "../../../packages/mobile-core/src/consumer-app-shell.js"',
 );
+assertNotContains(
+  "user-vue/shared-ui/app-core/runtime.ts",
+  "createDefaultConsumerUserAppRuntime({",
+);
 assertContains(
   "app-mobile/shared-ui/app-core/bootstrap.ts",
   'from "./runtime"',
@@ -5514,6 +5518,10 @@ assertContains(
 assertContains(
   "app-mobile/shared-ui/app-core/runtime.ts",
   'from "../../../packages/mobile-core/src/consumer-app-shell.js"',
+);
+assertNotContains(
+  "app-mobile/shared-ui/app-core/runtime.ts",
+  "createDefaultConsumerUserAppRuntime({",
 );
 assertContains(
   "user-vue/shared-ui/errand-runtime.js",

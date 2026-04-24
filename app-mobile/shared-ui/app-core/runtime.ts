@@ -16,7 +16,7 @@ import {
   disconnectUserRTCInviteBridge,
   ensureUserRTCInviteBridge,
 } from "../rtc-contact.js";
-import { createDefaultConsumerUserAppRuntime } from "../../../packages/mobile-core/src/consumer-app-shell.js";
+import { createConsumerUserAppRuntimeBindings } from "../../../packages/mobile-core/src/consumer-app-shell.js";
 
 export interface UserSessionSnapshot {
   token: string;
@@ -24,7 +24,16 @@ export interface UserSessionSnapshot {
   authMode: string;
 }
 
-const appRuntime = createDefaultConsumerUserAppRuntime({
+const {
+  getUserSessionSnapshot,
+  hasActiveUserSession,
+  clearStoredUserSession,
+  verifyUserSession,
+  syncUserBridges,
+  teardownUserBridges,
+  bootstrapUserApp,
+  handleUserAppShow,
+} = createConsumerUserAppRuntimeBindings({
   config,
   uniApp: uni,
   plusRuntime: (globalThis as any).plus,
@@ -45,13 +54,13 @@ const appRuntime = createDefaultConsumerUserAppRuntime({
   disconnectUserRTCInviteBridge,
 });
 
-export const {
-  getSessionSnapshot: getUserSessionSnapshot,
-  hasActiveSession: hasActiveUserSession,
-  clearStoredSession: clearStoredUserSession,
-  verifySession: verifyUserSession,
-  syncBridges: syncUserBridges,
-  teardownBridges: teardownUserBridges,
-  bootstrapConsumerApp: bootstrapUserApp,
-  handleConsumerAppShow: handleUserAppShow,
-} = appRuntime;
+export {
+  getUserSessionSnapshot,
+  hasActiveUserSession,
+  clearStoredUserSession,
+  verifyUserSession,
+  syncUserBridges,
+  teardownUserBridges,
+  bootstrapUserApp,
+  handleUserAppShow,
+};
