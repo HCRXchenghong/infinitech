@@ -2446,9 +2446,13 @@ assertContains("merchant-app/shared-ui/merchantAccountPages.ts", "maskRoleSettin
 assertContains("merchant-app/shared-ui/merchantAccountPages.ts", "readRoleSettingsCacheSizeSync(uni");
 assertContains("rider-app/App-logic.ts", "ensureRiderAuthSession");
 assertContains("rider-app/App-logic.ts", "createRoleAppRootLifecycle");
+assertContains("rider-app/App-logic.ts", "createRiderAppRuntime");
 assertContains("rider-app/App-logic.ts", "MessagePopup");
 assertNotContains("rider-app/App-logic.ts", "Vue.component('message-popup'");
 assertNotContains("rider-app/App-logic.ts", "async syncPushRegistration()");
+assertNotContains("rider-app/App-logic.ts", "function resolveRiderMessageTimestamp(");
+assertNotContains("rider-app/App-logic.ts", "function normalizeRiderIncomingMessage(");
+assertNotContains("rider-app/App-logic.ts", "async joinSupportOrderRooms(");
 assertContains("rider-app/pages/login/index.vue", "persistRiderAuthSession");
 assertContains("rider-app/pages/profile/settings.vue", "clearRiderAuthSession");
 assertContains(
@@ -5652,6 +5656,18 @@ assertContains(
   "socketToken = await resolveSocketToken({",
 );
 assertContains(
+  "packages/mobile-core/src/rider-app-runtime.js",
+  "normalizeRiderIncomingMessage(",
+);
+assertContains(
+  "packages/mobile-core/src/rider-app-runtime.js",
+  "joinSupportOrderRooms(sock)",
+);
+assertNotContains(
+  "rider-app/App-logic.ts",
+  "createSocket(config.SOCKET_URL, '/support', token).connect()",
+);
+assertContains(
   "admin-app/utils/socketService.js",
   "return await resolveSocketToken({",
 );
@@ -7444,6 +7460,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-app-runtime.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./role-portal-runtime-shell.js";',
 );
 assertContains(
@@ -7805,6 +7825,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./role-app-shell": "./src/role-app-shell.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-app-runtime": "./src/rider-app-runtime.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",

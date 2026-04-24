@@ -104,6 +104,7 @@ export * from "./rider-insurance-page.js";
 export * from "./rider-order-settings-page.js";
 export * from "./rider-personal-info-page.js";
 export * from "./rider-appeal-page.js";
+export * from "./rider-app-runtime.js";
 export * from "./rider-data-stats-page.js";
 export * from "./rider-profile-settings-page.js";
 export * from "./rider-reset-password-page.js";

@@ -106,6 +106,7 @@
     "./rider-order-settings-page": "./src/rider-order-settings-page.js",
     "./rider-personal-info-page": "./src/rider-personal-info-page.js",
     "./rider-appeal-page": "./src/rider-appeal-page.js",
+    "./rider-app-runtime": "./src/rider-app-runtime.js",
     "./rider-data-stats-page": "./src/rider-data-stats-page.js",
     "./rider-profile-settings-page": "./src/rider-profile-settings-page.js",
     "./rider-reset-password-page": "./src/rider-reset-password-page.js",
