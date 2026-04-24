@@ -46,186 +46,20 @@
 import Vue from 'vue'
 import { requestSMSCode, riderLogin } from '../../shared-ui/api'
 import { persistRiderAuthSession } from '../../shared-ui/auth-session.js'
-import { persistRoleAuthSessionFromAuthResult } from '../../../packages/client-sdk/src/role-auth-response.js'
-import {
-  createRoleLoginCodeCooldownController,
-  pickRoleLoginErrorMessage,
-  requestRoleLoginCode,
-  validateRoleLoginPhoneInput,
-} from '../../../packages/mobile-core/src/role-login-portal.js'
 import {
   getCachedRiderPortalRuntimeSettings,
   loadRiderPortalRuntimeSettings,
 } from '../../shared-ui/portal-runtime'
+import { createRiderLoginPageLogic } from '../../../packages/mobile-core/src/rider-login-page.js'
 
-export default Vue.extend({
-  data() {
-    return {
-      loginType: 'code',
-      phone: '',
-      code: '',
-      password: '',
-      codeCooldown: 0,
-      sendingCode: false,
-      submitting: false,
-      cooldownController: null as any,
-      portalRuntime: getCachedRiderPortalRuntimeSettings(),
-    }
-  },
-  onLoad() {
-    this.cooldownController = this.createCooldownController()
-    void this.loadPortalRuntime()
-  },
-  onUnload() {
-    if (this.cooldownController) this.cooldownController.clear()
-  },
-  methods: {
-    createCooldownController() {
-      return createRoleLoginCodeCooldownController({
-        setValue: (nextValue: number) => {
-          this.codeCooldown = nextValue
-        },
-      })
-    },
-
-    async loadPortalRuntime() {
-      this.portalRuntime = await loadRiderPortalRuntimeSettings()
-    },
-
-    saveRiderSession(payload: any, phone: string) {
-      persistRoleAuthSessionFromAuthResult({
-        uniApp: uni,
-        persistRoleAuthSession: persistRiderAuthSession,
-        response: payload,
-        profileFallback: { phone, nickname: '骑手' },
-        extraStorageValues({ responseUser, profile }) {
-          return {
-            riderId: responseUser.id != null ? String(responseUser.id) : null,
-            riderName: responseUser.name || responseUser.nickname || profile.nickname || '骑手',
-          }
-        },
-      })
-    },
-
-    connectSocketAfterLogin() {
-      try {
-        const app: any = getApp()
-        const vm = app && app.$vm
-        if (vm && typeof vm.tryConnectSocket === 'function') {
-          vm.tryConnectSocket()
-        }
-      } catch (err) {
-        console.error('[RiderLogin] 触发 Socket 连接失败:', err)
-      }
-    },
-
-    switchLoginType(type: string) {
-      this.loginType = type
-      this.code = ''
-      this.password = ''
-    },
-
-    goResetPassword() {
-      uni.navigateTo({ url: '/pages/reset-password/index' })
-    },
-
-    validatePhone() {
-      const result = validateRoleLoginPhoneInput(this.phone)
-      if (!result.phone) {
-        uni.showToast({ title: result.error, icon: 'none' })
-        return ''
-      }
-      return result.phone
-    },
-
-    formatLoginError(error: any) {
-      return pickRoleLoginErrorMessage(error, '登录失败', (rawError: any, fallback: string) => {
-        const raw = String(
-          rawError?.error || rawError?.message || rawError?.data?.error || rawError?.data?.message || '',
-        ).toLowerCase()
-        if (!raw) return ''
-        if (raw.includes('rider not found') || raw.includes('骑手不存在')) {
-          return '该手机号不是骑手账号，请使用骑手账号登录'
-        }
-        if (raw.includes('invalid password') || raw.includes('密码错误')) {
-          return '登录密码错误，请重试'
-        }
-        if (raw.includes('invalid code') || raw.includes('验证码')) {
-          return '验证码错误或已过期'
-        }
-        if (raw.includes('unauthorized') || raw.includes('401')) {
-          return '账号或密码错误'
-        }
-        return ''
-      })
-    },
-
-    async sendCode() {
-      if (this.codeCooldown > 0 || this.sendingCode) return
-
-      const cooldownController = this.cooldownController || this.createCooldownController()
-      this.cooldownController = cooldownController
-      this.sendingCode = true
-      try {
-        const result = await requestRoleLoginCode({
-          phoneValue: this.phone,
-          scene: 'rider_login',
-          requestSMSCode,
-          cooldownController,
-          failureMessage: '发送验证码失败',
-        })
-        if (!result.ok) {
-          uni.showToast({ title: result.message, icon: 'none' })
-          return
-        }
-
-        uni.showToast({ title: result.message, icon: 'success' })
-      } finally {
-        this.sendingCode = false
-      }
-    },
-
-    async submit() {
-      if (this.submitting) return
-      const phone = this.validatePhone()
-      if (!phone) return
-
-      const payload: { phone: string; code?: string; password?: string } = { phone }
-      if (this.loginType === 'code') {
-        const code = String(this.code || '').trim()
-        if (!code) {
-          uni.showToast({ title: '请输入验证码', icon: 'none' })
-          return
-        }
-        payload.code = code
-      } else {
-        const password = String(this.password || '').trim()
-        if (!password) {
-          uni.showToast({ title: '请输入密码', icon: 'none' })
-          return
-        }
-        payload.password = password
-      }
-
-      this.submitting = true
-      try {
-        const res: any = await riderLogin(payload)
-        if (res.success) {
-          this.saveRiderSession(res, phone)
-          this.connectSocketAfterLogin()
-          uni.showToast({ title: '登录成功', icon: 'success' })
-          setTimeout(() => uni.switchTab({ url: '/pages/hall/index' }), 500)
-        } else {
-          uni.showToast({ title: this.formatLoginError(res), icon: 'none' })
-        }
-      } catch (err: any) {
-        uni.showToast({ title: this.formatLoginError(err), icon: 'none' })
-      } finally {
-        this.submitting = false
-      }
-    },
-  },
-})
+export default Vue.extend(createRiderLoginPageLogic({
+  requestSMSCode,
+  riderLogin,
+  persistRiderAuthSession,
+  getCachedPortalRuntimeSettings: getCachedRiderPortalRuntimeSettings,
+  loadPortalRuntimeSettings: loadRiderPortalRuntimeSettings,
+  uniApp: uni,
+}) as any)
 </script>
 
 <style lang="scss" scoped>

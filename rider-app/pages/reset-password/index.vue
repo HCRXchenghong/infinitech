@@ -32,96 +32,15 @@ import {
   getCachedRiderPortalRuntimeSettings,
   loadRiderPortalRuntimeSettings,
 } from '../../shared-ui/portal-runtime'
-import {
-  buildRolePasswordResetSetPasswordPageUrl,
-  createRolePasswordResetCooldownController,
-  requestRolePasswordResetCode,
-  verifyRolePasswordResetCode,
-} from '../../../packages/mobile-core/src/role-password-reset-portal.js'
+import { createRiderResetPasswordPageLogic } from '../../../packages/mobile-core/src/rider-reset-password-page.js'
 
-export default Vue.extend({
-  data() {
-    return {
-      phone: '',
-      code: '',
-      codeCooldown: 0,
-      sendingCode: false,
-      submitting: false,
-      cooldownController: null as any,
-      portalRuntime: getCachedRiderPortalRuntimeSettings(),
-    }
-  },
-  onLoad() {
-    this.cooldownController = createRolePasswordResetCooldownController({
-      setValue: (nextValue: number) => {
-        this.codeCooldown = nextValue
-      },
-    })
-    void this.loadPortalRuntime()
-  },
-  onUnload() {
-    if (this.cooldownController?.clear) {
-      this.cooldownController.clear()
-      this.cooldownController = null
-    }
-  },
-  methods: {
-    async loadPortalRuntime() {
-      this.portalRuntime = await loadRiderPortalRuntimeSettings()
-    },
-
-    goLogin() {
-      uni.redirectTo({ url: '/pages/login/index' })
-    },
-
-    async sendCode() {
-      if (this.codeCooldown > 0 || this.sendingCode) return
-
-      this.sendingCode = true
-      try {
-        const result = await requestRolePasswordResetCode({
-          phoneValue: this.phone,
-          scene: 'rider_reset',
-          requestSMSCode,
-          cooldownController: this.cooldownController,
-        })
-        if (!result.ok) {
-          uni.showToast({ title: result.message, icon: 'none' })
-          return
-        }
-
-        uni.showToast({ title: result.message, icon: 'success' })
-      } finally {
-        this.sendingCode = false
-      }
-    },
-
-    async submit() {
-      if (this.submitting) return
-
-      this.submitting = true
-      try {
-        const result = await verifyRolePasswordResetCode({
-          phoneValue: this.phone,
-          codeValue: this.code,
-          scene: 'rider_reset',
-          storage: uni,
-          verifySMSCodeCheck,
-          buildSetPasswordUrl: (phone, code) =>
-            buildRolePasswordResetSetPasswordPageUrl('/pages/set-password/index', phone, code),
-        })
-        if (!result.ok) {
-          uni.showToast({ title: result.message, icon: 'none' })
-          return
-        }
-
-        uni.redirectTo({ url: result.redirectUrl })
-      } finally {
-        this.submitting = false
-      }
-    },
-  },
-})
+export default Vue.extend(createRiderResetPasswordPageLogic({
+  requestSMSCode,
+  verifySMSCodeCheck,
+  getCachedPortalRuntimeSettings: getCachedRiderPortalRuntimeSettings,
+  loadPortalRuntimeSettings: loadRiderPortalRuntimeSettings,
+  uniApp: uni,
+}) as any)
 </script>
 
 <style lang="scss" scoped>

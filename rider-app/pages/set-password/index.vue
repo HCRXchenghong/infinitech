@@ -39,88 +39,19 @@ import {
   getCachedRiderPortalRuntimeSettings,
   loadRiderPortalRuntimeSettings,
 } from '../../shared-ui/portal-runtime'
-import {
-  resolveRolePasswordResetTicket,
-  submitRolePasswordResetNextPassword,
-} from '../../../packages/mobile-core/src/role-password-reset-portal.js'
+import { createRiderSetPasswordPageLogic } from '../../../packages/mobile-core/src/rider-set-password-page.js'
 
-export default Vue.extend({
-  data() {
-    return {
-      phone: '',
-      code: '',
-      password: '',
-      confirmPassword: '',
-      submitting: false,
-      portalRuntime: getCachedRiderPortalRuntimeSettings(),
-    }
-  },
-  onLoad(options: any) {
-    void this.loadPortalRuntime()
-
-    const resetTicket = resolveRolePasswordResetTicket(
-      options,
-      uni.getStorageSync('reset_password_data'),
-    )
-    this.phone = resetTicket.phone
-    this.code = resetTicket.code
-
-    if (!this.phone || !this.code) {
-      uni.showToast({ title: '请先完成验证码校验', icon: 'none' })
-      setTimeout(() => {
-        uni.navigateBack()
-      }, 1500)
-    }
-  },
-  methods: {
-    async loadPortalRuntime() {
-      this.portalRuntime = await loadRiderPortalRuntimeSettings()
-    },
-
-    goLogin() {
-      uni.redirectTo({ url: '/pages/login/index' })
-    },
-
-    async submit() {
-      if (this.submitting) return
-
-      this.submitting = true
-      try {
-        const result = await submitRolePasswordResetNextPassword({
-          phoneValue: this.phone,
-          codeValue: this.code,
-          passwordValue: this.password,
-          confirmPasswordValue: this.confirmPassword,
-          storage: uni,
-          loginUrl: '/pages/login/index',
-          resetPasswordUrl: '/pages/reset-password/index',
-          submitSetNewPassword: (payload) =>
-            request({
-              url: '/api/auth/rider/set-new-password',
-              method: 'POST',
-              data: payload,
-            }),
-        })
-        if (!result.ok) {
-          uni.showToast({ title: result.message, icon: 'none' })
-          if (result.reason === 'missing_ticket' && result.redirectUrl) {
-            setTimeout(() => {
-              uni.redirectTo({ url: result.redirectUrl })
-            }, 1500)
-          }
-          return
-        }
-
-        uni.showToast({ title: result.message, icon: 'success' })
-        setTimeout(() => {
-          uni.redirectTo({ url: result.redirectUrl || '/pages/login/index' })
-        }, 1500)
-      } finally {
-        this.submitting = false
-      }
-    },
-  },
-})
+export default Vue.extend(createRiderSetPasswordPageLogic({
+  getCachedPortalRuntimeSettings: getCachedRiderPortalRuntimeSettings,
+  loadPortalRuntimeSettings: loadRiderPortalRuntimeSettings,
+  submitSetNewPassword: (payload: any) =>
+    request({
+      url: '/api/auth/rider/set-new-password',
+      method: 'POST',
+      data: payload,
+    }),
+  uniApp: uni,
+}) as any)
 </script>
 
 <style lang="scss" scoped>
