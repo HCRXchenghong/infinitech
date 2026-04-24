@@ -23,6 +23,12 @@ function stopRiderHistoryPullDown(uniApp) {
   }
 }
 
+function normalizeRiderHistoryComponents(components) {
+  return components && typeof components === "object" && !Array.isArray(components)
+    ? components
+    : {};
+}
+
 export const RIDER_HISTORY_STATUS_MAP = {
   completed: "已完成",
   cancelled: "已取消",
@@ -156,10 +162,12 @@ export function createRiderHistoryOrdersPageLogic(options = {}) {
     fetchRiderOrders,
     readRiderAuthIdentity,
     uniApp,
+    components,
   } = options;
   const runtimeUni = uniApp || globalThis.uni || null;
 
   return {
+    components: normalizeRiderHistoryComponents(components),
     data() {
       return {
         orders: [],

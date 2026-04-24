@@ -55,6 +55,19 @@ test("rider hall helpers filter recommended orders by hall tabs", () => {
   );
 });
 
+test("rider hall page logic keeps injected page components on the shared definition", () => {
+  const componentRegistry = {
+    IconHeadphones: { name: "IconHeadphones" },
+    IconBell: { name: "IconBell" },
+  };
+
+  const component = createRiderHallPageLogic({
+    components: componentRegistry,
+  });
+
+  assert.equal(component.components, componentRegistry);
+});
+
 test("rider hall page loads status, binds realtime refresh, updates location and handles grabbing orders", async () => {
   const events = [];
   const toasts = [];

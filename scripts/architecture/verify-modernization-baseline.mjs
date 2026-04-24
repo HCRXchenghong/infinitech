@@ -2558,6 +2558,7 @@ assertContains(
   "from '../../../packages/mobile-core/src/rider-hall-page.js'",
 );
 assertContains("rider-app/pages/hall/index-logic.ts", "createRiderHallPageLogic");
+assertNotContains("rider-app/pages/hall/index-logic.ts", "...createRiderHallPageLogic({");
 assertNotContains("rider-app/pages/hall/index-logic.ts", "startOrderCountdown()");
 assertNotContains("rider-app/pages/hall/index-logic.ts", "async getLocation()");
 assertContains(
@@ -10163,6 +10164,7 @@ assertContains("rider-app/pages/profile/earnings.vue", "createRiderEarningsPageL
 assertContains("packages/mobile-core/src/rider-earnings-page.js", "收入明细加载失败");
 assertContains("packages/mobile-core/src/rider-earnings-page.js", "冻结中，24小时后自动入账");
 assertContains("rider-app/pages/profile/history.vue", "createRiderHistoryOrdersPageLogic");
+assertNotContains("rider-app/pages/profile/history.vue", "...createRiderHistoryOrdersPageLogic({");
 assertContains("packages/mobile-core/src/rider-history-orders-page.js", "历史订单加载失败");
 assertContains("packages/mobile-core/src/rider-history-orders-page.js", "已完成");
 assertContains("rider-app/pages/login/index.vue", "createRiderLoginPageLogic");

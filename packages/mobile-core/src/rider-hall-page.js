@@ -47,6 +47,12 @@ function normalizeRiderHallOrders(orders = []) {
   return Array.isArray(orders) ? orders : [];
 }
 
+function normalizeRiderHallComponents(components) {
+  return components && typeof components === "object" && !Array.isArray(components)
+    ? components
+    : {};
+}
+
 function normalizeRiderHallLocationCache(cache = {}) {
   const value = cache && typeof cache === "object" ? cache : {};
   return {
@@ -119,6 +125,7 @@ export function createRiderHallPageLogic(options = {}) {
     loadRiderData,
     getCurrentLocation,
     uniApp,
+    components,
     setTimeoutFn,
     setIntervalFn,
     clearIntervalFn,
@@ -130,6 +137,7 @@ export function createRiderHallPageLogic(options = {}) {
     riderOrderStore && typeof riderOrderStore === "object" ? riderOrderStore : {};
 
   return {
+    components: normalizeRiderHallComponents(components),
     data() {
       return {
         statusBarHeight: 44,

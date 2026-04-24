@@ -46,16 +46,14 @@ import { readRiderAuthIdentity } from '../../shared-ui/auth-session.js'
 import OrderDetailPopup from '../../components/OrderDetailPopup.vue'
 import { createRiderHistoryOrdersPageLogic } from '../../../packages/mobile-core/src/rider-history-orders-page.js'
 
-export default Vue.extend({
+export default Vue.extend(createRiderHistoryOrdersPageLogic({
+  fetchRiderOrders,
+  readRiderAuthIdentity,
+  uniApp: uni,
   components: {
     OrderDetailPopup
-  },
-  ...createRiderHistoryOrdersPageLogic({
-    fetchRiderOrders,
-    readRiderAuthIdentity,
-    uniApp: uni,
-  })
-})
+  }
+}))
 </script>
 
 <style lang="scss" scoped>

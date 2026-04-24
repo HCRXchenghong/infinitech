@@ -75,6 +75,18 @@ test("rider history helpers merge by id and sort descending", () => {
   ]);
 });
 
+test("rider history page logic preserves injected page components", () => {
+  const componentRegistry = {
+    OrderDetailPopup: { name: "OrderDetailPopup" },
+  };
+
+  const component = createRiderHistoryOrdersPageLogic({
+    components: componentRegistry,
+  });
+
+  assert.equal(component.components, componentRegistry);
+});
+
 test("rider history page loads completed and cancelled orders and opens popup", async () => {
   const stopCalls = [];
   const component = createRiderHistoryOrdersPageLogic({
