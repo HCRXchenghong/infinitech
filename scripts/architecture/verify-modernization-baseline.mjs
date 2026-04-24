@@ -4815,7 +4815,7 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:architecture-tests": "node --test scripts/architecture/check-admin-desktop-shell-scope.test.mjs scripts/architecture/check-admin-shell-duplicates.test.mjs scripts/architecture/check-consumer-shared-shells.test.mjs scripts/architecture/check-go-route-guard-coverage.test.mjs"',
+  '"verify:architecture-tests": "node --test scripts/architecture/check-admin-desktop-shell-scope.test.mjs scripts/architecture/check-admin-shell-duplicates.test.mjs scripts/architecture/check-consumer-shared-shells.test.mjs scripts/architecture/check-go-route-guard-coverage.test.mjs scripts/architecture/check-go-response-envelopes.test.mjs"',
 );
 assertContains(
   "package.json",
@@ -4823,11 +4823,13 @@ assertContains(
 );
 assertContains(
   "package.json",
-  '"verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && node scripts/architecture/check-admin-desktop-shell-scope.mjs && node scripts/architecture/check-admin-shell-duplicates.mjs && node scripts/architecture/check-consumer-shared-shells.mjs && node scripts/architecture/check-go-route-guard-coverage.mjs && npm run verify:architecture-tests && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:admin-vue-tests && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:security-tests && npm run verify:backend-security && npm run verify:backend-runtime && npm run verify:management-tests"',
+  '"verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && node scripts/architecture/check-admin-desktop-shell-scope.mjs && node scripts/architecture/check-admin-shell-duplicates.mjs && node scripts/architecture/check-consumer-shared-shells.mjs && node scripts/architecture/check-go-route-guard-coverage.mjs && node scripts/architecture/check-go-response-envelopes.mjs && npm run verify:architecture-tests && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:admin-vue-tests && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:security-tests && npm run verify:backend-security && npm run verify:backend-runtime && npm run verify:management-tests"',
 );
 assertExists("scripts/architecture/check-admin-desktop-shell-scope.mjs");
 assertExists("scripts/architecture/check-go-route-guard-coverage.mjs");
 assertExists("scripts/architecture/check-go-route-guard-coverage.test.mjs");
+assertExists("scripts/architecture/check-go-response-envelopes.mjs");
+assertExists("scripts/architecture/check-go-response-envelopes.test.mjs");
 assertContains(
   "package.json",
   '"verify:client-sdk-tests": "node --test packages/client-sdk/src/error-utils.test.mjs packages/client-sdk/src/local-db.test.mjs packages/client-sdk/src/mobile-capabilities.test.mjs packages/client-sdk/src/mobile-config.test.mjs packages/client-sdk/src/mobile-config-shell.test.mjs packages/client-sdk/src/mobile-config-helper.test.mjs packages/client-sdk/src/mobile-utils.test.mjs packages/client-sdk/src/notification-audio.test.mjs packages/client-sdk/src/onboarding-invite.test.mjs packages/client-sdk/src/push-events.test.mjs packages/client-sdk/src/push-registration.test.mjs packages/client-sdk/src/realtime-notify.test.mjs packages/client-sdk/src/role-auth-response.test.mjs packages/client-sdk/src/role-auth-session.test.mjs packages/client-sdk/src/role-auth-shell.test.mjs packages/client-sdk/src/role-notify-bridges.test.mjs packages/client-sdk/src/role-notify-shell.test.mjs packages/client-sdk/src/role-push-event-shell.test.mjs packages/client-sdk/src/realtime-token.test.mjs packages/client-sdk/src/rtc-contact.test.mjs packages/client-sdk/src/rtc-media.test.mjs packages/client-sdk/src/rtc-runtime.test.mjs packages/client-sdk/src/safe-access.test.mjs packages/client-sdk/src/socket-io.test.mjs packages/client-sdk/src/stored-auth-identity.test.mjs packages/client-sdk/src/support-socket.test.mjs packages/client-sdk/src/support-socket-bridge.test.mjs packages/client-sdk/src/support-socket-shell.test.mjs packages/client-sdk/src/uni-request.test.mjs"',

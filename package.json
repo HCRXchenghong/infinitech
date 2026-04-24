@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.1",
   "scripts": {
-    "verify:architecture-tests": "node --test scripts/architecture/check-admin-desktop-shell-scope.test.mjs scripts/architecture/check-admin-shell-duplicates.test.mjs scripts/architecture/check-consumer-shared-shells.test.mjs scripts/architecture/check-go-route-guard-coverage.test.mjs",
+    "verify:architecture-tests": "node --test scripts/architecture/check-admin-desktop-shell-scope.test.mjs scripts/architecture/check-admin-shell-duplicates.test.mjs scripts/architecture/check-consumer-shared-shells.test.mjs scripts/architecture/check-go-route-guard-coverage.test.mjs scripts/architecture/check-go-response-envelopes.test.mjs",
     "verify:merchant-types": "npx tsc -p merchant-app/tsconfig.json --noEmit",
     "verify:rider-types": "npx tsc -p rider-app/tsconfig.json --noEmit",
     "verify:user-types": "npx tsc -p user-vue/tsconfig.json --noEmit",
@@ -30,7 +30,7 @@
     "verify:sidecar-tests": "npm --prefix backend/bank-payout-sidecar test && npm --prefix backend/alipay-sidecar test && npm --prefix backend/bank-payout-sidecar run check && npm --prefix backend/alipay-sidecar run check",
     "verify:management-tests": "node --test scripts/lib/management/management.test.mjs",
     "verify:backend-runtime": "npm run verify:go-tests && npm run verify:bff-tests && npm run verify:socket-tests && npm run verify:socket-check && npm run verify:sidecar-tests",
-    "verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && node scripts/architecture/check-admin-desktop-shell-scope.mjs && node scripts/architecture/check-admin-shell-duplicates.mjs && node scripts/architecture/check-consumer-shared-shells.mjs && node scripts/architecture/check-go-route-guard-coverage.mjs && npm run verify:architecture-tests && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:admin-vue-tests && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:security-tests && npm run verify:backend-security && npm run verify:backend-runtime && npm run verify:management-tests"
+    "verify:modernization": "node scripts/architecture/verify-modernization-baseline.mjs && node scripts/architecture/check-admin-desktop-shell-scope.mjs && node scripts/architecture/check-admin-shell-duplicates.mjs && node scripts/architecture/check-consumer-shared-shells.mjs && node scripts/architecture/check-go-route-guard-coverage.mjs && node scripts/architecture/check-go-response-envelopes.mjs && npm run verify:architecture-tests && npm run verify:mobile-types && npm run verify:admin-stack && npm run verify:admin-vue-tests && npm run verify:contracts-tests && npm run verify:domain-core-tests && npm run verify:mobile-core-tests && npm run verify:admin-core-tests && npm run verify:client-sdk-tests && npm run verify:security-tests && npm run verify:backend-security && npm run verify:backend-runtime && npm run verify:management-tests"
   },
   "workspaces": [
     "packages/*",
