@@ -1,5 +1,19 @@
 import { createConsumerRTCContactBindings } from "./consumer-rtc-contact.js";
 
+function createConsumerRTCContactAliasBindings(bindings) {
+  return {
+    bindings,
+    canUseUserRTCContact: bindings.canUseCurrentRTCContact,
+    startUserRTCCall: bindings.startRTCCall,
+    connectUserRTCSignalSession: bindings.connectRTCSignalSession,
+    updateUserRTCCall: bindings.updateRTCCall,
+    fetchUserRTCCall: bindings.fetchRTCCall,
+    fetchUserRTCCallHistory: bindings.fetchRTCCallHistory,
+    ensureUserRTCInviteBridge: bindings.ensureRTCInviteBridge,
+    disconnectUserRTCInviteBridge: bindings.disconnectRTCInviteBridge,
+  };
+}
+
 export function createDefaultConsumerRTCContactBindings(options = {}) {
   const {
     config = {},
@@ -16,17 +30,19 @@ export function createDefaultConsumerRTCContactBindings(options = {}) {
 }
 
 export function createConsumerUserRTCContactBindings(options = {}) {
-  const bindings = createDefaultConsumerRTCContactBindings(options);
+  const bindings = createDefaultConsumerRTCContactBindings({
+    clientKind: "uni-user",
+    ...options,
+  });
 
-  return {
-    bindings,
-    canUseUserRTCContact: bindings.canUseCurrentRTCContact,
-    startUserRTCCall: bindings.startRTCCall,
-    connectUserRTCSignalSession: bindings.connectRTCSignalSession,
-    updateUserRTCCall: bindings.updateRTCCall,
-    fetchUserRTCCall: bindings.fetchRTCCall,
-    fetchUserRTCCallHistory: bindings.fetchRTCCallHistory,
-    ensureUserRTCInviteBridge: bindings.ensureRTCInviteBridge,
-    disconnectUserRTCInviteBridge: bindings.disconnectRTCInviteBridge,
-  };
+  return createConsumerRTCContactAliasBindings(bindings);
+}
+
+export function createConsumerAppRTCContactBindings(options = {}) {
+  const bindings = createDefaultConsumerRTCContactBindings({
+    clientKind: "uni-app-mobile",
+    ...options,
+  });
+
+  return createConsumerRTCContactAliasBindings(bindings);
 }

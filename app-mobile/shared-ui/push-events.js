@@ -1,7 +1,6 @@
 import { ackPushMessage } from "./api";
-import { createDefaultConsumerPushEventBridgeStarter } from "../../packages/mobile-core/src/consumer-notify-shell.js";
+import { createConsumerAppPushEventBridgeStarter } from "../../packages/mobile-core/src/consumer-notify-shell.js";
 
-export const startPushEventBridge = createDefaultConsumerPushEventBridgeStarter({
-  loggerTag: "AppMobilePushBridge",
+export const startPushEventBridge = createConsumerAppPushEventBridgeStarter({
   ackPushMessage,
 });

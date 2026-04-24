@@ -24,7 +24,6 @@ const {
   disconnectUserRTCInviteBridge,
 } = createConsumerUserRTCContactBindings({
   config,
-  clientKind: "uni-user",
   readAuthorizationHeader,
   createRTCCall,
   getRTCCall,

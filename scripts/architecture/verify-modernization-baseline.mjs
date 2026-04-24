@@ -3286,11 +3286,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/push-events.js",
-  "createDefaultConsumerPushEventBridgeStarter({",
+  "createConsumerUserPushEventBridgeStarter({",
 );
 assertContains(
   "app-mobile/shared-ui/push-events.js",
-  "createDefaultConsumerPushEventBridgeStarter({",
+  "createConsumerAppPushEventBridgeStarter({",
 );
 assertContains(
   "merchant-app/shared-ui/push-events.ts",
@@ -5427,7 +5427,7 @@ assertContains("merchant-app/shared-ui/api.ts", "createRoleApiRuntimeBindings({"
 assertContains("rider-app/shared-ui/api.ts", "createRoleApiRuntimeBindings({");
 assertContains(
   "user-vue/shared-ui/push-registration.js",
-  "createDefaultConsumerPushRegistrationBindings({",
+  "createConsumerUserPushRegistrationBindings({",
 );
 assertContains(
   "user-vue/shared-ui/push-registration.js",
@@ -5435,7 +5435,7 @@ assertContains(
 );
 assertContains(
   "app-mobile/shared-ui/push-registration.js",
-  "createDefaultConsumerPushRegistrationBindings({",
+  "createConsumerAppPushRegistrationBindings({",
 );
 assertContains(
   "app-mobile/shared-ui/push-registration.js",
@@ -5467,7 +5467,7 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/realtime-notify.js",
-  "createDefaultConsumerRealtimeNotifyBindings({",
+  "createConsumerUserRealtimeNotifyBindings({",
 );
 assertContains(
   "user-vue/shared-ui/realtime-notify.js",
@@ -5475,7 +5475,7 @@ assertContains(
 );
 assertContains(
   "app-mobile/shared-ui/realtime-notify.js",
-  "createDefaultConsumerRealtimeNotifyBindings({",
+  "createConsumerAppRealtimeNotifyBindings({",
 );
 assertContains(
   "app-mobile/shared-ui/realtime-notify.js",
@@ -5617,11 +5617,11 @@ assertContains(
 );
 assertContains(
   "user-vue/shared-ui/push-events.js",
-  "createDefaultConsumerPushEventBridgeStarter({",
+  "createConsumerUserPushEventBridgeStarter({",
 );
 assertContains(
   "app-mobile/shared-ui/push-events.js",
-  "createDefaultConsumerPushEventBridgeStarter({",
+  "createConsumerAppPushEventBridgeStarter({",
 );
 assertContains(
   "merchant-app/shared-ui/push-events.ts",
@@ -5661,7 +5661,7 @@ assertContains(
 );
 assertContains(
   "app-mobile/shared-ui/rtc-contact.js",
-  "createConsumerUserRTCContactBindings({",
+  "createConsumerAppRTCContactBindings({",
 );
 assertContains(
   "packages/mobile-core/src/consumer-notify-shell.js",
@@ -5669,11 +5669,35 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/consumer-notify-shell.js",
+  "export function createConsumerUserPushRegistrationBindings(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-notify-shell.js",
+  "export function createConsumerAppPushRegistrationBindings(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-notify-shell.js",
   "export function createDefaultConsumerRealtimeNotifyBindings(options = {}) {",
 );
 assertContains(
   "packages/mobile-core/src/consumer-notify-shell.js",
+  "export function createConsumerUserRealtimeNotifyBindings(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-notify-shell.js",
+  "export function createConsumerAppRealtimeNotifyBindings(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-notify-shell.js",
   "export function createDefaultConsumerPushEventBridgeStarter(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-notify-shell.js",
+  "export function createConsumerUserPushEventBridgeStarter(options = {}) {",
+);
+assertContains(
+  "packages/mobile-core/src/consumer-notify-shell.js",
+  "export function createConsumerAppPushEventBridgeStarter(options = {}) {",
 );
 assertContains(
   "packages/mobile-core/src/consumer-errand-runtime-shell.js",
@@ -5711,29 +5735,57 @@ assertContains(
   "packages/mobile-core/src/consumer-rtc-contact-shell.js",
   "export function createConsumerUserRTCContactBindings(options = {}) {",
 );
+assertContains(
+  "packages/mobile-core/src/consumer-rtc-contact-shell.js",
+  "export function createConsumerAppRTCContactBindings(options = {}) {",
+);
 assertNotContains(
   "user-vue/shared-ui/push-registration.js",
   "createConsumerPushRegistrationBindings({",
+);
+assertNotContains(
+  "user-vue/shared-ui/push-registration.js",
+  "createDefaultConsumerPushRegistrationBindings({",
 );
 assertNotContains(
   "app-mobile/shared-ui/push-registration.js",
   "createConsumerPushRegistrationBindings({",
 );
 assertNotContains(
+  "app-mobile/shared-ui/push-registration.js",
+  "createDefaultConsumerPushRegistrationBindings({",
+);
+assertNotContains(
   "user-vue/shared-ui/realtime-notify.js",
   "createConsumerRealtimeNotifyBindings({",
+);
+assertNotContains(
+  "user-vue/shared-ui/realtime-notify.js",
+  "createDefaultConsumerRealtimeNotifyBindings({",
 );
 assertNotContains(
   "app-mobile/shared-ui/realtime-notify.js",
   "createConsumerRealtimeNotifyBindings({",
 );
 assertNotContains(
+  "app-mobile/shared-ui/realtime-notify.js",
+  "createDefaultConsumerRealtimeNotifyBindings({",
+);
+assertNotContains(
   "user-vue/shared-ui/push-events.js",
   "createConsumerPushEventBridge({",
 );
 assertNotContains(
+  "user-vue/shared-ui/push-events.js",
+  "createDefaultConsumerPushEventBridgeStarter({",
+);
+assertNotContains(
   "app-mobile/shared-ui/push-events.js",
   "createConsumerPushEventBridge({",
+);
+assertNotContains(
+  "app-mobile/shared-ui/push-events.js",
+  "createDefaultConsumerPushEventBridgeStarter({",
 );
 assertNotContains(
   "user-vue/shared-ui/request-interceptor.ts",
@@ -5758,6 +5810,10 @@ assertNotContains(
 assertNotContains(
   "app-mobile/shared-ui/rtc-contact.js",
   "createConsumerRTCContactBindings({",
+);
+assertNotContains(
+  "app-mobile/shared-ui/rtc-contact.js",
+  "createConsumerUserRTCContactBindings({",
 );
 assertContains(
   "user-vue/shared-ui/rtc-runtime.js",

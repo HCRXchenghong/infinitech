@@ -19,6 +19,20 @@ export function createDefaultConsumerPushRegistrationBindings(options = {}) {
   });
 }
 
+export function createConsumerUserPushRegistrationBindings(options = {}) {
+  return createDefaultConsumerPushRegistrationBindings({
+    storageKey: "user_vue_push_registration",
+    ...options,
+  });
+}
+
+export function createConsumerAppPushRegistrationBindings(options = {}) {
+  return createDefaultConsumerPushRegistrationBindings({
+    storageKey: "app_mobile_push_registration",
+    ...options,
+  });
+}
+
 export function createDefaultConsumerRealtimeNotifyBindings(options = {}) {
   const {
     config = {},
@@ -34,6 +48,22 @@ export function createDefaultConsumerRealtimeNotifyBindings(options = {}) {
   });
 }
 
+export function createConsumerUserRealtimeNotifyBindings(options = {}) {
+  return createDefaultConsumerRealtimeNotifyBindings({
+    loggerTag: "UserRealtimeNotify",
+    storageKey: "user_realtime_notify_state",
+    ...options,
+  });
+}
+
+export function createConsumerAppRealtimeNotifyBindings(options = {}) {
+  return createDefaultConsumerRealtimeNotifyBindings({
+    loggerTag: "AppRealtimeNotify",
+    storageKey: "app_realtime_notify_state",
+    ...options,
+  });
+}
+
 export function createDefaultConsumerPushEventBridgeStarter(options = {}) {
   const {
     createConsumerPushEventBridgeImpl = createConsumerPushEventBridge,
@@ -46,4 +76,18 @@ export function createDefaultConsumerPushEventBridgeStarter(options = {}) {
       ...optionsOverride,
     })();
   };
+}
+
+export function createConsumerUserPushEventBridgeStarter(options = {}) {
+  return createDefaultConsumerPushEventBridgeStarter({
+    loggerTag: "UserPushBridge",
+    ...options,
+  });
+}
+
+export function createConsumerAppPushEventBridgeStarter(options = {}) {
+  return createDefaultConsumerPushEventBridgeStarter({
+    loggerTag: "AppMobilePushBridge",
+    ...options,
+  });
 }

@@ -7,7 +7,7 @@ import {
   readAuthorizationHeader,
   updateRTCCallStatus,
 } from "@/shared-ui/api.js";
-import { createConsumerUserRTCContactBindings } from "../../packages/mobile-core/src/consumer-rtc-contact-shell.js";
+import { createConsumerAppRTCContactBindings } from "../../packages/mobile-core/src/consumer-rtc-contact-shell.js";
 import {
   getCachedRTCRuntimeSettings,
   loadRTCRuntimeSettings,
@@ -22,9 +22,8 @@ const {
   fetchUserRTCCallHistory,
   ensureUserRTCInviteBridge,
   disconnectUserRTCInviteBridge,
-} = createConsumerUserRTCContactBindings({
+} = createConsumerAppRTCContactBindings({
   config,
-  clientKind: "uni-app-mobile",
   readAuthorizationHeader,
   createRTCCall,
   getRTCCall,

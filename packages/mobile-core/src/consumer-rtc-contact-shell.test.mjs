@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  createConsumerAppRTCContactBindings,
   createConsumerUserRTCContactBindings,
   createDefaultConsumerRTCContactBindings,
 } from "./consumer-rtc-contact-shell.js";
@@ -78,4 +79,44 @@ test("consumer rtc contact shell exposes stable user alias bindings", () => {
   assert.equal(bindings.fetchUserRTCCallHistory(), "history");
   assert.equal(bindings.ensureUserRTCInviteBridge(), "ensured");
   assert.equal(bindings.disconnectUserRTCInviteBridge(), "disconnected");
+});
+
+test("consumer rtc contact shell exposes stable app alias defaults", () => {
+  let observedClientKind = null;
+
+  const bindings = createConsumerAppRTCContactBindings({
+    getSocketUrl: () => "https://socket.example.com",
+    createUniRTCContactBridgeImpl(options) {
+      observedClientKind = options.clientKind;
+      return {
+        canUseCurrentRTCContact() {
+          return true;
+        },
+        startRTCCall() {
+          return "started";
+        },
+        connectRTCSignalSession() {
+          return "connected";
+        },
+        updateRTCCall() {
+          return "updated";
+        },
+        fetchRTCCall() {
+          return "call";
+        },
+        fetchRTCCallHistory() {
+          return "history";
+        },
+        ensureRTCInviteBridge() {
+          return "ensured";
+        },
+        disconnectRTCInviteBridge() {
+          return "disconnected";
+        },
+      };
+    },
+  });
+
+  assert.equal(observedClientKind, "uni-app-mobile");
+  assert.equal(bindings.startUserRTCCall(), "started");
 });

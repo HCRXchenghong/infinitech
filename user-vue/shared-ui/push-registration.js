@@ -4,7 +4,7 @@ import {
   unregisterPushDevice,
   ackPushMessage as ackPushMessageApi,
 } from "./api";
-import { createDefaultConsumerPushRegistrationBindings } from "../../packages/mobile-core/src/consumer-notify-shell.js";
+import { createConsumerUserPushRegistrationBindings } from "../../packages/mobile-core/src/consumer-notify-shell.js";
 
 export const {
   registerCurrentPushDevice,
@@ -12,9 +12,8 @@ export const {
   clearPushRegistrationState,
   getCachedRegistrationState,
   ackPushMessage,
-} = createDefaultConsumerPushRegistrationBindings({
+} = createConsumerUserPushRegistrationBindings({
   config,
-  storageKey: "user_vue_push_registration",
   registerPushDevice,
   unregisterPushDevice,
   ackPushMessage: ackPushMessageApi,

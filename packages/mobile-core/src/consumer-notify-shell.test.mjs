@@ -2,6 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  createConsumerAppPushEventBridgeStarter,
+  createConsumerAppPushRegistrationBindings,
+  createConsumerAppRealtimeNotifyBindings,
+  createConsumerUserPushEventBridgeStarter,
+  createConsumerUserPushRegistrationBindings,
+  createConsumerUserRealtimeNotifyBindings,
   createDefaultConsumerPushEventBridgeStarter,
   createDefaultConsumerPushRegistrationBindings,
   createDefaultConsumerRealtimeNotifyBindings,
@@ -68,6 +74,42 @@ test("consumer notify shell respects explicit push registration overrides", () =
   assert.equal(managerOptions.getAppEnv(), "custom");
 });
 
+test("consumer notify shell exposes stable user/app push registration aliases", () => {
+  let storageKeys = [];
+
+  for (const createBindings of [
+    createConsumerUserPushRegistrationBindings,
+    createConsumerAppPushRegistrationBindings,
+  ]) {
+    createBindings({
+      config: { isDev: false },
+      registerPushDevice: async () => {},
+      unregisterPushDevice: async () => {},
+      ackPushMessage: async () => {},
+      createStoredAuthIdentityResolverImpl() {
+        return { type: "resolver" };
+      },
+      createPushRegistrationManagerImpl(options) {
+        storageKeys.push(options.storageKey);
+        return {
+          registerCurrentPushDevice() {},
+          unregisterCurrentPushDevice() {},
+          clearPushRegistrationState() {},
+          getCachedRegistrationState() {
+            return null;
+          },
+          ackPushMessage() {},
+        };
+      },
+    });
+  }
+
+  assert.deepEqual(storageKeys, [
+    "user_vue_push_registration",
+    "app_mobile_push_registration",
+  ]);
+});
+
 test("consumer notify shell derives realtime defaults from config", () => {
   let bridgeOptions = null;
 
@@ -123,6 +165,38 @@ test("consumer notify shell respects explicit realtime overrides", () => {
   assert.equal(bridgeOptions.getSocketURL(), "https://override.example.com");
 });
 
+test("consumer notify shell exposes stable user/app realtime aliases", () => {
+  let aliasOptions = [];
+
+  for (const createBindings of [
+    createConsumerUserRealtimeNotifyBindings,
+    createConsumerAppRealtimeNotifyBindings,
+  ]) {
+    createBindings({
+      config: { SOCKET_URL: "https://socket.example.com" },
+      createSocket() {
+        return null;
+      },
+      createStoredAuthIdentityResolverImpl() {
+        return { type: "resolver" };
+      },
+      createRealtimeNotifyBridgeImpl(options) {
+        aliasOptions.push([options.loggerTag, options.storageKey]);
+        return {
+          connectCurrentRealtimeChannel() {},
+          disconnectRealtimeChannel() {},
+          clearRealtimeState() {},
+        };
+      },
+    });
+  }
+
+  assert.deepEqual(aliasOptions, [
+    ["UserRealtimeNotify", "user_realtime_notify_state"],
+    ["AppRealtimeNotify", "app_realtime_notify_state"],
+  ]);
+});
+
 test("consumer notify shell creates push event starters with overridable options", async () => {
   let receivedOptions = null;
 
@@ -141,4 +215,22 @@ test("consumer notify shell creates push event starters with overridable options
 
   assert.equal(result, "started");
   assert.equal(receivedOptions.loggerTag, "OverridePushBridge");
+});
+
+test("consumer notify shell exposes stable user/app push event aliases", async () => {
+  let loggerTags = [];
+
+  for (const createStarter of [
+    createConsumerUserPushEventBridgeStarter,
+    createConsumerAppPushEventBridgeStarter,
+  ]) {
+    await createStarter({
+      createConsumerPushEventBridgeImpl(options) {
+        loggerTags.push(options.loggerTag);
+        return () => Promise.resolve();
+      },
+    })();
+  }
+
+  assert.deepEqual(loggerTags, ["UserPushBridge", "AppMobilePushBridge"]);
 });
