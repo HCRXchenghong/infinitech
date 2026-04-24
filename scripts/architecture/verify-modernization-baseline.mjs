@@ -416,6 +416,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/rider-earnings-page.test.mjs",
   "packages/mobile-core/src/rider-avatar-upload-page.js",
   "packages/mobile-core/src/rider-avatar-upload-page.test.mjs",
+  "packages/mobile-core/src/rider-developer-page.js",
+  "packages/mobile-core/src/rider-developer-page.test.mjs",
   "packages/mobile-core/src/rider-history-orders-page.js",
   "packages/mobile-core/src/rider-history-orders-page.test.mjs",
   "packages/mobile-core/src/rider-home-page.js",
@@ -1201,6 +1203,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   [
     "rider-app/pages/profile/index-logic.ts",
     "../../../packages/mobile-core/src/rider-profile-home-page.js",
+  ],
+  [
+    "rider-app/pages/profile/developer.vue",
+    "../../../packages/mobile-core/src/rider-developer-page.js",
   ],
   [
     "rider-app/pages/profile/insurance.vue",
@@ -2445,6 +2451,17 @@ assertNotContains(
   "rider-app/pages/profile/index-logic.ts",
   "withNavigateLock(callback: () => void)",
 );
+assertContains(
+  "rider-app/pages/profile/developer.vue",
+  "from '../../../packages/mobile-core/src/rider-developer-page.js'",
+);
+assertContains(
+  "rider-app/pages/profile/developer.vue",
+  "createRiderDeveloperPageLogic",
+);
+assertNotContains("rider-app/pages/profile/developer.vue", "testNotification()");
+assertNotContains("rider-app/pages/profile/developer.vue", "showDiagnosticInfo()");
+assertNotContains("rider-app/pages/profile/developer.vue", "reinitNotification()");
 assertContains(
   "rider-app/pages/profile/settings.vue",
   "from '../../../packages/mobile-core/src/rider-profile-settings-page.js'",
@@ -7498,6 +7515,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-developer-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./rider-home-page.js";',
 );
 assertContains(
@@ -7615,6 +7636,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rider-history-orders-page": "./src/rider-history-orders-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-developer-page": "./src/rider-developer-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -9865,6 +9890,9 @@ assertContains("packages/mobile-core/src/rider-history-orders-page.js", "已完�
 assertContains("rider-app/pages/profile/rider-home.vue", "createRiderHomePageLogic");
 assertContains("packages/mobile-core/src/rider-home-page.js", "加载骑手等级 runtime 失败");
 assertContains("packages/mobile-core/src/rider-home-page.js", "累计0/100单，升级白银骑士");
+assertContains("rider-app/pages/profile/developer.vue", "createRiderDeveloperPageLogic");
+assertContains("packages/mobile-core/src/rider-developer-page.js", "仅 APP 端支持原生通知");
+assertContains("packages/mobile-core/src/rider-developer-page.js", "这是一条测试消息，用于验证消息弹窗功能是否正常工作。");
 assertContains("rider-app/pages/profile/index-logic.ts", "createRiderProfileHomePageLogic");
 assertContains("packages/mobile-core/src/rider-profile-home-page.js", "加载骑手主页数据失败");
 assertContains(
