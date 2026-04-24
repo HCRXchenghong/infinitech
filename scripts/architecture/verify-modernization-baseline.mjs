@@ -424,6 +424,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/rider-history-orders-page.test.mjs",
   "packages/mobile-core/src/rider-home-page.js",
   "packages/mobile-core/src/rider-home-page.test.mjs",
+  "packages/mobile-core/src/rider-service-page.js",
+  "packages/mobile-core/src/rider-service-page.test.mjs",
   "packages/mobile-core/src/rider-task-detail-page.js",
   "packages/mobile-core/src/rider-task-detail-page.test.mjs",
   "packages/mobile-core/src/rider-profile-home-page.js",
@@ -1177,6 +1179,10 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   [
     "rider-app/pages/hall/index-logic.ts",
     "../../../packages/mobile-core/src/rider-hall-page.js",
+  ],
+  [
+    "rider-app/pages/service/index-logic.ts",
+    "../../../packages/mobile-core/src/rider-service-page.js",
   ],
   [
     "rider-app/pages/tasks/index-logic.ts",
@@ -2415,16 +2421,15 @@ assertContains("rider-app/shared-ui/taskActions.ts", "navigateToRoleChat(uni, {"
 assertContains("rider-app/shared-ui/taskActions.ts", "resolveRoleChatOrderId(task)");
 assertContains(
   "rider-app/pages/service/index-logic.ts",
-  "from \"../../../packages/mobile-core/src/role-chat-portal.js\"",
+  "from \"../../../packages/mobile-core/src/rider-service-page.js\"",
 );
-assertContains("rider-app/pages/service/index-logic.ts", "buildRoleChatConversationPayload({");
-assertContains("rider-app/pages/service/index-logic.ts", "buildRoleChatOutgoingPayload({");
-assertContains(
-  "rider-app/pages/service/service-data-methods.ts",
-  "from '../../../packages/mobile-core/src/role-chat-portal.js'",
-);
-assertContains("rider-app/pages/service/service-data-methods.ts", "resolveRoleChatMessageId(payload, fallback)");
-assertContains("rider-app/pages/service/service-data-methods.ts", "normalizeRoleChatOrder(order)");
+assertContains("rider-app/pages/service/index-logic.ts", "createRiderServicePageLogic");
+assertNotContains("rider-app/pages/service/index-logic.ts", "buildRoleChatConversationPayload({");
+assertNotContains("rider-app/pages/service/index-logic.ts", "buildRoleChatOutgoingPayload({");
+assertNotContains("rider-app/pages/service/index-logic.ts", "async switchChat(nextChatId");
+assertNotContains("rider-app/pages/service/index-logic.ts", "chooseImage() {");
+assertNotContains("rider-app/pages/service/index-logic.ts", "sendOrder(order: any)");
+assertNotExists("rider-app/pages/service/service-data-methods.ts");
 assertContains(
   "rider-app/pages/profile/avatar-upload.vue",
   "from '../../../packages/mobile-core/src/rider-avatar-upload-page.js'",
@@ -7570,6 +7575,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-service-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./rider-task-detail-page.js";',
 );
 assertContains(
@@ -7703,6 +7712,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rider-home-page": "./src/rider-home-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-service-page": "./src/rider-service-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -9963,6 +9976,9 @@ assertContains("packages/mobile-core/src/rider-developer-page.js", "这是一条
 assertContains("rider-app/pages/hall/index-logic.ts", "createRiderHallPageLogic");
 assertContains("packages/mobile-core/src/rider-hall-page.js", "抢单成功！");
 assertContains("packages/mobile-core/src/rider-hall-page.js", "定位失败");
+assertContains("rider-app/pages/service/index-logic.ts", "createRiderServicePageLogic");
+assertContains("packages/mobile-core/src/rider-service-page.js", "客服连接中，请稍后重试");
+assertContains("packages/mobile-core/src/rider-service-page.js", "已清除本地记录");
 assertContains("rider-app/pages/tasks/index-logic.ts", "createRiderTasksPageLogic");
 assertContains("packages/mobile-core/src/rider-tasks-page.js", "订单信息异常");
 assertContains("packages/mobile-core/src/rider-tasks-page.js", "开始配送！");

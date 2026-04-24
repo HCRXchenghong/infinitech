@@ -91,6 +91,7 @@ export * from "./rider-earnings-page.js";
 export * from "./rider-hall-page.js";
 export * from "./rider-history-orders-page.js";
 export * from "./rider-home-page.js";
+export * from "./rider-service-page.js";
 export * from "./rider-task-detail-page.js";
 export * from "./rider-profile-home-page.js";
 export * from "./rider-insurance-page.js";

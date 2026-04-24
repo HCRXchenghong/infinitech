@@ -143,6 +143,10 @@ function findContentIssues(relativePath, source) {
     }));
 }
 
+function isMissingTrackedFileError(error) {
+  return error && (error.code === "ENOENT" || error.code === "ENOTDIR");
+}
+
 export function collectCommittedSecretIssues(files, options = {}) {
   const resolveFileBuffer =
     typeof options.resolveFileBuffer === "function"
@@ -151,9 +155,17 @@ export function collectCommittedSecretIssues(files, options = {}) {
   const issues = [];
 
   for (const relativePath of files) {
-    issues.push(...findTrackedPathIssues(relativePath));
+    let buffer;
+    try {
+      buffer = resolveFileBuffer(relativePath);
+    } catch (error) {
+      if (isMissingTrackedFileError(error)) {
+        continue;
+      }
+      throw error;
+    }
 
-    const buffer = resolveFileBuffer(relativePath);
+    issues.push(...findTrackedPathIssues(relativePath));
     if (!Buffer.isBuffer(buffer) || shouldSkipContentScan(relativePath, buffer)) {
       continue;
     }

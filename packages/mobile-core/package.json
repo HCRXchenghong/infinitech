@@ -93,6 +93,7 @@
     "./rider-hall-page": "./src/rider-hall-page.js",
     "./rider-history-orders-page": "./src/rider-history-orders-page.js",
     "./rider-home-page": "./src/rider-home-page.js",
+    "./rider-service-page": "./src/rider-service-page.js",
     "./rider-task-detail-page": "./src/rider-task-detail-page.js",
     "./rider-profile-home-page": "./src/rider-profile-home-page.js",
     "./rider-insurance-page": "./src/rider-insurance-page.js",

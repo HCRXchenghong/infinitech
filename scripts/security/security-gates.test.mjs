@@ -73,6 +73,25 @@ test("committed secret scanner ignores example and test private key placeholders
   assert.deepEqual(issues, []);
 });
 
+test("committed secret scanner skips tracked files missing from the working tree", () => {
+  const issues = collectCommittedSecretIssues(
+    ["rider-app/pages/service/service-data-methods.ts", "README.md"],
+    {
+      resolveFileBuffer(relativePath) {
+        if (relativePath === "README.md") {
+          return Buffer.from("workspace cleanup is in progress", "utf8");
+        }
+
+        const error = new Error("missing file");
+        error.code = "ENOENT";
+        throw error;
+      },
+    },
+  );
+
+  assert.deepEqual(issues, []);
+});
+
 test("backend audit metadata summary normalizes missing counters", () => {
   assert.deepEqual(summarizeAuditMetadata({}), {
     info: 0,
