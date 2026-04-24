@@ -418,6 +418,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/rider-avatar-upload-page.test.mjs",
   "packages/mobile-core/src/rider-developer-page.js",
   "packages/mobile-core/src/rider-developer-page.test.mjs",
+  "packages/mobile-core/src/rider-hall-page.js",
+  "packages/mobile-core/src/rider-hall-page.test.mjs",
   "packages/mobile-core/src/rider-history-orders-page.js",
   "packages/mobile-core/src/rider-history-orders-page.test.mjs",
   "packages/mobile-core/src/rider-home-page.js",
@@ -434,6 +436,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/rider-personal-info-page.test.mjs",
   "packages/mobile-core/src/rider-profile-settings-page.js",
   "packages/mobile-core/src/rider-profile-settings-page.test.mjs",
+  "packages/mobile-core/src/rider-tasks-page.js",
+  "packages/mobile-core/src/rider-tasks-page.test.mjs",
   "packages/mobile-core/src/push-event-route.js",
   "packages/mobile-core/src/push-event-route.test.mjs",
   "packages/mobile-core/src/support-runtime.js",
@@ -1168,6 +1172,14 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   ["rider-app/pages/hall/index-logic.ts", "../../shared-ui/riderOrderStore"],
   ["rider-app/pages/tasks/index-logic.ts", "../../shared-ui/riderOrderStore"],
   ["rider-app/pages/profile/index-logic.ts", "../../shared-ui/riderOrderStore"],
+  [
+    "rider-app/pages/hall/index-logic.ts",
+    "../../../packages/mobile-core/src/rider-hall-page.js",
+  ],
+  [
+    "rider-app/pages/tasks/index-logic.ts",
+    "../../../packages/mobile-core/src/rider-tasks-page.js",
+  ],
   [
     "rider-app/pages/profile/wallet-bills/index-logic.ts",
     "../../../../packages/mobile-core/src/wallet-bills-page.js",
@@ -2462,6 +2474,20 @@ assertContains(
 assertNotContains("rider-app/pages/profile/developer.vue", "testNotification()");
 assertNotContains("rider-app/pages/profile/developer.vue", "showDiagnosticInfo()");
 assertNotContains("rider-app/pages/profile/developer.vue", "reinitNotification()");
+assertContains(
+  "rider-app/pages/hall/index-logic.ts",
+  "from '../../../packages/mobile-core/src/rider-hall-page.js'",
+);
+assertContains("rider-app/pages/hall/index-logic.ts", "createRiderHallPageLogic");
+assertNotContains("rider-app/pages/hall/index-logic.ts", "startOrderCountdown()");
+assertNotContains("rider-app/pages/hall/index-logic.ts", "async getLocation()");
+assertContains(
+  "rider-app/pages/tasks/index-logic.ts",
+  "from '../../../packages/mobile-core/src/rider-tasks-page.js'",
+);
+assertContains("rider-app/pages/tasks/index-logic.ts", "createRiderTasksPageLogic");
+assertNotContains("rider-app/pages/tasks/index-logic.ts", "async handleReport(reason: string)");
+assertNotContains("rider-app/pages/tasks/index-logic.ts", "async handleAdvanceTask(task: any)");
 assertContains(
   "rider-app/pages/profile/settings.vue",
   "from '../../../packages/mobile-core/src/rider-profile-settings-page.js'",
@@ -7519,6 +7545,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./rider-hall-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./rider-home-page.js";',
 );
 assertContains(
@@ -7540,6 +7570,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/index.js",
   'export * from "./rider-profile-settings-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
+  'export * from "./rider-tasks-page.js";',
 );
 assertContains(
   "packages/mobile-core/src/index.js",
@@ -7643,6 +7677,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/package.json",
+  '"./rider-hall-page": "./src/rider-hall-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
   '"./rider-home-page": "./src/rider-home-page.js"',
 );
 assertContains(
@@ -7664,6 +7702,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./rider-profile-settings-page": "./src/rider-profile-settings-page.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./rider-tasks-page": "./src/rider-tasks-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -9893,6 +9935,12 @@ assertContains("packages/mobile-core/src/rider-home-page.js", "累计0/100单，
 assertContains("rider-app/pages/profile/developer.vue", "createRiderDeveloperPageLogic");
 assertContains("packages/mobile-core/src/rider-developer-page.js", "仅 APP 端支持原生通知");
 assertContains("packages/mobile-core/src/rider-developer-page.js", "这是一条测试消息，用于验证消息弹窗功能是否正常工作。");
+assertContains("rider-app/pages/hall/index-logic.ts", "createRiderHallPageLogic");
+assertContains("packages/mobile-core/src/rider-hall-page.js", "抢单成功！");
+assertContains("packages/mobile-core/src/rider-hall-page.js", "定位失败");
+assertContains("rider-app/pages/tasks/index-logic.ts", "createRiderTasksPageLogic");
+assertContains("packages/mobile-core/src/rider-tasks-page.js", "订单信息异常");
+assertContains("packages/mobile-core/src/rider-tasks-page.js", "开始配送！");
 assertContains("rider-app/pages/profile/index-logic.ts", "createRiderProfileHomePageLogic");
 assertContains("packages/mobile-core/src/rider-profile-home-page.js", "加载骑手主页数据失败");
 assertContains(
