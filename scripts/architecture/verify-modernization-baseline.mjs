@@ -5465,8 +5465,10 @@ assertContains(
   "app-mobile/shared-ui/request-interceptor.ts",
   'pushRegistrationStorageKey: "app_mobile_push_registration"',
 );
+assertContains("user-vue/App.vue", "createConsumerAppRootLifecycle");
 assertContains("user-vue/App.vue", "bootstrapUserApp");
 assertContains("user-vue/App.vue", "handleUserAppShow");
+assertContains("app-mobile/App.vue", "createConsumerAppRootLifecycle");
 assertContains("app-mobile/App.vue", "bootstrapUserApp");
 assertContains("app-mobile/App.vue", "handleUserAppShow");
 assertContains(
@@ -9676,6 +9678,8 @@ assertNotContains("app-mobile/App.vue", "async syncPushRegistration()");
 assertNotContains("app-mobile/App.vue", "async syncRealtimeNotifyBridge()");
 assertNotContains("app-mobile/App.vue", "async syncRTCInviteBridge()");
 assertNotContains("app-mobile/App.vue", "clearAuthData()");
+assertNotContains("app-mobile/App.vue", "onLaunch() {");
+assertNotContains("user-vue/App.vue", "onLaunch() {");
 [
   "user-vue/pages/order/coupon/index.vue",
   "app-mobile/pages/order/coupon/index.vue",

@@ -144,3 +144,33 @@ test("consumer shared shell guard groups mirrored components and scripts by rela
     await rm(fixtureRoot, { recursive: true, force: true });
   }
 });
+
+test("consumer shared shell guard also scans mirrored root app shells", async () => {
+  const fixtureRoot = await createFixtureRoot();
+  const userRoot = path.join(fixtureRoot, "user-vue");
+  const appRoot = path.join(fixtureRoot, "app-mobile");
+
+  try {
+    await writeFixtureFile(
+      userRoot,
+      "App.vue",
+      'import { createConsumerAppRootLifecycle } from "../packages/mobile-core/src/consumer-app-shell.js";\nexport default createConsumerAppRootLifecycle({});\n',
+    );
+    await writeFixtureFile(
+      appRoot,
+      "App.vue",
+      'import { createConsumerAppRootLifecycle } from "../packages/mobile-core/src/consumer-app-shell.js";\nexport default createConsumerAppRootLifecycle({});\n',
+    );
+
+    const groups = groupMirroredConsumerShellFiles(
+      await collectConsumerShellFiles({ roots: [userRoot, appRoot] }),
+      { roots: [userRoot, appRoot] },
+    );
+    assert.deepEqual(
+      groups.map((group) => group.relativePath),
+      ["App.vue"],
+    );
+  } finally {
+    await rm(fixtureRoot, { recursive: true, force: true });
+  }
+});

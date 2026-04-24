@@ -1,5 +1,32 @@
 import { createConsumerAppRuntime } from "./consumer-app-runtime.js";
 
+function callConsumerAppShellHandler(handler, context) {
+  if (typeof handler === "function") {
+    return handler.call(context);
+  }
+  return undefined;
+}
+
+export function createConsumerAppRootLifecycle(options = {}) {
+  const {
+    bindNotificationSoundBridge,
+    bootstrapConsumerApp,
+    handleConsumerAppShow,
+  } = options;
+
+  return {
+    onLaunch() {
+      callConsumerAppShellHandler(bindNotificationSoundBridge, this);
+      void callConsumerAppShellHandler(bootstrapConsumerApp, this);
+    },
+    onShow() {
+      callConsumerAppShellHandler(bindNotificationSoundBridge, this);
+      void callConsumerAppShellHandler(handleConsumerAppShow, this);
+    },
+    onHide() {},
+  };
+}
+
 export function createDefaultConsumerUserAppRuntime(options = {}) {
   const {
     config = {},

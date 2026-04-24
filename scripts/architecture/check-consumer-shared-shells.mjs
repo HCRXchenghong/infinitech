@@ -11,6 +11,7 @@ export const CONSUMER_SHELL_ROOTS = Object.freeze([
   path.join(REPO_ROOT, "app-mobile"),
 ]);
 export const CONSUMER_SHELL_SCOPES = Object.freeze(["pages", "components"]);
+export const CONSUMER_SHELL_ROOT_FILES = Object.freeze(["App.vue"]);
 export const CONSUMER_SHARED_CORE_IMPORT_TOKEN = "packages/mobile-core/src/";
 export const CONSUMER_SHARED_CORE_HINT =
   "请把共享业务逻辑收敛到 packages/mobile-core，端侧只保留壳层；如果不是同一业务，请改名避免镜像路径重名。";
@@ -56,12 +57,29 @@ export async function collectConsumerShellFiles(options = {}) {
   const scopes = Array.isArray(options.scopes) && options.scopes.length > 0
     ? options.scopes
     : CONSUMER_SHELL_SCOPES;
+  const rootFiles = Array.isArray(options.rootFiles) && options.rootFiles.length > 0
+    ? options.rootFiles
+    : CONSUMER_SHELL_ROOT_FILES;
   const files = [];
 
   for (const root of roots) {
     for (const scope of scopes) {
       const scopeRoot = path.join(root, scope);
       await collectFilesRecursively(scopeRoot, files);
+    }
+
+    for (const rootFile of rootFiles) {
+      const fullPath = path.join(root, rootFile);
+      try {
+        const content = await readFile(fullPath, "utf8");
+        if (content) {
+          files.push(fullPath);
+        }
+      } catch (error) {
+        if (!error || error.code !== "ENOENT") {
+          throw error;
+        }
+      }
     }
   }
 

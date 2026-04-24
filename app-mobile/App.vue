@@ -11,18 +11,15 @@ import {
   handleUserAppShow,
 } from "@/shared-ui/app-core/bootstrap";
 import { bindNotificationSoundBridge } from "@/shared-ui/notification-sound.js";
+import { createConsumerAppRootLifecycle } from "../packages/mobile-core/src/consumer-app-shell.js";
 
-export default Vue.extend({
-  onLaunch() {
-    bindNotificationSoundBridge();
-    void bootstrapUserApp();
-  },
-  onShow() {
-    bindNotificationSoundBridge();
-    void handleUserAppShow();
-  },
-  onHide() {},
-});
+export default Vue.extend(
+  createConsumerAppRootLifecycle({
+    bindNotificationSoundBridge,
+    bootstrapConsumerApp: bootstrapUserApp,
+    handleConsumerAppShow: handleUserAppShow,
+  }),
+);
 </script>
 
 <style lang="scss">
