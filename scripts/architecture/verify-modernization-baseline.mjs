@@ -434,6 +434,8 @@ function assertNoDirectGenerateTokenRequests(relativeDir, allowedRelativePaths =
   "packages/mobile-core/src/rider-insurance-page.test.mjs",
   "packages/mobile-core/src/rider-order-settings-page.js",
   "packages/mobile-core/src/rider-order-settings-page.test.mjs",
+  "packages/mobile-core/src/merchant-chat-page.js",
+  "packages/mobile-core/src/merchant-chat-page.test.mjs",
   "packages/mobile-core/src/merchant-wallet.js",
   "packages/mobile-core/src/merchant-wallet.test.mjs",
   "packages/mobile-core/src/rider-personal-info-page.js",
@@ -2387,10 +2389,12 @@ assertContains(
 assertContains("merchant-app/shared-ui/chatNavigation.ts", "navigateToRoleChat(uni, {");
 assertContains(
   "merchant-app/shared-ui/merchantChatPage.ts",
-  "from '../../packages/mobile-core/src/role-chat-portal.js'",
+  "from '../../packages/mobile-core/src/merchant-chat-page.js'",
 );
-assertContains("merchant-app/shared-ui/merchantChatPage.ts", "buildRoleChatOutgoingPayload({");
-assertContains("merchant-app/shared-ui/merchantChatPage.ts", "createRoleChatLocalMessageId({");
+assertContains("merchant-app/shared-ui/merchantChatPage.ts", "createMerchantChatPage({");
+assertNotContains("merchant-app/shared-ui/merchantChatPage.ts", "buildRoleChatOutgoingPayload({");
+assertNotContains("merchant-app/shared-ui/merchantChatPage.ts", "createRoleChatLocalMessageId({");
+assertNotContains("merchant-app/shared-ui/merchantChatPage.ts", "resolveSocketToken({");
 assertContains(
   "merchant-app/shared-ui/merchantAccountPages.ts",
   "from '../../packages/mobile-core/src/role-settings-portal.js'",
@@ -5491,8 +5495,8 @@ assertNotContains(
   "fetch(`${SOCKET_HTTP_BASE}/api/stats`)",
 );
 assertContains(
-  "merchant-app/shared-ui/merchantChatPage.ts",
-  "resolveSocketToken({",
+  "packages/mobile-core/src/merchant-chat-page.js",
+  "resolveSocketTokenImpl({",
 );
 assertContains(
   "user-vue/shared-ui/rtc-contact.js",
@@ -7239,6 +7243,10 @@ assertContains(
 );
 assertContains(
   "packages/mobile-core/src/index.js",
+  'export * from "./merchant-chat-page.js";',
+);
+assertContains(
+  "packages/mobile-core/src/index.js",
   'export * from "./mobile-client-context.js";',
 );
 assertContains(
@@ -7620,6 +7628,10 @@ assertContains(
 assertContains(
   "packages/mobile-core/package.json",
   '"./consumer-app-runtime": "./src/consumer-app-runtime.js"',
+);
+assertContains(
+  "packages/mobile-core/package.json",
+  '"./merchant-chat-page": "./src/merchant-chat-page.js"',
 );
 assertContains(
   "packages/mobile-core/package.json",
@@ -8164,6 +8176,14 @@ assertContains(
 assertContains(
   "packages/mobile-core/src/CustomerServicePage.vue",
   '<style scoped lang="scss" src="./customer-service-page.scss"></style>',
+);
+assertContains(
+  "packages/mobile-core/src/merchant-chat-page.js",
+  "聊天记录需按平台规则保留",
+);
+assertContains(
+  "packages/mobile-core/src/merchant-chat-page.js",
+  "已清除当前设备记录",
 );
 assertContains(
   "packages/mobile-core/src/VipCenterPage.vue",

@@ -1,6 +1,7 @@
 export * from "./upload.js";
 export * from "./medicine-home.js";
 export * from "./medicine-order.js";
+export * from "./merchant-chat-page.js";
 export * from "./merchant-wallet.js";
 export * from "./mobile-client-context.js";
 export * from "./vip-center.js";
