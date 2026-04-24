@@ -10425,6 +10425,14 @@ assertContains("admin-vue/src/views/settingsHelpers/paymentAndDebug.js", "debugM
 assertContains("admin-vue/src/views/settingsSections/SettingsCoreConfigSection.vue", "调试模式入口已按安全基线默认关闭");
 assertNotContains("backend/go/internal/config/config.go", 'getEnv("TOKEN_API_SECRET"');
 assertContains("backend/go/internal/config/config.go", "REDIS_PASSWORD is required in %s environment when redis is enabled");
+assertContains(
+  "backend/go/internal/middleware/cors.go",
+  "GO API requires ALLOWED_ORIGINS or explicit ADMIN_WEB_BASE_URL/SITE_WEB_BASE_URL in production-like environments",
+);
+assertContains("backend/go/.env.example", "ADMIN_WEB_BASE_URL=http://127.0.0.1:8888");
+assertContains("backend/go/.env.example", "SITE_WEB_BASE_URL=http://127.0.0.1:1888");
+assertContains("backend/go/.env.example", "ALLOWED_ORIGINS=http://127.0.0.1:8888");
+assertExists("backend/go/internal/middleware/cors_test.go");
 assertContains("socket-server/runtimeConfig.js", "SOCKET_REDIS_PASSWORD is required when socket-server redis is enabled in production-like environments");
 assertNotContains("backend/docker/Caddyfile", "/api/stats*");
 assertNotContains("backend/docker/nginx.admin.conf", "location = /api/stats");
