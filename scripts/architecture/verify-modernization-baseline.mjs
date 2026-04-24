@@ -3520,7 +3520,7 @@ assertContains(
 );
 assertContains(
   "backend/go/internal/handler/response_envelope.go",
-  `"request_id": currentRequestID(c)`,
+  "return apiresponse.BuildPayload(c, status, code, message, data, legacy)",
 );
 assertContains(
   "backend/go/internal/handler/response_envelope.go",
@@ -10432,6 +10432,15 @@ assertContains(
 assertContains("backend/go/.env.example", "ADMIN_WEB_BASE_URL=http://127.0.0.1:8888");
 assertContains("backend/go/.env.example", "SITE_WEB_BASE_URL=http://127.0.0.1:1888");
 assertContains("backend/go/.env.example", "ALLOWED_ORIGINS=http://127.0.0.1:8888");
+assertExists("backend/go/internal/apiresponse/envelope.go");
+assertContains("backend/go/internal/handler/response_envelope.go", "apiresponse.WriteJSON");
+assertContains("backend/go/internal/middleware/response_envelope.go", "apiresponse.WriteJSON");
+assertExists("backend/go/internal/middleware/response_envelope_test.go");
+assertNotContains("backend/go/internal/middleware/admin_auth.go", "AbortWithStatusJSON");
+assertNotContains("backend/go/internal/middleware/merchant_or_admin_auth.go", "AbortWithStatusJSON");
+assertNotContains("backend/go/internal/middleware/request_controls.go", "AbortWithStatusJSON");
+assertNotContains("backend/go/internal/middleware/route_guard.go", "AbortWithStatusJSON");
+assertNotContains("backend/go/internal/middleware/recovery.go", 'c.JSON(http.StatusInternalServerError');
 assertExists("backend/go/internal/middleware/cors_test.go");
 assertContains("socket-server/runtimeConfig.js", "SOCKET_REDIS_PASSWORD is required when socket-server redis is enabled in production-like environments");
 assertNotContains("backend/docker/Caddyfile", "/api/stats*");

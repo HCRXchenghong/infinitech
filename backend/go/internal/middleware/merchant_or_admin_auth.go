@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -13,10 +12,7 @@ func RequireMerchantOrAdmin(authService *service.AuthService, adminService *serv
 	return func(c *gin.Context) {
 		authHeader := strings.TrimSpace(c.GetHeader("Authorization"))
 		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"error":   "缺少鉴权信息",
-			})
+			abortUnauthorized(c, "缺少鉴权信息")
 			return
 		}
 
@@ -40,9 +36,6 @@ func RequireMerchantOrAdmin(authService *service.AuthService, adminService *serv
 			}
 		}
 
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"error":   "商户鉴权失败或账号已删除",
-		})
+		abortUnauthorized(c, "商户鉴权失败或账号已删除")
 	}
 }

@@ -160,14 +160,14 @@ func CORS() gin.HandlerFunc {
 
 		if c.Request.Method == http.MethodOptions {
 			if origin != "" && allowOrigin == "" {
-				c.AbortWithStatus(http.StatusForbidden)
+				abortForbidden(c, "origin not allowed", nil)
 				return
 			}
 			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}
 		if origin != "" && allowOrigin == "" {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "origin not allowed"})
+			abortForbidden(c, "origin not allowed", nil)
 			return
 		}
 

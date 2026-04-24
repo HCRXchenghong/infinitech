@@ -1,11 +1,13 @@
 package middleware
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yuexiang/go-api/internal/apiresponse"
 )
 
 func TestResolveCORSRuntimeConfigAllowsProductionWithExplicitWebOrigins(t *testing.T) {
@@ -74,12 +76,27 @@ func TestCORSRejectsDisallowedOrigin(t *testing.T) {
 	})
 
 	request := httptest.NewRequest(http.MethodGet, "/ping", nil)
+	request.Header.Set("X-Request-ID", "req-cors-001")
 	request.Header.Set("Origin", "https://evil.example.com")
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("expected 403 for disallowed origin, got %d", recorder.Code)
+	}
+
+	payload := map[string]interface{}{}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("failed to decode cors reject payload: %v", err)
+	}
+	if payload["request_id"] != "req-cors-001" {
+		t.Fatalf("expected request_id req-cors-001, got %v", payload["request_id"])
+	}
+	if payload["code"] != apiresponse.CodeForbidden {
+		t.Fatalf("expected code %s, got %v", apiresponse.CodeForbidden, payload["code"])
+	}
+	if payload["message"] != "origin not allowed" {
+		t.Fatalf("expected origin reject message, got %v", payload["message"])
 	}
 }
 

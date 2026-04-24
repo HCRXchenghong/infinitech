@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -529,20 +528,14 @@ func checkSelfParam(c *gin.Context, param string, expectedID int64, authService 
 	}
 	raw := strings.TrimSpace(c.Param(param))
 	if raw == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "请求参数缺失",
-		})
+		abortInvalidArgument(c, "请求参数缺失", nil)
 		return false
 	}
 	if targetID, err := strconv.ParseInt(raw, 10, 64); err == nil && targetID > 0 {
 		if targetID == expectedID {
 			return true
 		}
-		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-			"success": false,
-			"error":   "无权访问该账号数据",
-		})
+		abortForbidden(c, "无权访问该账号数据", nil)
 		return false
 	}
 
@@ -550,10 +543,7 @@ func checkSelfParam(c *gin.Context, param string, expectedID int64, authService 
 		return true
 	}
 
-	c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-		"success": false,
-		"error":   "请求参数非法",
-	})
+	abortInvalidArgument(c, "请求参数非法", nil)
 	return false
 }
 
@@ -571,10 +561,7 @@ func checkIdentityFields(c *gin.Context, keys []string, expectedID int64, expect
 		if identityMatches(raw, expectedID, expectedPhone) {
 			continue
 		}
-		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-			"success": false,
-			"error":   "请求中的账号标识与登录身份不一致",
-		})
+		abortForbidden(c, "请求中的账号标识与登录身份不一致", nil)
 		return false
 	}
 
@@ -589,20 +576,14 @@ func checkWalletIdentity(c *gin.Context, expectedID int64, expectedPhone string,
 
 	userValues := collectIdentityValues(c, []string{"userId", "user_id"})
 	if len(userValues) == 0 {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "wallet 请求缺少 userId",
-		})
+		abortInvalidArgument(c, "wallet 请求缺少 userId", nil)
 		return false
 	}
 	for _, raw := range userValues {
 		if identityMatches(raw, expectedID, expectedPhone) {
 			continue
 		}
-		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-			"success": false,
-			"error":   "wallet 请求中的账号标识与登录身份不一致",
-		})
+		abortForbidden(c, "wallet 请求中的账号标识与登录身份不一致", nil)
 		return false
 	}
 
@@ -622,17 +603,11 @@ func checkWalletIdentity(c *gin.Context, expectedID int64, expectedPhone string,
 	for _, raw := range typeValues {
 		normalized := normalizeWalletUserType(raw)
 		if normalized == "" {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"success": false,
-				"error":   "wallet 请求中的账号类型非法",
-			})
+			abortForbidden(c, "wallet 请求中的账号类型非法", nil)
 			return false
 		}
 		if _, ok := typeSet[normalized]; !ok {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"success": false,
-				"error":   "wallet 请求中的账号类型与登录身份不一致",
-			})
+			abortForbidden(c, "wallet 请求中的账号类型与登录身份不一致", nil)
 			return false
 		}
 	}
@@ -764,14 +739,4 @@ func identityMatches(raw string, expectedID int64, expectedPhone string) bool {
 	}
 
 	return targetID == expectedID
-}
-
-func abortUnauthorized(c *gin.Context, message string) {
-	if strings.TrimSpace(message) == "" {
-		message = "鉴权失败"
-	}
-	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-		"success": false,
-		"error":   message,
-	})
 }

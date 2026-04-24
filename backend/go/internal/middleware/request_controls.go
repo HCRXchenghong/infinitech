@@ -99,9 +99,7 @@ func RequestBodyLimit(defaultMaxBytes, uploadMaxBytes int64) gin.HandlerFunc {
 		}
 
 		if c.Request.ContentLength > maxBytes {
-			c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, gin.H{
-				"error": fmt.Sprintf("request body too large (max %d bytes)", maxBytes),
-			})
+			abortPayloadTooLarge(c, fmt.Sprintf("request body too large (max %d bytes)", maxBytes), nil)
 			return
 		}
 
@@ -127,9 +125,7 @@ func GlobalRateLimit(window time.Duration, maxRequests int) gin.HandlerFunc {
 		allowed, retryAfter := limiter.allow(clientIP, time.Now())
 		if !allowed {
 			c.Header("Retry-After", strconv.Itoa(int(math.Ceil(retryAfter.Seconds()))))
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "too many requests, please retry later",
-			})
+			abortRateLimited(c, "too many requests, please retry later", nil)
 			return
 		}
 
@@ -161,9 +157,7 @@ func RedisBackedRateLimit(rdb *redis.Client, prefix string, window time.Duration
 		}
 		if !allowed {
 			c.Header("Retry-After", strconv.Itoa(int(math.Ceil(retryAfter.Seconds()))))
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "too many requests, please retry later",
-			})
+			abortRateLimited(c, "too many requests, please retry later", nil)
 			return
 		}
 

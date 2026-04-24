@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yuexiang/go-api/internal/apiresponse"
 	"github.com/yuexiang/go-api/internal/service"
 )
 
@@ -96,7 +97,7 @@ func (h *OfficialSiteHandler) UploadExposureAsset(c *gin.Context) {
 		if isUploadInternalError(err) {
 			status = http.StatusInternalServerError
 		}
-		respondErrorEnvelope(c, status, normalizeResponseCode("", status), err.Error(), nil)
+		respondErrorEnvelope(c, status, apiresponse.NormalizeCode("", status), err.Error(), nil)
 		return
 	}
 
