@@ -1,5 +1,8 @@
 import path from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
 
 function toNonNegativeInt(value, fallback) {
   const parsed = Number.parseInt(String(value || '').trim(), 10);
@@ -83,6 +86,22 @@ function collectVerificationFailures(failures, prefix, report) {
   }
 }
 
+function collectSupportGateFailures(failures, prefix, report) {
+  if (!report || typeof report !== 'object') {
+    failures.push(`${prefix}_report_invalid`);
+    return;
+  }
+  if (!isPassedStatus(report)) {
+    failures.push(`${prefix}_status=${resolveStatus(report) || 'missing'}`);
+  }
+  if (Array.isArray(report.failures) && report.failures.length > 0) {
+    failures.push(`${prefix}_failures=${report.failures.join(',')}`);
+  }
+  if (String(report.error || '').trim()) {
+    failures.push(`${prefix}_error=${String(report.error).trim()}`);
+  }
+}
+
 function collectAgeFailure(failures, label, report, maxAgeMinutes) {
   if (!maxAgeMinutes) return;
   const completedAt = String(report && report.completedAt || '').trim();
@@ -101,33 +120,86 @@ function collectAgeFailure(failures, label, report, maxAgeMinutes) {
   }
 }
 
-async function main() {
-  const liveCutoverFile = String(process.env.LIVE_CUTOVER_REPORT || '').trim();
-  const rollbackVerifyFile = String(process.env.ROLLBACK_VERIFY_REPORT || '').trim();
-  const failureVerifyFile = String(process.env.FAILURE_VERIFY_REPORT || '').trim();
-  const reportFile = String(process.env.EVIDENCE_REPORT_FILE || '').trim();
-  const maxReportAgeMinutes = toNonNegativeInt(process.env.EVIDENCE_MAX_REPORT_AGE_MINUTES, 0);
-
-  if (!liveCutoverFile || !rollbackVerifyFile || !failureVerifyFile) {
-    console.error('LIVE_CUTOVER_REPORT, ROLLBACK_VERIFY_REPORT, and FAILURE_VERIFY_REPORT are required');
-    process.exitCode = 1;
-    return;
-  }
-
-  const [liveCutover, rollbackVerify, failureVerify] = await Promise.all([
-    readJson(liveCutoverFile),
-    readJson(rollbackVerifyFile),
-    readJson(failureVerifyFile),
-  ]);
-
+export function evaluateReleaseEvidenceBundle({
+  liveCutover = null,
+  rollbackVerify = null,
+  failureVerify = null,
+  secretRotation = null,
+  realtimeAcceptance = null,
+} = {}) {
   const failures = [];
-
   collectLiveCutoverFailures(failures, liveCutover);
   collectVerificationFailures(failures, 'rollback_verify', rollbackVerify);
   collectVerificationFailures(failures, 'failure_verify', failureVerify);
+  collectSupportGateFailures(failures, 'secret_rotation', secretRotation);
+  collectSupportGateFailures(failures, 'realtime_acceptance', realtimeAcceptance);
+  return failures;
+}
+
+export async function assertReleaseEvidenceGate(options = {}) {
+  const liveCutoverFile = String(options.liveCutoverFile || process.env.LIVE_CUTOVER_REPORT || '').trim();
+  const rollbackVerifyFile = String(options.rollbackVerifyFile || process.env.ROLLBACK_VERIFY_REPORT || '').trim();
+  const failureVerifyFile = String(options.failureVerifyFile || process.env.FAILURE_VERIFY_REPORT || '').trim();
+  const secretRotationFile = String(
+    options.secretRotationFile || process.env.SECRET_ROTATION_GATE_REPORT || ''
+  ).trim();
+  const realtimeAcceptanceFile = String(
+    options.realtimeAcceptanceFile || process.env.REALTIME_ACCEPTANCE_REPORT || ''
+  ).trim();
+  const maxReportAgeMinutes = toNonNegativeInt(
+    options.maxReportAgeMinutes ?? process.env.EVIDENCE_MAX_REPORT_AGE_MINUTES,
+    0,
+  );
+
+  if (!liveCutoverFile || !rollbackVerifyFile || !failureVerifyFile || !secretRotationFile || !realtimeAcceptanceFile) {
+    throw new Error(
+      'LIVE_CUTOVER_REPORT, ROLLBACK_VERIFY_REPORT, FAILURE_VERIFY_REPORT, SECRET_ROTATION_GATE_REPORT, and REALTIME_ACCEPTANCE_REPORT are required'
+    );
+  }
+
+  const [liveCutover, rollbackVerify, failureVerify, secretRotation, realtimeAcceptance] = await Promise.all([
+    readJson(liveCutoverFile),
+    readJson(rollbackVerifyFile),
+    readJson(failureVerifyFile),
+    readJson(secretRotationFile),
+    readJson(realtimeAcceptanceFile),
+  ]);
+
+  const failures = evaluateReleaseEvidenceBundle({
+    liveCutover,
+    rollbackVerify,
+    failureVerify,
+    secretRotation,
+    realtimeAcceptance,
+  });
   collectAgeFailure(failures, 'live_cutover', liveCutover, maxReportAgeMinutes);
   collectAgeFailure(failures, 'rollback_verify', rollbackVerify, maxReportAgeMinutes);
   collectAgeFailure(failures, 'failure_verify', failureVerify, maxReportAgeMinutes);
+  collectAgeFailure(failures, 'secret_rotation', secretRotation, maxReportAgeMinutes);
+  collectAgeFailure(failures, 'realtime_acceptance', realtimeAcceptance, maxReportAgeMinutes);
+
+  return {
+    liveCutoverFile,
+    rollbackVerifyFile,
+    failureVerifyFile,
+    secretRotationFile,
+    realtimeAcceptanceFile,
+    maxReportAgeMinutes,
+    failures,
+  };
+}
+
+async function main() {
+  const reportFile = String(process.env.EVIDENCE_REPORT_FILE || '').trim();
+  const {
+    liveCutoverFile,
+    rollbackVerifyFile,
+    failureVerifyFile,
+    secretRotationFile,
+    realtimeAcceptanceFile,
+    maxReportAgeMinutes,
+    failures,
+  } = await assertReleaseEvidenceGate();
 
   const report = {
     startedAt: new Date().toISOString(),
@@ -137,6 +209,8 @@ async function main() {
       liveCutover: liveCutoverFile,
       rollbackVerify: rollbackVerifyFile,
       failureVerify: failureVerifyFile,
+      secretRotation: secretRotationFile,
+      realtimeAcceptance: realtimeAcceptanceFile,
     },
     config: {
       maxReportAgeMinutes,
@@ -158,7 +232,9 @@ async function main() {
   console.log('Release evidence gate passed.');
 }
 
-main().catch((error) => {
-  console.error('Release evidence gate crashed:', error instanceof Error ? error.stack || error.message : error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  main().catch((error) => {
+    console.error('Release evidence gate crashed:', error instanceof Error ? error.stack || error.message : error);
+    process.exitCode = 1;
+  });
+}

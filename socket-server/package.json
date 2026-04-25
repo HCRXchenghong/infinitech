@@ -1,6 +1,6 @@
 {
   "name": "socket-server",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "scripts": {
     "check": "node --check trustedApi.js && node --check runtimeConfig.js && node --check requestId.js && node --check redisState.js && node --check auth.js && node --check monitor.js && node --check socketIdentity.js && node --check supportAccess.js && node --check supportNamespaces.js && node --check riderNamespace.js && node --check rtcNamespace.js && node --check heicConvert.js && node --check index.js",

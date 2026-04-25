@@ -108,3 +108,43 @@ test("socket io client responds to ping, parses events and clears auth tokens on
     globalThis.uni = previousUni;
   }
 });
+
+test("socket io client schedules websocket reconnect with exponential backoff", () => {
+  const previousUni = globalThis.uni;
+  const fakeSocket = createFakeUniSocket();
+  const scheduled = [];
+
+  globalThis.uni = {
+    connectSocket() {
+      return fakeSocket.client;
+    },
+  };
+
+  try {
+    const socket = createSocket("https://example.com", "/notify", "token-2", {
+      initialDelayMs: 100,
+      maxDelayMs: 1000,
+      maxAttempts: 3,
+      factor: 2,
+      setTimeoutFn(callback, delay) {
+        scheduled.push({ callback, delay });
+        return { callback, delay };
+      },
+      clearTimeoutFn() {},
+    }).connect();
+
+    let reconnectAttempts = 0;
+    socket.on("reconnect_attempt", () => {
+      reconnectAttempts += 1;
+    });
+
+    fakeSocket.handlers.close();
+    assert.equal(scheduled.length, 1);
+    assert.equal(scheduled[0].delay, 100);
+
+    scheduled[0].callback();
+    assert.equal(reconnectAttempts, 1);
+  } finally {
+    globalThis.uni = previousUni;
+  }
+});

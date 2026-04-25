@@ -40,5 +40,5 @@ func abortPayloadTooLarge(c *gin.Context, message string, legacy gin.H) {
 }
 
 func abortRateLimited(c *gin.Context, message string, legacy gin.H) {
-	abortErrorEnvelope(c, http.StatusTooManyRequests, apiresponse.CodeRateLimited, message, legacy)
+	abortErrorEnvelope(c, http.StatusTooManyRequests, apiresponse.CodeTooManyRequests, message, legacy)
 }

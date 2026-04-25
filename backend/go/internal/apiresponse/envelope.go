@@ -8,16 +8,20 @@ import (
 )
 
 const (
-	CodeOK              = "OK"
-	CodeInvalidArgument = "INVALID_ARGUMENT"
-	CodeUnauthorized    = "UNAUTHORIZED"
-	CodeForbidden       = "FORBIDDEN"
-	CodeNotFound        = "NOT_FOUND"
-	CodeConflict        = "CONFLICT"
-	CodeGone            = "GONE"
-	CodePayloadTooLarge = "PAYLOAD_TOO_LARGE"
-	CodeRateLimited     = "RATE_LIMITED"
-	CodeInternalError   = "INTERNAL_ERROR"
+	CodeOK                  = "OK"
+	CodeInvalidArgument     = "INVALID_ARGUMENT"
+	CodeUnauthorized        = "UNAUTHORIZED"
+	CodeForbidden           = "FORBIDDEN"
+	CodeNotFound            = "NOT_FOUND"
+	CodeMethodNotAllowed    = "METHOD_NOT_ALLOWED"
+	CodeConflict            = "CONFLICT"
+	CodeGone                = "GONE"
+	CodePayloadTooLarge     = "PAYLOAD_TOO_LARGE"
+	CodeTooManyRequests     = "TOO_MANY_REQUESTS"
+	CodeUpstreamUnavailable = "UPSTREAM_UNAVAILABLE"
+	CodeUpstreamTimeout     = "UPSTREAM_TIMEOUT"
+	CodeInternalError       = "INTERNAL_ERROR"
+	CodeRequestFailed       = "REQUEST_FAILED"
 )
 
 func CurrentRequestID(c *gin.Context) string {
@@ -65,6 +69,8 @@ func NormalizeCode(code string, status int) string {
 		return CodeForbidden
 	case http.StatusNotFound:
 		return CodeNotFound
+	case http.StatusMethodNotAllowed:
+		return CodeMethodNotAllowed
 	case http.StatusConflict:
 		return CodeConflict
 	case http.StatusGone:
@@ -72,12 +78,19 @@ func NormalizeCode(code string, status int) string {
 	case http.StatusRequestEntityTooLarge:
 		return CodePayloadTooLarge
 	case http.StatusTooManyRequests:
-		return CodeRateLimited
+		return CodeTooManyRequests
+	case http.StatusBadGateway, http.StatusServiceUnavailable:
+		return CodeUpstreamUnavailable
+	case http.StatusGatewayTimeout:
+		return CodeUpstreamTimeout
 	default:
 		if status >= 200 && status < 400 {
 			return CodeOK
 		}
-		return CodeInternalError
+		if status >= 500 {
+			return CodeInternalError
+		}
+		return CodeRequestFailed
 	}
 }
 

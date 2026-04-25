@@ -59,7 +59,7 @@ final class PushNotificationManager: NSObject, ObservableObject {
             userId: userId,
             userType: tokenStore.userType,
             deviceToken: token,
-            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.1",
+            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.2",
             locale: Locale.current.identifier,
             timezone: TimeZone.current.identifier,
             appEnv: appConfig.environment.rawValue

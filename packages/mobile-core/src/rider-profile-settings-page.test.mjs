@@ -88,7 +88,7 @@ test("rider settings page loads rider data, routes, toggles and about dialog", a
       };
     },
     getAppVersionLabel() {
-      return "1.0.1";
+      return "1.0.2";
     },
     getCachedSupportRuntimeSettings() {
       return {
@@ -133,7 +133,7 @@ test("rider settings page loads rider data, routes, toggles and about dialog", a
     ...DEFAULT_RIDER_PROFILE_SETTINGS,
     orderNotice: false,
   });
-  assert.equal(page.appVersionLabel, "1.0.1");
+  assert.equal(page.appVersionLabel, "1.0.2");
   assert.equal(page.supportChatTitle, "缓存客服");
   assert.equal(page.aboutSummary, "缓存简介");
 

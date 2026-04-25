@@ -18,17 +18,51 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: node --check scripts/http-load-smoke.mjs
       - run: node --check scripts/release-preflight.mjs
+      - run: node --check scripts/release-drill.mjs
+      - run: node --check scripts/release-live-cutover.mjs
+      - run: node --check scripts/release-rollback-verify.mjs
+      - run: node --check scripts/release-failure-verify.mjs
+      - run: node --check scripts/release-evidence-gate.mjs
+      - run: node --check scripts/release-manual-attestation-template.mjs
+      - run: node --check scripts/release-manual-attestation-prefill.mjs
+      - run: node --check scripts/release-final-signoff.mjs
+      - run: node --check scripts/release-go-live-bundle.mjs
+      - run: node --check scripts/failure-drill-prep.mjs
+      - run: node --check scripts/push-real-device-prep.mjs
+      - run: node --check scripts/rtc-real-device-prep.mjs
+      - run: node --check scripts/realtime-load-plan.mjs
+      - run: node --check scripts/realtime-acceptance-gate.mjs
+      - run: node --check scripts/architecture/check-admin-core-adoption.mjs
+      - run: node --check scripts/architecture/check-mobile-shared-runtime-adoption.mjs
+      - run: node --check scripts/security/secret-rotation-evidence.mjs
+      - run: node --check scripts/security/generate-secret-rotation-evidence.mjs
+      - run: node --check scripts/security/check-secret-rotation-evidence.mjs
+
+  execution-ledger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: node scripts/governance/check-execution-ledger.mjs
 
   modernization:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -79,6 +113,20 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: node scripts/security/verify-backend-audits.mjs
+
+  api-contracts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: node scripts/contracts/check-http-contract-drift.mjs
+      - run: node scripts/contracts/check-identity-upload-contract-drift.mjs
+      - run: node scripts/architecture/check-admin-core-adoption.mjs
+      - run: node scripts/architecture/check-mobile-shared-runtime-adoption.mjs
 
   go-vulncheck:
     runs-on: ubuntu-latest

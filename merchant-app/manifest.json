@@ -2,7 +2,7 @@
   "name": "悦享e食-商户端",
   "appid": "",
   "description": "商户端应用",
-  "versionName": "1.0.1",
+  "versionName": "1.0.2",
   "versionCode": "101",
   "vueVersion": "3",
   "transformPx": false,

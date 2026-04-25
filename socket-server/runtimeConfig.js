@@ -44,6 +44,11 @@ function toPositiveInt(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function toPositiveFloat(value, fallback) {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 function toBoolean(value, fallback) {
   if (value === undefined || value === null || value === '') {
     return fallback;
@@ -95,6 +100,48 @@ function normalizeBaseUrl(raw) {
 
 function uniqueValues(values) {
   return Array.from(new Set(values.filter(Boolean)));
+}
+
+function normalizeTransportMode(raw, productionLike) {
+  const normalized = String(raw || '').trim().toLowerCase();
+  if (normalized === 'websocket_only' || normalized === 'sticky_sessions') {
+    return normalized;
+  }
+  if (productionLike) {
+    throw new Error(
+      'SOCKET_TRANSPORT_MODE must be explicitly set to websocket_only or sticky_sessions in production-like environments',
+    );
+  }
+  return 'websocket_only';
+}
+
+function resolveSocketIoConfig(env, productionLike) {
+  const transportMode = normalizeTransportMode(env.SOCKET_TRANSPORT_MODE, productionLike);
+  const stickySessionsConfirmed = transportMode === 'sticky_sessions'
+    ? toBoolean(env.SOCKET_STICKY_SESSIONS_CONFIRMED, false)
+    : false;
+
+  if (productionLike && transportMode === 'sticky_sessions' && !stickySessionsConfirmed) {
+    throw new Error(
+      'SOCKET_STICKY_SESSIONS_CONFIRMED=true is required when SOCKET_TRANSPORT_MODE=sticky_sessions in production-like environments',
+    );
+  }
+
+  return {
+    pingTimeoutMs: toPositiveInt(env.SOCKET_PING_TIMEOUT_MS, 20_000),
+    pingIntervalMs: toPositiveInt(env.SOCKET_PING_INTERVAL_MS, 25_000),
+    transportMode,
+    transports: transportMode === 'websocket_only' ? ['websocket'] : ['polling', 'websocket'],
+    stickySessionsConfirmed,
+  };
+}
+
+function resolveCapacityConfig(env) {
+  return {
+    profile: String(env.SOCKET_CAPACITY_PROFILE || 'mixed-100k').trim() || 'mixed-100k',
+    targetConcurrentConnections: toPositiveInt(env.SOCKET_TARGET_CONCURRENT_CONNECTIONS, 100_000),
+    activeConnectionRatio: toPositiveFloat(env.SOCKET_ACTIVE_CONNECTION_RATIO, 0.5),
+  };
 }
 
 function resolveAllowedOrigins(env, productionLike) {
@@ -188,14 +235,12 @@ export function resolveSocketRuntimeConfig(env = process.env) {
       maxHttpBufferBytes: toPositiveInt(env.SOCKET_MAX_HTTP_BUFFER_BYTES, 4 * 1024 * 1024),
       slowRequestWarnMs: toPositiveInt(env.SOCKET_HTTP_SLOW_REQUEST_WARN_MS, 1_500),
     },
-    socketIo: {
-      pingTimeoutMs: toPositiveInt(env.SOCKET_PING_TIMEOUT_MS, 20_000),
-      pingIntervalMs: toPositiveInt(env.SOCKET_PING_INTERVAL_MS, 25_000),
-    },
+    socketIo: resolveSocketIoConfig(env, trustedConfig.productionLike),
     rtc: {
       ringTimeoutSeconds: toPositiveInt(env.SOCKET_RTC_RING_TIMEOUT_SECONDS, 35),
     },
     redis: resolveRedisConfig(env, trustedConfig.productionLike),
+    capacity: resolveCapacityConfig(env),
   };
 }
 

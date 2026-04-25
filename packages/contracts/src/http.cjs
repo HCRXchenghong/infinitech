@@ -28,6 +28,28 @@ function resolveAssetDirectUrl(source) {
   return trimText(source.url || source.imageUrl || source.image_url);
 }
 
+const HTTP_STATUS_ERROR_CODE_OVERRIDES = Object.freeze({
+  400: "INVALID_ARGUMENT",
+  401: "UNAUTHORIZED",
+  403: "FORBIDDEN",
+  404: "NOT_FOUND",
+  405: "METHOD_NOT_ALLOWED",
+  409: "CONFLICT",
+  410: "GONE",
+  413: "PAYLOAD_TOO_LARGE",
+  429: "TOO_MANY_REQUESTS",
+  502: "UPSTREAM_UNAVAILABLE",
+  503: "UPSTREAM_UNAVAILABLE",
+  504: "UPSTREAM_TIMEOUT",
+});
+
+const HTTP_ENVELOPE_CODES = Object.freeze([
+  "OK",
+  ...Array.from(new Set(Object.values(HTTP_STATUS_ERROR_CODE_OVERRIDES))).sort(),
+  "INTERNAL_ERROR",
+  "REQUEST_FAILED",
+]);
+
 const PROTECTED_UPLOAD_PATH_PREFIXES = [
   "/uploads/certs/",
   "/uploads/merchant_document/",
@@ -61,33 +83,12 @@ function normalizeErrorCode(status, explicitCode = "") {
     return code;
   }
 
-  switch (Number(status)) {
-    case 400:
-      return "INVALID_ARGUMENT";
-    case 401:
-      return "UNAUTHORIZED";
-    case 403:
-      return "FORBIDDEN";
-    case 404:
-      return "NOT_FOUND";
-    case 405:
-      return "METHOD_NOT_ALLOWED";
-    case 409:
-      return "CONFLICT";
-    case 410:
-      return "GONE";
-    case 413:
-      return "PAYLOAD_TOO_LARGE";
-    case 429:
-      return "TOO_MANY_REQUESTS";
-    case 502:
-    case 503:
-      return "UPSTREAM_UNAVAILABLE";
-    case 504:
-      return "UPSTREAM_TIMEOUT";
-    default:
-      return Number(status) >= 500 ? "INTERNAL_ERROR" : "REQUEST_FAILED";
+  const normalizedStatus = Number(status);
+  if (HTTP_STATUS_ERROR_CODE_OVERRIDES[normalizedStatus]) {
+    return HTTP_STATUS_ERROR_CODE_OVERRIDES[normalizedStatus];
   }
+
+  return normalizedStatus >= 500 ? "INTERNAL_ERROR" : "REQUEST_FAILED";
 }
 
 function resolveEnvelopeRequestIdSource(source, upstreamPayload = {}) {
@@ -639,6 +640,8 @@ function extractErrorMessage(payload, fallback = "请求失败") {
 }
 
 module.exports = {
+  HTTP_ENVELOPE_CODES,
+  HTTP_STATUS_ERROR_CODE_OVERRIDES,
   normalizeErrorCode,
   buildSuccessEnvelopePayload,
   buildErrorEnvelopePayload,

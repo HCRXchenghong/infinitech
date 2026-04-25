@@ -21,6 +21,7 @@ test('resolveSocketRuntimeConfig requires dedicated socket redis host in product
       SOCKET_SERVER_API_SECRET: 'socket-secret',
       ALLOWED_ORIGINS: 'https://admin.example.com',
       GO_API_URL: 'https://go.internal.example.com',
+      SOCKET_TRANSPORT_MODE: 'websocket_only',
       REDIS_HOST: 'redis.shared.internal',
     }),
     /SOCKET_REDIS_HOST is required when socket-server redis is enabled in production-like environments/,
@@ -34,6 +35,7 @@ test('resolveSocketRuntimeConfig requires socket redis password in production-li
       SOCKET_SERVER_API_SECRET: 'socket-secret',
       ALLOWED_ORIGINS: 'https://admin.example.com',
       GO_API_URL: 'https://go.internal.example.com',
+      SOCKET_TRANSPORT_MODE: 'websocket_only',
       SOCKET_REDIS_ENABLED: 'true',
       SOCKET_REDIS_HOST: 'redis.socket.internal',
     }),
@@ -47,6 +49,7 @@ test('resolveSocketRuntimeConfig accepts explicit production socket runtime conf
     SOCKET_SERVER_API_SECRET: 'socket-secret',
     GO_API_URL: 'https://go.internal.example.com/',
     ALLOWED_ORIGINS: 'https://admin.example.com,https://ops.example.com',
+    SOCKET_TRANSPORT_MODE: 'websocket_only',
     SOCKET_REDIS_ENABLED: 'true',
     SOCKET_REDIS_HOST: 'redis.socket.internal',
     SOCKET_REDIS_PORT: '6380',
@@ -68,4 +71,38 @@ test('resolveSocketRuntimeConfig accepts explicit production socket runtime conf
     database: 2,
     connectTimeout: 1000,
   });
+  assert.equal(config.socketIo.transportMode, 'websocket_only');
+  assert.deepEqual(config.socketIo.transports, ['websocket']);
+  assert.equal(config.capacity.targetConcurrentConnections, 100000);
+});
+
+test('resolveSocketRuntimeConfig requires explicit transport mode in production-like environments', () => {
+  assert.throws(
+    () => resolveSocketRuntimeConfig({
+      NODE_ENV: 'production',
+      SOCKET_SERVER_API_SECRET: 'socket-secret',
+      GO_API_URL: 'https://go.internal.example.com/',
+      ALLOWED_ORIGINS: 'https://admin.example.com',
+      SOCKET_REDIS_ENABLED: 'true',
+      SOCKET_REDIS_HOST: 'redis.socket.internal',
+      SOCKET_REDIS_PASSWORD: 'redis-secret',
+    }),
+    /SOCKET_TRANSPORT_MODE/,
+  );
+});
+
+test('resolveSocketRuntimeConfig requires sticky confirmation when sticky mode is selected', () => {
+  assert.throws(
+    () => resolveSocketRuntimeConfig({
+      NODE_ENV: 'production',
+      SOCKET_SERVER_API_SECRET: 'socket-secret',
+      GO_API_URL: 'https://go.internal.example.com/',
+      ALLOWED_ORIGINS: 'https://admin.example.com',
+      SOCKET_TRANSPORT_MODE: 'sticky_sessions',
+      SOCKET_REDIS_ENABLED: 'true',
+      SOCKET_REDIS_HOST: 'redis.socket.internal',
+      SOCKET_REDIS_PASSWORD: 'redis-secret',
+    }),
+    /SOCKET_STICKY_SESSIONS_CONFIRMED/,
+  );
 });

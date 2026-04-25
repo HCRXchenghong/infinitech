@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
 import {
+  HTTP_ENVELOPE_CODES,
+  HTTP_STATUS_ERROR_CODE_OVERRIDES,
   extractAuthSessionResult,
   extractAuthVerifyResult,
   buildErrorEnvelopePayload,
@@ -79,6 +81,8 @@ test("http contracts build standardized success and error envelopes", () => {
 
   assert.equal(normalizeErrorCode(503), "UPSTREAM_UNAVAILABLE");
   assert.equal(normalizeErrorCode(405), "METHOD_NOT_ALLOWED");
+  assert.equal(HTTP_STATUS_ERROR_CODE_OVERRIDES[429], "TOO_MANY_REQUESTS");
+  assert.ok(HTTP_ENVELOPE_CODES.includes("UPSTREAM_TIMEOUT"));
 });
 
 test("extractPaginatedItems supports enveloped and legacy list payloads", () => {

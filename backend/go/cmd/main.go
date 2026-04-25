@@ -31,7 +31,7 @@ import (
 )
 
 // @title 悦享e食 API
-// @version 1.0.1
+// @version 1.0.2
 // @description 悦享e食后端服务 API 文档
 // @host localhost:1029
 // @BasePath /api

@@ -48,10 +48,14 @@ const {
   socketIo: {
     pingTimeoutMs: SOCKET_PING_TIMEOUT_MS,
     pingIntervalMs: SOCKET_PING_INTERVAL_MS,
+    transportMode: SOCKET_TRANSPORT_MODE,
+    transports: SOCKET_IO_TRANSPORTS,
+    stickySessionsConfirmed: SOCKET_STICKY_SESSIONS_CONFIRMED,
   },
   rtc: {
     ringTimeoutSeconds: SOCKET_RTC_RING_TIMEOUT_SECONDS,
   },
+  capacity: SOCKET_CAPACITY,
 } = runtimeConfig;
 
 let monitorNamespace;
@@ -223,8 +227,19 @@ function writeSocketStatus(req, res, statusCode, status, extra = {}) {
 }
 
 function getSocketOperationalStatus() {
+  const redis = getRedisHealthSnapshot();
+  const capacityMode = redis.enabled && (!redis.connected || !redis.adapterEnabled)
+    ? 'degraded'
+    : 'normal';
   return {
-    redis: getRedisHealthSnapshot(),
+    redis,
+    capacityMode,
+    capacity: SOCKET_CAPACITY,
+    socketIo: {
+      transportMode: SOCKET_TRANSPORT_MODE,
+      transports: SOCKET_IO_TRANSPORTS,
+      stickySessionsConfirmed: SOCKET_STICKY_SESSIONS_CONFIRMED,
+    },
     supportHistoryFallback: getSupportHistoryFallbackConfig(),
     rtc: {
       ringTimeoutSeconds: SOCKET_RTC_RING_TIMEOUT_SECONDS
@@ -428,6 +443,7 @@ const io = new Server(httpServer, {
     origin: socketIoCorsOrigin,
     methods: ['GET', 'POST']
   },
+  transports: SOCKET_IO_TRANSPORTS,
   pingTimeout: SOCKET_PING_TIMEOUT_MS,
   pingInterval: SOCKET_PING_INTERVAL_MS,
   maxHttpBufferSize: SOCKET_MAX_HTTP_BUFFER_BYTES

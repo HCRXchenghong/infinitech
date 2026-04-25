@@ -106,7 +106,7 @@ test("profile settings pages persist toggles and legal runtime summaries", async
         privacyPolicySummary: "远端隐私",
         userAgreementSummary: "远端协议",
       }),
-      getAppVersionLabel: () => "1.0.1",
+      getAppVersionLabel: () => "1.0.2",
       clearAllCache: () => {},
       forceLogout: () => {},
     });
@@ -129,7 +129,7 @@ test("profile settings pages persist toggles and legal runtime summaries", async
     const detailPage = createProfileSettingsDetailPage({
       getCachedLegalRuntimeSettings: () => ({}),
       loadLegalRuntimeSettings: async () => ({}),
-      getAppVersionLabel: () => "1.0.1",
+      getAppVersionLabel: () => "1.0.2",
       clearAllCache: () => {},
       forceLogout: () => {},
     });

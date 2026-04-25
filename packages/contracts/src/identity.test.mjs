@@ -8,6 +8,7 @@ import {
   normalizeBearerToken,
   normalizePrincipalType,
   parseUnifiedTokenPayload,
+  UnifiedTokenKinds,
 } from "./identity.js";
 
 const require = createRequire(import.meta.url);
@@ -95,6 +96,7 @@ test("identity contracts keep CommonJS bridge aligned with ESM exports", () => {
     RIDER: "rider",
     ADMIN: "admin",
   });
+  assert.deepEqual(cjsIdentity.UnifiedTokenKinds, UnifiedTokenKinds);
   assert.deepEqual(
     cjsIdentity.extractUnifiedPrincipalIdentity(payload, { normalizeType: true }),
     extractUnifiedPrincipalIdentity(payload, { normalizeType: true }),

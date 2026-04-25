@@ -9,6 +9,7 @@ export const UPLOAD_DOMAINS = Object.freeze({
   APP_PACKAGE: "app_package",
   MERCHANT_DOCUMENT: "merchant_document",
   MEDICAL_DOCUMENT: "medical_document",
+  ONBOARDING_DOCUMENT: "onboarding_document",
   ADMIN_ASSET: "admin_asset",
 });
 

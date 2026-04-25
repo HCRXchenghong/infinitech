@@ -1,8 +1,8 @@
-# Infinitech 1.0.1
+# Infinitech 1.0.2
 
 Infinitech is a local-services monorepo that ships the full platform stack in one repository: customer apps, merchant app, rider app, admin web, official site, BFF, Go business API, realtime socket gateway, payment sidecars, and deployment tooling.
 
-This repository is currently aligned on version `1.0.1`.
+This repository is currently aligned on version `1.0.2`.
 
 ## What Is Included
 
@@ -16,8 +16,10 @@ This repository is currently aligned on version `1.0.1`.
   Merchant uni-app client.
 - `rider-app`
   Rider uni-app client.
-- `admin-app`
-  Admin uni-app client.
+- `admin-win`
+  Windows desktop admin shell built with `Tauri + Vue` and shared `packages/admin-core`.
+- `admin-mac`
+  macOS desktop admin shell built with `Tauri + Vue` and shared `packages/admin-core`.
 - `backend/go`
   Core business API, settings, orders, wallet, notifications, official site support, and admin services.
 - `backend/bff`
@@ -28,12 +30,12 @@ This repository is currently aligned on version `1.0.1`.
   Alipay integration sidecar.
 - `backend/bank-payout-sidecar`
   Bank payout integration sidecar.
-- `shared`
-  Shared mobile runtime helpers, realtime bridge utilities, and multi-end notification logic.
+- `packages`
+  Shared contracts, client SDK, domain core, mobile core, and admin core packages.
 - `scripts`
   Install, deploy, and maintenance helpers.
 - `android-user-app` / `ios-user-app`
-  Native customer app shells kept at version `1.0.1`.
+  Native customer app shells kept at version `1.0.2`.
 
 ## Current Highlights
 
@@ -46,8 +48,9 @@ This repository is currently aligned on version `1.0.1`.
 
 ```text
 .
-├── admin-app
+├── admin-mac
 ├── admin-vue
+├── admin-win
 ├── android-user-app
 ├── app-mobile
 ├── backend
@@ -59,8 +62,8 @@ This repository is currently aligned on version `1.0.1`.
 ├── ios-user-app
 ├── merchant-app
 ├── rider-app
+├── packages
 ├── scripts
-├── shared
 ├── socket-server
 ├── tools
 └── user-vue
@@ -127,7 +130,7 @@ Some uni-app targets still depend on local HBuilderX / `uni` CLI availability.
 
 ## Version Policy
 
-- Repository release line stays on `1.0.1`.
+- Repository release line stays on `1.0.2`.
 - Web, mobile, native shell, admin, and sidecar package versions are kept consistent where applicable.
 - Generated artifacts are not part of the repository history.
 

@@ -7,6 +7,11 @@ const PrincipalTypes = Object.freeze({
   ADMIN: "admin",
 });
 
+const UnifiedTokenKinds = Object.freeze({
+  ACCESS: "access",
+  REFRESH: "refresh",
+});
+
 const UnifiedSessionClaimKeys = Object.freeze([
   "sub",
   "principal_type",
@@ -134,7 +139,10 @@ function extractUnifiedPrincipalIdentity(payload, options = {}) {
     const legacyType = normalizeType
       ? claimString(payload, ["type"]).toLowerCase()
       : claimString(payload, ["type"]);
-    if (legacyType === "access" || legacyType === "refresh") {
+    if (
+      legacyType === UnifiedTokenKinds.ACCESS ||
+      legacyType === UnifiedTokenKinds.REFRESH
+    ) {
       tokenKind = legacyType;
     }
   }
@@ -167,6 +175,7 @@ function extractUnifiedPrincipalIdentity(payload, options = {}) {
 
 module.exports = {
   PrincipalTypes,
+  UnifiedTokenKinds,
   UnifiedSessionClaimKeys,
   normalizePrincipalType,
   isUnifiedSessionClaimsShape,

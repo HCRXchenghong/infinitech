@@ -7,7 +7,7 @@ function normalizeNamespace(namespace = "") {
 }
 
 class SocketIO {
-  constructor(url, namespace = "", token = "") {
+  constructor(url, namespace = "", token = "", options = {}) {
     this.socket = null;
     this.url = String(url || "");
     this.namespace = normalizeNamespace(namespace);
@@ -15,6 +15,22 @@ class SocketIO {
     this.connected = false;
     this.hasConnected = false;
     this.token = String(token || "");
+    this.manualDisconnect = false;
+    this.reconnectAttempts = 0;
+    this.reconnectTimer = null;
+    this.reconnect = {
+      enabled: options.reconnect !== false,
+      initialDelayMs: Number(options.initialDelayMs || 500),
+      maxDelayMs: Number(options.maxDelayMs || 10_000),
+      maxAttempts: Number(options.maxAttempts || 6),
+      factor: Number(options.factor || 2),
+      setTimeoutFn:
+        typeof options.setTimeoutFn === "function" ? options.setTimeoutFn : globalThis.setTimeout,
+      clearTimeoutFn:
+        typeof options.clearTimeoutFn === "function"
+          ? options.clearTimeoutFn
+          : globalThis.clearTimeout,
+    };
   }
 
   connect() {
@@ -23,8 +39,10 @@ class SocketIO {
       throw new Error("uni.connectSocket is not available");
     }
 
-    const wsUrl = this.buildWsUrl();
+    this.manualDisconnect = false;
+    this.clearReconnectTimer();
 
+    const wsUrl = this.buildWsUrl();
     this.socket = uniApp.connectSocket({
       url: wsUrl,
       complete: () => {},
@@ -32,6 +50,7 @@ class SocketIO {
 
     this.socket.onOpen(() => {
       this.connected = true;
+      this.reconnectAttempts = 0;
       if (this.token) {
         this.send(`40${this.namespace},${JSON.stringify({ token: this.token })}`);
       } else {
@@ -51,7 +70,9 @@ class SocketIO {
     this.socket.onClose(() => {
       this.connected = false;
       this.hasConnected = false;
+      this.socket = null;
       this.fire("disconnect");
+      this.scheduleReconnect();
     });
 
     return this;
@@ -81,6 +102,8 @@ class SocketIO {
       } catch (error) {
         console.error("[Socket] 清除 token 失败:", error);
       }
+      this.manualDisconnect = true;
+      this.clearReconnectTimer();
       this.fire("auth_error", { message: "认证失败" });
       return;
     }
@@ -150,7 +173,46 @@ class SocketIO {
     }
   }
 
+  clearReconnectTimer() {
+    if (this.reconnectTimer && typeof this.reconnect.clearTimeoutFn === "function") {
+      this.reconnect.clearTimeoutFn(this.reconnectTimer);
+    }
+    this.reconnectTimer = null;
+  }
+
+  scheduleReconnect() {
+    if (this.manualDisconnect || !this.reconnect.enabled) {
+      return;
+    }
+    if (this.reconnectAttempts >= this.reconnect.maxAttempts) {
+      this.fire("reconnect_failed", {
+        attempts: this.reconnectAttempts,
+      });
+      return;
+    }
+    if (typeof this.reconnect.setTimeoutFn !== "function") {
+      return;
+    }
+
+    const delay = Math.min(
+      this.reconnect.maxDelayMs,
+      this.reconnect.initialDelayMs *
+        Math.max(1, this.reconnect.factor ** this.reconnectAttempts),
+    );
+    this.reconnectAttempts += 1;
+    this.reconnectTimer = this.reconnect.setTimeoutFn(() => {
+      this.reconnectTimer = null;
+      this.fire("reconnect_attempt", {
+        attempt: this.reconnectAttempts,
+        delay,
+      });
+      this.connect();
+    }, delay);
+  }
+
   disconnect() {
+    this.manualDisconnect = true;
+    this.clearReconnectTimer();
     if (this.socket) {
       this.socket.close();
       this.socket = null;
@@ -160,6 +222,6 @@ class SocketIO {
   }
 }
 
-export default function createSocket(url, namespace = "", token = "") {
-  return new SocketIO(url, namespace, token);
+export default function createSocket(url, namespace = "", token = "", options = {}) {
+  return new SocketIO(url, namespace, token, options);
 }
